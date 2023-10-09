@@ -1,21 +1,41 @@
-import { StorageFileNotFound, FileType, pathDirectories, pathDirectory, Reporter, StorageAdapter, StorageFile } from './storage.js';
+import { FileType, FileVisibility, pathDirectories, pathDirectory, Reporter, resolveStoragePath, StorageAdapter, StorageFile, StorageFileNotFound } from './storage.js';
 
+export interface StorageMemoryAdapterOptions {
+    url: string;
+}
+
+/**
+ * In-memory storage adapter for testing purposes.
+ */
 export class StorageMemoryAdapter implements StorageAdapter {
     protected memory: { file: StorageFile, contents: Uint8Array }[] = [];
+
+    protected options: StorageMemoryAdapterOptions = {
+        url: '/'
+    };
+
+    constructor(options: Partial<StorageMemoryAdapterOptions> = {}) {
+        Object.assign(this.options, options);
+    }
 
     async files(path: string): Promise<StorageFile[]> {
         return this.memory.filter(file => file.file.directory === path)
             .map(v => v.file);
     }
 
-    async makeDirectory(path: string): Promise<void> {
+    async url(path: string): Promise<string> {
+        return resolveStoragePath([this.options.url, path]);
+    }
+
+    async makeDirectory(path: string, visibility: FileVisibility): Promise<void> {
         const directories = pathDirectories(path);
         //filter out all parts that already exist
         for (const dir of directories) {
-            const exists = await this.exists(dir);
+            const exists = await this.exists([dir]);
             if (exists) continue;
             const file = new StorageFile(dir);
             file.type = FileType.Directory;
+            file.visibility = visibility;
             this.memory.push({ file, contents: new Uint8Array });
         }
     }
@@ -37,14 +57,15 @@ export class StorageMemoryAdapter implements StorageAdapter {
             .map(v => v.file);
     }
 
-    async write(path: string, contents: Uint8Array, reporter: Reporter): Promise<void> {
+    async write(path: string, contents: Uint8Array, visibility: FileVisibility, reporter: Reporter): Promise<void> {
         let file = this.memory.find(file => file.file.path === path);
         if (!file) {
-            await this.makeDirectory(pathDirectory(path));
+            await this.makeDirectory(pathDirectory(path), visibility);
             file = { file: new StorageFile(path), contents };
             this.memory.push(file);
         }
         file.contents = contents;
+        file.file.visibility = visibility;
         file.file.size = contents.length;
         file.file.lastModified = new Date();
     }
@@ -55,14 +76,16 @@ export class StorageMemoryAdapter implements StorageAdapter {
         return file.contents;
     }
 
-    async exists(path: string): Promise<boolean> {
-        return !!this.memory.find(file => file.file.path === path);
+    async exists(paths: string[]): Promise<boolean> {
+        const files = this.memory.filter(file => paths.includes(file.file.path));
+        return files.length === paths.length;
     }
 
-    async delete(path: string): Promise<void> {
-        const index = this.memory.findIndex(file => file.file.path === path);
-        if (index === -1) throw new StorageFileNotFound('File not found');
-        this.memory.splice(index, 1);
+    async delete(paths: string[]): Promise<void> {
+        const files = this.memory.filter(file => paths.includes(file.file.path));
+        for (const file of files) {
+            this.memory.splice(this.memory.indexOf(file), 1);
+        }
     }
 
     async deleteDirectory(path: string, reporter: Reporter): Promise<void> {

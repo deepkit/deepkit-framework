@@ -1,5 +1,5 @@
 import { asyncOperation } from '@deepkit/core';
-import { normalizePath } from 'typedoc';
+import { readFile } from 'fs/promises';
 
 export enum FileType {
     File,
@@ -9,14 +9,22 @@ export enum FileType {
 }
 
 /**
+ * Settings for file and directory permissions.
+ */
+export type FileVisibility = 'public' | 'private';
+
+/**
  * Represents a file or directory in the storage system.
  */
 export class StorageFile {
-    public size?: number;
-    public type: FileType = FileType.File;
+    public size: number = 0;
     public lastModified?: Date;
+    public visibility: FileVisibility = 'public';
 
-    constructor(public path: string) {
+    constructor(
+        public path: string,
+        public type: FileType = FileType.File,
+    ) {
         this.path = pathNormalize(path);
     }
 
@@ -101,12 +109,12 @@ export interface Operation<T> extends Promise<T> {
 
 export interface StorageAdapter {
     /**
-     * Returns all files directly in the given folder.
+     * Returns all files (and directories) directly in the given folder.
      */
     files(path: string, reporter: Reporter): Promise<StorageFile[]>;
 
     /**
-     * Returns all files in the given folder and all subfolders.
+     * Returns all files (and directories) in the given folder and all subfolders.
      */
     allFiles(path: string, reporter: Reporter): Promise<StorageFile[]>;
 
@@ -124,13 +132,36 @@ export interface StorageAdapter {
      * Creates a new directory and all parent directories if not existing.
      * Does nothing if the directory already exists.
      */
-    makeDirectory(path: string): Promise<void>;
+    makeDirectory(path: string, visibility: FileVisibility): Promise<void>;
+
+    /**
+     * Returns the URL for the given path.
+     *
+     * For local storage it's the configured base URL + the path.
+     * For adapters like S3 it's the public S3 URL to the file.
+     */
+    url(path: string): Promise<string>;
 
     /**
      * Writes the given contents to the given path.
      * Ensures that all parent directories exist.
      */
-    write(path: string, contents: Uint8Array, reporter: Reporter): Promise<void>;
+    write(path: string, contents: Uint8Array, visibility: FileVisibility, reporter: Reporter): Promise<void>;
+
+    /**
+     * Appends the given contents to the given file.
+     *
+     *
+     * Optional. If not implemented, the file will be read into memory, content appended, and then written.
+     */
+    append?(path: string, contents: Uint8Array, reporter: Reporter): Promise<void>;
+
+    /**
+     * Prepends the given contents to the given file.
+     *
+     * Optional. If not implemented, the file will be read into memory, content prepended, and then written.
+     */
+    prepend?(path: string, contents: Uint8Array, reporter: Reporter): Promise<void>;
 
     /**
      * Reads the contents of the given path.
@@ -144,15 +175,15 @@ export interface StorageAdapter {
     get(path: string): Promise<StorageFile | undefined>;
 
     /**
-     * Returns true if the file exists.
+     * Returns true if all the given paths exist.
      */
-    exists(path: string): Promise<boolean>;
+    exists(path: string[]): Promise<boolean>;
 
     /**
-     * Deletes the file at the given path.
-     * Does nothing if the file does not exist.
+     * Deletes all the given paths.
+     * Does nothing if one file does not exist.
      */
-    delete(path: string): Promise<void>;
+    delete(path: string[]): Promise<void>;
 
     /**
      * Deletes the directory at the given path and all files and directories in it recursively.
@@ -228,67 +259,111 @@ export function createProgress<T>(callback: (reporter: Reporter) => Promise<T>):
     return promise;
 }
 
+export type StoragePath = string | StorageFile | string[];
+
+export function resolveStoragePath(path: StoragePath): string {
+    if (typeof path === 'string') return pathNormalize(path);
+    if (Array.isArray(path)) {
+        return '/' + path
+            .map(v => pathNormalize(v).slice(1))
+            .filter(v => !!v)
+            .join('/');
+    }
+    return path.path;
+}
+
+export interface StorageOptions {
+    /**
+     * Default visibility for new files.
+     */
+    visibility: FileVisibility;
+
+    /**
+     * Default visibility for new directories.
+     */
+    directoryVisibility: FileVisibility;
+
+    /**
+     * Transforms a given path to a cleaned path (e.g. remove not allowed characters, remove whitespaces, etc).
+     * Per default replaces all not allowed characters [^a-zA-Z0-9\.\-\_\/]) with a dash.
+     */
+    pathNormalizer: (path: string) => string;
+}
+
 export class Storage {
+    options: StorageOptions = {
+        visibility: 'private',
+        directoryVisibility: 'private',
+        pathNormalizer: (path: string) => {
+            return path.replace(/[^a-zA-Z0-9\.\-\_]/g, '-');
+        },
+    };
+
     constructor(public adapter: StorageAdapter) {
     }
 
-    protected normalizePath(path: string): string {
-        return pathNormalize(path);
+    /**
+     * Reads a file from local file system.
+     */
+    async readLocalFile(path: string): Promise<Uint8Array | undefined> {
+        const file = await this.adapter.get(path);
+        if (!file) return undefined;
+        return await readFile(file.path);
     }
 
     /**
-     * Returns all files directly in the given folder.
+     * Returns all files (and directories) directly in the given folder.
      *
      * Returns a Progress object that can be used to track the progress of the operation.
      */
-    files(path: string): Operation<StorageFile[]> {
-        path = this.normalizePath(path);
+    files(path: StoragePath): Operation<StorageFile[]> {
+        path = resolveStoragePath(path);
         return createProgress<StorageFile[]>(async (reporter) => {
-            const files = await this.adapter.files(path, reporter);
+            const files = await this.adapter.files(path as string, reporter);
             files.sort(compareFileSorting);
             return files;
         });
     }
 
     /**
-     * Returns all files paths in the given folder.
+     * Returns all files (and directories) paths in the given folder.
      *
      * Returns a Progress object that can be used to track the progress of the operation.
      */
-    fileNames(path: string): Operation<string[]> {
-        path = this.normalizePath(path);
+    fileNames(path: StoragePath): Operation<string[]> {
+        path = resolveStoragePath(path);
         return createProgress<string[]>(async (reporter) => {
             //todo: some adapters might be able to do this more efficiently
-            const files = await this.adapter.files(path, reporter);
+            const files = await this.adapter.files(path as string, reporter);
             files.sort(compareFileSorting);
             return files.map(v => v.path);
         });
     }
 
     /**
-     * Returns all files in the given folder and all subfolders.
+     * Returns all files (and directories) in the given folder and all subfolders.
      *
      * Returns a Progress object that can be used to track the progress of the operation.
      */
-    allFiles(path: string): Operation<StorageFile[]> {
-        path = this.normalizePath(path);
+    allFiles(path: StoragePath): Operation<StorageFile[]> {
+        path = resolveStoragePath(path);
         return createProgress<StorageFile[]>(async (reporter) => {
-            const files = await this.adapter.allFiles(path, reporter);
+            const files = await this.adapter.allFiles(path as string, reporter);
             files.sort(compareFileSorting);
             return files;
         });
     }
 
     /**
-     * Returns all files paths in the given folder and all subfolders.
+     * Returns all files (and directories) paths in the given folder and all subfolders.
      *
      * Returns a Progress object that can be used to track the progress of the operation.
      */
-    allFileNames(path: string): Operation<string[]> {
-        path = this.normalizePath(path);
+    allFileNames(path: StoragePath): Operation<string[]> {
+        path = resolveStoragePath(path);
         return createProgress<string[]>(async (reporter) => {
             //todo: some adapters might be able to do this more efficiently
-            const files = await this.adapter.allFiles(path, reporter);
+            const files = await this.adapter.allFiles(path as string, reporter);
             files.sort(compareFileSorting);
             return files.map(v => v.path);
         });
@@ -299,13 +374,13 @@ export class Storage {
      *
      * Returns a Progress object that can be used to track the progress of the operation.
      */
-    directories(path: string): Operation<StorageFile[]> {
-        path = this.normalizePath(path);
+    directories(path: StoragePath): Operation<StorageFile[]> {
+        path = resolveStoragePath(path);
         return createProgress<StorageFile[]>(async (reporter) => {
             if (this.adapter.directories) {
-                return await this.adapter.directories(path, reporter);
+                return await this.adapter.directories(path as string, reporter);
             } else {
-                const files = await this.adapter.files(path, reporter);
+                const files = await this.adapter.files(path as string, reporter);
                 return files.filter(v => v.isDirectory());
             }
         });
@@ -316,13 +391,13 @@ export class Storage {
      *
      * Returns a Progress object that can be used to track the progress of the operation.
      */
-    allDirectories(path: string): Operation<StorageFile[]> {
-        path = this.normalizePath(path);
+    allDirectories(path: StoragePath): Operation<StorageFile[]> {
+        path = resolveStoragePath(path);
         return createProgress<StorageFile[]>(async (reporter) => {
             if (this.adapter.allDirectories) {
-                return await this.adapter.allDirectories(path, reporter);
+                return await this.adapter.allDirectories(path as string, reporter);
             } else {
-                const files = await this.adapter.allFiles(path, reporter);
+                const files = await this.adapter.allFiles(path as string, reporter);
                 return files.filter(v => v.isDirectory());
             }
         });
@@ -335,11 +410,68 @@ export class Storage {
      *
      * Returns a Progress object that can be used to track the progress of the operation.
      */
-    write(path: string, content: Uint8Array | string): Operation<void> {
-        path = this.normalizePath(path);
+    write(path: StoragePath, content: Uint8Array | string, visibility?: FileVisibility): Operation<void> {
+        visibility = visibility || this.options.visibility;
+        path = resolveStoragePath(path);
         const buffer = typeof content === 'string' ? new TextEncoder().encode(content) : content;
         return createProgress<void>(async (reporter) => {
-            return await this.adapter.write(path, buffer, reporter);
+            return await this.adapter.write(path as string, buffer, visibility!, reporter);
+        });
+    }
+
+    /**
+     * Writes a given file reference (with path pointing to the file, e.g. UploadedFile) to the given directory.
+     *
+     * If no name is given, the basename of the file path is used.
+     *
+     * Returns the path to the saved file, so it can be used to store the path in a database.
+     *
+     * @example
+     * ```typescript
+     * storage.writeFile('uploads', uploadedFile);
+     * storage.writeFile('uploads', uploadedFile, {name: user.id});
+     * ```
+     */
+    async writeFile(directory: string, file: { path: string }, options: { name?: string, visibility?: string } = {}): Promise<string> {
+        const path = (options.name ? options.name : pathBasename(file.path));
+        const content = await this.readLocalFile(file.path);
+        if (!content) throw new StorageError(`Can not write file, since ${file.path} not found`);
+        const targetPath = resolveStoragePath([directory, path]);
+        await this.write(targetPath, content);
+        return targetPath;
+    }
+
+    /**
+     * Appends the given content to the given file.
+     *
+     * Warning: On many storage adapters this loads the whole file first into memory.
+     */
+    append(path: StoragePath, content: Uint8Array | string): Operation<void> {
+        path = resolveStoragePath(path);
+        const buffer = typeof content === 'string' ? new TextEncoder().encode(content) : content;
+        return createProgress<void>(async (reporter) => {
+            if (this.adapter.append) return await this.adapter.append(path as string, buffer, reporter);
+
+            const file = await this.get(path);
+            const existing = await this.read(path);
+            return await this.adapter.write(path as string, new Uint8Array([...existing, ...buffer]), file.visibility, reporter);
+        });
+    }
+
+    /**
+     * Prepends the given content to the given file.
+     *
+     * Warning: On almost all storage adapters this loads the whole file first into memory.
+     */
+    prepend(path: StoragePath, content: Uint8Array | string): Operation<void> {
+        path = resolveStoragePath(path);
+        const buffer = typeof content === 'string' ? new TextEncoder().encode(content) : content;
+        return createProgress<void>(async (reporter) => {
+            if (this.adapter.prepend) return await this.adapter.prepend(path as string, buffer, reporter);
+
+            const file = await this.get(path);
+            const existing = await this.read(path);
+            return await this.adapter.write(path as string, new Uint8Array([...buffer, ...existing]), file.visibility, reporter);
         });
     }
 
@@ -348,10 +480,10 @@ export class Storage {
      *
      * Returns a Progress object that can be used to track the progress of the operation.
      */
-    read(path: string): Operation<Uint8Array> {
-        path = this.normalizePath(path);
+    read(path: StoragePath): Operation<Uint8Array> {
+        path = resolveStoragePath(path);
         return createProgress<Uint8Array>(async (reporter) => {
-            return await this.adapter.read(path, reporter);
+            return await this.adapter.read(path as string, reporter);
         });
     }
 
@@ -360,10 +492,10 @@ export class Storage {
      *
      * Returns a Progress object that can be used to track the progress of the operation.
      */
-    readAsText(path: string): Operation<string> {
-        path = this.normalizePath(path);
+    readAsText(path: StoragePath): Operation<string> {
+        path = resolveStoragePath(path);
         return createProgress<string>(async (reporter) => {
-            const contents = await this.adapter.read(path, reporter);
+            const contents = await this.adapter.read(path as string, reporter);
             return new TextDecoder().decode(contents);
         });
     }
@@ -373,8 +505,8 @@ export class Storage {
      *
      * @throws StorageFileNotFound if the file does not exist.
      */
-    async get(path: string): Promise<StorageFile> {
-        path = this.normalizePath(path);
+    async get(path: StoragePath): Promise<StorageFile> {
+        path = resolveStoragePath(path);
         const file = await this.adapter.get(path);
         if (!file) throw new StorageFileNotFound('File not found');
         return file;
@@ -383,66 +515,72 @@ export class Storage {
     /**
      * Returns the file at the given path or undefined if not existing.
      */
-    getOrUndefined(path: string): Promise<StorageFile | undefined> {
-        path = this.normalizePath(path);
+    getOrUndefined(path: StoragePath): Promise<StorageFile | undefined> {
+        path = resolveStoragePath(path);
         return this.adapter.get(path);
     }
 
     /**
-     * Returns true if the file exists.
+     * Returns true if all the given paths exist.
      */
-    exists(path: string): Promise<boolean> {
-        path = this.normalizePath(path);
-        return this.adapter.exists(path);
+    exists(path: StoragePath | StoragePath[]): Promise<boolean> {
+        const paths = (Array.isArray(path) ? path : [path]).map(v => resolveStoragePath(v));
+        return this.adapter.exists(paths);
     }
 
     /**
-     * Deletes the file at the given path.
+     * Deletes all the given paths.
      * Does nothing if the file does not exist.
      */
-    delete(path: string): Promise<void> {
-        path = this.normalizePath(path);
-        return this.adapter.delete(path);
+    async delete(path: StoragePath | StoragePath[]): Promise<void> {
+        const paths = (Array.isArray(path) ? path : [path]).map(v => resolveStoragePath(v));
+        await this.adapter.delete(paths);
     }
 
     /**
      * Deletes the directory at the given path and all files and directories in it recursively.
      */
-    deleteDirectory(path: string): Operation<void> {
-        path = this.normalizePath(path);
+    deleteDirectory(path: StoragePath): Operation<void> {
+        path = resolveStoragePath(path);
         return createProgress<void>(async (reporter) => {
-            return this.adapter.deleteDirectory(path, reporter);
+            return this.adapter.deleteDirectory(path as string, reporter);
         });
     }
 
     /**
      * Copies the file or directory from source to destination, recursively.
      */
-    copy(source: string, destination: string): Operation<void> {
-        source = this.normalizePath(source);
-        destination = this.normalizePath(destination);
+    copy(source: StoragePath, destination: StoragePath): Operation<void> {
+        source = resolveStoragePath(source);
+        destination = resolveStoragePath(destination);
         return createProgress<void>(async (reporter) => {
-            return this.adapter.copy(source, destination, reporter);
+            return this.adapter.copy(source as string, destination as string, reporter);
         });
     }
 
     /**
      * Moves the file or directory from source to destination, recursively.
      */
-    move(source: string, destination: string): Operation<void> {
-        source = this.normalizePath(source);
-        destination = this.normalizePath(destination);
+    move(source: StoragePath, destination: StoragePath): Operation<void> {
+        source = resolveStoragePath(source);
+        destination = resolveStoragePath(destination);
         return createProgress<void>(async (reporter) => {
-            return this.adapter.move(source, destination, reporter);
+            return this.adapter.move(source as string, destination as string, reporter);
         });
     }
 
     /**
      * Creates a new directory, and all parent directories if not existing.
      */
-    makeDirectory(path: string): Promise<void> {
-        path = this.normalizePath(path);
-        return this.adapter.makeDirectory(path);
+    makeDirectory(path: StoragePath, visibility?: FileVisibility): Promise<void> {
+        visibility = visibility || this.options.directoryVisibility;
+        path = resolveStoragePath(path);
+        return this.adapter.makeDirectory(path, visibility);
+    }
+
+    async url(path: StoragePath): Promise<string> {
+        path = resolveStoragePath(path);
+        return await this.adapter.url(path);
     }
 }
 
@@ -483,7 +621,7 @@ export function compareFileSorting(a: StorageFile, b: StorageFile): number {
 }
 
 export function pathDirectories(path: string): string [] {
-    path = normalizePath(path);
+    path = pathNormalize(path);
     if (path === '/') return [];
     const directories: string[] = [];
     for (const part of path.split('/')) {

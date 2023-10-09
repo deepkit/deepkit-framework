@@ -18,6 +18,14 @@ setAdapterFactory(async () => {
         Bucket: adapter.options.bucket,
         Prefix: folder + '/',
     }));
+    if (response.CommonPrefixes) {
+        await adapter.client.send(new DeleteObjectsCommand({
+            Bucket: adapter.options.bucket,
+            Delete: {
+                Objects: response.CommonPrefixes.map(v => ({ Key: v.Prefix })),
+            }
+        }));
+    }
     if (response.Contents) {
         await adapter.client.send(new DeleteObjectsCommand({
             Bucket: adapter.options.bucket,

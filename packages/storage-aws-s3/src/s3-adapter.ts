@@ -1,7 +1,6 @@
-import { FileType, pathDirectory, Reporter, StorageAdapter, StorageError, StorageFile } from '@deepkit/storage';
+import { FileType, FileVisibility, pathDirectory, Reporter, StorageAdapter, StorageError, StorageFile } from '@deepkit/storage';
 import {
     CopyObjectCommand,
-    DeleteObjectCommand,
     DeleteObjectsCommand,
     GetObjectCommand,
     HeadObjectCommand,
@@ -175,10 +174,12 @@ export class StorageAwsS3Adapter implements StorageAdapter {
         }
     }
 
-    async delete(path: string): Promise<void> {
-        const command = new DeleteObjectCommand({
+    async delete(paths: string[]): Promise<void> {
+        const command = new DeleteObjectsCommand({
             Bucket: this.options.bucket,
-            Key: this.getRemotePath(path),
+            Delete: {
+                Objects: paths.map(v => ({ Key: this.getRemotePath(v) })) || [],
+            }
         });
 
         try {
@@ -210,7 +211,14 @@ export class StorageAwsS3Adapter implements StorageAdapter {
         }
     }
 
-    async exists(path: string): Promise<boolean> {
+    async exists(paths: string[]): Promise<boolean> {
+        for (const path of paths) {
+            if (!await this.existsSingle(path)) return false;
+        }
+        return true;
+    }
+
+    protected async existsSingle(path: string): Promise<boolean> {
         const command = new HeadObjectCommand({
             Bucket: this.options.bucket,
             Key: this.getRemotePath(path),
@@ -245,7 +253,7 @@ export class StorageAwsS3Adapter implements StorageAdapter {
 
     async move(source: string, destination: string, reporter: Reporter): Promise<void> {
         await this.copy(source, destination, reporter);
-        await this.delete(source);
+        await this.delete([source]);
         await this.deleteDirectory(source, reporter);
     }
 
@@ -266,7 +274,7 @@ export class StorageAwsS3Adapter implements StorageAdapter {
         }
     }
 
-    async write(path: string, contents: Uint8Array, reporter: Reporter): Promise<void> {
+    async write(path: string, contents: Uint8Array, visibility: FileVisibility, reporter: Reporter): Promise<void> {
         if (this.isDirectorySupport()) {
             await this.makeDirectory(pathDirectory(path));
         }
@@ -279,7 +287,7 @@ export class StorageAwsS3Adapter implements StorageAdapter {
         });
 
         try {
-            const response = await this.client.send(command);
+            await this.client.send(command);
         } catch (error: any) {
             throw new StorageError(`Could not write file ${path}: ${error.message}`);
         }

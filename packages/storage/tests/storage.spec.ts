@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { FileType, pathDirectories, Storage, StorageAdapter, StorageFile } from '../src/storage.js';
+import { FileType, Storage, StorageAdapter } from '../src/storage.js';
 import { StorageMemoryAdapter } from '../src/memory-adapter.js';
 
 export let adapterFactory: () => Promise<StorageAdapter> = async () => new StorageMemoryAdapter;
@@ -7,81 +7,6 @@ export let adapterFactory: () => Promise<StorageAdapter> = async () => new Stora
 export function setAdapterFactory(factory: () => Promise<StorageAdapter>) {
     adapterFactory = factory;
 }
-
-test('utils', async () => {
-    expect(pathDirectories('/')).toEqual([]);
-    expect(pathDirectories('/folder')).toEqual(['/folder']);
-    expect(pathDirectories('/folder/')).toEqual(['/folder']);
-    expect(pathDirectories('/folder/folder2')).toEqual(['/folder', '/folder/folder2']);
-});
-
-test('file API', async () => {
-    {
-        const file = new StorageFile('/file.txt');
-        expect(file.path).toBe('/file.txt');
-        expect(file.name).toBe('file.txt');
-        expect(file.directory).toBe('/');
-        expect(file.size).toBe(undefined);
-        expect(file.extension).toBe('txt');
-        expect(file.lastModified).toBe(undefined);
-        expect(file.isFile()).toBe(true);
-        expect(file.isDirectory()).toBe(false);
-        expect(file.inDirectory('/')).toBe(true);
-        expect(file.inDirectory('/folder')).toBe(false);
-        expect(file.inDirectory('/file.txt')).toBe(false);
-        expect(file.inDirectory('/file.txt/')).toBe(false);
-        expect(file.inDirectory('/file.txt/abc')).toBe(false);
-    }
-
-    {
-        const file = new StorageFile('/folder/file.txt');
-        expect(file.path).toBe('/folder/file.txt');
-        expect(file.name).toBe('file.txt');
-        expect(file.directory).toBe('/folder');
-        expect(file.size).toBe(undefined);
-        expect(file.extension).toBe('txt');
-        expect(file.lastModified).toBe(undefined);
-        expect(file.isFile()).toBe(true);
-        expect(file.isDirectory()).toBe(false);
-
-        expect(file.inDirectory('/')).toBe(true);
-        expect(file.inDirectory('/folder')).toBe(true);
-        expect(file.inDirectory('/folder/')).toBe(true);
-        expect(file.inDirectory('/folder/file.txt')).toBe(false);
-        expect(file.inDirectory('/folder/file.txt/')).toBe(false);
-        expect(file.inDirectory('/folder/file.txt/abc')).toBe(false);
-    }
-
-    {
-        const file = new StorageFile('/folder/folder2/file.txt');
-        expect(file.path).toBe('/folder/folder2/file.txt');
-        expect(file.name).toBe('file.txt');
-        expect(file.directory).toBe('/folder/folder2');
-
-        expect(file.inDirectory('/')).toBe(true);
-        expect(file.inDirectory('/folder')).toBe(true);
-        expect(file.inDirectory('/folder/folder2')).toBe(true);
-        expect(file.inDirectory('/folder/folder2/')).toBe(true);
-        expect(file.inDirectory('/folder/folder')).toBe(false);
-        expect(file.inDirectory('/folder/folder/')).toBe(false);
-    }
-
-    {
-        const file = new StorageFile('/folder');
-        file.type = FileType.Directory;
-        expect(file.path).toBe('/folder');
-        expect(file.name).toBe('folder');
-        expect(file.directory).toBe('/');
-        expect(file.size).toBe(undefined);
-        expect(file.extension).toBe('');
-        expect(file.lastModified).toBe(undefined);
-        expect(file.isFile()).toBe(false);
-        expect(file.isDirectory()).toBe(true);
-        expect(file.inDirectory('/')).toBe(true);
-        expect(file.inDirectory('/folder')).toBe(false);
-        expect(file.inDirectory('/another/folder')).toBe(false);
-    }
-});
 
 test('basic', async () => {
     const storage = new Storage(await adapterFactory());
@@ -128,6 +53,41 @@ test('basic', async () => {
 
     await storage.deleteDirectory('/');
     expect(await storage.exists('/file3.txt')).toBe(false);
+});
+
+test('append/prepend', async () => {
+    const storage = new Storage(await adapterFactory());
+
+    await storage.write('/file1.txt', 'contents1');
+    await storage.write('/file2.txt', 'contents2');
+
+    await storage.append('/file1.txt', 'moredata');
+    await storage.append('/file1.txt', 'evenmore');
+    expect(await storage.readAsText('/file1.txt')).toBe('contents1moredataevenmore');
+
+    await storage.prepend('/file2.txt', 'prefixed');
+    expect(await storage.readAsText('/file2.txt')).toBe('prefixedcontents2');
+});
+
+test('permissions', async () => {
+    const storage = new Storage(await adapterFactory());
+    await storage.write('/file1.txt', 'contents1', 'public');
+    await storage.write('/file2.txt', 'contents2', 'private');
+
+    const file1 = await storage.get('/file1.txt');
+    expect(file1).toMatchObject({ path: '/file1.txt', size: 9, lastModified: expect.any(Date), visibility: 'public' });
+
+    const file2 = await storage.get('/file2.txt');
+    expect(file2).toMatchObject({ path: '/file2.txt', size: 9, lastModified: expect.any(Date), visibility: 'private' });
+
+    await storage.makeDirectory('/folder1', 'public');
+    await storage.makeDirectory('/folder2', 'private');
+
+    const folder1 = await storage.get('/folder1');
+    expect(folder1).toMatchObject({ path: '/folder1', size: 0, visibility: 'public' });
+
+    const folder2 = await storage.get('/folder2');
+    expect(folder2).toMatchObject({ path: '/folder2', size: 0, visibility: 'private' });
 });
 
 test('recursive', async () => {

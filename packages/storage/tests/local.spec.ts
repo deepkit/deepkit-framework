@@ -1,13 +1,14 @@
-import { test } from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import './storage.spec.js';
-import { setAdapterFactory } from './storage.spec.js';
+import { adapterFactory, setAdapterFactory } from './storage.spec.js';
 import { StorageLocalAdapter } from '../src/local-adapter.js';
 import { mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
+import { Storage } from '../src/storage.js';
 
 setAdapterFactory(async () => {
     const tmp = mkdtempSync(tmpdir() + '/storage-test-');
-    return new StorageLocalAdapter(tmp);
+    return new StorageLocalAdapter({root: tmp, url: '/files/'});
 });
 
 // since we import .storage.spec.js, all its tests are scheduled to run
@@ -16,5 +17,13 @@ setAdapterFactory(async () => {
 // detects the file as a test file.
 test('basic', () => undefined);
 test('recursive', () => undefined);
+test('permissions', () => undefined);
 test('copy', () => undefined);
 test('move', () => undefined);
+
+test('urls', async() => {
+    const storage = new Storage(await adapterFactory());
+    await storage.write('/file1.txt', 'contents1', 'public');
+
+    expect(await storage.url('/file1.txt')).toBe('/files/file1.txt');
+});

@@ -23,6 +23,9 @@
   "references": [
     {
       "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../storage/tsconfig.json"
     }
   ]
 }
