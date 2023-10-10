@@ -10,11 +10,17 @@ export function setAdapterFactory(factory: () => Promise<StorageAdapter>) {
 
 test('url', async () => {
     const storage = new Storage(await adapterFactory(), { baseUrl: 'http://localhost/assets/' });
-    if (storage.adapter.publicUrl) return; //has custom tests
+    if (storage.adapter.publicUrl) {
+        //has custom tests
+        await storage.close();
+        return;
+    }
 
     //this test is about URL mapping feature from Storage
     const url = await storage.publicUrl('/file1.txt');
     expect(url).toBe('http://localhost/assets/file1.txt');
+
+    await storage.close();
 });
 
 test('basic', async () => {
@@ -113,6 +119,7 @@ test('visibility', async () => {
         expect(folder2).toMatchObject({ path: '/folder2', size: 0, visibility: 'private' });
 
     }
+
     await storage.setVisibility('file2.txt', 'public');
     const file2b = await storage.get('/file2.txt');
     expect(file2b).toMatchObject({ path: '/file2.txt', size: 9, lastModified: expect.any(Date), visibility: 'public' });

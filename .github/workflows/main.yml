@@ -19,6 +19,11 @@ jobs:
             ports:
                 - "20-21:20-21"
                 - "40000-40009:40000-40009"
+        storage-sftp:
+            image: atmoz/sftp:alpine
+            ports:
+                - "22:22"
+            options: user:123:::upload
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}

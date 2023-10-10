@@ -275,7 +275,6 @@ export class StorageFtpAdapter implements StorageAdapter {
 
         await this.chmodRecursive(path, permission);
     }
-
 }
 
 /**

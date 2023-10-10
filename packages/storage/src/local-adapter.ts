@@ -5,12 +5,12 @@ export interface StorageLocalAdapterOptions {
     root: string;
     permissions: {
         file: {
-            public: number; //default 0644
-            private: number; //default 0.600
+            public: number; //default 0o644
+            private: number; //default 0o600
         },
         directory: {
-            public: number; //default 0755
-            private: number; //default 0.700
+            public: number; //default 0o755
+            private: number; //default 0o700
         }
     };
 }
@@ -51,9 +51,6 @@ export class StorageNodeLocalAdapter implements StorageAdapter {
         return this.fs;
     }
 
-    /**
-     * Mode is a number returned from Node's stat operation.
-     */
     protected mapModeToVisibility(type: FileType, mode: number): FileVisibility {
         const permissions = this.options.permissions[type === FileType.File ? 'file' : 'directory'];
         const fileMode = mode & 0o777;
@@ -61,7 +58,7 @@ export class StorageNodeLocalAdapter implements StorageAdapter {
         return 'private';
     }
 
-    getMode(type: FileType, visibility: FileVisibility): number {
+    protected getMode(type: FileType, visibility: FileVisibility): number {
         const permissions = this.options.permissions[type === FileType.File ? 'file' : 'directory'];
         return visibility === 'public' ? permissions.public : permissions.private;
     }

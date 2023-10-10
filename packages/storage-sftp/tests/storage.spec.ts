@@ -1,27 +1,28 @@
 import { test } from '@jest/globals';
 import './storage.spec.js';
 import { setAdapterFactory } from '@deepkit/storage/test';
-import { StorageFtpAdapter } from '../src/ftp-adapter.js';
+import { StorageSftpAdapter } from '../src/sftp-adapter.js';
 import { platform } from 'os';
 
 setAdapterFactory(async () => {
-    let adapter = new StorageFtpAdapter({
+    let adapter = new StorageSftpAdapter({
         host: 'localhost',
         user: 'user',
         password: '123',
-    });
-
+        root: 'upload'
+    });;
     if (platform() === 'darwin') {
-        // docker run -d --name storage-ftp -p 20-21:20-21 -p 40000-40009:40000-40009 --env FTP_USER=user --env FTP_PASS=123 garethflowers/ftp-server
-        adapter = new StorageFtpAdapter({
-            host: 'storage-ftp.orb.local',
-            port: 21,
+        // docker run -d --name storage-sftp -p 22:22 -d atmoz/sftp user:123:::upload
+        adapter = new StorageSftpAdapter({
+            host: 'storage-sftp.orb.local',
             user: 'user',
             password: '123',
+            root: 'upload'
         });
     }
+
     //reset all files
-    await adapter.clearWorkingDir();
+    await adapter.delete((await adapter.files('/')).map(v => v.path));
 
     return adapter;
 });
@@ -30,8 +31,10 @@ setAdapterFactory(async () => {
 // we define 'basic' here too, so we can easily run just this test.
 // also necessary to have at least once test in this file, so that WebStorm
 // detects the file as a test file.
+test('url', () => undefined);
 test('basic', () => undefined);
-test('recursive', () => undefined);
+test('append/prepend', () => undefined);
 test('visibility', () => undefined);
+test('recursive', () => undefined);
 test('copy', () => undefined);
 test('move', () => undefined);
