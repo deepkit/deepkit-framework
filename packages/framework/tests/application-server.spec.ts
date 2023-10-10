@@ -197,8 +197,8 @@ describe('application-server', () => {
 
             const rpcServerMock: RpcServerInterface = {
                 start: jest.fn((
-                    options,
-                    createRpcConnection
+                    options: any,
+                    createRpcConnection: any
                 ) => wsServerMock.on('connection', (ws: any, req: HttpRequest) => {
                     createRpcConnection({
                         write: jest.fn(),
