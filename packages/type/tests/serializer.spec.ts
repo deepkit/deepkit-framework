@@ -1150,7 +1150,7 @@ test('patch', () => {
 });
 
 test('extend with custom type', () => {
-    type StringifyTransport = { __meta?: ['stringifyTransport'] };
+    type StringifyTransport = { __meta?: never & ['stringifyTransport'] };
 
     function isStringifyTransportType(type: Type): boolean {
         return !!metaAnnotation.getForName(type, 'stringifyTransport');

@@ -1541,7 +1541,7 @@ test('interface extends generic', () => {
 
 test('interface extends decorator', () => {
     const code = `
-        type PrimaryKey = { __meta?: ['primaryKey'] };
+        type PrimaryKey = { __meta?: never & ['primaryKey'] };
 
         interface User extends PrimaryKey {
             id: number;

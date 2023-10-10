@@ -38,7 +38,7 @@ test('serialize basics', () => {
     expect(serializeType(typeOf<typeof r>())).toEqual([{ kind: ReflectionKind.literal, literal: { type: 'regex', regex: '/abc/g' } }]);
 });
 
-test('serialize type decorators', () => {
+test('serialize type annotations', () => {
     type t = string & PrimaryKey;
     expect(serializeType(typeOf<t>())).toEqual([
         { kind: ReflectionKind.string, typeName: 't', decorators: [1] },
@@ -239,7 +239,7 @@ test('roundTrip class generic', () => {
     }
 });
 
-test('type decorators', () => {
+test('type annotations', () => {
     {
         type t = string & PrimaryKey;
         const type = roundTrip<t>();

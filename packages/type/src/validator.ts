@@ -5,7 +5,7 @@ import { stringifyType, Type } from './reflection/type.js';
 import { entity } from './decorator.js';
 import { serializer, Serializer } from './serializer.js';
 
-export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: ['validator', Name, Args] }
+export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: never & ['validator', Name, Args] }
 
 export type ValidateFunction = (value: any, type: Type, options: any) => ValidatorError | void;
 export type Validate<T extends ValidateFunction, Options extends Parameters<T>[2] = unknown> = ValidatorMeta<'function', [T, Options]>;
@@ -27,7 +27,7 @@ export type Maximum<T extends number | bigint> = ValidatorMeta<'maximum', [T]>;
 /**
  Includes 0. Use PositiveNoZero to exclude 0.
  */
-export type Positive = ValidatorMeta<'positive', [true]>;
+export type Positive = ValidatorMeta<'positive', unknown & [true]>;
 
 /**
  * Includes 0. Use NegativeNoZero to exclude 0.

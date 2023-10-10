@@ -1,10 +1,26 @@
-import { BackReference, deserialize, PrimaryKey, Reference } from '@deepkit/type';
+import { BackReference, deserialize, Index, PrimaryKey, Reference, UUID, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { assert, IsExact } from 'conditional-type-checks';
 import { Database } from '../src/database.js';
 import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db.js';
-import { AnyQuery, BaseQuery, Query } from '../src/query.js';
+import { AnyQuery, Query } from '../src/query.js';
 import { OrmEntity } from '../src/type.js';
+
+test('types do not interfere with type check', () => {
+    class Books {
+        bookId: UUID & Index = uuid();
+    }
+
+    const database = new Database(new MemoryDatabaseAdapter());
+
+    function get(bookId: UUID) {
+        return database
+            .query(Books)
+            // this should just compile and not error
+            .filter({ bookId })
+            .findOneOrUndefined();
+    }
+});
 
 test('query select', async () => {
     class s {

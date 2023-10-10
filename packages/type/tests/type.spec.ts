@@ -19,10 +19,10 @@ import {
     resolveTypeMembers,
     stringifyResolvedType,
     stringifyType,
-    Type,
+    Type, TypeAnnotation,
     TypeClass,
     TypeObjectLiteral,
-    TypeProperty,
+    TypeProperty, typeToObject,
     UUID,
     validationAnnotation
 } from '../src/reflection/type.js';
@@ -56,26 +56,47 @@ test('stringify date/set/map', () => {
     expect(stringifyType(typeOf<Set<string>>())).toBe('Set<string>');
 });
 
-test('type decorator', () => {
-    type MyAnnotation = { __meta?: ['myAnnotation'] };
+test('type annotation', () => {
+    type MyAnnotation = { __meta?: never & ['myAnnotation'] };
     type Username = string & MyAnnotation;
     const type = typeOf<Username>();
     const data = metaAnnotation.getForName(type, 'myAnnotation');
     expect(data).toEqual([]);
 });
 
+test('type annotation with option', () => {
+    type MyAnnotation<Option> = { __meta?: never & ['myAnnotation', Option] };
+    type Username = string & MyAnnotation<string>;
+    const type = typeOf<Username>();
+    const data = metaAnnotation.getForName(type, 'myAnnotation');
+    expect(data).toMatchObject([
+        {kind: ReflectionKind.string}
+    ]);
+});
+
+test('type annotation TypeAnnotation', () => {
+    type MyAnnotation<Option> = TypeAnnotation<'myAnnotation', Option>;
+    type Username = string & MyAnnotation<'yes'>;
+    const type = typeOf<Username>();
+    const data = metaAnnotation.getForName(type, 'myAnnotation');
+    expect(data).toMatchObject([
+        {kind: ReflectionKind.literal}
+    ]);
+    expect(typeToObject(data![0])).toBe('yes')
+});
+
 test('intersection same type', () => {
     expect(stringifyType(typeOf<string & string>())).toBe('string');
     expect(stringifyType(typeOf<number & number>())).toBe('number');
 
-    type MyAnnotation = { __meta?: ['myAnnotation'] };
+    type MyAnnotation = { __meta?: never & ['myAnnotation'] };
     type Username = string & MyAnnotation;
     expect(stringifyType(typeOf<string & Username>())).toBe('string');
     expect(stringifyType(typeOf<Username & string>())).toBe('Username');
 });
 
 test('intersection same type keep annotation', () => {
-    type MyAnnotation = { __meta?: ['myAnnotation'] };
+    type MyAnnotation = { __meta?: never & ['myAnnotation'] };
     type Username = string & MyAnnotation;
     {
         const type = typeOf<string & Username>();
@@ -152,7 +173,7 @@ test('reset primary decorator', () => {
     expect(primaryKeyAnnotation.isPrimaryKey(id.type)).toBe(false);
 });
 
-test('reset type decorator', () => {
+test('reset type annotation', () => {
     interface User {
         password: string & MinLength<6> & Excluded<'json'>;
     }
@@ -1199,9 +1220,9 @@ test('any with partial', () => {
     console.log(type);
 });
 
-test('new type decorator on already decorated', () => {
-    type CustomA = { __meta?: ['CustomA'] };
-    type CustomB = { __meta?: ['CustomB'] };
+test('new type annotation on already decorated', () => {
+    type CustomA = { __meta?: never & ['CustomA'] };
+    type CustomB = { __meta?: never & ['CustomB'] };
 
     type O = {} & CustomA;
     type T = O & CustomB;

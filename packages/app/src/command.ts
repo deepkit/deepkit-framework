@@ -9,12 +9,12 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, FreeFluidDecorator, PropertyApiTypeInterface } from '@deepkit/type';
+import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, FreeFluidDecorator, PropertyApiTypeInterface, TypeAnnotation } from '@deepkit/type';
 
 /**
  * Flag is a command line argument that is prefixed with `--` and can have a value.
  */
-export type Flag<Options extends {char?: string, hidden?: boolean} = {}> = { __meta?: ['cli:flag', Options] };
+export type Flag<Options extends {char?: string, hidden?: boolean} = {}> = TypeAnnotation<'cli:flag', Options>;
 
 class ArgDefinitions {
     name: string = '';

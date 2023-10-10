@@ -1419,6 +1419,28 @@ export interface EntityOptions {
 }
 
 /**
+ * Type to use for custom type annotations.
+ *
+ *
+ * ```typescript
+ * type MyType<T extends string> = TypeAnnotation<'myType', T>;
+ *
+ * interface User {
+ *    id: number & MyType<'yes'>;
+ * }
+ *
+ * const reflection = ReflectionClass.from<User>();
+ * const id = reflection.getProperty('id');
+ *
+ * // data is set when `id` used `MyType` and contains the type of 'yes' as type object
+ * // which can be converted to JS with `typeToObject`
+ * const data = metaAnnotation.getForName(id.type, 'myType');
+ * const param1 = typeToObject(data[0]); //yes
+ * ```
+ */
+export type TypeAnnotation<T extends string, Options = never> = { __meta?: never & [T, Options] };
+
+/**
  * Type to decorate an interface/object literal with entity information.
  *
  * ```typescript
@@ -1428,7 +1450,7 @@ export interface EntityOptions {
  * }
  * ```
  */
-export type Entity<T extends EntityOptions> = { __meta?: ['entity', T] }
+export type Entity<T extends EntityOptions> = TypeAnnotation<'entity', T>
 
 /**
  * Marks a property as primary key.
@@ -1438,7 +1460,7 @@ export type Entity<T extends EntityOptions> = { __meta?: ['entity', T] }
  * }
  * ```
  */
-export type PrimaryKey = { __meta?: ['primaryKey'] };
+export type PrimaryKey = TypeAnnotation<'primaryKey'>;
 
 type TypeKeyOf<T> = T[keyof T];
 export type PrimaryKeyFields<T> = any extends T ? any : { [P in keyof T]: Required<T[P]> extends Required<PrimaryKey> ? T[P] : never };
@@ -1455,7 +1477,7 @@ export type ReferenceFields<T> = { [P in keyof T]: Required<T[P]> extends Requir
  * }
  * ```
  */
-export type AutoIncrement = { __meta?: ['autoIncrement'] };
+export type AutoIncrement = TypeAnnotation<'autoIncrement'>;
 
 /**
  * UUID v4, as string, serialized as string in JSON, and binary in database.
@@ -1467,12 +1489,12 @@ export type AutoIncrement = { __meta?: ['autoIncrement'] };
  * }
  * ```
  */
-export type UUID = string & { __meta?: ['UUIDv4'] };
+export type UUID = string & TypeAnnotation<'UUIDv4'>;
 
 /**
  * MongoDB's ObjectID type. serialized as string in JSON, ObjectID in database.
  */
-export type MongoId = string & { __meta?: ['mongoId'] };
+export type MongoId = string & TypeAnnotation<'mongoId'>;
 
 /**
  * Same as `bigint` but serializes to unsigned binary with unlimited size (instead of 8 bytes in most databases).
@@ -1484,7 +1506,7 @@ export type MongoId = string & { __meta?: ['mongoId'] };
  * }
  * ```
  */
-export type BinaryBigInt = bigint & { __meta?: ['binaryBigInt'] };
+export type BinaryBigInt = bigint & TypeAnnotation<'binaryBigInt'>;
 
 /**
  * Same as `bigint` but serializes to signed binary with unlimited size (instead of 8 bytes in most databases).
@@ -1496,7 +1518,7 @@ export type BinaryBigInt = bigint & { __meta?: ['binaryBigInt'] };
  * }
  * ```
  */
-export type SignedBinaryBigInt = bigint & { __meta?: ['signedBinaryBigInt'] };
+export type SignedBinaryBigInt = bigint & TypeAnnotation<'signedBinaryBigInt'>;
 
 export interface BackReferenceOptions {
     /**
@@ -1512,12 +1534,12 @@ export interface BackReferenceOptions {
     mappedBy?: string,
 }
 
-export type Reference<Options extends ReferenceOptions = {}> = { __meta?: ['reference', Options] };
-export type BackReference<Options extends BackReferenceOptions = {}> = { __meta?: ['backReference', Options] };
-export type EmbeddedMeta<Options> = { __meta?: ['embedded', Options] };
+export type Reference<Options extends ReferenceOptions = {}> = TypeAnnotation<'reference', Options>;
+export type BackReference<Options extends BackReferenceOptions = {}> = TypeAnnotation<'backReference', Options>;
+export type EmbeddedMeta<Options> = TypeAnnotation<'embedded', Options>;
 export type Embedded<T, Options extends { prefix?: string } = {}> = T & EmbeddedMeta<Options>;
 
-export type MapName<Alias extends string, ForSerializer extends string = ''> = { __meta?: ['mapName', Alias, ForSerializer] };
+export type MapName<Alias extends string, ForSerializer extends string = ''> = { __meta?: never & ['mapName', Alias, ForSerializer] };
 
 export const referenceAnnotation = new AnnotationDefinition<ReferenceOptions>('reference');
 export const entityAnnotation = new class extends AnnotationDefinition<EntityOptions> {
@@ -1682,7 +1704,7 @@ export function hasEmbedded(type: Type): boolean {
  * }
  * ```
  */
-export type Group<Name extends string> = { __meta?: ['group', never & Name] };
+export type Group<Name extends string> = TypeAnnotation<'group', Name>;
 
 /**
  * Excludes the type from serialization of all kind.
@@ -1695,7 +1717,7 @@ export type Group<Name extends string> = { __meta?: ['group', never & Name] };
  *  }
  *  ```
  */
-export type Excluded<Name extends string = '*'> = { __meta?: ['excluded', never & Name] };
+export type Excluded<Name extends string = '*'> = TypeAnnotation<'excluded', Name>;
 
 /**
  * Assigns arbitrary data to a type that can be read in runtime.
@@ -1708,7 +1730,7 @@ export type Excluded<Name extends string = '*'> = { __meta?: ['excluded', never 
  * }
  * ```
  */
-export type Data<Name extends string, Value> = { __meta?: ['data', never & Name, never & Value] };
+export type Data<Name extends string, Value> = { __meta?: never & ['data', Name, Value] };
 
 /**
  * Resets an already set decorator to undefined.
@@ -1723,7 +1745,7 @@ export type Data<Name extends string, Value> = { __meta?: ['data', never & Name,
  * }
  * ```
  */
-export type ResetAnnotation<Name extends string> = { __meta?: ['reset', Name] };
+export type ResetAnnotation<Name extends string> = TypeAnnotation<'reset', Name>;
 
 export type IndexOptions = {
     name?: string;
@@ -1741,8 +1763,8 @@ export type IndexOptions = {
     expireAfterSeconds?: number,
 };
 
-export type Unique<Options extends IndexOptions = {}> = { __meta?: ['index', never & Options & { unique: true }] };
-export type Index<Options extends IndexOptions = {}> = { __meta?: ['index', never & Options] };
+export type Unique<Options extends IndexOptions = {}> = TypeAnnotation<'index', Options & { unique: true }>;
+export type Index<Options extends IndexOptions = {}> = TypeAnnotation<'index', Options>;
 
 export interface DatabaseFieldOptions {
     /**
@@ -1790,7 +1812,7 @@ export interface PostgresOptions extends DatabaseFieldOptions {
 export interface SqliteOptions extends DatabaseFieldOptions {
 }
 
-type Database<Name extends string, Options extends { [name: string]: any }> = { __meta?: ['database', never & Name, never & Options] };
+type Database<Name extends string, Options extends { [name: string]: any }> = { __meta?: never & ['database', Name, Options] };
 export type MySQL<Options extends MySQLOptions> = Database<'mysql', Options>;
 export type Postgres<Options extends PostgresOptions> = Database<'postgres', Options>;
 export type SQLite<Options extends SqliteOptions> = Database<'sqlite', Options>;
@@ -1848,31 +1870,76 @@ export function registerTypeDecorator(decorator: TypeDecorator) {
     typeDecorators.push(decorator);
 }
 
+/**
+ * Type annotations are object literals with a single optional __meta in it
+ * that has as type a tuple with the name of the annotation as first entry.
+ * The tuple is intersected with the `never` type to make sure it does not
+ * interfere with type checking.
+ *
+ * The processor has currently implemented to not resolve `never & x` to `never`,
+ * so we still have the intersection type in runtime to resolve __meta correctly.
+ *
+ * ```typescript
+ * type MyAnnotation1 = TypeAnnotation<'myAnnotation'>
+ * type MyAnnotation1<T> = TypeAnnotation<'myAnnotation', T>
+ *
+ * //under the hood it is:
+ * type lowLevel1 = { __meta?: never & ['myAnnotation'] }
+ * type lowLevel2<T> = { __meta?: never & ['myAnnotation', T] }
+ * ```
+ */
+export function getAnnotationMeta(type: TypeObjectLiteral): { id: string, params: Type[] } | undefined {
+    const meta = getProperty(type, '__meta');
+    if (!meta || !meta.optional) return;
+    let tuple: TypeTuple | undefined = undefined;
+
+    if (meta.type.kind === ReflectionKind.intersection) {
+        if (meta.type.types.length === 1 && meta.type.types[0].kind === ReflectionKind.tuple) {
+            tuple = meta.type.types[0] as TypeTuple;
+        }
+        if (!tuple && meta.type.types.length === 2) {
+            tuple = meta.type.types.find(v => v.kind === ReflectionKind.tuple) as TypeTuple | undefined;
+            if (tuple && !meta.type.types.find(v => v.kind === ReflectionKind.never)) {
+                tuple = undefined;
+            }
+        }
+    } else if (meta.type.kind === ReflectionKind.tuple) {
+        tuple = meta.type;
+    }
+
+    if (!tuple) return;
+
+    const id = tuple.types[0];
+    if (!id || id.type.kind !== ReflectionKind.literal || 'string' !== typeof id.type.literal) return;
+    const params = tuple.types.slice(1).map(v => v.type);
+
+    return { id: id.type.literal, params };
+}
+
 export const typeDecorators: TypeDecorator[] = [
     (annotations: Annotations, decorator: TypeObjectLiteral) => {
-        const meta = getProperty(decorator, '__meta');
-        if (!meta || meta.type.kind !== ReflectionKind.tuple) return false;
-        const id = meta.type.types[0];
-        if (!id || id.type.kind !== ReflectionKind.literal) return false;
+        const meta = getAnnotationMeta(decorator);
+        if (!meta) return false;
 
-        switch (id.type.literal) {
+        switch (meta.id) {
             case 'reference': {
-                const optionsType = meta.type.types[1];
-                if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
-                const options = typeToObject(optionsType.type);
+                const optionsType = meta.params[0];
+                if (!optionsType || optionsType.kind !== ReflectionKind.objectLiteral) return false;
+                const options = typeToObject(optionsType);
                 referenceAnnotation.replace(annotations, [options]);
                 return true;
             }
             case 'entity': {
-                const optionsType = meta.type.types[1];
-                if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
-                const options = typeToObject(optionsType.type);
+                const optionsType = meta.params[0];
+                if (!optionsType || optionsType.kind !== ReflectionKind.objectLiteral) return false;
+                const options = typeToObject(optionsType);
                 entityAnnotation.replace(annotations, [options]);
                 return true;
             }
             case 'mapName': {
-                const name = typeToObject(meta.type.types[1].type);
-                const serializer = meta.type.types[2] ? typeToObject(meta.type.types[2].type) : undefined;
+                if (!meta.params[0]) return false;
+                const name = typeToObject(meta.params[0]);
+                const serializer = meta.params[1] ? typeToObject(meta.params[1]) : undefined;
 
                 if ('string' === typeof name && (!serializer || 'string' === typeof serializer)) {
                     mapNameAnnotation.replace(annotations, [{ name, serializer }]);
@@ -1898,42 +1965,42 @@ export const typeDecorators: TypeDecorator[] = [
                 uuidAnnotation.register(annotations, true);
                 return true;
             case 'embedded': {
-                const optionsType = meta.type.types[1];
-                if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
-                const options = typeToObject(optionsType.type);
+                const optionsType = meta.params[0];
+                if (!optionsType || optionsType.kind !== ReflectionKind.objectLiteral) return false;
+                const options = typeToObject(optionsType);
                 embeddedAnnotation.replace(annotations, [options]);
                 return true;
             }
             case 'group': {
-                const nameType = meta.type.types[1];
-                if (!nameType || nameType.type.kind !== ReflectionKind.literal || 'string' !== typeof nameType.type.literal) return false;
-                groupAnnotation.register(annotations, nameType.type.literal);
+                const nameType = meta.params[0];
+                if (!nameType || nameType.kind !== ReflectionKind.literal || 'string' !== typeof nameType.literal) return false;
+                groupAnnotation.register(annotations, nameType.literal);
                 return true;
             }
             case 'index': {
-                const optionsType = meta.type.types[1];
-                if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
-                const options = typeToObject(optionsType.type);
+                const optionsType = meta.params[0];
+                if (!optionsType || optionsType.kind !== ReflectionKind.objectLiteral) return false;
+                const options = typeToObject(optionsType);
                 indexAnnotation.replace(annotations, [options]);
                 return true;
             }
             case 'database': {
-                const nameType = meta.type.types[1];
-                if (!nameType || nameType.type.kind !== ReflectionKind.literal || 'string' !== typeof nameType.type.literal) return false;
-                const optionsType = meta.type.types[2];
-                if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
-                const options = typeToObject(optionsType.type);
-                databaseAnnotation.register(annotations, { name: nameType.type.literal, options });
+                const nameType = meta.params[0];
+                if (!nameType || nameType.kind !== ReflectionKind.literal || 'string' !== typeof nameType.literal) return false;
+                const optionsType = meta.params[1];
+                if (!optionsType || optionsType.kind !== ReflectionKind.objectLiteral) return false;
+                const options = typeToObject(optionsType);
+                databaseAnnotation.register(annotations, { name: nameType.literal, options });
                 return true;
             }
             case 'excluded': {
-                const nameType = meta.type.types[1];
-                if (!nameType || nameType.type.kind !== ReflectionKind.literal || 'string' !== typeof nameType.type.literal) return false;
-                excludedAnnotation.register(annotations, nameType.type.literal);
+                const nameType = meta.params[0];
+                if (!nameType || nameType.kind !== ReflectionKind.literal || 'string' !== typeof nameType.literal) return false;
+                excludedAnnotation.register(annotations, nameType.literal);
                 return true;
             }
             case 'reset': {
-                const name = typeToObject(meta.type.types[1].type);
+                const name = typeToObject(meta.params[0]);
                 if ('string' !== typeof name) return false;
                 const map: { [name: string]: AnnotationDefinition<any> } = {
                     primaryKey: primaryKeyAnnotation,
@@ -1954,9 +2021,9 @@ export const typeDecorators: TypeDecorator[] = [
                 return true;
             }
             case 'data': {
-                const nameType = meta.type.types[1];
-                if (!nameType || nameType.type.kind !== ReflectionKind.literal || 'string' !== typeof nameType.type.literal) return false;
-                const dataType = meta.type.types[2];
+                const nameType = meta.params[0];
+                if (!nameType || nameType.kind !== ReflectionKind.literal || 'string' !== typeof nameType.literal) return false;
+                const dataType = meta.params[1];
                 if (!dataType) return false;
 
                 annotations[dataAnnotation.symbol] ||= [];
@@ -1967,16 +2034,16 @@ export const typeDecorators: TypeDecorator[] = [
                     annotations[dataAnnotation.symbol].push(data);
                 }
 
-                data[nameType.type.literal] = dataType.type.kind === ReflectionKind.literal ? dataType.type.literal : dataType.type;
+                data[nameType.literal] = dataType.kind === ReflectionKind.literal ? dataType.literal : dataType;
 
                 return true;
             }
             case 'backReference': {
-                const optionsType = meta.type.types[1];
-                if (!optionsType || optionsType.type.kind !== ReflectionKind.objectLiteral) return false;
+                const optionsType = meta.params[0];
+                if (!optionsType || optionsType.kind !== ReflectionKind.objectLiteral) return false;
 
-                const options = typeToObject(optionsType.type);
-                const member = findMember('via', resolveTypeMembers(optionsType.type));
+                const options = typeToObject(optionsType);
+                const member = findMember('via', resolveTypeMembers(optionsType));
                 backReferenceAnnotation.register(annotations, {
                     mappedBy: options.mappedBy,
                     via: member && member.kind === ReflectionKind.propertySignature && (member.type.kind === ReflectionKind.objectLiteral || member.type.kind === ReflectionKind.class) ? member.type : undefined,
@@ -1984,21 +2051,20 @@ export const typeDecorators: TypeDecorator[] = [
                 return true;
             }
             case 'validator': {
-                const nameType = meta.type.types[1];
-                if (!nameType || nameType.type.kind !== ReflectionKind.literal || 'string' !== typeof nameType.type.literal) return false;
-                const name = nameType.type.literal;
+                const nameType = meta.params[0];
+                if (!nameType || nameType.kind !== ReflectionKind.literal || 'string' !== typeof nameType.literal) return false;
+                const name = nameType.literal;
 
-                const argsType = meta.type.types[2];
-                if (!argsType || argsType.type.kind !== ReflectionKind.tuple) return false;
-                const args: Type[] = argsType.type.types.map(v => v.type);
+                const argsType = meta.params[1];
+                if (!argsType || argsType.kind !== ReflectionKind.tuple) return false;
+                const args: Type[] = argsType.types.map(v => v.type);
 
                 const options: AnnotationType<typeof validationAnnotation> = { name, args };
                 validationAnnotation.register(annotations, options);
                 return true;
             }
             default: {
-                const optionsType = meta.type.types.slice(1).map(v => v.type) as Type[];
-                metaAnnotation.register(annotations, { name: id.type.literal as string, options: optionsType });
+                metaAnnotation.register(annotations, { name: meta.id, options: meta.params });
                 return true;
             }
         }

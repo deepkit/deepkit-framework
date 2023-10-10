@@ -1001,9 +1001,9 @@ export class HttpResponse extends ServerResponse {
 export type HttpRequestQuery = { [name: string]: string };
 export type HttpRequestResolvedParameters = { [name: string]: any };
 
-export type HttpBody<T> = T & { __meta?: ['httpBody'] };
-export type HttpQuery<T, Options extends {name?: string} = {}> = T & { __meta?: ['httpQuery', Options] };
-export type HttpQueries<T, Options extends {name?: string} = {}> = T & { __meta?: ['httpQueries', Options] };
+export type HttpBody<T> = T & { __meta?: never & ['httpBody'] };
+export type HttpQuery<T, Options extends {name?: string} = {}> = T & { __meta?: never & ['httpQuery', Options] };
+export type HttpQueries<T, Options extends {name?: string} = {}> = T & { __meta?: never & ['httpQueries', Options] };
 
 export class RequestBuilder {
     protected contentBuffer: Buffer = Buffer.alloc(0);

@@ -16,7 +16,7 @@ import onChange from 'on-change';
  * }
  * ```
  */
-export type PartOfUrl = { __meta?: ['partOfUrl'] };
+export type PartOfUrl = { __meta?: never & ['partOfUrl'] };
 
 export type FilterActions<T> = { [name in keyof T]: T[name] extends (a: infer A extends [...a: any[]], ...args: any[]) => infer R ? (...args: A) => R : never };
 

@@ -1324,8 +1324,8 @@ test('value object single field', () => {
     expect(price2.type.classType).toBe(Price);
 });
 
-test('type decorator with union', () => {
-    type HttpQuery<T> = T & { __meta?: ['httpQuery'] };
+test('type annotation with union', () => {
+    type HttpQuery<T> = T & { __meta?: never & ['httpQuery'] };
 
     type a = HttpQuery<number | string>;
     const type = typeOf<a>();
@@ -1981,7 +1981,7 @@ test('default function expression', () => {
 
 });
 
-test('type decorator first position', () => {
+test('type annotation first position', () => {
     class author {
     }
 

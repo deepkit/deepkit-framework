@@ -12,7 +12,7 @@ import { IncomingMessage, OutgoingHttpHeader, OutgoingHttpHeaders, ServerRespons
 import { UploadedFile } from './router.js';
 import * as querystring from 'querystring';
 import { Writable } from 'stream';
-import { metaAnnotation, ReflectionKind, Type, ValidationErrorItem } from '@deepkit/type';
+import { metaAnnotation, ReflectionKind, Type, ValidationErrorItem, TypeAnnotation } from '@deepkit/type';
 import { asyncOperation, isArray } from '@deepkit/core';
 
 export class HttpResponse extends ServerResponse {
@@ -116,12 +116,12 @@ export class ValidatedBody<T> {
     }
 }
 
-export type HttpBody<T> = T & { __meta?: ['httpBody'] };
-export type HttpBodyValidation<T> = ValidatedBody<T> & { __meta?: ['httpBodyValidation'] };
-export type HttpPath<T, Options extends { name?: string } = {}> = T & { __meta?: ['httpPath', Options] };
-export type HttpHeader<T, Options extends { name?: string } = {}> = T & { __meta?: ['httpHeader', Options] };
-export type HttpQuery<T, Options extends { name?: string } = {}> = T & { __meta?: ['httpQuery', Options] };
-export type HttpQueries<T, Options extends { name?: string } = {}> = T & { __meta?: ['httpQueries', Options] };
+export type HttpBody<T> = T & TypeAnnotation<'httpBody'>;
+export type HttpBodyValidation<T> = ValidatedBody<T> & TypeAnnotation<'httpBodyValidation'>;
+export type HttpPath<T, Options extends { name?: string } = {}> = T & TypeAnnotation<'httpPath', Options>;
+export type HttpHeader<T, Options extends { name?: string } = {}> = T & TypeAnnotation<'httpHeader'>;
+export type HttpQuery<T, Options extends { name?: string } = {}> = T & TypeAnnotation<'httpQuery', Options>;
+export type HttpQueries<T, Options extends { name?: string } = {}> = T & TypeAnnotation<'httpQueries', Options>;
 
 /**
  * For all parameters used in the URL path, a regular expression of /[^/]+/ is used. To change that, use getRegExp.
@@ -137,7 +137,7 @@ export type HttpQueries<T, Options extends { name?: string } = {}> = T & { __met
  * }
  * ```
  */
-export type HttpRegExp<T, Pattern extends string | RegExp> = T & { __meta?: ['httpRegExp', Pattern] };
+export type HttpRegExp<T, Pattern extends string | RegExp> = T & { __meta?: never & ['httpRegExp', Pattern] };
 
 export function getRegExp(type: Type): string | RegExp | undefined {
     const options = metaAnnotation.getForName(type, 'httpRegExp');

@@ -13,6 +13,7 @@ import { typeOf } from '../src/reflection/reflection.js';
 import { assertType, ReflectionKind, stringifyResolvedType, Type } from '../src/reflection/type.js';
 import { serialize } from '../src/serializer-facade.js';
 import { expectEqualType } from './utils.js';
+
 test('array stack', () => {
     type Pop<T extends unknown[]> = T extends [...infer U, unknown] ? U : never
     type Push<T extends unknown[], U> = [...T, U]
