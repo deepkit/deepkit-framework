@@ -44,8 +44,10 @@ test('serialize type annotations', () => {
         { kind: ReflectionKind.string, typeName: 't', decorators: [1] },
         { kind: ReflectionKind.objectLiteral, typeName: 'PrimaryKey', types: [2] },
         { kind: ReflectionKind.propertySignature, name: '__meta', optional: true, type: 3 },
-        { kind: ReflectionKind.tuple, types: [{ kind: ReflectionKind.tupleMember, type: 4 }] },
-        { kind: ReflectionKind.literal, literal: 'primaryKey' }]);
+        { kind: ReflectionKind.tuple, types: [{ kind: ReflectionKind.tupleMember, type: 4 }, { kind: ReflectionKind.tupleMember, type: 5 }] },
+        { kind: ReflectionKind.literal, literal: 'primaryKey' },
+        { kind: ReflectionKind.never }
+    ]);
 });
 
 test('serialize container', () => {
