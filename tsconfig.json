@@ -120,6 +120,9 @@
     },
     {
       "path": "packages/storage-ftp/tsconfig.json"
+    },
+    {
+      "path": "packages/storage-sftp/tsconfig.json"
     }
   ]
 }

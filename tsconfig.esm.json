@@ -102,6 +102,9 @@
     },
     {
       "path": "packages/storage-ftp/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/storage-sftp/tsconfig.esm.json"
     }
   ]
 }
