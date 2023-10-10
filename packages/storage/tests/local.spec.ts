@@ -8,7 +8,7 @@ import { Storage } from '../src/storage.js';
 
 setAdapterFactory(async () => {
     const tmp = mkdtempSync(tmpdir() + '/storage-test-');
-    return new StorageLocalAdapter({root: tmp, url: '/files/'});
+    return new StorageLocalAdapter({root: tmp});
 });
 
 // since we import .storage.spec.js, all its tests are scheduled to run
@@ -20,10 +20,3 @@ test('recursive', () => undefined);
 test('permissions', () => undefined);
 test('copy', () => undefined);
 test('move', () => undefined);
-
-test('urls', async() => {
-    const storage = new Storage(await adapterFactory());
-    await storage.write('/file1.txt', 'contents1', 'public');
-
-    expect(await storage.url('/file1.txt')).toBe('/files/file1.txt');
-});

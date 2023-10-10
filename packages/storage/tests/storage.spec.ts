@@ -8,6 +8,15 @@ export function setAdapterFactory(factory: () => Promise<StorageAdapter>) {
     adapterFactory = factory;
 }
 
+test('url', async () => {
+    const storage = new Storage(await adapterFactory(), { baseUrl: 'http://localhost/assets/' });
+    if (storage.adapter.publicUrl) return; //has custom tests
+
+    //this test is about URL mapping feature from Storage
+    const url = await storage.publicUrl('/file1.txt');
+    expect(url).toBe('http://localhost/assets/file1.txt');
+});
+
 test('basic', async () => {
     const storage = new Storage(await adapterFactory());
 
@@ -44,6 +53,9 @@ test('basic', async () => {
     expect(await storage.exists('/file4.txt')).toBe(false);
     expect(await storage.exists('//file4.txt')).toBe(false);
 
+    await storage.write('/file1.txt', 'overridden');
+    expect(await storage.readAsText('/file1.txt')).toBe('overridden');
+
     await storage.delete('/file1.txt');
     await storage.delete('/file2.txt');
 
@@ -73,7 +85,7 @@ test('append/prepend', async () => {
     await storage.close();
 });
 
-test('permissions', async () => {
+test('visibility', async () => {
     const adapter = await adapterFactory();
     if (!adapter.supportsVisibility()) {
         if (adapter.close) await adapter.close();
@@ -90,14 +102,20 @@ test('permissions', async () => {
     const file2 = await storage.get('/file2.txt');
     expect(file2).toMatchObject({ path: '/file2.txt', size: 9, lastModified: expect.any(Date), visibility: 'private' });
 
-    await storage.makeDirectory('/folder1', 'public');
-    await storage.makeDirectory('/folder2', 'private');
+    if (adapter.supportsDirectory()) {
+        await storage.makeDirectory('/folder1', 'public');
+        await storage.makeDirectory('/folder2', 'private');
 
-    const folder1 = await storage.get('/folder1');
-    expect(folder1).toMatchObject({ path: '/folder1', size: 0, visibility: 'public' });
+        const folder1 = await storage.get('/folder1');
+        expect(folder1).toMatchObject({ path: '/folder1', size: 0, visibility: 'public' });
 
-    const folder2 = await storage.get('/folder2');
-    expect(folder2).toMatchObject({ path: '/folder2', size: 0, visibility: 'private' });
+        const folder2 = await storage.get('/folder2');
+        expect(folder2).toMatchObject({ path: '/folder2', size: 0, visibility: 'private' });
+
+    }
+    await storage.setVisibility('file2.txt', 'public');
+    const file2b = await storage.get('/file2.txt');
+    expect(file2b).toMatchObject({ path: '/file2.txt', size: 9, lastModified: expect.any(Date), visibility: 'public' });
 
     await storage.close();
 });
@@ -128,7 +146,8 @@ test('recursive', async () => {
 
     const files3 = await storage.allFiles('/');
     const fileNames3 = files3.map(f => f.path);
-    expect(fileNames3).toEqual([
+
+    let expected = [
         '/folder',
         '/folder2',
         '/folder2/folder3',
@@ -138,7 +157,12 @@ test('recursive', async () => {
         '/folder2/file2.txt',
         '/folder2/file3.txt',
         '/folder2/folder3/file4.txt',
-    ]);
+    ];
+
+    if (!storage.adapter.supportsDirectory()) {
+        expected = expected.filter(v => v !== '/folder' && v !== '/folder2' && v !== '/folder2/folder3');
+    }
+    expect(fileNames3).toEqual(expected);
 
     const directories = await storage.directories('/');
     expect(directories).toMatchObject([
@@ -151,12 +175,14 @@ test('recursive', async () => {
         { path: '/folder2/folder3', type: FileType.Directory },
     ]);
 
-    const directories3 = await storage.allDirectories('/');
-    expect(directories3).toMatchObject([
-        { path: '/folder', type: FileType.Directory },
-        { path: '/folder2', type: FileType.Directory },
-        { path: '/folder2/folder3', type: FileType.Directory },
-    ]);
+    if (storage.adapter.supportsDirectory()) {
+        const directories3 = await storage.allDirectories('/');
+        expect(directories3).toMatchObject([
+            { path: '/folder', type: FileType.Directory },
+            { path: '/folder2', type: FileType.Directory },
+            { path: '/folder2/folder3', type: FileType.Directory },
+        ]);
+    }
 
     await storage.close();
 });

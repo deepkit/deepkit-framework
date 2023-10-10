@@ -54,6 +54,10 @@ export class StorageFtpAdapter implements StorageAdapter {
         return false;
     }
 
+    supportsDirectory() {
+        return true;
+    }
+
     async clearWorkingDir() {
         await this.ensureConnected();
         await this.client.clearWorkingDir();
@@ -64,7 +68,7 @@ export class StorageFtpAdapter implements StorageAdapter {
         return resolveStoragePath([this.options.root, path]);
     }
 
-    async url(path: string): Promise<string> {
+    async publicUrl(path: string): Promise<string> {
         return `ftp://${this.options.host}:${this.options.port}/${this.getRemotePath(path)}`;
     }
 

@@ -1,8 +1,9 @@
-import { test } from '@jest/globals';
+import { expect, test } from '@jest/globals';
 import './storage.spec.js';
-import { setAdapterFactory } from '@deepkit/storage/test';
+import { adapterFactory, setAdapterFactory } from '@deepkit/storage/test';
 import { StorageAwsS3Adapter } from '../src/s3-adapter.js';
 import { DeleteObjectsCommand, ListObjectsCommand } from '@aws-sdk/client-s3';
+import { Storage } from '@deepkit/storage';
 
 setAdapterFactory(async () => {
     const folder = 'test-folder-dont-delete';
@@ -38,11 +39,20 @@ setAdapterFactory(async () => {
     return adapter;
 });
 
+test('s3 url', async () => {
+    const storage = new Storage(await adapterFactory());
+
+    await storage.write('test.txt', 'abc', 'public');
+    const url = await storage.publicUrl('test.txt');
+    expect(url).toBe('https://deepkit-storage-integration-tests.s3.eu-central-1.amazonaws.com/test-folder-dont-delete/test.txt');
+});
+
 // since we import .storage.spec.js, all its tests are scheduled to run
 // we define 'basic' here too, so we can easily run just this test.
 // also necessary to have at least once test in this file, so that WebStorm
 // detects the file as a test file.
 test('basic', () => undefined);
+test('visibility', () => undefined);
 test('recursive', () => undefined);
 test('copy', () => undefined);
 test('move', () => undefined);

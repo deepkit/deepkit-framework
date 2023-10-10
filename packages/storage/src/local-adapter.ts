@@ -3,7 +3,6 @@ import type * as fs from 'fs/promises';
 
 export interface StorageLocalAdapterOptions {
     root: string;
-    url: string;
     permissions: {
         file: {
             public: number; //default 0644
@@ -22,7 +21,6 @@ export class StorageNodeLocalAdapter implements StorageAdapter {
     protected root: string;
     protected options: StorageLocalAdapterOptions = {
         root: '/',
-        url: '/',
         permissions: {
             file: {
                 public: 0o644,
@@ -44,6 +42,10 @@ export class StorageNodeLocalAdapter implements StorageAdapter {
         return true;
     }
 
+    supportsDirectory() {
+        return true;
+    }
+
     protected async getFs(): Promise<typeof fs> {
         if (!this.fs) this.fs = await import('fs/promises');
         return this.fs;
@@ -57,10 +59,6 @@ export class StorageNodeLocalAdapter implements StorageAdapter {
         const fileMode = mode & 0o777;
         if (fileMode === permissions.public) return 'public';
         return 'private';
-    }
-
-    async url(path: string): Promise<string> {
-        return resolveStoragePath([this.options.url || this.options.root, path]);
     }
 
     getMode(type: FileType, visibility: FileVisibility): number {
@@ -221,6 +219,11 @@ export class StorageNodeLocalAdapter implements StorageAdapter {
         path = this.getPath(path);
         const fs = await this.getFs();
         await fs.appendFile(path, contents);
+    }
+
+    async setVisibility(path: string, visibility: FileVisibility): Promise<void> {
+        const fs = await this.getFs();
+        await fs.chmod(this.getPath(path), this.getMode(FileType.File, visibility));
     }
 }
 

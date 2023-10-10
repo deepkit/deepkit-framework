@@ -19,6 +19,16 @@ export type FileVisibility = 'public' | 'private';
 export class StorageFile {
     public size: number = 0;
     public lastModified?: Date;
+
+    /**
+     * Visibility of the file.
+     *
+     * Note that some adapters might not support reading the visibility of a file.
+     * In this case, the visibility is always 'private'.
+     *
+     * Some adapters might support reading the visibility per file, but not when listing files.
+     * In this case you have to call additional `storage.get(file)` to load the visibility.
+     */
     public visibility: FileVisibility = 'public';
 
     constructor(
@@ -109,6 +119,9 @@ export interface Operation<T> extends Promise<T> {
 
 export interface StorageAdapter {
     supportsVisibility(): boolean;
+    supportsDirectory(): boolean;
+
+    setVisibility?(path: string, visibility: FileVisibility): Promise<void>;
 
     /**
      * Closes the adapter (close connections, etc).
@@ -146,12 +159,12 @@ export interface StorageAdapter {
     makeDirectory(path: string, visibility: FileVisibility): Promise<void>;
 
     /**
-     * Returns the URL for the given path.
+     * Returns the public URL for the given path.
      *
      * For local storage it's the configured base URL + the path.
      * For adapters like S3 it's the public S3 URL to the file.
      */
-    url(path: string): Promise<string>;
+    publicUrl?(path: string): Promise<string>;
 
     /**
      * Writes the given contents to the given path.
@@ -310,6 +323,13 @@ export interface StorageOptions {
      * Per default replaces all not allowed characters [^a-zA-Z0-9\.\-\_\/]) with a dash.
      */
     pathNormalizer: (path: string) => string;
+
+    baseUrl?: string;
+
+    /**
+     * Transforms a given path to a public URL.
+     */
+    urlBuilder: (path: string) => string;
 }
 
 export class Storage {
@@ -319,9 +339,18 @@ export class Storage {
         pathNormalizer: (path: string) => {
             return path.replace(/[^a-zA-Z0-9\.\-\_]/g, '-');
         },
+        urlBuilder: (path: string) => {
+            if (this.options.baseUrl) return this.options.baseUrl + path;
+            return path;
+        }
     };
 
-    constructor(public adapter: StorageAdapter) {
+    constructor(
+        public adapter: StorageAdapter,
+        options: Partial<StorageOptions> = {}
+    ) {
+        Object.assign(this.options, options);
+        if (this.options.baseUrl?.endsWith('/')) this.options.baseUrl = this.options.baseUrl.slice(0, -1);
     }
 
     /**
@@ -500,7 +529,7 @@ export class Storage {
 
             const file = await this.get(path);
             const existing = await this.read(path);
-            return await this.adapter.write(path as string, new Uint8Array([...existing, ...buffer]), file.visibility, reporter);
+            return await this.adapter.write(path as string, Buffer.concat([existing, buffer]), file.visibility, reporter);
         });
     }
 
@@ -517,7 +546,7 @@ export class Storage {
 
             const file = await this.get(path);
             const existing = await this.read(path);
-            return await this.adapter.write(path as string, new Uint8Array([...buffer, ...existing]), file.visibility, reporter);
+            return await this.adapter.write(path as string, Buffer.concat([buffer, existing]), file.visibility, reporter);
         });
     }
 
@@ -652,9 +681,22 @@ export class Storage {
         return this.adapter.makeDirectory(path, visibility);
     }
 
-    async url(path: StoragePath): Promise<string> {
+    /**
+     * Returns the public URL for the given path.
+     */
+    async publicUrl(path: StoragePath): Promise<string> {
         path = resolveStoragePath(path);
-        return await this.adapter.url(path);
+        if (this.adapter.publicUrl) return await this.adapter.publicUrl(path);
+
+        return this.options.urlBuilder(path);
+    }
+
+    /**
+     * Sets the visibility of the given path.
+     */
+    async setVisibility(path: StoragePath, visibility: FileVisibility): Promise<void> {
+        if (!this.adapter.setVisibility) return;
+        await this.adapter.setVisibility(resolveStoragePath(path), visibility);
     }
 }
 

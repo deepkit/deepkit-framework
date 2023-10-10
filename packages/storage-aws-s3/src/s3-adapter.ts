@@ -2,12 +2,13 @@ import { FileType, FileVisibility, pathDirectory, Reporter, StorageAdapter, Stor
 import {
     CopyObjectCommand,
     DeleteObjectsCommand,
+    GetObjectAclCommand,
     GetObjectCommand,
     HeadObjectCommand,
     ListObjectsCommand,
-    ListObjectsV2Command,
+    PutObjectAclCommand,
     PutObjectCommand,
-    S3Client
+    S3Client,
 } from '@aws-sdk/client-s3';
 import { normalizePath } from 'typedoc';
 
@@ -24,7 +25,7 @@ export interface StorageAwsS3Options {
      *
      * Default: true
      */
-    directorySupport?: boolean;
+    directoryEmulation?: boolean;
 }
 
 export class StorageAwsS3Adapter implements StorageAdapter {
@@ -45,8 +46,8 @@ export class StorageAwsS3Adapter implements StorageAdapter {
         return true;
     }
 
-    protected isDirectorySupport(): boolean {
-        return this.options.directorySupport !== false;
+    supportsDirectory() {
+        return this.options.directoryEmulation === true;
     }
 
     protected getRemotePath(path: string) {
@@ -69,17 +70,33 @@ export class StorageAwsS3Adapter implements StorageAdapter {
         return path.slice(base.length);
     }
 
-    async url(path: string): Promise<string> {
-        return `s3://${this.options.bucket}/${this.getRemotePath(path)}`;
+    async publicUrl(path: string): Promise<string> {
+        return `https://${this.options.bucket}.s3.${this.options.region}.amazonaws.com/${this.getRemotePath(path)}`;
     }
 
-    async makeDirectory(path: string): Promise<void> {
+    protected visibilityToAcl(visibility: FileVisibility): string {
+        if (visibility === 'public') return 'public-read';
+        return 'private';
+    }
+
+    protected aclToVisibility(grants: any[]): FileVisibility {
+        for (const grant of grants) {
+            if (grant.Permission === 'READ' && grant.Grantee.URI === 'http://acs.amazonaws.com/groups/global/AllUsers') {
+                return 'public';
+            }
+        }
+
+        return 'private';
+    }
+
+    async makeDirectory(path: string, visibility: FileVisibility): Promise<void> {
         if (path === '') return;
 
         const command = new PutObjectCommand({
             Bucket: this.options.bucket,
             Key: this.getRemoteDirectory(path),
-            ContentLength: 0
+            ContentLength: 0,
+            ACL: this.visibilityToAcl(visibility),
         });
 
         try {
@@ -101,8 +118,7 @@ export class StorageAwsS3Adapter implements StorageAdapter {
         const files: StorageFile[] = [];
         const remotePath = this.getRemoteDirectory(path);
 
-        //only v2 includes directories
-        const command = new ListObjectsV2Command({
+        const command = new ListObjectsCommand({
             Bucket: this.options.bucket,
             Prefix: remotePath,
             Delimiter: recursive ? undefined : '/',
@@ -144,8 +160,8 @@ export class StorageAwsS3Adapter implements StorageAdapter {
         const file = await this.get(source);
 
         if (file && file.isFile()) {
-            if (this.isDirectorySupport()) {
-                await this.makeDirectory(pathDirectory(destination));
+            if (this.supportsDirectory()) {
+                await this.makeDirectory(pathDirectory(destination), file.visibility);
             }
 
             const command = new CopyObjectCommand({
@@ -252,6 +268,7 @@ export class StorageAwsS3Adapter implements StorageAdapter {
             const response = await this.client.send(command);
             file.size = response.ContentLength || 0;
             file.lastModified = response.LastModified;
+            file.visibility = await this.getVisibility(path);
         } catch (error: any) {
             return undefined;
         }
@@ -283,8 +300,8 @@ export class StorageAwsS3Adapter implements StorageAdapter {
     }
 
     async write(path: string, contents: Uint8Array, visibility: FileVisibility, reporter: Reporter): Promise<void> {
-        if (this.isDirectorySupport()) {
-            await this.makeDirectory(pathDirectory(path));
+        if (this.supportsDirectory()) {
+            await this.makeDirectory(pathDirectory(path), visibility);
         }
 
         const remotePath = this.getRemotePath(path);
@@ -292,12 +309,43 @@ export class StorageAwsS3Adapter implements StorageAdapter {
             Bucket: this.options.bucket,
             Key: remotePath,
             Body: contents,
+            ACL: this.visibilityToAcl(visibility),
         });
 
         try {
             await this.client.send(command);
         } catch (error: any) {
             throw new StorageError(`Could not write file ${path}: ${error.message}`);
+        }
+    }
+
+    async getVisibility(path: string): Promise<FileVisibility> {
+        const remotePath = this.getRemotePath(path);
+        const aclCommand = new GetObjectAclCommand({
+            Bucket: this.options.bucket,
+            Key: remotePath,
+        });
+
+        try {
+            const response = await this.client.send(aclCommand);
+            return this.aclToVisibility(response.Grants || []);
+        } catch (error: any) {
+            throw new StorageError(`Could not get visibility for ${path}: ${error.message}`);
+        }
+    }
+
+    async setVisibility(path: string, visibility: FileVisibility): Promise<void> {
+        const remotePath = this.getRemotePath(path);
+        const command = new PutObjectAclCommand({
+            Bucket: this.options.bucket,
+            Key: remotePath,
+            ACL: this.visibilityToAcl(visibility),
+        });
+
+        try {
+            await this.client.send(command);
+        } catch (error: any) {
+            throw new StorageError(`Could not set visibility for ${path}: ${error.message}`);
         }
     }
 }

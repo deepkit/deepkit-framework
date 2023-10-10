@@ -22,12 +22,16 @@ export class StorageMemoryAdapter implements StorageAdapter {
         return true;
     }
 
+    supportsDirectory() {
+        return true;
+    }
+
     async files(path: string): Promise<StorageFile[]> {
         return this.memory.filter(file => file.file.directory === path)
             .map(v => v.file);
     }
 
-    async url(path: string): Promise<string> {
+    async publicUrl(path: string): Promise<string> {
         return resolveStoragePath([this.options.url, path]);
     }
 
@@ -126,5 +130,11 @@ export class StorageMemoryAdapter implements StorageAdapter {
             file.file.path = newPath;
             reporter.progress(++i, files.length);
         }
+    }
+
+    async setVisibility(path: string, visibility: FileVisibility): Promise<void> {
+        const file = this.memory.find(file => file.file.path === path);
+        if (!file) return;
+        file.file.visibility = visibility;
     }
 }
