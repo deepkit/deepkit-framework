@@ -12,7 +12,7 @@ setAdapterFactory(async () => {
         root: 'upload'
     });;
     if (platform() === 'darwin') {
-        // docker run -d --name storage-sftp -p 22:22 -d atmoz/sftp user:123:::upload
+        // docker run -d --name storage-sftp -p 22:22 -e SFTP_USERS=user:123:::upload -d atmoz/sftp:alpine
         adapter = new StorageSftpAdapter({
             host: 'storage-sftp.orb.local',
             user: 'user',

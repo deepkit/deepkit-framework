@@ -3,7 +3,7 @@ import Client, { ConnectOptions, FileInfo } from 'ssh2-sftp-client';
 import { Readable } from 'stream';
 import { asyncOperation } from '@deepkit/core';
 
-export interface StorageFtpOptions {
+export interface StorageFtpOptions extends ConnectOptions {
     /**
      * The root path where all files are stored. Optional, default is )" (standard working directory of FTP server_.
      */
@@ -27,8 +27,6 @@ export interface StorageFtpOptions {
     user: string;
 
     password: string;
-
-    options?: ConnectOptions;
 
     permissions: {
         file: {
@@ -78,7 +76,6 @@ export class StorageSftpAdapter implements StorageAdapter {
 
     constructor(options: Partial<StorageFtpOptions> = {}) {
         Object.assign(this.options, options);
-        if (options.options) Object.assign(this.options, options.options);
         this.client = new Client();
         this.client.on('end', (err) => {
             this.closed = true;
