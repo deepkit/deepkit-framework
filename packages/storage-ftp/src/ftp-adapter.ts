@@ -2,6 +2,7 @@ import { FileType, FileVisibility, pathBasename, pathDirectory, Reporter, resolv
 import { Client, FileInfo } from 'basic-ftp';
 import type { ConnectionOptions as TLSConnectionOptions } from 'tls';
 import { Readable, Writable } from 'stream';
+import { UnixPermissions } from 'basic-ftp/dist/FileInfo.js';
 
 export interface StorageFtpOptions {
     /**
@@ -34,6 +35,17 @@ export interface StorageFtpOptions {
      */
     secure?: boolean;
     secureOptions?: TLSConnectionOptions;
+
+    permissions: {
+        file: {
+            public: number; //default 0o644
+            private: number; //default 0o600
+        },
+        directory: {
+            public: number; //default 0o755
+            private: number; //default 0o700
+        }
+    };
 }
 
 export class StorageFtpAdapter implements StorageAdapter {
@@ -43,6 +55,16 @@ export class StorageFtpAdapter implements StorageAdapter {
         host: 'localhost',
         user: '',
         password: '',
+        permissions: {
+            file: {
+                public: 0o644,
+                private: 0o600
+            },
+            directory: {
+                public: 0o755,
+                private: 0o700
+            }
+        }
     };
 
     constructor(options: Partial<StorageFtpOptions> = {}) {
@@ -50,8 +72,25 @@ export class StorageFtpAdapter implements StorageAdapter {
         this.client = new Client(this.options.timeout);
     }
 
+    /**
+     * Mode is a number returned from Node's stat operation.
+     */
+    protected mapModeToVisibility(type: FileType, remotePermission?: UnixPermissions): FileVisibility {
+        if (!remotePermission) return 'private';
+        const permissions = this.options.permissions[type === FileType.File ? 'file' : 'directory'];
+        //permission={user: 6, group: 4, world: 4} => 0o644 in octal
+        const mode = remotePermission.user * 64 + remotePermission.group * 8 + remotePermission.world;
+        if (mode === permissions.public) return 'public';
+        return 'private';
+    }
+
+    protected getMode(type: FileType, visibility: FileVisibility): number {
+        const permissions = this.options.permissions[type === FileType.File ? 'file' : 'directory'];
+        return visibility === 'public' ? permissions.public : permissions.private;
+    }
+
     supportsVisibility() {
-        return false;
+        return true;
     }
 
     supportsDirectory() {
@@ -92,6 +131,19 @@ export class StorageFtpAdapter implements StorageAdapter {
         await this.ensureConnected();
         const remotePath = this.getRemotePath(path);
         await this.client.ensureDir(remotePath);
+        await this.chmodFile(path, this.getMode(FileType.Directory, visibility));
+    }
+
+    async setVisibility(path: string, visibility: FileVisibility): Promise<void> {
+        await this.ensureConnected();
+        await this.chmod(path, this.getMode(FileType.File, visibility));
+    }
+
+    async getVisibility(path: string): Promise<FileVisibility> {
+        await this.ensureConnected();
+        const file = await this.get(path);
+        if (!file) throw new Error(`File ${path} not found`);
+        return file.visibility;
     }
 
     async files(path: string): Promise<StorageFile[]> {
@@ -160,6 +212,7 @@ export class StorageFtpAdapter implements StorageAdapter {
         const file = new StorageFile(path, fileInfo.isFile ? FileType.File : FileType.Directory);
         file.size = fileInfo.size;
         file.lastModified = fileInfo.modifiedAt;
+        file.visibility = this.mapModeToVisibility(file.type, fileInfo.permissions);
         if (!file.lastModified && fileInfo.rawModifiedAt) {
             file.lastModified = parseCustomDateString(fileInfo.rawModifiedAt);
         }
@@ -186,9 +239,43 @@ export class StorageFtpAdapter implements StorageAdapter {
 
     async write(path: string, contents: Uint8Array, visibility: FileVisibility, reporter: Reporter): Promise<void> {
         await this.ensureConnected();
-        await this.client.ensureDir(this.getRemotePath(pathDirectory(path)));
+        await this.makeDirectory(pathDirectory(path), visibility);
         await this.client.uploadFrom(createReadable(contents), this.getRemotePath(path));
+        await this.chmodFile(path, this.getMode(FileType.File, visibility));
     }
+
+    protected async chmodFile(path: string, permission: number) {
+        await this.client.send('SITE CHMOD ' + permission.toString(8) + ' ' + this.getRemotePath(path));
+    }
+
+    protected async chmodRecursive(path: string, permission: number) {
+        const dirs: string[] = [path];
+
+        while (dirs.length > 0) {
+            const dir = dirs.pop()!;
+            const files = await this.client.list(this.getRemotePath(dir));
+            for (const file of files) {
+                const path = dir + '/' + file.name;
+                if (file.isDirectory) {
+                    dirs.push(path);
+                } else {
+                    await this.chmodFile(path, permission);
+                }
+            }
+        }
+    }
+
+    protected async chmod(path: string, permission: number) {
+        const file = await this.get(path);
+        if (!file) return;
+        if (file.isFile()) {
+            await this.chmodFile(path, permission);
+            return;
+        }
+
+        await this.chmodRecursive(path, permission);
+    }
+
 }
 
 /**

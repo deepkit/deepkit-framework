@@ -31,5 +31,6 @@ setAdapterFactory(async () => {
 // detects the file as a test file.
 test('basic', () => undefined);
 test('recursive', () => undefined);
+test('visibility', () => undefined);
 test('copy', () => undefined);
 test('move', () => undefined);
