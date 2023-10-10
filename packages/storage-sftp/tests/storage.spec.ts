@@ -7,6 +7,7 @@ import { platform } from 'os';
 setAdapterFactory(async () => {
     let adapter = new StorageSftpAdapter({
         host: 'localhost',
+        port: 2222,
         user: 'user',
         password: '123',
         root: 'upload'

@@ -24,7 +24,7 @@ jobs:
             env:
                  SFTP_USERS: user:123:::upload
             ports:
-                - "22:22"
+                - "2222:22"
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
