@@ -10,6 +10,15 @@ jobs:
     strategy:
       matrix:
         node-version: [18.17.0]
+    services:
+        storage-ftp:
+            image: garethflowers/ftp-server:0.7.0
+            env:
+                FTP_USER: user
+                FTP_PASS: '123'
+            ports:
+                - "20-21:20-21"
+                - "40000-40009:40000-40009"
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}

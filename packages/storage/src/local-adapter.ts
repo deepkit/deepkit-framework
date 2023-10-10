@@ -40,6 +40,10 @@ export class StorageNodeLocalAdapter implements StorageAdapter {
         Object.assign(this.options, options);
     }
 
+    supportsVisibility() {
+        return true;
+    }
+
     protected async getFs(): Promise<typeof fs> {
         if (!this.fs) this.fs = await import('fs/promises');
         return this.fs;

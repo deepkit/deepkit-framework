@@ -18,6 +18,10 @@ export class StorageMemoryAdapter implements StorageAdapter {
         Object.assign(this.options, options);
     }
 
+    supportsVisibility() {
+        return true;
+    }
+
     async files(path: string): Promise<StorageFile[]> {
         return this.memory.filter(file => file.file.directory === path)
             .map(v => v.file);

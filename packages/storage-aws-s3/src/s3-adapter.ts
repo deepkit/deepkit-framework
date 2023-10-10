@@ -41,6 +41,10 @@ export class StorageAwsS3Adapter implements StorageAdapter {
         });
     }
 
+    supportsVisibility() {
+        return true;
+    }
+
     protected isDirectorySupport(): boolean {
         return this.options.directorySupport !== false;
     }
@@ -63,6 +67,10 @@ export class StorageAwsS3Adapter implements StorageAdapter {
         //remove this.options.path from path
         const base = this.options.path ? (normalizePath(this.options.path).slice(0) + '/') : '';
         return path.slice(base.length);
+    }
+
+    async url(path: string): Promise<string> {
+        return `s3://${this.options.bucket}/${this.getRemotePath(path)}`;
     }
 
     async makeDirectory(path: string): Promise<void> {
@@ -119,7 +127,7 @@ export class StorageAwsS3Adapter implements StorageAdapter {
                     if (content.Key === remotePath) continue;
 
                     const file = new StorageFile(this.pathMapToVirtual(content.Key));
-                    file.size = content.Size;
+                    file.size = content.Size || 0;
                     file.lastModified = content.LastModified;
                     file.type = content.Key.endsWith('/') ? FileType.Directory : FileType.File;
                     files.push(file);
@@ -242,7 +250,7 @@ export class StorageAwsS3Adapter implements StorageAdapter {
         });
         try {
             const response = await this.client.send(command);
-            file.size = response.ContentLength;
+            file.size = response.ContentLength || 0;
             file.lastModified = response.LastModified;
         } catch (error: any) {
             return undefined;

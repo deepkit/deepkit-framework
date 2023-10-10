@@ -53,6 +53,8 @@ test('basic', async () => {
 
     await storage.deleteDirectory('/');
     expect(await storage.exists('/file3.txt')).toBe(false);
+
+    await storage.close();
 });
 
 test('append/prepend', async () => {
@@ -67,10 +69,18 @@ test('append/prepend', async () => {
 
     await storage.prepend('/file2.txt', 'prefixed');
     expect(await storage.readAsText('/file2.txt')).toBe('prefixedcontents2');
+
+    await storage.close();
 });
 
 test('permissions', async () => {
-    const storage = new Storage(await adapterFactory());
+    const adapter = await adapterFactory();
+    if (!adapter.supportsVisibility()) {
+        if (adapter.close) await adapter.close();
+        return;
+    }
+
+    const storage = new Storage(adapter);
     await storage.write('/file1.txt', 'contents1', 'public');
     await storage.write('/file2.txt', 'contents2', 'private');
 
@@ -88,6 +98,8 @@ test('permissions', async () => {
 
     const folder2 = await storage.get('/folder2');
     expect(folder2).toMatchObject({ path: '/folder2', size: 0, visibility: 'private' });
+
+    await storage.close();
 });
 
 test('recursive', async () => {
@@ -145,6 +157,8 @@ test('recursive', async () => {
         { path: '/folder2', type: FileType.Directory },
         { path: '/folder2/folder3', type: FileType.Directory },
     ]);
+
+    await storage.close();
 });
 
 test('copy', async () => {
@@ -168,6 +182,8 @@ test('copy', async () => {
     expect(await storage.exists('/folder2/file1.txt')).toBe(true);
     expect(await storage.exists('/folder2/file2.txt')).toBe(true);
     expect(await storage.exists('/folder2/file3.txt')).toBe(true);
+
+    await storage.close();
 });
 
 test('move', async () => {
@@ -190,4 +206,5 @@ test('move', async () => {
     expect(await storage.exists('/folder/file3.txt')).toBe(false);
     expect(await storage.exists('/folder2/file2.txt')).toBe(true);
     expect(await storage.exists('/folder2/file3.txt')).toBe(true);
+    await storage.close();
 });

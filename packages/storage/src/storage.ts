@@ -108,15 +108,24 @@ export interface Operation<T> extends Promise<T> {
 }
 
 export interface StorageAdapter {
+    supportsVisibility(): boolean;
+
+    /**
+     * Closes the adapter (close connections, etc).
+     */
+    close?(): Promise<void>;
+
     /**
      * Returns all files (and directories) directly in the given folder.
      */
     files(path: string, reporter: Reporter): Promise<StorageFile[]>;
 
     /**
-     * Returns all files (and directories) in the given folder and all subfolders.
+     * Returns all files (and directories) in the given folder and all sub folders.
+     *
+     * If the adapter does not support this, it will be emulated by calling files() recursively.
      */
-    allFiles(path: string, reporter: Reporter): Promise<StorageFile[]>;
+    allFiles?(path: string, reporter: Reporter): Promise<StorageFile[]>;
 
     /**
      * Returns all directories directly in the given folder.
@@ -124,7 +133,9 @@ export interface StorageAdapter {
     directories?(path: string, reporter: Reporter): Promise<StorageFile[]>;
 
     /**
-     * Returns all directories in the given folder and all subfolders.
+     * Returns all directories in the given folder and all sub folders.
+     *
+     * If the adapter does not support this, it will be emulated by calling directories() recursively.
      */
     allDirectories?(path: string, reporter: Reporter): Promise<StorageFile[]>;
 
@@ -195,15 +206,19 @@ export interface StorageAdapter {
      * Copies the file from source to destination.
      * Ensures that all parent directories exist.
      * If source is a directory, it copies the directory recursively.
+     *
+     * If the adapter does not support copying, we emulate it by doing it manually.
      */
-    copy(source: string, destination: string, reporter: Reporter): Promise<void>;
+    copy?(source: string, destination: string, reporter: Reporter): Promise<void>;
 
     /**
      * Moves the file from source to destination.
      * Ensures that all parent directories exist.
      * If source is a directory, it moves the directory recursively.
+     *
+     * If the adapter does not support moving, we emulate it by doing it manually. read, write, then delete.
      */
-    move(source: string, destination: string, reporter: Reporter): Promise<void>;
+    move?(source: string, destination: string, reporter: Reporter): Promise<void>;
 }
 
 /**
@@ -272,6 +287,13 @@ export function resolveStoragePath(path: StoragePath): string {
     return path.path;
 }
 
+export function pathJoin(...paths: string[]): string {
+    return '/' + paths
+        .map(v => pathNormalize(v).slice(1))
+        .filter(v => !!v)
+        .join('/');
+}
+
 export interface StorageOptions {
     /**
      * Default visibility for new files.
@@ -300,6 +322,13 @@ export class Storage {
     };
 
     constructor(public adapter: StorageAdapter) {
+    }
+
+    /**
+     * Closes the adapter (close connections, etc).
+     */
+    async close() {
+        if (this.adapter.close) await this.adapter.close();
     }
 
     /**
@@ -348,9 +377,27 @@ export class Storage {
     allFiles(path: StoragePath): Operation<StorageFile[]> {
         path = resolveStoragePath(path);
         return createProgress<StorageFile[]>(async (reporter) => {
-            const files = await this.adapter.allFiles(path as string, reporter);
-            files.sort(compareFileSorting);
-            return files;
+            if (this.adapter.allFiles) {
+                const files = await this.adapter.allFiles(path as string, reporter);
+                files.sort(compareFileSorting);
+                return files;
+            } else {
+                // const files = await this.adapter.files(path as string, reporter);
+                const result: StorageFile[] = [];
+                const queue: string[] = [path as string];
+                while (queue.length) {
+                    const path = queue.shift()!;
+                    const files = await this.adapter.files(path, reporter);
+                    for (const file of files) {
+                        result.push(file);
+                        if (file.isDirectory()) {
+                            queue.push(file.path);
+                        }
+                    }
+                }
+                result.sort(compareFileSorting);
+                return result;
+            }
         });
     }
 
@@ -362,8 +409,7 @@ export class Storage {
     allFileNames(path: StoragePath): Operation<string[]> {
         path = resolveStoragePath(path);
         return createProgress<string[]>(async (reporter) => {
-            //todo: some adapters might be able to do this more efficiently
-            const files = await this.adapter.allFiles(path as string, reporter);
+            const files = await this.allFiles(path as string);
             files.sort(compareFileSorting);
             return files.map(v => v.path);
         });
@@ -397,7 +443,7 @@ export class Storage {
             if (this.adapter.allDirectories) {
                 return await this.adapter.allDirectories(path as string, reporter);
             } else {
-                const files = await this.adapter.allFiles(path as string, reporter);
+                const files = await this.allFiles(path as string);
                 return files.filter(v => v.isDirectory());
             }
         });
@@ -554,18 +600,46 @@ export class Storage {
         source = resolveStoragePath(source);
         destination = resolveStoragePath(destination);
         return createProgress<void>(async (reporter) => {
-            return this.adapter.copy(source as string, destination as string, reporter);
+            if (this.adapter.copy) {
+                return this.adapter.copy(source as string, destination as string, reporter);
+            } else {
+                const file = await this.get(source);
+                const queue: { file: StorageFile, targetPath: string }[] = [
+                    { file, targetPath: destination as string }
+                ];
+                while (queue.length) {
+                    const entry = queue.shift()!;
+                    if (entry.file.isDirectory()) {
+                        const files = await this.files(entry.file.path);
+                        for (const file of files) {
+                            queue.push({ file, targetPath: pathJoin(entry.targetPath, file.name) });
+                        }
+                    } else {
+                        await this.adapter.write(entry.targetPath, await this.adapter.read(entry.file.path, reporter), entry.file.visibility, reporter);
+                    }
+                }
+            }
         });
     }
 
     /**
      * Moves the file or directory from source to destination, recursively.
+     *
+     * This might or might not be an atomic operation. If the adapter does not support moving,
+     * it will emulate it by doing it manually by copying and then deleting. While it copies,
+     * the source file keeps existing, so it's not atomic. If the process crashes, the source
+     * and destination might be in an inconsistent state.
      */
     move(source: StoragePath, destination: StoragePath): Operation<void> {
         source = resolveStoragePath(source);
         destination = resolveStoragePath(destination);
         return createProgress<void>(async (reporter) => {
-            return this.adapter.move(source as string, destination as string, reporter);
+            if (this.adapter.move) {
+                return this.adapter.move(source as string, destination as string, reporter);
+            } else {
+                await this.copy(source, destination);
+                await this.delete(source);
+            }
         });
     }
 
@@ -600,7 +674,7 @@ export function pathNormalize(path: string): string {
 export function pathDirectory(path: string): string {
     if (path === '/') return '/';
     const lastSlash = path.lastIndexOf('/');
-    return lastSlash === -1 ? '' : path.slice(0, lastSlash);
+    return lastSlash <= 0 ? '/' : path.slice(0, lastSlash);
 }
 
 /**
