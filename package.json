@@ -72,6 +72,7 @@
       "packages/storage-aws-s3",
       "packages/storage-ftp",
       "packages/storage-sftp",
+      "packages/storage-google",
       "packages/sql",
       "packages/mysql",
       "packages/postgres",

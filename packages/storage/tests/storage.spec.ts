@@ -1,6 +1,8 @@
-import { expect, test } from '@jest/globals';
+import { expect, jest, test } from '@jest/globals';
 import { FileType, Storage, StorageAdapter } from '../src/storage.js';
 import { StorageMemoryAdapter } from '../src/memory-adapter.js';
+
+jest.setTimeout(30000);
 
 export let adapterFactory: () => Promise<StorageAdapter> = async () => new StorageMemoryAdapter;
 

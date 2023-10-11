@@ -10,8 +10,10 @@ export enum FileType {
 
 /**
  * Settings for file and directory permissions.
+ *
+ * Unknown when the adapter can't read it. Can be unknown in files() due to limits of listings in adapter, but available in get().
  */
-export type FileVisibility = 'public' | 'private';
+export type FileVisibility = 'public' | 'private' | 'unknown';
 
 /**
  * Represents a file or directory in the storage system.
@@ -29,7 +31,7 @@ export class StorageFile {
      * Some adapters might support reading the visibility per file, but not when listing files.
      * In this case you have to call additional `storage.get(file)` to load the visibility.
      */
-    public visibility: FileVisibility = 'public';
+    public visibility: FileVisibility = 'unknown';
 
     constructor(
         public path: string,
@@ -119,6 +121,7 @@ export interface Operation<T> extends Promise<T> {
 
 export interface StorageAdapter {
     supportsVisibility(): boolean;
+
     supportsDirectory(): boolean;
 
     setVisibility?(path: string, visibility: FileVisibility): Promise<void>;
@@ -220,18 +223,26 @@ export interface StorageAdapter {
      * Ensures that all parent directories exist.
      * If source is a directory, it copies the directory recursively.
      *
-     * If the adapter does not support copying, we emulate it by doing it manually.
+     * If the adapter does not support copying file and directories, do not implement it. The Storage class emulates it by doing it manually.
+     *
+     * If the adapter only supports copying a file, implement moveFile.
      */
     copy?(source: string, destination: string, reporter: Reporter): Promise<void>;
+
+    copyFile?(source: string, destination: string): Promise<void>;
 
     /**
      * Moves the file from source to destination.
      * Ensures that all parent directories exist.
      * If source is a directory, it moves the directory recursively.
      *
-     * If the adapter does not support moving, we emulate it by doing it manually. read, write, then delete.
+     * If the adapter does not support moving files and directories, do not implement it. The Storage class emulates it by doing it manually. read, write, then delete.
+     *
+     * If the adapter only supports moving a file, implement moveFile.
      */
     move?(source: string, destination: string, reporter: Reporter): Promise<void>;
+
+    moveFile?(source: string, destination: string): Promise<void>;
 }
 
 /**
@@ -665,6 +676,22 @@ export class Storage {
         return createProgress<void>(async (reporter) => {
             if (this.adapter.move) {
                 return this.adapter.move(source as string, destination as string, reporter);
+            } else if (this.adapter.moveFile) {
+                const file = await this.get(source);
+                const queue: { file: StorageFile, targetPath: string }[] = [
+                    { file, targetPath: destination as string }
+                ];
+                while (queue.length) {
+                    const entry = queue.shift()!;
+                    if (entry.file.isDirectory()) {
+                        const files = await this.files(entry.file.path);
+                        for (const file of files) {
+                            queue.push({ file, targetPath: pathJoin(entry.targetPath, file.name) });
+                        }
+                    } else {
+                        await this.adapter.moveFile(entry.file.path, entry.targetPath);
+                    }
+                }
             } else {
                 await this.copy(source, destination);
                 await this.delete(source);

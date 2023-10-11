@@ -105,6 +105,9 @@
     },
     {
       "path": "packages/storage-sftp/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/storage-google/tsconfig.esm.json"
     }
   ]
 }

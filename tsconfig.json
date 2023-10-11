@@ -123,6 +123,9 @@
     },
     {
       "path": "packages/storage-sftp/tsconfig.json"
+    },
+    {
+      "path": "packages/storage-google/tsconfig.json"
     }
   ]
 }

@@ -515,6 +515,20 @@ export async function asyncOperation<T>(executor: (resolve: (value: T) => void, 
 }
 
 /**
+ * When an API is called that returns a promise that loses the stack trace on error, you can use fixAsyncOperation().
+ *
+ * ```typescript
+ * cons storage = new BrokenPromiseStorage();
+ * const files = await fixAsyncOperation(storage.files('/'));
+ * ```
+ */
+export function fixAsyncOperation<T>(promise: Promise<T>): Promise<T> {
+    return asyncOperation(async (resolve, reject) => {
+        resolve(await promise);
+    });
+}
+
+/**
  * @public
  */
 export function mergePromiseStack<T>(promise: Promise<T>, stack?: string): Promise<T> {

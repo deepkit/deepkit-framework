@@ -1,1 +1,1 @@
-export * from './src/ftp-adapter.js';
+export * from './src/sftp-adapter.js';
