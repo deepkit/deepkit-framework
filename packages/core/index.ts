@@ -23,3 +23,4 @@ export * from './src/reactive.js';
 export * from './src/reflection.js';
 export * from './src/url.js';
 export * from './src/array.js';
+export * from './src/types.js';

@@ -48,7 +48,7 @@ export interface ModuleDefinition {
     /**
      * Providers.
      */
-    providers?: ProviderWithScope[];
+    providers?: (ProviderWithScope | ProviderWithScope[])[];
 
     /**
      * Export providers (its token `provide` value) or modules you imported first.
@@ -250,7 +250,7 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
     ) {
         super();
         if (this.options.imports) for (const m of this.options.imports) this.addModuleImport(m);
-        if (this.options.providers) this.providers.push(...this.options.providers);
+        if (this.options.providers) this.providers.push(...this.options.providers.flat());
         if (this.options.exports) this.exports.push(...this.options.exports);
         if (this.options.controllers) this.controllers.push(...this.options.controllers);
         if (this.options.workflows) this.workflows.push(...this.options.workflows);

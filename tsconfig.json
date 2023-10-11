@@ -113,19 +113,19 @@
       "path": "packages/bun/tsconfig.json"
     },
     {
-      "path": "packages/storage/tsconfig.json"
+      "path": "packages/filesystem/tsconfig.json"
     },
     {
-      "path": "packages/storage-aws-s3/tsconfig.json"
+      "path": "packages/filesystem-aws-s3/tsconfig.json"
     },
     {
-      "path": "packages/storage-ftp/tsconfig.json"
+      "path": "packages/filesystem-ftp/tsconfig.json"
     },
     {
-      "path": "packages/storage-sftp/tsconfig.json"
+      "path": "packages/filesystem-sftp/tsconfig.json"
     },
     {
-      "path": "packages/storage-google/tsconfig.json"
+      "path": "packages/filesystem-google/tsconfig.json"
     }
   ]
 }

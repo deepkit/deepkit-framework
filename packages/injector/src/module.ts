@@ -264,9 +264,9 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         throw new Error(`Injector already built for ${getClassName(this)}. Can not modify its provider or tree structure.`);
     }
 
-    addExport(...controller: ExportType[]): this {
+    addExport(...types: (ExportType | ExportType[])[]): this {
         this.assertInjectorNotBuilt();
-        this.exports.push(...controller);
+        this.exports.push(...types.flat());
         return this;
     }
 
@@ -278,9 +278,9 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         return isProvided(this.getProviders(), classType);
     }
 
-    addProvider(...provider: ProviderWithScope[]): this {
+    addProvider(...provider: (ProviderWithScope | ProviderWithScope[])[]): this {
         this.assertInjectorNotBuilt();
-        this.providers.push(...provider);
+        this.providers.push(...provider.flat());
         return this;
     }
 
