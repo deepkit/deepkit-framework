@@ -75,6 +75,7 @@ jobs:
             packages/injector/tsconfig.json \
             packages/app/tsconfig.json \
             packages/http/tsconfig.json \
+            packages/filesystem/tsconfig.json \
             packages/orm/tsconfig.json \
             packages/sql/tsconfig.json \
             packages/sqlite/tsconfig.json \
