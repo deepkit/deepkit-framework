@@ -148,19 +148,7 @@ export class RpcServerAction {
             throw new Error(`No controller registered for id ${controller}`);
         }
         const action = getActions(classType.controller).get(methodName);
-
-        if (!action) {
-            throw new Error(`Action unknown ${methodName}`);
-        }
-
-        const controllerAccess: RpcControllerAccess = {
-            controllerName: controller, actionName: methodName, controllerClassType: classType.controller,
-            actionGroups: action.groups, actionData: action.data
-        };
-
-        if (!await this.hasControllerAccess(controllerAccess)) {
-            throw new Error(`Access denied to action ${methodName}`);
-        }
+        if (!action) throw new Error(`Action unknown ${methodName}`);
 
         const methodReflection = ReflectionClass.from(classType.controller).getMethod(methodName);
         const method = methodReflection.type;
@@ -386,8 +374,20 @@ export class RpcServerAction {
     public async handleAction(message: RpcMessage, response: RpcMessageBuilder) {
         const body = message.parseBody<rpcActionType>();
 
-        const controller = this.controllers.get(body.controller);
-        if (!controller) throw new Error(`No controller registered for id ${body.controller}`);
+        const classType = this.controllers.get(body.controller);
+        if (!classType) throw new Error(`No controller registered for id ${body.controller}`);
+
+        const action = getActions(classType.controller).get(body.method);
+        if (!action) throw new Error(`Action unknown ${body.method}`);
+
+        const controllerAccess: RpcControllerAccess = {
+            controllerName: body.controller, actionName: body.method, controllerClassType: classType.controller,
+            actionGroups: action.groups, actionData: action.data
+        };
+
+        if (!await this.hasControllerAccess(controllerAccess)) {
+            throw new Error(`Access denied to action ${body.method}`);
+        }
 
         const types = await this.loadTypes(body.controller, body.method);
         let value: { args: any[] } = { args: [] };
@@ -402,9 +402,9 @@ export class RpcServerAction {
             return response.error(error);
         }
 
-        const controllerClassType = this.injector.get(controller.controller, controller.module);
+        const controllerClassType = this.injector.get(classType.controller, classType.module);
         if (!controllerClassType) {
-            response.error(new Error(`No instance of ${getClassName(controller.controller)} found.`));
+            response.error(new Error(`No instance of ${getClassName(classType.controller)} found.`));
         }
         // const converted = types.parametersDeserialize(value.args);
         const errors: ValidationErrorItem[] = [];
@@ -474,7 +474,7 @@ export class RpcServerAction {
                     }
                 };
             } else if (isObservable(result)) {
-                this.observables[message.id] = { observable: result, subscriptions: {}, types, classType: controller.controller, method: body.method };
+                this.observables[message.id] = { observable: result, subscriptions: {}, types, classType: classType.controller, method: body.method };
 
                 let type: ActionObservableTypes = ActionObservableTypes.observable;
                 if (isSubject(result)) {

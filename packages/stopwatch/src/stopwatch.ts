@@ -112,7 +112,8 @@ export class Stopwatch {
         } else {
             if (!zone) return new NoopStopwatchFrame();
             context = zone.stopwatchContextId;
-            if (!context) throw new Error('No Stopwatch context given');
+            // might be getting an empty object on some platforms, which we treat as no context (as we start new context only with stopwatchContextId)
+            if (!context) return new NoopStopwatchFrame();
         }
 
         const id = ++frameId;
