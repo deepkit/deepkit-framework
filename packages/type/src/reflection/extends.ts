@@ -27,6 +27,7 @@ import {
     TypeMethod,
     TypeMethodSignature,
     TypeNumber,
+    TypeObjectLiteral,
     TypeParameter,
     TypeString,
     TypeTemplateLiteral,
@@ -79,6 +80,11 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
 
         if (right.kind === ReflectionKind.any || right.kind === ReflectionKind.unknown) return true;
         if (left.kind === ReflectionKind.promise && right.kind === ReflectionKind.promise) return isExtendable(left.type, right.type);
+
+        if (left.kind === ReflectionKind.promise && right.kind === ReflectionKind.object) return true;
+
+        if (left.kind === ReflectionKind.promise) return isExtendable(createPromiseObjectLiteral(left.type), right);
+        if (right.kind === ReflectionKind.promise) return isExtendable(left, createPromiseObjectLiteral(right.type));
 
         if (right.kind !== ReflectionKind.union) {
             if (left.kind === ReflectionKind.null) {
@@ -296,6 +302,59 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
     } finally {
         // extendStack.pop();
     }
+}
+
+/**
+ * We don't want to embed in each and every file the type definition of Promise<t>,
+ * so we do it ondemand at runtime instead. This saves bundle size.
+ */
+export function createPromiseObjectLiteral(type: Type): TypeObjectLiteral {
+    const promise: TypeObjectLiteral = {} as any;
+    Object.assign(promise, {
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            {
+                kind: ReflectionKind.methodSignature, parent: promise, name: 'then',
+                parameters: [
+                    {
+                        kind: ReflectionKind.parameter, parent: {} as any, name: 'onfulfilled',
+                        optional: true,
+                        type: {
+                            kind: ReflectionKind.union, types: [{
+                                kind: ReflectionKind.function, parameters: [
+                                    { kind: ReflectionKind.parameter, name: 'value', type: type },
+                                ], return: { kind: ReflectionKind.union, types: [type, { kind: ReflectionKind.promise, type: type }] }
+                            }, { kind: ReflectionKind.null }, { kind: ReflectionKind.undefined }]
+                        }
+                    },
+                    {
+                        kind: ReflectionKind.parameter, parent: {} as any, name: 'onrejected',
+                        optional: true,
+                        type: {
+                            kind: ReflectionKind.function, parameters: [
+                                { kind: ReflectionKind.parameter, name: 'reason', type: { kind: ReflectionKind.any } },
+                            ], return: { kind: ReflectionKind.any }
+                        }
+                    },
+                ], return: { kind: ReflectionKind.any },
+            },
+            {
+                kind: ReflectionKind.methodSignature, parent: promise, name: 'catch',
+                parameters: [
+                    {
+                        kind: ReflectionKind.parameter, parent: {} as any, name: 'onrejected',
+                        optional: true,
+                        type: {
+                            kind: ReflectionKind.function, parameters: [
+                                { kind: ReflectionKind.parameter, name: 'reason', type: { kind: ReflectionKind.any } }
+                            ], return: { kind: ReflectionKind.any }
+                        }
+                    },
+                ], return: { kind: ReflectionKind.any },
+            },
+        ]
+    });
+    return promise;
 }
 
 export function parametersToTuple(parameters: TypeParameter[]): TypeTuple {

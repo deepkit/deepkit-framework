@@ -609,6 +609,7 @@ export function isSameType(a: Type, b: Type, stack: StackEntry[] = []): boolean 
         if (a.kind !== b.kind) return false;
         if (a.typeName && b.typeName && a.typeName !== b.typeName) return false;
         if (a.kind === ReflectionKind.infer || b.kind === ReflectionKind.infer) return false;
+        if (a.kind === ReflectionKind.promise && b.kind === ReflectionKind.promise) return isSameType(a.type, b.type, stack);
 
         if (a.kind === ReflectionKind.literal) return a.literal === (b as TypeLiteral).literal;
 
@@ -2289,8 +2290,14 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                 case ReflectionKind.null:
                     result.push(`null`);
                     break;
+                case ReflectionKind.object:
+                    result.push(`object`);
+                    break;
                 case ReflectionKind.string:
                     result.push('string');
+                    break;
+                case ReflectionKind.infer:
+                    result.push('infer');
                     break;
                 case ReflectionKind.number:
                     result.push('number');

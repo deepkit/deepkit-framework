@@ -12,6 +12,8 @@ import { test, expect } from '@jest/globals';
 import { ReceiveType, removeTypeName, resolveReceiveType, typeOf } from '../src/reflection/reflection.js';
 import { expectEqualType } from './utils.js';
 import { stringifyResolvedType, stringifyType } from '../src/reflection/type.js';
+import { createPromiseObjectLiteral } from '../src/reflection/extends.js';
+import { serializeType } from '../src/type-serialization.js';
 
 function equalType<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {
     const aType = removeTypeName(resolveReceiveType(a));
@@ -52,6 +54,34 @@ test('Omit 2', () => {
 
     type B = Omit<A, 'value'>;
     equalType<B, { a: string }>();
+});
+
+
+test('Awaited', () => {
+    type T1 = Promise<string> extends object ? true : false;
+    equalType<T1, true>();
+
+    type T2 = Promise<string> extends { then(onfulfilled: infer F, ...args: infer _): any } ? true : false;
+    equalType<T2, true>();
+
+    type T22 = Promise<string> extends object & { then(onfulfilled: infer F, ...args: infer _): any } ? true : false;
+    equalType<T22, true>();
+
+    type T3 = Promise<string> extends { then(onfulfilled: infer F, ...args: infer _): any } ? F : false;
+    equalType<T3 extends (value: string) => any ? true : never, true>();
+
+    type T33 = Promise<string> extends (object & { then(onfulfilled: infer F, ...args: infer _): any }) ? F : false;
+    equalType<T33 extends ((value: string) => any) ? true : never, true>();
+
+    type T4 = ((value: string) => any) extends ((value: infer V, ...args: infer _) => any) ? V : never;
+    equalType<T4, string>();
+
+    type T44 = T33 extends ((value: infer V, ...args: infer _) => any) ? V : never;
+    equalType<T44, string>();
+
+    equalType<Awaited<Promise<string>>, string>();
+    equalType<Awaited<Promise<Promise<string>>>, string>();
+    equalType<Promise<string>, Promise<string>>();
 });
 
 test('intersection object', () => {

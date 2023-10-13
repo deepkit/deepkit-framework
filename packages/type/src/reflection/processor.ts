@@ -42,6 +42,7 @@ import {
     TypeMethodSignature,
     TypeObjectLiteral,
     TypeParameter,
+    TypePromise,
     TypeProperty,
     TypePropertySignature,
     TypeTemplateLiteral,
@@ -778,7 +779,8 @@ export class Processor {
                             break;
                         }
                         case ReflectionOp.promise: {
-                            const t: Type = { kind: ReflectionKind.promise, type: this.pop() as Type };
+                            const type = this.pop() as Type;
+                            const t: TypePromise = { kind: ReflectionKind.promise, type };
                             t.type.parent = t;
                             this.pushType(t);
                             break;
@@ -1001,7 +1003,8 @@ export class Processor {
                         case ReflectionOp.extends: {
                             const right = this.pop() as string | number | boolean | Type;
                             const left = this.pop() as string | number | boolean | Type;
-                            this.pushType({ kind: ReflectionKind.literal, literal: isExtendable(left, right) });
+                            const result = isExtendable(left, right);
+                            this.pushType({ kind: ReflectionKind.literal, literal: result });
                             break;
                         }
                         case ReflectionOp.indexAccess: {
@@ -1298,6 +1301,14 @@ export class Processor {
                 appendAnnotations(a);
                 appendAnnotations(b);
                 return merge([a, b]);
+            }
+
+            // object & {then() ...}
+            if (a.kind === ReflectionKind.object && b.kind === ReflectionKind.objectLiteral) {
+                return b;
+            }
+            if (b.kind === ReflectionKind.object && a.kind === ReflectionKind.objectLiteral) {
+                return a;
             }
 
             if (isPrimitive(a) && b.kind === ReflectionKind.objectLiteral) {
