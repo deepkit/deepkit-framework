@@ -15,10 +15,10 @@
     "declaration": true,
     "composite": true
   },
+  "reflection": true,
   "include": [
     "src",
-    "tests",
-    "main.ts"
+    "index.ts"
   ],
   "references": [
     {
@@ -37,9 +37,6 @@
       "path": "../crypto/tsconfig.json"
     },
     {
-      "path": "../framework/tsconfig.json"
-    },
-    {
       "path": "../http/tsconfig.json"
     },
     {
@@ -49,16 +46,7 @@
       "path": "../logger/tsconfig.json"
     },
     {
-      "path": "../orm/tsconfig.json"
-    },
-    {
       "path": "../rpc/tsconfig.json"
-    },
-    {
-      "path": "../rpc-tcp/tsconfig.json"
-    },
-    {
-      "path": "../sql/tsconfig.json"
     },
     {
       "path": "../type/tsconfig.json"

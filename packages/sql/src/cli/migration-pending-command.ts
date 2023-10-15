@@ -36,7 +36,6 @@ export class MigrationPendingCommand extends BaseCommand {
          */
         @flag.char('db') database?: string,
     ): Promise<void> {
-        if (this.path.length) this.provider.databases.readDatabase(this.path);
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);
 
         const migrationsPerDatabase = await this.provider.getMigrationsPerDatabase(database);

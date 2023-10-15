@@ -36,7 +36,6 @@ export class MigrationDownCommand extends BaseCommand {
          */
         @flag fake: boolean = false,
     ): Promise<void> {
-        if (this.path.length) this.provider.databases.readDatabase(this.path);
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);
 
         const migrationsPerDatabase = await this.provider.getMigrationsPerDatabase(database);

@@ -8,10 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, getClassName, getClassTypeFromInstance } from '@deepkit/core';
+import { ClassType, getClassName } from '@deepkit/core';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { Database } from './database.js';
-import { isAbsolute, join } from 'path';
 import { ReflectionClass } from '@deepkit/type';
 
 /**
@@ -36,47 +35,9 @@ export class DatabaseRegistry {
         this.migrateOnStartup = v;
     }
 
-    /**
-     * Reads database from a path. Imports the given paths
-     * and looks for instantiated Database classes. All instantiated Database classes will be returned.
-     *
-     * This is an alternative way to find Database and entities compared to
-     * a config file driven way.
-     */
-    readDatabase(paths: string[]) {
-        Database.registry = [];
-
-        //we dont want to allow bundles to bundle ts-node
-        const n = 'ts' + '-node';
-        const r = require;
-        r(n).register({
-            compilerOptions: {
-                experimentalDecorators: true
-            }
-        });
-
-        for (const path of paths) {
-            require(isAbsolute(path) ? path : join(process.cwd(), path));
-        }
-
-        for (const db of Database.registry) {
-            this.databases.push(db);
-            const classType = getClassTypeFromInstance(db);
-            if (this.databaseNameMap.has(db.name)) {
-                throw new Error(
-                    `Database class ${getClassName(db)} has a name '${db.name}' that is already registered. ` +
-                    `Choose a different name via class ${getClassName(db)} {\n  name = 'anotherName';\n    }`
-                );
-            }
-            this.databaseNameMap.set(db.name, db);
-            this.databaseMap.set(classType, db);
-            this.databaseTypes.push({ classType, module: new InjectorModule() });
-        }
-    }
-
     public onShutDown() {
         this.init();
-        for (const database of this.databaseMap.values()) {
+        for (const database of this.databases) {
             database.disconnect();
         }
     }
@@ -108,6 +69,11 @@ export class DatabaseRegistry {
         if (options && options.migrateOnStartup !== undefined) return options.migrateOnStartup;
 
         return this.migrateOnStartup;
+    }
+
+    public addDatabaseInstance(database: Database) {
+        this.databaseNameMap.set(database.name, database);
+        this.databases.push(database);
     }
 
     public init() {

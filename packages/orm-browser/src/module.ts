@@ -11,9 +11,9 @@ import { registerStaticHttpController } from '@deepkit/http';
 export class OrmBrowserModule extends createModule({
     config: Config
 }) {
-    databases: ClassType[] = [];
+    databases: Database[] = [];
 
-    forDatabases(databases: ClassType<Database>[]): this {
+    forDatabases(databases: Database[]): this {
         this.databases = databases;
         return this;
     }
@@ -21,7 +21,9 @@ export class OrmBrowserModule extends createModule({
     process() {
         const controllerName = '.deepkit/orm-browser/' + this.config.path;
 
+
         @rpc.controller(controllerName)
+        // @ts-ignore
         class ScopedOrmBrowserController extends OrmBrowserController {
         }
 
@@ -30,7 +32,7 @@ export class OrmBrowserModule extends createModule({
         this.addProvider({
             provide: ScopedOrmBrowserController,
             useFactory: (registry: DatabaseRegistry, injectorContext: InjectorContext) => {
-                return new ScopedOrmBrowserController(this.databases.length ? this.databases.map(v => injectorContext.get(v)) : registry.getDatabases());
+                return new ScopedOrmBrowserController(this.databases);
             }
         });
 

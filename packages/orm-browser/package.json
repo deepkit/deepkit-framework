@@ -1,19 +1,46 @@
 {
   "name": "@deepkit/orm-browser",
   "version": "1.0.1-alpha.103",
-  "description": "Deepkit ORM Data Browser",
+  "description": "ORM Browser",
   "type": "commonjs",
-  "sideEffects": false,
-  "publishConfig": {
-    "access": "public"
-  },
-  "bin": {
-    "deepkit-orm-browser": "./dist/cjs/main.js"
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cjs/index.d.ts",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+  },
+  "peerDependencies": {
+    "@deepkit/app": "^1.0.1-alpha.43",
+    "@deepkit/broker": "^1.0.1-alpha.43",
+    "@deepkit/bson": "^1.0.1-alpha.43",
+    "@deepkit/core": "^1.0.1-alpha.43",
+    "@deepkit/crypto": "^1.0.1-alpha.35",
+    "@deepkit/framework": "^1.0.1-alpha.43",
+    "@deepkit/http": "^1.0.1-alpha.43",
+    "@deepkit/injector": "^1.0.1-alpha.43",
+    "@deepkit/logger": "^1.0.1-alpha.43",
+    "@deepkit/orm": "^1.0.1-alpha.43",
+    "@deepkit/rpc": "^1.0.1-alpha.43",
+    "@deepkit/type": "^1.0.1-alpha.43",
+    "rxjs": "~7.5.0"
+  },
   "dependencies": {
+    "@deepkit/orm-browser-gui": "^1.0.1-alpha.102"
+  },
+  "devDependencies": {
     "@deepkit/app": "^1.0.1-alpha.102",
     "@deepkit/broker": "^1.0.1-alpha.102",
     "@deepkit/bson": "^1.0.1-alpha.102",
@@ -24,18 +51,11 @@
     "@deepkit/injector": "^1.0.1-alpha.102",
     "@deepkit/logger": "^1.0.1-alpha.102",
     "@deepkit/orm": "^1.0.1-alpha.102",
-    "@deepkit/orm-browser-gui": "^1.0.1-alpha.102",
     "@deepkit/rpc": "^1.0.1-alpha.102",
-    "@deepkit/rpc-tcp": "^1.0.1-alpha.102",
-    "@deepkit/sql": "^1.0.1-alpha.103",
-    "@deepkit/type": "^1.0.1-alpha.102"
-  },
-  "devDependencies": {
-    "@types/faker": "5.1.6",
-    "reflect-metadata": "^0.1.13"
+    "@deepkit/type": "^1.0.1-alpha.102",
+    "rxjs": "~7.5.0"
   },
   "jest": {
-    "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
@@ -45,6 +65,5 @@
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]
-  },
-  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
+  }
 }

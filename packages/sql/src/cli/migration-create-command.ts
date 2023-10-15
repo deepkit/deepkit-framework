@@ -49,7 +49,6 @@ export class MigrationCreateController extends BaseCommand implements Command {
          */
         @flag empty: boolean = false,
     ): Promise<void> {
-        if (this.path.length) this.provider.databases.readDatabase(this.path);
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);
 
         if (!this.provider.databases.getDatabases().length) {
