@@ -8,13 +8,13 @@ import { JSONTransport, Logger, LoggerInterface } from '@deepkit/logger';
 import { App } from '@deepkit/app';
 import { RpcController } from './src/controller/rpc.controller.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
-import { OrmBrowserModule } from '@deepkit/orm-browser-module';
+import { OrmBrowserModule } from '@deepkit/orm-browser';
 import { OpenAPIModule } from 'deepkit-openapi';
 import { FilesystemLocalAdapter, provideFilesystem } from '@deepkit/filesystem';
 
 const bookStoreCrud = createCrudRoutes([Author, Book]);
 
-new App({
+const app = new App({
     config: Config,
     providers: [
         SQLiteDatabase, MainController,
@@ -50,7 +50,9 @@ new App({
             migrateOnStartup: true,
         }),
     ]
-}).setup((module, config) => {
+});
+
+app.setup((module, config) => {
     if (config.environment === 'development') {
         module.getImportedModuleByClass(FrameworkModule).configure({ debug: true });
     }
@@ -59,6 +61,6 @@ new App({
         //enable logging JSON messages instead of formatted strings
         module.setupGlobalProvider<Logger>().setTransport([new JSONTransport]);
     }
-})
-    .loadConfigFromEnv()
-    .run();
+});
+
+app.loadConfigFromEnv().run();

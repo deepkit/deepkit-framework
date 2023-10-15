@@ -20,7 +20,7 @@
     "@deepkit/core-rxjs": "^1.0.1-alpha.0",
     "@deepkit/event": "^1.0.1-alpha.0",
     "@deepkit/framework": "^1.0.1-alpha.0",
-    "@deepkit/orm-browser-module": "^1.0.1-alpha.0",
+    "@deepkit/orm-browser": "^1.0.1-alpha.0",
     "@deepkit/http": "^1.0.1-alpha.0",
     "@deepkit/injector": "^1.0.1-alpha.0",
     "@deepkit/logger": "^1.0.1-alpha.0",

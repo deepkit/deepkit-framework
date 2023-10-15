@@ -5,8 +5,8 @@
     "declaration": false,
     "experimentalDecorators": true,
     "moduleResolution": "node",
-    "target": "es2018",
-    "module": "CommonJS",
+    "target": "es2020",
+    "module": "commonjs",
     "preserveSymlinks": true,
     "esModuleInterop": true,
     "lib": [
