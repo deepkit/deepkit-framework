@@ -7,7 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { AbstractClassType, ClassType, isClass } from '@deepkit/core';
+import { AbstractClassType, ClassType, isClass, isFunction } from '@deepkit/core';
 import type { InjectorModule } from './module.js';
 import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
 
@@ -31,10 +31,13 @@ export function provide<T>(
             | { useExisting: any }
             | { useFactory: (...args: any[]) => T }
             ))
-        | ClassType,
+        | ClassType
+        | ((...args: any[]) => T)
+    ,
     type?: ReceiveType<T>,
 ): NormalizedProvider {
     if (isClass(provider)) return { provide: resolveReceiveType(type), useClass: provider };
+    if (isFunction(provider)) return { provide: resolveReceiveType(type), useFactory: provider };
     return { ...provider, provide: resolveReceiveType(type) };
 }
 
