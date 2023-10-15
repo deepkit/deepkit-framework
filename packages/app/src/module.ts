@@ -241,6 +241,7 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
     public workflows: WorkflowDefinition<any>[] = [];
     public listeners: ListenerType[] = [];
     public middlewares: MiddlewareFactory[] = [];
+    public uses: ((...args: any[]) => void)[] = [];
 
     constructor(
         public options: T,
@@ -388,10 +389,24 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
     }
 
     /**
-     * Allows to change the module after the configuration has been loaded, right before the application bootstraps.
+     * Allows to change the module after the configuration has been loaded, right before the service container is built.
+     *
+     * This enables you to change the module or its imports depending on the configuration the last time before their services are built.
+     *
+     * At this point no services can be requested as the service container was not built.
      */
     setup(callback: (module: AppModule<T>, config: C) => void): this {
         this.setups.push(callback);
+        return this;
+    }
+
+    /**
+     * Allows to call services before the application bootstraps.
+     *
+     * This enables you to configure modules and request their services.
+     */
+    use(callback: (...args: any[]) => void): this {
+        this.uses.push(callback);
         return this;
     }
 

@@ -5,6 +5,7 @@ import { HttpKernel } from '../src/kernel.js';
 import { HttpRequest } from '../src/model.js';
 import { http } from '../src/decorator.js';
 import { httpWorkflow } from '../src/http.js';
+import { HttpRouterRegistry } from '../src/router.js';
 
 test('module basic functionality', async () => {
     class Controller {
@@ -69,5 +70,39 @@ test('functional listener', async () => {
         expect(response.statusCode).toBe(200);
         expect(response.json).toBe('marie');
         expect(gotUrls).toEqual(['/hello/peter', '/hello/marie']);
+    }
+});
+
+test('functional routes using use()', async () => {
+    type User = { id: number, username: string };
+
+    class MyService {
+        users: User[] = [{ id: 1, username: 'peter' }, { id: 2, username: 'marie' }];
+    }
+
+    const app = new App({
+        providers: [MyService],
+        imports: [new HttpModule()]
+    });
+
+    function userController(router: HttpRouterRegistry, service: MyService) {
+        router.get('/users', () => service.users);
+        router.get('/users/:id', (id: number) => service.users.find(v => v.id === id));
+    }
+
+    app.use(userController);
+
+    const httpKernel = app.get(HttpKernel);
+
+    {
+        const response = await httpKernel.request(HttpRequest.GET('/users'));
+        expect(response.statusCode).toBe(200);
+        expect(response.json).toEqual([{ id: 1, username: 'peter' }, { id: 2, username: 'marie' }]);
+    }
+
+    {
+        const response = await httpKernel.request(HttpRequest.GET('/users/2'));
+        expect(response.statusCode).toBe(200);
+        expect(response.json).toEqual({ id: 2, username: 'marie' });
     }
 });

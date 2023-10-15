@@ -11,7 +11,7 @@
 import { ClassType, getClassName, isClass, isFunction } from '@deepkit/core';
 import { EventDispatcher, EventListenerRegistered, isEventListenerContainerEntryCallback } from '@deepkit/event';
 import { AddedListener, AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleDefinition } from './module.js';
-import { Injector, InjectorContext, InjectorModule, isProvided, ProviderWithScope, resolveToken, Token } from '@deepkit/injector';
+import { injectedFunction, Injector, InjectorContext, InjectorModule, isProvided, ProviderWithScope, resolveToken, Token } from '@deepkit/injector';
 import { cli } from './command.js';
 import { WorkflowDefinition } from '@deepkit/workflow';
 import { deserialize, ReflectionClass, ReflectionFunction, validate } from '@deepkit/type';
@@ -163,9 +163,14 @@ export class ServiceContainer {
     }
 
     protected bootstrapModules(): void {
-        for (const m of this.modules) {
-            if (m.options.bootstrap) {
-                this.getInjector(m).get(m.options.bootstrap);
+        for (const module of this.modules) {
+            if (module.options.bootstrap) {
+                this.getInjector(module).get(module.options.bootstrap);
+            }
+
+            for (const use of module.uses) {
+                const resolvedFunction = injectedFunction(use, this.getInjector(module));
+                resolvedFunction();
             }
         }
     }
