@@ -70,7 +70,7 @@ import type {
     TypeReferenceNode,
     UnionTypeNode,
 } from 'typescript';
-import ts from 'typescript';
+import ts, { isExpressionStatement } from 'typescript';
 
 import {
     ensureImportIsEmitted,
@@ -932,6 +932,8 @@ export class ReflectionTransformer implements CustomTransformer {
         };
         this.sourceFile = visitNode(this.sourceFile, visitor);
 
+        const newTopStatements: Statement[] = [];
+
         while (true) {
             let allCompiled = true;
             for (const d of this.compileDeclarations.values()) {
@@ -948,16 +950,14 @@ export class ReflectionTransformer implements CustomTransformer {
             }
 
             if (this.embedDeclarations.size) {
-                const embedded: Statement[] = [];
                 for (const node of this.embedDeclarations.keys()) {
                     this.compiledDeclarations.add(node);
                 }
                 const entries = Array.from(this.embedDeclarations.entries());
                 this.embedDeclarations.clear();
                 for (const [node, d] of entries) {
-                    embedded.push(...this.createProgramVarFromNode(node, d.name, d.sourceFile));
+                    newTopStatements.push(...this.createProgramVarFromNode(node, d.name, d.sourceFile));
                 }
-                this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...embedded, ...this.sourceFile.statements]);
             }
         }
 
@@ -981,7 +981,6 @@ export class ReflectionTransformer implements CustomTransformer {
         };
         this.sourceFile = visitNode(this.sourceFile, compileDeclarations);
 
-        const embedTopExpression: Statement[] = [];
         if (this.addImports.length) {
             const compilerOptions = this.compilerOptions;
             const handledIdentifier: string[] = [];
@@ -1001,7 +1000,7 @@ export class ReflectionTransformer implements CustomTransformer {
                         '@ts-ignore',
                         true,
                     );
-                    embedTopExpression.push(typeDeclWithComment);
+                    newTopStatements.push(typeDeclWithComment);
                 } else {
                     //import {identifier} from './bar.js'
                     // import { identifier as identifier } is used to avoid automatic elision of imports (in angular builds for example)
@@ -1017,7 +1016,7 @@ export class ReflectionTransformer implements CustomTransformer {
                         '@ts-ignore',
                         true,
                     );
-                    embedTopExpression.push(typeDeclWithComment);
+                    newTopStatements.push(typeDeclWithComment);
                 }
             }
         }
@@ -1062,11 +1061,11 @@ export class ReflectionTransformer implements CustomTransformer {
                     true
                 )
             );
-            embedTopExpression.push(assignType);
+            newTopStatements.push(assignType);
         }
 
         if (this.tempResultIdentifier) {
-            embedTopExpression.push(
+            newTopStatements.push(
                 this.f.createVariableStatement(
                     undefined,
                     this.f.createVariableDeclarationList(
@@ -1082,8 +1081,19 @@ export class ReflectionTransformer implements CustomTransformer {
             );
         }
 
-        if (embedTopExpression.length) {
-            this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...embedTopExpression, ...this.sourceFile.statements]);
+        if (newTopStatements.length) {
+            // we want to keep "use strict", or "use client", etc at the very top
+            const indexOfFirstLiteralExpression = this.sourceFile.statements.findIndex(v => isExpressionStatement(v) && isStringLiteral(v.expression));
+
+            const newStatements = indexOfFirstLiteralExpression === -1
+                ? [...newTopStatements, ...this.sourceFile.statements]
+                : [
+                    ...this.sourceFile.statements.slice(0, indexOfFirstLiteralExpression + 1),
+                    ...newTopStatements,
+                    ...this.sourceFile.statements.slice(indexOfFirstLiteralExpression + 1),
+                ];
+            this.sourceFile = this.f.updateSourceFile(this.sourceFile, newStatements);
+            // this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...newTopStatements, ...this.sourceFile.statements]);
         }
 
         // console.log('transform sourceFile', this.sourceFile.fileName);

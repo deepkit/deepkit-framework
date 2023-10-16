@@ -437,3 +437,13 @@ test('keyof this expression', () => {
     });
     console.log(res);
 });
+
+test('keep "use x" at top', () => {
+    const res = transpile({
+        'app': `
+        "use client";
+        const a = (a: string) => {};
+        `
+    });
+    expect(res.app.startsWith('"use client";')).toBe(true);
+});
