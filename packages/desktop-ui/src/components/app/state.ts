@@ -1,4 +1,4 @@
-import { deserialize, Excluded, metaAnnotation, ReflectionClass, ReflectionKind, resolveTypeMembers, serialize, Serializer, Type, TypeClass } from '@deepkit/type';
+import { deserialize, Excluded, metaAnnotation, ReflectionClass, ReflectionKind, resolveTypeMembers, serialize, Serializer, Type, TypeAnnotation, TypeClass } from '@deepkit/type';
 import { ClassType, getClassTypeFromInstance, getPathValue, setPathValue, throttleTime } from '@deepkit/core';
 import { EventToken } from '@deepkit/event';
 import { ApplicationRef, Injector } from '@angular/core';
@@ -16,7 +16,7 @@ import onChange from 'on-change';
  * }
  * ```
  */
-export type PartOfUrl = { __meta?: never & ['partOfUrl'] };
+export type PartOfUrl = TypeAnnotation<'partOfUrl'>;
 
 export type FilterActions<T> = { [name in keyof T]: T[name] extends (a: infer A extends [...a: any[]], ...args: any[]) => infer R ? (...args: A) => R : never };
 
@@ -150,7 +150,6 @@ const stateSerializer: Serializer = new class extends Serializer {
  */
 export function provideState(stateClass: ClassType, localStorageKey: string = 'appState') {
     const stateType = ReflectionClass.from(stateClass).type;
-
 
     return {
         provide: stateClass, deps: [Router, Injector], useFactory: (router: Router, injector: Injector) => {

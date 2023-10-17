@@ -14,6 +14,7 @@ import {
     DatabaseEntity,
     DebugControllerInterface,
     Event,
+    Filesystem,
     ModuleApi,
     ModuleImportedService,
     ModuleService,
@@ -23,7 +24,7 @@ import {
     Workflow
 } from '@deepkit/framework-debug-api';
 import { rpc, rpcClass } from '@deepkit/rpc';
-import { parseRouteControllerAction, HttpRouter } from '@deepkit/http';
+import { HttpRouter, parseRouteControllerAction } from '@deepkit/http';
 import { changeClass, ClassType, getClassName, isClass } from '@deepkit/core';
 import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/event';
 import { DatabaseAdapter, DatabaseRegistry } from '@deepkit/orm';
@@ -37,6 +38,7 @@ import { getScope, resolveToken, Token } from '@deepkit/injector';
 import { AppModule, ServiceContainer } from '@deepkit/app';
 import { RpcControllers } from '../rpc.js';
 import { ReflectionClass, serializeType, stringifyType } from '@deepkit/type';
+import { FilesystemRegistry } from '../filesystem.js';
 
 @rpc.controller(DebugControllerInterface)
 export class DebugController implements DebugControllerInterface {
@@ -50,6 +52,7 @@ export class DebugController implements DebugControllerInterface {
         protected config: Pick<FrameworkConfig, 'varPath' | 'debugStorePath'>,
         protected rpcControllers: RpcControllers,
         protected databaseRegistry: DatabaseRegistry,
+        protected filesystemRegistry: FilesystemRegistry,
         protected stopwatchStore?: FileStopwatchStore,
         // protected liveDatabase: LiveDatabase,
     ) {
@@ -122,6 +125,17 @@ export class DebugController implements DebugControllerInterface {
         }
 
         return databases;
+    }
+
+    @rpc.action()
+    filesystems(): Filesystem[] {
+        const filesystems: Filesystem[] = [];
+
+        for (const fs of this.filesystemRegistry.getFilesystems()) {
+            filesystems.push({ name: getClassName(fs), adapter: getClassName(fs.adapter), options: {} });
+        }
+
+        return filesystems;
     }
 
     @rpc.action()

@@ -18,12 +18,14 @@ import {
     DuiCheckboxModule,
     DuiFormComponent,
     DuiIconModule,
+    DuiIndicatorModule,
     DuiInputModule,
     DuiListModule,
     DuiRadioboxModule,
     DuiSelectModule,
     DuiTableModule,
     DuiWindowModule,
+    provideState,
 } from '@deepkit/desktop-ui';
 import { ConfigurationComponent } from './views/configuration/configuration.component';
 import { HttpComponent } from './views/http/http.component';
@@ -32,7 +34,6 @@ import { FormsModule } from '@angular/forms';
 import { RpcComponent } from './views/rpc/rpc.component';
 import { WorkflowCardComponent, WorkflowComponent } from './components/workflow.component';
 import { EventsComponent } from './views/events/events.component';
-import { DeepkitClient } from '@deepkit/rpc';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { HttpRequestComponent } from './views/http/request/http-request.component';
 import { OrmBrowserModule } from '@deepkit/orm-browser-gui';
@@ -42,6 +43,11 @@ import { ProfileTimelineComponent } from './views/profile/timeline.component';
 import { ModulesComponent } from './views/modules/modules.component';
 import { ModuleDetailComponent, ModuleDetailServiceComponent } from './views/modules/module-detail.component';
 import { DeepkitUIModule } from '@deepkit/ui-library';
+import { FilesystemComponent } from './views/filesystem/filesystem.component';
+import { RpcWebSocketClient } from '@deepkit/rpc';
+import { State } from './state';
+import { MediaComponent, MediaFileCache, MediaFileDetail, MediaFileQuickLookCache, MediaFileThumbnail, MediaQuickLook } from './views/filesystem/media.component';
+import { FileUploaderComponent } from './components/file-uploader.component';
 
 @NgModule({
     declarations: [
@@ -58,6 +64,13 @@ import { DeepkitUIModule } from '@deepkit/ui-library';
         ModulesComponent,
         ModuleDetailComponent,
         ModuleDetailServiceComponent,
+        FilesystemComponent,
+
+        MediaComponent,
+        MediaQuickLook,
+        MediaFileThumbnail,
+        MediaFileDetail,
+        FileUploaderComponent,
     ],
     imports: [
         BrowserModule,
@@ -80,10 +93,14 @@ import { DeepkitUIModule } from '@deepkit/ui-library';
         DuiIconModule,
         DuiListModule,
         DuiTableModule,
+        DuiIndicatorModule,
     ],
     providers: [
-        { provide: DeepkitClient, useFactory: () => new DeepkitClient(ControllerClient.getServerHost()) },
+        { provide: RpcWebSocketClient, useFactory: () => new RpcWebSocketClient(ControllerClient.getServerHost()) },
         ControllerClient,
+        provideState(State),
+        MediaFileCache,
+        MediaFileQuickLookCache,
     ],
     bootstrap: [AppComponent]
 })

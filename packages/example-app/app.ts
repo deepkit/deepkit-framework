@@ -10,7 +10,6 @@ import { RpcController } from './src/controller/rpc.controller.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { OrmBrowserModule } from '@deepkit/orm-browser';
 import { OpenAPIModule } from 'deepkit-openapi';
-import { FilesystemLocalAdapter, provideFilesystem } from '@deepkit/filesystem';
 
 const bookStoreCrud = createCrudRoutes([Author, Book]);
 
@@ -18,7 +17,6 @@ const app = new App({
     config: Config,
     providers: [
         SQLiteDatabase, MainController,
-        provideFilesystem(() => new FilesystemLocalAdapter({ root: __dirname + '/public' })),
     ],
     controllers: [MainController, UsersCommand, RpcController],
     listeners: [

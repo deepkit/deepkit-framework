@@ -360,7 +360,6 @@ export class BrokerClient extends RpcBaseClient {
     }
 }
 
-
 export class BrokerDirectClient extends BrokerClient {
     constructor(rpcKernel: BrokerKernel) {
         super(new RpcDirectClientAdapter(rpcKernel));

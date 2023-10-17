@@ -1,0 +1,99 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    //justify-content: center;
+    justify-items: center;
+    align-items: center;
+    height: 100%;
+
+    .no-preview {
+    }
+
+    .title {
+        display: inline;
+        text-overflow: ellipsis;
+        //overflow: hidden;
+        flex: 1;
+        max-width: 100%;
+        font-size: 12px;
+        height: 50px;
+        text-align: center;
+        //word-break: break-word;
+        word-break: break-all;
+        line-height: 14px;
+
+        span {
+            max-width: 100%;
+            -webkit-box-decoration-break: clone;
+            box-decoration-break: clone;
+            padding: 2px 5px;
+            border-radius: 5px;
+        }
+
+        textarea, input {
+            height: 100%;
+            max-width: 100%;
+            background-color: transparent;
+            border-radius: 3px;
+            border: 1px solid var(--dui-selection-light);
+            color: var(--text-grey);
+            text-align: center;
+            font: inherit;
+        }
+
+        input {
+            width: 100%;
+            text-align: left;
+        }
+    }
+
+    &.list {
+        flex-direction: row;
+
+        img {
+            width: 18px;
+            height: 18px;
+            padding: 0;
+        }
+
+        .title {
+            height: auto;
+            text-align: left;
+        }
+    }
+
+    img {
+        padding: 5px 7px;
+        //max-width: 100%;
+        width: 80px;
+        height: 80px;
+        object-fit: contain;
+        margin-bottom: 3px;
+        max-width: 100%;
+        max-height: 100%;
+
+        &.image-hidden {
+            padding: 0;
+            width: 0;
+            height: 0;
+            margin: 0;
+        }
+    }
+
+    app-loading-spinner {
+    }
+
+    &.selected:not(.list) {
+        img, app-loading-spinner {
+            border-radius: 5px;
+            //background-color: rgba(35, 35, 35, 0.87);
+            background-color: var(--line-color-light);
+        }
+
+        .title span {
+            background-color: var(--dui-selection);
+            //box-shadow: inset 0px 0px 0px 1000px rgba(35, 35, 35, 0.87);
+        }
+    }
+
+}

@@ -19,7 +19,7 @@ import { DebugDIController } from './cli/debug-di.js';
 import { ServerStartController } from './cli/server-start.js';
 import { DebugController } from './debug/debug.controller.js';
 import { registerDebugHttpController } from './debug/http-debug.controller.js';
-import { HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
+import { http, HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
 import { InjectorContext, injectorReference, ProviderWithScope, Token } from '@deepkit/injector';
 import { FrameworkConfig } from './module.config.js';
 import { LoggerInterface } from '@deepkit/logger';
@@ -40,6 +40,10 @@ import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { AppModule, ControllerConfig, createModule } from '@deepkit/app';
 import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
 import { normalizeDirectory } from './utils.js';
+import { FilesystemRegistry, PublicFilesystem } from './filesystem.js';
+import { Filesystem } from '@deepkit/filesystem';
+import { MediaController } from './debug/media.controller.js';
+import { DebugHttpController } from './debug/debug-http.controller.js';
 
 export class FrameworkModule extends createModule({
     config: FrameworkConfig,
@@ -50,6 +54,7 @@ export class FrameworkModule extends createModule({
         RpcServer,
         MigrationProvider,
         DebugController,
+        FilesystemRegistry,
         { provide: DatabaseRegistry, useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic) },
         {
             provide: RpcKernel,
@@ -131,6 +136,8 @@ export class FrameworkModule extends createModule({
     ];
 
     protected dbs: { module: AppModule<any>, classType: ClassType }[] = [];
+    protected filesystems: { module: AppModule<any>, classType: ClassType }[] = [];
+
     protected rpcControllers = new RpcControllers;
 
     process() {
@@ -147,7 +154,15 @@ export class FrameworkModule extends createModule({
         this.getImportedModuleByClass(HttpModule).configure({ parser: this.config.httpParse });
 
         if (this.config.publicDir) {
-            this.addListener(serveStaticListener(this, normalizeDirectory(this.config.publicDirPrefix), this.config.publicDir));
+            const localPublicDir = join(process.cwd(), this.config.publicDir);
+
+            this.addListener(serveStaticListener(this, normalizeDirectory(this.config.publicDirPrefix), localPublicDir));
+
+            this.addProvider({
+                provide: PublicFilesystem, useFactory: () => {
+                    return new PublicFilesystem(localPublicDir, this.config.publicDirPrefix);
+                }
+            });
         }
 
         if (this.config.debug) {
@@ -160,8 +175,15 @@ export class FrameworkModule extends createModule({
                 useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases())
             });
             this.addController(DebugController);
+            this.addController(MediaController);
             this.addController(OrmBrowserController);
             registerDebugHttpController(this, this.config.debugUrl);
+
+            @http.controller(this.config.debugUrl)
+            class ScopedDebugHttpController extends DebugHttpController {
+            }
+
+            this.addController(ScopedDebugHttpController);
 
             //only register the RPC controller
             this.addImport(new ApiConsoleModule({ listen: false, markdown: '' }).rename('internalApi'));
@@ -188,6 +210,10 @@ export class FrameworkModule extends createModule({
     postProcess() {
         //all providers are known at this point
         this.setupDatabase();
+
+        for (const fs of this.filesystems) {
+            this.setupProvider<FilesystemRegistry>().addFilesystem(fs.classType, fs.module);
+        }
     }
 
     protected setupDatabase() {
@@ -207,6 +233,9 @@ export class FrameworkModule extends createModule({
         if (!isClass(token)) return;
         if (isPrototypeOfBase(token, Database)) {
             this.dbs.push({ classType: token as ClassType, module });
+        }
+        if (isPrototypeOfBase(token, Filesystem)) {
+            this.filesystems.push({ classType: token as ClassType, module });
         }
     }
 

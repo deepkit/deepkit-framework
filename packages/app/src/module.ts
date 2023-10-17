@@ -232,6 +232,27 @@ export function createModule<T extends CreateModuleDefinition>(options: T, name:
 
 export type ListenerType = EventListener<any> | ClassType;
 
+/**
+ * The AppModule is the base class for all modules.
+ *
+ * You  can use `createModule` to create a new module class or extend from `AppModule` manually.
+ *
+ * @example
+ * ```typescript
+ *
+ * class MyModule extends AppModule {
+ *   providers = [MyService];
+ *   exports = [MyService];
+ *
+ *   constructor(config: MyConfig) {
+ *      super();
+ *      this.setConfigDefinition(MyConfig);
+ *      this.configure(config);
+ *      this.name = 'myModule';
+ *   }
+ * }
+ *
+ */
 export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractClassType<T['config']> = any> extends InjectorModule<C, AppModule<any>> {
     public setupConfigs: ((module: AppModule<any>, config: any) => void)[] = [];
 
@@ -244,7 +265,7 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
     public uses: ((...args: any[]) => void)[] = [];
 
     constructor(
-        public options: T,
+        public options: T = {} as T,
         public name: string = '',
         public setups: ((module: AppModule<any>, config: any) => void)[] = [],
         public id: number = moduleId++,

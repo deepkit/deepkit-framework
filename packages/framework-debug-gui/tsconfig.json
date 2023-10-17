@@ -21,6 +21,11 @@
       "dom"
     ]
   },
+  "reflection": [
+    "./src/app/state.ts",
+    "node_modules/@deepkit/api-console-gui/src/api.ts",
+    "node_modules/@deepkit/api-console-gui/src/app/store.ts"
+  ],
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,

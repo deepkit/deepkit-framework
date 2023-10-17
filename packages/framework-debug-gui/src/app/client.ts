@@ -9,8 +9,8 @@
  */
 
 import { Injectable } from '@angular/core';
-import { Collection, DeepkitClient } from '@deepkit/rpc';
-import { DebugControllerInterface, DebugRequest, Workflow } from '@deepkit/framework-debug-api';
+import { Collection, RpcWebSocketClient } from '@deepkit/rpc';
+import { DebugControllerInterface, DebugMediaInterface, DebugRequest, Workflow } from '@deepkit/framework-debug-api';
 
 @Injectable()
 export class ControllerClient {
@@ -18,16 +18,21 @@ export class ControllerClient {
     protected workflows: { [name: string]: Promise<Workflow> } = {};
 
     public readonly debug = this.client.controller(DebugControllerInterface);
+    public readonly media = this.client.controller(DebugMediaInterface);
 
     static getServerHost(): string {
         const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
         return proto + (location.port === '4200' ? location.hostname + ':8080' : location.host) + location.pathname;
     }
 
-    constructor(public client: DeepkitClient) {
+    constructor(public client: RpcWebSocketClient) {
         client.transporter.disconnected.subscribe(() => {
             this.tryToConnect();
         });
+    }
+
+    getUrl(path: string): string {
+        return location.protocol + '//' + (location.port === '4200' ? location.hostname + ':8080' : location.host) + path;
     }
 
     tryToConnect() {

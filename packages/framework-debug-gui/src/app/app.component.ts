@@ -10,7 +10,7 @@
 
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { DuiApp, observe } from '@deepkit/desktop-ui';
-import { Database, DebugRequest } from '@deepkit/framework-debug-api';
+import { Database, DebugRequest, Filesystem } from '@deepkit/framework-debug-api';
 import { Collection } from '@deepkit/rpc';
 import { ControllerClient } from './client';
 import { Router } from '@angular/router';
@@ -38,6 +38,8 @@ import { Router } from '@angular/router';
                     <dui-window-toolbar-container name="orm-browser"></dui-window-toolbar-container>
 
                     <div class="top-right">
+                        <app-file-uploader></app-file-uploader>
+
                         <div class="connection-info">
                             <div class="connected" *ngIf="client.client.transporter.connection|asyncRender as connected">
                                 Connected
@@ -67,6 +69,13 @@ import { Router } from '@angular/router';
                         <dui-list-item routerLink="/modules">Modules</dui-list-item>
                         <dui-list-item routerLink="/profiler">Profiler</dui-list-item>
                         <dui-list-item routerLink="/api/console">API</dui-list-item>
+                        <dui-list-item routerLink="/broker">Broker</dui-list-item>
+                        <dui-list-item routerLink="/http-requests">HTTP Requests</dui-list-item>
+
+                        <dui-list-title>Filesystem</dui-list-title>
+                        <ng-container *ngFor="let filesystem of filesystems; let i = index">
+                            <dui-list-item routerLink="/filesystem/{{i}}">{{filesystem.name}}</dui-list-item>
+                        </ng-container>
 
                         <dui-list-title>Database</dui-list-title>
                         <orm-browser-list></orm-browser-list>
@@ -99,6 +108,7 @@ import { Router } from '@angular/router';
 })
 export class AppComponent implements OnInit, OnDestroy {
     databases: Database[] = [];
+    filesystems: Filesystem[] = [];
 
     sidebarVisible: boolean = true;
 
@@ -111,6 +121,9 @@ export class AppComponent implements OnInit, OnDestroy {
         protected cd: ChangeDetectorRef,
         public router: Router,
     ) {
+        client.client.transporter.reconnected.subscribe(() => {
+            this.load();
+        });
     }
 
     ngOnDestroy(): void {
@@ -129,10 +142,15 @@ export class AppComponent implements OnInit, OnDestroy {
     //     return this.requests;
     // }
 
-    async ngOnInit() {
+    async load() {
         this.databases = await this.client.debug.databases();
+        this.filesystems = await this.client.debug.filesystems();
         // this.requests = await this.controllerClient.getHttpRequests();
         this.cd.detectChanges();
+    }
+
+    async ngOnInit() {
+        await this.load();
     }
 
 }

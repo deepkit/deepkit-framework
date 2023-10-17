@@ -11,3 +11,4 @@
 export * from './src/client.js';
 export * from './src/kernel.js';
 export * from './src/model.js';
+export * from './src/broker.js';

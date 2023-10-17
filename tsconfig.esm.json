@@ -53,6 +53,9 @@
       "path": "packages/framework/tsconfig.esm.json"
     },
     {
+      "path": "packages/framework-debug-api/tsconfig.esm.json"
+    },
+    {
       "path": "packages/mongo/tsconfig.esm.json"
     },
     {

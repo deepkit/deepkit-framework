@@ -86,3 +86,74 @@ test('entity channel uuid', async () => {
         });
     }
 });
+
+// test('in app', () => {
+//     function provideBroker(...args: any[]): any {
+//         //todo
+//     }
+//
+//
+//     type Fn = (a: number, b: {}, c: Database) => any;
+//
+//     type IsPrimitive<T> = T extends string | number | boolean | undefined | null | symbol | bigint ? true : false;
+//
+//     type OptionalNonPrimitives<T> = T extends (...args: infer A) => any ?
+//         (...args: { [K in keyof A]: IsPrimitive<A[K]> extends true ? A[K] : (A[K] | undefined) }) => any
+//         : never;
+//
+//     type NewFn = OptionalNonPrimitives<Fn>;
+//
+//     type BrokerCacheQuery<D extends BrokerCacheDefinition<any, any>> = {
+//         get(...args: D[1]): Promise<D[0]>;
+//     }
+//
+//     interface BrokerCache {
+//         query<D extends BrokerCacheDefinition<any, any>>(cache: D): BrokerCacheQuery<D>;
+//     }
+//
+//     class MemoryBrokerAdapter {}
+//
+//
+//     type User = { id: number, username: string };
+//
+//     const userCache = defineCache(
+//         'user/:id',
+//         async (id: number, database: Database): Promise<User> => {
+//             return await database.query<User>().filter({ id }).findOne();
+//         }
+//     );
+//
+//     const app = new App({
+//         providers: [
+//             provideBroker(new MemoryBrokerAdapter, userCache)
+//         ]
+//     });
+//
+//     app.command('test', async (cache: BrokerCache) => {
+//         const user = await cache.query(userCache).get(2);
+//     });
+//
+//     app.command('test', async (userCacheQuery: BrokerCacheQuery<typeof userCache>) => {
+//         const user = await userCacheQuery.get(3);
+//     });
+// });
+//
+// test('idea2', () =>{
+//     type UserCache = BrokerCacheKey<'user/:id', {id: number}, User>;
+//
+//     const app = new App({
+//         providers: [
+//             provideBroker(
+//                 new MemoryBrokerAdapter,
+//                 defineCache<UserCache>(async (options, database: Database) => {
+//                     return await database.query<User>().filter({ id: options.id }).findOne();
+//                 })
+//             )
+//         ]
+//     });
+//
+//     app.command('test', async (userCache: BrokerCache<UserCache>) => {
+//
+//     });
+//
+// });

@@ -20,7 +20,7 @@ import { Subscription } from 'rxjs';
     styleUrls: ['./indicator.component.scss']
 })
 export class IndicatorComponent {
-    @Input() step = 0;
+    @Input() step: number = 0;
 }
 
 
