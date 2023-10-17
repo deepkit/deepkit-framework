@@ -8,10 +8,21 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { ClassType, CompilerContext, getClassName, isArray, isClass, urlJoin } from '@deepkit/core';
-import { entity, ReflectionClass, ReflectionFunction, ReflectionKind, ReflectionParameter, SerializationOptions, serializer, Serializer, Type, ValidationError } from '@deepkit/type';
-import { HttpAction, httpClass, HttpController, HttpDecorator } from './decorator.js';
+import {
+    entity,
+    ReflectionClass,
+    ReflectionFunction,
+    ReflectionKind,
+    ReflectionParameter,
+    SerializationOptions,
+    serializer,
+    Serializer,
+    Type,
+    ValidationError
+} from '@deepkit/type';
+import { getActions, HttpAction, httpClass, HttpController, HttpDecorator } from './decorator.js';
 import { HttpRequest, HttpRequestPositionedParameters, HttpRequestQuery, HttpRequestResolvedParameters } from './model.js';
-import { InjectorContext, InjectorModule, TagRegistry } from '@deepkit/injector';
+import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
 import { HttpControllers } from './controllers.js';
 import { MiddlewareRegistry, MiddlewareRegistryEntry } from '@deepkit/app';
@@ -21,7 +32,7 @@ import { HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware.js';
 import qs from 'qs';
 import { HtmlResponse, JSONResponse, Response } from './http.js';
 import { getRequestParserCodeForParameters, ParameterForRequestParser, parseRoutePathToRegex } from './request-parser.js';
-import { HttpConfig, HttpParserOptions } from './module.config.js';
+import { HttpConfig } from './module.config.js';
 
 export type RouteParameterResolverForInjector = ((injector: InjectorContext) => HttpRequestPositionedParameters | Promise<HttpRequestPositionedParameters>);
 
@@ -515,7 +526,7 @@ export class HttpRouterRegistry extends HttpRouterRegistryFunctionRegistrar {
         if (!controllerData) throw new Error(`Http controller class ${getClassName(controller)} has no @http.controller decorator.`);
         const schema = ReflectionClass.from(controller);
 
-        for (const action of controllerData.getActions()) {
+        for (const action of getActions(controller)) {
             const routeAction: RouteClassControllerAction = {
                 type: 'controller',
                 controller,

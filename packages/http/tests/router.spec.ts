@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/router.js';
-import { http, httpClass } from '../src/decorator.js';
+import { getActions, http, httpClass } from '../src/decorator.js';
 import { HtmlResponse, HttpAccessDeniedError, HttpBadRequestError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model.js';
@@ -1412,4 +1412,43 @@ test('any http body', async () => {
 
     const response = await httpKernel.request(HttpRequest.PUT('/test').json({ test: 'test' }));
     expect(response.json).toMatchObject({ test: 'test' });
+});
+
+test('controller inheritance', async () => {
+    class Base {
+        @http.GET('/test1')
+        test1() {
+            return 'test1';
+        }
+
+        @http.GET('/test2')
+        test2() {
+            return 'test2';
+        }
+    }
+
+    class Controller extends Base {
+        @http.GET('/test2')
+        test2() {
+            return 'test2-2';
+        }
+
+        @http.GET('/test3')
+        test3() {
+            return 'test3';
+        }
+    }
+
+    const actions = getActions(Controller);
+    expect(actions).toHaveLength(3);
+
+    const router = HttpRouter.forControllers([Controller]);
+    expect(router.resolve('GET', '/test1')?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'test1' });
+    expect(router.resolve('GET', '/test2')?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'test2' });
+    expect(router.resolve('GET', '/test3')?.routeConfig.action).toMatchObject({ controller: Controller, methodName: 'test3' });
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.GET('/test1'))).json).toEqual('test1');
+    expect((await httpKernel.request(HttpRequest.GET('/test2'))).json).toEqual('test2-2');
+    expect((await httpKernel.request(HttpRequest.GET('/test3'))).json).toEqual('test3');
 });

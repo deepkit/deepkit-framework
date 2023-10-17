@@ -192,6 +192,22 @@ export class HttpControllerDecorator {
 
 export const httpClass: ClassDecoratorResult<typeof HttpControllerDecorator> = createClassDecoratorContext(HttpControllerDecorator);
 
+export function getActions(target: ClassType): HttpAction[] {
+    const parent = Object.getPrototypeOf(target);
+    const results: HttpAction[] = parent ? getActions(parent) : [];
+
+    const config = httpClass._fetch(target);
+    if (config) {
+        for (const action of config.getActions()) {
+            const existing = results.findIndex(v => v.methodName === action.methodName);
+            if (existing !== -1) results.splice(existing, 1);
+            results.push(action);
+        }
+    }
+
+    return results;
+}
+
 export class HttpActionDecorator {
     t = new HttpAction;
 
@@ -396,9 +412,11 @@ export class HttpActionDecorator {
 type HttpActionFluidDecorator<T, D extends Function> = {
     [name in keyof T]: name extends 'response' ? <T2>(statusCode: number, description?: string, type?: ReceiveType<T2>) => D & HttpActionFluidDecorator<T, D>
         : T[name] extends (...args: infer K) => any ? (...args: K) => D & HttpActionFluidDecorator<T, D>
-        : D & HttpActionFluidDecorator<T, D> & { _data: ExtractApiDataType<T> };
+            : D & HttpActionFluidDecorator<T, D> & { _data: ExtractApiDataType<T> };
 };
-type HttpActionPropertyDecoratorResult = HttpActionFluidDecorator<ExtractClass<typeof HttpActionDecorator>, PropertyDecoratorFn> & DecoratorAndFetchSignature<typeof HttpActionDecorator, PropertyDecoratorFn>;
+type HttpActionPropertyDecoratorResult =
+    HttpActionFluidDecorator<ExtractClass<typeof HttpActionDecorator>, PropertyDecoratorFn>
+    & DecoratorAndFetchSignature<typeof HttpActionDecorator, PropertyDecoratorFn>;
 
 export const httpAction: HttpActionPropertyDecoratorResult = createPropertyDecoratorContext(HttpActionDecorator);
 
