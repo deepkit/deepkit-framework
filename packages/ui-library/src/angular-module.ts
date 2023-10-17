@@ -6,6 +6,7 @@ import { DuiAppModule, DuiButtonModule, DuiIconModule, DuiSplitterModule } from 
 import { HeaderStatusBarComponent } from './components/header-status-bar.component';
 import { HeaderLogoComponent } from './components/header-logo.component';
 import { ToggleBoxComponent } from './components/toggle-box.component';
+import { LoadingSpinnerComponent } from './components/loading-spinner.component';
 
 @NgModule({
     declarations: [
@@ -14,6 +15,7 @@ import { ToggleBoxComponent } from './components/toggle-box.component';
         HeaderStatusBarComponent,
         HeaderLogoComponent,
         ToggleBoxComponent,
+        LoadingSpinnerComponent,
     ],
     exports: [
         DeepkitBoxComponent,
@@ -21,6 +23,7 @@ import { ToggleBoxComponent } from './components/toggle-box.component';
         HeaderStatusBarComponent,
         HeaderLogoComponent,
         ToggleBoxComponent,
+        LoadingSpinnerComponent,
     ],
     imports: [
         CommonModule,
