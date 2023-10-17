@@ -82,7 +82,7 @@ export class DatabaseRegistry {
         for (const databaseType of this.databaseTypes) {
             if (this.databaseMap.has(databaseType.classType)) continue;
 
-            const database = this.injectorContext.get(databaseType.classType);
+            const database = this.injectorContext.get(databaseType.classType, databaseType.module);
 
             for (const classSchema of database.entityRegistry.all()) {
                 classSchema.data['orm.database'] = database;
