@@ -64,6 +64,7 @@ jobs:
             packages/core/tsconfig.json \
             packages/core-rxjs/tsconfig.json \
             packages/crypto/tsconfig.json \
+            packages/filesystem/tsconfig.json \
             packages/framework/tsconfig.json \
             packages/framework-debug-api/tsconfig.json \
             packages/framework-integration/tsconfig.json \
@@ -92,6 +93,7 @@ jobs:
             packages/core/ \
             packages/core-rxjs/ \
             packages/crypto/ \
+            packages/filesystem/ \
             packages/framework/ \
             packages/framework-debug-api/ \
             packages/framework-integration/ \
