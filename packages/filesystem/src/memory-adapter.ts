@@ -1,4 +1,5 @@
-import { FilesystemAdapter, FilesystemFile, FilesystemFileNotFound, FileVisibility, pathDirectories, pathDirectory, Reporter } from './filesystem.js';
+import { pathDirectory } from '@deepkit/core';
+import { FilesystemAdapter, FilesystemFile, FilesystemFileNotFound, FileVisibility, pathDirectories, Reporter } from './filesystem.js';
 
 export interface FilesystemMemoryAdapterOptions {
 }

@@ -1,4 +1,5 @@
-import { FileType, FileVisibility, pathDirectory, pathNormalize, Reporter, resolveFilesystemPath, FilesystemAdapter, FilesystemFile } from './filesystem.js';
+import { FileType, FileVisibility, Reporter, FilesystemAdapter, FilesystemFile } from './filesystem.js';
+import { pathDirectory, pathNormalize } from '@deepkit/core';
 import type * as fs from 'fs/promises';
 
 export interface FilesystemLocalAdapterOptions {

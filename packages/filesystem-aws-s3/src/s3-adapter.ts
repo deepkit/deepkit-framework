@@ -1,4 +1,5 @@
-import { FilesystemAdapter, FilesystemError, FilesystemFile, FileVisibility, pathDirectory, Reporter } from '@deepkit/filesystem';
+import { FilesystemAdapter, FilesystemError, FilesystemFile, FileVisibility, Reporter } from '@deepkit/filesystem';
+import { pathDirectory } from '@deepkit/core';
 import {
     CopyObjectCommand,
     DeleteObjectsCommand,

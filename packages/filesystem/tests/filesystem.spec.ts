@@ -19,7 +19,7 @@ test('url', async () => {
     }
 
     //this test is about URL mapping feature from Filesystem
-    const url = await filesystem.publicUrl('/file1.txt');
+    const url = filesystem.publicUrl('/file1.txt');
     expect(url).toBe('http://localhost/assets/file1.txt');
 
     await filesystem.close();

@@ -1,4 +1,4 @@
-import { asyncOperation, Inject, isFunction } from '@deepkit/core';
+import { asyncOperation, Inject, isFunction, pathBasename, pathExtension, pathJoin, pathNormalize } from '@deepkit/core';
 import { readFile } from 'fs/promises';
 
 export type FileType = 'file' | 'directory';
@@ -305,13 +305,6 @@ export function resolveFilesystemPath(path: FilesystemPath): string {
     return path.path;
 }
 
-export function pathJoin(...paths: string[]): string {
-    return '/' + paths
-        .map(v => pathNormalize(v).slice(1))
-        .filter(v => !!v)
-        .join('/');
-}
-
 export interface FilesystemOptions {
     /**
      * Default visibility for new files.
@@ -565,6 +558,8 @@ export class Filesystem {
      * Reads the contents of the given path as binary.
      *
      * Returns a Progress object that can be used to track the progress of the operation.
+     *
+     * @throws Error if the file does not exist.
      */
     read(path: FilesystemPath): Operation<Uint8Array> {
         path = resolveFilesystemPath(path);
@@ -577,6 +572,8 @@ export class Filesystem {
      * Reads the contents of the given path as string.
      *
      * Returns a Progress object that can be used to track the progress of the operation.
+     *
+     * @throws Error if the file does not exist.
      */
     readAsText(path: FilesystemPath): Operation<string> {
         path = resolveFilesystemPath(path);
@@ -727,42 +724,6 @@ export class Filesystem {
         if (!this.adapter.setVisibility) return;
         await this.adapter.setVisibility(resolveFilesystemPath(path), visibility);
     }
-}
-
-/**
- * Normalizes the given path.
- * Removes duplicate slashes, removes trailing slashes, adds a leading slash.
- */
-export function pathNormalize(path: string): string {
-    path = path[0] !== '/' ? '/' + path : path;
-    path = path.length > 1 && path[path.length - 1] === '/' ? path.slice(0, -1) : path;
-    return path.replace(/\/+/g, '/');
-}
-
-/**
- * Returns the directory (dirname) of the given path.
- */
-export function pathDirectory(path: string): string {
-    if (path === '/') return '/';
-    const lastSlash = path.lastIndexOf('/');
-    return lastSlash <= 0 ? '/' : path.slice(0, lastSlash);
-}
-
-/**
- * Returns the basename of the given path.
- */
-export function pathBasename(path: string): string {
-    const lastSlash = path.lastIndexOf('/');
-    return lastSlash === -1 ? path : path.slice(lastSlash + 1);
-}
-
-/**
- * Returns the extension of the given path.
- */
-export function pathExtension(path: string): string {
-    const basename = pathBasename(path);
-    const lastDot = basename.lastIndexOf('.');
-    return lastDot === -1 ? '' : basename.slice(lastDot + 1);
 }
 
 /**

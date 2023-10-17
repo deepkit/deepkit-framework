@@ -24,3 +24,4 @@ export * from './src/reflection.js';
 export * from './src/url.js';
 export * from './src/array.js';
 export * from './src/types.js';
+export * from './src/path.js';

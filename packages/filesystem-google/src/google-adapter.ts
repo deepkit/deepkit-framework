@@ -1,4 +1,5 @@
-import { FilesystemAdapter, FilesystemFile, FileVisibility, pathDirectory, pathNormalize, Reporter, resolveFilesystemPath } from '@deepkit/filesystem';
+import { FilesystemAdapter, FilesystemFile, FileVisibility, Reporter, resolveFilesystemPath } from '@deepkit/filesystem';
+import { pathDirectory, pathNormalize } from '@deepkit/core';
 import { Bucket, File, Storage, StorageOptions } from '@google-cloud/storage';
 import { fixAsyncOperation } from '@deepkit/core';
 

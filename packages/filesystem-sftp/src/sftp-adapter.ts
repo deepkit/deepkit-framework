@@ -1,4 +1,5 @@
-import { FileType, FileVisibility, pathBasename, pathDirectory, Reporter, resolveFilesystemPath, FilesystemAdapter, FilesystemFile } from '@deepkit/filesystem';
+import { FileType, FileVisibility, Reporter, resolveFilesystemPath, FilesystemAdapter, FilesystemFile } from '@deepkit/filesystem';
+import { pathDirectory, pathBasename } from '@deepkit/core';
 import Client, { ConnectOptions, FileInfo } from 'ssh2-sftp-client';
 import { Readable } from 'stream';
 import { asyncOperation } from '@deepkit/core';
