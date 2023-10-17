@@ -70,7 +70,7 @@ import type {
     TypeReferenceNode,
     UnionTypeNode,
 } from 'typescript';
-import ts, { isExpressionStatement } from 'typescript';
+import ts from 'typescript';
 
 import {
     ensureImportIsEmitted,
@@ -147,6 +147,7 @@ const {
     isTypeQueryNode,
     isTypeReferenceNode,
     isUnionTypeNode,
+    isExpressionStatement,
     isVariableDeclaration,
     getEffectiveConstraintOfTypeParameter,
     getJSDocTags,
