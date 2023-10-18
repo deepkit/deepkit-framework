@@ -34,6 +34,7 @@
     "@deepkit/event": "^1.0.1-alpha.13",
     "@deepkit/http": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
+    "@deepkit/filesystem": "^1.0.1-alpha.13",
     "@deepkit/logger": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
     "@deepkit/rpc": "^1.0.1-alpha.13",
