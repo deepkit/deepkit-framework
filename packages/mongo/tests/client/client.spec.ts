@@ -1,4 +1,4 @@
-import { expect, test } from '@jest/globals';
+import { expect, test, jest } from '@jest/globals';
 import { MongoClient } from '../../src/client/client.js';
 import { HostType } from '../../src/client/host.js';
 import { IsMasterCommand } from '../../src/client/command/ismaster.js';
@@ -6,6 +6,8 @@ import { sleep } from '@deepkit/core';
 import { ConnectionOptions } from '../../src/client/options.js';
 import { cast, validatedDeserialize } from '@deepkit/type';
 import { createConnection } from 'net';
+
+jest.setTimeout(60000);
 
 test('ConnectionOptions', async () => {
     {
@@ -129,8 +131,62 @@ test('connect isMaster command', async () => {
 //
 // });
 
+test('connection pool 1', async () => {
+    const client = new MongoClient('mongodb://127.0.0.1?maxPoolSize=1');
 
-test('connection pool', async () => {
+    //spawn 10 promises, each requesting a connection and releasing it a few ms later
+    const promises: Promise<any>[] = [];
+
+    async function test() {
+        const c = await client.connectionPool.getConnection();
+        await sleep(0.1 * Math.random());
+        c.release();
+    }
+
+    for (let i = 0; i < 10; i++) {
+        promises.push(test());
+    }
+
+    await Promise.all(promises);
+
+    expect(client.stats.connectionsCreated).toBe(1);
+    expect(client.stats.connectionsReused).toBe(10);
+    expect(client.stats.connectionsQueued).toBe(9);
+
+    client.close();
+});
+
+test('connection pool stress test', async () => {
+    const client = new MongoClient('mongodb://127.0.0.1?maxPoolSize=2');
+
+    //spawn many promises, each requesting a connection and releasing it a few ms later
+    const promises: Promise<any>[] = [];
+
+    async function test() {
+        const c = await client.connectionPool.getConnection();
+        await sleep(0.001 * Math.random());
+        c.release();
+    }
+
+    const batch = 500;
+    for (let i = 0; i < 5_000; i++) {
+        promises.push(test());
+        if (i % batch === 0) {
+            await Promise.all(promises);
+            promises.length = 0;
+            console.log('batch', i);
+        }
+    }
+
+    await Promise.all(promises);
+
+    expect(client.stats.connectionsCreated).toBe(2);
+    expect(client.stats.connectionsReused).toBe(4999);
+
+    client.close();
+});
+
+test('connection pool 10', async () => {
     const client = new MongoClient('mongodb://127.0.0.1?maxPoolSize=10');
 
     {

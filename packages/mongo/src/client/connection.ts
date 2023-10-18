@@ -35,6 +35,23 @@ export interface ConnectionRequest {
     nearest?: boolean;
 }
 
+export class MongoStats {
+    /**
+     * How many connections have been created.
+     */
+    connectionsCreated: number = 0;
+
+    /**
+     * How many connections have been reused.
+     */
+    connectionsReused: number = 0;
+
+    /**
+     * How many connection requests were queued because pool was full.
+     */
+    connectionsQueued: number = 0;
+}
+
 export class MongoConnectionPool {
     protected connectionId: number = 0;
     /**
@@ -48,8 +65,11 @@ export class MongoConnectionPool {
 
     protected lastError?: Error;
 
-    constructor(protected config: MongoClientConfig,
-                protected serializer: BSONBinarySerializer) {
+    constructor(
+        protected config: MongoClientConfig,
+        protected serializer: BSONBinarySerializer,
+        protected stats: MongoStats,
+    ) {
     }
 
     protected async waitForAllConnectionsToConnect(throws: boolean = false): Promise<void> {
@@ -123,6 +143,7 @@ export class MongoConnectionPool {
     }
 
     protected newConnection(host: Host): MongoConnection {
+        this.stats.connectionsCreated++;
         const connection = new MongoConnection(this.connectionId++, host, this.config, this.serializer, (connection) => {
             arrayRemoveItem(host.connections, connection);
             arrayRemoveItem(this.connections, connection);
@@ -139,6 +160,7 @@ export class MongoConnectionPool {
         if (this.queue.length) {
             const waiter = this.queue.shift();
             if (waiter) {
+                this.stats.connectionsReused++;
                 waiter(connection);
                 return;
             }
@@ -173,6 +195,7 @@ export class MongoConnectionPool {
                 if (!connection.host.isReadable()) continue;
             }
 
+            this.stats.connectionsReused++;
             connection.reserved = true;
             if (connection.cleanupTimeout) {
                 clearTimeout(connection.cleanupTimeout);
@@ -182,13 +205,14 @@ export class MongoConnectionPool {
             return connection;
         }
 
-        if (this.connections.length <= this.config.options.maxPoolSize) {
-            const connection = await this.createAdditionalConnectionForRequest(request);
+        if (this.connections.length < this.config.options.maxPoolSize) {
+            const connection = this.createAdditionalConnectionForRequest(request);
             connection.reserved = true;
             return connection;
         }
 
         return asyncOperation((resolve) => {
+            this.stats.connectionsQueued++;
             this.queue.push(resolve);
         });
     }
