@@ -11,20 +11,36 @@
 import { arrayRemoveItem, ProcessLock, ProcessLocker } from '@deepkit/core';
 import { createRpcMessage, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnections, RpcMessage, RpcMessageBuilder, RpcMessageRouteType } from '@deepkit/rpc';
 import {
+    brokerBusPublish,
+    brokerBusResponseHandleMessage,
+    brokerBusSubscribe,
     brokerDelete,
     brokerEntityFields,
     brokerGet,
     brokerIncrement,
     brokerLock,
     brokerLockId,
-    brokerPublish,
+    BrokerQueueMessageHandled,
+    BrokerQueuePublish,
+    BrokerQueueResponseHandleMessage,
+    BrokerQueueSubscribe,
     brokerResponseIncrement,
     brokerResponseIsLock,
-    brokerResponseSubscribeMessage,
     brokerSet,
-    brokerSubscribe,
-    BrokerType
+    BrokerType,
+    QueueMessage,
+    QueueMessageState
 } from './model.js';
+import cluster from 'cluster';
+import { closeSync, openSync, renameSync, writeSync } from 'fs';
+import { snapshotState } from './snaptshot.js';
+
+export interface Queue {
+    currentId: number;
+    name: string;
+    messages: QueueMessage[];
+    consumers: { con: BrokerConnection, handling: QueueMessage[], maxMessagesInParallel: number }[];
+}
 
 export class BrokerConnection extends RpcKernelBaseConnection {
     protected subscribedChannels: string[] = [];
@@ -48,7 +64,6 @@ export class BrokerConnection extends RpcKernelBaseConnection {
         for (const lock of this.locks.values()) {
             lock.unlock();
         }
-
     }
 
     protected async sendEntityFields(name: string) {
@@ -135,22 +150,46 @@ export class BrokerConnection extends RpcKernelBaseConnection {
                 });
                 break;
             }
+            case BrokerType.QueuePublish: {
+                const body = message.parseBody<BrokerQueuePublish>();
+                this.state.queuePublish(body.c, body.v, body.delay, body.priority);
+                response.ack();
+                break;
+            }
+            case BrokerType.QueueSubscribe: {
+                const body = message.parseBody<BrokerQueueSubscribe>();
+                this.state.queueSubscribe(body.c, this, body.maxParallel);
+                response.ack();
+                break;
+            }
+            case BrokerType.QueueUnsubscribe: {
+                const body = message.parseBody<BrokerQueueSubscribe>();
+                this.state.queueUnsubscribe(body.c, this);
+                response.ack();
+                break;
+            }
+            case BrokerType.QueueMessageHandled: {
+                const body = message.parseBody<BrokerQueueMessageHandled>();
+                this.state.queueMessageHandled(body.c, this, body.id, { error: body.error, success: body.success, delay: body.delay });
+                response.ack();
+                break;
+            }
             case BrokerType.Subscribe: {
-                const body = message.parseBody<brokerSubscribe>();
+                const body = message.parseBody<brokerBusSubscribe>();
                 this.state.subscribe(body.c, this);
                 this.subscribedChannels.push(body.c);
                 response.ack();
                 break;
             }
             case BrokerType.Unsubscribe: {
-                const body = message.parseBody<brokerSubscribe>();
+                const body = message.parseBody<brokerBusSubscribe>();
                 this.state.unsubscribe(body.c, this);
                 arrayRemoveItem(this.subscribedChannels, body.c);
                 response.ack();
                 break;
             }
             case BrokerType.Publish: {
-                const body = message.parseBody<brokerPublish>();
+                const body = message.parseBody<brokerBusPublish>();
                 this.state.publish(body.c, body.v);
                 response.ack();
                 break;
@@ -187,7 +226,39 @@ export class BrokerState {
     public subscriptions = new Map<string, BrokerConnection[]>();
     public entityFields = new Map<string, Map<string, number>>();
 
+    public queues = new Map<string, Queue>();
+
     public locker = new ProcessLocker();
+
+    public enableSnapshot = false;
+    public snapshotInterval = 15;
+    public snapshotPath = './broker-snapshot.bson';
+    public snapshotting = false;
+
+    protected lastSnapshotTimeout?: any;
+
+    protected snapshot() {
+        if (cluster.isMaster) {
+            this.snapshotting = true;
+            cluster.fork();
+
+            cluster.on('exit', (worker) => {
+                this.snapshotting = false;
+            });
+            return;
+        }
+
+        //we are in the worker now
+
+        const snapshotTempPath = this.snapshotPath + '.tmp';
+        //open file for writing, create if not exists, truncate if exists
+        const file = openSync(snapshotTempPath, 'w+');
+        snapshotState(this, (v) => writeSync(file, v));
+        closeSync(file);
+
+        //rename temp file to final file
+        renameSync(snapshotTempPath, this.snapshotPath);
+    }
 
     public getEntityFields(name: string): string[] {
         return Array.from(this.entityFields.get(name)?.keys() || []);
@@ -260,7 +331,7 @@ export class BrokerState {
     public publish(channel: string, v: Uint8Array) {
         const subscriptions = this.subscriptions.get(channel);
         if (!subscriptions) return;
-        const message = createRpcMessage<brokerResponseSubscribeMessage>(
+        const message = createRpcMessage<brokerBusResponseHandleMessage>(
             0, BrokerType.ResponseSubscribeMessage,
             { c: channel, v: v }, RpcMessageRouteType.server
         );
@@ -268,6 +339,77 @@ export class BrokerState {
         for (const connection of subscriptions) {
             connection.writer.write(message);
         }
+    }
+
+    protected getQueue(queueName: string) {
+        let queue = this.queues.get(queueName);
+        if (!queue) {
+            queue = { currentId: 0, name: queueName, messages: [], consumers: [] };
+            this.queues.set(queueName, queue);
+        }
+        return queue;
+    }
+
+    public queueSubscribe(queueName: string, connection: BrokerConnection, maxParallel: number) {
+        const queue = this.getQueue(queueName);
+        queue.consumers.push({ con: connection, handling: [], maxMessagesInParallel: 1 });
+    }
+
+    public queueUnsubscribe(queueName: string, connection: BrokerConnection) {
+        const queue = this.getQueue(queueName);
+        const index = queue.consumers.findIndex(v => v.con === connection);
+        if (index === -1) return;
+        queue.consumers.splice(index, 1);
+    }
+
+    public queuePublish(queueName: string, v: Uint8Array, delay?: number, priority?: number) {
+        const queue = this.getQueue(queueName);
+
+        const m: QueueMessage = { id: queue.currentId++, state: QueueMessageState.pending, tries: 0, v, delay: delay || 0, priority };
+        queue.messages.push(m);
+
+        if (m.delay > Date.now()) {
+            // todo: how to handle delay? many timeouts or one timeout?
+            return;
+        }
+
+        for (const consumer of queue.consumers) {
+            if (consumer.handling.length >= consumer.maxMessagesInParallel) continue;
+            consumer.handling.push(m);
+            m.tries++;
+            m.state = QueueMessageState.inFlight;
+            m.lastError = undefined;
+            consumer.con.writer.write(createRpcMessage<BrokerQueueResponseHandleMessage>(
+                0, BrokerType.QueueResponseHandleMessage,
+                { c: queueName, v, id: m.id }, RpcMessageRouteType.server
+            ));
+        }
+
+        //todo: handle queues messages and sending when new consumer connects
+    }
+
+    /**
+     * When a queue message has been sent to a consumer and the consumer answers.
+     */
+    public queueMessageHandled(queueName: string, connection: BrokerConnection, id: number, answer: { error?: string, success: boolean, delay?: number }) {
+        const queue = this.queues.get(queueName);
+        if (!queue) return;
+        const consumer = queue.consumers.find(v => v.con === connection);
+        if (!consumer) return;
+        const messageIdx = consumer.handling.findIndex(v => v.id === id);
+        if (messageIdx === -1) return;
+        const message = consumer.handling[messageIdx];
+        consumer.handling.splice(messageIdx, 1);
+
+        if (answer.error) {
+            message.state = QueueMessageState.error;
+        } else if (answer.success) {
+            message.state = QueueMessageState.done;
+        } else if (answer.delay) {
+            message.delay = Date.now() + answer.delay;
+        }
+
+        //todo: handle delays and retries
     }
 
     public set(id: string, data: Uint8Array) {

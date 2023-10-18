@@ -20,12 +20,12 @@ import {
     brokerIncrement,
     brokerLock,
     brokerLockId,
-    brokerPublish,
+    brokerBusPublish,
     brokerResponseIncrement,
     brokerResponseIsLock,
-    brokerResponseSubscribeMessage,
+    brokerBusResponseHandleMessage,
     brokerSet,
-    brokerSubscribe,
+    brokerBusSubscribe,
     BrokerType
 } from './model.js';
 import { ReceiveType, ReflectionClass, ReflectionKind, resolveReceiveType, Type, TypePropertySignature } from '@deepkit/type';
@@ -61,7 +61,7 @@ export class BrokerChannel<T> {
         const serializer = getBSONSerializer(undefined, this.type);
 
         const v = this.wrapped ? serializer({ v: data }) : serializer(data);
-        await this.client.sendMessage<brokerPublish>(BrokerType.Publish, { c: this.channel, v: v })
+        await this.client.sendMessage<brokerBusPublish>(BrokerType.Publish, { c: this.channel, v: v })
             .ackThenClose();
 
         return undefined;
@@ -88,7 +88,7 @@ export class BrokerChannel<T> {
         this.callbacks.push(parsedCallback);
 
         if (this.listener === 1) {
-            await this.client.sendMessage<brokerSubscribe>(BrokerType.Subscribe, { c: this.channel })
+            await this.client.sendMessage<brokerBusSubscribe>(BrokerType.Subscribe, { c: this.channel })
                 .ackThenClose();
         }
 
@@ -96,7 +96,7 @@ export class BrokerChannel<T> {
             this.listener--;
             arrayRemoveItem(this.callbacks, parsedCallback);
             if (this.listener === 0) {
-                await this.client.sendMessage<brokerSubscribe>(BrokerType.Unsubscribe, { c: this.channel })
+                await this.client.sendMessage<brokerBusSubscribe>(BrokerType.Unsubscribe, { c: this.channel })
                     .ackThenClose();
             }
         });
@@ -188,7 +188,7 @@ export class BrokerClient extends RpcBaseClient {
                 this.knownEntityFields.set(fields.name, fields.fields);
                 this.transporter.send(createRpcMessage(message.id, BrokerType.Ack, undefined, RpcMessageRouteType.server));
             } else if (message.type === BrokerType.ResponseSubscribeMessage) {
-                const body = message.parseBody<brokerResponseSubscribeMessage>();
+                const body = message.parseBody<brokerBusResponseHandleMessage>();
                 const channel = this.activeChannels.get(body.c);
                 if (!channel) return;
                 channel.next(body.v);

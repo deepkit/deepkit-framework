@@ -17,22 +17,26 @@ export interface BrokerLockOptions {
     timeout: number;
 }
 
+export type Release = () => Promise<void>;
+
 export interface BrokerAdapter {
-    lock(id: string, options: BrokerLockOptions): Promise<void>;
+    lock(id: string, options: BrokerLockOptions): Promise<undefined | Release>;
 
-    tryLock(id: string, options: BrokerLockOptions): Promise<boolean>;
-
-    release(id: string): Promise<void>;
+    tryLock(id: string, options: BrokerLockOptions): Promise<undefined | Release>;
 
     getCache(key: string, type: Type): Promise<any>;
 
     setCache(key: string, value: any, options: BrokerCacheOptions, type: Type): Promise<void>;
 
-    increase(key: string, value: any): Promise<void>;
+    increment(key: string, value: any): Promise<number>;
 
-    publish(key: string, message: any, type: Type): Promise<void>;
+    publish(name: string, message: any, type: Type): Promise<void>;
 
-    subscribe(key: string, callback: (message: any) => void, type: Type): Promise<{ unsubscribe: () => Promise<void> }>;
+    subscribe(name: string, callback: (message: any) => void, type: Type): Promise<Release>;
+
+    consume(name: string, callback: (message: any) => Promise<void>, options: { maxParallel: number }, type: Type): Promise<Release>;
+
+    produce(name: string, message: any, type: Type, options?: { delay?: number, priority?: number }): Promise<void>;
 
     disconnect(): Promise<void>;
 }
@@ -47,26 +51,76 @@ export interface BrokerCacheOptions {
 export class CacheError extends Error {
 }
 
-export type BrokerBusChannel<Type, Channel extends string, Parameters extends object = {}> = [Channel, Parameters, Type];
+export type BrokerBusChannel<Type, Name extends string, Parameters extends object = {}> = [Name, Parameters, Type];
 
 export type BrokerCacheKey<Type, Key extends string, Parameters extends object = {}> = [Key, Parameters, Type];
 
+export type BrokerQueueChannel<Type, Name extends string> = [Name, Type];
+
 export type CacheBuilder<T extends BrokerCacheKey<any, any, any>> = (parameters: T[1], options: BrokerCacheOptions) => T[2] | Promise<T[2]>;
+
+export class BrokerQueueMessage<T> {
+    public state: 'pending' | 'done' | 'failed' = 'pending';
+    public error?: Error;
+
+    public tries: number = 0;
+    public delayed: number = 0;
+
+    constructor(
+        public channel: string,
+        public data: T,
+    ) {
+    }
+
+    public failed(error: Error) {
+        this.state = 'failed';
+        this.error = error;
+    }
+
+    public delay(seconds: number) {
+        this.delayed = seconds;
+    }
+}
+
+
+export class BrokerQueue<T> {
+    constructor(
+        public name: string,
+        private adapter: BrokerAdapter,
+        private type: Type,
+    ) {
+    }
+
+    async produce<T>(message: T, options?: { delay?: number, priority?: number }): Promise<void> {
+        await this.adapter.produce(this.name, message, this.type, options);
+    }
+
+    async consume(callback: (message: BrokerQueueMessage<T>) => Promise<void> | void, options: { maxParallel?: number } = {}): Promise<Release> {
+        return await this.adapter.consume(this.name, async (message) => {
+            try {
+                await callback(message);
+            } catch (error: any) {
+                message.state = 'failed';
+                message.error = error;
+            }
+        }, Object.assign({maxParallel: 1}, options), this.type);
+    }
+}
 
 export class BrokerBus<T> {
     constructor(
-        private channel: string,
+        public name: string,
         private adapter: BrokerAdapter,
         private type: Type,
     ) {
     }
 
     async publish<T>(message: T) {
-        return this.adapter.publish(this.channel, message, this.type);
+        return this.adapter.publish(this.name, message, this.type);
     }
 
-    async subscribe(callback: (message: T) => void): Promise<{ unsubscribe: () => Promise<void> }> {
-        return this.adapter.subscribe(this.channel, callback, this.type);
+    async subscribe(callback: (message: T) => void): Promise<Release> {
+        return this.adapter.subscribe(this.name, callback, this.type);
     }
 }
 
@@ -94,9 +148,9 @@ export class BrokerCache<T extends BrokerCacheKey<any, any, any>> {
         await this.adapter.setCache(cacheKey, value, { ...this.options, ...options }, this.type);
     }
 
-    async increase(parameters: T[1], value: number) {
+    async increment(parameters: T[1], value: number) {
         const cacheKey = this.getCacheKey(parameters);
-        await this.adapter.increase(cacheKey, value);
+        await this.adapter.increment(cacheKey, value);
     }
 
     async get(parameters: T[1]): Promise<T[2]> {
@@ -113,7 +167,7 @@ export class BrokerCache<T extends BrokerCacheKey<any, any, any>> {
 }
 
 export class BrokerLock {
-    public acquired: boolean = false;
+    protected releaser?: Release;
 
     constructor(
         private id: string,
@@ -122,20 +176,24 @@ export class BrokerLock {
     ) {
     }
 
+    get acquired(): boolean {
+        return this.releaser !== undefined;
+    }
+
     async acquire(): Promise<void> {
-        await this.adapter.lock(this.id, this.options);
-        this.acquired = true;
+        this.releaser = await this.adapter.lock(this.id, this.options);
     }
 
     async try(): Promise<boolean> {
         if (this.acquired) return true;
-
-        return this.acquired = await this.adapter.tryLock(this.id, this.options);
+        this.releaser = await this.adapter.tryLock(this.id, this.options);
+        return this.acquired;
     }
 
     async release(): Promise<void> {
-        this.acquired = false;
-        await this.adapter.release(this.id);
+        if (!this.releaser) return;
+        await this.releaser();
+        this.releaser = undefined;
     }
 }
 
@@ -146,7 +204,7 @@ export class Broker {
     }
 
     public lock(id: string, options: Partial<BrokerLockOptions> = {}): BrokerLock {
-        return new BrokerLock(id, this.adapter, Object.assign({ ttl: 60*2, timeout: 30 }, options));
+        return new BrokerLock(id, this.adapter, Object.assign({ ttl: 60 * 2, timeout: 30 }, options));
     }
 
     public disconnect(): Promise<void> {
@@ -199,11 +257,14 @@ export class Broker {
         if (type.kind !== ReflectionKind.tuple) throw new CacheError(`Invalid type given`);
         if (type.types[0].type.kind !== ReflectionKind.literal) throw new CacheError(`Invalid type given`);
         const path = String(type.types[0].type.literal);
-
         return new BrokerBus(path, this.adapter, type.types[2].type);
     }
 
-    public queue<T>(channel: string, type?: ReceiveType<T>) {
-
+    public queue<T extends BrokerQueueChannel<any, any>>(type?: ReceiveType<T>): BrokerQueue<T[1]> {
+        type = resolveReceiveType(type);
+        if (type.kind !== ReflectionKind.tuple) throw new CacheError(`Invalid type given`);
+        if (type.types[0].type.kind !== ReflectionKind.literal) throw new CacheError(`Invalid type given`);
+        const name = String(type.types[0].type.literal);
+        return new BrokerQueue(name, this.adapter, type.types[1].type);
     }
 }

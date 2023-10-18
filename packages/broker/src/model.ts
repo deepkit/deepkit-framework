@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export enum BrokerType {
+export const enum BrokerType {
     //the first 100 are reserved
     Ack,
     Error,
@@ -33,6 +33,12 @@ export enum BrokerType {
     ResponseLock,
     ResponseLockFailed,
     ResponseIsLock,
+
+    QueuePublish,
+    QueueSubscribe,
+    QueueUnsubscribe,
+    QueueResponseHandleMessage,
+    QueueMessageHandled,
 
     PublishEntityFields, //internal set of fields will be set. if changed, it will be broadcasted to each connected client
     UnsubscribeEntityFields, //when fields set changes, the new set will be broadcasted to each connected client
@@ -67,18 +73,49 @@ export interface brokerGet {
     n: string;
 }
 
-export interface brokerPublish {
+export interface brokerBusPublish {
     c: string,
     v: Uint8Array,
 }
 
-export interface brokerSubscribe {
+export interface brokerBusSubscribe {
     c: string;
 }
 
-export interface brokerResponseSubscribeMessage {
+export interface brokerBusResponseHandleMessage {
     c: string,
     v: Uint8Array,
+}
+
+export interface BrokerQueuePublish {
+    c: string;
+    delay?: number;
+    priority?: number;
+    v: Uint8Array;
+}
+
+export interface BrokerQueueSubscribe {
+    c: string;
+    maxParallel: number;
+}
+
+export interface BrokerQueueUnsubscribe {
+    c: string;
+}
+
+export interface BrokerQueueResponseHandleMessage {
+    c: string;
+    id: number;
+    v: Uint8Array;
+}
+
+// consumer handled the message and sends back the result
+export interface BrokerQueueMessageHandled {
+    c: string;
+    id: number;
+    success: boolean;
+    error?: string;
+    delay?: number;
 }
 
 export interface brokerLockId {
@@ -98,4 +135,32 @@ export interface brokerResponseIsLock {
 export interface brokerEntityFields {
     name: string,
     fields: string[],
+}
+
+export enum SnapshotEntryType {
+    queue,
+}
+
+export type SnapshotEntry = {
+    type: SnapshotEntryType.queue,
+    currentId: number;
+    name: string;
+    amount: number;
+}
+
+export enum QueueMessageState {
+    pending,
+    inFlight,
+    done,
+    error,
+}
+
+export interface QueueMessage {
+    id: number;
+    state: QueueMessageState;
+    delay: number;
+    priority?: number;
+    lastError?: string;
+    tries: number;
+    v: Uint8Array;
 }
