@@ -31,8 +31,8 @@ export enum MongoConnectionStatus {
 }
 
 export interface ConnectionRequest {
-    writable?: boolean;
-    nearest?: boolean;
+    readonly: boolean;
+    nearest: boolean;
 }
 
 export class MongoStats {
@@ -59,7 +59,7 @@ export class MongoConnectionPool {
      */
     public connections: MongoConnection[] = [];
 
-    protected queue: ((connection: MongoConnection) => void)[] = [];
+    protected queue: {resolve: (connection: MongoConnection) => void, request: ConnectionRequest}[] = [];
 
     protected nextConnectionClose: Promise<boolean> = Promise.resolve(true);
 
@@ -128,11 +128,11 @@ export class MongoConnectionPool {
     protected findHostForRequest(hosts: Host[], request: ConnectionRequest): Host {
         //todo, handle request.nearest
         for (const host of hosts) {
-            if (request.writable && host.isWritable()) return host;
-            if (!request.writable && host.isReadable()) return host;
+            if (!request.readonly && host.isWritable()) return host;
+            if (request.readonly && host.isReadable()) return host;
         }
 
-        throw new MongoError(`Could not find host for connection request. (writable=${request.writable}, hosts=${hosts.length}). Last Error: ${this.lastError}`);
+        throw new MongoError(`Could not find host for connection request. (readonly=${request.readonly}, hosts=${hosts.length}). Last Error: ${this.lastError}`);
     }
 
     protected createAdditionalConnectionForRequest(request: ConnectionRequest): MongoConnection {
@@ -157,13 +157,17 @@ export class MongoConnectionPool {
     }
 
     protected release(connection: MongoConnection) {
-        if (this.queue.length) {
-            const waiter = this.queue.shift();
-            if (waiter) {
-                this.stats.connectionsReused++;
-                waiter(connection);
-                return;
-            }
+        for (let i = 0; i < this.queue.length; i++) {
+            const waiter = this.queue[i];
+            if (!this.matchRequest(connection, waiter.request)) continue;
+
+            this.stats.connectionsReused++;
+            this.queue.splice(i, 1);
+            waiter.resolve(connection);
+            //we don't set reserved/set cleanupTimeout,
+            //since the connection is already reserved and the timeout
+            //is only set when the connection actually starting idling.
+            return;
         }
 
         connection.reserved = false;
@@ -176,10 +180,23 @@ export class MongoConnectionPool {
         }, this.config.options.maxIdleTimeMS);
     }
 
+    protected matchRequest(connection: MongoConnection, request: ConnectionRequest): boolean {
+        if (!request.readonly && !connection.host.isWritable()) return false;
+
+        if (!request.readonly) {
+            if (connection.host.isSecondary() && !this.config.options.secondaryReadAllowed) return false;
+            if (!connection.host.isReadable()) return false;
+        }
+
+        return true;
+    }
+
     /**
      * Returns an existing or new connection, that needs to be released once done using it.
      */
-    async getConnection(request: ConnectionRequest = {}): Promise<MongoConnection> {
+    async getConnection(request: Partial<ConnectionRequest> = {}): Promise<MongoConnection> {
+        const r = Object.assign({ readonly: false, nearest: false }, request) as ConnectionRequest;
+
         await this.ensureHostsConnected(true);
 
         for (const connection of this.connections) {
@@ -188,12 +205,7 @@ export class MongoConnectionPool {
 
             if (request.nearest) throw new Error('Nearest not implemented yet');
 
-            if (request.writable && !connection.host.isWritable()) continue;
-
-            if (!request.writable) {
-                if (connection.host.isSecondary() && !this.config.options.secondaryReadAllowed) continue;
-                if (!connection.host.isReadable()) continue;
-            }
+            if (!this.matchRequest(connection, r)) continue;
 
             this.stats.connectionsReused++;
             connection.reserved = true;
@@ -206,14 +218,14 @@ export class MongoConnectionPool {
         }
 
         if (this.connections.length < this.config.options.maxPoolSize) {
-            const connection = this.createAdditionalConnectionForRequest(request);
+            const connection = this.createAdditionalConnectionForRequest(r);
             connection.reserved = true;
             return connection;
         }
 
         return asyncOperation((resolve) => {
             this.stats.connectionsQueued++;
-            this.queue.push(resolve);
+            this.queue.push({resolve, request: r});
         });
     }
 }

@@ -62,6 +62,6 @@ export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Comman
     }
 
     needsWritableHost(): boolean {
-        return false;
+        return true;
     }
 }

@@ -54,7 +54,7 @@ export class MongoClient {
     /**
      * Returns an existing or new connection, that needs to be released once done using it.
      */
-    async getConnection(request: ConnectionRequest = {}, transaction?: MongoDatabaseTransaction): Promise<MongoConnection> {
+    async getConnection(request: Partial<ConnectionRequest> = {}, transaction?: MongoDatabaseTransaction): Promise<MongoConnection> {
         if (transaction && transaction.connection) return transaction.connection;
         const connection = await this.connectionPool.getConnection(request);
         if (transaction) {
@@ -73,7 +73,7 @@ export class MongoClient {
 
     public async execute<T extends Command>(command: T): Promise<ReturnType<T['execute']>> {
         const maxRetries = 10;
-        const request = { writable: command.needsWritableHost() };
+        const request = { readonly: !command.needsWritableHost() };
 
         for (let i = 1; i <= maxRetries; i++) {
             const connection = await this.connectionPool.getConnection(request);

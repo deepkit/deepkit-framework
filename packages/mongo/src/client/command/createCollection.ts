@@ -35,6 +35,6 @@ export class CreateCollectionCommand<T extends ReflectionClass<any>> extends Com
     }
 
     needsWritableHost(): boolean {
-        return false;
+        return true;
     }
 }

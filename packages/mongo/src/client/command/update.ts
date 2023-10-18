@@ -51,6 +51,6 @@ export class UpdateCommand<T extends ReflectionClass<any>> extends Command {
     }
 
     needsWritableHost(): boolean {
-        return false;
+        return true;
     }
 }
