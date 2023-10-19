@@ -11,6 +11,7 @@ import {
     PutObjectCommand,
     S3Client,
     S3ClientConfigType,
+    ObjectCannedACL
 } from '@aws-sdk/client-s3';
 import { normalizePath } from 'typedoc';
 
@@ -76,7 +77,7 @@ export class FilesystemAwsS3Adapter implements FilesystemAdapter {
         return `https://${this.options.bucket}.s3.${this.options.region}.amazonaws.com/${this.getRemotePath(path)}`;
     }
 
-    protected visibilityToAcl(visibility: FileVisibility): string {
+    protected visibilityToAcl(visibility: FileVisibility): ObjectCannedACL {
         if (visibility === 'public') return 'public-read';
         return 'private';
     }
