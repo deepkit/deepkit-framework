@@ -16,7 +16,8 @@
     "baseUrl": ".",
     "outDir": "./dist",
     "jsx": "react-jsx",
-    "jsxImportSource": "@deepkit/framework"
+    "jsxImportSource": "@deepkit/framework",
+    "types": []
   },
   "reflection": true,
   "include": [

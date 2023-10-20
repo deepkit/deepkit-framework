@@ -20,6 +20,12 @@
     "lib": [
       "ES2022",
       "dom"
+    ],
+    "types": [
+      "dagre",
+      "file-saver",
+      "jasmine",
+      "node"
     ]
   },
   "angularCompilerOptions": {

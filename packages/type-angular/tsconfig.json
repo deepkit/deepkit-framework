@@ -14,7 +14,8 @@
     "baseUrl": ".",
     "outDir": "./dist",
     "declaration": true,
-    "composite": true
+    "composite": true,
+    "types": []
   },
   "include": [
     "src",

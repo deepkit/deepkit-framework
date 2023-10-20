@@ -25,5 +25,8 @@
       "**/tests/**/*.spec.ts"
     ]
   },
-  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
+  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7",
+  "devDependencies": {
+    "@types/node": "20.8.7"
+  }
 }

@@ -6,13 +6,14 @@
     "experimentalDecorators": true,
     "downlevelIteration": true,
     "sourceMap": true,
-    "declaration": true,
+    "declaration": false,
     "strict": true,
     "target": "es2015",
     "noImplicitAny": true,
     "esModuleInterop": true,
-    "typeRoots": [
-      "node_modules/@types"
+    "types": [
+      "fs-extra",
+      "node"
     ],
     "lib": [
       "es2018",
@@ -25,13 +26,11 @@
     },
     "composite": true
   },
-  "include": [
-    "./src",
-    "create-font.ts"
-  ],
   "angularCompilerOptions": {
-    "fullTemplateTypeCheck": true,
-    "strictInjectionParameters": true
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true
   },
   "references": [
     {

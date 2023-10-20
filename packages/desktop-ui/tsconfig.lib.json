@@ -1,7 +1,10 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "declarationMap": true
+    "declaration": true,
+    "declarationMap": true,
+    "inlineSources": true,
+    "types": []
   },
   "angularCompilerOptions": {
     "skipTemplateCodegen": true,

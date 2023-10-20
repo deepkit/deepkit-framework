@@ -1,6 +1,11 @@
 {
   "packages": [
-    "packages/*"
+    "packages/*",
+    "!packages/benchmark",
+    "!packages/fs",
+    "!packages/example-app",
+    "!packages/orm-browser-example",
+    "!packages/framework-examples"
   ],
   "version": "1.0.1-alpha.103"
 }

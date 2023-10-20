@@ -12,6 +12,9 @@ import { NgModule } from '@angular/core';
 import { LabelComponent, LabelGridComponent } from './label.component';
 import { SectionHeaderComponent } from './section-header.component';
 
+export * from './label.component';
+export * from './section-header.component';
+
 @NgModule({
     imports: [],
     exports: [
