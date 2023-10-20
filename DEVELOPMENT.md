@@ -13,7 +13,6 @@ Node >= v18 is needed.
 git clone https://github.com/deepkit/deepkit-framework.git
 cd deepkit-framework
 npm install
-npm run install-compiler
 ```
 
 When installation is finished you can build the packages:
