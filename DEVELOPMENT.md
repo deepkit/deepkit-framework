@@ -65,12 +65,6 @@ deepkit-framework » npm run tsc-watch
 deepkit-framework » npm run tsc-watch:esm
 ```
 
-## Important
-
-- When one of the package.json files is modified (adding, removing or updating dependencies) you will need to re-run the
-  `npm bootstrap` and `npm link` commands from above
-- Never install NPM dependencies directly inside of any of the packages in the `packages/*` directory.
-
 ## Using deepkit-framework checkout with own project
 
 This describes one way how to use a development version (git checkout) or your own fork of deepkit-framework with your
