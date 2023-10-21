@@ -21,7 +21,7 @@ class RpcController {
     actions = new Map<string, RpcAction>();
 
     getPath(): string {
-        return this.definition ? this.definition.path : this.name || '';
+        return this.definition ? this.definition.path : this.name;
     }
 }
 
