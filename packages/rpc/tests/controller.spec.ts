@@ -8,7 +8,7 @@ import { BehaviorSubject } from 'rxjs';
 import { getClassName, sleep } from '@deepkit/core';
 import { ProgressTracker } from '@deepkit/core-rxjs';
 
-test('default controller metadata name', () => {
+test('default name', () => {
     @rpc.controller()
     class Controller {}
 
