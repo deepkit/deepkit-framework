@@ -13,7 +13,8 @@ import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecora
 import { ControllerDefinition } from './model.js';
 
 class RpcController {
-    name?: string;
+    // Defaults to the name of the class
+    name: string;
 
     definition?: ControllerDefinition<any>;
 
