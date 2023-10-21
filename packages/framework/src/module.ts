@@ -13,7 +13,6 @@ import { EventDispatcher } from '@deepkit/event';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { ApplicationServer, ApplicationServerListener } from './application-server.js';
-import { BrokerModule } from './broker/broker.module.js';
 import { DebugRouterController } from './cli/debug-router.js';
 import { DebugDIController } from './cli/debug-di.js';
 import { ServerStartController } from './cli/server-start.js';
@@ -21,7 +20,7 @@ import { DebugController } from './debug/debug.controller.js';
 import { registerDebugHttpController } from './debug/http-debug.controller.js';
 import { http, HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
 import { InjectorContext, injectorReference, ProviderWithScope, Token } from '@deepkit/injector';
-import { FrameworkConfig } from './module.config.js';
+import { BrokerConfig, FrameworkConfig } from './module.config.js';
 import { LoggerInterface } from '@deepkit/logger';
 import { SessionHandler } from './session.js';
 import { RpcServer, WebWorkerFactory } from './worker.js';
@@ -44,6 +43,9 @@ import { FilesystemRegistry, PublicFilesystem } from './filesystem.js';
 import { Filesystem } from '@deepkit/filesystem';
 import { MediaController } from './debug/media.controller.js';
 import { DebugHttpController } from './debug/debug-http.controller.js';
+import { BrokerServer } from './broker/broker.js';
+import { BrokerListener } from './broker/listener.js';
+import { Broker, BrokerDeepkitAdapter } from '@deepkit/broker';
 
 export class FrameworkModule extends createModule({
     config: FrameworkConfig,
@@ -54,6 +56,7 @@ export class FrameworkModule extends createModule({
         RpcServer,
         MigrationProvider,
         DebugController,
+        BrokerServer,
         FilesystemRegistry,
         { provide: DatabaseRegistry, useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic) },
         {
@@ -71,6 +74,12 @@ export class FrameworkModule extends createModule({
                 }
 
                 return kernel;
+            }
+        },
+
+        {
+            provide: Broker, useFactory(config: BrokerConfig) {
+                return new Broker(new BrokerDeepkitAdapter({ servers: [{ url: config.host }] }));
             }
         },
 
@@ -94,6 +103,7 @@ export class FrameworkModule extends createModule({
     listeners: [
         ApplicationServerListener,
         DatabaseListener,
+        BrokerListener,
     ],
     controllers: [
         ServerStartController,
@@ -126,12 +136,13 @@ export class FrameworkModule extends createModule({
         RpcKernelBaseConnection,
         ConnectionWriter,
 
-        BrokerModule,
+        Broker,
+        BrokerServer,
+
         HttpModule,
     ]
 }, 'framework') {
     imports = [
-        new BrokerModule(),
         new HttpModule(),
     ];
 

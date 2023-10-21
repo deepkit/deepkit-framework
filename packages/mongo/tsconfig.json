@@ -30,9 +30,6 @@
       "path": "../core/tsconfig.json"
     },
     {
-      "path": "../crypto/tsconfig.json"
-    },
-    {
       "path": "../orm/tsconfig.json"
     },
     {

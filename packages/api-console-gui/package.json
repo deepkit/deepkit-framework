@@ -38,7 +38,6 @@
     "@deepkit/bson": "^1.0.1-alpha.102",
     "@deepkit/core": "^1.0.1-alpha.100",
     "@deepkit/core-rxjs": "^1.0.1-alpha.100",
-    "@deepkit/crypto": "^1.0.1-alpha.89",
     "@deepkit/desktop-ui": "^1.0.1-alpha.102",
     "@deepkit/event": "^1.0.1-alpha.102",
     "@deepkit/injector": "^1.0.1-alpha.102",

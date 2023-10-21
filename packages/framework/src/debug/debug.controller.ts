@@ -63,11 +63,11 @@ export class DebugController implements DebugControllerInterface {
         if (!this.stopwatchStore) throw new Error('not enabled');
 
         const subject = new Subject<Uint8Array>();
-        const sub = await this.stopwatchStore.frameDataChannel.subscribe((v) => {
+        const close = await this.stopwatchStore.frameDataChannel.subscribe((v) => {
             subject.next(v);
         });
         subject.subscribe().add(() => {
-            sub.unsubscribe();
+            close();
         });
         return subject;
     }
@@ -77,11 +77,11 @@ export class DebugController implements DebugControllerInterface {
         if (!this.stopwatchStore) throw new Error('not enabled');
 
         const subject = new Subject<Uint8Array>();
-        const sub = await this.stopwatchStore.frameChannel.subscribe((v) => {
+        const close = await this.stopwatchStore.frameChannel.subscribe((v) => {
             subject.next(v);
         });
         subject.subscribe().add(() => {
-            sub.unsubscribe();
+            close();
         });
         return subject;
     }

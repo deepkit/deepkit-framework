@@ -15,9 +15,6 @@
       "path": "../core-rxjs/tsconfig.esm.json"
     },
     {
-      "path": "../crypto/tsconfig.json"
-    },
-    {
       "path": "../injector/tsconfig.esm.json"
     },
     {

@@ -22,6 +22,8 @@ export type Release = () => Promise<void>;
 export interface BrokerAdapter {
     lock(id: string, options: BrokerLockOptions): Promise<undefined | Release>;
 
+    isLocked(id: string): Promise<boolean>;
+
     tryLock(id: string, options: BrokerLockOptions): Promise<undefined | Release>;
 
     getCache(key: string, type: Type): Promise<any>;
@@ -51,7 +53,7 @@ export interface BrokerCacheOptions {
 export class CacheError extends Error {
 }
 
-export type BrokerBusChannel<Type, Name extends string, Parameters extends object = {}> = [Name, Parameters, Type];
+export type BrokerBusChannel<Type, Name extends string> = [Name, Type];
 
 export type BrokerCacheKey<Type, Key extends string, Parameters extends object = {}> = [Key, Parameters, Type];
 
@@ -103,7 +105,7 @@ export class BrokerQueue<T> {
                 message.state = 'failed';
                 message.error = error;
             }
-        }, Object.assign({maxParallel: 1}, options), this.type);
+        }, Object.assign({ maxParallel: 1 }, options), this.type);
     }
 }
 
@@ -166,6 +168,10 @@ export class BrokerCache<T extends BrokerCacheKey<any, any, any>> {
     }
 }
 
+export class BrokerLockError extends Error {
+
+}
+
 export class BrokerLock {
     protected releaser?: Release;
 
@@ -176,20 +182,48 @@ export class BrokerLock {
     ) {
     }
 
+    /**
+     * Returns true if the current lock object is the holder of the lock.
+     *
+     * This does not check whether the lock is acquired by someone else.
+     */
     get acquired(): boolean {
         return this.releaser !== undefined;
     }
 
-    async acquire(): Promise<void> {
+    /**
+     * Acquires the lock. If the lock is already acquired by someone else, this method waits until the lock is released.
+     *
+     * @throws BrokerLockError when lock is already acquired by this object.
+     */
+    async acquire(): Promise<this> {
+        if (this.releaser) throw new BrokerLockError(`Lock already acquired. Call release first.`);
         this.releaser = await this.adapter.lock(this.id, this.options);
+        return this;
     }
 
-    async try(): Promise<boolean> {
-        if (this.acquired) return true;
+    /**
+     * Checks if the lock is acquired by someone else.
+     */
+    async isReserved(): Promise<boolean> {
+        return await this.adapter.isLocked(this.id);
+    }
+
+    /**
+     * Tries to acquire the lock.
+     * If the lock is already acquired, nothing happens.
+     *
+     * @throws BrokerLockError when lock is already acquired by this object.
+     */
+    async try(): Promise<this | undefined> {
+        if (this.releaser) throw new BrokerLockError(`Lock already acquired. Call release first.`);
         this.releaser = await this.adapter.tryLock(this.id, this.options);
-        return this.acquired;
+        return this.releaser ? this : undefined;
     }
 
+    /**
+     * Releases the lock.
+     */
     async release(): Promise<void> {
         if (!this.releaser) return;
         await this.releaser();
@@ -203,6 +237,11 @@ export class Broker {
     ) {
     }
 
+    /**
+     * Creates a new BrokerLock for the given id and options.
+     *
+     * The object returned can be used to acquire and release the lock.
+     */
     public lock(id: string, options: Partial<BrokerLockOptions> = {}): BrokerLock {
         return new BrokerLock(id, this.adapter, Object.assign({ ttl: 60 * 2, timeout: 30 }, options));
     }
@@ -243,21 +282,26 @@ export class Broker {
             type = resolveReceiveType(type);
         }
 
-        const cache = this.adapter.getCache(key, type);
+        const cache = await this.adapter.getCache(key, type);
         if (cache !== undefined) return cache;
 
         const options: BrokerCacheOptions = { ttl: 30, tags: [] };
-        const value = builder(options);
+        const value = await builder(options);
         await this.adapter.setCache(key, value, options, type);
         return value;
     }
 
-    public bus<T extends BrokerBusChannel<any, any>>(type?: ReceiveType<T>): BrokerBus<T[2]> {
+    public bus<T>(path: string, type?: ReceiveType<T>): BrokerBus<T> {
+        type = resolveReceiveType(type);
+        return new BrokerBus(path, this.adapter, type);
+    }
+
+    public busChannel<T extends BrokerBusChannel<any, any>>(type?: ReceiveType<T>): BrokerBus<T[1]> {
         type = resolveReceiveType(type);
         if (type.kind !== ReflectionKind.tuple) throw new CacheError(`Invalid type given`);
         if (type.types[0].type.kind !== ReflectionKind.literal) throw new CacheError(`Invalid type given`);
         const path = String(type.types[0].type.literal);
-        return new BrokerBus(path, this.adapter, type.types[2].type);
+        return new BrokerBus(path, this.adapter, type.types[1].type);
     }
 
     public queue<T extends BrokerQueueChannel<any, any>>(type?: ReceiveType<T>): BrokerQueue<T[1]> {

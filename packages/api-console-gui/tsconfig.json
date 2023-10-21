@@ -46,9 +46,6 @@
       "path": "../core-rxjs/tsconfig.json"
     },
     {
-      "path": "../crypto/tsconfig.json"
-    },
-    {
       "path": "../injector/tsconfig.json"
     },
     {

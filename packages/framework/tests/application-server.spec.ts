@@ -7,7 +7,6 @@ import { ConsoleTransport, Logger, MemoryLoggerTransport } from '@deepkit/logger
 import { FrameworkModule } from '../src/module.js';
 import { RpcServer, RpcServerInterface, WebWorker } from '../src/worker.js';
 import { http, HttpRequest } from '@deepkit/http';
-import { BrokerModule } from '../src/broker/broker.module.js';
 import { App } from '@deepkit/app';
 import { sleep } from '@deepkit/core';
 
@@ -81,8 +80,8 @@ describe('application-server', () => {
             controllers: [MyController],
             imports: [
                 new FrameworkModule()
-                    .setup((module) => {
-                        module.getImportedModuleByClass(BrokerModule).configure({ startOnBootstrap: false });
+                    .setup((module, config) => {
+                        config.broker.startOnBootstrap = false;
                     })
             ]
         });

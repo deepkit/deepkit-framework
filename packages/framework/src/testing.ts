@@ -13,12 +13,13 @@ import { ClassType } from '@deepkit/core';
 import { ConsoleTransport, Logger, LogMessage, MemoryLoggerTransport } from '@deepkit/logger';
 import { Database, DatabaseRegistry, MemoryDatabaseAdapter } from '@deepkit/orm';
 import { ApplicationServer } from './application-server.js';
-import { Broker, BrokerServer, DirectBroker } from './broker/broker.js';
+import { BrokerServer } from './broker/broker.js';
+import { BrokerDeepkitAdapter, Broker } from '@deepkit/broker';
 import { injectorReference } from '@deepkit/injector';
 import { App, AppModule, RootAppModule, RootModuleDefinition } from '@deepkit/app';
 import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker.js';
-import { HttpKernel, MemoryHttpResponse, RequestBuilder } from '@deepkit/http';
-import { RpcClient } from '@deepkit/rpc';
+import { MemoryHttpResponse, RequestBuilder } from '@deepkit/http';
+import { RpcClient, RpcDirectClientAdapter } from '@deepkit/rpc';
 import { FrameworkModule } from './module.js';
 
 /**
@@ -85,7 +86,8 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
     module.addProvider(MemoryLoggerTransport);
     module.addProvider({
         provide: Broker, useFactory: (server: BrokerMemoryServer) => {
-            return new DirectBroker(server.kernel);
+            const transport = new RpcDirectClientAdapter(server.kernel);
+            return new Broker(new BrokerDeepkitAdapter({ servers: [{ url: '', transport }] }));
         }
     });
 

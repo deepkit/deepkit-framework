@@ -16,8 +16,8 @@ export class FileStopwatchStore extends StopwatchStore {
     protected lastId: number = -1;
     protected lastContext: number = -1;
 
-    public frameChannel = this.broker.channel<Uint8Array>('_debug/frames');
-    public frameDataChannel = this.broker.channel<Uint8Array>('_debug/frames-data');
+    public frameChannel = this.broker.bus<Uint8Array>('_debug/frames');
+    public frameDataChannel = this.broker.bus<Uint8Array>('_debug/frames-data');
 
     protected framesPath: string = join(this.config.varPath, this.config.debugStorePath, 'frames.bin');
     protected framesDataPath: string = join(this.config.varPath, this.config.debugStorePath, 'frames-data.bin');

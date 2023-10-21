@@ -55,9 +55,6 @@
       "path": "../core-rxjs/tsconfig.json"
     },
     {
-      "path": "../crypto/tsconfig.json"
-    },
-    {
       "path": "../event/tsconfig.json"
     },
     {

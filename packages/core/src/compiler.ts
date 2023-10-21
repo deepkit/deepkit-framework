@@ -84,7 +84,11 @@ export class CompilerContext {
     }
 
     raw(functionCode: string): Function {
-        return new Function(...this.context.keys(), `'use strict';\n` + functionCode)(...this.context.values());
+        try {
+            return new Function(...this.context.keys(), `'use strict';\n` + functionCode)(...this.context.values());
+        } catch (error) {
+            throw new Error('Could not build function: ' + error + functionCode);
+        }
     }
 
     protected format(code: string): string {

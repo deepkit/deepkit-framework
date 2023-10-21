@@ -8,10 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import * as crypto from '@deepkit/crypto';
 import { CustomError } from '@deepkit/core';
 
-const { randomBytes } = crypto;
 
 let PROCESS_UNIQUE: Uint8Array | undefined = undefined;
 
@@ -20,7 +18,7 @@ export class BSONError extends CustomError {
 
 function getUnique(): Uint8Array {
     if (PROCESS_UNIQUE) return PROCESS_UNIQUE;
-    PROCESS_UNIQUE = randomBytes(5);
+    PROCESS_UNIQUE = crypto.getRandomValues(new Uint8Array(5));
     return PROCESS_UNIQUE;
 }
 

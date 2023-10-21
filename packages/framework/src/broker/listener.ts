@@ -8,13 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AppLocker } from './app-locker.js';
-import { createModule } from '@deepkit/app';
 import { eventDispatcher } from '@deepkit/event';
 import { onServerMainBootstrap, onServerMainShutdown } from '../application-server.js';
-import { BrokerConfig } from './broker.config.js';
-import { Broker, BrokerServer } from './broker.js';
+import { BrokerServer } from './broker.js';
 import { LoggerInterface } from '@deepkit/logger';
+import { Broker } from '@deepkit/broker';
+import { BrokerConfig } from '../module.config.js';
 
 export class BrokerListener {
     constructor(
@@ -41,22 +40,4 @@ export class BrokerListener {
         }
         await this.broker.disconnect();
     }
-}
-
-export class BrokerModule extends createModule({
-    listeners: [
-        BrokerListener
-    ],
-    config: BrokerConfig,
-    providers: [
-        Broker,
-        AppLocker,
-        BrokerServer,
-    ],
-    exports: [
-        Broker,
-        AppLocker,
-        BrokerServer,
-    ]
-}, 'broker') {
 }

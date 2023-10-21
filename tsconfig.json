@@ -8,9 +8,6 @@
       "path": "packages/core-rxjs/tsconfig.json"
     },
     {
-      "path": "packages/crypto/tsconfig.json"
-    },
-    {
       "path": "packages/api-console-api/tsconfig.json"
     },
     {

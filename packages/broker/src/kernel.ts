@@ -214,7 +214,8 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             }
             case BrokerType.Get: {
                 const body = message.parseBody<brokerGet>();
-                response.replyBinary(BrokerType.ResponseGet, this.state.get(body.n));
+                const v = this.state.get(body.n);
+                response.replyBinary(BrokerType.ResponseGet, v);
                 break;
             }
         }

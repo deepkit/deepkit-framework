@@ -1,13 +1,12 @@
-import { BaseBroker } from '../broker/broker.js';
 import { eventDispatcher } from '@deepkit/event';
 import { onServerMainBootstrap, onServerMainShutdown } from '../application-server.js';
-import { RpcTcpClientAdapter, RpcTcpServer } from '@deepkit/rpc-tcp';
-import { BrokerKernel } from '@deepkit/broker';
+import { RpcTcpServer } from '@deepkit/rpc-tcp';
+import { Broker, BrokerKernel, BrokerDeepkitAdapter } from '@deepkit/broker';
 import { FrameworkConfig } from '../module.config.js';
 
-export class DebugBroker extends BaseBroker {
+export class DebugBroker extends Broker {
     constructor(brokerHost: FrameworkConfig['debugBrokerHost']) {
-        super(new RpcTcpClientAdapter(brokerHost));
+        super(new BrokerDeepkitAdapter({ servers: [{ url: brokerHost }] }));
     }
 }
 

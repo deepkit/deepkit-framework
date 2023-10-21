@@ -26,7 +26,6 @@
   "peerDependencies": {
     "@deepkit/bson": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/crypto": "^1.0.1-alpha.13",
     "@deepkit/orm": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13"
   },
@@ -36,7 +35,6 @@
   "devDependencies": {
     "@deepkit/bson": "^1.0.1-alpha.102",
     "@deepkit/core": "^1.0.1-alpha.100",
-    "@deepkit/crypto": "^1.0.1-alpha.89",
     "@deepkit/orm": "^1.0.1-alpha.102",
     "@deepkit/orm-integration": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.102",
