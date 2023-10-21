@@ -38,7 +38,7 @@ export class RpcAction {
 class RpcClass {
     t = new RpcController;
 
-    controller(nameOrDefinition: string | ControllerDefinition<any>) {
+    controller(nameOrDefinition?: string | ControllerDefinition<any>) {
         if ('string' === typeof nameOrDefinition) {
             this.t.name = nameOrDefinition;
         } else {
@@ -48,6 +48,10 @@ class RpcClass {
 
     addAction(name: string, action: RpcAction) {
         this.t.actions.set(name, action);
+    }
+
+    onDecorator(classType: ClassType) {
+        this.t.name ||= classType.name;
     }
 }
 
