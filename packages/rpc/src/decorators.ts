@@ -14,7 +14,7 @@ import { ControllerDefinition } from './model.js';
 
 class RpcController {
     // Defaults to the name of the class
-    name: string;
+    name!: string;
 
     definition?: ControllerDefinition<any>;
 
