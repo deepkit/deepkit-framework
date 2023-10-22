@@ -15,7 +15,8 @@
     ],
     "outDir": "./dist",
     "jsx": "react-jsx",
-    "jsxImportSource": "@deepkit/template"
+    "jsxImportSource": "@deepkit/template",
+    "types": []
   },
   "ts-node": {
     "experimentalResolver": true

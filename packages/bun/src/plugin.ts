@@ -1,4 +1,3 @@
-// @ts-ignore
 import { type BunPlugin } from 'bun';
 import * as ts from 'typescript';
 import { cwd } from 'process';

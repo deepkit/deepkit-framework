@@ -12,36 +12,17 @@
     "module": "CommonJS",
     "esModuleInterop": true,
     "baseUrl": ".",
-    "outDir": "./dist/cjs",
+    "outDir": "./dist",
     "declaration": true,
     "composite": true,
-    "types": []
+    "types": [
+      "node"
+    ]
   },
-  "reflection": true,
   "include": [
     "src",
-    "tests",
     "index.ts",
-    "tokens"
+    "tests"
   ],
-  "references": [
-    {
-      "path": "../app/tsconfig.json"
-    },
-    {
-      "path": "../event/tsconfig.json"
-    },
-    {
-      "path": "../http/tsconfig.json"
-    },
-    {
-      "path": "../injector/tsconfig.json"
-    },
-    {
-      "path": "../logger/tsconfig.json"
-    },
-    {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+  "references": []
 }

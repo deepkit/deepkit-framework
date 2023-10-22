@@ -30,9 +30,9 @@
               "src/assets"
             ],
             "styles": [
-              "node_modules/@deepkit/desktop-ui/src/scss/all.scss",
-              "node_modules/@deepkit/desktop-ui/src/scss/icon.scss",
-              "node_modules/@deepkit/ui-library/src/styles/style-code.scss",
+              "@deepkit/desktop-ui/src/scss/all.scss",
+              "@deepkit/desktop-ui/src/scss/icon.scss",
+              "@deepkit/ui-library/src/styles/style-code.scss",
               "src/styles.scss"
             ],
             "scripts": []
@@ -91,5 +91,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "3aa0b572-3d14-4946-b6c9-04eafb95c2cf"
   }
 }

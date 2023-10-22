@@ -12,14 +12,17 @@
         "build": {
           "builder": "@angular-devkit/build-angular:ng-packagr",
           "options": {
-            "tsConfig": "tsconfig.lib.json",
-            "project": "ng-package.json",
+            "project": "./ng-package.json"
           },
           "configurations": {
+            "development": {
+              "tsConfig": "./tsconfig.lib.json"
+            },
             "production": {
-              "tsConfig": "tsconfig.prod.json"
+              "tsConfig": "./tsconfig.prod.json"
             }
-          }
+          },
+          "defaultConfiguration": "production"
         },
         "test": {
           "builder": "@angular-devkit/build-angular:karma",
@@ -42,9 +45,5 @@
         }
       }
     }
-  },
-  "defaultProject": "angular-desktop-ui",
-  "cli": {
-    "analytics": "42a93191-897d-4729-8df2-6b61148e401f"
   }
 }

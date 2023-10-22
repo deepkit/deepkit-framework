@@ -1,11 +1,11 @@
 # Development
 
 ## Prerequisites
-Deepkit uses NPM and Lerna to manage this monorepo. Local package linking is managed through the [npm-local-development](https://www.npmjs.com/package/npm-local-development) CLI.
+Deepkit uses NPM and Lerna to manage this monorepo. Local package linking is managed through the NPM Workspaces.
 
 Make sure `libpq5` and `libpq-dev` are installed, and `python` refers Python2.
 
-Node v18 is needed.
+Node >= v18 is needed.
 
 ## Getting Started
 
@@ -13,9 +13,6 @@ Node v18 is needed.
 git clone https://github.com/deepkit/deepkit-framework.git
 cd deepkit-framework
 npm install
-npm run bootstrap
-npm run link
-npm run install-compiler
 ```
 
 When installation is finished you can build the packages:
@@ -66,12 +63,6 @@ should run the included build watcher commands during local development
 deepkit-framework » npm run tsc-watch
 deepkit-framework » npm run tsc-watch:esm
 ```
-
-## Important
-
-- When one of the package.json files is modified (adding, removing or updating dependencies) you will need to re-run the
-  `npm bootstrap` and `npm link` commands from above
-- Never install NPM dependencies directly inside of any of the packages in the `packages/*` directory.
 
 ## Using deepkit-framework checkout with own project
 

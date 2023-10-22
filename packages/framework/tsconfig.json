@@ -18,7 +18,14 @@
     "declaration": true,
     "composite": true,
     "jsx": "react-jsx",
-    "jsxImportSource": ".."
+    "jsxImportSource": "..",
+    "types": [
+      "ws",
+      "clone",
+      "faker",
+      "fs-extra",
+      "node"
+    ]
   },
   "reflection": true,
   "include": [
@@ -92,6 +99,9 @@
     },
     {
       "path": "../workflow/tsconfig.json"
+    },
+    {
+      "path": "../filesystem/tsconfig.json"
     }
   ]
 }

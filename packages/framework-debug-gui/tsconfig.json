@@ -19,12 +19,18 @@
     "lib": [
       "ES2022",
       "dom"
+    ],
+    "types": [
+      "dagre",
+      "file-saver",
+      "jasmine",
+      "marked"
     ]
   },
   "reflection": [
     "./src/app/state.ts",
-    "node_modules/@deepkit/api-console-gui/src/api.ts",
-    "node_modules/@deepkit/api-console-gui/src/app/store.ts"
+    "../../node_modules/@deepkit/api-console-gui/src/api.ts",
+    "../../node_modules/@deepkit/api-console-gui/src/app/store.ts"
   ],
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
