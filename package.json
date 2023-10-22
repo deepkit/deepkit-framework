@@ -7,8 +7,8 @@
   "scripts": {
     "test": "node --max_old_space_size=3048 node_modules/jest/bin/jest.js --forceExit --no-cache",
     "test:coverage": "node --max_old_space_size=3048 node_modules/jest/bin/jest.js --coverage --forceExit --no-cache",
-    "bootstrap": "lerna bootstrap --no-ci --ignore @deepkit/benchmark",
-    "bootstrap:ci": "lerna bootstrap --ignore @deepkit/benchmark",
+    "bootstrap": "lerna bootstrap --no-ci",
+    "bootstrap:ci": "lerna bootstrap",
     "link": "npm-local-development --no-watcher",
     "build": "tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
     "build:esm": "tsc --build tsconfig.esm.json",
@@ -27,7 +27,7 @@
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
     "@jest/globals": "^29.2.1",
-    "@types/node": "18.11.10",
+    "@types/node": "20.6.0",
     "cloc": "^2.7.0",
     "codecov": "^3.8.3",
     "coveralls": "^3.0.3",

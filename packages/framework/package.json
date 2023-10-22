@@ -92,7 +92,7 @@
     "@types/clone": "^0.1.30",
     "@types/faker": "^5.1.6",
     "@types/fs-extra": "^9.0.1",
-    "@types/node": "^14.0.0",
+    "@types/node": "20.6.0",
     "@types/ws": "^7.4.0",
     "rxjs": "~7.5.0"
   },

@@ -59,7 +59,7 @@
     "@deepkit/event": "^1.0.1-alpha.102",
     "@deepkit/type": "^1.0.1-alpha.102",
     "@types/fs-extra": "^8.0.1",
-    "@types/node": "^18.11.10",
+    "@types/node": "20.6.0",
     "fs-extra": "^8.1.0",
     "rxjs": "~7.5.0",
     "svg2ttf": "^4.2.0",

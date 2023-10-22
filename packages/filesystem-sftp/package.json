@@ -32,10 +32,10 @@
   },
   "overrides": {
     "@types/ssh2-sftp-client": {
-      "@types/node": "18.11.10"
+      "@types/node": "20.6.0"
     },
     "@types/ssh2": {
-      "@types/node": "18.11.10"
+      "@types/node": "20.6.0"
     }
   },
   "jest": {

@@ -41,7 +41,11 @@ function readLibs(compilerOptions: ts.CompilerOptions, files: Map<string, string
     for (const lib of libs) {
         if (lib.startsWith('lib.webworker.d.ts')) continue; //dom and webworker can not go together
 
-        files.set(defaultLibLocation + lib, getLibSource(lib));
+        try {
+            files.set(defaultLibLocation + lib, getLibSource(lib));
+        } catch (error) {
+            //that's fine, some libs are not available in all versions
+        }
     }
 }
 

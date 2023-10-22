@@ -47,7 +47,6 @@ jobs:
             --ignore @deepkit/vite \
             --ignore @deepkit/bun \
             --ignore @deepkit/framework-examples \
-            --ignore @deepkit/benchmark \
             --ignore @deepkit/mysql \
             --ignore @deepkit/postgres \
             --ignore @deepkit/orm-browser-example \
@@ -274,7 +273,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: "**/node_modules"
-          key: ${{ runner.os }}-benchmark-node_modules-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-mongo-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm install -g npm && npm install
       - name: Lerna bootstrap
