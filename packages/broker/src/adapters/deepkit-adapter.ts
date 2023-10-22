@@ -108,12 +108,14 @@ export class BrokerDeepkitPool {
     }
 
     getConnection(key: string): BrokerDeepkitConnection {
-        //key is used for consistent hashing
+        if (!this.options.servers.length) throw new Error('No servers defined');
+
         if (this.options.servers.length === 1) {
             if (!this.connections.length) this.createConnection(this.options.servers[0]);
             return this.connections[0].connection;
         }
 
+        //key is used for consistent hashing
         throw new Error('Not implemented');
     }
 
