@@ -31,11 +31,6 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Cache node_modules
-        uses: actions/cache@v1
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-all3-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm ci
       - name: Lerna bootstrap
