@@ -12,6 +12,7 @@
     "preserveSymlinks": true,
     "target": "es2018",
     "module": "CommonJS",
+    "skipLibCheck": true,
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
@@ -24,7 +25,6 @@
     "src",
     "jsx",
     "tests",
-    "benchmark",
     "index.ts",
     "jsx-runtime.ts",
     "loader.ts"

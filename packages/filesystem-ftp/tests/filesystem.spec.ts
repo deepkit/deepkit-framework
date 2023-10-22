@@ -1,5 +1,4 @@
 import { test } from '@jest/globals';
-import './filesystem.spec.js';
 import { setAdapterFactory } from '@deepkit/filesystem/test';
 import { FilesystemFtpAdapter } from '../src/ftp-adapter.js';
 import { platform } from 'os';

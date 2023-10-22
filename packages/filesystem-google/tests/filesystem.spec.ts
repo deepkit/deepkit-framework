@@ -1,5 +1,4 @@
 import { test } from '@jest/globals';
-import './filesystem.spec.js';
 import { Filesystem } from '@deepkit/filesystem';
 import { adapterFactory, setAdapterFactory } from '@deepkit/filesystem/test';
 import { FilesystemGoogleAdapter } from '../src/google-adapter.js';

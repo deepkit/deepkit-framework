@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import './filesystem.spec.js';
 import { adapterFactory, setAdapterFactory } from '@deepkit/filesystem/test';
 import { FilesystemAwsS3Adapter } from '../src/s3-adapter.js';
 import { DeleteObjectsCommand, ListObjectsCommand } from '@aws-sdk/client-s3';

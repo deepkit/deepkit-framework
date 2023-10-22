@@ -1,4 +1,3 @@
-
 /**
  * Normalizes the given path.
  * Removes duplicate slashes, removes trailing slashes, adds a leading slash.
