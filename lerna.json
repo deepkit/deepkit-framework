@@ -1,7 +1,6 @@
 {
   "packages": [
     "packages/*",
-    "!packages/benchmark",
     "!packages/fs",
     "!packages/example-app",
     "!packages/orm-browser-example",

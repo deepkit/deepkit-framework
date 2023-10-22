@@ -25,10 +25,27 @@ This could take several minutes.
 You should see the build messages and a _success_ summary in the end:
 
 ```shell
-lerna success run Ran npm script 'build' in 36 packages in 83.9s:
-lerna success - @deepkit/angular-universal
-lerna success - @deepkit/api-console-api
-...
+> build
+> build
+> tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build
+
+lerna notice cli v7.4.1
+
+    ✔  @deepkit/core:build (320ms)
+    ✔  @deepkit/topsort:build (324ms)
+    ✔  @deepkit/type-spec:build (324ms)
+    ✔  @deepkit/core-rxjs:build (326ms)
+    ✔  @deepkit/filesystem:build (326ms)
+    ...
+    ✔  @deepkit/api-console-gui:build (19s)
+    ✔  @deepkit/api-console-module:build (297ms)
+    ✔  @deepkit/orm-browser-gui:build (21s)
+    ✔  @deepkit/framework-debug-gui:build (29s)
+    ✔  @deepkit/orm-browser:build (295ms)
+
+ ——————————————————————————————————————————————
+
+ >  Lerna (powered by Nx)   Successfully ran target build for 43 projects (1m)
 ```
 
 If everything went fine you can try out the example app:
@@ -57,7 +74,8 @@ deepkit-framework/packages/example-app » npm run start
 ## Making changes 
 
 In order to make sure that all packages are built correctly and that Jest understands cross-package references you
-should run the included build watcher commands during local development
+should run the included build watcher commands during local development. Usually it's enough to run the `tsc-watch`,
+but when ESM packages are consumed for example by our Angular apps, you need to run `tsc-watch:esm` as well.
 
 ```shell
 deepkit-framework » npm run tsc-watch
@@ -98,13 +116,15 @@ Put a `.links.json` file in your project (not deepkit-framework):
 }
 ```
 
-Adapt the path to `deepkit-framework` if needed.
+Adapt the path of `../deepkit-framework` to the checkout path of your deepkit-framework.
 
 In your project's `package.json` add a script:
 
 ```json
-"scripts: {
-    "link": "npm-local-development ."
+{
+    "scripts": {
+        "link": "npm-local-development ."
+    }
 }
 ```
 
