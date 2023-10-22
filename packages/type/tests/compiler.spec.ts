@@ -25,23 +25,29 @@ import { pack, resolveRuntimeType, typeInfer } from '../src/reflection/processor
 import { expectEqualType } from './utils.js';
 import { createSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { dirname, join } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 
 Error.stackTraceLimit = 200;
 
 
-const defaultLibLocation = __dirname + '/node_modules/typescript/lib/';
+const defaultLibLocation = dirname(require.resolve('typescript'));
 
 function readLibs(compilerOptions: ts.CompilerOptions, files: Map<string, string>) {
-    const getLibSource = (name: string) => {
-        const lib = dirname(require.resolve('typescript'));
-        return readFileSync(join(lib, name), 'utf8');
+    const getLibSource = (libFilePath: string) => {
+        return readFileSync(libFilePath, 'utf8');
     };
     const libs = knownLibFilesForCompilerOptions(compilerOptions, ts);
     for (const lib of libs) {
         if (lib.startsWith('lib.webworker.d.ts')) continue; //dom and webworker can not go together
 
-        files.set(defaultLibLocation + lib, getLibSource(lib));
+        const libFilePath = join(defaultLibLocation, lib);
+
+        if (!existsSync(libFilePath)) {
+            console.warn(`TS lib file does not exist: ${libFilePath}`);
+            continue;
+        }
+
+        files.set(libFilePath, getLibSource(libFilePath));
     }
 }
 
