@@ -24,13 +24,13 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "dependencies": {
+    "@deepkit/core": "^1.0.1-alpha.100",
+    "@deepkit/filesystem": "^1.0.1-alpha.13",
     "@google-cloud/storage": "^7.2.0",
     "google-auth-library": "^9.1.0",
     "bignumber.js": "^9.1.2"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/filesystem": "^1.0.1-alpha.13",
     "@types/node": "20.6.0"
   },
   "jest": {

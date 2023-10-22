@@ -24,10 +24,11 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "dependencies": {
+    "@deepkit/core": "^1.0.1-alpha.100",
+    "@deepkit/filesystem": "^1.0.1-alpha.13",
     "ssh2-sftp-client": "^9.1.0"
   },
   "devDependencies": {
-    "@deepkit/filesystem": "^1.0.1-alpha.13",
     "@types/ssh2-sftp-client": "^9.0.1"
   },
   "overrides": {
