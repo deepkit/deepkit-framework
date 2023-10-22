@@ -63,7 +63,6 @@ jobs:
             packages/bson/tsconfig.json \
             packages/core/tsconfig.json \
             packages/core-rxjs/tsconfig.json \
-            packages/crypto/tsconfig.json \
             packages/filesystem/tsconfig.json \
             packages/framework/tsconfig.json \
             packages/framework-debug-api/tsconfig.json \
