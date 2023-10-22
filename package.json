@@ -34,7 +34,7 @@
     "jest": "^29.2.1",
     "lerna": "^4.0.0",
     "madge": "^4.0.0",
-    "npm-local-development": "^0.4.1",
+    "npm-local-development": "^0.4.2",
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
