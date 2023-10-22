@@ -119,7 +119,6 @@ jobs:
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/postgres/tsconfig.json;
-          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: npm run test:coverage packages/postgres/
       - name: Send coverage
@@ -158,7 +157,6 @@ jobs:
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
-          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: npm run test:coverage packages/mysql/
       - name: Send coverage
@@ -187,7 +185,6 @@ jobs:
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
-          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: npm run test:coverage packages/sqlite/
       - name: Send coverage
@@ -234,7 +231,6 @@ jobs:
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
-          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: npm run test:coverage packages/mongo/
       - name: Send coverage
