@@ -33,23 +33,8 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: npm install
         run: npm ci
-      - name: Lerna bootstrap
-        run: |
-          npm run bootstrap:ci -- \
-            --ignore @deepkit/mongo \
-            --ignore @deepkit/example-app \
-            --ignore @deepkit/fs \
-            --ignore @deepkit/vite \
-            --ignore @deepkit/bun \
-            --ignore @deepkit/framework-examples \
-            --ignore @deepkit/mysql \
-            --ignore @deepkit/postgres \
-            --ignore @deepkit/orm-browser-example \
-            --ignore @deepkit/orm-browser;
-          npm run link
       - name: Build
         run: |
-          npm run install-compiler
           ./node_modules/.bin/tsc --build \
             packages/angular-universal/tsconfig.json \
             packages/api-console-module/tsconfig.json \
@@ -75,7 +60,6 @@ jobs:
             packages/topsort/tsconfig.json \
             packages/type/tsconfig.json \
             packages/type-spec/tsconfig.json
-          npm run link
       - name: Test
         run: |
           npm run test:coverage \
