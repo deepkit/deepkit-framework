@@ -58,6 +58,20 @@ test('bus', async () => {
     const broker = new Broker(await adapterFactory());
 
     type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
+
+    const channel = broker.bus<Events>('/events');
+
+    await channel.subscribe((event) => {
+        expect(event).toEqual({ type: 'user-created', id: 2 });
+    });
+
+    await channel.publish({ type: 'user-created', id: 2 });
+});
+
+test('bus2', async () => {
+    const broker = new Broker(await adapterFactory());
+
+    type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
     type EventChannel = BrokerBusChannel<Events, '/events'>;
 
     const channel = broker.busChannel<EventChannel>();
@@ -112,7 +126,6 @@ test('lock2', async () => {
         await lock1_3!.release();
     }
 });
-
 
 test('queue', async () => {
     const broker = new Broker(await adapterFactory());

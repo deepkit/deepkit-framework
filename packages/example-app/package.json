@@ -40,6 +40,11 @@
     "rxjs": "~7.5.0",
     "send": "^0.18.0"
   },
+  "overrides": {
+    "deepkit-openapi": {
+      "@deepkit/core": "$@deepkit/core"
+    }
+  },
   "keywords": [],
   "author": "",
   "license": "MIT"

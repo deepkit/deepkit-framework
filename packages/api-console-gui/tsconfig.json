@@ -27,7 +27,6 @@
     ]
   },
   "reflection": [
-    "src/api.ts",
     "src/app/store.ts"
   ],
   "angularCompilerOptions": {
