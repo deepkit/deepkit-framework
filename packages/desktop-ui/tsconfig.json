@@ -6,7 +6,6 @@
     "experimentalDecorators": true,
     "downlevelIteration": true,
     "sourceMap": true,
-    "declaration": false,
     "strict": true,
     "target": "es2015",
     "noImplicitAny": true,
