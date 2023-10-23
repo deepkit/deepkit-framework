@@ -29,7 +29,7 @@ export class BrokerListener {
     async onMainBootstrap() {
         if (this.startOnBootstrap) {
             await this.brokerServer.start();
-            this.logger.log(`Broker started at <green>${this.listen}</green>`);
+            this.logger.log(`Broker started at <green>${this.listen}</green>. Disable with "FrameworkModule({broker: {startOnBootstrap: false}})"`);
         }
     }
 

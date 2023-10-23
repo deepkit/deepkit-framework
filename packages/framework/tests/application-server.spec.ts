@@ -79,10 +79,9 @@ describe('application-server', () => {
         const app = new App({
             controllers: [MyController],
             imports: [
-                new FrameworkModule()
-                    .setup((module, config) => {
-                        config.broker.startOnBootstrap = false;
-                    })
+                new FrameworkModule({
+                    broker: { startOnBootstrap: false }
+                })
             ]
         });
         const applicationServer = app.get(ApplicationServer);
@@ -220,7 +219,9 @@ describe('application-server', () => {
                         useValue: rpcServerMock,
                     }
                 ],
-                imports: [new FrameworkModule()]
+                imports: [new FrameworkModule({
+                    broker: { startOnBootstrap: false }
+                })]
             });
             const applicationServer = app.get(ApplicationServer);
             await applicationServer.start();
@@ -240,7 +241,9 @@ describe('application-server', () => {
 
             const app = new App({
                 controllers: [MyController],
-                imports: [new FrameworkModule()]
+                imports: [new FrameworkModule({
+                    broker: { startOnBootstrap: false }
+                })]
             });
             const applicationServer = app.get(ApplicationServer);
             await applicationServer.start();
