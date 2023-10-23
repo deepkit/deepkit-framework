@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/filesystem-google",
-  "version": "1.0.1-alpha.13",
+  "version": "1.0.1-alpha.107",
   "description": "Deepkit storage adapter for Google Storage",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -26,8 +26,8 @@
     "@deepkit/core": "^1.0.1-alpha.100",
     "@deepkit/filesystem": "^1.0.1-alpha.13",
     "@google-cloud/storage": "^7.2.0",
-    "google-auth-library": "^9.1.0",
-    "bignumber.js": "^9.1.2"
+    "bignumber.js": "^9.1.2",
+    "google-auth-library": "^9.1.0"
   },
   "devDependencies": {
     "@types/node": "20.6.0"
