@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/type-compiler",
-  "version": "1.0.1-alpha.102",
+  "version": "1.0.1-alpha.105",
   "description": "Deepkit/type compiler/Typescript transformer",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -35,7 +35,7 @@
     "@types/micromatch": "^4.0.2"
   },
   "dependencies": {
-    "@deepkit/type-spec": "^1.0.1-alpha.93",
+    "@deepkit/type-spec": "^1.0.1-alpha.105",
     "@marcj/ts-clone-node": "^2.0.0",
     "@typescript/vfs": "^1.4.0",
     "get-tsconfig": "^4.5.0",
