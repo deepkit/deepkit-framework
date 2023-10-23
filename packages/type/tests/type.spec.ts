@@ -342,6 +342,11 @@ test('interface with method', () => {
     validExtend<Connection, { id: number, write(data: SubUint16Array): void }>();
 });
 
+test('extends Date', () => {
+    validExtend<{}, Date>();
+    invalidExtend<{y: string}, Date>();
+});
+
 test('readonly constructor properties', () => {
     class Pilot {
         constructor(readonly name: string, readonly age: number) {

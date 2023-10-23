@@ -214,6 +214,12 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
             return true;
         }
 
+        if ((left.kind === ReflectionKind.class || left.kind === ReflectionKind.objectLiteral) && (right.kind === ReflectionKind.class && right.classType === Date)) {
+            if (left.kind === ReflectionKind.objectLiteral && left.types.length === 0) return true;
+            if (left.kind === ReflectionKind.class && left.classType === Date) return true;
+            return false;
+        }
+
         if ((left.kind === ReflectionKind.class || left.kind === ReflectionKind.objectLiteral) && (right.kind === ReflectionKind.objectLiteral || right.kind === ReflectionKind.class)) {
             const rightConstructor = (right.types as Type[]).find(v => (v.kind === ReflectionKind.methodSignature && v.name === 'new')) as TypeMethodSignature | undefined;
 
