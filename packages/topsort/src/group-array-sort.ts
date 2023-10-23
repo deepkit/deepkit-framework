@@ -13,7 +13,7 @@ import { BaseImplementation, ElementNotFoundException } from './base.js';
 interface ItemElement<T, TYPE> {
     item: T;
     type: TYPE;
-    dependencies: T[],
+    dependencies: T[];
     dependenciesCount: number;
     visited: boolean;
     addedAtLevel: number;
@@ -64,7 +64,7 @@ export class GroupArraySort<T = string, TYPE = string> extends BaseImplementatio
                 parents.add(element.item);
 
                 for (const dependency of element.dependencies) {
-                    let item = this.elements.get(dependency);
+                    const item = this.elements.get(dependency);
                     if (!item) {
                         if (this.throwOnNonExistingDependency) {
                             throw new ElementNotFoundException(element.item, dependency);
