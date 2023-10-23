@@ -1,5 +1,4 @@
 import {readFile, writeFile} from "fs-extra";
-import {eachPair} from "@marcj/estdlib";
 
 (async () => {
     //this was created by using package `emoji-datasource`
@@ -32,7 +31,7 @@ import {eachPair} from "@marcj/estdlib";
     }
 
     const categoriesNormalized = [];
-    for (const [name, emojis] of eachPair(categories)) {
+    for (const [name, emojis] of Object.entries(categories)) {
         categoriesNormalized.push({
             name: name,
             emojis: emojis,
