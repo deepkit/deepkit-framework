@@ -178,6 +178,9 @@ export class ConfigurationInvalidError extends CustomError {
 
 let moduleId = 0;
 
+/**
+ * @reflection never
+ */
 type PartialDeep<T> = T extends string | number | bigint | boolean | null | undefined | symbol | Date
     ? T | undefined
     // Arrays, Sets and Maps and their readonly counterparts have their items made
@@ -235,7 +238,7 @@ export type ListenerType = EventListener<any> | ClassType;
 /**
  * The AppModule is the base class for all modules.
  *
- * You  can use `createModule` to create a new module class or extend from `AppModule` manually.
+ * You can use `createModule` to create a new module class or extend from `AppModule` manually.
  *
  * @example
  * ```typescript
@@ -251,7 +254,6 @@ export type ListenerType = EventListener<any> | ClassType;
  *      this.name = 'myModule';
  *   }
  * }
- *
  */
 export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractClassType<T['config']> = any> extends InjectorModule<C, AppModule<any>> {
     public setupConfigs: ((module: AppModule<any>, config: any) => void)[] = [];
