@@ -1511,3 +1511,39 @@ test('issue-430: referring to this', () => {
     //this makes it possible that the code above works at least.
     expect(stringifyResolvedType(typeOf<keys>())).toBe(`'someFunctionA' | 'someFunctionB' | 'someFunctionC'`);
 });
+
+test('issue-495: extend Promise in union', () => {
+    type Model = {
+        foo: string;
+    };
+
+    type Interface = {
+        modelBuilder(): Promise<Model> | Model;
+    };
+
+    class Implementation1 {
+        async modelBuilder(): Promise<Model> {
+            return {foo: 'bar'};
+        }
+    }
+
+    class Implementation2 {
+        async modelBuilder(): Promise<{foo2: string}> {
+            return {foo2: 'bar'};
+        }
+    }
+
+    {
+        type T = Implementation1 extends Interface ? true : false;
+        const type = typeOf<T>();
+        assertType(type, ReflectionKind.literal);
+        expect(type.literal).toBe(true);
+    }
+
+    {
+        type T = Implementation2 extends Interface ? true : false;
+        const type = typeOf<T>();
+        assertType(type, ReflectionKind.literal);
+        expect(type.literal).toBe(false);
+    }
+});

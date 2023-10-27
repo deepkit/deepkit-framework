@@ -11,7 +11,7 @@
 import {
     addType,
     emptyObject,
-    flatten,
+    flatten, getTypeJitContainer,
     indexAccess,
     isMember,
     isOptional,
@@ -29,7 +29,7 @@ import {
     TypeMethodSignature,
     TypeNumber,
     TypeObjectLiteral,
-    TypeParameter,
+    TypeParameter, TypePromise,
     TypeString,
     TypeTemplateLiteral,
     TypeTuple,
@@ -98,8 +98,12 @@ export function _isExtendable(left: Type, right: Type, extendStack: StackEntry[]
 
         if (left.kind === ReflectionKind.promise && right.kind === ReflectionKind.object) return true;
 
-        if (left.kind === ReflectionKind.promise) return _isExtendable(createPromiseObjectLiteral(left.type), right);
-        if (right.kind === ReflectionKind.promise) return _isExtendable(left, createPromiseObjectLiteral(right.type));
+        if (left.kind === ReflectionKind.promise) {
+            return _isExtendable(createPromiseObjectLiteral(left), right);
+        }
+        if (right.kind === ReflectionKind.promise) {
+            return _isExtendable(left, createPromiseObjectLiteral(right));
+        }
 
         if (right.kind !== ReflectionKind.union) {
             if (left.kind === ReflectionKind.null) {
@@ -329,8 +333,12 @@ export function _isExtendable(left: Type, right: Type, extendStack: StackEntry[]
  * We don't want to embed in each and every file the type definition of Promise<t>,
  * so we do it ondemand at runtime instead. This saves bundle size.
  */
-export function createPromiseObjectLiteral(type: Type): TypeObjectLiteral {
+export function createPromiseObjectLiteral(type: TypePromise): TypeObjectLiteral {
+    const jit = getTypeJitContainer(type);
+    if (jit.__promiseObjectLiteral) return jit.__promiseObjectLiteral;
+
     const promise: TypeObjectLiteral = {} as any;
+    jit.__promiseObjectLiteral = promise;
     Object.assign(promise, {
         kind: ReflectionKind.objectLiteral,
         types: [
@@ -343,8 +351,8 @@ export function createPromiseObjectLiteral(type: Type): TypeObjectLiteral {
                         type: {
                             kind: ReflectionKind.union, types: [{
                                 kind: ReflectionKind.function, parameters: [
-                                    { kind: ReflectionKind.parameter, name: 'value', type: type },
-                                ], return: { kind: ReflectionKind.union, types: [type, { kind: ReflectionKind.promise, type: type }] }
+                                    { kind: ReflectionKind.parameter, name: 'value', type: type.type },
+                                ], return: { kind: ReflectionKind.union, types: [type.type, promise] }
                             }, { kind: ReflectionKind.null }, { kind: ReflectionKind.undefined }]
                         }
                     },
