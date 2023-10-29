@@ -447,3 +447,20 @@ test('keep "use x" at top', () => {
     });
     expect(res.app.startsWith('"use client";')).toBe(true);
 });
+
+test('inline type definitions should compile', () => {
+    const res = transpile({
+        'app': `
+        function testFn<
+            T extends ClassType<any>,
+            Prop extends keyof InstanceType<T>
+        >(options: {
+            type: T;
+            props: Prop[];
+        }) {
+            type R = Pick<InstanceType<Schema>, Prop>;
+        }
+        `
+    });
+    console.log(res);
+});

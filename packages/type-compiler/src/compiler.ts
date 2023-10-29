@@ -1411,7 +1411,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (isTypeLiteralNode(narrowed)) {
                     descriptionNode = narrowed.parent;
                 }
-                const description = extractJSDocAttribute(descriptionNode, 'description');
+                const description = descriptionNode && extractJSDocAttribute(descriptionNode, 'description');
                 if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                 program.popFrameImplicit();
                 break;
