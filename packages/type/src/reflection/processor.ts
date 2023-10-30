@@ -480,6 +480,10 @@ export class Processor {
                         case ReflectionOp.any:
                             this.pushType({ kind: ReflectionKind.any });
                             break;
+                        case ReflectionOp.typeName: {
+                            (program.stack[program.stackPointer] as Type).typeName = program.stack[this.eatParameter() as number] as string;
+                            break;
+                        }
                         case ReflectionOp.literal: {
                             const ref = this.eatParameter() as number;
                             this.pushType({ kind: ReflectionKind.literal, literal: program.stack[ref] as string | number | boolean | bigint });

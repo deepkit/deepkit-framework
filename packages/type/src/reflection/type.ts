@@ -479,8 +479,7 @@ export type Type =
     | TypeTupleMember
     | TypeRest
     | TypeRegexp
-    | TypeCallSignature
-    ;
+    | TypeCallSignature;
 
 export type Widen<T> =
     T extends string ? string

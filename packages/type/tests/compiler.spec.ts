@@ -1768,6 +1768,25 @@ test('import types named import typeOnly', () => {
     expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
 });
 
+test('import types named import typeOnly has typeName', () => {
+    const js = transpile({
+        'app': `
+            import {type User} from './user.js';
+            typeOf<User>();
+        `,
+        'user': `export interface User {id: number}`
+    }, {
+        module: ModuleKind.CommonJS
+    });
+    const typeOf = typeOf2;
+    expect(eval(js['app.js'])).toMatchInlineSnapshot(`
+        {
+          "kind": 1,
+          "typeName": "User",
+        }
+    `);
+});
+
 test('import types named import with disabled reflection', () => {
     const js = transpile({
         'app': `

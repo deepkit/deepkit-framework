@@ -2120,9 +2120,8 @@ export class ReflectionTransformer implements CustomTransformer {
                         });
                     } else if (isFromImport) {
                         if (resolved.importDeclaration) {
-                            //if explicit `import {type T}`, we do not emit an import and instead push any
                             if (resolved.typeOnly) {
-                                program.pushOp(ReflectionOp.any);
+                                this.resolveTypeOnly(typeName, program);
                                 return;
                             }
 
@@ -2201,9 +2200,8 @@ export class ReflectionTransformer implements CustomTransformer {
                 //     this.extractPackStructOfType(declaration, program);
                 //     return;
             } else if (isClassDeclaration(declaration) || isFunctionDeclaration(declaration) || isFunctionExpression(declaration) || isArrowFunction(declaration)) {
-                //if explicit `import {type T}`, we do not emit an import and instead push any
                 if (resolved.typeOnly) {
-                    program.pushOp(ReflectionOp.any);
+                    this.resolveTypeOnly(typeName, program);
                     return;
                 }
 
@@ -2303,6 +2301,18 @@ export class ReflectionTransformer implements CustomTransformer {
         const typeUser = this.getTypeUser(type);
 
         return declarationUser !== typeUser;
+    }
+
+    protected resolveTypeOnly(entityName: EntityName, program: CompilerProgram) {
+        program.pushOp(ReflectionOp.any);
+        const typeName = ts.isIdentifier(entityName)
+            ? getIdentifierName(entityName)
+            : getIdentifierName(entityName.right);
+        this.resolveTypeName(typeName, program);
+    }
+
+    protected resolveTypeName(typeName: string, program: CompilerProgram) {
+        program.pushOp(ReflectionOp.typeName, program.findOrAddStackEntry(typeName));
     }
 
     protected resolveTypeParameter(declaration: TypeParameterDeclaration, type: TypeReferenceNode | ExpressionWithTypeArguments, program: CompilerProgram) {

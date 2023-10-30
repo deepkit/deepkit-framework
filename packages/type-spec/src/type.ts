@@ -212,4 +212,6 @@ export enum ReflectionOp {
     functionReference, //Same as classReference but for functions
 
     callSignature, //Same as function but for call signatures (in object literals)
+
+    typeName, // set the typeName of the last stack entry
 }
