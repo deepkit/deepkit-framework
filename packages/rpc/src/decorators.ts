@@ -9,12 +9,19 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, mergeDecorator, PropertyDecoratorResult } from '@deepkit/type';
+import {
+    ClassDecoratorResult,
+    createClassDecoratorContext,
+    createPropertyDecoratorContext,
+    mergeDecorator,
+    PropertyDecoratorResult,
+    reflect
+} from '@deepkit/type';
 import { ControllerDefinition } from './model.js';
 
 class RpcController {
     // Defaults to the name of the class
-    name!: string;
+    name: string = '';
 
     definition?: ControllerDefinition<any>;
 
@@ -52,7 +59,7 @@ class RpcClass {
     }
 
     onDecorator(classType: ClassType) {
-        this.t.name ??= classType.name;
+        this.t.name ??= reflect(classType).typeName || classType.name;
     }
 }
 
