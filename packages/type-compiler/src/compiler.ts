@@ -1258,8 +1258,6 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 if (node) {
                     const members: ClassElement[] = [];
-                    const description = extractJSDocAttribute(narrowed, 'description');
-                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
 
                     if (narrowed.typeParameters) {
                         for (const typeParameter of narrowed.typeParameters) {
@@ -1303,8 +1301,6 @@ export class ReflectionTransformer implements CustomTransformer {
 
                     this.resolveClass(narrowed, program);
 
-                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
-
                     if (narrowed.heritageClauses && narrowed.heritageClauses[0] && narrowed.heritageClauses[0].types[0]) {
                         const first = narrowed.heritageClauses[0].types[0];
                         if (isExpressionWithTypeArguments(first) && first.typeArguments) {
@@ -1315,7 +1311,6 @@ export class ReflectionTransformer implements CustomTransformer {
                             program.pushOp(ReflectionOp.classExtends, first.typeArguments.length);
                         }
                     }
-
                 }
                 break;
             }
@@ -2318,8 +2313,14 @@ export class ReflectionTransformer implements CustomTransformer {
 
     protected resolveClass(node: ClassDeclaration | ClassExpression, program: CompilerProgram) {
         program.pushOp(ReflectionOp.class);
+
         if (node.name) {
             this.resolveTypeName(getIdentifierName(node.name), program);
+        }
+
+        const description = extractJSDocAttribute(node, 'description');
+        if (description) {
+            program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
         }
     }
 
