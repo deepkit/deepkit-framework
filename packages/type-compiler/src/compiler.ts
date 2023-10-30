@@ -2121,7 +2121,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     } else if (isFromImport) {
                         if (resolved.importDeclaration) {
                             if (resolved.typeOnly) {
-                                this.resolveTypeOnly(typeName, program);
+                                this.resolveTypeOnlyImport(typeName, program);
                                 return;
                             }
 
@@ -2201,7 +2201,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 //     return;
             } else if (isClassDeclaration(declaration) || isFunctionDeclaration(declaration) || isFunctionExpression(declaration) || isArrowFunction(declaration)) {
                 if (resolved.typeOnly) {
-                    this.resolveTypeOnly(typeName, program);
+                    this.resolveTypeOnlyImport(typeName, program);
                     return;
                 }
 
@@ -2303,7 +2303,7 @@ export class ReflectionTransformer implements CustomTransformer {
         return declarationUser !== typeUser;
     }
 
-    protected resolveTypeOnly(entityName: EntityName, program: CompilerProgram) {
+    protected resolveTypeOnlyImport(entityName: EntityName, program: CompilerProgram) {
         program.pushOp(ReflectionOp.any);
         const typeName = ts.isIdentifier(entityName)
             ? getIdentifierName(entityName)
