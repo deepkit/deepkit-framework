@@ -15,6 +15,6 @@ test('encode/decode', async () => {
         console.log('data', data);
         const http = deserializeFrameData(data) as FrameCategoryData[FrameCategory.http];
         console.log('http', http);
-        expect(http).toEqual({ method: 'GET', clientIp: '127.0.0.01' });
+        expect(http).toEqual({ method: 'GET', clientIp: '127.0.0.1' });
     });
 });

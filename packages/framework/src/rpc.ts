@@ -48,9 +48,12 @@ export class RpcServerActionWithStopwatch extends RpcServerAction {
         const body = message.parseBody<rpcActionType>();
         const frame = this.stopwatch ? this.stopwatch.start(body.method + '() [' + body.controller + ']', FrameCategory.rpc, true) : undefined;
         if (frame) {
-            const types = await this.loadTypes(body.controller, body.method);
-            const value: { args: any[] } = message.parseBody(types.actionCallSchema);
-            frame.data({ method: body.method, controller: body.controller, arguments: value.args });
+            try {
+                const types = await this.loadTypes(body.controller, body.method);
+                const value: { args: any[] } = message.parseBody(types.actionCallSchema);
+                frame.data({ method: body.method, controller: body.controller, arguments: value.args });
+            } catch {
+            }
         }
 
         try {

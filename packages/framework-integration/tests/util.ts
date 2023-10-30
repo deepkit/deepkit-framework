@@ -82,6 +82,7 @@ export async function createServerClientPair(
         AppModule.configure({
             framework: {
                 server: server,
+                debugProfiler: false,
                 broker: { listen: exchangeSocketPath },
             }
         })
