@@ -1314,7 +1314,7 @@ export class ReflectionTransformer implements CustomTransformer {
                         }
                     }
 
-                    if (narrowed.name) program.pushOp(ReflectionOp.typeName, program.findOrAddStackEntry(getIdentifierName(narrowed.name)));
+                    if (narrowed.name) this.resolveTypeName(getIdentifierName(narrowed.name), program);
 
                     const description = extractJSDocAttribute(narrowed, 'description');
                     if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
@@ -2125,7 +2125,7 @@ export class ReflectionTransformer implements CustomTransformer {
                         if (resolved.importDeclaration) {
                             //if explicit `import {type T}`, we do not emit an import and instead push any
                             if (resolved.typeOnly) {
-                                program.pushOp(ReflectionOp.any);
+                                this.resolveTypeOnlyImport(typeName, program);
                                 return;
                             }
 
@@ -2206,7 +2206,7 @@ export class ReflectionTransformer implements CustomTransformer {
             } else if (isClassDeclaration(declaration) || isFunctionDeclaration(declaration) || isFunctionExpression(declaration) || isArrowFunction(declaration)) {
                 //if explicit `import {type T}`, we do not emit an import and instead push any
                 if (resolved.typeOnly) {
-                    program.pushOp(ReflectionOp.any);
+                    this.resolveTypeOnlyImport(typeName, program);
                     return;
                 }
 
@@ -2306,6 +2306,18 @@ export class ReflectionTransformer implements CustomTransformer {
         const typeUser = this.getTypeUser(type);
 
         return declarationUser !== typeUser;
+    }
+
+    protected resolveTypeOnlyImport(entityName: EntityName, program: CompilerProgram) {
+        program.pushOp(ReflectionOp.any);
+        const typeName = ts.isIdentifier(entityName)
+            ? getIdentifierName(entityName)
+            : getIdentifierName(entityName.right);
+        this.resolveTypeName(typeName, program);
+    }
+
+    protected resolveTypeName(typeName: string, program: CompilerProgram) {
+        program.pushOp(ReflectionOp.typeName, program.findOrAddStackEntry(typeName));
     }
 
     protected resolveTypeParameter(declaration: TypeParameterDeclaration, type: TypeReferenceNode | ExpressionWithTypeArguments, program: CompilerProgram) {
