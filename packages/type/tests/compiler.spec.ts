@@ -1768,7 +1768,7 @@ test('import types named import typeOnly', () => {
     expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
 });
 
-test('import types named import typeOnly has typeName', () => {
+test('set typeName for type only imports', () => {
     const js = transpile({
         'app': `
             import {type User} from './user.js';
@@ -1787,7 +1787,7 @@ test('import types named import typeOnly has typeName', () => {
     `);
 });
 
-test('class has typeName', () => {
+test('set typeName for classes', () => {
     const js = transpile(`
         class Test {}
         typeOf<Test>();
