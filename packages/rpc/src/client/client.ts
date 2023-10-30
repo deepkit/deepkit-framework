@@ -182,7 +182,12 @@ export class RpcClientTransporter {
     public onMessage(message: RpcMessage) {
     }
 
-    public disconnect() {
+    public async disconnect() {
+        // we have to wait for ongoing connection attempts
+        while (this.connectionPromise) {
+            await this.connectionPromise;
+        }
+
         if (this.transportConnection) {
             this.transportConnection.close();
             this.transportConnection = undefined;
@@ -503,8 +508,8 @@ export class RpcBaseClient implements WritableClient {
         return this;
     }
 
-    disconnect() {
-        this.transporter.disconnect();
+    async disconnect() {
+        await this.transporter.disconnect();
     }
 }
 
