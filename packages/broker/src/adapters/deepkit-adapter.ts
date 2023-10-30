@@ -130,7 +130,7 @@ export class BrokerDeepkitPool {
 
     async disconnect(): Promise<void> {
         for (const connection of this.connections) {
-            connection.connection.disconnect();
+            await connection.connection.disconnect();
         }
     }
 }
