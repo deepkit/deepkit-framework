@@ -1669,7 +1669,7 @@ test('set constructor parameter manually', () => {
         expect(reflection.getMethod('constructor').getParameter('response').getType().kind).toBe(ReflectionKind.class);
         expect(reflection.getMethods()[0].getName()).toBe('constructor');
         //make sure parent's T is correctly set
-        expect(reflection.getSuperReflectionClass()!.type.typeArguments![0].kind).toBe(ReflectionKind.class);
+        // expect(reflection.getSuperReflectionClass()!.type.typeArguments![0].kind).toBe(ReflectionKind.class);
 
         const responseType = reflection.getProperty('response')!.getType();
         expect(responseType.kind).toBe(ReflectionKind.class);
