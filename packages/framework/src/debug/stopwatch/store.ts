@@ -1,13 +1,15 @@
-import { FrameEnd, FrameStart, FrameType, StopwatchStore } from '@deepkit/stopwatch';
-import { appendFile, existsSync, readFileSync } from 'fs';
+import { decodeCompoundKey, encodeCompoundKey, FrameEnd, FrameStart, FrameType, incrementCompoundKey, StopwatchStore } from '@deepkit/stopwatch';
+import { existsSync, readFileSync, unlinkSync } from 'fs';
+import { appendFile } from 'fs/promises';
 import { join } from 'path';
-import { decodeFrames, encodeFrameData, encodeFrames } from '@deepkit/framework-debug-api';
-import { asyncOperation, Mutex } from '@deepkit/core';
+import { decodeFrames, encodeAnalytic, encodeFrameData, encodeFrames } from '@deepkit/framework-debug-api';
+import { Mutex } from '@deepkit/core';
 import { FrameworkConfig } from '../../module.config.js';
 import { Zone } from '../../zone.js';
 import cluster from 'cluster';
 import { performance } from 'perf_hooks';
 import { DebugBroker } from '../broker.js';
+import { BrokerBus } from '@deepkit/broker';
 
 export class FileStopwatchStore extends StopwatchStore {
     protected lastSync?: any;
@@ -16,17 +18,42 @@ export class FileStopwatchStore extends StopwatchStore {
     protected lastId: number = -1;
     protected lastContext: number = -1;
 
-    public frameChannel = this.broker.bus<Uint8Array>('_debug/frames');
-    public frameDataChannel = this.broker.bus<Uint8Array>('_debug/frames-data');
+    public frameChannel: BrokerBus<Uint8Array> | undefined;
+    public frameDataChannel: BrokerBus<Uint8Array> | undefined;
 
     protected framesPath: string = join(this.config.varPath, this.config.debugStorePath, 'frames.bin');
     protected framesDataPath: string = join(this.config.varPath, this.config.debugStorePath, 'frames-data.bin');
+    protected analyticsPath: string = join(this.config.varPath, this.config.debugStorePath, 'analytics.bin');
+
+    protected ended = false;
 
     constructor(
         protected config: Pick<FrameworkConfig, 'varPath' | 'debugStorePath'>,
-        protected broker: DebugBroker,
+        protected broker?: DebugBroker,
     ) {
         super();
+        if (broker) {
+            this.frameChannel = broker?.bus<Uint8Array>('_debug/frames');
+            this.frameDataChannel = broker.bus<Uint8Array>('_debug/frames-data');
+        }
+    }
+
+    removeAll() {
+        // truncate all files
+        for (const file of [this.framesPath, this.framesDataPath, this.analyticsPath]) {
+            try {
+                unlinkSync(file);
+            } catch {
+            }
+        }
+        this.lastId = -1;
+        this.lastContext = -1;
+    }
+
+    async close() {
+        //last sync, then stop everything
+        await this.syncNow();
+        this.ended = true;
     }
 
     run<T>(data: { [name: string]: any }, cb: () => Promise<T>): Promise<T> {
@@ -37,11 +64,11 @@ export class FileStopwatchStore extends StopwatchStore {
         return Zone.current();
     }
 
-    add(frame: FrameStart | FrameEnd): number {
-        frame.worker = cluster.isWorker ? cluster.worker!.id : 0;
+    add(frame: FrameStart | FrameEnd): void {
+        const [id, worker] = decodeCompoundKey(frame.cid);
+        frame.cid = encodeCompoundKey(id, cluster.isWorker ? cluster.worker!.id : 0);
         frame.timestamp = Math.floor(performance.timeOrigin * 1_000 + performance.now() * 1_000);
         super.add(frame);
-        return frame.worker;
     }
 
     protected async loadLastNumberRange() {
@@ -56,60 +83,70 @@ export class FileStopwatchStore extends StopwatchStore {
                 return;
             }
 
-            const frames = decodeFrames(data);
-            for (let i = frames.length - 1; i >= 0; i--) {
-                const frame = frames[i];
+            let last: FrameStart | undefined;
+
+            decodeFrames(data, (frame) => {
                 if (frame.type === FrameType.start) {
-                    this.lastId = frame.id;
-                    this.lastContext = frame.context;
-                    return;
+                    last = frame;
                 }
+            });
+
+            if (last) {
+                this.lastId = decodeCompoundKey(last.cid)[0];
+                this.lastContext = last.context;
             }
+        } else {
+            this.lastId = 0;
         }
     }
 
     protected sync() {
         if (this.lastSync) return;
-
         this.lastSync = setTimeout(() => this.syncNow(), 250);
     }
 
     protected async syncNow() {
+        if (this.ended) return;
+
         await this.syncMutex.lock();
         try {
-            this.lastSync = undefined;
-
             await this.loadLastNumberRange();
 
             const frames = this.frameQueue.slice();
             const frameData = this.dataQueue.slice();
+            const analytics = this.analytics.slice();
             this.frameQueue = [];
             this.dataQueue = [];
+            this.analytics = [];
 
             for (const frame of frames) {
-                frame.id += this.lastId;
+                frame.cid = incrementCompoundKey(frame.cid, this.lastId);
                 if (frame.type === FrameType.start) frame.context += this.lastContext;
             }
 
             for (const frame of frameData) {
-                frame.id += this.lastId;
+                frame.cid = incrementCompoundKey(frame.cid, this.lastId);
             }
 
-            await asyncOperation((resolve, reject) => {
-                const frameBytes = encodeFrames(frames);
-                appendFile(this.framesPath, frameBytes, (error) => {
-                    this.frameChannel.publish(frameBytes).catch(() => {});
-                    if (error) reject(error); else resolve(undefined);
-                });
-            });
+            const frameBytes = encodeFrames(frames);
+            const dataBytes = encodeFrameData(frameData);
+            const analyticsBytes = encodeAnalytic(analytics);
 
-            await asyncOperation((resolve, reject) => {
-                const bytes = encodeFrameData(frameData);
-                appendFile(this.framesDataPath, bytes, (error) => {
-                    this.frameDataChannel.publish(bytes).catch(() => {});
-                    if (error) reject(error); else resolve(undefined);
-                });
-            });
+            if (frameBytes.byteLength) await appendFile(this.framesPath, frameBytes);
+            if (dataBytes.byteLength) await appendFile(this.framesDataPath, dataBytes);
+            if (analyticsBytes.byteLength) await appendFile(this.analyticsPath, analyticsBytes);
+
+            if (!this.ended) {
+                //when we ended, broker connection already closed. So we just write to disk.
+                if (frameBytes.byteLength && this.frameChannel) await this.frameChannel.publish(frameBytes);
+                if (dataBytes.byteLength && this.frameDataChannel) await this.frameDataChannel.publish(dataBytes);
+            }
+
+            this.lastSync = undefined;
+            const more = this.dataQueue.length || this.frameQueue.length || this.analytics.length;
+            if (more) {
+                this.sync();
+            }
         } finally {
             this.syncMutex.unlock();
         }

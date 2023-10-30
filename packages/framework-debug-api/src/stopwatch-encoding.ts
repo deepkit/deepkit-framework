@@ -1,19 +1,19 @@
-import { deserializeBSONWithoutOptimiser, getBSONSerializer, getBSONSizer, Parser, stringByteLength, Writer } from '@deepkit/bson';
-import { categorySchemas, FrameCategory, FrameData, FrameEnd, FrameStart, FrameType } from '@deepkit/stopwatch';
+import { deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer, getBSONSizer, Parser, stringByteLength, Writer } from '@deepkit/bson';
+import { AnalyticData, FrameData, FrameEnd, FrameStart, FrameType, getTypeOfCategory } from '@deepkit/stopwatch';
 
 export function encodeFrames(frames: (FrameStart | FrameEnd)[]): Uint8Array {
-    //<id uint32><worker uint8><type uint8><timestamp uint64><context uint32><category uint8><labelSize uint8><label utf8string>.
+    //cid = id and worker, as compound key
+    //<cid uint32><type uint8><timestamp uint64><context uint32><category uint8><labelSize uint8><label utf8string>.
     let size = 0;
     for (const frame of frames) {
-        size += frame.type === FrameType.end ? (32 + 8 + 8 + 64) / 8 : (((32 + 8 + 8 + 64 + 32 + 8 + 8) / 8) + Math.min(255, stringByteLength(frame.label)));
+        size += frame.type === FrameType.end ? (32 + 8 + 64) / 8 : (((32 + 8 + 64 + 32 + 8 + 8) / 8) + Math.min(255, stringByteLength(frame.label)));
     }
 
     const buffer = Buffer.allocUnsafe(size);
     const writer = new Writer(buffer);
 
     for (const frame of frames) {
-        writer.writeUint32(frame.id);
-        writer.writeByte(frame.worker);
+        writer.writeUint32(frame.cid);
         writer.writeByte(frame.type);
 
         //up to 2⁵³=9,007,199,254,740,992 the representable numbers are exactly the integers
@@ -39,51 +39,83 @@ export function encodeFrames(frames: (FrameStart | FrameEnd)[]): Uint8Array {
     return buffer;
 }
 
-
 export function encodeFrameData(dataItems: FrameData[]) {
-    //<id uint32><worker uint8><bson document>
+    //<cid uint32><bson document>
     let size = 0;
     for (const data of dataItems) {
-        const schema = categorySchemas[data.category];
-        if (!schema) throw new Error(`Frame category ${FrameCategory[data.category]} has no schema declared.`);
-        size += ((32 + 8) / 8) + getBSONSizer(undefined, schema)(data.data);
+        let dataSize = 4; //always has uint32
+        const type = getTypeOfCategory(data.category);
+        if (type) dataSize = getBSONSizer(undefined, type)(data.data);
+        size += ((32 + 8) / 8) + dataSize;
     }
 
     const buffer = Buffer.allocUnsafe(size);
     const writer = new Writer(buffer);
 
     for (const data of dataItems) {
-        writer.writeUint32(data.id);
-        writer.writeByte(data.worker);
-        const schema = categorySchemas[data.category]!;
-        getBSONSerializer(undefined, schema)(data.data, {writer});
+        writer.writeUint32(data.cid);
+        writer.writeByte(data.category);
+        const type = getTypeOfCategory(data.category);
+        if (type) {
+            getBSONSerializer(undefined, type)(data.data, { writer });
+        } else {
+            writer.writeUint32(0);
+        }
     }
 
     return buffer;
 }
 
-export function decodeFrameData(buffer: Uint8Array): { id: number, worker: number, data: Uint8Array }[] {
-    const parser = new Parser(buffer);
+export function encodeAnalytic(data: AnalyticData[]) {
+    //<timestamp uint64><cpu uint8><memory uint8><loopBlocked uint8>
+    const buffer = Buffer.allocUnsafe(data.length * (4 + 1 + 1 + 4));
+    const writer = new Writer(buffer);
 
-    const data: { id: number, worker: number, data: Uint8Array }[] = [];
-
-    while (parser.offset < buffer.byteLength) {
-        const id = parser.eatUInt32();
-        const worker = parser.eatByte();
-        const end = parser.peekUInt32() + parser.offset;
-        data.push({ id, worker, data: deserializeBSONWithoutOptimiser(parser.buffer.slice(parser.offset, end)) });
-        parser.offset = end;
+    for (const item of data) {
+        writer.writeUint32(item.timestamp);
+        writer.writeByte(item.cpu);
+        writer.writeByte(item.memory);
+        writer.writeUint32(item.loopBlocked);
     }
-    return data;
+
+    return buffer;
 }
 
-export function decodeFrames(buffer: Uint8Array): (FrameStart | FrameEnd)[] {
+export function decodeAnalytic(buffer: Uint8Array, callback: (data: AnalyticData) => void) {
     const parser = new Parser(buffer);
-    const frames: (FrameStart | FrameEnd)[] = [];
 
     while (parser.offset < buffer.byteLength) {
-        const id = parser.eatUInt32();
-        const worker = parser.eatByte();
+        const timestamp = parser.eatUInt32();
+        const cpu = parser.eatByte();
+        const memory = parser.eatByte();
+        const loopBlocked = parser.eatUInt32();
+        callback({ timestamp, cpu, memory, loopBlocked });
+    }
+}
+
+export function decodeFrameData(buffer: Uint8Array, callback: (data: { cid: number, category: number, data: Uint8Array }) => void) {
+    const parser = new Parser(buffer);
+
+    while (parser.offset < buffer.byteLength) {
+        const cid = parser.eatUInt32();
+        const category = parser.eatByte();
+        const end = parser.peekUInt32() + parser.offset;
+        callback({ cid, category, data: parser.buffer.slice(parser.offset, end) });
+        parser.offset = end;
+    }
+}
+
+export function deserializeFrameData(data: { cid: number, category: number, data: Uint8Array }): any {
+    const classType = getTypeOfCategory(data.category);
+    const deserializer = classType ? getBSONDeserializer(undefined, classType) : deserializeBSONWithoutOptimiser;
+    return deserializer(data.data);
+}
+
+export function decodeFrames(buffer: Uint8Array, callback: (frame: FrameStart | FrameEnd) => void): void {
+    const parser = new Parser(buffer);
+
+    while (parser.offset < buffer.byteLength) {
+        const cid = parser.eatUInt32();
         const type = parser.eatByte();
         const timestamp = parser.eatDouble();
 
@@ -92,10 +124,9 @@ export function decodeFrames(buffer: Uint8Array): (FrameStart | FrameEnd)[] {
             const category = parser.eatByte();
             const stringSize = parser.eatByte();
             const label = parser.eatString(stringSize);
-            frames.push({ id, worker, type: FrameType.start, timestamp, context, category, label });
+            callback({ cid, type: FrameType.start, timestamp, context, category, label });
         } else {
-            frames.push({ id, worker, type: FrameType.end, timestamp });
+            callback({ cid, type: FrameType.end, timestamp });
         }
     }
-    return frames;
 }

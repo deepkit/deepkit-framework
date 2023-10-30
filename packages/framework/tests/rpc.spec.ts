@@ -123,3 +123,32 @@ test('module provides RpcKernelSecurity', async () => {
 
     await testing.stopServer();
 });
+
+test('rpc controller access unscoped provider', async () => {
+    class ModelRegistryService {
+        public models: string[] = ['a'];
+    }
+
+    @rpc.controller('main')
+    class Controller {
+        constructor(private registry: ModelRegistryService) {
+        }
+
+        @rpc.action()
+        test(): string[] {
+            return this.registry.models;
+        }
+    }
+
+    const testing = createTestingApp({
+        controllers: [Controller],
+        providers: [ModelRegistryService]
+    });
+
+    const client = testing.createRpcClient();
+    const controller = client.controller<Controller>('main');
+    expect(await controller.test()).toEqual(['a']);
+
+    const registry = testing.app.get(ModelRegistryService);
+    expect(registry.models).toEqual(['a']);
+});

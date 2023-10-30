@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular/core';
-import { fromBuffer } from 'file-type/browser';
+import { filetypeinfo } from 'magic-bytes.js';
 import * as FileSaver from 'file-saver';
 import { Type } from '@deepkit/type';
 import { TypeDecoration } from './utils';
@@ -53,10 +53,10 @@ export class BinaryCellComponent implements OnInit, OnChanges {
         this.image = undefined;
         if (!this.model) return;
 
-        const type = await fromBuffer(this.model);
-        if (type?.mime?.startsWith('image/')) {
+        const type = filetypeinfo(this.model)[0];
+        if (type && type.mime?.startsWith('image/')) {
             this.image = this.model;
-            this.ext = type?.ext;
+            this.ext = type.extension || 'bin';
         }
 
         this.cd.detectChanges();

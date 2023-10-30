@@ -1,12 +1,12 @@
 import { eventDispatcher } from '@deepkit/event';
 import { onServerMainBootstrap, onServerMainShutdown } from '../application-server.js';
-import { RpcTcpServer } from '@deepkit/rpc-tcp';
+import { RpcTcpClientAdapter, RpcTcpServer } from '@deepkit/rpc-tcp';
 import { Broker, BrokerKernel, BrokerDeepkitAdapter } from '@deepkit/broker';
 import { FrameworkConfig } from '../module.config.js';
 
 export class DebugBroker extends Broker {
     constructor(brokerHost: FrameworkConfig['debugBrokerHost']) {
-        super(new BrokerDeepkitAdapter({ servers: [{ url: brokerHost }] }));
+        super(new BrokerDeepkitAdapter({ servers: [{ url: '', transport: new RpcTcpClientAdapter(brokerHost) }] }));
     }
 }
 
@@ -24,7 +24,7 @@ export class DebugBrokerListener {
 
     @eventDispatcher.listen(onServerMainShutdown)
     async onMainShutdown() {
-        await this.server.close();
         await this.broker.disconnect();
+        await this.server.close();
     }
 }

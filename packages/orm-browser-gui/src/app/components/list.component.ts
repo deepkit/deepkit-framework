@@ -55,7 +55,6 @@ export class DatabaseBrowserListComponent implements OnInit {
         this.state.databases = await this.controllerClient.getDatabases();
         detectChangesNextFrame(this.cd);
 
-        console.log('databases', this.state.databases);
         this.state.onDataChange.subscribe(this.loadCounts.bind(this));
         await this.loadCounts();
     }

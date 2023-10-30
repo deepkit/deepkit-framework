@@ -4,22 +4,13 @@ import { decodeFrameData, decodeFrames } from '@deepkit/framework-debug-api';
 import { Application, Container, Graphics, InteractionEvent, Rectangle, Text, TextStyle } from 'pixi.js';
 import { FrameCategory, FrameEnd, FrameStart } from '@deepkit/stopwatch';
 import * as Hammer from 'hammerjs';
-import { formatTime, FrameItem, FrameParser } from './frame';
-import { FrameContainer } from './frame-container';
+import { ChangeFeed, Crunch, formatTime, FrameItem, FrameParser, getCrunchX, getFrameX, getFrameXCanvas, ViewState } from './frame';
+import { CrunchContainer, FrameContainer } from './frame-container';
 import { Subject } from 'rxjs';
 import { ClientProgress } from '@deepkit/rpc';
 
-class ViewState {
-    scrollX: number = 0;
-    zoom: number = 20;
-    width: number = 500;
-    height: number = 100;
-    scrollWidth: number = 1;
-}
-
 interface FrameData {
-    id: number;
-    worker: number;
+    cid: number;
     data: Uint8Array;
 }
 
@@ -28,7 +19,8 @@ class ProfilerContainer extends Container {
     protected selectedLines = new Graphics();
     protected headerText = new Container();
     protected frameContainer = new Container();
-    protected offsetText: Text;
+    // protected crunchContainer = new Container();
+    // protected offsetText: Text;
     protected textStyle = { fontSize: 12, fill: 0xdddddd } as TextStyle;
 
     protected hoverMenu?: Container;
@@ -38,7 +30,7 @@ class ProfilerContainer extends Container {
     public ignoreNextClick: boolean = false;
     protected inactiveAlpha = 0.6;
 
-    protected parserSub = this.parser.subscribe(this.onUpdate.bind(this));
+    protected parserSub = this.parser.subscribe(this.onUpdate.bind(this), this.viewState);
 
     constructor(
         public parser: FrameParser,
@@ -48,12 +40,13 @@ class ProfilerContainer extends Container {
         super();
         this.addChild(this.headerLines);
         this.addChild(this.headerText);
+        // this.addChild(this.crunchContainer);
         this.addChild(this.frameContainer);
         this.addChild(this.selectedLines);
-        this.offsetText = new Text('0', this.textStyle);
-        this.addChild(this.offsetText);
-        this.offsetText.x = 0;
-        this.offsetText.y = 13;
+        // this.offsetText = new Text('0', this.textStyle);
+        // this.addChild(this.offsetText);
+        // this.offsetText.x = 0;
+        // this.offsetText.y = 13;
 
         this.hitArea = new Rectangle(0, 0, this.viewState.width, this.viewState.height);
 
@@ -67,19 +60,32 @@ class ProfilerContainer extends Container {
         });
 
         this.frameContainer.y = 15;
+        // this.crunchContainer.y = 15;
     }
 
-    onUpdate(create: FrameItem[], update: FrameItem[], remove: FrameItem[]) {
+    onUpdate(frames: ChangeFeed<FrameItem>, crunches: ChangeFeed<Crunch>) {
         // console.log('create', create, remove);
-        for (const item of remove) {
+
+        for (const item of crunches.remove || []) {
             if (!item.container) continue;
             this.frameContainer.removeChild(item.container);
             item.container = undefined;
         }
 
-        const add: FrameContainer[] = [];
-        for (const item of create) {
-            const container = item.container = new FrameContainer(item, this.parser.offsetX, this.viewState);
+        for (const item of frames.remove || []) {
+            if (!item.container) continue;
+            this.frameContainer.removeChild(item.container);
+            item.container = undefined;
+        }
+
+        for (const item of crunches.create || []) {
+            const container = item.container = new CrunchContainer(item, this.viewState);
+            this.frameContainer.addChild(container);
+        }
+
+        const add: Container[] = [];
+        for (const item of frames.create || []) {
+            const container = item.container = new FrameContainer(item, 0, this.viewState);
 
             container.rectangle.interactive = true;
 
@@ -106,8 +112,8 @@ class ProfilerContainer extends Container {
 
 
             if (this.selected) {
-                container.rectangle.alpha = container.item.frame.id === this.selected.frame.id ? 1 : this.inactiveAlpha;
-                container.text.alpha = container.item.frame.id === this.selected.frame.id ? 1 : this.inactiveAlpha;
+                container.rectangle.alpha = container.item.frame.cid === this.selected.frame.cid ? 1 : this.inactiveAlpha;
+                container.text.alpha = container.item.frame.cid === this.selected.frame.cid ? 1 : this.inactiveAlpha;
             }
 
             add.push(container);
@@ -136,32 +142,32 @@ class ProfilerContainer extends Container {
         // this.updateTransform();
     }
 
-    timestampToX(timestamp: number): number {
-        return ((timestamp - this.parser.offsetX - this.viewState.scrollX) / this.viewState.zoom);
+    xToViewX(x: number): number {
+        return ((x - this.viewState.scrollX) / this.viewState.zoom);
     }
 
-    protected setWindow() {
-        // const padding = (this.viewState.width * 0.05) * this.viewState.zoom;
-        const padding = 1;
-        const start = (this.viewState.scrollX) - padding;
-        const end = start + ((this.viewState.width) * this.viewState.zoom) + padding;
-        this.parserSub.setWindow({start, end});
-        // console.log('setWindow', start, end, this.viewState);
-    }
+    // protected setWindow() {
+    //     // const padding = (this.viewState.width * 0.05) * this.viewState.zoom;
+    //     const padding = 1;
+    //     const start = (this.viewState.scrollX) - padding;
+    //     const end = start + ((this.viewState.width) * this.viewState.zoom) + padding;
+    //     this.parserSub.setWindow({ start, end });
+    //     // console.log('setWindow', start, end, this.viewState);
+    // }
 
     viewChanged() {
-        this.setWindow();
+        this.parserSub.checkWindow();
         this.update();
     }
 
     addFrames(frames: (FrameStart | FrameEnd)[]) {
-        this.setWindow();
+        this.parserSub.checkWindow();
 
         this.parser.feed(frames);
     }
 
-    get containers(): FrameContainer[] {
-        return this.frameContainer.children as FrameContainer[];
+    get containers(): (FrameContainer | CrunchContainer)[] {
+        return this.frameContainer.children as (FrameContainer | CrunchContainer)[];
     }
 
     setSelected(frame?: FrameItem) {
@@ -172,9 +178,11 @@ class ProfilerContainer extends Container {
         }
 
         for (const container of this.containers) {
+            if (!(container instanceof FrameContainer)) continue;
+
             if (this.selected) {
-                container.rectangle.alpha = container.item.frame.id === this.selected.frame.id ? 1 : this.inactiveAlpha;
-                container.text.alpha = container.item.frame.id === this.selected.frame.id ? 1 : this.inactiveAlpha;
+                container.rectangle.alpha = container.item.frame.cid === this.selected.frame.cid ? 1 : this.inactiveAlpha;
+                container.text.alpha = container.item.frame.cid === this.selected.frame.cid ? 1 : this.inactiveAlpha;
             } else {
                 container.rectangle.alpha = 1;
                 container.text.alpha = 1;
@@ -210,10 +218,10 @@ class ProfilerContainer extends Container {
     }
 
     forward() {
-        const scrollX = this.selected ? this.selected.x - this.parser.offsetX : this.viewState.scrollX;
+        const scrollX = this.selected ? this.selected.x : this.viewState.scrollX;
         for (const frame of this.frameContainer.children as FrameContainer[]) {
-            if (frame.item.x - this.parser.offsetX > scrollX) {
-                // this.viewState.scrollX = frame.frame.x - this.offsetX;
+            if (frame.item.x > scrollX) {
+                // this.viewState.scrollX = frame.frame.x;
                 this.setSelected(frame.item);
                 this.update();
                 return;
@@ -225,8 +233,12 @@ class ProfilerContainer extends Container {
         for (const layer of this.containers) {
             layer.update();
         }
-        this.renderHeaderLines();
+        // for (const layer of this.crunchContainer.children as CrunchContainer[]) {
+        //     layer.update();
+        // }
+        // this.renderHeaderLines();
         this.renderSelectedLines();
+        // this.crunchContainer.x = -this.viewState.scrollX / this.viewState.zoom;
         this.hitArea = new Rectangle(0, 0, this.viewState.width, this.viewState.height);
     }
 
@@ -235,9 +247,9 @@ class ProfilerContainer extends Container {
         if (this.selected) {
             this.selectedLines.beginFill(0xeeeeee, 0.5);
             // this.selectedLines.lineStyle(1, 0x73AB77);
-            this.selectedLines.drawRect(this.timestampToX(this.selected.x), 0, 1, this.viewState.height);
+            this.selectedLines.drawRect(this.xToViewX(this.selected.x), 0, 1, this.viewState.height);
             if (this.selected.took) {
-                this.selectedLines.drawRect(this.timestampToX(this.selected.x + this.selected.took), 0, 1, this.height);
+                this.selectedLines.drawRect(this.xToViewX(this.selected.x + (this.selected.took - this.selected.crunch)), 0, 1, this.height);
             }
         }
         this.selectedLines.endFill();
@@ -257,7 +269,7 @@ class ProfilerContainer extends Container {
         }
 
         const offsetTime = this.viewState.scrollX;
-        this.offsetText.text = (offsetTime > 0 ? '+' : '') + formatTime(offsetTime);
+        // this.offsetText.text = (offsetTime > 0 ? '+' : '') + formatTime(offsetTime);
 
         const maxLines = (this.viewState.width + jumpSize) / padding;
 
@@ -286,7 +298,7 @@ class ProfilerContainer extends Container {
     template: `
         <dui-window-toolbar for="main">
             <dui-button-group>
-<!--                <dui-button textured icon="arrow_right" (click)="forward()"></dui-button>-->
+                <!--                <dui-button textured icon="arrow_right" (click)="forward()"></dui-button>-->
                 <dui-button textured icon="garbage" (click)="resetProfilerFrames()"></dui-button>
             </dui-button-group>
 
@@ -301,7 +313,7 @@ class ProfilerContainer extends Container {
 
         <div class="canvas" #canvas></div>
 
-        <profile-timeline [parser]="parser" [selected]="selectedFrameChildrenStats.contextStart" (selectItem)="timelineSelect($event)"></profile-timeline>
+        <!--        <profile-timeline [parser]="parser" [selected]="selectedFrameChildrenStats.contextStart" (selectItem)="timelineSelect($event)"></profile-timeline>-->
 
         <div class="inspector text-selection" *ngIf="selectedFrame">
             <h3>{{selectedFrame.frame.label}}</h3>
@@ -312,8 +324,15 @@ class ProfilerContainer extends Container {
             </div>
 
             <div style="margin-bottom: 10px;">
-                <label>y</label>
-                {{selectedFrame.y}}
+                <label>debug</label>
+                x: {{selectedFrame.x}} ({{getFrameX(selectedFrame, viewState)}}, end: {{getFrameX(selectedFrame, viewState) + selectedFrame.took}})
+                y: {{selectedFrame.y}}
+                crunches: {{selectedFrame.context.allCrunches}}
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label>took</label>
+                {{selectedFrame.took}} ({{selectedFrame.x + selectedFrame.took}})
             </div>
 
             <ng-container *ngIf="selectedFrameChildrenStats.contextStart">
@@ -333,7 +352,24 @@ class ProfilerContainer extends Container {
             </ng-container>
 
             <div>
-                <label>Total time</label>
+                <label style="width: 70px;">Started</label>
+                <ng-container>
+                    {{selectedFrame.frame.timestamp / 1000|date:'HH:mm:ss.SSS'}}
+                </ng-container>
+            </div>
+
+            <div>
+                <label style="width: 70px;">Ended</label>
+                <ng-container *ngIf="selectedFrame.took">
+                    {{(selectedFrame.frame.timestamp + selectedFrame.took) / 1000|date:'HH:mm:ss.SSS'}}
+                </ng-container>
+                <ng-container *ngIf="!selectedFrame.took">
+                    Pending
+                </ng-container>
+            </div>
+
+            <div>
+                <label style="width: 70px;">Total time</label>
 
                 <ng-container *ngIf="selectedFrame.took">
                     {{formatTime(selectedFrame.took, 3)}}
@@ -419,6 +455,7 @@ class ProfilerContainer extends Container {
     styleUrls: ['./profile.component.scss']
 })
 export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
+    getFrameX = getFrameX;
     FrameCategory = FrameCategory;
     formatTime = formatTime;
 
@@ -456,7 +493,8 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     timelineSelect(item: FrameItem) {
-        this.viewState.scrollX = item.x - this.parser.offsetX;
+        this.viewState.scrollX = item.x - (this.viewState.width * this.viewState.zoom / 3);
+
         this.profiler.viewChanged();
         this.profiler.setSelected(item);
         this.profiler.update();
@@ -468,7 +506,7 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
 
         if (item) {
             for (const data of this.frameData) {
-                if (data.id === item.frame.id && data.worker === item.frame.worker) {
+                if (data.cid === item.frame.cid) {
                     Object.assign(this.selectedFrameData, data.data);
                 }
             }
@@ -486,19 +524,18 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
             for (const child of this.profiler.parser.items) {
                 if (!child) continue;
 
-                if (!contextStartFound && child.frame.context === item.frame.context && child.frame.worker === item.frame.worker) {
+                if (!contextStartFound && child.frame.context === item.frame.context) {
                     contextStartFound = true;
                     this.selectedFrameChildrenStats.contextStart = child;
                 }
 
-                if (child.frame.context === item.frame.context
-                    && child.frame.worker === item.frame.worker && child.x > item.x && child.x < end && child.y === targetY) {
+                if (child.frame.context === item.frame.context && child.x > item.x && child.x < end && child.y === targetY) {
 
                     this.selectedFrameChildrenStats.totalTime += child.took;
                     this.selectedFrameChildren.push(child);
 
                     for (const data of this.frameData) {
-                        if (data.id === child.frame.id && data.worker === item.frame.worker) {
+                        if (data.cid === child.frame.cid) {
                             if (!child.data) child.data = {};
                             Object.assign(child.data, data.data);
                         }
@@ -522,7 +559,7 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
         for (const frame of this.profiler.parser.rootItems) {
             if (this.selectedFrame && frame.x <= this.selectedFrame.x) continue;
             if (frame.x > this.viewState.scrollX) {
-                this.viewState.scrollX = frame.x - this.parser.offsetX;
+                this.viewState.scrollX = frame.x;
                 this.profiler.viewChanged();
                 this.profiler.setSelected(frame);
                 this.profiler.update();
@@ -561,13 +598,15 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
         console.time('download');
 
         const trackFrames = ClientProgress.track();
-        const [framesBuffer, dataBuffer] = await this.client.debug.getProfilerFrames();
+        const [framesBuffer, dataBuffer, analyticsBuffer] = await this.client.debug.getProfilerFrames();
 
         console.timeEnd('download');
 
         console.time('parse');
-        const frames = decodeFrames(framesBuffer);
-        this.frameData = decodeFrameData(dataBuffer);
+        const frames: (FrameStart | FrameEnd)[] = [];
+        decodeFrames(framesBuffer, (frame) => frames.push(frame));
+        this.frameData = [];
+        decodeFrameData(dataBuffer, (data) => this.frameData.push(data));
         console.timeEnd('parse');
 
         // console.log('this.frames', frames);
@@ -578,21 +617,26 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
         console.timeEnd('addFrames');
         this.profiler.update();
 
+        // const lastRoot = this.profiler.parser.rootItems[this.profiler.parser.rootItems.length - 1];
+        // if (lastRoot) {
+        //     this.timelineSelect(lastRoot);
+        // }
+
         const frameSub = this.frameSub = await this.client.debug.subscribeStopwatchFrames();
         frameSub.subscribe((next) => {
-            this.profiler.addFrames(decodeFrames(next));
+            decodeFrames(next, (frame) => this.profiler.addFrames([frame]));
             this.profiler.update();
         });
 
         const frameDataSub = this.frameDataSub = await this.client.debug.subscribeStopwatchFramesData();
         frameDataSub.subscribe((next) => {
             const item = this.selectedFrame;
-            for (const data of decodeFrameData(next)) {
+            decodeFrameData(next, (data) => {
                 this.frameData.push(data);
-                if (item && data.id === item.frame.id && data.worker === item.frame.worker) {
+                if (item && data.cid === item.frame.cid) {
                     Object.assign(this.selectedFrameData, data.data);
                 }
-            }
+            });
             this.cd.detectChanges();
         });
     }
@@ -636,8 +680,22 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
             const newZoom = Math.min(1000000, Math.max(0.1, this.viewState.zoom - (Math.min(event.deltaY * -1 / 500, 0.3) * this.viewState.zoom)));
             const ratio = newZoom / this.viewState.zoom;
 
-            const eventOffsetX = event.clientX - this.app.renderer.view.getBoundingClientRect().x;
-            this.viewState.scrollX -= (eventOffsetX) * this.viewState.zoom * (ratio - 1);
+            let eventOffsetX = event.clientX - this.app.renderer.view.getBoundingClientRect().x;
+
+            const x = this.viewState.scrollX + (eventOffsetX) * this.viewState.zoom;
+            let foundCrunches = 0;
+            for (const item of this.profiler.containers) {
+                if (item instanceof FrameContainer) {
+                    if (!item.item.context || getFrameX(item.item, this.viewState) > x) break;
+                    foundCrunches = Math.max(foundCrunches, item.item.context.allCrunches);
+                }
+            }
+
+            const crunchOffset = 80 * foundCrunches;
+            eventOffsetX -= crunchOffset;
+
+            const move = (eventOffsetX) * this.viewState.zoom * (ratio - 1);
+            this.viewState.scrollX -= move;
             this.viewState.zoom = newZoom;
 
             event.preventDefault();

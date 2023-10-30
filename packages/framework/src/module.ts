@@ -24,7 +24,7 @@ import { BrokerConfig, FrameworkConfig } from './module.config.js';
 import { LoggerInterface } from '@deepkit/logger';
 import { SessionHandler } from './session.js';
 import { RpcServer, WebWorkerFactory } from './worker.js';
-import { Stopwatch } from '@deepkit/stopwatch';
+import { Stopwatch, StopwatchStore } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller.js';
 import { DatabaseListener } from './database/database-listener.js';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
@@ -36,7 +36,7 @@ import { AppConfigController } from './cli/app-config.js';
 import { Zone } from './zone.js';
 import { DebugBroker, DebugBrokerListener } from './debug/broker.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
-import { AppModule, ControllerConfig, createModule } from '@deepkit/app';
+import { AppModule, ControllerConfig, createModule, onAppShutdown } from '@deepkit/app';
 import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
 import { normalizeDirectory } from './utils.js';
 import { FilesystemRegistry, PublicFilesystem } from './filesystem.js';
@@ -200,22 +200,32 @@ export class FrameworkModule extends createModule({
             this.addImport(new ApiConsoleModule({ listen: false, markdown: '' }).rename('internalApi'));
 
             //we start our own broker
-            if (this.config.debugProfiler) {
-                this.addListener(DebugBrokerListener);
-                this.addProvider(DebugBroker);
-
-                this.addProvider(FileStopwatchStore);
-                this.addProvider({
-                    provide: Stopwatch,
-                    useFactory(store: FileStopwatchStore) {
-                        return new Stopwatch(store);
-                    }
-                });
-                this.addExport(Stopwatch);
-            }
+            this.addListener(DebugBrokerListener);
+            this.addProvider(DebugBroker);
+            this.addListener(onAppShutdown.listen(async (
+                event, broker: DebugBroker, store: StopwatchStore) => {
+                await store.close();
+                await broker.disconnect();
+            }));
 
             // this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
         }
+
+        this.addProvider(FileStopwatchStore);
+        this.addProvider({ provide: StopwatchStore, useExisting: FileStopwatchStore });
+        this.addProvider({
+            provide: Stopwatch,
+            useFactory(store: StopwatchStore, profile: FrameworkConfig['debugProfiler']) {
+                const stopwatch = new Stopwatch(store);
+                if (profile) {
+                    stopwatch.enable();
+                } else {
+                    stopwatch.disable();
+                }
+                return stopwatch;
+            }
+        });
+        this.addExport(Stopwatch);
     }
 
     postProcess() {

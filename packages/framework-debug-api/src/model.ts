@@ -9,13 +9,11 @@
  */
 
 import { pathBasename, pathExtension, pathNormalize } from '@deepkit/core';
-import { AutoIncrement, entity, PrimaryKey } from '@deepkit/type';
+import { entity } from '@deepkit/type';
 
 @entity.name('deepkit/debugger/request')
 export class DebugRequest {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    version: number = 0;
-    created: Date = new Date;
+    ended?: number;
     statusCode?: number;
     logs: number = 0;
 
@@ -46,10 +44,16 @@ export class DebugRequest {
     times: { [name: string]: number } = {};
 
     constructor(
+        public id: number,
+        public started: number,
         public method: string,
         public url: string,
         public clientIp: string,
     ) {
+    }
+
+    took(): number {
+        return this.ended ? this.ended - this.started : 0;
     }
 }
 

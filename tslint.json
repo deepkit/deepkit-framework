@@ -25,7 +25,7 @@
     "member-access": false,
     "member-ordering": false,
     "no-arg": true,
-    "no-bitwise": true,
+    "no-bitwise": false,
     "no-console": false,
     "no-construct": true,
     "no-debugger": true,

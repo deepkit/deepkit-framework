@@ -1,23 +1,16 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { ControllerClient } from '../../client';
 import { Application, Container, Rectangle, Text } from 'pixi.js';
-import { formatTime, FrameItem, FrameParser } from './frame';
+import { ChangeFeed, formatTime, FrameItem, FrameParser, ViewState } from './frame';
 import { FrameContainer } from './frame-container';
 import { FrameCategory } from '@deepkit/stopwatch';
-
-class TimelineState {
-    scrollX: number = 0;
-    zoom: number = 200;
-    width: number = 500;
-    height: number = 500;
-}
 
 class TimelineFrameContainer extends FrameContainer {
     public subText: Text;
 
     protected itemHeight: number = 40;
 
-    constructor(item: FrameItem, offset: number, viewState: { zoom: number; scrollX: number }, protected itemX: number) {
+    constructor(item: FrameItem, offset: number, viewState: ViewState, protected itemX: number) {
         super(item, offset, viewState);
 
         this.subText = new Text(this.getSubText(), this.textStyle);
@@ -29,7 +22,7 @@ class TimelineFrameContainer extends FrameContainer {
         // const textDimensions = TextCalc.get().getDimensions(this.subText.text);
         // if (textDimensions.width > this.textDimensions.width) this.textDimensions = textDimensions;
 
-        this.paintOverTextOverflow.height = this.itemHeight;
+        // this.paintOverTextOverflow.height = this.itemHeight;
         // this.paintOverTextOverflow.width = (this.textDimensions.width - this.frameWidth) + 2;
         this.update();
     }
@@ -65,7 +58,7 @@ class TimelineContainer extends Container {
 
     constructor(
         public parser: FrameParser,
-        public viewState: TimelineState,
+        public viewState: ViewState,
         public onSelect: (frame?: FrameItem) => void,
     ) {
         super();
@@ -141,8 +134,8 @@ class TimelineContainer extends Container {
     update() {
         for (const container of this.containers) {
             if (this.selected) {
-                container.rectangle.alpha = container.item.frame.id === this.selected.frame.id ? 1 : this.inactiveAlpha;
-                container.text.alpha = container.item.frame.id === this.selected.frame.id ? 1 : this.inactiveAlpha;
+                container.rectangle.alpha = container.item.frame.cid === this.selected.frame.cid ? 1 : this.inactiveAlpha;
+                container.text.alpha = container.item.frame.cid === this.selected.frame.cid ? 1 : this.inactiveAlpha;
             } else {
                 container.rectangle.alpha = 1;
                 container.text.alpha = 1;
@@ -188,7 +181,7 @@ export class ProfileTimelineComponent implements AfterViewInit, OnChanges {
         resolution: window.devicePixelRatio
     });
 
-    viewState = new TimelineState;
+    viewState = new ViewState();
     public timeline?: TimelineContainer;
 
     protected updateFilterTimeout?: any;
@@ -239,12 +232,12 @@ export class ProfileTimelineComponent implements AfterViewInit, OnChanges {
     }
 
     async ngAfterViewInit() {
-        this.parser.subscribe(this.onUpdate.bind(this));
+        this.parser.subscribe(this.onUpdate.bind(this), this.viewState);
         this.createCanvas();
     }
 
-    onUpdate(create: FrameItem[], update: FrameItem[], remove: FrameItem[]) {
-        console.log('timeline create', create);
+    onUpdate(changes: ChangeFeed<FrameItem>) {
+        console.log('timeline create', changes);
     }
 
     protected createCanvas() {

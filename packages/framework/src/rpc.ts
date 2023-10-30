@@ -54,7 +54,7 @@ export class RpcServerActionWithStopwatch extends RpcServerAction {
         }
 
         try {
-            if (frame) return await frame.run({}, () => super.handleAction(message, response));
+            if (frame) return await frame.run(() => super.handleAction(message, response));
             return await super.handleAction(message, response);
         } finally {
             if (frame) frame.end();

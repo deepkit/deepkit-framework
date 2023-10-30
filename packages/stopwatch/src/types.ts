@@ -1,4 +1,11 @@
-import { ClassType } from '@deepkit/core';
+import { ReflectionKind, Type, typeOf } from '@deepkit/type';
+
+export type AnalyticData = {
+    timestamp: number;
+    cpu: number;
+    memory: number;
+    loopBlocked: number;
+}
 
 export enum FrameCategory {
     none,
@@ -10,55 +17,48 @@ export enum FrameType {
     start, end
 }
 
-export const categorySchemas: { [name in FrameCategory]: ClassType } = {
-    [FrameCategory.none]: class {
-    },
-    [FrameCategory.http]: class {
+export interface FrameCategoryData {
+    [FrameCategory.http]: {
         url?: string;
         method?: string;
         clientIp?: string;
         responseStatus?: number;
-    },
-    [FrameCategory.httpController]: class {
-    },
-    [FrameCategory.rpc]: class {
-        method!: string;
-        controller!: string;
-        arguments!: any[];
-    },
-    [FrameCategory.cli]: class {
-    },
-    [FrameCategory.job]: class {
-    },
-    [FrameCategory.rpcAuthenticate]: class {
-    },
-    [FrameCategory.function]: class {
-    },
-    [FrameCategory.lock]: class {
-    },
-    [FrameCategory.workflow]: class {
-    },
-    [FrameCategory.event]: class {
-    },
-    [FrameCategory.database]: class {
+    };
+    [FrameCategory.rpc]: {
+        method: string;
+        controller: string;
+        arguments: any[];
+    };
+    [FrameCategory.database]: {
         collection?: string;
         className?: string;
-    },
-    [FrameCategory.databaseQuery]: class {
-        sql!: string;
+    };
+    [FrameCategory.databaseQuery]: {
+        sql: string;
         sqlParams?: any[];
-    },
-    [FrameCategory.email]: class {
-    },
-    [FrameCategory.template]: class {
-    },
-};
+    };
+}
 
-export type FrameCategoryModel = { [T in keyof typeof categorySchemas]: (typeof categorySchemas)[T] };
+export type TypeOfCategory<C extends FrameCategory> = C extends keyof FrameCategoryData ? Partial<FrameCategoryData[C]> : undefined;
+
+const categorySchemas: { [category in FrameCategory]?: Type } & { _loaded: boolean } = { _loaded: false };
+
+export function getTypeOfCategory(category: FrameCategory): Type | undefined {
+    if (!categorySchemas._loaded) {
+        const types = typeOf<FrameCategoryData>();
+        if (types.kind === ReflectionKind.objectLiteral) {
+            for (const member of types.types) {
+                if (member.kind !== ReflectionKind.propertySignature) continue;
+                categorySchemas[member.name as FrameCategory] = member.type;
+            }
+        }
+        categorySchemas._loaded = true;
+    }
+    return categorySchemas[category];
+}
 
 export interface FrameStart {
-    id: number;
-    worker: number;
+    cid: number;
     type: FrameType.start;
     timestamp: number;
     context: number;
@@ -67,15 +67,59 @@ export interface FrameStart {
 }
 
 export interface FrameEnd {
-    id: number;
-    worker: number;
+    cid: number;
     type: FrameType.end;
     timestamp: number;
 }
 
 export interface FrameData {
-    id: number;
-    worker: number;
+    cid: number;
     category: FrameCategory;
     data: any;
 }
+
+export function encodeCompoundKey(id: number, worker: number): number {
+    return (id << 8) + worker;
+}
+
+export function incrementCompoundKey(cid: number, id: number): number {
+    return cid + (id << 8);
+}
+
+export function decodeCompoundKey(cid: number): [id: number, worker: number] {
+    const id = cid >> 8;
+    const worker = cid & 0xff;
+    return [id, worker];
+}
+
+export class Frame {
+    end?: number;
+    data?: any;
+
+    constructor(
+        public cid: number,
+        public start: number,
+        public context: number,
+        public label: string,
+        public category: FrameCategory,
+    ) {
+    }
+}
+
+//
+// function getFrames(frames: (FrameStart | FrameEnd)[], data: FrameData[], filter: (frame: FrameStart) => boolean): Frame[] {
+//     const result: Frame[] = [];
+//     const idMap = new Map<number, Frame>();
+//     const contextMap = new Map<number, Frame>();
+//
+//     for (const frame of frames) {
+//         if (frame.type === FrameType.start) {
+//             if (!filter(frame)) continue;
+//             const f = new Frame(frame.id, frame.worker, frame.timestamp, frame.context, frame.label, frame.category);
+//             idMap.set(frame.id, f);
+//             contextMap.set(frame.context, f);
+//         }
+//     }
+//
+//     return result;
+// }

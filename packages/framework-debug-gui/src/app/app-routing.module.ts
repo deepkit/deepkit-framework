@@ -18,6 +18,7 @@ import { HttpRequestComponent } from './views/http/request/http-request.componen
 import { ProfileComponent } from './views/profile/profile.component';
 import { ModulesComponent } from './views/modules/modules.component';
 import { FilesystemComponent } from './views/filesystem/filesystem.component';
+import { HttpRequestsComponent } from './views/http/http-requests.component';
 
 const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'configuration' },
@@ -28,6 +29,7 @@ const routes: Routes = [
   { path: 'modules', component: ModulesComponent },
   { path: 'events', component: EventsComponent },
   { path: 'filesystem/:id', component: FilesystemComponent },
+  { path: 'http/request', component: HttpRequestsComponent },
   { path: 'http/request/:id', component: HttpRequestComponent },
 ];
 

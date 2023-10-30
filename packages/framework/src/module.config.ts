@@ -28,7 +28,6 @@ export class BrokerConfig {
     startOnBootstrap: boolean = true;
 }
 
-
 export class FrameworkConfig {
     host: string = '0.0.0.0'; //binding to localhost is roughly 20% faster.
     port: number = 8080;

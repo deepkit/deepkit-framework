@@ -28,10 +28,11 @@ profile-timeline {
     position: absolute;
     overflow: auto;
     overflow: overflow;
+    backdrop-filter: blur(7px);
 
     right: 0;
-    bottom: 100px;
-    top: 35px;
+    bottom: 25px;
+    top: 25px;
     width: 350px;
     background: rgba(64, 64, 64, 0.86);
 
@@ -40,6 +41,7 @@ profile-timeline {
     font-size: 12px;
 
     label {
+        display: inline-block;
         color: #ADADAD;
 
         &.header {

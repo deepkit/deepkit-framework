@@ -48,6 +48,7 @@ import { RpcWebSocketClient } from '@deepkit/rpc';
 import { State } from './state';
 import { MediaComponent, MediaFileCache, MediaFileDetail, MediaFileQuickLookCache, MediaFileThumbnail, MediaQuickLook } from './views/filesystem/media.component';
 import { FileUploaderComponent } from './components/file-uploader.component';
+import { HttpRequestsComponent } from './views/http/http-requests.component';
 
 @NgModule({
     declarations: [
@@ -60,6 +61,7 @@ import { FileUploaderComponent } from './components/file-uploader.component';
         WorkflowComponent,
         WorkflowCardComponent,
         EventsComponent,
+        HttpRequestsComponent,
         HttpRequestComponent,
         ModulesComponent,
         ModuleDetailComponent,
