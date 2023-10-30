@@ -949,14 +949,14 @@ test('BodyValidation', async () => {
     const httpKernel = createHttpKernel([Controller]);
     expect((await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
     expect((await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Pe' }))).json).toEqual({
-        errors: [{ code: 'minLength', message: 'Min length is 3', path: 'username', value: 'Pe' }], message: 'Validation error:\nusername(minLength): Min length is 3'
+        errors: [{ code: 'minLength', message: 'Min length is 3', path: 'username', value: 'Pe' }], message: 'Validation error:\nusername(minLength): Min length is 3 caused by value \"Pe\"'
     });
 
     expect((await httpKernel.request(HttpRequest.POST('/action2').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
-    expect((await httpKernel.request(HttpRequest.POST('/action2').json({ username: 'Pe' }))).bodyString).toEqual(`{"message":"Invalid: Min length is 3"}`);
+    expect((await httpKernel.request(HttpRequest.POST('/action2').json({ username: 'Pe' }))).json.message).toEqual('Invalid: username(minLength): Min length is 3 caused by value "Pe"');
 
     expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
-    expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Pe' }))).bodyString).toEqual(`{"message":"Invalid: Min length is 3"}`);
+    expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Pe' }))).json.message).toEqual('Invalid: username(minLength): Min length is 3 caused by value "Pe"');
 });
 
 test('unpopulated entity without type information', async () => {
@@ -1373,9 +1373,7 @@ test('upload security', async () => {
             type: 'image/jpeg',
             lastModifiedDate: null
         }
-    }))).json).toMatchObject({
-        message: 'Validation error:\nsomeFile(uploadSecurity): Not an uploaded file'
-    });
+    }))).json.message).toContain('Not an uploaded file caused by value');
 
     // ensure type deserialization doesn't set the invalid 'fake value' value to UploadedFileSymbol
     expect((await httpKernel.request(HttpRequest.POST('/upload').json({
@@ -1387,9 +1385,7 @@ test('upload security', async () => {
             type: 'image/jpeg',
             lastModifiedDate: null
         }
-    }))).json).toMatchObject({
-        message: 'Validation error:\nsomeFile(uploadSecurity): Not an uploaded file'
-    });
+    }))).json.message).toContain('Not an uploaded file caused by value');
 
     expect((await httpKernel.request(HttpRequest.POST('/upload').multiPart([
         {

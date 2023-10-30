@@ -7,7 +7,6 @@ import { ConsoleTransport, Logger, MemoryLoggerTransport } from '@deepkit/logger
 import { FrameworkModule } from '../src/module.js';
 import { RpcServer, RpcServerInterface, WebWorker } from '../src/worker.js';
 import { http, HttpRequest } from '@deepkit/http';
-import { BrokerModule } from '../src/broker/broker.module.js';
 import { App } from '@deepkit/app';
 import { sleep } from '@deepkit/core';
 
@@ -80,10 +79,9 @@ describe('application-server', () => {
         const app = new App({
             controllers: [MyController],
             imports: [
-                new FrameworkModule()
-                    .setup((module) => {
-                        module.getImportedModuleByClass(BrokerModule).configure({ startOnBootstrap: false });
-                    })
+                new FrameworkModule({
+                    broker: { startOnBootstrap: false }
+                })
             ]
         });
         const applicationServer = app.get(ApplicationServer);
@@ -221,7 +219,9 @@ describe('application-server', () => {
                         useValue: rpcServerMock,
                     }
                 ],
-                imports: [new FrameworkModule()]
+                imports: [new FrameworkModule({
+                    broker: { startOnBootstrap: false }
+                })]
             });
             const applicationServer = app.get(ApplicationServer);
             await applicationServer.start();
@@ -241,7 +241,9 @@ describe('application-server', () => {
 
             const app = new App({
                 controllers: [MyController],
-                imports: [new FrameworkModule()]
+                imports: [new FrameworkModule({
+                    broker: { startOnBootstrap: false }
+                })]
             });
             const applicationServer = app.get(ApplicationServer);
             await applicationServer.start();

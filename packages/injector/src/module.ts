@@ -1,7 +1,19 @@
 import { NormalizedProvider, ProviderWithScope, TagProvider, Token } from './provider.js';
 import { arrayRemoveItem, ClassType, getClassName, isClass, isPlainObject, isPrototypeOfBase } from '@deepkit/core';
 import { BuildContext, Injector, SetupProviderRegistry } from './injector.js';
-import { hasTypeInformation, isExtendable, isType, ReceiveType, reflect, ReflectionKind, reflectOrUndefined, resolveReceiveType, TypeClass, TypeObjectLiteral, visit } from '@deepkit/type';
+import {
+    hasTypeInformation,
+    isExtendable,
+    isType,
+    ReceiveType,
+    reflect,
+    ReflectionKind,
+    reflectOrUndefined,
+    resolveReceiveType,
+    TypeClass,
+    TypeObjectLiteral,
+    visit
+} from '@deepkit/type';
 
 export type ConfigureProvider<T> = { [name in keyof T]: T[name] extends (...args: infer A) => any ? (...args: A) => ConfigureProvider<T> : T[name] };
 
@@ -67,7 +79,9 @@ function lookupPreparedProviders(preparedProviders: PreparedProvider[], token: T
             if (token.kind === ReflectionKind.function && token.function && token.function === preparedProvider.token) last = preparedProvider;
             if (isType(preparedProvider.token) && isExtendable(preparedProvider.token, token)) last = preparedProvider;
             if (isClass(preparedProvider.token) && hasTypeInformation(preparedProvider.token) && isExtendable(reflect(preparedProvider.token), token)) last = preparedProvider;
-        } else if ('string' === typeof token || 'number' === typeof token || 'bigint' === typeof token || 'symbol' === typeof token && isType(preparedProvider.token)) {
+        } else if (('string' === typeof token || 'number' === typeof token || 'bigint' === typeof token || 'symbol' === typeof token) && isType(preparedProvider.token)) {
+            // note: important that we check for preparedProvider.token being isType, otherwise isExtendable uses typeInfer (which does not use cache).
+            // we have to call reflect(preparedProvider.token) otherwise, so that the cache is used.
             if (isExtendable(preparedProvider.token, { kind: ReflectionKind.literal, literal: token })) last = preparedProvider;
         }
     }

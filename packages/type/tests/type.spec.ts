@@ -19,10 +19,12 @@ import {
     resolveTypeMembers,
     stringifyResolvedType,
     stringifyType,
-    Type, TypeAnnotation,
+    Type,
+    TypeAnnotation,
     TypeClass,
     TypeObjectLiteral,
-    TypeProperty, typeToObject,
+    TypeProperty,
+    typeToObject,
     UUID,
     validationAnnotation
 } from '../src/reflection/type.js';
@@ -70,7 +72,7 @@ test('type annotation with option', () => {
     const type = typeOf<Username>();
     const data = metaAnnotation.getForName(type, 'myAnnotation');
     expect(data).toMatchObject([
-        {kind: ReflectionKind.string}
+        { kind: ReflectionKind.string }
     ]);
 });
 
@@ -80,9 +82,9 @@ test('type annotation TypeAnnotation', () => {
     const type = typeOf<Username>();
     const data = metaAnnotation.getForName(type, 'myAnnotation');
     expect(data).toMatchObject([
-        {kind: ReflectionKind.literal}
+        { kind: ReflectionKind.literal }
     ]);
-    expect(typeToObject(data![0])).toBe('yes')
+    expect(typeToObject(data![0])).toBe('yes');
 });
 
 test('intersection same type', () => {
@@ -340,6 +342,11 @@ test('interface with method', () => {
     }
 
     validExtend<Connection, { id: number, write(data: SubUint16Array): void }>();
+});
+
+test('extends Date', () => {
+    validExtend<{}, Date>();
+    invalidExtend<{ y: string }, Date>();
 });
 
 test('readonly constructor properties', () => {
@@ -1277,6 +1284,37 @@ test('keep last type name', () => {
     }
 });
 
+test('class emit typeName', () => {
+    class Entity {
+    }
+
+    class Entity2 {
+        string!: number;
+    }
+
+    /**
+     * @description my Entity 3
+     */
+    class Entity3 {
+
+    }
+
+    const type1 = typeOf<Entity>();
+    const type2 = typeOf<Entity2>();
+    const type3 = typeOf<Entity3>();
+
+    expect(type1.typeName).toBe('Entity');
+    expect(type2.typeName).toBe('Entity2');
+    expect(type3.typeName).toBe('Entity3');
+
+    assertType(type3, ReflectionKind.class);
+    expect(type3.description).toBe('my Entity 3');
+
+    const reflection = ReflectionClass.from(Entity);
+    expect(reflection.getName()).toBe('Entity');
+    expect(reflection.getClassName()).toBe('Entity');
+});
+
 test('ignore constructor in mapped type', () => {
     class MyModel {
         foo(): string {
@@ -1493,16 +1531,57 @@ test('issue-430: referring to this', () => {
         fieldB!: number;
         fieldC!: boolean;
 
-        someFunctionA() { }
-        someFunctionB(input: string) { }
-        someFunctionC(input: keyof this /* behaves the same with keyof anything */) { }
+        someFunctionA() {
+        }
+
+        someFunctionB(input: string) {
+        }
+
+        someFunctionC(input: keyof this /* behaves the same with keyof anything */) {
+        }
     }
 
     type ArrowFunction = (...args: any) => any;
-    type MethodKeys<T> = {[K in keyof T]: T[K] extends ArrowFunction ? K : never}[keyof T];
+    type MethodKeys<T> = { [K in keyof T]: T[K] extends ArrowFunction ? K : never }[keyof T];
     type keys = MethodKeys<SomeClass>;
 
     //for the moment we treat `keyof this` as any, since `this` is not implemented at all.
     //this makes it possible that the code above works at least.
     expect(stringifyResolvedType(typeOf<keys>())).toBe(`'someFunctionA' | 'someFunctionB' | 'someFunctionC'`);
+});
+
+test('issue-495: extend Promise in union', () => {
+    type Model = {
+        foo: string;
+    };
+
+    type Interface = {
+        modelBuilder(): Promise<Model> | Model;
+    };
+
+    class Implementation1 {
+        async modelBuilder(): Promise<Model> {
+            return { foo: 'bar' };
+        }
+    }
+
+    class Implementation2 {
+        async modelBuilder(): Promise<{ foo2: string }> {
+            return { foo2: 'bar' };
+        }
+    }
+
+    {
+        type T = Implementation1 extends Interface ? true : false;
+        const type = typeOf<T>();
+        assertType(type, ReflectionKind.literal);
+        expect(type.literal).toBe(true);
+    }
+
+    {
+        type T = Implementation2 extends Interface ? true : false;
+        const type = typeOf<T>();
+        assertType(type, ReflectionKind.literal);
+        expect(type.literal).toBe(false);
+    }
 });

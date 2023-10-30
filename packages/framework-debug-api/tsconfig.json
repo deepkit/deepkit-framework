@@ -15,7 +15,8 @@
     "baseUrl": ".",
     "outDir": "./dist/cjs",
     "declaration": true,
-    "composite": true
+    "composite": true,
+    "types": []
   },
   "reflection": true,
   "include": [
@@ -36,9 +37,6 @@
     },
     {
       "path": "../core-rxjs/tsconfig.json"
-    },
-    {
-      "path": "../crypto/tsconfig.json"
     },
     {
       "path": "../injector/tsconfig.json"

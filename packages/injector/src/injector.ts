@@ -10,19 +10,8 @@ import {
     TagRegistry,
     Token
 } from './provider.js';
-import {
-    AbstractClassType,
-    ClassType,
-    CompilerContext,
-    CustomError,
-    getClassName,
-    getPathValue,
-    isArray,
-    isClass,
-    isFunction,
-    isPrototypeOfBase
-} from '@deepkit/core';
-import {findModuleForConfig, getScope, InjectorModule, PreparedProvider} from './module.js';
+import { AbstractClassType, ClassType, CompilerContext, CustomError, getClassName, getPathValue, isArray, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
+import { findModuleForConfig, getScope, InjectorModule, PreparedProvider } from './module.js';
 import {
     hasTypeInformation,
     isExtendable,
@@ -114,6 +103,7 @@ function transientInjectionTargetUnavailable(ofName: string, name: string, posit
 }
 
 type Destination = { token: Token; };
+
 function createTransientInjectionTarget(destination: Destination | undefined) {
     if (!destination) {
         return undefined;
@@ -229,7 +219,7 @@ function getPickArguments(type: Type): Type[] | undefined {
  * @reflection never
  */
 export class TransientInjectionTarget {
-    constructor (
+    constructor(
         public readonly token: Token,
     ) {
     }
@@ -668,17 +658,19 @@ export class Injector implements InjectorInterface {
             const accesses: string[] = [];
 
             while (current && current.indexAccessOrigin) {
+                let found: { module: InjectorModule, path: string } | undefined = undefined;
                 if (current.indexAccessOrigin.container.kind === ReflectionKind.class) {
-                    const found = findModuleForConfig(current.indexAccessOrigin.container.classType, resolveDependenciesFrom);
-                    if (found) {
-                        module = found.module;
-                        accesses.push(found.path);
-                    }
+                    found = findModuleForConfig(current.indexAccessOrigin.container.classType, resolveDependenciesFrom);
                 }
                 if (current.indexAccessOrigin.index.kind === ReflectionKind.literal) {
                     accesses.unshift(`[${JSON.stringify(current.indexAccessOrigin.index.literal)}]`);
                 }
                 current = current.indexAccessOrigin.container;
+                if (found) {
+                    module = found.module;
+                    if (found.path) accesses.unshift(`[${JSON.stringify(found.path)}]`);
+                    break;
+                }
             }
             if (module) {
                 const fullConfig = compiler.reserveVariable('fullConfig', module.getConfig());

@@ -23,7 +23,7 @@ declare namespace JSX {
     type NoFunctions<T> = { [P in keyof T]: T[P] extends ((...args: any[]) => any) ? never : P }[keyof T];
 
     type ExtractProps<T> = {
-        [P in Extract<NoFunctions<T>, WritableKeysOf<T>>]?: T[P] extends string | number | Date | boolean ? T[P] : never;
+        [P in Extract<NoFunctions<T>, WritableKeysOf<T>>]?: T[P] extends string | number | Date | boolean ? T[P] : any;
     } & { [name: string]: any; class?: string };
 
 

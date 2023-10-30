@@ -70,7 +70,7 @@ import { Router } from '@angular/router';
                         <dui-list-item routerLink="/profiler">Profiler</dui-list-item>
                         <dui-list-item routerLink="/api/console">API</dui-list-item>
                         <dui-list-item routerLink="/broker">Broker</dui-list-item>
-                        <dui-list-item routerLink="/http-requests">HTTP Requests</dui-list-item>
+                        <dui-list-item routerLink="/http/request">HTTP Requests</dui-list-item>
 
                         <dui-list-title>Filesystem</dui-list-title>
                         <ng-container *ngFor="let filesystem of filesystems; let i = index">

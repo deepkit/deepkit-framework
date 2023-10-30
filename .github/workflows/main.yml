@@ -9,7 +9,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [18.17.0]
+        node-version: [20.6.0]
     services:
         storage-ftp:
             image: garethflowers/ftp-server:0.7.0
@@ -31,31 +31,10 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Cache node_modules
-        uses: actions/cache@v1
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-all2-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm ci
-      - name: Lerna bootstrap
-        run: |
-          npm run bootstrap:ci -- \
-            --ignore @deepkit/mongo \
-            --ignore @deepkit/example-app \
-            --ignore @deepkit/fs \
-            --ignore @deepkit/vite \
-            --ignore @deepkit/bun \
-            --ignore @deepkit/framework-examples \
-            --ignore @deepkit/benchmark \
-            --ignore @deepkit/mysql \
-            --ignore @deepkit/postgres \
-            --ignore @deepkit/orm-browser-example \
-            --ignore @deepkit/orm-browser;
-          npm run link
       - name: Build
         run: |
-          npm run install-compiler
           ./node_modules/.bin/tsc --build \
             packages/angular-universal/tsconfig.json \
             packages/api-console-module/tsconfig.json \
@@ -63,7 +42,6 @@ jobs:
             packages/bson/tsconfig.json \
             packages/core/tsconfig.json \
             packages/core-rxjs/tsconfig.json \
-            packages/crypto/tsconfig.json \
             packages/filesystem/tsconfig.json \
             packages/framework/tsconfig.json \
             packages/framework-debug-api/tsconfig.json \
@@ -82,7 +60,6 @@ jobs:
             packages/topsort/tsconfig.json \
             packages/type/tsconfig.json \
             packages/type-spec/tsconfig.json
-          npm run link
       - name: Test
         run: |
           npm run test:coverage \
@@ -91,7 +68,6 @@ jobs:
             packages/bson/ \
             packages/core/ \
             packages/core-rxjs/ \
-            packages/crypto/ \
             packages/filesystem/ \
             packages/framework/ \
             packages/framework-debug-api/ \
@@ -115,7 +91,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [18.17.0]
+        node-version: [20.6.0]
         postgres-version: [ 14 ]
     services:
       postgres:
@@ -139,19 +115,10 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-postgres-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm && npm install
-      - name: Lerna bootstrap
-        run: |
-          npm run bootstrap -- \
-            --scope @deepkit/app --scope @deepkit/postgres --scope @deepkit/orm --scope @deepkit/event --scope @deepkit/injector --scope @deepkit/stopwatch --scope @deepkit/workflow --scope @deepkit/stopwatch --scope @deepkit/sql \
-            --scope @deepkit/orm-integration --scope @deepkit/topsort \
-            --scope @deepkit/type --scope @deepkit/type-compiler --scope @deepkit/type-spec --scope @deepkit/core --scope @deepkit/logger;
-          ./node_modules/.bin/npm-local-development --no-watcher
+        run: npm ci
       - name: Build
         run: |
-          npm run install-compiler
           ./node_modules/.bin/tsc --build packages/postgres/tsconfig.json;
-          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: npm run test:coverage packages/postgres/
       - name: Send coverage
@@ -163,7 +130,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [18.17.0]
+        node-version: [20.6.0]
         mysql-version: [ 8.0 ]
     services:
       mysql:
@@ -186,19 +153,10 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-mysql-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm && npm install
-      - name: Lerna bootstrap
-        run: |
-          npm run bootstrap -- \
-            --scope @deepkit/app --scope @deepkit/mysql --scope @deepkit/orm --scope @deepkit/event --scope @deepkit/injector --scope @deepkit/stopwatch --scope @deepkit/workflow --scope @deepkit/stopwatch --scope @deepkit/sql \
-            --scope @deepkit/orm-integration --scope @deepkit/topsort \
-            --scope @deepkit/type --scope @deepkit/type-compiler --scope @deepkit/type-spec --scope @deepkit/core --scope @deepkit/logger;
-          ./node_modules/.bin/npm-local-development --no-watcher
+        run: npm ci
       - name: Build
         run: |
-          npm run install-compiler
           ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
-          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: npm run test:coverage packages/mysql/
       - name: Send coverage
@@ -210,7 +168,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [18.17.0]
+        node-version: [20.6.0]
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -223,19 +181,10 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-sqlite-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm && npm install
-      - name: Lerna bootstrap
-        run: |
-          npm run bootstrap -- \
-            --scope @deepkit/app --scope @deepkit/sqlite --scope @deepkit/orm --scope @deepkit/event --scope @deepkit/injector --scope @deepkit/stopwatch --scope @deepkit/workflow --scope @deepkit/stopwatch --scope @deepkit/sql \
-            --scope @deepkit/orm-integration --scope @deepkit/topsort \
-            --scope @deepkit/type --scope @deepkit/type-compiler --scope @deepkit/type-spec --scope @deepkit/core --scope @deepkit/logger;
-          ./node_modules/.bin/npm-local-development --no-watcher
+        run: npm ci
       - name: Build
         run: |
-          npm run install-compiler
           ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
-          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: npm run test:coverage packages/sqlite/
       - name: Send coverage
@@ -247,7 +196,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [18.17.0]
+        node-version: [20.6.0]
         mongo-version: [ 4.0 ]
     services:
       # this is used for the simple-auth test
@@ -276,98 +225,13 @@ jobs:
         uses: actions/cache@v1
         with:
           path: "**/node_modules"
-          key: ${{ runner.os }}-benchmark-node_modules-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-mongo-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
-        run: npm install -g npm && npm install
-      - name: Lerna bootstrap
-        run: |
-          npm run bootstrap -- \
-            --scope @deepkit/app --scope @deepkit/mongo --scope @deepkit/bson \
-            --scope @deepkit/orm --scope @deepkit/event --scope @deepkit/injector --scope @deepkit/stopwatch --scope @deepkit/workflow --scope @deepkit/stopwatch --scope @deepkit/sql \
-            --scope @deepkit/orm-integration --scope @deepkit/topsort \
-            --scope @deepkit/type --scope @deepkit/type-compiler --scope @deepkit/type-spec --scope @deepkit/core --scope @deepkit/logger;
-          ./node_modules/.bin/npm-local-development --no-watcher
+        run: npm ci
       - name: Build
         run: |
-          npm run install-compiler
           ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
-          ./node_modules/.bin/npm-local-development --no-watcher
       - name: Test
         run: npm run test:coverage packages/mongo/
       - name: Send coverage
         run: ./node_modules/.bin/codecov -f coverage/*.json
-
-#  benchmark:
-#    runs-on: buildjet-2vcpu-ubuntu-2004
-#    needs:
-#      - unit-tests
-#      - orm-postgres
-#      - orm-mysql
-#      - orm-sqlite
-#      - orm-mongo
-#    services:
-#      mongo:
-#        image: "mongo:4.2"
-#        ports:
-#          - "27017:27017"
-#      redis:
-#        image: "redis:6.0"
-#        ports:
-#          - "6379:6379"
-#      mysql:
-#        image: "mysql:8.0"
-#        options: >-
-#          --health-cmd "mysqladmin ping --silent"
-#          -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
-#          -e MYSQL_DATABASE=default
-#        ports:
-#          - "3306:3306"
-#      postgres:
-#        image: postgres:10.10
-#        env:
-#          POSTGRES_USER: postgres
-#          POSTGRES_DB: postgres
-#        ports:
-#          - "5432:5432"
-#        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-#    steps:
-#      - name: Use Node.js 18.x
-#        uses: actions/setup-node@v1
-#        with:
-#          node-version: 18.x
-#      - name: npm install
-#        run: npm install
-#      - name: Lerna bootstrap
-#        run: |
-#          npm run bootstrap -- \
-#          --ignore @deepkit/example-app \
-#          --ignore @deepkit/fs \
-#          --ignore @deepkit/framework-examples
-#          --ignore @deepkit/orm-browser
-#          --ignore @deepkit/orm-browser-gui
-#      - name: Build
-#        run: |
-#          ./node_modules/.bin/tsc --build \
-#            packages/broker/tsconfig.json \
-#            packages/bson/tsconfig.json \
-#            packages/core/tsconfig.json \
-#            packages/core-rxjs/tsconfig.json \
-#            packages/crypto/tsconfig.json \
-#            packages/framework/tsconfig.json \
-#            packages/framework-debug-api/tsconfig.json \
-#            packages/rpc/tsconfig.json \
-#            packages/mongo/tsconfig.json \
-#            packages/sqlite/tsconfig.json \
-#            packages/mysql/tsconfig.json \
-#            packages/postgres/tsconfig.json \
-#            packages/orm/tsconfig.json \
-#            packages/rpc/tsconfig.json \
-#            packages/rpc-tcp/tsconfig.json \
-#            packages/sql/tsconfig.json \
-#            packages/sqlite/tsconfig.json \
-#            packages/topsort/tsconfig.json \
-#            packages/type/tsconfig.json
-#      - name: Benchmark setup
-#        run: cd packages/benchmark && sh setup.sh
-#      - name: Benchmark run
-#        run: cd packages/benchmark && npm run benchmark

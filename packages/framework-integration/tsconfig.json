@@ -13,7 +13,13 @@
     "esModuleInterop": true,
     "outDir": "./dist",
     "declaration": true,
-    "composite": true
+    "composite": true,
+    "types": [
+      "clone",
+      "fs-extra",
+      "tmp",
+      "ws"
+    ]
   },
   "reflection": true,
   "files": [

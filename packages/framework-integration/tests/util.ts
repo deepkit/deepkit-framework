@@ -1,5 +1,5 @@
 import { arrayRemoveItem, ClassType, sleep } from '@deepkit/core';
-import { ApplicationServer, Broker, BrokerServer, FrameworkModule } from '@deepkit/framework';
+import { ApplicationServer, FrameworkModule } from '@deepkit/framework';
 import { App, AppModule } from '@deepkit/app';
 import { Observable } from 'rxjs';
 import { createServer } from 'http';
@@ -45,12 +45,11 @@ export function appModuleForControllers(controllers: ClassType[], entities: Clas
             super(new SQLiteDatabaseAdapter(), entities);
         }
     }
+
     return new AppModule({
         controllers: controllers,
         providers: [
             { provide: Database, useClass: MyDatabase },
-            Broker,
-            BrokerServer,
         ],
         imports: [
             new FrameworkModule

@@ -31,9 +31,9 @@
             ],
             "styles": [
               "src/styles.scss",
-              "node_modules/@deepkit/desktop-ui/src/scss/all.scss",
-              "node_modules/@deepkit/desktop-ui/src/scss/icon.scss",
-              "node_modules/@deepkit/ui-library/src/styles/style-code.scss"
+              "@deepkit/desktop-ui/src/scss/all.scss",
+              "@deepkit/desktop-ui/src/scss/icon.scss",
+              "@deepkit/ui-library/src/styles/style-code.scss"
             ],
             "scripts": []
           },

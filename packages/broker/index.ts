@@ -8,7 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/client.js';
 export * from './src/kernel.js';
 export * from './src/model.js';
 export * from './src/broker.js';
+export * from './src/adapters/deepkit-adapter.js';
+export * from './src/adapters/memory-adapter.js';

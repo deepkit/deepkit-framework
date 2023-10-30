@@ -956,7 +956,7 @@ export class ReflectionClass<T> {
     }
 
     getClassName(): string {
-        return this.type.kind === ReflectionKind.class ? getClassName(this.getClassType()) : this.type.typeName || 'Object';
+        return this.type.kind === ReflectionKind.class ? this.type.typeName || getClassName(this.getClassType()) : this.type.typeName || 'Object';
     }
 
     createDefaultObject(): object {

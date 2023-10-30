@@ -99,7 +99,7 @@ export class ValidationErrorItem {
             messagedCausedBy = ` caused by value ${serialisedValue}`;
         }
 
-        return `${(prefix ? prefix + '.' : '') + this.path}(${this.code}): ${this.message}`;
+        return `${(prefix ? prefix + '.' : '') + this.path}(${this.code}): ${this.message}${messagedCausedBy}`;
     }
 }
 

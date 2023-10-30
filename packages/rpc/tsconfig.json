@@ -13,7 +13,12 @@
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
-    "composite": true
+    "composite": true,
+    "types": [
+      "dot-prop",
+      "fs-extra",
+      "node"
+    ]
   },
   "reflection": true,
   "include": [
@@ -29,9 +34,6 @@
     },
     {
       "path": "../core-rxjs/tsconfig.json"
-    },
-    {
-      "path": "../crypto/tsconfig.json"
     },
     {
       "path": "../injector/tsconfig.json"

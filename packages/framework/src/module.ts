@@ -13,7 +13,6 @@ import { EventDispatcher } from '@deepkit/event';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { ApplicationServer, ApplicationServerListener } from './application-server.js';
-import { BrokerModule } from './broker/broker.module.js';
 import { DebugRouterController } from './cli/debug-router.js';
 import { DebugDIController } from './cli/debug-di.js';
 import { ServerStartController } from './cli/server-start.js';
@@ -21,11 +20,11 @@ import { DebugController } from './debug/debug.controller.js';
 import { registerDebugHttpController } from './debug/http-debug.controller.js';
 import { http, HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
 import { InjectorContext, injectorReference, ProviderWithScope, Token } from '@deepkit/injector';
-import { FrameworkConfig } from './module.config.js';
+import { BrokerConfig, FrameworkConfig } from './module.config.js';
 import { LoggerInterface } from '@deepkit/logger';
 import { SessionHandler } from './session.js';
 import { RpcServer, WebWorkerFactory } from './worker.js';
-import { Stopwatch } from '@deepkit/stopwatch';
+import { Stopwatch, StopwatchStore } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller.js';
 import { DatabaseListener } from './database/database-listener.js';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
@@ -37,13 +36,16 @@ import { AppConfigController } from './cli/app-config.js';
 import { Zone } from './zone.js';
 import { DebugBroker, DebugBrokerListener } from './debug/broker.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
-import { AppModule, ControllerConfig, createModule } from '@deepkit/app';
+import { AppModule, ControllerConfig, createModule, onAppShutdown } from '@deepkit/app';
 import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
 import { normalizeDirectory } from './utils.js';
 import { FilesystemRegistry, PublicFilesystem } from './filesystem.js';
 import { Filesystem } from '@deepkit/filesystem';
 import { MediaController } from './debug/media.controller.js';
 import { DebugHttpController } from './debug/debug-http.controller.js';
+import { BrokerServer } from './broker/broker.js';
+import { BrokerListener } from './broker/listener.js';
+import { Broker, BrokerDeepkitAdapter } from '@deepkit/broker';
 
 export class FrameworkModule extends createModule({
     config: FrameworkConfig,
@@ -54,6 +56,7 @@ export class FrameworkModule extends createModule({
         RpcServer,
         MigrationProvider,
         DebugController,
+        BrokerServer,
         FilesystemRegistry,
         { provide: DatabaseRegistry, useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic) },
         {
@@ -71,6 +74,12 @@ export class FrameworkModule extends createModule({
                 }
 
                 return kernel;
+            }
+        },
+
+        {
+            provide: Broker, useFactory(config: BrokerConfig) {
+                return new Broker(new BrokerDeepkitAdapter({ servers: [{ url: config.host }] }));
             }
         },
 
@@ -94,6 +103,7 @@ export class FrameworkModule extends createModule({
     listeners: [
         ApplicationServerListener,
         DatabaseListener,
+        BrokerListener,
     ],
     controllers: [
         ServerStartController,
@@ -126,12 +136,13 @@ export class FrameworkModule extends createModule({
         RpcKernelBaseConnection,
         ConnectionWriter,
 
-        BrokerModule,
+        Broker,
+        BrokerServer,
+
         HttpModule,
     ]
 }, 'framework') {
     imports = [
-        new BrokerModule(),
         new HttpModule(),
     ];
 
@@ -189,22 +200,32 @@ export class FrameworkModule extends createModule({
             this.addImport(new ApiConsoleModule({ listen: false, markdown: '' }).rename('internalApi'));
 
             //we start our own broker
-            if (this.config.debugProfiler) {
-                this.addListener(DebugBrokerListener);
-                this.addProvider(DebugBroker);
-
-                this.addProvider(FileStopwatchStore);
-                this.addProvider({
-                    provide: Stopwatch,
-                    useFactory(store: FileStopwatchStore) {
-                        return new Stopwatch(store);
-                    }
-                });
-                this.addExport(Stopwatch);
-            }
+            this.addListener(DebugBrokerListener);
+            this.addProvider(DebugBroker);
+            this.addListener(onAppShutdown.listen(async (
+                event, broker: DebugBroker, store: StopwatchStore) => {
+                await store.close();
+                await broker.disconnect();
+            }));
 
             // this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
         }
+
+        this.addProvider(FileStopwatchStore);
+        this.addProvider({ provide: StopwatchStore, useExisting: FileStopwatchStore });
+        this.addProvider({
+            provide: Stopwatch,
+            useFactory(store: StopwatchStore, profile: FrameworkConfig['debugProfiler']) {
+                const stopwatch = new Stopwatch(store);
+                if (profile) {
+                    stopwatch.enable();
+                } else {
+                    stopwatch.disable();
+                }
+                return stopwatch;
+            }
+        });
+        this.addExport(Stopwatch);
     }
 
     postProcess() {

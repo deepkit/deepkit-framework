@@ -178,6 +178,8 @@ function createControl<T>(
 export class TypedFormGroup<T extends object, TRawValue extends T = T> extends FormGroup {
     public value!: T;
 
+    protected reflection: ReflectionClass<any>;
+
     deepkitErrors?: ValidationErrorItem[];
 
     init(value?: T): this {
@@ -238,7 +240,7 @@ export class TypedFormGroup<T extends object, TRawValue extends T = T> extends F
                 } else {
                     this.controls[prop.name].enable();
                 }
-            }
+            };
             Object.assign(o, value);
             for (const prop of this.reflection.getProperties()) {
                 const d = Object.getOwnPropertyDescriptor(value, prop.name);
@@ -262,8 +264,6 @@ export class TypedFormGroup<T extends object, TRawValue extends T = T> extends F
         }
         this.updateValueAndValidity(options);
     }
-
-    protected reflection: ReflectionClass<any>;
 
     constructor(public type: Type, public path?: PropPath) {
         super({}, null);

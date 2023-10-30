@@ -28,6 +28,7 @@ import {
     narrowOriginalLiteral,
     ReflectionKind,
     ReflectionVisibility,
+    stringifyType,
     Type,
     TypeBaseMember,
     TypeCallSignature,
@@ -333,6 +334,17 @@ export class Processor {
     };
 
     reflect(object: ClassType | Function | Packed | any, inputs: RuntimeStackEntry[] = [], options: ReflectOptions = {}): Type {
+        const start = Date.now();
+        const result = this._reflect(object, inputs, options);
+
+        const took = Date.now() - start;
+        if (took > 100) {
+            console.warn(`Type computation took very long ${took}ms for ${stringifyType(result)}`);
+        }
+        return result;
+    }
+
+    _reflect(object: ClassType | Function | Packed | any, inputs: RuntimeStackEntry[] = [], options: ReflectOptions = {}): Type {
         const packed: Packed | undefined = isPack(object) ? object : object.__type;
         if (!packed) {
             if (isFunction(object) && object.length === 0) {
@@ -600,9 +612,7 @@ export class Processor {
                             if (t.arguments) for (const member of t.arguments) member.parent = t;
                             if (args.length) t.arguments = args;
 
-                            if (this.isEnded()) {
-                                t.typeArguments = program.typeParameters;
-                            }
+                            t.typeArguments = program.typeParameters;
 
                             this.pushType(t);
                             break;
@@ -909,6 +919,10 @@ export class Processor {
                         case ReflectionOp.description:
                             (program.stack[program.stackPointer] as TypeProperty).description = program.stack[this.eatParameter() as number] as string;
                             break;
+                        case ReflectionOp.typeName: {
+                            (program.stack[program.stackPointer] as Type).typeName = program.stack[this.eatParameter() as number] as string;
+                            break;
+                        }
                         case ReflectionOp.indexSignature: {
                             const type = this.pop() as Type;
                             const index = this.pop() as Type;
@@ -1690,6 +1704,7 @@ export function typeInfer(value: any): Type {
         if (isArray(value.__type)) {
             //with emitted types: function or class
             //don't use resolveRuntimeType since we don't allow cache here
+            // console.log('typeInfer of', value.name);
             return Processor.get().reflect(value) as Type;
         }
 

@@ -174,12 +174,12 @@ export function buildOclifCommand(
 
                     const frame = stopwatch ? stopwatch.start(name + '(' + label + ')', FrameCategory.cli, true) : undefined;
 
-                    const execute: Function = controller.controller ? controller.controller.prototype['execute'] : controller.callback;
-                    const thisArg = controller.controller ? injector.get(controller.controller, controller.module) : undefined;
-
                     try {
+                        const execute: Function = controller.controller ? controller.controller.prototype['execute'] : controller.callback;
+                        const thisArg = controller.controller ? injector.get(controller.controller, controller.module) : undefined;
+
                         if (frame) {
-                            exitCode = await frame.run({}, () => execute.apply(thisArg, methodArgs));
+                            exitCode = await frame.run(() => execute.apply(thisArg, methodArgs));
                         } else {
                             exitCode = await execute.apply(thisArg, methodArgs);
                         }
@@ -196,6 +196,7 @@ export function buildOclifCommand(
                         });
                         throw error;
                     } finally {
+                        if (frame) frame.end();
                         await eventDispatcher.dispatch(onAppShutdown, { command: name, parameters: parameterValues, injector });
                     }
                     if (typeof exitCode === 'number') return exitCode;

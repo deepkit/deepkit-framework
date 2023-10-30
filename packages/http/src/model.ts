@@ -103,7 +103,7 @@ export class BodyValidationError {
     }
 
     getErrorMessageForPath(path: string): string {
-        return this.getErrorsForPath(path).map(v => v.message).join(', ');
+        return this.getErrorsForPath(path).map(v => v.toString()).join(', ');
     }
 }
 

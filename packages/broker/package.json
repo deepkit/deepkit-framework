@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/broker",
-  "version": "1.0.1-alpha.102",
+  "version": "1.0.1-alpha.105",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -22,21 +22,22 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
+    "@deepkit/app": "^1.0.1-alpha.40",
     "@deepkit/bson": "^1.0.1-alpha.40",
     "@deepkit/core": "^1.0.1-alpha.39",
     "@deepkit/core-rxjs": "^1.0.1-alpha.39",
+    "@deepkit/event": "^1.0.1-alpha.40",
     "@deepkit/rpc": "^1.0.1-alpha.41",
     "@deepkit/type": "^1.0.1-alpha.40",
-    "@deepkit/event": "^1.0.1-alpha.40",
     "rxjs": "*"
   },
   "devDependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.102",
-    "@deepkit/core": "^1.0.1-alpha.100",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.100",
-    "@deepkit/rpc": "^1.0.1-alpha.102",
-    "@deepkit/type": "^1.0.1-alpha.102",
-    "@deepkit/event": "^1.0.1-alpha.102"
+    "@deepkit/bson": "^1.0.1-alpha.105",
+    "@deepkit/core": "^1.0.1-alpha.105",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.105",
+    "@deepkit/event": "^1.0.1-alpha.105",
+    "@deepkit/rpc": "^1.0.1-alpha.105",
+    "@deepkit/type": "^1.0.1-alpha.105"
   },
   "jest": {
     "transform": {

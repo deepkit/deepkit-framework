@@ -19,11 +19,16 @@
     "lib": [
       "ES2022",
       "dom"
+    ],
+    "types": [
+      "dagre",
+      "file-saver",
+      "jasmine",
+      "marked"
     ]
   },
   "reflection": [
     "./src/app/state.ts",
-    "node_modules/@deepkit/api-console-gui/src/api.ts",
     "node_modules/@deepkit/api-console-gui/src/app/store.ts"
   ],
   "angularCompilerOptions": {
@@ -41,9 +46,6 @@
     },
     {
       "path": "../core-rxjs/tsconfig.json"
-    },
-    {
-      "path": "../crypto/tsconfig.json"
     },
     {
       "path": "../api-console-api/tsconfig.json"

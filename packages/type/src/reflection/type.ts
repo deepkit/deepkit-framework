@@ -2626,5 +2626,4 @@ export function annotateClass<T>(clazz: ClassType | AbstractClassType, type?: Re
     (clazz as any).__type = isClass(type) ? (type as any).__type || [] : [];
     type = resolveReceiveType(type);
     (clazz as any).__type.__type = type;
-    type.typeName = getClassName(clazz);
 }

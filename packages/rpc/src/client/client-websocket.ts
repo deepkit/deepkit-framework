@@ -54,19 +54,41 @@ export function createRpcWebSocketClientProvider(baseUrl: string = typeof locati
     };
 }
 
-let webSocketConstructor: typeof WebSocket | undefined = undefined;
-
 export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
+    protected webSocketConstructor?: typeof WebSocket;
+
     constructor(public url: string) {
     }
 
-    public async connect(connection: TransportConnectionHooks) {
+    async getWebSocketConstructor(): Promise<typeof WebSocket> {
+        if (this.webSocketConstructor) return this.webSocketConstructor;
         const wsPackage = 'ws';
-        if (!webSocketConstructor) {
-            webSocketConstructor = 'undefined' === typeof WebSocket ? (await import(wsPackage)).WebSocket : WebSocket;
+        this.webSocketConstructor = 'undefined' === typeof WebSocket ? (await import(wsPackage)).WebSocket : WebSocket;
+
+        if (!this.webSocketConstructor) {
+            this.webSocketConstructor = (await import(wsPackage)).default;
         }
 
-        const socket = new webSocketConstructor!(this.url);
+        if (!this.webSocketConstructor) {
+            console.log('webSocketConstructor is undefined', this.webSocketConstructor, await import(wsPackage));
+            throw new Error('No WebSocket implementation found.')
+        }
+
+        return this.webSocketConstructor;
+    }
+
+    public async connect(connection: TransportConnectionHooks) {
+        const webSocketConstructor = await this.getWebSocketConstructor();
+
+        try {
+            const socket = new webSocketConstructor(this.url);
+            this.mapSocket(socket, connection);
+        } catch (error: any) {
+            throw new Error(`Could not connect to ${this.url}. ${error.message}`);
+        }
+    }
+
+    protected mapSocket(socket: WebSocket, connection: TransportConnectionHooks) {
         socket.binaryType = 'arraybuffer';
 
         socket.onmessage = (event: MessageEvent) => {

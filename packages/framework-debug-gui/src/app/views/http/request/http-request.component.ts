@@ -21,7 +21,7 @@ import { DebugRequest, Workflow } from '@deepkit/framework-debug-api';
                 <h3>#{{request.id}}</h3>
                 <div class="text-selection">{{request.method}} {{request.url}}</div>
                 <div class="text-selection">Status {{request.statusCode}}</div>
-                <div class="text-selection">{{request.created|date:'medium'}}</div>
+                <div class="text-selection">{{request.started|date:'medium'}}</div>
                 <div class="text-selection">Response time: {{time(request.times['http'])}}</div>
             </div>
 

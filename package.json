@@ -7,42 +7,45 @@
   "scripts": {
     "test": "node --max_old_space_size=3048 node_modules/jest/bin/jest.js --forceExit --no-cache",
     "test:coverage": "node --max_old_space_size=3048 node_modules/jest/bin/jest.js --coverage --forceExit --no-cache",
-    "bootstrap": "lerna bootstrap --no-ci --ignore @deepkit/benchmark",
-    "bootstrap:ci": "lerna bootstrap --ignore @deepkit/benchmark",
-    "link": "npm-local-development --no-watcher",
     "build": "tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
     "build:esm": "tsc --build tsconfig.esm.json",
     "tsc": "tsc --build",
-    "install-compiler": "sh install-compiler.sh",
+    "install": "sh install-compiler.sh",
     "tsc-watch": "tsc --build --watch",
     "tsc-watch:esm": "tsc --build --watch tsconfig.esm.json",
+    "clean:all": "npm run clean && npm run clean:modules && npm run clean:lock",
     "clean": "find packages/*/dist/* ! -name 'package.json' -type f -exec rm -f {} +",
     "clean:modules": "rm -rf packages/*/node_modules; rm -rf node_modules",
-    "clean:lock": "rm -rf packages/*/package-lock.json",
+    "clean:lock": "rm -rf packages/*/package-lock.json; rm -rf package-lock.json",
     "docs": "rm -rf docs && node --max-old-space-size=12096 node_modules/.bin/typedoc packages/*/index.ts",
     "publish": "lerna publish --no-private prerelease",
     "publish-force": "npm run build && lerna publish --no-private --force-publish",
     "publish-website": "heroku container:push web && heroku container:release web"
   },
+  "workspaces": [
+    "packages/*",
+    "!packages/fs",
+    "!packages/orm-browser-example",
+    "!packages/framework-examples"
+  ],
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.13",
     "@jest/globals": "^29.2.1",
-    "@types/node": "18.11.10",
+    "@types/node": "20.6.0",
     "cloc": "^2.7.0",
     "codecov": "^3.8.3",
     "coveralls": "^3.0.3",
     "jest": "^29.2.1",
-    "lerna": "^4.0.0",
+    "lerna": "7.4.1",
     "madge": "^4.0.0",
-    "npm-local-development": "^0.4.0",
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
     "typedoc": "^0.23.17",
-    "typescript": "^4.8.4"
+    "typescript": "^4.9.5"
   },
   "engines": {
-    "node": ">= 18.0.0"
+    "node": ">= 20.0.0"
   },
   "jest": {
     "resolver": "./jest-resolver.js",

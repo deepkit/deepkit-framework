@@ -13,7 +13,8 @@
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
-    "composite": true
+    "composite": true,
+    "types": []
   },
   "reflection": true,
   "include": [
@@ -32,9 +33,6 @@
     },
     {
       "path": "../core/tsconfig.json"
-    },
-    {
-      "path": "../crypto/tsconfig.json"
     },
     {
       "path": "../http/tsconfig.json"

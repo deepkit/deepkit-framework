@@ -20,6 +20,12 @@
     "lib": [
       "ES2022",
       "dom"
+    ],
+    "types": [
+      "dagre",
+      "file-saver",
+      "jasmine",
+      "node"
     ]
   },
   "angularCompilerOptions": {
@@ -37,9 +43,6 @@
     },
     {
       "path": "../core-rxjs/tsconfig.json"
-    },
-    {
-      "path": "../crypto/tsconfig.json"
     },
     {
       "path": "../injector/tsconfig.json"

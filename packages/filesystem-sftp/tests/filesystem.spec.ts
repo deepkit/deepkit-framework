@@ -1,5 +1,4 @@
 import { test } from '@jest/globals';
-import './storage.spec.js';
 import { setAdapterFactory } from '@deepkit/filesystem/test';
 import { FilesystemSftpAdapter } from '../src/sftp-adapter.js';
 import { platform } from 'os';

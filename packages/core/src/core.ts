@@ -134,17 +134,17 @@ export function isClassInstance(target: any): boolean {
 }
 
 /**
- * Returns a human readable string representation from the given value.
+ * Returns a human-readable string representation from the given value.
  */
-export function stringifyValueWithType(value: any): string {
+export function stringifyValueWithType(value: any, depth: number = 0): string {
     if ('string' === typeof value) return `string(${value})`;
     if ('number' === typeof value) return `number(${value})`;
     if ('boolean' === typeof value) return `boolean(${value})`;
     if ('bigint' === typeof value) return `bigint(${value})`;
-    if (isPlainObject(value)) return `object ${prettyPrintObject(value)}`;
+    if (isPlainObject(value)) return `object ${depth < 2 ? prettyPrintObject(value, depth) : ''}`;
     if (isArray(value)) return `Array`;
     if (isClass(value)) return `${getClassName(value)}`;
-    if (isObject(value)) return `${getClassName(getClassTypeFromInstance(value))} ${prettyPrintObject(value)}`;
+    if (isObject(value)) return `${getClassName(getClassTypeFromInstance(value))} ${depth < 2 ? prettyPrintObject(value, depth): ''}`;
     if ('function' === typeof value) return `function ${value.name}`;
     if (null === value) return `null`;
     return 'undefined';
@@ -173,10 +173,10 @@ export function changeClass<T>(value: object, newClass: ClassType<T>): T {
     return Object.assign(Object.create(newClass.prototype), value);
 }
 
-export function prettyPrintObject(object: object): string {
-    let res: string[] = [];
+export function prettyPrintObject(object: object, depth: number = 0): string {
+    const res: string[] = [];
     for (const i in object) {
-        res.push(i + ': ' + stringifyValueWithType((object as any)[i]));
+        res.push(i + ': ' + stringifyValueWithType((object as any)[i], depth + 1));
     }
     return '{' + res.join(',') + '}';
 }

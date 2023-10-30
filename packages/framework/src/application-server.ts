@@ -9,7 +9,7 @@
  */
 
 import { asyncOperation, getClassName, urlJoin } from '@deepkit/core';
-import { RpcClient } from '@deepkit/rpc';
+import { RpcClient, RpcKernel } from '@deepkit/rpc';
 import cluster from 'cluster';
 import { HttpRouter } from '@deepkit/http';
 import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
@@ -156,6 +156,7 @@ export class ApplicationServer {
         protected rootScopedContext: InjectorContext,
         public config: ApplicationServerConfig,
         protected rpcControllers: RpcControllers,
+        protected rpcKernel: RpcKernel,
         protected router: HttpRouter,
     ) {
         this.needsHttpWorker = needsHttpWorker(config, rpcControllers, router);
@@ -340,12 +341,12 @@ export class ApplicationServer {
     }
 
     public createClient(): RpcClient {
-        const worker = this.getWorker();
         const context = this.rootScopedContext;
+        const rpcKernel = this.rpcKernel;
 
         return new RpcClient({
             connect(connection) {
-                const kernelConnection = createRpcConnection(context, worker.rpcKernel, {
+                const kernelConnection = createRpcConnection(context, rpcKernel, {
                     write: (buffer) => connection.onData(buffer),
                     close: () => connection.onClose(),
                 });

@@ -227,11 +227,13 @@ export interface DebugControllerInterface {
 
     getWorkflow(name: string): Workflow;
 
-    getProfilerFrames(): [Uint8Array, Uint8Array];
+    getProfilerFrames(): [Uint8Array, Uint8Array, Uint8Array];
 
     resetProfilerFrames(): void;
 
     events(): Event[];
+
+    httpRequests(): DebugRequest[];
 
     // httpRequests(): Promise<Collection<DebugRequest>>;
 }

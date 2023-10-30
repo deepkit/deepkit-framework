@@ -249,7 +249,7 @@ export class MediaFileDetail implements OnChanges, OnInit {
     styleUrls: ['./media-file-thumbnail.component.scss'],
     template: `
         <img *ngIf="file.type === 'directory'" (contextmenu)="onContextMenu()" (click)="selectFile($event)" alt="Folder icon"
-             src="/assets/images/icons/folder-icon-dark.png"/>
+             src="assets/images/icons/folder-icon-dark.png"/>
         <img [src]="url" (load)="loaded()" (error)="loaded(true)" [class.image-hidden]="loading || noPreview"
              *ngIf="file.type !== 'directory' && url" loading="lazy"
              (contextmenu)="onContextMenu()"
@@ -257,7 +257,7 @@ export class MediaFileDetail implements OnChanges, OnInit {
         <img class="no-preview" *ngIf="file.type !== 'directory' && noPreview"
              (contextmenu)="onContextMenu()"
              (click)="selectFile($event)"
-             src="/assets/images/icons/file-icon-unknown.png"/>
+             src="assets/images/icons/file-icon-unknown.png"/>
         <app-loading-spinner *ngIf="loading && file.type !== 'directory'" (contextmenu)="onContextMenu()"
                              (click)="selectFile($event)"></app-loading-spinner>
         <div class="title" *ngIf="withTitle">
@@ -390,10 +390,10 @@ export class MediaFileThumbnail implements OnInit, OnDestroy, OnChanges {
         </dui-button-groups>
         <div class="overlay-scrollbar-small quick-look-content">
             <ng-container *ngIf="file">
-                <img *ngIf="file.type === 'directory'" alt="Folder icon" src="/assets/images/icons/folder-icon-dark.png"/>
+                <img *ngIf="file.type === 'directory'" alt="Folder icon" src="assets/images/icons/folder-icon-dark.png"/>
                 <img [src]="preview.data|objectURL:file.mimeType" *ngIf="file.type !== 'directory' && mediaFileCache.getPreview(file.id) as preview" alt="File preview"/>
                 <img class="no-preview" *ngIf="file.type !== 'directory' && mediaFileCache.getPreview(file.id) === false"
-                     src="/assets/images/icons/file-icon-unknown.png"/>
+                     src="assets/images/icons/file-icon-unknown.png"/>
                 <app-loading-spinner *ngIf="file.type !== 'directory' && mediaFileCache.isLoading(file.id)"></app-loading-spinner>
             </ng-container>
         </div>

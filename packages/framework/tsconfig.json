@@ -12,19 +12,26 @@
     "preserveSymlinks": true,
     "target": "es2018",
     "module": "CommonJS",
+    "skipLibCheck": true,
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
     "jsx": "react-jsx",
-    "jsxImportSource": ".."
+    "jsxImportSource": "..",
+    "types": [
+      "ws",
+      "clone",
+      "faker",
+      "fs-extra",
+      "node"
+    ]
   },
   "reflection": true,
   "include": [
     "src",
     "jsx",
     "tests",
-    "benchmark",
     "index.ts",
     "jsx-runtime.ts",
     "loader.ts"
@@ -53,9 +60,6 @@
     },
     {
       "path": "../core-rxjs/tsconfig.json"
-    },
-    {
-      "path": "../crypto/tsconfig.json"
     },
     {
       "path": "../event/tsconfig.json"
@@ -95,6 +99,9 @@
     },
     {
       "path": "../workflow/tsconfig.json"
+    },
+    {
+      "path": "../filesystem/tsconfig.json"
     }
   ]
 }

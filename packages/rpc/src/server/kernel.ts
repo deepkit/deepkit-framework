@@ -482,7 +482,7 @@ export class RpcKernel {
     }
 
     /**
-     * This registers the controller and no custom InjectorContext was given adds it as provider to the injector.
+     * This registers the controller and when no custom InjectorContext was given adds it as provider to the injector.
      *
      * Note: Controllers can not be added to the injector when the injector was already built.
      */

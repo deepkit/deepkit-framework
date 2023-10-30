@@ -1513,3 +1513,60 @@ test('export provider', () => {
     const service = injector.get<Test>();
     expect(service).toBe(TEST);
 });
+
+test('deep config index 2 level via class', () => {
+    class DB {
+        url: string = 'localhost';
+    }
+
+    class Config {
+        db: DB = new DB;
+    }
+
+    class Database {
+        constructor(public url: Config['db']['url']) {
+        }
+    }
+
+    const rootModule = new InjectorModule([Database]).setConfigDefinition(Config);
+    const injector = new InjectorContext(rootModule);
+    const database = injector.get(Database);
+    expect(database.url).toBe('localhost');
+});
+
+test('deep config index 2 level object literal', () => {
+    class Config {
+        db: { url: string } = { url: 'localhost' };
+    }
+
+    class Database {
+        constructor(public url: Config['db']['url']) {
+        }
+    }
+
+    const rootModule = new InjectorModule([Database]).setConfigDefinition(Config);
+    const injector = new InjectorContext(rootModule);
+    const database = injector.get(Database);
+    expect(database.url).toBe('localhost');
+});
+
+test('deep config index direct sub class access', () => {
+    class DB {
+        url: string = 'localhost';
+        options: { timeout: number } = { timeout: 30 };
+    }
+
+    class Config {
+        db: DB = new DB;
+    }
+
+    class Database {
+        constructor(public url: DB['url']) {
+        }
+    }
+
+    const rootModule = new InjectorModule([Database]).setConfigDefinition(Config);
+    const injector = new InjectorContext(rootModule);
+    const database = injector.get(Database);
+    expect(database.url).toBe('localhost');
+});

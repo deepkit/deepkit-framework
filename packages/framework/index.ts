@@ -20,4 +20,3 @@ export * from './src/module.js';
 export * from './src/crud.js';
 export * from './src/testing.js';
 export * from './src/broker/broker.js';
-export * from './src/broker/broker.config.js';

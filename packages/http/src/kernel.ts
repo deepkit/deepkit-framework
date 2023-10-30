@@ -39,7 +39,7 @@ export class HttpKernel {
         try {
             if (frame) {
                 frame.data({ url: req.getUrl(), method: req.getMethod(), clientIp: req.getRemoteAddress() });
-                await frame.run({}, () => workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res)));
+                await frame.run(() => workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res)));
             } else {
                 await workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res));
             }

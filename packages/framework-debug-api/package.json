@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework-debug-api",
-  "version": "1.0.1-alpha.102",
+  "version": "1.0.1-alpha.105",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -26,7 +26,6 @@
     "@deepkit/bson": "^1.0.1-alpha.13",
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/core-rxjs": "^1.0.1-alpha.13",
-    "@deepkit/crypto": "^1.0.1-alpha.13",
     "@deepkit/injector": "^1.0.1-alpha.13",
     "@deepkit/logger": "^1.0.1-alpha.13",
     "@deepkit/rpc": "^1.0.1-alpha.13",
@@ -35,15 +34,14 @@
     "rxjs": "~7.5.0"
   },
   "devDependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.102",
-    "@deepkit/core": "^1.0.1-alpha.100",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.100",
-    "@deepkit/crypto": "^1.0.1-alpha.89",
-    "@deepkit/injector": "^1.0.1-alpha.102",
-    "@deepkit/logger": "^1.0.1-alpha.102",
-    "@deepkit/rpc": "^1.0.1-alpha.102",
-    "@deepkit/stopwatch": "^1.0.1-alpha.102",
-    "@deepkit/type": "^1.0.1-alpha.102",
+    "@deepkit/bson": "^1.0.1-alpha.105",
+    "@deepkit/core": "^1.0.1-alpha.105",
+    "@deepkit/core-rxjs": "^1.0.1-alpha.105",
+    "@deepkit/injector": "^1.0.1-alpha.105",
+    "@deepkit/logger": "^1.0.1-alpha.105",
+    "@deepkit/rpc": "^1.0.1-alpha.105",
+    "@deepkit/stopwatch": "^1.0.1-alpha.105",
+    "@deepkit/type": "^1.0.1-alpha.105",
     "rxjs": "~7.5.0"
   },
   "jest": {

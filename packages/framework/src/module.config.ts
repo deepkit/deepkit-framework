@@ -11,6 +11,23 @@ import { HttpParserOptions } from '@deepkit/http';
 
 const isWindows = 'undefined' !== typeof process ? process.platform === 'win32' : false;
 
+export class BrokerConfig {
+    /**
+     * @description If startOnBootstrap is true, the broker server stats at this address. Unix socket path or host:port combination
+     */
+    listen: string = 'localhost:8811';
+
+    /**
+     * @description If a different broker server should be used, this is its address. Unix socket path or host:port combination.
+     */
+    host: string = 'localhost:8811';
+
+    /**
+     * @description Automatically starts a single broker in the main process. Disable it if you have a custom broker node.
+     */
+    startOnBootstrap: boolean = true;
+}
+
 export class FrameworkConfig {
     host: string = '0.0.0.0'; //binding to localhost is roughly 20% faster.
     port: number = 8080;
@@ -128,4 +145,6 @@ export class FrameworkConfig {
     migrateOnStartup: boolean = false;
 
     migrationDir: string = 'migrations';
+
+    broker: BrokerConfig = new BrokerConfig;
 }
