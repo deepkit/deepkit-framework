@@ -226,12 +226,14 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.defaultValue]: { params: 1 },
     [ReflectionOp.parameter]: { params: 1 },
     [ReflectionOp.method]: { params: 1 },
+    [ReflectionOp.function]: { params: 1 },
     [ReflectionOp.description]: { params: 1 },
     [ReflectionOp.numberBrand]: { params: 1 },
     [ReflectionOp.typeof]: { params: 1 },
     [ReflectionOp.classExtends]: { params: 1 },
     [ReflectionOp.distribute]: { params: 1 },
     [ReflectionOp.jumpCondition]: { params: 2 },
+    [ReflectionOp.typeName]: { params: 1 },
 };
 
 export function debugPackStruct(sourceFile: SourceFile, forType: Node, pack: { ops: ReflectionOp[], stack: PackExpression[] }): void {
@@ -255,7 +257,7 @@ export function debugPackStruct(sourceFile: SourceFile, forType: Node, pack: { o
         if ('object' === typeof s && 'getText' in s) {
             stack.push(printer.printNode(EmitHint.Unspecified, s, sourceFile));
         } else {
-            stack.push(s);
+            stack.push(JSON.stringify(s));
         }
     }
     // console.log('debugPackStruct:', 'getText' in forType ? forType.getText().replace(/\n/g, '') : 'no node'); //printer.printNode(EmitHint.Unspecified, forType, sourceFile).replace(/\n/g, ''));
@@ -1258,8 +1260,6 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 if (node) {
                     const members: ClassElement[] = [];
-                    const description = extractJSDocAttribute(narrowed, 'description');
-                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
 
                     if (narrowed.typeParameters) {
                         for (const typeParameter of narrowed.typeParameters) {
@@ -1302,7 +1302,6 @@ export class ReflectionTransformer implements CustomTransformer {
                     }
 
                     program.pushOp(ReflectionOp.class);
-                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
 
                     if (narrowed.heritageClauses && narrowed.heritageClauses[0] && narrowed.heritageClauses[0].types[0]) {
                         const first = narrowed.heritageClauses[0].types[0];
@@ -1315,6 +1314,10 @@ export class ReflectionTransformer implements CustomTransformer {
                         }
                     }
 
+                    if (narrowed.name) program.pushOp(ReflectionOp.typeName, program.findOrAddStackEntry(getIdentifierName(narrowed.name)));
+
+                    const description = extractJSDocAttribute(narrowed, 'description');
+                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                 }
                 break;
             }
@@ -1411,7 +1414,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (isTypeLiteralNode(narrowed)) {
                     descriptionNode = narrowed.parent;
                 }
-                const description = extractJSDocAttribute(descriptionNode, 'description');
+                const description = descriptionNode && extractJSDocAttribute(descriptionNode, 'description');
                 if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                 program.popFrameImplicit();
                 break;

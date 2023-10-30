@@ -212,4 +212,6 @@ export enum ReflectionOp {
     functionReference, //Same as classReference but for functions
 
     callSignature, //Same as function but for call signatures (in object literals)
+
+    typeName, //has one parameter, the index of the stack entry that contains the type name. Uses current head of the stack as type and assigns typeName to it.
 }

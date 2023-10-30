@@ -2011,7 +2011,7 @@ test('annotateClass static', () => {
 
     annotateClass<AnnotatedClass>(ExternalClass);
 
-    expect(stringifyResolvedType(reflect(ExternalClass))).toBe('ExternalClass {id: number}');
+    expect(stringifyResolvedType(reflect(ExternalClass))).toBe('AnnotatedClass {id: number}');
 });
 
 test('annotateClass generic', () => {
@@ -2024,8 +2024,8 @@ test('annotateClass generic', () => {
 
     annotateClass(ExternalClass, AnnotatedClass);
 
-    expect(stringifyResolvedType(reflect(ExternalClass))).toBe('ExternalClass {id: T}');
-    expect(stringifyResolvedType(reflect(ExternalClass, typeOf<number>()))).toBe('ExternalClass {id: number}');
+    expect(stringifyResolvedType(reflect(ExternalClass))).toBe('AnnotatedClass {id: T}');
+    expect(stringifyResolvedType(reflect(ExternalClass, typeOf<number>()))).toBe('AnnotatedClass {id: number}');
 });
 
 test('test', () => {

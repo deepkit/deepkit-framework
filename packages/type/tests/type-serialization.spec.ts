@@ -84,6 +84,7 @@ test('serialize container', () => {
 
     expect(serializeType(typeOf<MyClass>())).toEqual([{
         kind: ReflectionKind.class,
+        typeName: 'MyClass',
         classType: 'MyClass',
         types: [1, 3]
     }, { kind: ReflectionKind.property, visibility: 0, name: 'a', type: 2, default: true }, { kind: ReflectionKind.number },

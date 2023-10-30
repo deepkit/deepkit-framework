@@ -612,9 +612,7 @@ export class Processor {
                             if (t.arguments) for (const member of t.arguments) member.parent = t;
                             if (args.length) t.arguments = args;
 
-                            if (this.isEnded()) {
-                                t.typeArguments = program.typeParameters;
-                            }
+                            t.typeArguments = program.typeParameters;
 
                             this.pushType(t);
                             break;
@@ -921,6 +919,10 @@ export class Processor {
                         case ReflectionOp.description:
                             (program.stack[program.stackPointer] as TypeProperty).description = program.stack[this.eatParameter() as number] as string;
                             break;
+                        case ReflectionOp.typeName: {
+                            (program.stack[program.stackPointer] as Type).typeName = program.stack[this.eatParameter() as number] as string;
+                            break;
+                        }
                         case ReflectionOp.indexSignature: {
                             const type = this.pop() as Type;
                             const index = this.pop() as Type;

@@ -447,3 +447,25 @@ test('keep "use x" at top', () => {
     });
     expect(res.app.startsWith('"use client";')).toBe(true);
 });
+
+test('class typeName', () => {
+    const res = transpile({
+        'app': `
+    class StreamApiResponseClass<T> {
+        constructor(public response: T) {
+        }
+    }
+    function StreamApiResponse<T>(responseBodyClass: ClassType<T>) {
+        class A extends StreamApiResponseClass<T> {
+            constructor(@t.type(responseBodyClass) public response: T) {
+                super(response);
+            }
+        }
+
+        return A;
+    }
+        `
+    });
+    console.log(res.app);
+    expect(res.app).toContain(`'StreamApiResponseClass'`);
+});
