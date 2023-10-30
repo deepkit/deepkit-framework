@@ -1750,6 +1750,25 @@ test('import types named import cjs', () => {
 test('emit typeName for type only imports', () => {
     const js = transpile({
         'app': `
+            import type {User} from './user.js';
+            typeOf<User>();
+        `,
+        'user': `export interface User {id: number}`
+    }, {
+        module: ModuleKind.CommonJS
+    });
+    const typeOf = typeOf2;
+    expect(eval(js['app.js'])).toMatchInlineSnapshot(`
+        {
+          "kind": 1,
+          "typeName": "User",
+        }
+    `);
+});
+
+test('emit typeName for named type only import', () => {
+    const js = transpile({
+        'app': `
             import {type User} from './user.js';
             typeOf<User>();
         `,
