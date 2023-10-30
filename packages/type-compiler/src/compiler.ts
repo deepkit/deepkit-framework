@@ -1301,7 +1301,8 @@ export class ReflectionTransformer implements CustomTransformer {
                         this.extractPackStructOfType(member, program);
                     }
 
-                    program.pushOp(ReflectionOp.class);
+                    this.resolveClass(narrowed, program);
+
                     if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
 
                     if (narrowed.heritageClauses && narrowed.heritageClauses[0] && narrowed.heritageClauses[0].types[0]) {
@@ -2313,6 +2314,13 @@ export class ReflectionTransformer implements CustomTransformer {
 
     protected resolveTypeName(typeName: string, program: CompilerProgram) {
         program.pushOp(ReflectionOp.typeName, program.findOrAddStackEntry(typeName));
+    }
+
+    protected resolveClass(node: ClassDeclaration | ClassExpression, program: CompilerProgram) {
+        program.pushOp(ReflectionOp.class);
+        if (node.name) {
+            this.resolveTypeName(getIdentifierName(node.name), program);
+        }
     }
 
     protected resolveTypeParameter(declaration: TypeParameterDeclaration, type: TypeReferenceNode | ExpressionWithTypeArguments, program: CompilerProgram) {

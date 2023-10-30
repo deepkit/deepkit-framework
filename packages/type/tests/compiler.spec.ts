@@ -1787,6 +1787,22 @@ test('import types named import typeOnly has typeName', () => {
     `);
 });
 
+test('class has typeName', () => {
+    const js = transpile(`
+        class Test {}
+        typeOf<Test>();
+    `);
+    const typeOf = typeOf2;
+    expect(eval(js)).toMatchInlineSnapshot(`
+        {
+          "classType": [Function],
+          "kind": 20,
+          "typeName": "Test",
+          "types": [],
+        }
+    `);
+});
+
 test('import types named import with disabled reflection', () => {
     const js = transpile({
         'app': `
