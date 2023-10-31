@@ -142,7 +142,13 @@ describe('application-server', () => {
 
             const testing = createTestingApp({
                 controllers: [MyController],
-                imports: [new FrameworkModule({ publicDir: 'public', gracefulShutdownTimeout: 1 })]
+                imports: [
+                    new FrameworkModule({
+                        publicDir: 'public',
+                        gracefulShutdownTimeout: 1,
+                        debugProfiler: false,
+                    })
+                ]
             });
 
             await testing.startServer();
@@ -164,7 +170,13 @@ describe('application-server', () => {
 
             const testing = createTestingApp({
                 controllers: [MyController],
-                imports: [new FrameworkModule({ publicDir: 'public', gracefulShutdownTimeout: 1 })]
+                imports: [
+                    new FrameworkModule({
+                        publicDir: 'public',
+                        gracefulShutdownTimeout: 1,
+                        debugProfiler: false,
+                    })
+                ]
             });
 
             await testing.startServer();
