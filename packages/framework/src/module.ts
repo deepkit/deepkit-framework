@@ -24,7 +24,7 @@ import { BrokerConfig, FrameworkConfig } from './module.config.js';
 import { LoggerInterface } from '@deepkit/logger';
 import { SessionHandler } from './session.js';
 import { RpcServer, WebWorkerFactory } from './worker.js';
-import { Stopwatch, StopwatchStore } from '@deepkit/stopwatch';
+import {NoopStopwatchStore, Stopwatch, StopwatchStore} from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller.js';
 import { DatabaseListener } from './database/database-listener.js';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
@@ -209,10 +209,14 @@ export class FrameworkModule extends createModule({
             }));
 
             // this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
+
+            this.addProvider(FileStopwatchStore);
+            this.addProvider({ provide: StopwatchStore, useExisting: FileStopwatchStore });
+        } else {
+            this.addProvider(NoopStopwatchStore);
+            this.addProvider({ provide: StopwatchStore, useExisting: NoopStopwatchStore });
         }
 
-        this.addProvider(FileStopwatchStore);
-        this.addProvider({ provide: StopwatchStore, useExisting: FileStopwatchStore });
         this.addProvider({
             provide: Stopwatch,
             useFactory(store: StopwatchStore, profile: FrameworkConfig['debugProfiler']) {

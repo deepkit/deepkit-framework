@@ -76,6 +76,17 @@ export abstract class StopwatchStore {
     }
 }
 
+export class NoopStopwatchStore extends StopwatchStore {
+
+    run<T>(data: { [name: string]: any }, cb: () => Promise<T>): Promise<T> {
+        return cb();
+    }
+
+    getZone(): { [name: string]: any } | undefined {
+        return undefined;
+    }
+}
+
 export interface StopwatchFrameInterface<C extends FrameCategory> {
     data(data: TypeOfCategory<C>): void;
 
