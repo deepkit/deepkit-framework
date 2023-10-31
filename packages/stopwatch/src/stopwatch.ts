@@ -77,7 +77,6 @@ export abstract class StopwatchStore {
 }
 
 export class NoopStopwatchStore extends StopwatchStore {
-
     run<T>(data: { [name: string]: any }, cb: () => Promise<T>): Promise<T> {
         return cb();
     }
