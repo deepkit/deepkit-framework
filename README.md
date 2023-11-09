@@ -17,11 +17,7 @@ Standalone TypeScript libraries and a framework that brings everything together.
 
 ## Docs
 
-Check out the [Deepkit Documentation](https://docs.deepkit.io) to get started.
-
-There is also an [eBook version](https://docs.deepkit.io/deepkit-book-english.html). 
-
-Both are available in [German](https://docs.deepkit.io/german/), [English](https://docs.deepkit.io/english/), and [Chinese](https://docs.deepkit.io/chinese/).
+Check out the [Deepkit Documentation](https://deepkit.io/documentation/introduction) to get started.
 
 ## Getting started
 
