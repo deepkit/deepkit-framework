@@ -59,7 +59,7 @@ class RpcClass {
     }
 
     onDecorator(classType: ClassType) {
-        this.t.name ??= reflect(classType).typeName || classType.name;
+        this.t.name ||= reflect(classType).typeName || classType.name;
     }
 }
 
