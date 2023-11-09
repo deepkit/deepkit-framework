@@ -151,5 +151,4 @@ export class FileStopwatchStore extends StopwatchStore {
             this.syncMutex.unlock();
         }
     }
-
 }

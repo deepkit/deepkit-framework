@@ -215,9 +215,9 @@ export class FrameworkModule extends createModule({
         this.addProvider({ provide: StopwatchStore, useExisting: FileStopwatchStore });
         this.addProvider({
             provide: Stopwatch,
-            useFactory(store: StopwatchStore, profile: FrameworkConfig['debugProfiler']) {
+            useFactory(store: StopwatchStore, config: FrameworkConfig) {
                 const stopwatch = new Stopwatch(store);
-                if (profile) {
+                if (config.profile || config.debug) {
                     stopwatch.enable();
                 } else {
                     stopwatch.disable();
@@ -243,7 +243,7 @@ export class FrameworkModule extends createModule({
             db.module.setupProvider(0, db.classType).eventDispatcher = injectorReference(EventDispatcher);
         }
 
-        if (this.config.debug && this.config.debugProfiler) {
+        if (this.config.debug && this.config.profile) {
             for (const db of this.dbs) {
                 db.module.setupProvider(0, db.classType).stopwatch = injectorReference(Stopwatch);
             }

@@ -113,7 +113,11 @@ export class FrameworkConfig {
 
     debugUrl: string = '_debug';
 
-    debugProfiler: boolean = true;
+    /**
+     * Whether profiling is enabled. This is automatically enabled when debug is enabled,
+     * but can be enabled separately.
+     */
+    profile: boolean = false;
 
     /**
      * @description IP:Port or unix socket name or named pipes.
