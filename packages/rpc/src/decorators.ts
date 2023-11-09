@@ -9,18 +9,26 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, mergeDecorator, PropertyDecoratorResult } from '@deepkit/type';
+import {
+    ClassDecoratorResult,
+    createClassDecoratorContext,
+    createPropertyDecoratorContext,
+    mergeDecorator,
+    PropertyDecoratorResult,
+    reflect
+} from '@deepkit/type';
 import { ControllerDefinition } from './model.js';
 
 class RpcController {
-    name?: string;
+    // Defaults to the name of the class
+    name: string = '';
 
     definition?: ControllerDefinition<any>;
 
     actions = new Map<string, RpcAction>();
 
     getPath(): string {
-        return this.definition ? this.definition.path : this.name || '';
+        return this.definition ? this.definition.path : this.name;
     }
 }
 
@@ -38,7 +46,7 @@ export class RpcAction {
 class RpcClass {
     t = new RpcController;
 
-    controller(nameOrDefinition: string | ControllerDefinition<any>) {
+    controller(nameOrDefinition?: string | ControllerDefinition<any>) {
         if ('string' === typeof nameOrDefinition) {
             this.t.name = nameOrDefinition;
         } else {
@@ -48,6 +56,10 @@ class RpcClass {
 
     addAction(name: string, action: RpcAction) {
         this.t.actions.set(name, action);
+    }
+
+    onDecorator(classType: ClassType) {
+        this.t.name ??= reflect(classType).typeName || classType.name;
     }
 }
 
