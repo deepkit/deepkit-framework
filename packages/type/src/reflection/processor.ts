@@ -1745,7 +1745,7 @@ export function typeInfer(value: any): Type {
             //with emitted types: function or class
             //don't use resolveRuntimeType since we don't allow cache here
             // console.log('typeInfer of', value.name);
-            return Processor.get().reflect(value) as Type;
+            return Processor.get().reflect(value, undefined, {inline: true}) as Type;
         }
 
         if (isClass(value)) {
@@ -1761,7 +1761,7 @@ export function typeInfer(value: any): Type {
         if ('function' === typeof constructor && constructor !== Object && isArray(constructor.__type)) {
             //with emitted types
             //don't use resolveRuntimeType since we don't allow cache here
-            return Processor.get().reflect(constructor) as Type;
+            return Processor.get().reflect(constructor, undefined, {inline: true}) as Type;
         }
 
         if (constructor === RegExp) return { kind: ReflectionKind.regexp };

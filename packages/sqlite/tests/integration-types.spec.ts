@@ -9,6 +9,8 @@ test('check type structure', () => {
     const group = ReflectionClass.from(Group);
     const userGroup = ReflectionClass.from(UserGroup);
 
+    expect(userGroup.type.parent).toBeUndefined();
+
     expect(userGroup.getProperty('id').isPrimaryKey()).toBe(true);
     expect(userGroup.getProperty('user').isReference()).toBe(true);
 
@@ -16,8 +18,6 @@ test('check type structure', () => {
     expect(userGroup.getProperty('user').getResolvedReflectionClass().getPrimary()).toBeInstanceOf(ReflectionProperty);
     expect(userGroup.getProperty('group').isReference()).toBe(true);
     expect(userGroup.getProperty('group').getResolvedReflectionClass().getPrimary()).toBeInstanceOf(ReflectionProperty);
-
-    expect(userGroup.type.parent).toBeUndefined();
 
     const groupsType = user.getProperty('groups').type;
     const userGroupsElementType = user.getProperty('groups').getSubType();

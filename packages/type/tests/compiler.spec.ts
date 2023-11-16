@@ -948,7 +948,7 @@ test('correct T resolver', () => {
     console.log('js', js);
     const type = transpileAndReturn(code) as (v: any) => ClassType;
     const classType = type('abc');
-    expectEqualType(typeInfer(classType), {
+    expectEqualType(reflect(classType), {
         kind: ReflectionKind.class,
         classType: classType,
         types: [

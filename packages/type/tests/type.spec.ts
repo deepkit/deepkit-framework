@@ -1652,3 +1652,18 @@ test('issue-495: extend Promise in union', () => {
         expect(type.literal).toBe(false);
     }
 });
+
+test('used type does not leak parent to original', () => {
+    class User {
+        groups!: {via: typeof UserGroup};
+    }
+
+    class UserGroup {
+        public user!: User;
+    }
+
+    const user = typeOf<User>();
+    const userGroup = typeOf<UserGroup>();
+
+    expect(userGroup.parent).toBe(undefined);
+});
