@@ -743,6 +743,12 @@ export function isSameType(a: Type, b: Type, stack: StackEntry[] = []): boolean 
             if (a.parameters.length !== b.parameters.length) return false;
             if (a.kind === ReflectionKind.function && b.kind === ReflectionKind.function && a.function !== b.function) return false;
 
+            if (a.kind === ReflectionKind.method && b.kind === ReflectionKind.method) {
+                if (a.visibility !== b.visibility) return false;
+            }
+
+            if (a.name !== b.name) return false;
+
             for (let i = 0; i < a.parameters.length; i++) {
                 if (!isSameType(a.parameters[i], b.parameters[i], stack)) return false;
             }
@@ -1128,6 +1134,70 @@ export function indexAccess(container: Type, index: Type): Type {
         }
     } else if (container.kind === ReflectionKind.any) {
         return { kind: ReflectionKind.any };
+    } else if (container.kind === ReflectionKind.union) {
+        if (index.kind === ReflectionKind.literal) {
+            // Deals with indexing a union with a literal.
+            // For example, if you have a union of {foo: 'bar'} | {foo: 'baz'}
+            // and you index it with 'foo', you get 'bar' | 'baz'. This should
+            // accordingly print ['bar', 'baz'] when valueOf<...>() is called
+            // on the union.
+            if (['string', 'number', 'symbol'].includes(typeof index.literal)) {
+                const union: TypeUnion = { kind: ReflectionKind.union, types: [] };
+
+                // For each type in the union, t, resolve the type at index.
+                for (const t of container.types) {
+                    const resolvedType = indexAccess(t, index);
+                    if (isTypeIncluded(union.types, resolvedType)) continue;
+                    union.types.push(resolvedType);
+                }
+
+                return unboxUnion(union);
+            }
+        } else if (index.kind === ReflectionKind.union) {
+            // Further, it is possible to index a union with a union of
+            // literals. So this deals with that case. For example, if you
+            // have a union of {foo: 'bar', a: 'b'} | {foo: 'baz', a: 'c'} and
+            // you index it with 'foo' | 'a', you get 'bar' | 'baz' | 'b' | 'c'
+            // and valueOf<...>() should return ['bar', 'baz', 'b', 'c'].
+
+            let types: Type[] = [];
+
+            // Pre-compute a list of indices to avoid having to re-do this for
+            // each entry in the union.
+            const indices: TypeLiteral[] = [];
+
+            const unboxedIndex = unboxUnion(index);
+            if (unboxedIndex.kind === ReflectionKind.union) {
+                for (const indexEntry of unboxedIndex.types) {
+                    // (At least for now) accept only literals as indices.
+                    if (indexEntry.kind !== ReflectionKind.literal) continue;
+                    // Don't add duplicate indices.
+                    if (indices.includes(indexEntry)) continue;
+                    // Push the index to the list of indices.
+                    indices.push(indexEntry);
+                }
+            }
+
+            // Each type in the type union (where that type union is indexable)
+            // is assumed to be an object literal or class, so we loop over
+            // each of those types.
+            for (const t of container.types) {
+                // This approach does not produce identical results to
+                // TypeScript - as this reduces all duplicates from the result
+                // (i.e., it produces the 'set' of all types that would be
+                // returned by TypeScript), whereas TypeScript will not reduce
+                // string literals to a single entry, but will reduce numeric
+                // literals. Unless this absolute fidelity is required, this
+                // approach is simpler and probably makes more sense too.
+                for (let index of indices) {
+                    const resolvedType = indexAccess(t, index);
+                    if (isTypeIncluded(types, resolvedType)) continue;
+                    types.push(resolvedType);
+                }
+            }
+
+            return unboxUnion({ kind: ReflectionKind.union, types });
+        }
     }
     return { kind: ReflectionKind.never };
 }
