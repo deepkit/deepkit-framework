@@ -29,13 +29,11 @@ export class FileStopwatchStore extends StopwatchStore {
 
     constructor(
         protected config: Pick<FrameworkConfig, 'varPath' | 'debugStorePath'>,
-        protected broker?: DebugBroker,
+        protected broker: DebugBroker,
     ) {
         super();
-        if (broker) {
-            this.frameChannel = broker?.bus<Uint8Array>('_debug/frames');
-            this.frameDataChannel = broker.bus<Uint8Array>('_debug/frames-data');
-        }
+        this.frameChannel = broker.bus<Uint8Array>('_debug/frames');
+        this.frameDataChannel = broker.bus<Uint8Array>('_debug/frames-data');
     }
 
     removeAll() {

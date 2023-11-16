@@ -843,7 +843,7 @@ test('template literal extends template literal', () => {
 
 test('template literal infer', () => {
     type a1 = 'abc' extends `a${infer T}` ? T : never;
-    expect(typeOf<a1>()).toMatchObject(typeOf<'bc'>() as any);
+    expectEqualType(typeOf<a1>(), typeOf<'bc'>() as any, { noTypeNames: true });
 
     type a2 = 'abcd' extends `a${infer T}${infer T2}` ? [T, T2] : never;
     expectEqualType(typeOf<a2>(), typeOf<['b', 'cd']>() as any, { noTypeNames: true });
@@ -889,7 +889,7 @@ test('parent object literal', () => {
     assertType(t2.types[0].type.types[0], ReflectionKind.propertySignature);
     expect(t2.types[0].parent).toBe(t2);
     expect(t2.types[0].type.parent).toBe(t2.types[0]);
-    expect(t2.types[0].type.types[0].parent).toBe(t2.types[0].type);
+    expect(t2.types[0].type.types[0].parent).toBe(t1);
 });
 
 test('parent object literal from fn', () => {
@@ -1122,7 +1122,7 @@ test('hasCircularReference yes', () => {
     visit(type, () => {
         visited++;
     });
-    expect(visited).toBe(10);
+    expect(visited).toBe(13);
 
     expect(stringifyResolvedType(type)).toBe(`Bag {
   a: User {
@@ -1227,6 +1227,72 @@ test('any with partial', () => {
     console.log(type);
 });
 
+function getId<T>(receiveType?: ReceiveType<T>): number {
+    const t = resolveReceiveType(receiveType);
+    assertType(t, ReflectionKind.objectLiteral);
+    return t.id || -1;
+}
+
+test('type id intersection', () => {
+    type CustomA = { __meta?: never & ['CustomA'] };
+    type CustomB = { __meta?: never & ['CustomB'] };
+
+    type O = { a: string } & CustomA;
+    type T1 = O & CustomB;
+    type T2 = O & { b: string };
+
+    const idO = getId<O>();
+    expect(idO).toBeGreaterThan(0);
+
+    const idT1 = getId<T1>();
+    expect(idT1).toBe(idO); //same type since only decorator changed
+
+    const idT2 = getId<T2>();
+    expect(idT2).toBeGreaterThan(idO); //new type since shape changed
+});
+
+test('type id interface', () => {
+    interface A {
+        a: string;
+    }
+
+    interface B {
+        b: string;
+    }
+
+    type O = A & B;
+
+    interface C extends A, B {}
+    interface C2 extends A, B {
+        c: string;
+    }
+
+    expect(getId<A>()).toBeGreaterThan(0);
+    expect(getId<B>()).toBeGreaterThan(getId<A>());
+
+    expect(getId<O>()).toBeGreaterThan(getId<B>());
+
+    expect(getId<C>()).toBeGreaterThan(getId<B>());
+    expect(getId<C2>()).toBeGreaterThan(getId<B>());
+});
+
+test('type id interface extends', () => {
+    interface A {}
+
+    class Clazz implements A {}
+
+    const tClazz = typeOf<Clazz>();
+    const idA = getId<A>();
+    assertType(tClazz, ReflectionKind.class);
+
+    if (!tClazz.implements) throw new Error('no implements');
+
+    assertType(tClazz.implements[0], ReflectionKind.objectLiteral);
+
+    expect(idA).toBeGreaterThan(0);
+    expect(idA).toBe(tClazz.implements[0].id);
+});
+
 test('new type annotation on already decorated', () => {
     type CustomA = { __meta?: never & ['CustomA'] };
     type CustomB = { __meta?: never & ['CustomB'] };
@@ -1238,6 +1304,8 @@ test('new type annotation on already decorated', () => {
 
     expect(metaAnnotation.getAnnotations(typeOf<O>())).toEqual([{ name: 'CustomA', options: [] }]);
     expect(metaAnnotation.getAnnotations(typeOf<T>())).toEqual([{ name: 'CustomA', options: [] }, { name: 'CustomB', options: [] }]);
+    expect(metaAnnotation.getAnnotations(typeOf<O>())).toEqual([{ name: 'CustomA', options: [] }]);
+
     expect(metaAnnotation.getAnnotations(typeOf<Decorate<O>>())).toEqual([{ name: 'CustomA', options: [] }, { name: 'CustomB', options: [] }]);
     expect(metaAnnotation.getAnnotations(typeOf<EmptyTo<O>>())).toEqual([{ name: 'CustomA', options: [] }, { name: 'CustomB', options: [] }]);
 });
@@ -1278,7 +1346,6 @@ test('keep last type name', () => {
 
         const type2 = typeOf<UserWithName>();
         expect(type2.typeName).toBe('UserWithName');
-        expect(type2.typeArguments).toBe(undefined);
         expect(type2.originTypes![0].typeName).toBe('Pick');
         expect(type2.originTypes![0].typeArguments![0].typeName).toBe('User');
     }

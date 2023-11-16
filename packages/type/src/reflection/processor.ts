@@ -58,6 +58,7 @@ import { isExtendable } from './extends.js';
 import { ClassType, isArray, isClass, isFunction, stringifyValueWithType } from '@deepkit/core';
 import { isWithDeferredDecorators } from '../decorator.js';
 import { ReflectionClass, TData } from './reflection.js';
+import { state } from './state.js';
 
 export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
 
@@ -301,6 +302,10 @@ export interface ReflectOptions {
      *
      */
     reuseCached?: boolean;
+
+    inline?: boolean;
+
+    typeName?: string;
 }
 
 export class Processor {
@@ -367,7 +372,9 @@ export class Processor {
         //this is independent of reuseCache since it's the cache for the current 'run', not a global cache
         const found = findExistingProgram(this.program, object, inputs);
         if (found) {
-            return createRef(found);
+            const result = createRef(found);
+            result.typeName ||= options.typeName;
+            return result;
         }
 
         //the cache of already computed types is stored on the Packed (the array of the type program) because it's a static object that never changes
@@ -387,16 +394,34 @@ export class Processor {
         for (const cache of this.cache) {
             if (isValidCacheEntry(cache, object, inputs)) {
                 //if program is still active, create new ref otherwise copy computed type
-                return cache.active ? createRef(cache) : copyAndSetParent(cache.resultType);
+                const result = cache.active ? createRef(cache) : copyAndSetParent(cache.resultType);
+                result.typeName ||= options.typeName;
+                return result;
             }
+        }
+
+        //if reuseCached is disabled but there is already a computed type, we return that as shallow clone
+        if (!options.reuseCached && packed.__type && inputs.length === 0) {
+            const result = copyAndSetParent(packed.__type);
+            result.typeName ||= options.typeName;
+            return result;
         }
 
         // process.stdout.write(`${options.reuseCached} Cache miss ${stringifyValueWithType(object)}(...${inputs.length})\n`);
         const pack = packed.__unpack ||= unpack(packed);
         const type = this.run(pack.ops, pack.stack, inputs, object) as Type;
+        type.typeName ||= options.typeName;
 
-        if (options.reuseCached && inputs.length === 0) {
+        if (inputs.length === 0) {
             packed.__type = type;
+        }
+
+        if (options.inline === true) {
+            //when inline was used, we do not return the original type, because inline means it's part of another type
+            //and its properties will change depending on the context (e.g. parent), which should not propagate to the original type.
+            const result = createRef(this.program);
+            result.typeName ||= options.typeName;
+            return result;
         }
 
         return type;
@@ -635,6 +660,17 @@ export class Processor {
 
                             break;
                         }
+                        case ReflectionOp.implements: {
+                            const argsNumber = this.eatParameter() as number;
+                            const types: Type[] = [];
+                            for (let i = 0; i < argsNumber; i++) {
+                                types.push(this.pop() as Type);
+                            }
+
+                            (program.stack[program.stackPointer] as TypeClass).implements = types;
+
+                            break;
+                        }
                         case ReflectionOp.parameter: {
                             const ref = this.eatParameter() as number;
                             const t: Type = { kind: ReflectionKind.parameter, parent: undefined as any, name: program.stack[ref] as string, type: this.pop() as Type };
@@ -659,11 +695,9 @@ export class Processor {
                                     this.pushType({ kind: ReflectionKind.function, function: classOrFunction, parameters: [], return: { kind: ReflectionKind.unknown } });
                                 }
                             } else {
-
                                 //when it's just a simple reference resolution like typeOf<Class>() then enable cache re-use (so always the same type is returned)
-                                const reuseCached = !!(this.isEnded() && program.previous && program.previous.end === 0);
-
-                                const result = this.reflect(classOrFunction, inputs, { reuseCached });
+                                const directReference = !!(this.isEnded() && program.previous && program.previous.end === 0);
+                                const result = this.reflect(classOrFunction, inputs, { inline: !directReference, reuseCached: directReference });
                                 this.push(result, program);
 
                                 if (isWithAnnotations(result) && inputs.length) {
@@ -800,7 +834,11 @@ export class Processor {
                             const flattened = flattenUnionTypes(types);
                             let t: Type = unboxUnion({ kind: ReflectionKind.union, types: flattened });
                             if (this.isEnded()) t = assignResult(program.resultType, t);
-                            if (t.kind === ReflectionKind.union) for (const member of t.types) member.parent = t;
+                            if (t.kind === ReflectionKind.union) {
+                                for (const member of t.types) {
+                                    member.parent = t;
+                                }
+                            }
                             this.pushType(t);
                             break;
                         }
@@ -935,6 +973,7 @@ export class Processor {
                         case ReflectionOp.objectLiteral: {
                             let t = {
                                 kind: ReflectionKind.objectLiteral,
+                                id: state.nominalId++,
                                 types: []
                             } as TypeObjectLiteral;
 
@@ -1128,9 +1167,10 @@ export class Processor {
                                 //self circular reference, usually a 0, which indicates we put the result of the current program as the type on the stack.
                                 this.push(program.resultType);
                             } else {
-                                //when it's just a simple reference resolution like typeOf<Class>() then enable cache re-use (so always the same type is returned)
-                                const reuseCached = !!(this.isEnded() && program.previous && program.previous.end === 0);
-                                const result = this.reflect(p, [], { reuseCached });
+                                //when it's just a simple reference resolution like typeOf<Class>() then don't issue a new reference (no inline: true)
+                                const directReference = !!(this.isEnded() && program.previous && program.previous.end === 0);
+                                const typeName = (isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '');
+                                const result = this.reflect(p, [], { inline: !directReference, reuseCached: directReference, typeName });
                                 if (isWithAnnotations(result)) {
                                     result.typeName = (isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '') || result.typeName;
                                 }
@@ -1246,7 +1286,7 @@ export class Processor {
         const types: TypeTupleMember[] = [];
         const stackTypes = this.popFrame() as Type[];
         for (const type of stackTypes) {
-            let resolved: TypeTupleMember = type.kind === ReflectionKind.tupleMember ? type : {
+            const resolved: TypeTupleMember = type.kind === ReflectionKind.tupleMember ? type : {
                 kind: ReflectionKind.tupleMember,
                 parent: undefined as any,
                 type
@@ -1546,7 +1586,7 @@ export class Processor {
             if (fromType.origin && fromType.origin.kind === ReflectionKind.tuple) {
                 t = { kind: ReflectionKind.tuple, types: members as any[] };
             } else {
-                t = { kind: ReflectionKind.objectLiteral, types: members as any[] };
+                t = { kind: ReflectionKind.objectLiteral, id: state.nominalId++, types: members as any[] };
             }
 
             if (this.isEnded()) t = assignResult(program.resultType, t);
@@ -1741,7 +1781,7 @@ export function typeInfer(value: any): Type {
         //the execution was scheduled (if we are in an executing program) so we can not depend on the result directly.
         //each part of the program of a value[i] is executed after the current OP, so we have to schedule new OPs doing the same as
         //in this loop here and construct the objectLiteral in the VM.
-        const resultType: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, types: [] };
+        const resultType: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, id: state.nominalId++, types: [] };
         const ops: ReflectionOp[] = [];
         const stack: RuntimeStackEntry[] = [];
 
@@ -1821,6 +1861,9 @@ function pushObjectLiteralTypes(
                         continue outer;
                     }
                 }
+
+                type.implements ||= [];
+                type.implements.push(member);
 
                 pushObjectLiteralTypes(type, member.types);
 

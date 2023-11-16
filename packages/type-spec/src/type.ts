@@ -214,4 +214,16 @@ export enum ReflectionOp {
     callSignature, //Same as function but for call signatures (in object literals)
 
     typeName, //has one parameter, the index of the stack entry that contains the type name. Uses current head of the stack as type and assigns typeName to it.
+
+    /**
+     * If a class implement an interface or type,
+     *
+     * e.g. `class A implements B`, then B is on the stack and implements pops() it, and then assigns to A.implements = [B].
+     *
+     * This is only emitted when the class that is currently being described actually implements something.
+     *
+     * This OP has 1 argument and pops x types from the stack. X is the first argument.
+     * Expects a TypeClass on the stack.
+     */
+    implements, //pops one type from the stack and assigns it to the latest class on the stack as `implements` type.
 }

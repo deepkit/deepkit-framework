@@ -14,6 +14,7 @@ import {
     TypeObjectLiteral,
     visit
 } from '@deepkit/type';
+import { nominalCompatibility } from './types.js';
 
 export type ConfigureProvider<T> = { [name in keyof T]: T[name] extends (...args: infer A) => any ? (...args: A) => ConfigureProvider<T> : T[name] };
 
@@ -77,8 +78,15 @@ function lookupPreparedProviders(preparedProviders: PreparedProvider[], token: T
         } else if (isType(token)) {
             if (token.kind === ReflectionKind.any || token.kind === ReflectionKind.unknown) continue;
             if (token.kind === ReflectionKind.function && token.function && token.function === preparedProvider.token) last = preparedProvider;
-            if (isType(preparedProvider.token) && isExtendable(preparedProvider.token, token)) last = preparedProvider;
-            if (isClass(preparedProvider.token) && hasTypeInformation(preparedProvider.token) && isExtendable(reflect(preparedProvider.token), token)) last = preparedProvider;
+            const preparedProviderType = isClass(preparedProvider.token) && hasTypeInformation(preparedProvider.token)
+                ? reflect(preparedProvider.token) : isType(preparedProvider.token) ? preparedProvider.token : undefined;
+            if (!preparedProviderType) continue;
+
+            if (token.kind === ReflectionKind.class && preparedProviderType.kind === ReflectionKind.class && token.classType === preparedProviderType.classType) {
+                last = preparedProvider;
+            } else if ((preparedProviderType.kind === ReflectionKind.class || preparedProviderType.kind === ReflectionKind.objectLiteral) && nominalCompatibility(token, preparedProviderType)) {
+                last = preparedProvider;
+            }
         } else if (('string' === typeof token || 'number' === typeof token || 'bigint' === typeof token || 'symbol' === typeof token) && isType(preparedProvider.token)) {
             // note: important that we check for preparedProvider.token being isType, otherwise isExtendable uses typeInfer (which does not use cache).
             // we have to call reflect(preparedProvider.token) otherwise, so that the cache is used.
@@ -451,7 +459,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
 
         //make sure that providers that declare the same provider token will be filtered out so that the last will be used.
         for (const provider of this.providers) {
-            if (!provider) throw new Error('invalid provider: ' + provider);
+            if (!provider) continue;
             if (provider instanceof TagProvider) {
                 buildContext.tagRegistry.register(provider, this);
 

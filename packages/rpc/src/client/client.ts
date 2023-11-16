@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, ClassType, sleep } from '@deepkit/core';
+import { asyncOperation, ClassType, formatError, sleep } from '@deepkit/core';
 import { ReceiveType, resolveReceiveType } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { ControllerDefinition, rpcAuthenticate, rpcClientId, rpcPeerDeregister, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model.js';
@@ -243,7 +243,7 @@ export class RpcClientTransporter {
 
                     onError: (error: any) => {
                         this.onError();
-                        reject(new OfflineError(`Could not connect: ${error.message}`));
+                        reject(new OfflineError(`Could not connect: ${formatError(error)}`));
                     },
 
                     onData: (buffer: Uint8Array, bytes?: number) => {

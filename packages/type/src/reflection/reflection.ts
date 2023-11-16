@@ -143,6 +143,18 @@ export function removeTypeName<T extends Type>(type: T): T {
     return o;
 }
 
+export function removeNominal<T extends Type | undefined | Type[]>(type: T): T {
+    if (!type) return type;
+    if (isArray(type)) {
+        return type.map(v => removeNominal(v)) as T;
+    } else {
+        if (type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) {
+            return { ...type, id: undefined };
+        }
+    }
+    return type;
+}
+
 export function getProperty(type: TypeObjectLiteral | TypeClass, memberName: number | string | symbol): TypeProperty | TypePropertySignature | undefined {
     for (const t of type.types) {
         if ((t.kind === ReflectionKind.property || t.kind === ReflectionKind.propertySignature) && t.name === memberName) return t;
@@ -1219,7 +1231,7 @@ export class ReflectionClass<T> {
         } as TypeClass);
 
         if (type.kind !== ReflectionKind.class) {
-            throw new Error(`Given class is not a class but kind ${type.kind}. classType: ${stringifyValueWithType(classType)}`);
+            throw new Error(`Given class is not a class but kind ${ReflectionKind[type.kind]}. classType: ${stringifyValueWithType(classType)}`);
         }
 
         const parentProto = Object.getPrototypeOf(classType.prototype);

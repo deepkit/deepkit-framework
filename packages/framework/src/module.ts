@@ -34,7 +34,7 @@ import { DebugDebugFramesCommand } from './cli/debug-debug-frames.js';
 import { ConnectionWriter, rpcClass, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
 import { AppConfigController } from './cli/app-config.js';
 import { Zone } from './zone.js';
-import { DebugBroker, DebugBrokerListener } from './debug/broker.js';
+import { DebugBroker } from './debug/broker.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { AppModule, ControllerConfig, createModule, onAppShutdown } from '@deepkit/app';
 import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
@@ -199,8 +199,6 @@ export class FrameworkModule extends createModule({
             //only register the RPC controller
             this.addImport(new ApiConsoleModule({ listen: false, markdown: '' }).rename('internalApi'));
 
-            //we start our own broker
-            this.addListener(DebugBrokerListener);
             this.addProvider(DebugBroker);
             this.addListener(onAppShutdown.listen(async (
                 event, broker: DebugBroker, store: StopwatchStore) => {

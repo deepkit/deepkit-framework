@@ -3,7 +3,7 @@ import { InjectorContext, injectorReference } from '../src/injector.js';
 import { provide, Tag } from '../src/provider.js';
 import { InjectorModule } from '../src/module.js';
 import { InlineRuntimeType, ReflectionKind, Type, typeOf } from '@deepkit/type';
-import { Inject, InjectMeta } from '../src/types.js';
+import { Inject, InjectMeta, nominalCompatibility } from '../src/types.js';
 
 test('basic', () => {
     class Service {
@@ -867,11 +867,7 @@ test('provide() with provider', () => {
 
     const root = new InjectorModule([
         Service,
-        provide<Redis>({
-            useFactory: () => {
-                return new RedisImplementation;
-            }
-        })
+        provide<Redis>({ useValue: new RedisImplementation })
     ]);
 
     const injector = new InjectorContext(root);
@@ -1112,7 +1108,7 @@ test('injector.get by type', () => {
         log(): boolean;
     }
 
-    class Logger {
+    class Logger implements LoggerInterface {
         log(): boolean {
             return true;
         }
@@ -1169,7 +1165,7 @@ test('exported token from interface', () => {
     }
 
     {
-        class OverwrittenLogger {
+        class OverwrittenLogger implements LoggerInterface {
             log(): boolean {
                 return true;
             }

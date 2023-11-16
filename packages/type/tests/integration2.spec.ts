@@ -1195,6 +1195,7 @@ test('cache parent unset', () => {
     assertType(string, ReflectionKind.string);
     assertType(union, ReflectionKind.union);
     assertType(union.types[0], ReflectionKind.string);
+    expect(union.types[0].parent).not.toBeUndefined();
     expect(union.types[0].parent === union).toBe(true);
 });
 
@@ -1345,7 +1346,7 @@ test('simple brands', () => {
     const reflection = ReflectionClass.from(User);
     const property = reflection.getProperty('username')!;
     expect(property.getType().kind).toBe(ReflectionKind.string);
-    expect(defaultAnnotation.getAnnotations(property.getType())).toEqual([typeOf<{ __brand: 'username' }>()]);
+    expect(stringifyResolvedType(defaultAnnotation.getAnnotations(property.getType())[0])).toEqual(`{__brand: 'username'}`);
 });
 
 // test('ts-brand', () => {
@@ -1749,7 +1750,9 @@ test('circular type 2', () => {
                 if (childrenProperty.kind === ReflectionKind.propertySignature) {
                     expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
                     if (childrenProperty.type.kind === ReflectionKind.array) {
-                        expect(childrenProperty.type.type).toBe(rootType);
+                        //`root: Node` is not the same as `Node` in `children: Node[]`,
+                        //as they have different parents.
+                        expect(childrenProperty.type.type === rootType).toBe(false);
                     }
                 }
             }
@@ -1783,7 +1786,9 @@ test('circular interface 2', () => {
                 if (childrenProperty.kind === ReflectionKind.propertySignature) {
                     expect(childrenProperty.type.kind).toBe(ReflectionKind.array);
                     if (childrenProperty.type.kind === ReflectionKind.array) {
-                        expect(childrenProperty.type.type).toBe(rootType);
+                        //`root: Node` is not the same as `Node` in `children: Node[]`,
+                        //as they have different parents.
+                        expect(childrenProperty.type.type === rootType).toBe(false);
                     }
                 }
             }

@@ -12,6 +12,7 @@ import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, getParentC
 import { TypeNumberBrand } from '@deepkit/type-spec';
 import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection.js';
 import { isExtendable } from './extends.js';
+import { state } from './state.js';
 
 export enum ReflectionVisibility {
     public,
@@ -321,8 +322,17 @@ export interface TypeClass extends TypeAnnotations {
      * When the class extends another class and uses on it generic type arguments, then those arguments
      * are in this array.
      * For example `class A extends B<string, boolean> {}` then extendsArguments = [string, boolean].
+     * The reference to `B` is not part of TypeClass since this information is available in JavaScript runtime
+     * by using `Object.getPrototypeOf(type.classType)`.
      */
     extendsArguments?: Type[];
+
+    /**
+     * When the class implements another interface/type, then those types are in this array.
+     *
+     * For example `class A implements B<string, boolean> {}` then implements = [B<string, boolean>].
+     */
+    implements?: Type[];
 
     /**
      * When class has generic type arguments, e.g. MyClass<string>, it contains
@@ -401,9 +411,19 @@ export interface TypeMethodSignature extends TypeAnnotations {
  */
 export interface TypeObjectLiteral extends TypeAnnotations {
     kind: ReflectionKind.objectLiteral,
+    // for nominal compatibility checks
+    id?: number;
+
     parent?: Type;
     description?: string;
     types: (TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeCallSignature)[];
+
+    /**
+     * When the interface extends another interface/type, then those types are in this array.
+     *
+     * For example `interface A extends B<string, boolean> {}` then implements = [B<string, boolean>].
+     */
+    implements?: Type[];
 }
 
 export interface TypeIndexSignature extends TypeAnnotations {
@@ -1113,7 +1133,7 @@ export function indexAccess(container: Type, index: Type): Type {
 }
 
 export function merge(types: (TypeObjectLiteral | TypeClass)[]): TypeObjectLiteral {
-    const type: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, types: [] };
+    const type: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, id: state.nominalId++, types: [] };
 
     for (const subType of types) {
         for (const member of subType.types) {
@@ -1157,7 +1177,13 @@ export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type
     const type = parent ? { ...inc, parent: parent } as Type : { ...inc } as Type;
 
     if (isWithAnnotations(type) && isWithAnnotations(inc)) {
-        if (inc.annotations) type.annotations = { ...inc.annotations };
+        if (inc.annotations) {
+            type.annotations = {};
+            //we have to make copies of each annotation since they get modified when intersected
+            for (const prop of Object.getOwnPropertySymbols(inc.annotations)) {
+                type.annotations[prop] = inc.annotations[prop].slice();
+            }
+        }
         if (inc.decorators) type.decorators = inc.decorators.slice();
         if (inc.indexAccessOrigin) type.indexAccessOrigin = { ...inc.indexAccessOrigin };
         if (inc.typeArguments) type.typeArguments = inc.typeArguments.slice();
@@ -1242,7 +1268,7 @@ export function getMember(type: TypeObjectLiteral | TypeClass, memberName: numbe
 
 export function getTypeObjectLiteralFromTypeClass<T extends Type>(type: T): T extends TypeClass ? TypeObjectLiteral : T {
     if (type.kind === ReflectionKind.class) {
-        const objectLiteral: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, types: [] };
+        const objectLiteral: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, id: state.nominalId++, types: [] };
         for (const member of type.types) {
             if (member.kind === ReflectionKind.indexSignature) {
                 objectLiteral.types.push(member);
@@ -1586,7 +1612,7 @@ export const validationAnnotation = new AnnotationDefinition<{ name: string, arg
 export const UUIDAnnotation = new AnnotationDefinition('UUID');
 export const mongoIdAnnotation = new AnnotationDefinition('mongoID');
 export const uuidAnnotation = new AnnotationDefinition('uuid');
-export const defaultAnnotation = new AnnotationDefinition('default');
+export const defaultAnnotation = new AnnotationDefinition<Type>('default');
 
 export function isUUIDType(type: Type): boolean {
     return uuidAnnotation.getFirst(type) !== undefined;
@@ -2251,6 +2277,18 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                 result.push((type.typeName ? type.typeName : '* Recursion *'));
                 continue;
             }
+
+            // objectLiteral and class types usually get their own reference, but their types are shared.
+            // thus we have to check for their member types identity to check for recursions.
+            if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
+                const first = type.types[0];
+                const jit = first ? getTypeJitContainer(first) : undefined;
+                if (jit && entry.depth !== undefined && jit.visitStack && jit.visitStack.id === stackId && jit.visitStack.depth < entry.depth + 1) {
+                    result.push((type.typeName ? type.typeName : '* Recursion *'));
+                    continue;
+                }
+            }
+
             jit.visitStack = { id: stackId, depth };
 
             const manual = stateIn.stringify ? stateIn.stringify(type) : undefined;

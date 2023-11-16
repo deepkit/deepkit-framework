@@ -18,15 +18,15 @@ test('distributed conditional type', () => {
     type r12 = OnlyStrings2<'a' | 'b' | number, 'nope'>; //boolean | 'a' | 'b' | 'nope'
     type r122 = OnlyStrings22<'a' | 'b' | number, 'nope'>; //boolean | 'a' | 'b' | 'nope'
 
-    expectEqualType(typeOf<r1>(), typeOf<'a' | 'b'>());
-    expectEqualType(typeOf<r12>(), typeOf<'a' | 'b' | 'nope'>());
-    expectEqualType(typeOf<r122>(), typeOf<boolean | 'a' | 'b' | 'nope'>());
+    expectEqualType(typeOf<r1>(), typeOf<'a' | 'b'>(), { noTypeNames: true });
+    expectEqualType(typeOf<r12>(), typeOf<'a' | 'b' | 'nope'>(), { noTypeNames: true });
+    expectEqualType(typeOf<r122>(), typeOf<boolean | 'a' | 'b' | 'nope'>(), { noTypeNames: true });
 
     type r13 = OnlyStrings3<'a' | 'b' | number, 'nope'>; //boolean | 'a' | 'b' | 'nope'
-    expectEqualType(typeOf<r13>(), typeOf<boolean | 'a' | 'b' | 'nope'>());
+    expectEqualType(typeOf<r13>(), typeOf<boolean | 'a' | 'b' | 'nope'>(), { noTypeNames: true });
 
     type r14 = OnlyStrings4<'a' | 'b', 'c' | 'd', 'nope'>; //'c'[] | 'd'[]
-    expectEqualType(typeOf<r14>(), typeOf<'c'[] | 'd'[]>());
+    expectEqualType(typeOf<r14>(), typeOf<'c'[] | 'd'[]>(), { noTypeNames: true });
 });
 
 test('deep distribution in mapped type', () => {

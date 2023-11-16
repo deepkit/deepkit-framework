@@ -660,6 +660,67 @@ test('emit class extends types', () => {
     });
 });
 
+test('emit class implements types', () => {
+    const code = `
+        class ClassA<T> { item: T; }
+        class ClassB implements ClassA<string> {
+            item: string;
+        }
+        return typeOf<ClassB>();
+    `;
+    const js = transpile(code);
+    const type = transpileAndReturn(code) as Type;
+    assertType(type, ReflectionKind.class);
+    assertType(type.implements![0], ReflectionKind.class);
+    expect(type.implements![0].typeName).toBe('ClassA');
+});
+
+test('emit interface extends types', () => {
+    const code = `
+        interface ClassA<T> { item: T; }
+        interface ClassB extends ClassA<string>;
+        return typeOf<ClassB>();
+    `;
+    const js = transpile(code);
+    const type = transpileAndReturn(code) as Type;
+    assertType(type, ReflectionKind.objectLiteral);
+    assertType(type.implements![0], ReflectionKind.objectLiteral);
+    expect(type.implements![0].typeName).toBe('ClassA');
+});
+
+test('nominal interfaces cache', () => {
+    const code = `
+        interface A {
+        }
+        return [typeOf<A>(), typeOf<A>()];
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const types = transpileAndReturn(code) as Type[];
+    assertType(types[0], ReflectionKind.objectLiteral);
+    assertType(types[1], ReflectionKind.objectLiteral);
+    expect(types[0].id).toBe(types[1].id);
+});
+
+test('nominal interfaces index access', () => {
+    const code = `
+        interface A {
+            id: string;
+        }
+        interface C {
+            a: A;
+        }
+        return [typeOf<A>(), typeOf<C['a']>()];
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const types = transpileAndReturn(code) as Type[];
+    console.dir(types, {depth: null});
+    assertType(types[0], ReflectionKind.objectLiteral);
+    assertType(types[1], ReflectionKind.objectLiteral);
+    expect(types[0].id).toBe(types[1].id);
+});
+
 test('infer T in function primitive', () => {
     const code = `
         return function fn<T extends string | number>(v: T) {
@@ -672,7 +733,6 @@ test('infer T in function primitive', () => {
     console.log(type);
     console.log(type('abc'));
 });
-
 
 test('constructor', () => {
     const code = `
@@ -1881,6 +1941,20 @@ test('enum literals', () => {
     const type = transpileAndReturn(code);
     console.log('type', type);
     // expect(type).toMatchObject({ kind: ReflectionKind.unknown });
+});
+
+test('class implements', () => {
+    const code = `
+        interface A {}
+
+        class Clazz implements A {}
+
+        return typeOf<Clazz>();
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    console.log('type', type);
 });
 
 test('circular mapped type', () => {

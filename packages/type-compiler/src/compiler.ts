@@ -234,6 +234,7 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.distribute]: { params: 1 },
     [ReflectionOp.jumpCondition]: { params: 2 },
     [ReflectionOp.typeName]: { params: 1 },
+    [ReflectionOp.implements]: { params: 1 },
 };
 
 export function debugPackStruct(sourceFile: SourceFile, forType: Node, pack: { ops: ReflectionOp[], stack: PackExpression[] }): void {
@@ -1303,14 +1304,23 @@ export class ReflectionTransformer implements CustomTransformer {
 
                     program.pushOp(ReflectionOp.class);
 
-                    if (narrowed.heritageClauses && narrowed.heritageClauses[0] && narrowed.heritageClauses[0].types[0]) {
-                        const first = narrowed.heritageClauses[0].types[0];
-                        if (isExpressionWithTypeArguments(first) && first.typeArguments) {
-                            for (const typeArgument of first.typeArguments) {
-                                this.extractPackStructOfType(typeArgument, program);
+                    if (narrowed.heritageClauses) {
+                        for (const heritageClause of narrowed.heritageClauses) {
+                            if (heritageClause.token === SyntaxKind.ExtendsKeyword) {
+                                //extends only supports extending one class
+                                const first = heritageClause.types[0];
+                                if (isExpressionWithTypeArguments(first) && first.typeArguments) {
+                                    for (const typeArgument of first.typeArguments) {
+                                        this.extractPackStructOfType(typeArgument, program);
+                                    }
+                                    program.pushOp(ReflectionOp.classExtends, first.typeArguments.length);
+                                }
+                            } else if (heritageClause.token === SyntaxKind.ImplementsKeyword) {
+                                for (const type of heritageClause.types) {
+                                    this.extractPackStructOfTypeReference(type, program);
+                                }
+                                program.pushOp(ReflectionOp.implements, heritageClause.types.length);
                             }
-
-                            program.pushOp(ReflectionOp.classExtends, first.typeArguments.length);
                         }
                     }
 
@@ -1806,6 +1816,8 @@ export class ReflectionTransformer implements CustomTransformer {
                 const variable = program.findVariable(getIdentifierName(narrowed));
                 if (variable) {
                     program.pushOp(ReflectionOp.loads, variable.frameOffset, variable.stackIndex);
+                } else {
+                    program.pushOp(ReflectionOp.never);
                 }
                 break;
             }

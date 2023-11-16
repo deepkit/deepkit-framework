@@ -97,7 +97,7 @@ test('dynamic type definition for schema definition', () => {
     //first create TypeObjectLiteral, so we can point to them via references
     const types: { [name: string]: TypeObjectLiteral } = {};
     for (const schema of schemas) {
-        const type = types[schema.name] = { kind: ReflectionKind.objectLiteral, types: [] } as TypeObjectLiteral;
+        const type = types[schema.name] = { kind: ReflectionKind.objectLiteral, id: 0, types: [] } as TypeObjectLiteral;
         type.typeName = schema.name;
         //@entity decorator / Entity<> type
         entityAnnotation.registerType(type, { name: schema.name, collection: schema.tableName });

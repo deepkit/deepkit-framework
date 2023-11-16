@@ -109,12 +109,13 @@ export function expectEqualType(actual: any, expected: any, options: { noTypeNam
             if (i === 'annotations') continue;
             if (i === 'parent') continue;
             if (i === 'jit') continue;
+            if (i === 'id') continue;
             if (i === 'indexAccessOrigin') continue;
             if (options.noOrigin && i === 'origin') continue;
             if (options.noTypeNames && (i === 'typeName' || i === 'typeArguments')) continue;
 
             if (isArray(expected[i])) {
-                if (!isArray(actual[i])) throw new Error('Not equal array type: ' + path);
+                if (!isArray(actual[i])) throw new Error(`Not equal array type: ${path}, ${expected[i]} vs ${actual[i]} at ${i}`);
                 if (actual[i].length !== expected[i].length) throw new Error('Not equal array length: ' + path + '.' + i);
                 for (let j = 0; j < expected[i].length; j++) {
                     expectEqualType(expected[i][j], actual[i][j], options, path + '.' + i + '.' + j);

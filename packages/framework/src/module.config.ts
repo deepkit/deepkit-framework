@@ -15,12 +15,12 @@ export class BrokerConfig {
     /**
      * @description If startOnBootstrap is true, the broker server stats at this address. Unix socket path or host:port combination
      */
-    listen: string = 'localhost:8811';
+    listen: string = isWindows ? 'localhost:8811' : 'var/broker.sock';
 
     /**
      * @description If a different broker server should be used, this is its address. Unix socket path or host:port combination.
      */
-    host: string = 'localhost:8811';
+    host: string = isWindows ? 'localhost:8811' : 'var/broker.sock';
 
     /**
      * @description Automatically starts a single broker in the main process. Disable it if you have a custom broker node.
@@ -122,7 +122,7 @@ export class FrameworkConfig {
     /**
      * @description IP:Port or unix socket name or named pipes.
      */
-    debugBrokerHost: string = isWindows ? '127.0.0.1:9882' : 'var/debug-broker.sock';
+    debugBrokerHost?: string;
 
     varPath: string = 'var/';
 

@@ -114,7 +114,7 @@ test('injector key', () => {
     expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
 });
 
-test('interface dependency direct match', () => {
+test('interface dependency provide implementation implementing interface shallow', () => {
     interface Connection {
         id: number;
 
@@ -125,6 +125,71 @@ test('interface dependency direct match', () => {
         id: number = 0;
 
         write(data: Uint16Array): void {
+        }
+
+        additional(): void {
+        }
+    }
+
+    class MyServer {
+        constructor(public connection: Connection) {
+        }
+    }
+
+    const injector = Injector.from([MyServer, MyConnection]);
+    const server = injector.get(MyServer);
+    expect(server).toBeInstanceOf(MyServer);
+    expect(server.connection).toBeInstanceOf(MyConnection);
+    expect(server.connection.id).toBe(0);
+});
+
+test('interface dependency provide implementation implementing interface deep 1', () => {
+    interface Connection {
+        id: number;
+
+        write(data: Uint16Array): void;
+    }
+
+    class MyConnection implements Connection {
+        id: number = 0;
+
+        write(data: Uint16Array): void {
+        }
+
+        additional(): void {
+        }
+    }
+
+    class SecondConnection extends MyConnection {
+
+    }
+
+    class MyServer {
+        constructor(public connection: Connection) {
+        }
+    }
+
+    const injector = Injector.from([MyServer, SecondConnection]);
+    const server = injector.get(MyServer);
+    expect(server).toBeInstanceOf(MyServer);
+    expect(server.connection).toBeInstanceOf(SecondConnection);
+    expect(server.connection.id).toBe(0);
+});
+
+test('interface dependency provide interface', () => {
+    interface Connection {
+        id: number;
+
+        write(data: Uint16Array): void;
+    }
+
+    class MyConnection implements Connection {
+        id: number = 0;
+
+        write(data: Uint16Array): void {
+        }
+
+        additional(): void {
         }
     }
 
@@ -195,14 +260,14 @@ test('interface dependency multiple matches', () => {
     }
 
     {
-        const injector = Injector.from([MyServer, provide<{ write(): void }>(MyConnection1)]);
+        const injector = Injector.from([MyServer, provide<Connection>(MyConnection1)]);
         const server = injector.get(MyServer);
         expect(server.connection).toBeInstanceOf(MyConnection1);
     }
 
     {
         //last match wins
-        const injector = Injector.from([MyServer, provide<{ write(): void }>(MyConnection1), provide<{ write(): void }>(MyConnection2)]);
+        const injector = Injector.from([MyServer, provide<Connection>(MyConnection1), provide<Connection>(MyConnection2)]);
         const server = injector.get(MyServer);
         expect(server.connection).toBeInstanceOf(MyConnection2);
     }

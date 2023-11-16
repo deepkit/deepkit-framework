@@ -144,7 +144,7 @@ export function stringifyValueWithType(value: any, depth: number = 0): string {
     if (isPlainObject(value)) return `object ${depth < 2 ? prettyPrintObject(value, depth) : ''}`;
     if (isArray(value)) return `Array`;
     if (isClass(value)) return `${getClassName(value)}`;
-    if (isObject(value)) return `${getClassName(getClassTypeFromInstance(value))} ${depth < 2 ? prettyPrintObject(value, depth): ''}`;
+    if (isObject(value)) return `${getClassName(getClassTypeFromInstance(value))} ${depth < 2 ? prettyPrintObject(value, depth) : ''}`;
     if ('function' === typeof value) return `function ${value.name}`;
     if (null === value) return `null`;
     return 'undefined';
@@ -812,4 +812,16 @@ export function zip<T extends (readonly unknown[])[]>(
  */
 export function forwardTypeArguments(x: any, y: any): void {
     y.Ω = x.Ω;
+}
+
+export function formatError(error: any): string {
+    if (error instanceof AggregateError) {
+        return error.errors.map(v => formatError(v)).join('\n');
+    }
+
+    if (error instanceof Error) {
+        return `${getClassName(error)}: ${error.message}`;
+    }
+
+    return String(error);
 }
