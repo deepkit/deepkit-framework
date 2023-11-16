@@ -199,7 +199,6 @@ export class FrameworkModule extends createModule({
             //only register the RPC controller
             this.addImport(new ApiConsoleModule({ listen: false, markdown: '' }).rename('internalApi'));
 
-            this.addProvider(DebugBroker);
             this.addListener(onAppShutdown.listen(async (
                 event, broker: DebugBroker, store: StopwatchStore) => {
                 await store.close();
@@ -209,6 +208,7 @@ export class FrameworkModule extends createModule({
             // this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
         }
 
+        this.addProvider(DebugBroker);
         this.addProvider(FileStopwatchStore);
         this.addProvider({ provide: StopwatchStore, useExisting: FileStopwatchStore });
         this.addProvider({
