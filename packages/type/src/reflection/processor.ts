@@ -292,7 +292,7 @@ function findExistingProgram(current: Program | undefined, object: ClassType | F
 
 function createRef(current: Program): Type {
     if (!current.resultTypes) current.resultTypes = [];
-    const ref: Type = { kind: ReflectionKind.unknown };
+    const ref: Type = { ...current.resultType };
     current.resultTypes.push(ref);
     return ref;
 }
@@ -409,7 +409,8 @@ export class Processor {
 
         // process.stdout.write(`${options.reuseCached} Cache miss ${stringifyValueWithType(object)}(...${inputs.length})\n`);
         const pack = packed.__unpack ||= unpack(packed);
-        const type = this.run(pack.ops, pack.stack, inputs, object) as Type;
+        const program = createProgram({ ops: pack.ops, initialStack: pack.stack, object }, inputs);
+        const type = this.runProgram(program);
         type.typeName ||= options.typeName;
 
         if (inputs.length === 0) {
@@ -419,7 +420,7 @@ export class Processor {
         if (options.inline === true) {
             //when inline was used, we do not return the original type, because inline means it's part of another type
             //and its properties will change depending on the context (e.g. parent), which should not propagate to the original type.
-            const result = createRef(this.program);
+            const result = createRef(program);
             result.typeName ||= options.typeName;
             return result;
         }
