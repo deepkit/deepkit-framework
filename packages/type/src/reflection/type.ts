@@ -723,10 +723,11 @@ export function isSameType(a: Type, b: Type, stack: StackEntry[] = []): boolean 
             if (a.parameters.length !== b.parameters.length) return false;
             if (a.kind === ReflectionKind.function && b.kind === ReflectionKind.function && a.function !== b.function) return false;
 
-            if (a.name !== b.name) return false;
             if (a.kind === ReflectionKind.method && b.kind === ReflectionKind.method) {
                 if (a.visibility !== b.visibility) return false;
             }
+
+            if (a.name !== b.name) return false;
 
             for (let i = 0; i < a.parameters.length; i++) {
                 if (!isSameType(a.parameters[i], b.parameters[i], stack)) return false;

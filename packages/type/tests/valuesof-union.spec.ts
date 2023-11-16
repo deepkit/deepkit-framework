@@ -58,6 +58,7 @@ class AdvancedTestClass {
     public foo() {}
     public bar() {}
     public baz() {}
+    private fizz() {}
 }
 
 type MoreAdvancedTest = AdvancedTest | AdvancedTestClass;
