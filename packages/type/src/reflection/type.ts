@@ -1125,8 +1125,7 @@ export function indexAccess(container: Type, index: Type): Type {
 
                 // For each type in the union, t, resolve the type at index.
                 for (const t of container.types) {
-                    if (t.kind !== ReflectionKind.objectLiteral && t.kind !== ReflectionKind.class) continue;
-                    const resolvedType = resolveObjectIndexType(t, index);
+                    const resolvedType = indexAccess(t, index);
                     if (isTypeIncluded(union.types, resolvedType)) continue;
                     union.types.push(resolvedType);
                 }
@@ -1162,8 +1161,6 @@ export function indexAccess(container: Type, index: Type): Type {
             // is assumed to be an object literal or class, so we loop over
             // each of those types.
             for (const t of container.types) {
-                if (t.kind !== ReflectionKind.objectLiteral && t.kind !== ReflectionKind.class) continue;
-
                 // This approach does not produce identical results to
                 // TypeScript - as this reduces all duplicates from the result
                 // (i.e., it produces the 'set' of all types that would be
@@ -1172,40 +1169,10 @@ export function indexAccess(container: Type, index: Type): Type {
                 // literals. Unless this absolute fidelity is required, this
                 // approach is simpler and probably makes more sense too.
                 for (let index of indices) {
-                    const resolvedType = resolveObjectIndexType(t, index);
+                    const resolvedType = indexAccess(t, index);
                     if (isTypeIncluded(types, resolvedType)) continue;
                     types.push(resolvedType);
                 }
-
-                // This approach is left here for posterity, but would need to
-                // be adapted to fold the types that TypeScript also folds.
-                // (i.e., to fold numeric literals, but not string literals,
-                // etc.,).
-
-                // // Each type in an indexable union is an object literal, so we
-                // // loop over each of the members of that object literal.
-                // // If any of the members have a name identical to one of the
-                // // indices, we add the type of that member to the list of types
-                // // found in that union entry.
-                // let foundTypes: Type[] = [];
-                // for (const resultT of t.types) {
-                //     if (resultT.kind !== ReflectionKind.propertySignature) continue;
-                //
-                //     if (indices.map((index) => index.literal).includes(resultT.name)) {
-                //         if (isTypeIncluded(foundTypes, resultT.type)) continue;
-                //         foundTypes.push(resultT.type);
-                //     }
-                // }
-                //
-                // // If we found any types, we add them to the list of types
-                // // we've found in this literal.
-                // if (types.push(...foundTypes) === 0) {
-                //     // If we didn't add any types in this literal, the type is
-                //     // invalid - indexing a union is only valid when the union
-                //     // has at least one entry for that index per member of the
-                //     // union.
-                //     return { kind: ReflectionKind.never };
-                // }
             }
 
             return unboxUnion({ kind: ReflectionKind.union, types });
