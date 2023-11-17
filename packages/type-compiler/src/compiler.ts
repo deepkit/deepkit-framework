@@ -94,7 +94,7 @@ import stripJsonComments from 'strip-json-comments';
 import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spec';
 import { Resolver } from './resolver.js';
 import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
-import * as micromatch from 'micromatch';
+import micromatch from 'micromatch';
 
 // don't use from @deepkit/core since we don't want to have a dependency to @deepkit/core
 export function isObject(obj: any): obj is { [key: string]: any } {
