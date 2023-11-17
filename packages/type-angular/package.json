@@ -17,8 +17,8 @@
     "@deepkit/type": "^1.0.1-alpha.19"
   },
   "devDependencies": {
-    "@angular/core": "^15.0.0",
-    "@angular/forms": "^15.0.0",
+    "@angular/core": "16.2.12",
+    "@angular/forms": "16.2.12",
     "@deepkit/core": "^1.0.1-alpha.105",
     "@deepkit/type": "^1.0.1-alpha.105",
     "rxjs": "~7.5.0"

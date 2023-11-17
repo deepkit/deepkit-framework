@@ -16,8 +16,8 @@
     "@deepkit/type": "^1.0.1-alpha.13",
     "@deepkit/desktop-ui": "^1.0.1-alpha.48",
     "@deepkit/rpc": "^1.0.1-alpha.57",
-    "@angular/core": "~15.0.0",
-    "@angular/common": "~15.0.0",
+    "@angular/core": "16.2.12",
+    "@angular/common": "16.2.12",
     "rxjs": "~7.5.0"
   },
   "dependencies": {
@@ -28,8 +28,8 @@
     "@deepkit/type": "^1.0.1-alpha.52",
     "@deepkit/desktop-ui": "^1.0.1-alpha.48",
     "@deepkit/rpc": "^1.0.1-alpha.57",
-    "@angular/core": "15.2.10",
-    "@angular/common": "15.2.10",
+    "@angular/core": "16.2.12",
+    "@angular/common": "16.2.12",
     "rxjs": "~7.5.0"
   },
   "jest": {
