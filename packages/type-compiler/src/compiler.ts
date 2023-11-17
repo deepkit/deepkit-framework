@@ -46,8 +46,10 @@ import type {
     MethodDeclaration,
     MethodSignature,
     Modifier,
+    ModifierLike,
     ModuleDeclaration,
     Node,
+    NodeArray,
     NodeFactory,
     ParseConfigHost,
     PropertyAccessExpression,
@@ -1146,7 +1148,7 @@ export class ReflectionTransformer implements CustomTransformer {
         return node;
     }
 
-    protected createProgramVarFromNode(node: Node, name: EntityName, sourceFile: SourceFile): Statement[] {
+    protected createProgramVarFromNode(node: Node & { modifiers?: NodeArray<ModifierLike> }, name: EntityName, sourceFile: SourceFile): Statement[] {
         const typeProgram = new CompilerProgram(node, sourceFile);
 
         if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && node.typeParameters) {
@@ -2572,7 +2574,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
             //since a new default export is created, we do not need ExportKey&DefaultKeyword on the function anymore,
             //but it should preserve all others like Async.
-            const modifier = declaration.modifiers ? declaration.modifiers.filter(v => v.kind !== SyntaxKind.ExportKeyword && v.kind !== SyntaxKind.DefaultKeyword) : [];
+            const modifier = (declaration.modifiers ? declaration.modifiers.filter(v => v.kind !== SyntaxKind.ExportKeyword && v.kind !== SyntaxKind.DefaultKeyword) : []) as Modifier[];
             return this.f.createExportAssignment(undefined, undefined, this.wrapWithAssignType(
                 this.f.createFunctionExpression(modifier, declaration.asteriskToken, declaration.name, declaration.typeParameters, declaration.parameters, declaration.type, declaration.body),
                 encodedType
