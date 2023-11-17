@@ -90,7 +90,7 @@ export interface FactoryProvider<T> extends ProviderBase {
 }
 
 /** @reflection never */
-export type Provider<T = any> = ClassType | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T> | TagProvider<T>;
+export type Provider<T = any> = AbstractClassType | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T> | TagProvider<T>;
 
 /** @reflection never */
 export type ProviderProvide<T = any> = ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>;
@@ -163,7 +163,7 @@ export interface ProviderScope {
 export type NormalizedProvider<T = any> = ProviderProvide<T> & ProviderScope;
 
 /** @reflection never */
-export type ProviderWithScope<T = any> = ClassType | (ProviderProvide<T> & ProviderScope) | TagProvider<any>;
+export type ProviderWithScope<T = any> = AbstractClassType | (ProviderProvide<T> & ProviderScope) | TagProvider<any>;
 
 export function isScopedProvider(obj: any): obj is ProviderProvide & ProviderScope {
     return obj.provide && obj.hasOwnProperty('scope');

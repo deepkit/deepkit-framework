@@ -11,11 +11,21 @@
 import { ClassType, getClassName, isClass, isFunction } from '@deepkit/core';
 import { EventDispatcher, EventListenerRegistered, isEventListenerContainerEntryCallback } from '@deepkit/event';
 import { AddedListener, AppModule, ConfigurationInvalidError, MiddlewareConfig, ModuleDefinition } from './module.js';
-import { injectedFunction, Injector, InjectorContext, InjectorModule, isProvided, ProviderWithScope, resolveToken, Token } from '@deepkit/injector';
+import {
+    injectedFunction,
+    Injector,
+    InjectorContext,
+    InjectorModule,
+    isProvided,
+    provide,
+    ProviderWithScope,
+    resolveToken,
+    Token
+} from '@deepkit/injector';
 import { cli } from './command.js';
 import { WorkflowDefinition } from '@deepkit/workflow';
 import { deserialize, ReflectionClass, ReflectionFunction, validate } from '@deepkit/type';
-import { ConsoleTransport, Logger, ScopedLogger } from '@deepkit/logger';
+import { ConsoleTransport, Logger, LoggerInterface, ScopedLogger } from '@deepkit/logger';
 
 export interface ControllerConfig {
     controller?: ClassType,
@@ -95,6 +105,9 @@ export class ServiceContainer {
         this.appModule.addProvider(ConsoleTransport);
         if (!this.appModule.isProvided(Logger)) {
             this.appModule.addProvider({ provide: Logger, useFactory: (t: ConsoleTransport) => new Logger([t]) });
+        }
+        if (!this.appModule.isProvided<LoggerInterface>()) {
+            this.appModule.addProvider(provide<LoggerInterface>({ useExisting: Logger }));
         }
         this.appModule.addProvider(ScopedLogger);
 
