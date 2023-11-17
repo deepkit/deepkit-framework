@@ -11,7 +11,7 @@
 import style from 'ansi-styles';
 import format from 'format-util';
 import { arrayRemoveItem, ClassType } from '@deepkit/core';
-import { FactoryProvider, Inject, TransientInjectionTarget } from '@deepkit/injector';
+import { Inject, TransientInjectionTarget } from '@deepkit/injector';
 
 export enum LoggerLevel {
     none,
@@ -52,7 +52,7 @@ export class ConsoleTransport implements LoggerTransport {
 }
 
 export class JSONTransport implements LoggerTransport {
-    out: {write: (v: string) => any} = process.stdout;
+    out: { write: (v: string) => any } = process.stdout;
 
     write(message: LogMessage) {
         this.out.write(JSON.stringify({
@@ -180,7 +180,7 @@ export interface LoggerInterface {
 
     error(...message: any[]): void;
 
-    warning(...message: any[]): void;
+    warn(...message: any[]): void;
 
     log(...message: any[]): void;
 
@@ -294,7 +294,7 @@ export class Logger implements LoggerInterface {
         this.send(message, LoggerLevel.error);
     }
 
-    warning(...message: any[]) {
+    warn(...message: any[]) {
         this.send(message, LoggerLevel.warning);
     }
 
@@ -308,6 +308,15 @@ export class Logger implements LoggerInterface {
 
     debug(...message: any[]) {
         this.send(message, LoggerLevel.debug);
+    }
+}
+
+/**
+ * Logger with pre-configured console transport.
+ */
+export class ConsoleLogger extends Logger {
+    constructor() {
+        super([new ConsoleTransport]);
     }
 }
 

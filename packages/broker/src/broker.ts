@@ -1,43 +1,164 @@
-import { ReceiveType, reflect, ReflectionKind, resolveReceiveType, Type } from '@deepkit/type';
+import { ReceiveType, ReflectionKind, resolveReceiveType, Type } from '@deepkit/type';
 import { EventToken } from '@deepkit/event';
+import { parse } from '@lukeed/ms';
+import { asyncOperation, formatError } from '@deepkit/core';
+import { ConsoleLogger, LoggerInterface } from '@deepkit/logger';
 
-export interface BrokerLockOptions {
+export interface BrokerTimeOptions {
     /**
-     * Time to live in seconds. Default 2 minutes.
-     *
-     * The lock is automatically released after this time.
-     * This is to prevent deadlocks.
+     * Time to live in milliseconds. 0 means no ttl.
+     * Value is either milliseconds or a string like '2 minutes', '8s', '24hours'.
+     */
+    ttl: string | number;
+
+    /**
+     * Timeout in milliseconds. 0 means no timeout.
+     * Value is either milliseconds or a string like '2 minutes', '8s', '24hours'.
+     */
+    timeout: number | string;
+}
+
+export interface BrokerTimeOptionsResolved {
+    /**
+     * Time to live in milliseconds. 0 means no ttl.
      */
     ttl: number;
 
     /**
-     * Timeout when acquiring the lock in seconds. Default 30 seconds.
-     * Ween a lock is not acquired after this time, an error is thrown.
+     * Timeout in milliseconds. 0 means no timeout.
      */
     timeout: number;
 }
 
+function parseBrokerTimeoutOptions(options: Partial<BrokerTimeOptions>): BrokerTimeOptionsResolved {
+    return {
+        ttl: parseTime(options.ttl) ?? 0,
+        timeout: parseTime(options.timeout) ?? 0,
+    };
+}
+
+function parseTime(value?: string | number): number | undefined {
+    if ('undefined' === typeof value) return;
+    if ('string' === typeof value) return value ? parse(value) || 0 : undefined;
+    return value;
+}
+
+export interface BrokerCacheOptions {
+    /**
+     * Relative time to live in milliseconds. 0 means no ttl.
+     *
+     * Value is either milliseconds or a string like '2 minutes', '8s', '24hours'.
+     */
+    ttl: number | string;
+
+    /**
+     * How many ms the cache is allowed to be stale. Set to 0 to disable stale cache.
+     * Default is 1000ms.
+     * Improves performance by serving slightly stale cache while the cache is being rebuilt.
+     */
+    maxStale: number | string;
+
+    /**
+     * How many ms the cache is allowed to be stored in-memory. Set to 0 to disable in-memory cache.
+     */
+    inMemoryTtl: number | string;
+}
+
+export interface BrokerCacheOptionsResolved extends BrokerCacheOptions {
+    ttl: number;
+    maxStale: number;
+    inMemoryTtl: number;
+}
+
+export interface BrokerCacheItemOptions {
+    /**
+     * Relative time to live in milliseconds. 0 means no ttl.
+     *
+     * Value is either milliseconds or a string like '2 minutes', '8s', '24hours'.
+     */
+    ttl: number | string;
+
+    tags: string[];
+
+    /**
+     * How many ms the cache is allowed to be stale. Set to 0 to disable stale cache.
+     * Default is 1000ms.
+     * Improves performance by serving slightly stale cache while the cache is being rebuilt.
+     */
+    maxStale: number | string;
+}
+
+export interface BrokerCacheItemOptionsResolved extends BrokerCacheItemOptions {
+    ttl: number;
+    maxStale: number;
+}
+
+function parseBrokerKeyOptions(options: Partial<BrokerCacheItemOptions>): BrokerCacheItemOptionsResolved {
+    return {
+        ttl: parseTime(options.ttl) ?? 30_000,
+        maxStale: parseTime(options.maxStale) ?? 1_000,
+        tags: options.tags || [],
+    };
+}
+
+function parseBrokerCacheOptions(options: Partial<BrokerCacheOptions>): BrokerCacheOptionsResolved {
+    return {
+        ttl: parseTime(options.ttl) ?? 60_000,
+        maxStale: parseTime(options.maxStale) ?? 10_000,
+        inMemoryTtl: parseTime(options.inMemoryTtl) ?? 60_000,
+    };
+}
+
 export type Release = () => Promise<void>;
 
-export interface BrokerAdapter {
-    lock(id: string, options: BrokerLockOptions): Promise<undefined | Release>;
+export interface BrokerInvalidateCacheMessage {
+    key: string;
+    ttl: number;
+}
+
+export interface BrokerAdapterCache {
+    getCache(key: string, type: Type): Promise<{ value: any, ttl: number } | undefined>;
+
+    getCacheMeta(key: string): Promise<{ ttl: number } | undefined>;
+
+    setCache(key: string, value: any, options: BrokerCacheItemOptionsResolved, type: Type): Promise<void>;
+
+    invalidateCache(key: string): Promise<void>;
+
+    onInvalidateCache(callback: (message: BrokerInvalidateCacheMessage) => void): void;
+}
+
+export interface BrokerAdapter extends BrokerAdapterCache {
+    lock(id: string, options: BrokerTimeOptionsResolved): Promise<undefined | Release>;
 
     isLocked(id: string): Promise<boolean>;
 
-    tryLock(id: string, options: BrokerLockOptions): Promise<undefined | Release>;
+    tryLock(id: string, options: BrokerTimeOptionsResolved): Promise<undefined | Release>;
 
-    getCache(key: string, type: Type): Promise<any>;
+    get(key: string, type: Type): Promise<any>;
 
-    setCache(key: string, value: any, options: BrokerCacheOptions, type: Type): Promise<void>;
+    set(key: string, value: any, type: Type): Promise<any>;
 
     increment(key: string, value: any): Promise<number>;
 
+    /**
+     * Publish a message on the bus aka pub/sub.
+     */
     publish(name: string, message: any, type: Type): Promise<void>;
 
+    /**
+     * Subscribe to messages on the bus aka pub/sub.
+     */
     subscribe(name: string, callback: (message: any) => void, type: Type): Promise<Release>;
 
+    /**
+     * Consume messages from a queue.
+     */
     consume(name: string, callback: (message: any) => Promise<void>, options: { maxParallel: number }, type: Type): Promise<Release>;
 
+    /**
+     * Produce a message to a queue.
+     */
     produce(name: string, message: any, type: Type, options?: { delay?: number, priority?: number }): Promise<void>;
 
     disconnect(): Promise<void>;
@@ -45,21 +166,12 @@ export interface BrokerAdapter {
 
 export const onBrokerLock = new EventToken('broker.lock');
 
-export interface BrokerCacheOptions {
-    ttl: number;
-    tags: string[];
-}
-
 export class CacheError extends Error {
 }
 
 export type BrokerBusChannel<Type, Name extends string> = [Name, Type];
 
-export type BrokerCacheKey<Type, Key extends string, Parameters extends object = {}> = [Key, Parameters, Type];
-
 export type BrokerQueueChannel<Type, Name extends string> = [Name, Type];
-
-export type CacheBuilder<T extends BrokerCacheKey<any, any, any>> = (parameters: T[1], options: BrokerCacheOptions) => T[2] | Promise<T[2]>;
 
 export class BrokerQueueMessage<T> {
     public state: 'pending' | 'done' | 'failed' = 'pending';
@@ -126,45 +238,142 @@ export class BrokerBus<T> {
     }
 }
 
-export class BrokerCache<T extends BrokerCacheKey<any, any, any>> {
+export type CacheBuilder<T> = () => T | Promise<T>;
+
+interface CacheStoreEntry {
+    value: any;
+    ttl: number; //absolute timestamp in ms
+    inMemoryTtl?: number; //absolute timestamp in ms
+    built: number; //how many times the cache was built
+    building?: Promise<any>;
+}
+
+export class BrokerCacheStore {
+    /**
+     * This is a short-lived cache pool for the current process.
+     * Values are fetched from the broker when not available and stored here for a short time (configurable).
+     */
+    cache = new Map<string, CacheStoreEntry>();
+
+    constructor(public config: BrokerCacheOptionsResolved) {
+    }
+
+    invalidate(key: string) {
+        if (this.config.maxStale) {
+            //don't delete immediately as it might be allowed to read stale cache while it is being rebuilt.
+            const entry = this.cache.get(key);
+            if (!entry) return;
+            entry.ttl = Date.now();
+            setTimeout(() => {
+                if (this.cache.get(key) === entry) {
+                    this.cache.delete(key);
+                }
+            }, this.config.maxStale);
+        } else {
+            // no stale reading allowed, so we can delete it immediately
+            this.cache.delete(key);
+        }
+    }
+
+    set(key: string, value: CacheStoreEntry) {
+        if (!this.config.inMemoryTtl) return;
+
+        const ttl = value.inMemoryTtl = Date.now() + this.config.inMemoryTtl;
+        this.cache.set(key, value);
+
+        setTimeout(() => {
+            if (ttl === this.cache.get(key)?.ttl) {
+                // still the same value, so we can delete it
+                this.cache.delete(key);
+            }
+        }, this.config.inMemoryTtl);
+    }
+}
+
+export class BrokerCacheItem<T> {
     constructor(
         private key: string,
         private builder: CacheBuilder<T>,
-        private options: BrokerCacheOptions,
-        private adapter: BrokerAdapter,
+        private options: BrokerCacheItemOptionsResolved,
+        private adapter: BrokerAdapterCache,
+        private store: BrokerCacheStore,
         private type: Type,
+        private logger: LoggerInterface,
     ) {
     }
 
-    protected getCacheKey(parameters: T[1]): string {
-        //this.key contains parameters e.g. user/:id, id comes from parameters.id. let's replace all of it.
-        //note: we could create JIT function for this, but it's probably not worth it.
-        return this.key.replace(/:([a-zA-Z0-9_]+)/g, (v, name) => {
-            if (!(name in parameters)) throw new CacheError(`Parameter ${name} not given`);
-            return String(parameters[name]);
+    protected build(entry: CacheStoreEntry): Promise<void> {
+        return entry.building = asyncOperation<void>(async (resolve) => {
+            entry.value = await this.builder();
+            entry.ttl = Date.now() + this.options.ttl;
+            entry.built++;
+            entry.building = undefined;
+            resolve();
         });
     }
 
-    async set(parameters: T[1], value: T[2], options: Partial<BrokerCacheOptions> = {}) {
-        const cacheKey = this.getCacheKey(parameters);
-        await this.adapter.setCache(cacheKey, value, { ...this.options, ...options }, this.type);
+    async set(value: T) {
+        await this.adapter.setCache(this.key, value, this.options, this.type);
     }
 
-    async increment(parameters: T[1], value: number) {
-        const cacheKey = this.getCacheKey(parameters);
-        await this.adapter.increment(cacheKey, value);
+    async invalidate() {
+        await this.adapter.invalidateCache(this.key);
     }
 
-    async get(parameters: T[1]): Promise<T[2]> {
-        const cacheKey = this.getCacheKey(parameters);
-        let entry = await this.adapter.getCache(cacheKey, this.type);
-        if (entry !== undefined) return entry;
+    async exists(): Promise<boolean> {
+        const entry = this.store.cache.get(this.key);
+        if (entry) {
+            return entry.ttl > Date.now();
+        }
 
-        const options: BrokerCacheOptions = { ...this.options };
-        entry = await this.builder(parameters, options);
-        await this.adapter.setCache(cacheKey, entry, options, this.type);
+        const l2Entry = await this.adapter.getCacheMeta(this.key);
+        return !!l2Entry && l2Entry.ttl > Date.now();
+    }
 
-        return entry;
+    async get(): Promise<T> {
+        //read L1
+        let entry = this.store.cache.get(this.key);
+        if (!entry) {
+            //read from L2
+            const l2Entry = await this.adapter.getCache(this.key, this.type);
+            if (l2Entry) {
+                entry = { value: l2Entry.value, built: 0, ttl: l2Entry.ttl };
+                this.store.set(this.key, entry);
+            }
+        }
+
+        if (entry) {
+            //check ttl
+            const delta = entry.ttl - Date.now();
+            if (delta <= 0) {
+                //cache is expired, rebuild it.
+
+                //if entry.building is set, then this process already started rebuilding the cache.
+                // we simply wait and return the result
+                if (entry.building) {
+                    // if the delta is small enough, we simply serve the old value
+                    if (entry.built > 0 && delta < this.options.maxStale) return entry.value;
+
+                    await entry.building;
+                    return entry.value;
+                }
+            } else {
+                //cache is still valid
+                return entry.value;
+            }
+        } else {
+            entry = { value: undefined, built: 0, ttl: Date.now() + this.options.ttl };
+            this.store.set(this.key, entry);
+        }
+
+        //cache is expired or nearly created, rebuild it.
+        await this.build(entry);
+        //no need to wait for L2 to be updated, we can return the value already
+        this.adapter.setCache(this.key, entry.value, this.options, this.type).catch((error: any) => {
+            this.logger.warn(`Could not send cache to L2 ${this.key}: ${formatError(error)}`);
+        });
+
+        return entry.value;
     }
 }
 
@@ -178,7 +387,7 @@ export class BrokerLock {
     constructor(
         private id: string,
         private adapter: BrokerAdapter,
-        private options: BrokerLockOptions,
+        private options: BrokerTimeOptionsResolved,
     ) {
     }
 
@@ -231,9 +440,31 @@ export class BrokerLock {
     }
 }
 
+export class BrokerCache {
+    private store = new BrokerCacheStore(this.config);
+
+    constructor(private adapter: BrokerAdapterCache, private config: BrokerCacheOptionsResolved, private logger: LoggerInterface) {
+        this.adapter.onInvalidateCache((message) => {
+            this.store.invalidate(message.key);
+        });
+    }
+
+    item<T>(key: string, builder: CacheBuilder<T>, options?: Partial<BrokerCacheItemOptions>, type?: ReceiveType<T>): BrokerCacheItem<T> {
+        return new BrokerCacheItem(key, builder, parseBrokerKeyOptions(Object.assign({}, this.config, options)), this.adapter, this.store, resolveReceiveType(type), this.logger);
+    }
+}
+
+export interface BrokerConfig {
+    cache?: Partial<BrokerCacheOptions>;
+}
+
 export class Broker {
+    public readonly cache: BrokerCache = new BrokerCache(this.adapter, parseBrokerCacheOptions(this.config.cache || {}), this.logger);
+
     constructor(
-        private readonly adapter: BrokerAdapter
+        private readonly adapter: BrokerAdapter,
+        private readonly config: Partial<BrokerConfig> = {},
+        private readonly logger: LoggerInterface = new ConsoleLogger(),
     ) {
     }
 
@@ -242,53 +473,15 @@ export class Broker {
      *
      * The object returned can be used to acquire and release the lock.
      */
-    public lock(id: string, options: Partial<BrokerLockOptions> = {}): BrokerLock {
-        return new BrokerLock(id, this.adapter, Object.assign({ ttl: 60 * 2, timeout: 30 }, options));
+    public lock(id: string, options: Partial<BrokerTimeOptions> = {}): BrokerLock {
+        const parsedOptions = parseBrokerTimeoutOptions(options);
+        parsedOptions.ttl ||= 60 * 2 * 1000; //2 minutes
+        parsedOptions.timeout ||= 30 * 1000; //30 seconds
+        return new BrokerLock(id, this.adapter, parsedOptions);
     }
 
     public disconnect(): Promise<void> {
         return this.adapter.disconnect();
-    }
-
-    protected cacheProvider: { [path: string]: (...args: any[]) => any } = {};
-
-    public provideCache<T extends BrokerCacheKey<any, any, any>>(provider: (options: T[1]) => T[2] | Promise<T[2]>, type?: ReceiveType<T>) {
-        type = resolveReceiveType(type);
-        if (type.kind !== ReflectionKind.tuple) throw new CacheError(`Invalid type given`);
-        if (type.types[0].type.kind !== ReflectionKind.literal) throw new CacheError(`Invalid type given`);
-        const path = String(type.types[0].type.literal);
-        this.cacheProvider[path] = provider;
-    }
-
-    public cache<T extends BrokerCacheKey<any, any, any>>(type?: ReceiveType<T>): BrokerCache<T> {
-        type = resolveReceiveType(type);
-        if (type.kind !== ReflectionKind.tuple) throw new CacheError(`Invalid type given`);
-        if (type.types[0].type.kind !== ReflectionKind.literal) throw new CacheError(`Invalid type given`);
-        const path = String(type.types[0].type.literal);
-        const provider = this.cacheProvider[path];
-        if (!provider) throw new CacheError(`No cache provider for cache ${type.typeName} (${path}) registered`);
-
-        return new BrokerCache<T>(path, provider, { ttl: 30, tags: [] }, this.adapter, type.types[2].type);
-    }
-
-    public async get<T>(key: string, builder: (options: BrokerCacheOptions) => Promise<T>, type?: ReceiveType<T>): Promise<T> {
-        if (!type) {
-            //type not manually provided via Broker.get<Type>, so we try to extract it from the builder.
-            const fn = reflect(builder);
-            if (fn.kind !== ReflectionKind.function) throw new CacheError(`Can not detect type of builder function`);
-            type = fn.return;
-            while (type.kind === ReflectionKind.promise) type = type.type;
-        } else {
-            type = resolveReceiveType(type);
-        }
-
-        const cache = await this.adapter.getCache(key, type);
-        if (cache !== undefined) return cache;
-
-        const options: BrokerCacheOptions = { ttl: 30, tags: [] };
-        const value = await builder(options);
-        await this.adapter.setCache(key, value, options, type);
-        return value;
     }
 
     public bus<T>(path: string, type?: ReceiveType<T>): BrokerBus<T> {

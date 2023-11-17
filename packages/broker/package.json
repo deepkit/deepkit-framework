@@ -21,6 +21,9 @@
   "scripts": {
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
+  "dependencies": {
+    "@lukeed/ms": "^2.0.1"
+  },
   "peerDependencies": {
     "@deepkit/app": "^1.0.1-alpha.40",
     "@deepkit/bson": "^1.0.1-alpha.40",

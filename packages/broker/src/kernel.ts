@@ -17,16 +17,20 @@ import {
     brokerDelete,
     brokerEntityFields,
     brokerGet,
+    brokerGetCache,
     brokerIncrement,
+    brokerInvalidateCacheMessage,
     brokerLock,
     brokerLockId,
     BrokerQueueMessageHandled,
     BrokerQueuePublish,
     BrokerQueueResponseHandleMessage,
     BrokerQueueSubscribe,
+    brokerResponseGetCache,
+    brokerResponseGetCacheMeta,
     brokerResponseIncrement,
     brokerResponseIsLock,
-    brokerSet,
+    brokerSetCache,
     BrokerType,
     QueueMessage,
     QueueMessageState
@@ -61,6 +65,8 @@ export class BrokerConnection extends RpcKernelBaseConnection {
         for (const c of this.subscribedChannels) {
             this.state.unsubscribe(c, this);
         }
+        arrayRemoveItem(this.state.invalidationCacheMessageConnections, this);
+
         for (const lock of this.locks.values()) {
             lock.unlock();
         }
@@ -194,9 +200,15 @@ export class BrokerConnection extends RpcKernelBaseConnection {
                 response.ack();
                 break;
             }
+            case BrokerType.SetCache: {
+                const body = message.parseBody<brokerSetCache>();
+                this.state.setCache(body.n, body.v, body.ttl);
+                response.ack();
+                break;
+            }
             case BrokerType.Set: {
-                const body = message.parseBody<brokerSet>();
-                this.state.set(body.n, body.v);
+                const body = message.parseBody<brokerSetCache>();
+                this.state.setKey(body.n, body.v);
                 response.ack();
                 break;
             }
@@ -208,14 +220,55 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             }
             case BrokerType.Delete: {
                 const body = message.parseBody<brokerDelete>();
-                this.state.delete(body.n);
+                this.state.deleteKey(body.n);
                 response.ack();
+                break;
+            }
+            case BrokerType.InvalidateCache: {
+                const body = message.parseBody<brokerDelete>();
+                const entry = this.state.getCache(body.n);
+                if (entry && this.state.invalidationCacheMessageConnections.length) {
+                    this.state.deleteCache(body.n);
+                    const message = createRpcMessage<brokerInvalidateCacheMessage>(
+                        0, BrokerType.ResponseInvalidationCache,
+                        { key: body.n, ttl: entry.ttl },
+                        RpcMessageRouteType.server
+                    );
+
+                    for (const connection of this.state.invalidationCacheMessageConnections) {
+                        connection.writer.write(message);
+                    }
+                }
+                response.ack();
+                break;
+            }
+            case BrokerType.DeleteCache: {
+                const body = message.parseBody<brokerDelete>();
+                this.state.deleteCache(body.n);
+                response.ack();
+                break;
+            }
+            case BrokerType.GetCache: {
+                const body = message.parseBody<brokerGetCache>();
+                const v = this.state.getCache(body.n);
+                response.reply<brokerResponseGetCache>(BrokerType.ResponseGetCache, v || {});
+                break;
+            }
+            case BrokerType.GetCacheMeta: {
+                const body = message.parseBody<brokerGetCache>();
+                const v = this.state.getCache(body.n);
+                response.reply<brokerResponseGetCacheMeta>(BrokerType.ResponseGetCacheMeta, v ? {ttl: v.ttl} : { missing: true });
                 break;
             }
             case BrokerType.Get: {
                 const body = message.parseBody<brokerGet>();
-                const v = this.state.get(body.n);
+                const v = this.state.getKey(body.n);
                 response.replyBinary(BrokerType.ResponseGet, v);
+                break;
+            }
+            case BrokerType.EnableInvalidationCacheMessages: {
+                this.state.invalidationCacheMessageConnections.push(this);
+                response.ack();
                 break;
             }
         }
@@ -223,7 +276,16 @@ export class BrokerConnection extends RpcKernelBaseConnection {
 }
 
 export class BrokerState {
-    public setStore = new Map<string, Uint8Array>();
+    /**
+     * Simple key/value store.
+     */
+    public keyStore = new Map<string, Uint8Array>();
+
+    /**
+     * Cache store.
+     */
+    public cacheStore = new Map<string, { data: Uint8Array, ttl: number }>();
+
     public subscriptions = new Map<string, BrokerConnection[]>();
     public entityFields = new Map<string, Map<string, number>>();
 
@@ -235,6 +297,11 @@ export class BrokerState {
     public snapshotInterval = 15;
     public snapshotPath = './broker-snapshot.bson';
     public snapshotting = false;
+
+    /**
+     * All connections in this list are notified about cache invalidations.
+     */
+    public invalidationCacheMessageConnections: BrokerConnection[] = [];
 
     protected lastSnapshotTimeout?: any;
 
@@ -285,7 +352,7 @@ export class BrokerState {
     }
 
     public unsubscribeEntityFields(name: string, fields: string[]) {
-        let store = this.entityFields.get(name);
+        const store = this.entityFields.get(name);
         if (!store) return;
         let changed = false;
         for (const field of fields) {
@@ -413,25 +480,38 @@ export class BrokerState {
         //todo: handle delays and retries
     }
 
-    public set(id: string, data: Uint8Array) {
-        this.setStore.set(id, data);
+    public setCache(id: string, data: Uint8Array, ttl: number) {
+        this.cacheStore.set(id, { data, ttl });
+    }
+
+    public getCache(id: string): { data: Uint8Array, ttl: number } | undefined {
+        return this.cacheStore.get(id);
+    }
+
+    public deleteCache(id: string) {
+        this.cacheStore.delete(id);
     }
 
     public increment(id: string, v?: number): number {
-        const buffer = this.setStore.get(id);
+        const buffer = this.keyStore.get(id);
         const float64 = buffer ? new Float64Array(buffer.buffer, buffer.byteOffset) : new Float64Array(1);
         float64[0] += v || 1;
-        if (!buffer) this.setStore.set(id, new Uint8Array(float64.buffer));
+        if (!buffer) this.keyStore.set(id, new Uint8Array(float64.buffer));
         return float64[0];
     }
 
-    public get(id: string): Uint8Array | undefined {
-        return this.setStore.get(id);
+    public setKey(id: string, data: Uint8Array) {
+        this.keyStore.set(id, data);
     }
 
-    public delete(id: string) {
-        this.setStore.delete(id);
+    public getKey(id: string): Uint8Array | undefined {
+        return this.keyStore.get(id);
     }
+
+    public deleteKey(id: string) {
+        this.keyStore.delete(id);
+    }
+
 }
 
 export class BrokerKernel extends RpcKernel {
