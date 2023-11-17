@@ -1,18 +1,18 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "../../node_modules/ng-packagr/lib/ts/conf/tsconfig.ngc.json",
   "compilerOptions": {
-    "declaration": true,
-    "declarationMap": true,
-    "inlineSources": true,
-    "types": []
+    "baseUrl": ".",
+    "outDir": "dist",
+    "declarationDir": "dist",
+    "paths": {
+      "@deepkit/core": ["../core/src/index.ts"],
+      "@deepkit/core-rxjs": ["../core-rxjs/src/index.ts"],
+      "@deepkit/event": ["../event/src/index.ts"],
+      "@deepkit/type": ["../type/src/index.ts"]
+    }
   },
   "angularCompilerOptions": {
-    "skipTemplateCodegen": true,
-    "strictMetadataEmit": true,
-    "enableResourceInlining": true
+    "disableTypeScriptVersionCheck": true
   },
-  "exclude": [
-    "src/test.ts",
-    "**/*.spec.ts"
-  ]
+  "include": ["**/*.ts"]
 }

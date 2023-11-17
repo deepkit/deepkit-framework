@@ -48,9 +48,7 @@ export class WindowHeaderComponent implements OnDestroy {
         return this.windowState.toolbars['default'] && this.windowState.toolbars['default'].length;
     }
 
-    protected focusSub: any = this.windowState.focus.subscribe((v) => {
-        this.cdParent.markForCheck();
-    });
+    protected focusSub: any;
 
     constructor(
         public windowState: WindowState,
@@ -58,6 +56,9 @@ export class WindowHeaderComponent implements OnDestroy {
         protected element: ElementRef,
     ) {
         windowState.header = this;
+        this.focusSub = windowState.focus.subscribe((v) => {
+            this.cdParent.markForCheck();
+        });
     }
 
     ngOnDestroy() {
