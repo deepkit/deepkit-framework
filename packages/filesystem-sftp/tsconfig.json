@@ -9,7 +9,7 @@
     "emitDecoratorMetadata": true,
     "moduleResolution": "NodeNext",
     "target": "es2018",
-    "module": "CommonJS",
+    "module": "NodeNext",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
