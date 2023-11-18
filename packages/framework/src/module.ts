@@ -34,7 +34,7 @@ import { DebugDebugFramesCommand } from './cli/debug-debug-frames.js';
 import { ConnectionWriter, rpcClass, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
 import { AppConfigController } from './cli/app-config.js';
 import { Zone } from './zone.js';
-import { DebugBroker } from './debug/broker.js';
+import { DebugBrokerBus } from './debug/broker.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { AppModule, ControllerConfig, createModule, onAppShutdown } from '@deepkit/app';
 import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
@@ -45,7 +45,7 @@ import { MediaController } from './debug/media.controller.js';
 import { DebugHttpController } from './debug/debug-http.controller.js';
 import { BrokerServer } from './broker/broker.js';
 import { BrokerListener } from './broker/listener.js';
-import { Broker, BrokerDeepkitAdapter } from '@deepkit/broker';
+import { BrokerBus, BrokerCache, BrokerDeepkitAdapter, BrokerLock, BrokerQueue } from '@deepkit/broker';
 
 export class FrameworkModule extends createModule({
     config: FrameworkConfig,
@@ -78,10 +78,14 @@ export class FrameworkModule extends createModule({
         },
 
         {
-            provide: Broker, useFactory(config: BrokerConfig) {
-                return new Broker(new BrokerDeepkitAdapter({ servers: [{ url: config.host }] }));
+            provide: BrokerDeepkitAdapter, useFactory: (config: BrokerConfig) => {
+                new BrokerDeepkitAdapter({ servers: [{ url: config.host }] });
             }
         },
+        { provide: BrokerCache, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerCache(adapter) },
+        { provide: BrokerLock, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerLock(adapter) },
+        { provide: BrokerQueue, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerQueue(adapter) },
+        { provide: BrokerBus, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerBus(adapter) },
 
         //move to HttpModule?
         { provide: SessionHandler, scope: 'http' },
@@ -136,7 +140,10 @@ export class FrameworkModule extends createModule({
         RpcKernelBaseConnection,
         ConnectionWriter,
 
-        Broker,
+        BrokerCache,
+        BrokerLock,
+        BrokerQueue,
+        BrokerBus,
         BrokerServer,
 
         HttpModule,
@@ -200,15 +207,15 @@ export class FrameworkModule extends createModule({
             this.addImport(new ApiConsoleModule({ listen: false, markdown: '' }).rename('internalApi'));
 
             this.addListener(onAppShutdown.listen(async (
-                event, broker: DebugBroker, store: StopwatchStore) => {
+                event, broker: DebugBrokerBus, store: StopwatchStore) => {
                 await store.close();
-                await broker.disconnect();
+                await broker.adapter.disconnect();
             }));
 
             // this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
         }
 
-        this.addProvider(DebugBroker);
+        this.addProvider(DebugBrokerBus);
         this.addProvider(FileStopwatchStore);
         this.addProvider({ provide: StopwatchStore, useExisting: FileStopwatchStore });
         this.addProvider({

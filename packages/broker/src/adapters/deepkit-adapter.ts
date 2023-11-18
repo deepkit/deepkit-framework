@@ -1,4 +1,4 @@
-import { BrokerAdapter, BrokerCacheItemOptionsResolved, BrokerQueueMessage, BrokerTimeOptionsResolved, Release } from '../broker.js';
+import { BrokerAdapter, BrokerQueueMessage, BrokerTimeOptionsResolved, Release } from '../broker.js';
 import { getTypeJitContainer, ReflectionKind, Type, TypePropertySignature } from '@deepkit/type';
 import {
     brokerBusPublish,
@@ -27,6 +27,7 @@ import {
 import { ClientTransportAdapter, createRpcMessage, RpcBaseClient, RpcMessage, RpcMessageRouteType, RpcWebSocketClientAdapter } from '@deepkit/rpc';
 import { deserializeBSON, deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer, serializeBSON } from '@deepkit/bson';
 import { arrayRemoveItem } from '@deepkit/core';
+import { BrokerCacheItemOptionsResolved } from '../broker-cache.js';
 
 interface TypeSerialize {
     encode(v: any): Uint8Array;
@@ -143,6 +144,7 @@ export class BrokerDeepkitPool {
 
     async disconnect(): Promise<void> {
         for (const connection of this.connections) {
+            // we just disconnect, and not clear the connection object since we store state on it (like activeChannels, invalidation callbacks, etc)
             await connection.connection.disconnect();
         }
     }

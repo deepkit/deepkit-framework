@@ -8,13 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BrokerKernel } from '@deepkit/broker';
+import { BrokerBus, BrokerCache, BrokerDeepkitAdapter, BrokerKernel, BrokerLock, BrokerQueue } from '@deepkit/broker';
 import { ClassType } from '@deepkit/core';
 import { ConsoleTransport, Logger, LogMessage, MemoryLoggerTransport } from '@deepkit/logger';
 import { Database, DatabaseRegistry, MemoryDatabaseAdapter } from '@deepkit/orm';
 import { ApplicationServer } from './application-server.js';
 import { BrokerServer } from './broker/broker.js';
-import { BrokerDeepkitAdapter, Broker } from '@deepkit/broker';
 import { injectorReference } from '@deepkit/injector';
 import { App, AppModule, RootAppModule, RootModuleDefinition } from '@deepkit/app';
 import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker.js';
@@ -85,13 +84,17 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
     module.addProvider(BrokerMemoryServer);
     module.addProvider(MemoryLoggerTransport);
     module.addProvider({
-        provide: Broker, useFactory: (server: BrokerMemoryServer) => {
+        provide: BrokerDeepkitAdapter, useFactory: (server: BrokerMemoryServer) => {
             const transport = new RpcDirectClientAdapter(server.kernel);
-            return new Broker(new BrokerDeepkitAdapter({ servers: [{ url: '', transport }] }));
+            return new BrokerDeepkitAdapter({ servers: [{ url: '', transport }] });
         }
     });
+    module.addProvider({ provide: BrokerCache, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerCache(adapter) });
+    module.addProvider({ provide: BrokerLock, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerLock(adapter) });
+    module.addProvider({ provide: BrokerQueue, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerQueue(adapter) });
+    module.addProvider({ provide: BrokerBus, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerBus(adapter) });
 
-    if (!module.hasImport(FrameworkModule)) module.addImportAtBeginning(new FrameworkModule)
+    if (!module.hasImport(FrameworkModule)) module.addImportAtBeginning(new FrameworkModule);
 
     if (entities.length) {
         module.addProvider({ provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities) });
