@@ -77,11 +77,7 @@ export class FrameworkModule extends createModule({
             }
         },
 
-        {
-            provide: BrokerDeepkitAdapter, useFactory: (config: BrokerConfig) => {
-                new BrokerDeepkitAdapter({ servers: [{ url: config.host }] });
-            }
-        },
+        { provide: BrokerDeepkitAdapter, useFactory: (config: BrokerConfig) => new BrokerDeepkitAdapter({ servers: [{ url: config.host }] }) },
         { provide: BrokerCache, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerCache(adapter) },
         { provide: BrokerLock, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerLock(adapter) },
         { provide: BrokerQueue, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerQueue(adapter) },
@@ -145,6 +141,8 @@ export class FrameworkModule extends createModule({
         BrokerQueue,
         BrokerBus,
         BrokerServer,
+
+        FilesystemRegistry,
 
         HttpModule,
     ]

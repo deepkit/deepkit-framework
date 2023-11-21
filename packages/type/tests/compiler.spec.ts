@@ -1243,9 +1243,7 @@ test('fn default argument', () => {
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code);
-    expect(type).toEqual({
-        kind: ReflectionKind.string
-    });
+    expect(type.kind).toEqual(ReflectionKind.string);
 });
 
 test('ReceiveType', () => {

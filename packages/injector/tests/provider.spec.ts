@@ -5,7 +5,7 @@ import { nominalCompatibility } from '../src/types.js';
 /**
  * checks nominal compatibility of two types
  */
-function compatible<A, B>(token?: ReceiveType<A>, provider?: ReceiveType<B>): boolean {
+function compatible<A, B>(token?: ReceiveType<A>, provider?: ReceiveType<B>): number {
     return nominalCompatibility(resolveReceiveType(token), resolveReceiveType(provider) as TypeClass | TypeObjectLiteral);
 }
 
@@ -14,6 +14,9 @@ test('nominal empty interface', () => {
     }
 
     interface B {
+    }
+
+    interface B2 extends B {
     }
 
     interface C {
@@ -27,12 +30,13 @@ test('nominal empty interface', () => {
     assertType(c, ReflectionKind.objectLiteral);
     const propA = findMember('a', c.types);
     assertType(propA, ReflectionKind.propertySignature);
-    expect(compatible(propA.type, a)).toBe(true);
+    expect(compatible(propA.type, a)).toBe(1);
 
-    expect(compatible<A, A>()).toBe(true);
-    expect(compatible<A, B>()).toBe(false);
-    expect(compatible<B, B>()).toBe(true);
-    expect(compatible<B, A>()).toBe(false);
+    expect(compatible<A, A>()).toBe(1);
+    expect(compatible<A, B>()).toBe(0);
+    expect(compatible<B, B>()).toBe(1);
+    expect(compatible<B, B2>()).toBe(2);
+    expect(compatible<B, A>()).toBe(0);
 });
 
 test('nominal same interface', () => {
@@ -44,10 +48,10 @@ test('nominal same interface', () => {
         id: string;
     }
 
-    expect(compatible<A, A>()).toBe(true);
-    expect(compatible<A, B>()).toBe(false);
-    expect(compatible<B, B>()).toBe(true);
-    expect(compatible<B, A>()).toBe(false);
+    expect(compatible<A, A>()).toBe(1);
+    expect(compatible<A, B>()).toBe(0);
+    expect(compatible<B, B>()).toBe(1);
+    expect(compatible<B, A>()).toBe(0);
 });
 
 test('nominal extends interface', () => {
@@ -74,20 +78,20 @@ test('nominal extends interface', () => {
         }
     }
 
-    expect(compatible<Connection, MyConnection1>()).toBe(true);
-    expect(compatible<Connection, MyConnection2>()).toBe(false);
-    expect(compatible<Base, MyConnection1>()).toBe(true);
-    expect(compatible<Base2, MyConnection1>()).toBe(true);
+    expect(compatible<Connection, MyConnection1>()).toBe(2);
+    expect(compatible<Connection, MyConnection2>()).toBe(0);
+    expect(compatible<Base, MyConnection1>()).toBe(3);
+    expect(compatible<Base2, MyConnection1>()).toBe(2);
 
-    expect(compatible<Base, Connection>()).toBe(true);
-    expect(compatible<Base, MyConnection2>()).toBe(false);
+    expect(compatible<Base, Connection>()).toBe(2);
+    expect(compatible<Base, MyConnection2>()).toBe(0);
 
-    expect(compatible<Base2, Connection>()).toBe(false);
-    expect(compatible<Base2, MyConnection2>()).toBe(false);
+    expect(compatible<Base2, Connection>()).toBe(0);
+    expect(compatible<Base2, MyConnection2>()).toBe(0);
 
-    expect(compatible<MyConnection1, MyConnection1>()).toBe(true);
-    expect(compatible<MyConnection2, MyConnection2>()).toBe(true);
+    expect(compatible<MyConnection1, MyConnection1>()).toBe(1);
+    expect(compatible<MyConnection2, MyConnection2>()).toBe(1);
 
-    expect(compatible<MyConnection1, MyConnection2>()).toBe(false);
-    expect(compatible<MyConnection2, MyConnection1>()).toBe(false);
+    expect(compatible<MyConnection1, MyConnection2>()).toBe(0);
+    expect(compatible<MyConnection2, MyConnection1>()).toBe(0);
 });

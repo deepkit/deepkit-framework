@@ -3,14 +3,15 @@ import { arrayRemoveItem, ClassType, getClassName, isClass, isPlainObject, isPro
 import { BuildContext, Injector, SetupProviderRegistry } from './injector.js';
 import {
     hasTypeInformation,
-    isExtendable,
     isType,
     ReceiveType,
     reflect,
     ReflectionKind,
     reflectOrUndefined,
-    resolveReceiveType,
+    resolveReceiveType, stringifyType,
+    Type,
     TypeClass,
+    typeInfer,
     TypeObjectLiteral,
     visit
 } from '@deepkit/type';
@@ -70,30 +71,74 @@ export interface PreparedProvider {
     resolveFrom?: InjectorModule;
 }
 
-function lookupPreparedProviders(preparedProviders: PreparedProvider[], token: Token): PreparedProvider | undefined {
-    let last: PreparedProvider | undefined;
-    for (const preparedProvider of preparedProviders) {
-        if (token === preparedProvider.token || preparedProvider.providers.includes(token)) {
-            last = preparedProvider;
-        } else if (isType(token)) {
-            if (token.kind === ReflectionKind.any || token.kind === ReflectionKind.unknown) continue;
-            if (token.kind === ReflectionKind.function && token.function && token.function === preparedProvider.token) last = preparedProvider;
-            const preparedProviderType = isClass(preparedProvider.token) && hasTypeInformation(preparedProvider.token)
-                ? reflect(preparedProvider.token) : isType(preparedProvider.token) ? preparedProvider.token : undefined;
-            if (!preparedProviderType) continue;
+/**
+ * 0 means not compatible, 1 means exactly compatible, n>1 means compatible but not exactly. The higher the number the further away the compatibility is (the inheritance chain).
+ */
+function getSpecificity(a: Type, b: Type): number {
+    return nominalCompatibility(a, b);
+}
 
-            if (token.kind === ReflectionKind.class && preparedProviderType.kind === ReflectionKind.class && token.classType === preparedProviderType.classType) {
-                last = preparedProvider;
-            } else if ((preparedProviderType.kind === ReflectionKind.class || preparedProviderType.kind === ReflectionKind.objectLiteral) && nominalCompatibility(token, preparedProviderType)) {
-                last = preparedProvider;
-            }
-        } else if (('string' === typeof token || 'number' === typeof token || 'bigint' === typeof token || 'symbol' === typeof token) && isType(preparedProvider.token)) {
-            // note: important that we check for preparedProvider.token being isType, otherwise isExtendable uses typeInfer (which does not use cache).
-            // we have to call reflect(preparedProvider.token) otherwise, so that the cache is used.
-            if (isExtendable(preparedProvider.token, { kind: ReflectionKind.literal, literal: token })) last = preparedProvider;
+function getTypeFromToken(token: Token): Type {
+    return isClass(token) && hasTypeInformation(token) ? reflect(token) : isType(token) ? token : typeInfer(token);
+}
+
+function getTypeFromProvider(preparedProvider: PreparedProvider): Type {
+    return isClass(preparedProvider.token) && hasTypeInformation(preparedProvider.token)
+        ? reflect(preparedProvider.token) : isType(preparedProvider.token) ? preparedProvider.token : typeInfer(preparedProvider.token);
+}
+
+type LookupMatcher = (token: Type, provider: Type, candidate?: Type) => boolean;
+
+function exportLookupMatcher(token: Type, provider: Type, candidate?: Type): boolean {
+    if (token.id) return token.id === provider.id;
+
+    if (token.kind === ReflectionKind.function && provider.kind === ReflectionKind.function && provider.function && provider.function === token.function) return true;
+    if (token.kind === ReflectionKind.class && provider.kind === ReflectionKind.class && provider.classType && provider.classType === token.classType) return true;
+    if (token.kind === ReflectionKind.literal && provider.kind === ReflectionKind.literal && provider.literal === token.literal) return true;
+    return false;
+}
+
+function dependencyLookupMatcher(token: Type, provider: Type, candidate?: Type): boolean {
+    if (token.id && token.id === provider.id) return true;
+
+    const spec = getSpecificity(token, provider);
+    if (!spec) return false;
+
+    if (candidate) {
+        //if we have already a matching old candidate, we check if the old candidate was more specific than the new one.
+        //if the old one was more specific, we don't want to replace it. (lower number means more specific)
+        const oldSpec = getSpecificity(token, candidate);
+        if (oldSpec <= spec) return false;
+    }
+
+    return true;
+}
+
+function lookupPreparedProviders(
+    preparedProviders: PreparedProvider[],
+    token: Token | PreparedProvider,
+    matcher: LookupMatcher,
+    candidate?: PreparedProvider,
+): PreparedProvider | undefined {
+    const tokenProvider: any | undefined = (isPlainObject(token) && 'provide' in token && !('kind' in token)) ? token : undefined;
+    const tokenType = tokenProvider ? undefined : getTypeFromToken(token);
+
+    for (const preparedProvider of preparedProviders) {
+        if (tokenProvider) {
+            //token is a PreparedProvider, which matches only by identity
+            if (preparedProvider === tokenProvider || preparedProvider.providers.includes(tokenProvider)) return preparedProvider;
+            continue;
+        }
+        if (!tokenType) continue;
+
+        const preparedProviderType = getTypeFromToken(preparedProvider.token);
+
+        if (matcher(tokenType, preparedProviderType, candidate ? getTypeFromProvider(candidate) : undefined)) {
+            candidate = preparedProvider;
         }
     }
-    return last;
+
+    return candidate;
 }
 
 function registerPreparedProvider(preparedProviders: PreparedProvider[], modules: InjectorModule[], providers: NormalizedProvider[], replaceExistingScope: boolean = true) {
@@ -101,7 +146,8 @@ function registerPreparedProvider(preparedProviders: PreparedProvider[], modules
     if (token === undefined) {
         throw new Error('token is undefined: ' + JSON.stringify(providers));
     }
-    const preparedProvider = lookupPreparedProviders(preparedProviders, token);
+
+    const preparedProvider = lookupPreparedProviders(preparedProviders, token, exportLookupMatcher);
     if (preparedProvider) {
         preparedProvider.token = token;
         for (const m of modules) {
@@ -422,9 +468,9 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
 
     protected preparedProviders?: PreparedProvider[];
 
-    getPreparedProvider(token: Token): PreparedProvider | undefined {
+    getPreparedProvider(token: Token, candidate?: PreparedProvider): PreparedProvider | undefined {
         if (!this.preparedProviders) return;
-        return lookupPreparedProviders(this.preparedProviders, token);
+        return lookupPreparedProviders(this.preparedProviders, token, dependencyLookupMatcher, candidate);
     }
 
     resolveToken(token: Token): InjectorModule | undefined {
@@ -463,7 +509,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
             if (provider instanceof TagProvider) {
                 buildContext.tagRegistry.register(provider, this);
 
-                if (!lookupPreparedProviders(this.preparedProviders, provider.provider.provide)) {
+                if (!lookupPreparedProviders(this.preparedProviders, provider.provider.provide, exportLookupMatcher)) {
                     //we don't want to overwrite that provider with a tag
                     registerPreparedProvider(this.preparedProviders, [this], [provider.provider]);
                 }
@@ -503,7 +549,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         const exportToken = (token: ExportType, to: InjectorModule) => {
             if (!this.preparedProviders) return;
 
-            const preparedProvider = lookupPreparedProviders(this.preparedProviders, token);
+            const preparedProvider = lookupPreparedProviders(this.preparedProviders, token, exportLookupMatcher);
             //if it was not in provider, we continue
             if (!preparedProvider) return;
 
@@ -511,7 +557,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
             preparedProvider.resolveFrom = to;
 
             const parentProviders = to.getPreparedProviders(buildContext);
-            const parentProvider = lookupPreparedProviders(parentProviders, token);
+            const parentProvider = lookupPreparedProviders(parentProviders, token, exportLookupMatcher);
             //if the parent has this token already defined, we just switch its module to ours,
             //so it's able to inject our encapsulated services.
             if (parentProvider) {
@@ -546,7 +592,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
                             preparedProvider.resolveFrom = this.parent;
 
                             const parentProviders = this.parent.getPreparedProviders(buildContext);
-                            const parentProvider = lookupPreparedProviders(parentProviders, preparedProvider.token);
+                            const parentProvider = lookupPreparedProviders(parentProviders, preparedProvider.token, exportLookupMatcher);
                             //if the parent has this token already defined, we just switch its module to ours,
                             //so it's able to inject our encapsulated services.
                             if (parentProvider) {

@@ -1,4 +1,4 @@
-import { isSameType, reflect, ReflectionKind, Type, TypeClass, TypeObjectLiteral } from '@deepkit/type';
+import { reflect, ReflectionKind, Type } from '@deepkit/type';
 import { getParentClass } from '@deepkit/core';
 
 export type InjectMeta<T = never> = { __meta?: never & ['inject', T] }
@@ -6,6 +6,8 @@ export type Inject<Type, Token = never> = Type & InjectMeta<Token>
 
 /**
  * Checks if given type is nominally compatible with the given interface.
+ *
+ * 0 means not compatible, 1 means exactly compatible, n>1 means compatible but not exactly. The higher the number the further away the compatibility is (the inheritance chain).
  *
  * @example
  * ```typescript
@@ -24,37 +26,40 @@ export type Inject<Type, Token = never> = Type & InjectMeta<Token>
  * nominalCompatibility(A, B) // true
  * nominalCompatibility(A, B0) // true
  * nominalCompatibility(A, C) // false
+ *
  */
-export function nominalCompatibility(token: Type, provider: TypeClass | TypeObjectLiteral): boolean {
+export function nominalCompatibility(token: Type, provider: Type): number {
     //we want to check if the token is nominal the same with the provider.
-    if (token === provider) return true;
+    if (token === provider) return 1;
 
-    if (token.kind === ReflectionKind.class && provider.kind === ReflectionKind.class && token.classType === provider.classType) return true;
+    const stack: { spec: number, type: Type }[] = [{ spec: 1, type: provider }];
 
-    const stack: Type[] = [provider];
     while (stack.length) {
-        const current = stack.pop()!;
-        if (current.kind !== ReflectionKind.class && current.kind !== ReflectionKind.objectLiteral) continue;
+        const entry = stack.pop()!;
+        const current = entry.type;
+        if (current.id && current.id === token.id) return entry.spec;
+
+        if (!current.id && !token.id) {
+            //both have no nominal ID, so compare by value identity (literal, classType, function)
+            if (current.kind === ReflectionKind.function && token.kind === ReflectionKind.function && current.function && current.function === token.function) return entry.spec;
+            if (current.kind === ReflectionKind.class && token.kind === ReflectionKind.class && current.classType && current.classType === token.classType) return entry.spec;
+            if (current.kind === ReflectionKind.literal && token.kind === ReflectionKind.literal && current.literal === token.literal) return entry.spec;
+        }
+
         if (current.kind === ReflectionKind.class) {
-            if (token.kind === ReflectionKind.class && current.classType === token.classType) return true;
             const parent = getParentClass(current.classType);
             if (parent && (parent as any).__type) {
                 const next = reflect(parent);
-                stack.push(next);
-            }
-        } else if (current.kind === ReflectionKind.objectLiteral) {
-            if (token.kind === ReflectionKind.objectLiteral) {
-                if (current.id && current.id === token.id) return true;
+                stack.push({ spec: entry.spec + 1, type: next });
             }
         }
 
-        if (current.implements) {
+        if ((current.kind === ReflectionKind.class || current.kind === ReflectionKind.objectLiteral) && current.implements) {
             for (const i of current.implements) {
-                stack.push(i);
+                stack.push({ spec: entry.spec + 1, type: i });
             }
         }
     }
 
-
-    return false;
+    return 0;
 }

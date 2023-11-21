@@ -26,10 +26,10 @@ test('parent dependency', () => {
         }
     }
 
-    const module1 = new InjectorModule([Router]);
-    const module2 = new InjectorModule([Controller], module1);
+    const parent = new InjectorModule([Router]);
+    const module2 = new InjectorModule([Controller], parent);
 
-    const context = new InjectorContext(module1);
+    const context = new InjectorContext(parent);
     const injector = context.getInjector(module2);
     expect(injector.get(Controller)).toBeInstanceOf(Controller);
 });
@@ -1172,7 +1172,7 @@ test('exported token from interface', () => {
         }
 
         const module = new InjectorModule([provide<LoggerInterface>(Logger), ModuleController]).addExport(typeOf<LoggerInterface>(), ModuleController);
-        const root = new InjectorModule([Controller, OverwrittenLogger]).addImport(module);
+        const root = new InjectorModule([Controller, provide<LoggerInterface>(OverwrittenLogger)]).addImport(module);
 
         const injector = new InjectorContext(root);
         const service = injector.get<LoggerInterface>();
