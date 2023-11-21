@@ -20,7 +20,7 @@ function matchesParentDomain(srvAddress, parentDomain) {
 
 export async function resolveSrvHosts(hostname: string): Promise<{ options: string, hosts: { hostname: string, port: number }[] }> {
     return await asyncOperation(async (resolve, reject) => {
-        resolveSrv(`_mongodb._tcp.${hostname}`, (err?, addresses?) => {
+        resolveSrv(`_mongodb._tcp.${hostname}`, (err, addresses) => {
             if (err) return reject(err);
 
             for (const address of addresses) {

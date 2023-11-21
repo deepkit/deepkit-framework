@@ -29,6 +29,7 @@ import type {
     StringLiteral,
     StringLiteralLike,
     SymbolTable,
+    PropertyName,
 } from 'typescript';
 import ts from 'typescript';
 import { cloneNode as tsNodeClone, CloneNodeHook } from '@marcj/ts-clone-node';
@@ -43,6 +44,7 @@ const {
     isPrivateIdentifier,
     isStringLiteral,
     isStringLiteralLike,
+    isNoSubstitutionTemplateLiteral,
     setOriginalNode,
     NodeFlags,
     SyntaxKind
@@ -76,11 +78,12 @@ export function extractJSDocAttribute(node: Node, attribute: string): string {
     return '';
 }
 
-export function getPropertyName(f: NodeFactory, node?: Identifier | StringLiteral | NumericLiteral | ComputedPropertyName | PrivateIdentifier): string | symbol | number | ArrowFunction {
+export function getPropertyName(f: NodeFactory, node?: Identifier | StringLiteral | NumericLiteral | ComputedPropertyName | PrivateIdentifier | PropertyName): string | symbol | number | ArrowFunction {
     if (!node) return '';
 
     if (isIdentifier(node)) return getIdentifierName(node);
     if (isStringLiteral(node)) return node.text;
+    if (isNoSubstitutionTemplateLiteral(node)) return node.text;
     if (isNumericLiteral(node)) return +node.text;
     if (isComputedPropertyName(node)) {
         return f.createArrowFunction(undefined, undefined, [], undefined, undefined, node.expression);
@@ -90,7 +93,7 @@ export function getPropertyName(f: NodeFactory, node?: Identifier | StringLitera
     return '';
 }
 
-export function getNameAsString(node?: Identifier | StringLiteral | NumericLiteral | ComputedPropertyName | PrivateIdentifier | QualifiedName): string {
+export function getNameAsString(node?: Identifier | StringLiteral | NumericLiteral | ComputedPropertyName | PrivateIdentifier | QualifiedName | PropertyName): string {
     if (!node) return '';
     if (isIdentifier(node)) return getIdentifierName(node);
     if (isStringLiteral(node)) return node.text;
@@ -100,6 +103,7 @@ export function getNameAsString(node?: Identifier | StringLiteral | NumericLiter
         return '';
     }
     if (isPrivateIdentifier(node)) return getIdentifierName(node);
+    if (isNoSubstitutionTemplateLiteral(node)) return node.text;
 
     return joinQualifiedName(node);
 }
