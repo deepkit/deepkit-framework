@@ -261,7 +261,6 @@ export function debugPackStruct(sourceFile: SourceFile, forType: Node, pack: { o
             stack.push(JSON.stringify(s));
         }
     }
-    // console.log('debugPackStruct:', 'getText' in forType ? forType.getText().replace(/\n/g, '') : 'no node'); //printer.printNode(EmitHint.Unspecified, forType, sourceFile).replace(/\n/g, ''));
     console.log(stack.join(','), '|', ...items);
 }
 
@@ -525,7 +524,10 @@ export class ReflectionTransformer implements CustomTransformer {
      * Types added to this map will get a type program directly under it.
      * This is for types used in the very same file.
      */
-    protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration, { name: EntityName, sourceFile: SourceFile, compiled?: Statement[] }>();
+    protected compileDeclarations = new Map<
+        TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration,
+        { name: EntityName, sourceFile: SourceFile, compiled?: Statement[] }
+    >();
 
     /**
      * Types added to this map will get a type program at the top root level of the program.
@@ -677,13 +679,17 @@ export class ReflectionTransformer implements CustomTransformer {
         if (basePath) {
             basePath = dirname(basePath);
             if (!this.reflectionMode && currentConfig.reflection !== undefined) this.reflectionMode = this.parseReflectionMode(currentConfig.reflection, basePath);
-            if (!this.compilerOptions && currentConfig.reflectionOptions !== undefined) this.reflectionOptions = this.parseReflectionOptionsDefaults(currentConfig.reflectionOptions, basePath);
+            if (!this.compilerOptions && currentConfig.reflectionOptions !== undefined) {
+                this.reflectionOptions = this.parseReflectionOptionsDefaults(currentConfig.reflectionOptions, basePath);
+            }
             while ((this.reflectionMode === undefined || this.compilerOptions === undefined) && 'string' === typeof basePath && currentConfig.extends) {
                 const path = join(basePath, currentConfig.extends);
                 const nextConfig = ts.readConfigFile(path, (path: string) => this.host.readFile(path));
                 if (!nextConfig) break;
                 if (!this.reflectionMode && nextConfig.config.reflection !== undefined) this.reflectionMode = this.parseReflectionMode(nextConfig.config.reflection, basePath);
-                if (!this.reflectionOptions && nextConfig.config.reflectionOptions !== undefined) this.reflectionOptions = this.parseReflectionOptionsDefaults(nextConfig.config.reflectionOptions, basePath);
+                if (!this.reflectionOptions && nextConfig.config.reflectionOptions !== undefined) {
+                    this.reflectionOptions = this.parseReflectionOptionsDefaults(nextConfig.config.reflectionOptions, basePath);
+                }
                 currentConfig = Object.assign({}, nextConfig.config);
                 basePath = dirname(path);
             }
@@ -1164,6 +1170,11 @@ export class ReflectionTransformer implements CustomTransformer {
         } else {
             this.extractPackStructOfType(node, typeProgram);
         }
+
+        if (isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isClassDeclaration(node) || isClassExpression(node)) {
+            typeProgram.pushOp(ReflectionOp.nominal);
+        }
+
         const typeProgramExpression = this.packOpsAndStack(typeProgram);
 
         const variable = this.f.createVariableStatement(
@@ -1283,7 +1294,9 @@ export class ReflectionTransformer implements CustomTransformer {
                                             this.extractPackStructOfType(typeArgument, program);
                                         }
                                     }
-                                    const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.nodeConverter.toExpression(extendType.expression)));
+                                    const index = program.pushStack(
+                                        this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.nodeConverter.toExpression(extendType.expression))
+                                    );
                                     program.pushOp(ReflectionOp.classReference, index);
                                     program.popFrameImplicit();
                                 }
@@ -1514,8 +1527,9 @@ export class ReflectionTransformer implements CustomTransformer {
 
                     if (narrowed.initializer) {
                         //important to use Function, since it will be called using a different `this`
-                        program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(this.f.createFunctionExpression(undefined, undefined, undefined, undefined, undefined, undefined,
-                            this.f.createBlock([this.f.createReturnStatement(narrowed.initializer)]))
+                        program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(
+                            this.f.createFunctionExpression(undefined, undefined, undefined, undefined, undefined, undefined,
+                                this.f.createBlock([this.f.createReturnStatement(narrowed.initializer)]))
                         ));
                     }
 
@@ -1532,7 +1546,8 @@ export class ReflectionTransformer implements CustomTransformer {
                 // Depending on whether this a distributive conditional type or not, it has to be moved to its own function
                 // my understanding of when a distributive conditional type is used is:
                 // 1. the `checkType` is a simple identifier (just `T`, no `[T]`, no `T | x`, no `{a: T}`, etc)
-                let distributiveOverIdentifier: Identifier | undefined = isTypeReferenceNode(narrowed.checkType) && isIdentifier(narrowed.checkType.typeName) ? narrowed.checkType.typeName : undefined;
+                const distributiveOverIdentifier: Identifier | undefined = isTypeReferenceNode(narrowed.checkType) && isIdentifier(narrowed.checkType.typeName)
+                    ? narrowed.checkType.typeName : undefined;
 
                 if (distributiveOverIdentifier) {
                     program.pushFrame();
@@ -1599,12 +1614,15 @@ export class ReflectionTransformer implements CustomTransformer {
             case SyntaxKind.CallSignature:
             case SyntaxKind.FunctionDeclaration: {
                 //TypeScript does not narrow types down
-                const narrowed = node as MethodSignature | MethodDeclaration | CallSignatureDeclaration | ConstructorTypeNode | ConstructSignatureDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
+                const narrowed = node as MethodSignature | MethodDeclaration | CallSignatureDeclaration | ConstructorTypeNode
+                    | ConstructSignatureDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
 
                 const config = this.findReflectionConfig(narrowed, program);
                 if (config.mode === 'never') return;
 
-                const name = isCallSignatureDeclaration(node) ? '' : isConstructorTypeNode(narrowed) || isConstructSignatureDeclaration(node) ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
+                const name = isCallSignatureDeclaration(node)
+                    ? '' : isConstructorTypeNode(narrowed) || isConstructSignatureDeclaration(node)
+                        ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
                 if (!narrowed.type && narrowed.parameters.length === 0 && !name) return;
 
                 program.pushFrame();
@@ -1612,7 +1630,8 @@ export class ReflectionTransformer implements CustomTransformer {
                     const parameter = narrowed.parameters[i];
                     const parameterName = isIdentifier(parameter.name) ? getNameAsString(parameter.name) : 'param' + i;
 
-                    const type = parameter.type ? (parameter.dotDotDotToken && isArrayTypeNode(parameter.type) ? parameter.type.elementType : parameter.type) : undefined;
+                    const type = parameter.type
+                        ? (parameter.dotDotDotToken && isArrayTypeNode(parameter.type) ? parameter.type.elementType : parameter.type) : undefined;
 
                     if (type) {
                         this.extractPackStructOfType(type, program);
@@ -1632,7 +1651,10 @@ export class ReflectionTransformer implements CustomTransformer {
                     if (hasModifier(parameter, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
                     if (hasModifier(parameter, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
                     if (parameter.initializer && parameter.type && !getReceiveTypeParameter(parameter.type)) {
-                        program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, parameter.initializer)));
+                        program.pushOp(
+                            ReflectionOp.defaultValue,
+                            program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, parameter.initializer))
+                        );
                     }
                 }
 
@@ -1723,7 +1745,10 @@ export class ReflectionTransformer implements CustomTransformer {
                     const name = getPropertyName(this.f, type.name);
                     program.pushOp(ReflectionOp.enumMember, program.findOrAddStackEntry(name));
                     if (type.initializer) {
-                        program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, type.initializer)));
+                        program.pushOp(
+                            ReflectionOp.defaultValue,
+                            program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, type.initializer))
+                        );
                     }
                 }
                 program.pushOp(ReflectionOp.enum);
@@ -2075,7 +2100,10 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (isIdentifier(typeName)) ensureImportIsEmitted(resolved.importDeclaration, typeName);
 
                 //we can not infer from module declaration, so do `typeof T` in runtime
-                program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, serializeEntityNameAsExpression(this.f, typeName))));
+                program.pushOp(
+                    ReflectionOp.typeof,
+                    program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, serializeEntityNameAsExpression(this.f, typeName)))
+                );
             } else if (isTypeAliasDeclaration(declaration) || isInterfaceDeclaration(declaration) || isEnumDeclaration(declaration)) {
                 //Set/Map are interface declarations
                 const name = getNameAsString(typeName);
@@ -2190,7 +2218,9 @@ export class ReflectionTransformer implements CustomTransformer {
                     }
                 }
 
-                const index = program.pushStack(program.forNode === declaration ? 0 : this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.getDeclarationVariableName(typeName)));
+                const index = program.pushStack(
+                    program.forNode === declaration ? 0 : this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.getDeclarationVariableName(typeName))
+                );
                 if (type.typeArguments) {
                     for (const argument of type.typeArguments) {
                         this.extractPackStructOfType(argument, program);
@@ -2434,7 +2464,7 @@ export class ReflectionTransformer implements CustomTransformer {
         if (!importOrExport.moduleSpecifier) return;
         if (!isStringLiteral(importOrExport.moduleSpecifier)) return;
 
-        let source: SourceFile | ModuleDeclaration | undefined = this.resolver.resolve(sourceFile, importOrExport);
+        const source: SourceFile | ModuleDeclaration | undefined = this.resolver.resolve(sourceFile, importOrExport);
 
         if (!source) {
             debug('module not found', (importOrExport.moduleSpecifier as any).text, 'Is transpileOnly enabled? It needs to be disabled.');
@@ -2809,7 +2839,8 @@ export class DeclarationTransformer extends ReflectionTransformer {
             node = visitEachChild(node, visitor, this.context);
 
             if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && hasModifier(node, SyntaxKind.ExportKeyword)) {
-                const reflection = this.findReflectionConfig((node as any).original || node); //original needed here since TS does not emit jsDoc in the declaration transformer. I don't know why.
+                //original needed here since TS does not emit jsDoc in the declaration transformer. I don't know why.
+                const reflection = this.findReflectionConfig((node as any).original || node);
                 if (reflection.mode !== 'never') {
                     this.addExports.push({ identifier: getIdentifierName(this.getDeclarationVariableName(node.name)) });
                 }

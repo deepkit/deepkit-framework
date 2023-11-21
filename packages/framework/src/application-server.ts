@@ -231,7 +231,7 @@ export class ApplicationServer {
                     cluster.on('exit', (w) => {
                         this.onlineWorkers--;
                         if (this.stopping) return;
-                        this.logger.warning(`Worker ${w.id} died. Restarted`);
+                        this.logger.warn(`Worker ${w.id} died. Restarted`);
                         cluster.fork();
                     });
                 });
@@ -240,16 +240,16 @@ export class ApplicationServer {
                     const stopServer = (signal: string) => async () => {
                         killRequests++;
                         if (killRequests === 3) {
-                            this.logger.warning(`Received ${signal}. Force stopping server ...`);
+                            this.logger.warn(`Received ${signal}. Force stopping server ...`);
                             process.exit(1);
                             return;
                         }
                         if (this.stopping) {
-                            this.logger.warning(`Received ${signal}. Stopping already in process. Try again to force stop.`);
+                            this.logger.warn(`Received ${signal}. Stopping already in process. Try again to force stop.`);
                             return;
                         }
                         this.stopping = true;
-                        this.logger.warning(`Received ${signal}. Stopping server ...`);
+                        this.logger.warn(`Received ${signal}. Stopping server ...`);
                         await this.stopWorkers();
                         this.stopResolver();
                         setTimeout(() => {
@@ -296,16 +296,16 @@ export class ApplicationServer {
                 const stopServer = (signal: string) => async () => {
                     killRequests++;
                     if (killRequests === 3) {
-                        this.logger.warning(`Received ${signal}. Force stopping server ...`);
+                        this.logger.warn(`Received ${signal}. Force stopping server ...`);
                         process.exit(1);
                         return;
                     }
                     if (this.stopping) {
-                        this.logger.warning(`Received ${signal}. Stopping already in process. Try again to force stop.`);
+                        this.logger.warn(`Received ${signal}. Stopping already in process. Try again to force stop.`);
                         return;
                     }
                     this.stopping = true;
-                    this.logger.warning('Received SIGINT. Stopping server ...');
+                    this.logger.warn('Received SIGINT. Stopping server ...');
                     await this.eventDispatcher.dispatch(onServerShutdown, new ServerShutdownEvent());
                     await this.eventDispatcher.dispatch(onServerMainShutdown, new ServerShutdownEvent());
                     if (this.httpWorker) await this.httpWorker.close(true);

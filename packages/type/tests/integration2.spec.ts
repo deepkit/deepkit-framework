@@ -1134,6 +1134,16 @@ test('cache with annotations type alias', () => {
     expect(autoIncrementAnnotation.getAnnotations(user.types[1].type)).toEqual([]);
 });
 
+test('cache same type', () => {
+    interface User {
+        id: number;
+    }
+
+    const user = typeOf<User>();
+    const user2 = typeOf<User>();
+    expect(user === user2).toBe(true);
+});
+
 test('cache with annotations class', () => {
     interface User extends Entity<{ name: 'user', collection: 'users' }> {
         username: string;
@@ -1152,7 +1162,7 @@ test('cache with annotations class', () => {
 
     const user = typeOf<User>();
     const user2 = typeOf<User>();
-    expect(user === user2).toBe(true);
+    expect(user).toBe(user2);
     assertType(user, ReflectionKind.objectLiteral);
     expect(referenceAnnotation.getAnnotations(user)).toEqual([]);
     expect(entityAnnotation.getFirst(user)).toEqual({ name: 'user', collection: 'users' });
@@ -1196,7 +1206,7 @@ test('cache parent unset', () => {
     assertType(union, ReflectionKind.union);
     assertType(union.types[0], ReflectionKind.string);
     expect(union.types[0].parent).not.toBeUndefined();
-    expect(union.types[0].parent === union).toBe(true);
+    expect(union.types[0].parent).toBe(union);
 });
 
 test('cache parent unset circular', () => {

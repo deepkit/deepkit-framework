@@ -3,6 +3,37 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.108](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.107...v1.0.1-alpha.108) (2023-11-21)
+
+
+### Bug Fixes
+
+* **app:** correctly end stopwatch frame ([86be2e1](https://github.com/deepkit/deepkit-framework/commit/86be2e11eef5e56da223fafbe1333d0aaa68bc35))
+* **broker:** await disconnect ([0568378](https://github.com/deepkit/deepkit-framework/commit/056837833424d384bb3c9f43b44a787b70d0128d))
+* **core:** make sure stringifyValueWithType does not print unlimited depth ([56fbef9](https://github.com/deepkit/deepkit-framework/commit/56fbef908eb5e0c4d4c244123637182bb94f7145))
+* **framework:** don't enable profiler per default ([52a7e52](https://github.com/deepkit/deepkit-framework/commit/52a7e5216b8679c8ff7825979d12b00f7e9ad869))
+* **framework:** dont throw when profiler package couldn't be built. ([3b165d6](https://github.com/deepkit/deepkit-framework/commit/3b165d69d91be1c86d9a9e09770411f5fbdc66c5))
+* **framework:** provide always DebugBroker ([1b55b65](https://github.com/deepkit/deepkit-framework/commit/1b55b65b0f5105c4a555e95b5b166dbad0a3ae11))
+* **http:** fix tests to reflect new error reporting ([1eb83ff](https://github.com/deepkit/deepkit-framework/commit/1eb83ff2ba669fc9410269023e23b863c44e4257))
+* **injector:** make sure type cache is used when finding matching provider. ([8c79e4b](https://github.com/deepkit/deepkit-framework/commit/8c79e4b1d370c21f12c203a786608b6d39dc5c56))
+* **rpc:** correctly load controller name ([9d603db](https://github.com/deepkit/deepkit-framework/commit/9d603dbf752cfe5335d2c89c4c785a23e8400e0e))
+* **rpc:** race condition in disconnect() when connect is still in progress ([f2d708d](https://github.com/deepkit/deepkit-framework/commit/f2d708dfa0dbcfde218aaeea864eb323291ea45a))
+* **template:** better typings to support `<element role="string">` ([efb1668](https://github.com/deepkit/deepkit-framework/commit/efb1668218ec98cb0b5436a4530126bf235c79cf))
+* **type:** correctly check `X extends Date` and print validation errors with caused value. ([fde795e](https://github.com/deepkit/deepkit-framework/commit/fde795ee6998606b0791f936a25ee85921c6586a))
+* **type:** correctly materialize Promise in runtime checks. ([aa66460](https://github.com/deepkit/deepkit-framework/commit/aa66460f9b125a7070645f64f34a5574cd9eb549)), closes [#495](https://github.com/deepkit/deepkit-framework/issues/495)
+* **type:** make sure `typeof x` expression doesn't return the original type ([7206e7e](https://github.com/deepkit/deepkit-framework/commit/7206e7ef9c3728e2b60d9a6cd7ecdb167fca78d0))
+* **type:** make sure inline returns a ref to the correct type program ([dc5d6dd](https://github.com/deepkit/deepkit-framework/commit/dc5d6ddf36cc8835d7b11684a004f247900ec65f))
+
+
+### Features
+
+* **rpc:** make controller decorator name optional ([#491](https://github.com/deepkit/deepkit-framework/issues/491)) ([525ed39](https://github.com/deepkit/deepkit-framework/commit/525ed39157334bab05c923fa9de6426d1c496d29))
+* **type-compiler:** emit typeName for type only imports ([#501](https://github.com/deepkit/deepkit-framework/issues/501)) ([318d091](https://github.com/deepkit/deepkit-framework/commit/318d091b9418df0a77f85de18d37541c3f9e3428))
+
+
+
+
+
 ## [1.0.1-alpha.107](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.106...v1.0.1-alpha.107) (2023-10-23)
 
 **Note:** Version bump only for package root

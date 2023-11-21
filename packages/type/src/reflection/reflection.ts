@@ -128,6 +128,12 @@ export function propertiesOf<T>(args: any[] = [], p?: ReceiveType<T>): (string |
     return [];
 }
 
+export function getNominalId<T>(args: any[] = [], p?: ReceiveType<T>): number | undefined {
+    const t = typeOf(args, p);
+    if (t.kind === ReflectionKind.class || t.kind === ReflectionKind.objectLiteral) return t.id;
+    return;
+}
+
 export function typeOf<T>(args: any[] = [], p?: ReceiveType<T>): Type {
     if (p) {
         return resolveRuntimeType(p, args) as Type;
@@ -138,6 +144,7 @@ export function typeOf<T>(args: any[] = [], p?: ReceiveType<T>): Type {
 
 export function removeTypeName<T extends Type>(type: T): T {
     const o = { ...type };
+    o.id = undefined;
     o.typeName = undefined;
     o.typeArguments = undefined;
     return o;

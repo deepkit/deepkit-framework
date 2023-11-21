@@ -898,9 +898,33 @@ test('parent object literal from fn', () => {
     }
 
     type t<T> = T;
+    const tc = typeOf<C>();
+    assertType(tc, ReflectionKind.objectLiteral);
+    assertType(tc.types[0], ReflectionKind.propertySignature);
+
     const t1 = typeOf<t<C>>();
+    expect(tc === t1).toBe(false);
+
     assertType(t1, ReflectionKind.objectLiteral);
     assertType(t1.types[0], ReflectionKind.propertySignature);
+
+    expect(tc.types[0].parent === tc).toBe(true);
+    //this is true since `t<T>` returns a new reference of T, not the exact same instance (so decorators can safely be attached etc)
+    expect(t1.types[0].parent === t1).toBe(false);
+});
+
+test('parent class from fn', () => {
+    class C {
+        a!: string;
+    }
+
+    type t<T> = T;
+    const tc = typeOf<C>();
+    const t1 = typeOf<t<C>>();
+    expect(tc === t1).toBe(false);
+
+    assertType(t1, ReflectionKind.class);
+    assertType(t1.types[0], ReflectionKind.property);
 
     //this is true since `t<T>` returns a new reference of T, not the exact same instance (so decorators can safely be attached etc)
     expect(t1.types[0].parent !== t1).toBe(true);
@@ -1245,10 +1269,10 @@ test('type id intersection', () => {
     expect(idO).toBeGreaterThan(0);
 
     const idT1 = getId<T1>();
-    expect(idT1).toBe(idO); //same type since only decorator changed
+    expect(idT1).not.toBe(idO); //new type id since nominal is per alias
 
     const idT2 = getId<T2>();
-    expect(idT2).toBeGreaterThan(idO); //new type since shape changed
+    expect(idT2).toBeGreaterThan(idO); //new type id since nominal is per alias
 });
 
 test('type id interface', () => {
@@ -1337,6 +1361,8 @@ test('keep last type name', () => {
         type UserWithName = Pick<User, 'name'>;
         type Bla = UserWithName;
         const type = typeOf<Bla>();
+        const type2 = typeOf<UserWithName>();
+
         expect(type.typeName).toBe('Bla');
         expect(type.typeArguments).toBe(undefined);
         expect(type.originTypes![0].typeName).toBe('UserWithName');
@@ -1344,7 +1370,6 @@ test('keep last type name', () => {
         expect(type.originTypes![1].typeName).toBe('Pick');
         expect(type.originTypes![1].typeArguments![0].typeName).toBe('User');
 
-        const type2 = typeOf<UserWithName>();
         expect(type2.typeName).toBe('UserWithName');
         expect(type2.originTypes![0].typeName).toBe('Pick');
         expect(type2.originTypes![0].typeArguments![0].typeName).toBe('User');
