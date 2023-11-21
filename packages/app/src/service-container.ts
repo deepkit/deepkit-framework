@@ -106,9 +106,6 @@ export class ServiceContainer {
         if (!this.appModule.isProvided(Logger)) {
             this.appModule.addProvider({ provide: Logger, useFactory: (t: ConsoleTransport) => new Logger([t]) });
         }
-        if (!this.appModule.isProvided<LoggerInterface>()) {
-            this.appModule.addProvider(provide<LoggerInterface>({ useExisting: Logger }));
-        }
         this.appModule.addProvider(ScopedLogger);
 
         this.setupHook(this.appModule);
