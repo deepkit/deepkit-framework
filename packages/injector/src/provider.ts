@@ -20,7 +20,7 @@ export interface ProviderBase {
 }
 
 /** @reflection never */
-export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | AbstractClassType<T> | Type | T;
+export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | AbstractClassType<T> | Type | TagProvider<T> | Function | T;
 
 export function provide<T>(
     provider:

@@ -1,6 +1,6 @@
 import { NormalizedProvider, ProviderWithScope, TagProvider, Token } from './provider.js';
 import { arrayRemoveItem, ClassType, getClassName, isClass, isPlainObject, isPrototypeOfBase } from '@deepkit/core';
-import { BuildContext, Injector, SetupProviderRegistry } from './injector.js';
+import { BuildContext, getContainerToken, Injector, resolveToken, SetupProviderRegistry } from './injector.js';
 import {
     hasTypeInformation,
     isType,
@@ -8,7 +8,7 @@ import {
     reflect,
     ReflectionKind,
     reflectOrUndefined,
-    resolveReceiveType, stringifyType,
+    resolveReceiveType,
     Type,
     TypeClass,
     typeInfer,
@@ -228,7 +228,7 @@ export type ExportType = Token | InjectorModule;
 
 
 export function isProvided<T>(providers: ProviderWithScope[], token: Token<T>): boolean {
-    return providers.some(v => !(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false);
+    return providers.some(v => getContainerToken(resolveToken(v)) === getContainerToken(token));
 }
 
 export function getScope(provider: ProviderWithScope): string {
