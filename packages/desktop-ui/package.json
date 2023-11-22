@@ -69,7 +69,7 @@
     "ts-loader": "^9.4.2",
     "ttf2woff": "^2.0.1",
     "typedoc": "0.23.21",
-    "typescript": "^5.2.2",
+    "typescript": "^5.3.2",
     "webpack": "^5.75.0",
     "webpack-cli": "^5.0.0",
     "zone.js": "~0.11.4"
