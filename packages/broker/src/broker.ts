@@ -1,65 +1,97 @@
-import { ReceiveType, reflect, ReflectionKind, resolveReceiveType, Type } from '@deepkit/type';
+import { ReceiveType, ReflectionKind, resolveReceiveType, Type } from '@deepkit/type';
 import { EventToken } from '@deepkit/event';
+import { parse } from '@lukeed/ms';
+import { asyncOperation, formatError } from '@deepkit/core';
+import { ConsoleLogger, LoggerInterface } from '@deepkit/logger';
+import { parseTime } from './utils.js';
+import { BrokerAdapterCache } from './broker-cache.js';
 
-export interface BrokerLockOptions {
+export interface BrokerTimeOptions {
     /**
-     * Time to live in seconds. Default 2 minutes.
-     *
-     * The lock is automatically released after this time.
-     * This is to prevent deadlocks.
+     * Time to live in milliseconds. 0 means no ttl.
+     * Value is either milliseconds or a string like '2 minutes', '8s', '24hours'.
+     */
+    ttl: string | number;
+
+    /**
+     * Timeout in milliseconds. 0 means no timeout.
+     * Value is either milliseconds or a string like '2 minutes', '8s', '24hours'.
+     */
+    timeout: number | string;
+}
+
+export interface BrokerTimeOptionsResolved {
+    /**
+     * Time to live in milliseconds. 0 means no ttl.
      */
     ttl: number;
 
     /**
-     * Timeout when acquiring the lock in seconds. Default 30 seconds.
-     * Ween a lock is not acquired after this time, an error is thrown.
+     * Timeout in milliseconds. 0 means no timeout.
      */
     timeout: number;
 }
 
+function parseBrokerTimeoutOptions(options: Partial<BrokerTimeOptions>): BrokerTimeOptionsResolved {
+    return {
+        ttl: parseTime(options.ttl) ?? 0,
+        timeout: parseTime(options.timeout) ?? 0,
+    };
+}
+
+
 export type Release = () => Promise<void>;
 
-export interface BrokerAdapter {
-    lock(id: string, options: BrokerLockOptions): Promise<undefined | Release>;
+export interface BrokerInvalidateCacheMessage {
+    key: string;
+    ttl: number;
+}
 
-    isLocked(id: string): Promise<boolean>;
-
-    tryLock(id: string, options: BrokerLockOptions): Promise<undefined | Release>;
-
-    getCache(key: string, type: Type): Promise<any>;
-
-    setCache(key: string, value: any, options: BrokerCacheOptions, type: Type): Promise<void>;
-
-    increment(key: string, value: any): Promise<number>;
-
-    publish(name: string, message: any, type: Type): Promise<void>;
-
-    subscribe(name: string, callback: (message: any) => void, type: Type): Promise<Release>;
-
-    consume(name: string, callback: (message: any) => Promise<void>, options: { maxParallel: number }, type: Type): Promise<Release>;
-
-    produce(name: string, message: any, type: Type, options?: { delay?: number, priority?: number }): Promise<void>;
-
+export interface BrokerAdapterBase {
     disconnect(): Promise<void>;
 }
 
+export interface BrokerAdapterLock extends BrokerAdapterBase {
+    lock(id: string, options: BrokerTimeOptionsResolved): Promise<undefined | Release>;
+
+    isLocked(id: string): Promise<boolean>;
+
+    tryLock(id: string, options: BrokerTimeOptionsResolved): Promise<undefined | Release>;
+}
+
+export interface BrokerAdapterBus extends BrokerAdapterBase {
+    /**
+     * Publish a message on the bus aka pub/sub.
+     */
+    publish(name: string, message: any, type: Type): Promise<void>;
+
+    /**
+     * Subscribe to messages on the bus aka pub/sub.
+     */
+    subscribe(name: string, callback: (message: any) => void, type: Type): Promise<Release>;
+}
+
+export interface BrokerAdapterQueue extends BrokerAdapterBase {
+    /**
+     * Consume messages from a queue.
+     */
+    consume(name: string, callback: (message: any) => Promise<void>, options: { maxParallel: number }, type: Type): Promise<Release>;
+
+    /**
+     * Produce a message to a queue.
+     */
+    produce(name: string, message: any, type: Type, options?: { delay?: number, priority?: number }): Promise<void>;
+}
+
+export interface BrokerAdapterKeyValue extends BrokerAdapterBase {
+    get(key: string, type: Type): Promise<any>;
+
+    set(key: string, value: any, type: Type): Promise<any>;
+
+    increment(key: string, value: any): Promise<number>;
+}
+
 export const onBrokerLock = new EventToken('broker.lock');
-
-export interface BrokerCacheOptions {
-    ttl: number;
-    tags: string[];
-}
-
-export class CacheError extends Error {
-}
-
-export type BrokerBusChannel<Type, Name extends string> = [Name, Type];
-
-export type BrokerCacheKey<Type, Key extends string, Parameters extends object = {}> = [Key, Parameters, Type];
-
-export type BrokerQueueChannel<Type, Name extends string> = [Name, Type];
-
-export type CacheBuilder<T extends BrokerCacheKey<any, any, any>> = (parameters: T[1], options: BrokerCacheOptions) => T[2] | Promise<T[2]>;
 
 export class BrokerQueueMessage<T> {
     public state: 'pending' | 'done' | 'failed' = 'pending';
@@ -85,10 +117,21 @@ export class BrokerQueueMessage<T> {
 }
 
 
-export class BrokerQueue<T> {
+export class BrokerQueue {
+    constructor(
+        public adapter: BrokerAdapterQueue,
+    ) {}
+
+    public channel<T>(name: string, type?: ReceiveType<T>): BrokerQueueChannel<T> {
+        type = resolveReceiveType(type);
+        return new BrokerQueueChannel(name, this.adapter, type);
+    }
+}
+
+export class BrokerQueueChannel<T> {
     constructor(
         public name: string,
-        private adapter: BrokerAdapter,
+        private adapter: BrokerAdapterQueue,
         private type: Type,
     ) {
     }
@@ -109,10 +152,22 @@ export class BrokerQueue<T> {
     }
 }
 
-export class BrokerBus<T> {
+export class BrokerBus {
+    constructor(
+        public adapter: BrokerAdapterBus
+    ) {
+    }
+
+    public channel<T>(path: string, type?: ReceiveType<T>): BrokerBusChannel<T> {
+        type = resolveReceiveType(type);
+        return new BrokerBusChannel(path, this.adapter, type);
+    }
+}
+
+export class BrokerBusChannel<T> {
     constructor(
         public name: string,
-        private adapter: BrokerAdapter,
+        private adapter: BrokerAdapterBus,
         private type: Type,
     ) {
     }
@@ -126,59 +181,31 @@ export class BrokerBus<T> {
     }
 }
 
-export class BrokerCache<T extends BrokerCacheKey<any, any, any>> {
-    constructor(
-        private key: string,
-        private builder: CacheBuilder<T>,
-        private options: BrokerCacheOptions,
-        private adapter: BrokerAdapter,
-        private type: Type,
-    ) {
-    }
-
-    protected getCacheKey(parameters: T[1]): string {
-        //this.key contains parameters e.g. user/:id, id comes from parameters.id. let's replace all of it.
-        //note: we could create JIT function for this, but it's probably not worth it.
-        return this.key.replace(/:([a-zA-Z0-9_]+)/g, (v, name) => {
-            if (!(name in parameters)) throw new CacheError(`Parameter ${name} not given`);
-            return String(parameters[name]);
-        });
-    }
-
-    async set(parameters: T[1], value: T[2], options: Partial<BrokerCacheOptions> = {}) {
-        const cacheKey = this.getCacheKey(parameters);
-        await this.adapter.setCache(cacheKey, value, { ...this.options, ...options }, this.type);
-    }
-
-    async increment(parameters: T[1], value: number) {
-        const cacheKey = this.getCacheKey(parameters);
-        await this.adapter.increment(cacheKey, value);
-    }
-
-    async get(parameters: T[1]): Promise<T[2]> {
-        const cacheKey = this.getCacheKey(parameters);
-        let entry = await this.adapter.getCache(cacheKey, this.type);
-        if (entry !== undefined) return entry;
-
-        const options: BrokerCacheOptions = { ...this.options };
-        entry = await this.builder(parameters, options);
-        await this.adapter.setCache(cacheKey, entry, options, this.type);
-
-        return entry;
-    }
-}
-
 export class BrokerLockError extends Error {
 
 }
 
 export class BrokerLock {
+    constructor(
+        public adapter: BrokerAdapterLock
+    ) {
+    }
+
+    public item(id: string, options: Partial<BrokerTimeOptions> = {}): BrokerLockItem {
+        const parsedOptions = parseBrokerTimeoutOptions(options);
+        parsedOptions.ttl ||= 60 * 2 * 1000; //2 minutes
+        parsedOptions.timeout ||= 30 * 1000; //30 seconds
+        return new BrokerLockItem(id, this.adapter, parsedOptions);
+    }
+}
+
+export class BrokerLockItem {
     protected releaser?: Release;
 
     constructor(
         private id: string,
-        private adapter: BrokerAdapter,
-        private options: BrokerLockOptions,
+        private adapter: BrokerAdapterLock,
+        private options: BrokerTimeOptionsResolved,
     ) {
     }
 
@@ -231,84 +258,4 @@ export class BrokerLock {
     }
 }
 
-export class Broker {
-    constructor(
-        private readonly adapter: BrokerAdapter
-    ) {
-    }
-
-    /**
-     * Creates a new BrokerLock for the given id and options.
-     *
-     * The object returned can be used to acquire and release the lock.
-     */
-    public lock(id: string, options: Partial<BrokerLockOptions> = {}): BrokerLock {
-        return new BrokerLock(id, this.adapter, Object.assign({ ttl: 60 * 2, timeout: 30 }, options));
-    }
-
-    public disconnect(): Promise<void> {
-        return this.adapter.disconnect();
-    }
-
-    protected cacheProvider: { [path: string]: (...args: any[]) => any } = {};
-
-    public provideCache<T extends BrokerCacheKey<any, any, any>>(provider: (options: T[1]) => T[2] | Promise<T[2]>, type?: ReceiveType<T>) {
-        type = resolveReceiveType(type);
-        if (type.kind !== ReflectionKind.tuple) throw new CacheError(`Invalid type given`);
-        if (type.types[0].type.kind !== ReflectionKind.literal) throw new CacheError(`Invalid type given`);
-        const path = String(type.types[0].type.literal);
-        this.cacheProvider[path] = provider;
-    }
-
-    public cache<T extends BrokerCacheKey<any, any, any>>(type?: ReceiveType<T>): BrokerCache<T> {
-        type = resolveReceiveType(type);
-        if (type.kind !== ReflectionKind.tuple) throw new CacheError(`Invalid type given`);
-        if (type.types[0].type.kind !== ReflectionKind.literal) throw new CacheError(`Invalid type given`);
-        const path = String(type.types[0].type.literal);
-        const provider = this.cacheProvider[path];
-        if (!provider) throw new CacheError(`No cache provider for cache ${type.typeName} (${path}) registered`);
-
-        return new BrokerCache<T>(path, provider, { ttl: 30, tags: [] }, this.adapter, type.types[2].type);
-    }
-
-    public async get<T>(key: string, builder: (options: BrokerCacheOptions) => Promise<T>, type?: ReceiveType<T>): Promise<T> {
-        if (!type) {
-            //type not manually provided via Broker.get<Type>, so we try to extract it from the builder.
-            const fn = reflect(builder);
-            if (fn.kind !== ReflectionKind.function) throw new CacheError(`Can not detect type of builder function`);
-            type = fn.return;
-            while (type.kind === ReflectionKind.promise) type = type.type;
-        } else {
-            type = resolveReceiveType(type);
-        }
-
-        const cache = await this.adapter.getCache(key, type);
-        if (cache !== undefined) return cache;
-
-        const options: BrokerCacheOptions = { ttl: 30, tags: [] };
-        const value = await builder(options);
-        await this.adapter.setCache(key, value, options, type);
-        return value;
-    }
-
-    public bus<T>(path: string, type?: ReceiveType<T>): BrokerBus<T> {
-        type = resolveReceiveType(type);
-        return new BrokerBus(path, this.adapter, type);
-    }
-
-    public busChannel<T extends BrokerBusChannel<any, any>>(type?: ReceiveType<T>): BrokerBus<T[1]> {
-        type = resolveReceiveType(type);
-        if (type.kind !== ReflectionKind.tuple) throw new CacheError(`Invalid type given`);
-        if (type.types[0].type.kind !== ReflectionKind.literal) throw new CacheError(`Invalid type given`);
-        const path = String(type.types[0].type.literal);
-        return new BrokerBus(path, this.adapter, type.types[1].type);
-    }
-
-    public queue<T extends BrokerQueueChannel<any, any>>(type?: ReceiveType<T>): BrokerQueue<T[1]> {
-        type = resolveReceiveType(type);
-        if (type.kind !== ReflectionKind.tuple) throw new CacheError(`Invalid type given`);
-        if (type.types[0].type.kind !== ReflectionKind.literal) throw new CacheError(`Invalid type given`);
-        const name = String(type.types[0].type.literal);
-        return new BrokerQueue(name, this.adapter, type.types[1].type);
-    }
-}
+export type BrokerAdapter = BrokerAdapterCache & BrokerAdapterBus & BrokerAdapterLock & BrokerAdapterQueue & BrokerAdapterKeyValue;

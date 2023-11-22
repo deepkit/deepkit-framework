@@ -11,5 +11,6 @@
 export * from './src/kernel.js';
 export * from './src/model.js';
 export * from './src/broker.js';
+export * from './src/broker-cache.js';
 export * from './src/adapters/deepkit-adapter.js';
 export * from './src/adapters/memory-adapter.js';

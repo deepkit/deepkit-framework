@@ -185,22 +185,45 @@ interface Program {
     started: number;
     typeParameters?: Type[];
     previous?: Program;
+    //don't operate on newly created ref resultType but return whatever is on the stack directly
+    //used in inline-only programs like `typeOf<MyAlias>()` where we want the type of (cached) MyAlias and not a new reference.
+    directReturn?: boolean;
     object?: ClassType | Function | Packed | any;
 }
 
-function assignResult<T extends Type>(programResultType: Type, result: T): T {
-    if (programResultType.typeName) {
-        if (result.typeName) {
-            return Object.assign(programResultType, result, {
-                typeName: programResultType.typeName,
-                typeArguments: programResultType.typeArguments,
+function assignResult<T extends Type>(ref: Type, result: T, assignParents: boolean): T {
+    if (ref.typeName) {
+        if (result.typeName && ref.typeName !== result.typeName) {
+            Object.assign(ref, result, {
+                typeName: ref.typeName,
+                typeArguments: ref.typeArguments,
                 originTypes: [{ typeName: result.typeName, typeArguments: result.typeArguments }, ...(result.originTypes || [])],
             });
+        } else {
+            Object.assign(ref, result, { typeName: ref.typeName, typeArguments: ref.typeArguments });
         }
-        return Object.assign(programResultType, result, { typeName: programResultType.typeName, typeArguments: programResultType.typeArguments });
     } else {
-        return Object.assign(programResultType, result);
+        Object.assign(ref, result);
     }
+
+    if (assignParents) {
+        // if (ref.kind === ReflectionKind.class && ref.arguments) {
+        //     for (const member of ref.arguments) member.parent = ref;
+        // }
+
+        if (ref.kind === ReflectionKind.function || ref.kind === ReflectionKind.method || ref.kind === ReflectionKind.methodSignature) {
+            ref.return.parent = ref;
+            for (const member of ref.parameters) member.parent = ref as any;
+        }
+
+        if ('types' in ref) {
+            for (const member of ref.types) {
+                member.parent = ref;
+            }
+        }
+    }
+
+    return ref as T;
 }
 
 function isConditionTruthy(condition: Type | number): boolean {
@@ -404,6 +427,7 @@ export class Processor {
         if (!options.reuseCached && packed.__type && inputs.length === 0) {
             const result = copyAndSetParent(packed.__type);
             result.typeName ||= options.typeName;
+            if (options.inline) result.inlined = true;
             return result;
         }
 
@@ -422,6 +446,7 @@ export class Processor {
             //and its properties will change depending on the context (e.g. parent), which should not propagate to the original type.
             const result = createRef(program);
             result.typeName ||= options.typeName;
+            result.inlined = true;
             return result;
         }
 
@@ -447,6 +472,13 @@ export class Processor {
         return program.resultType;
     }
 
+    /**
+     * Semantic is important here: This triggers true only for the very last op of a program.
+     * If it is checked in OP inline then it could be true or false:
+     *
+     * type t<T> = T; => false since we have nominal past the inline op
+     * typeOf<T>() => true since we have no nominal past the inline op
+     */
     protected isEnded(): boolean {
         return this.program.program + 1 >= this.program.end;
     }
@@ -558,7 +590,7 @@ export class Processor {
                             break;
                         case ReflectionOp.class: {
                             const types = this.popFrame() as Type[];
-                            let t = { kind: ReflectionKind.class, classType: Object, types: [] } as TypeClass;
+                            let t = { kind: ReflectionKind.class, id: state.nominalId++, classType: Object, types: [] } as TypeClass;
 
                             function add(member: Type) {
                                 if (member.kind === ReflectionKind.propertySignature) {
@@ -631,13 +663,10 @@ export class Processor {
                             }
                             const args = program.frame.inputs.filter(isType);
 
-                            //only for the very last op do we replace this.resultType. Otherwise, objectLiteral in between would overwrite it.
-                            if (this.isEnded()) t = assignResult(program.resultType, t);
-
                             for (const member of t.types) member.parent = t;
                             if (t.arguments) for (const member of t.arguments) member.parent = t;
-                            if (args.length) t.arguments = args;
 
+                            if (args.length) t.arguments = args;
                             t.typeArguments = program.typeParameters;
 
                             this.pushType(t);
@@ -699,6 +728,7 @@ export class Processor {
                                 //when it's just a simple reference resolution like typeOf<Class>() then enable cache re-use (so always the same type is returned)
                                 const directReference = !!(this.isEnded() && program.previous && program.previous.end === 0);
                                 const result = this.reflect(classOrFunction, inputs, { inline: !directReference, reuseCached: directReference });
+                                if (directReference) program.directReturn = true;
                                 this.push(result, program);
 
                                 if (isWithAnnotations(result) && inputs.length) {
@@ -833,8 +863,7 @@ export class Processor {
                         case ReflectionOp.union: {
                             const types = this.popFrame() as Type[];
                             const flattened = flattenUnionTypes(types);
-                            let t: Type = unboxUnion({ kind: ReflectionKind.union, types: flattened });
-                            if (this.isEnded()) t = assignResult(program.resultType, t);
+                            const t: Type = unboxUnion({ kind: ReflectionKind.union, types: flattened });
                             if (t.kind === ReflectionKind.union) {
                                 for (const member of t.types) {
                                     member.parent = t;
@@ -845,10 +874,7 @@ export class Processor {
                         }
                         case ReflectionOp.intersection: {
                             let t = this.handleIntersection();
-                            if (t) {
-                                if (this.isEnded()) t = assignResult(program.resultType, t);
-                                this.pushType(t);
-                            }
+                            if (t) this.pushType(t);
                             break;
                         }
                         case ReflectionOp.callSignature:
@@ -869,8 +895,6 @@ export class Processor {
                                 return: returnType,
                                 parameters
                             } as TypeFunction;
-
-                            if (this.isEnded()) t = assignResult(program.resultType, t);
                             t.return.parent = t;
                             for (const member of t.parameters) member.parent = t;
                             this.pushType(t);
@@ -925,7 +949,6 @@ export class Processor {
                             let t: TypeMethod | TypeMethodSignature = op === ReflectionOp.method
                                 ? { kind: ReflectionKind.method, parent: undefined as any, visibility: ReflectionVisibility.public, name, return: returnType, parameters }
                                 : { kind: ReflectionKind.methodSignature, parent: undefined as any, name, return: returnType, parameters };
-                            if (this.isEnded()) t = assignResult(program.resultType, t);
                             t.return.parent = t;
                             for (const member of t.parameters) member.parent = t;
                             this.pushType(t);
@@ -980,9 +1003,6 @@ export class Processor {
 
                             const frameTypes = this.popFrame() as (TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeObjectLiteral | TypeCallSignature)[];
                             pushObjectLiteralTypes(t, frameTypes);
-
-                            //only for the very last op do we replace this.resultType. Otherwise, objectLiteral in between would overwrite it.
-                            if (this.isEnded()) t = assignResult(program.resultType, t);
                             for (const member of t.types) member.parent = t;
                             this.pushType(t);
                             break;
@@ -1156,6 +1176,12 @@ export class Processor {
                             this.call(programPointer);
                             break;
                         }
+                        case ReflectionOp.nominal: {
+                            const t = program.stack[program.stackPointer] as Type;
+                            //program ended, so assign new nominal id to objectLiteral or class
+                            t.id = state.nominalId++;
+                            break;
+                        }
                         case ReflectionOp.inline: {
                             const pPosition = this.eatParameter() as number;
                             const pOrFn = program.stack[pPosition] as number | Packed | (() => Packed);
@@ -1172,6 +1198,8 @@ export class Processor {
                                 const directReference = !!(this.isEnded() && program.previous && program.previous.end === 0);
                                 const typeName = (isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '');
                                 const result = this.reflect(p, [], { inline: !directReference, reuseCached: directReference, typeName });
+                                if (directReference) program.directReturn = true;
+
                                 if (isWithAnnotations(result)) {
                                     result.typeName = (isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '') || result.typeName;
                                 }
@@ -1253,24 +1281,27 @@ export class Processor {
                 result = narrowOriginalLiteral(program.stack[program.stackPointer] as Type);
                 // process.stdout.write(`Done ${program.depth} in ${Date.now() - program.started}ms with ${stringifyValueWithType(program.object)} -> ${stringifyShortResolvedType(result as Type)}\n`);
 
-                if (isType(result) && program.object) {
-                    if (result.kind === ReflectionKind.class && result.classType === Object) {
-                        result.classType = program.object;
-                        applyClassDecorators(result);
+                if (isType(result)) {
+                    if (program.object) {
+                        if (result.kind === ReflectionKind.class && result.classType === Object) {
+                            result.classType = program.object;
+                            applyClassDecorators(result);
+                        }
+                        if (result.kind === ReflectionKind.function && !result.function) {
+                            result.function = program.object;
+                        }
                     }
-                    if (result.kind === ReflectionKind.function && !result.function) {
-                        result.function = program.object;
+                    if (!program.directReturn) {
+                        result = assignResult(program.resultType, result as Type, !result.inlined);
+                        applyScheduledAnnotations(program.resultType);
                     }
                 }
 
                 program.active = false;
                 if (program.previous) this.program = program.previous;
-                if (program.resultType !== result) {
-                    assignResult(program.resultType, result as Type);
-                    applyScheduledAnnotations(program.resultType);
-                }
+
                 if (program.resultTypes) for (const ref of program.resultTypes) {
-                    assignResult(ref, result as Type);
+                    assignResult(ref, result as Type, false);
                     applyScheduledAnnotations(ref);
                 }
                 if (until === program) {
@@ -1590,9 +1621,6 @@ export class Processor {
                 t = { kind: ReflectionKind.objectLiteral, id: state.nominalId++, types: members as any[] };
             }
 
-            if (this.isEnded()) t = assignResult(program.resultType, t);
-            for (const member of t.types) member.parent = t;
-
             this.push(t);
         } else {
             if (isMember(next)) {
@@ -1746,7 +1774,7 @@ export function typeInfer(value: any): Type {
             //with emitted types: function or class
             //don't use resolveRuntimeType since we don't allow cache here
             // console.log('typeInfer of', value.name);
-            return Processor.get().reflect(value, undefined, {inline: true}) as Type;
+            return Processor.get().reflect(value, undefined, { inline: true }) as Type;
         }
 
         if (isClass(value)) {
@@ -1762,7 +1790,7 @@ export function typeInfer(value: any): Type {
         if ('function' === typeof constructor && constructor !== Object && isArray(constructor.__type)) {
             //with emitted types
             //don't use resolveRuntimeType since we don't allow cache here
-            return Processor.get().reflect(constructor, undefined, {inline: true}) as Type;
+            return Processor.get().reflect(constructor, undefined, { inline: true }) as Type;
         }
 
         if (constructor === RegExp) return { kind: ReflectionKind.regexp };

@@ -8,8 +8,8 @@ import { FrameworkConfig } from '../../module.config.js';
 import { Zone } from '../../zone.js';
 import cluster from 'cluster';
 import { performance } from 'perf_hooks';
-import { DebugBroker } from '../broker.js';
-import { BrokerBus } from '@deepkit/broker';
+import { DebugBrokerBus } from '../broker.js';
+import { BrokerBusChannel } from '@deepkit/broker';
 
 export class FileStopwatchStore extends StopwatchStore {
     protected lastSync?: any;
@@ -18,8 +18,8 @@ export class FileStopwatchStore extends StopwatchStore {
     protected lastId: number = -1;
     protected lastContext: number = -1;
 
-    public frameChannel: BrokerBus<Uint8Array> | undefined;
-    public frameDataChannel: BrokerBus<Uint8Array> | undefined;
+    public frameChannel: BrokerBusChannel<Uint8Array> | undefined;
+    public frameDataChannel: BrokerBusChannel<Uint8Array> | undefined;
 
     protected framesPath: string = join(this.config.varPath, this.config.debugStorePath, 'frames.bin');
     protected framesDataPath: string = join(this.config.varPath, this.config.debugStorePath, 'frames-data.bin');
@@ -29,11 +29,11 @@ export class FileStopwatchStore extends StopwatchStore {
 
     constructor(
         protected config: Pick<FrameworkConfig, 'varPath' | 'debugStorePath'>,
-        protected broker: DebugBroker,
+        protected broker: DebugBrokerBus,
     ) {
         super();
-        this.frameChannel = broker.bus<Uint8Array>('_debug/frames');
-        this.frameDataChannel = broker.bus<Uint8Array>('_debug/frames-data');
+        this.frameChannel = broker.channel<Uint8Array>('_debug/frames');
+        this.frameDataChannel = broker.channel<Uint8Array>('_debug/frames-data');
     }
 
     removeAll() {

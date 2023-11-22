@@ -21,10 +21,18 @@ export const enum BrokerType {
 
     Set,
     Get,
+    ResponseGet,
     Increment,
     ResponseIncrement,
     Delete,
-    ResponseGet,
+
+    InvalidateCache,
+    SetCache,
+    GetCache,
+    ResponseGetCache,
+    GetCacheMeta,
+    ResponseGetCacheMeta,
+    DeleteCache,
 
     Lock, //110
     Unlock, //111
@@ -33,6 +41,9 @@ export const enum BrokerType {
     ResponseLock,
     ResponseLockFailed,
     ResponseIsLock,
+
+    EnableInvalidationCacheMessages,
+    ResponseInvalidationCache,
 
     QueuePublish,
     QueueSubscribe,
@@ -65,11 +76,36 @@ export interface brokerSet {
     v: Uint8Array,
 }
 
-export interface brokerResponseGet {
-    v?: Uint8Array,
+export interface brokerInvalidateCache {
+    n: string,
 }
 
+export interface brokerSetCache {
+    n: string,
+    v: Uint8Array,
+    ttl: number;
+    tags?: string[];
+}
+
+export interface brokerInvalidateCacheMessage {
+    key: string;
+    ttl: number;
+}
+
+export interface brokerResponseGetCache {
+    v?: Uint8Array,
+    ttl?: number,
+}
+
+export type brokerResponseGetCacheMeta = {
+    ttl: number,
+} | { missing: true };
+
 export interface brokerGet {
+    n: string;
+}
+
+export interface brokerGetCache {
     n: string;
 }
 

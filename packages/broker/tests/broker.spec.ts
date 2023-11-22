@@ -1,34 +1,26 @@
-import { expect, jest, test } from '@jest/globals';
-import { Broker, BrokerAdapter, BrokerBusChannel, BrokerCacheKey, BrokerQueueChannel } from '../src/broker.js';
+import { afterEach, expect, jest, test } from '@jest/globals';
+import { BrokerAdapter, BrokerBus,  BrokerLock, BrokerQueue } from '../src/broker.js';
 import { BrokerMemoryAdapter } from '../src/adapters/memory-adapter.js';
+import { sleep } from '@deepkit/core';
+import { BrokerCache } from '../src/broker-cache.js';
 
 jest.setTimeout(10000);
 
-export let adapterFactory: () => Promise<BrokerAdapter> = async () => new BrokerMemoryAdapter();
+let lastAdapter: BrokerAdapter | undefined;
+export let adapterFactory: () => Promise<BrokerAdapter> = async () => lastAdapter = new BrokerMemoryAdapter();
 
 export function setAdapterFactory(factory: () => Promise<BrokerAdapter>) {
     adapterFactory = factory;
 }
 
+afterEach(() => {
+    if (lastAdapter) lastAdapter.disconnect();
+});
+
 type User = { id: number, username: string, created: Date };
 
-test('cache1', async () => {
-    const broker = new Broker(await adapterFactory());
-
-
-    type UserCache = BrokerCacheKey<User, 'user/:id', { id: number }>;
-    broker.provideCache<UserCache>((parameters) => {
-        return { id: parameters.id, username: 'peter', created: new Date };
-    });
-
-    const userCache = broker.cache<UserCache>();
-
-    const entry = await userCache.get({ id: 2 });
-    expect(entry).toEqual({ id: 2, username: 'peter', created: expect.any(Date) });
-})
-
 test('cache2', async () => {
-    const broker = new Broker(await adapterFactory());
+    const cache = new BrokerCache(await adapterFactory());
 
     const created = new Date;
     let called = 0;
@@ -36,45 +28,59 @@ test('cache2', async () => {
         called++;
         return { id: 2, username: 'peter', created };
     };
-    const entry1 = await broker.get<User>('user/' + 2, builder);
+
+    const item = cache.item<User>('user/' + 2, builder);
+
+    const entry1 = await item.get();
     expect(called).toBe(1);
     expect(entry1).toEqual({ id: 2, username: 'peter', created });
 
-    const entry2 = await broker.get<User>('user/' + 2, builder);
+    const entry2 = await item.get();
     expect(called).toBe(1);
     expect(entry2).toEqual({ id: 2, username: 'peter', created });
+
+    const entry3 = await cache.item<User>('user/' + 2, builder).get();
+    expect(called).toBe(1);
+    expect(entry3).toEqual({ id: 2, username: 'peter', created });
+
+    await item.invalidate();
+    const entry4 = await item.get();
+    expect(called).toBe(2);
+    expect(entry4).toEqual({ id: 2, username: 'peter', created });
 });
 
 test('cache3', async () => {
-    const broker = new Broker(await adapterFactory());
+    const cache = new BrokerCache(await adapterFactory());
 
-    const entry = await broker.get('user/' + 2, async (): Promise<User> => {
-        return { id: 2, username: 'peter', created: new Date };
-    });
-    expect(entry).toEqual({ id: 2, username: 'peter', created: expect.any(Date) });
+    let build = 0;
+    const item = cache.item<number>('key', async () => {
+        return build++;
+    }, { ttl: '100ms' });
+
+    expect(await item.exists()).toBe(false);
+
+    const entry1 = await item.get();
+    expect(entry1).toBe(0);
+    expect(await item.exists()).toBe(true);
+
+    await sleep(0.01);
+
+    const entry2 = await item.get();
+    expect(entry2).toBe(0);
+
+    await sleep(0.105);
+
+    expect(await item.exists()).toBe(false);
+    const entry3 = await item.get();
+    expect(entry3).toBe(1);
 });
 
 test('bus', async () => {
-    const broker = new Broker(await adapterFactory());
+    const bus = new BrokerBus(await adapterFactory());
 
     type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
 
-    const channel = broker.bus<Events>('/events');
-
-    await channel.subscribe((event) => {
-        expect(event).toEqual({ type: 'user-created', id: 2 });
-    });
-
-    await channel.publish({ type: 'user-created', id: 2 });
-});
-
-test('bus2', async () => {
-    const broker = new Broker(await adapterFactory());
-
-    type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
-    type EventChannel = BrokerBusChannel<Events, '/events'>;
-
-    const channel = broker.busChannel<EventChannel>();
+    const channel = bus.channel<Events>('/events');
 
     await channel.subscribe((event) => {
         expect(event).toEqual({ type: 'user-created', id: 2 });
@@ -84,10 +90,10 @@ test('bus2', async () => {
 });
 
 test('lock', async () => {
-    const broker = new Broker(await adapterFactory());
+    const lock = new BrokerLock(await adapterFactory());
 
-    const lock1 = broker.lock('my-lock', { ttl: 1000 });
-    const lock2 = broker.lock('my-lock', { ttl: 1000 });
+    const lock1 = lock.item('my-lock', { ttl: 1000 });
+    const lock2 = lock.item('my-lock', { ttl: 1000 });
 
     await lock1.acquire();
     expect(lock1.acquired).toBe(true);
@@ -100,49 +106,48 @@ test('lock', async () => {
 });
 
 test('lock2', async () => {
-    const broker = new Broker(await adapterFactory());
+    const lock = new BrokerLock(await adapterFactory());
 
     {
-        const lock1 = await broker.lock('lock1').acquire();
+        const lock1 = await lock.item('lock1').acquire();
 
         expect(lock1.acquired).toBe(true);
-        expect(await broker.lock('lock1').try()).toBe(undefined);
+        expect(await lock.item('lock1').try()).toBe(undefined);
         await lock1.release();
         expect(await lock1.isReserved()).toBe(false);
     }
 
     {
-        const lock1 = await broker.lock('lock1').acquire();
-        const lock2 = await broker.lock('lock2').try();
+        const lock1 = await lock.item('lock1').acquire();
+        const lock2 = await lock.item('lock2').try();
         expect(lock2).not.toBe(undefined);
         await lock2!.release();
 
-        const lock1_2 = await broker.lock('lock1').try();
+        const lock1_2 = await lock.item('lock1').try();
         expect(lock1_2).toBe(undefined);
 
         await lock1.release();
-        const lock1_3 = await broker.lock('lock1').try();
+        const lock1_3 = await lock.item('lock1').try();
         expect(lock1_3).not.toBe(undefined);
         await lock1_3!.release();
     }
 });
 
 test('queue', async () => {
-    const broker = new Broker(await adapterFactory());
+    const queue = new BrokerQueue(await adapterFactory());
 
     type User = { id: number, username: string };
-    type QueueA = BrokerQueueChannel<User, 'user/registered'>;
 
-    const queue = broker.queue<QueueA>();
+    const channel = queue.channel<User>('user/registered');
 
     const p = new Promise<any>(async (resolve) => {
-        await queue.consume(async (message) => {
+        await channel.consume(async (message) => {
             console.log(message);
             resolve(message.data);
         });
     });
 
-    await queue.produce({ id: 3, username: 'peter' });
+    await channel.produce({ id: 3, username: 'peter' });
 
     expect(await p).toEqual({ id: 3, username: 'peter' });
 });

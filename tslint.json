@@ -2,7 +2,7 @@
   "rules": {
     "arrow-return-shorthand": true,
     "callable-types": true,
-    "class-name": true,
+    "class-name": false,
     "comment-format": false,
     "curly": false,
     "deprecation": {

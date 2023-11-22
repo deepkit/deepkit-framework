@@ -157,3 +157,16 @@ test('T array length', () => {
     type r2 = Tuple<[string, number]>;
     expectEqualType(typeOf<r2>(), typeOf<['hi', 2]>() as any, { noTypeNames: true });
 });
+
+test('asd', () => {
+    function a<T>(t: T): T {
+        return b<T>(t);
+    }
+
+    function b<T>(t: T): T {
+        return t;
+    }
+
+    a(1);
+
+});

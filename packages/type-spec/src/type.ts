@@ -226,4 +226,6 @@ export enum ReflectionOp {
      * Expects a TypeClass on the stack.
      */
     implements, //pops one type from the stack and assigns it to the latest class on the stack as `implements` type.
+
+    nominal, //marks the last type on the stack as nominal. (used at the end of class/interface/type alias programs).
 }

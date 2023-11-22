@@ -8,13 +8,13 @@ export function assertValidParent(a: Type): void {
     visitWithParent(a, (type, path, parent) => {
         if (type.parent && type.parent !== parent) {
             if (!parent) throw new Error('Parent was set, but not expected at ' + path);
-            throw new Error('Invalid parent set at ' + path);
+            throw new Error(`Invalid parent set at ${path}. Got ${ReflectionKind[type.parent.kind]} but expected ${parent ? ReflectionKind[parent.kind] : 'undefined'}`);
         }
     });
 }
 
 function reflectionName(kind: ReflectionKind): string {
-    return kind + '';
+    return ReflectionKind[kind];
 }
 
 let visitStackId: number = 0;

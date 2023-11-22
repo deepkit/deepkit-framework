@@ -79,7 +79,20 @@ export type Annotations = any; //actual { [name: symbol]: any[] };, but not supp
  * @reflection never
  */
 export interface TypeAnnotations {
+    // if defined, it is a nominal type. the number is unique for each nominal type.
+    id?: number;
+
     origin?: Type;
+
+    /**
+     * True when this type comes from an inline type, e.g.
+     *
+     * `type A = T;`. Type of `T` is inlined.
+     * `type A = {}`. Type of `{}` is not inlined.
+     *
+     * If the type is not inlined and the result of a type function, then we assign parents of members accordingly. This is not the caee when a type was inlined.
+     */
+    inlined?: true;
 
     /**
      * If the type was created by a type function, this contains the alias name.
@@ -411,8 +424,6 @@ export interface TypeMethodSignature extends TypeAnnotations {
  */
 export interface TypeObjectLiteral extends TypeAnnotations {
     kind: ReflectionKind.objectLiteral,
-    // for nominal compatibility checks
-    id?: number;
 
     parent?: Type;
     description?: string;
@@ -1160,7 +1171,7 @@ export function indexAccess(container: Type, index: Type): Type {
             // you index it with 'foo' | 'a', you get 'bar' | 'baz' | 'b' | 'c'
             // and valueOf<...>() should return ['bar', 'baz', 'b', 'c'].
 
-            let types: Type[] = [];
+            const types: Type[] = [];
 
             // Pre-compute a list of indices to avoid having to re-do this for
             // each entry in the union.
@@ -1189,7 +1200,7 @@ export function indexAccess(container: Type, index: Type): Type {
                 // string literals to a single entry, but will reduce numeric
                 // literals. Unless this absolute fidelity is required, this
                 // approach is simpler and probably makes more sense too.
-                for (let index of indices) {
+                for (const index of indices) {
                     const resolvedType = indexAccess(t, index);
                     if (isTypeIncluded(types, resolvedType)) continue;
                     types.push(resolvedType);
@@ -1315,11 +1326,11 @@ export function widenLiteral(type: Type): Type {
 }
 
 export function assertType<K extends ReflectionKind, T>(t: Type | undefined, kind: K): asserts t is FindType<Type, K> {
-    if (!t || t.kind !== kind) throw new Error(`Invalid type ${t ? t.kind : undefined}, expected ${kind}`);
+    if (!t || t.kind !== kind) throw new Error(`Invalid type ${t ? ReflectionKind[t.kind] : undefined}, expected ${ReflectionKind[kind]}`);
 }
 
 export function getClassType(type: Type): ClassType {
-    if (type.kind !== ReflectionKind.class) throw new Error(`Type needs to be TypeClass, but ${type.kind} given.`);
+    if (type.kind !== ReflectionKind.class) throw new Error(`Type needs to be TypeClass, but ${ReflectionKind[type.kind]} given.`);
     return type.classType;
 }
 
