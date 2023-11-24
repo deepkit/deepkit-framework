@@ -1,4 +1,11 @@
-import { BrokerAdapter, BrokerQueueMessage, BrokerTimeOptionsResolved, Release } from '../broker.js';
+import {
+    BrokerAdapter, BrokerAdapterQueueProduceOptions, BrokerAdapterQueueProduceOptionsResolved,
+    BrokerQueueChannel,
+    BrokerQueueChannelOptions,
+    BrokerQueueMessage,
+    BrokerTimeOptionsResolved,
+    Release
+} from '../broker.js';
 import { getTypeJitContainer, ReflectionKind, Type, TypePropertySignature } from '@deepkit/type';
 import {
     brokerBusPublish,
@@ -318,14 +325,13 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
         };
     }
 
-    async produce<T>(key: string, message: T, type: Type, options?: { delay?: number; priority?: number; }): Promise<void> {
+    async produce<T>(key: string, message: T, type: Type, options?: BrokerAdapterQueueProduceOptionsResolved): Promise<void> {
         await this.pool.getConnection('queue/' + key)
             .sendMessage<BrokerQueuePublish>(BrokerType.QueuePublish, {
                 c: key,
                 v: serializeBSON(message, undefined, type),
-                delay: options?.delay,
-                priority: options?.priority
-            }).ackThenClose();
+                ...options,
+            } as BrokerQueuePublish).ackThenClose();
     }
 
     async consume(key: string, callback: (message: BrokerQueueMessage<any>) => Promise<void>, options: { maxParallel: number }, type: Type): Promise<Release> {

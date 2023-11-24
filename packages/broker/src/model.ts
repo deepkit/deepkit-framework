@@ -8,6 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import {BrokerAdapterQueueProduceOptionsResolved, BrokerQueueMessageProcessingOptionsResolved} from "./broker";
+
 export const enum BrokerType {
     //the first 100 are reserved
     Ack,
@@ -124,9 +126,11 @@ export interface brokerBusResponseHandleMessage {
 }
 
 export interface BrokerQueuePublish {
-    c: string;
+    process: QueueMessageProcessing;
+    deduplicationInterval: number;
     delay?: number;
     priority?: number;
+    c: string;
     v: Uint8Array;
 }
 
@@ -194,9 +198,18 @@ export enum QueueMessageState {
 export interface QueueMessage {
     id: number;
     state: QueueMessageState;
+    process: QueueMessageProcessing;
+    // absolute time
+    ttl: number;
     delay: number;
     priority?: number;
     lastError?: string;
     tries: number;
     v: Uint8Array;
+}
+
+export enum QueueMessageProcessing {
+    exactlyOnce,
+    atLeastOnce,
+    // atMostOnce,
 }

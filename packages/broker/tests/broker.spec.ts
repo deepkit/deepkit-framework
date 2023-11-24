@@ -1,8 +1,11 @@
-import { afterEach, expect, jest, test } from '@jest/globals';
-import { BrokerAdapter, BrokerBus,  BrokerLock, BrokerQueue } from '../src/broker.js';
-import { BrokerMemoryAdapter } from '../src/adapters/memory-adapter.js';
-import { sleep } from '@deepkit/core';
-import { BrokerCache } from '../src/broker-cache.js';
+import {afterEach, expect, jest, test} from '@jest/globals';
+import {BrokerAdapter, BrokerBus, BrokerLock, BrokerQueue} from '../src/broker.js';
+import {BrokerMemoryAdapter} from '../src/adapters/memory-adapter.js';
+import {sleep} from '@deepkit/core';
+import {BrokerCache} from '../src/broker-cache.js';
+import {QueueMessageProcessing} from "../src/model";
+import {parse} from "@lukeed/ms";
+import {parseTime} from "../src/utils";
 
 jest.setTimeout(10000);
 
@@ -152,12 +155,14 @@ test('queue', async () => {
     expect(await p).toEqual({ id: 3, username: 'peter' });
 });
 
-test('queue message deduplication', async () => {
+test('queue message process exactly once options for broker channel', async () => {
     const queue = new BrokerQueue(await adapterFactory());
 
     type User = { id: number, username: string };
 
-    const channel = queue.channel<User>('user/registered');
+    const channel = queue.channel<User>('user/registered', {
+        process: QueueMessageProcessing.exactlyOnce,
+    });
 
     const cb: jest.Mock<Parameters<typeof channel.consume>[0]> = jest.fn();
 
@@ -168,4 +173,79 @@ test('queue message deduplication', async () => {
     await channel.produce({ id: 3, username: 'peter' });
 
     expect(cb).toHaveBeenCalledTimes(1);
+});
+
+test('queue message process exactly once with deduplication interval options for broker channel', async () => {
+    const queue = new BrokerQueue(await adapterFactory());
+
+    type User = { id: number, username: string };
+
+    const channel = queue.channel<User>('user/registered', {
+        process: QueueMessageProcessing.exactlyOnce,
+        deduplicationInterval: '1s',
+    });
+
+    const cb: jest.Mock<Parameters<typeof channel.consume>[0]> = jest.fn();
+
+    await channel.consume(cb);
+
+    await channel.produce({ id: 3, username: 'peter' });
+
+    await sleep(1);
+
+    await channel.produce({ id: 3, username: 'peter' });
+
+    expect(cb).toHaveBeenCalledTimes(2);
+});
+
+test('queue message process exactly once options for broker channel produce', async () => {
+    const queue = new BrokerQueue(await adapterFactory());
+
+    type User = { id: number, username: string };
+
+    const channel = queue.channel<User>('user/registered', {
+        process: QueueMessageProcessing.atLeastOnce,
+    });
+
+    const cb: jest.Mock<Parameters<typeof channel.consume>[0]> = jest.fn();
+
+    await channel.consume(cb);
+
+    await channel.produce({ id: 3, username: 'peter' }, {
+        process: QueueMessageProcessing.exactlyOnce,
+    });
+
+    await channel.produce({ id: 3, username: 'peter' }, {
+        process: QueueMessageProcessing.exactlyOnce,
+    });
+
+    expect(cb).toHaveBeenCalledTimes(1);
+});
+
+test('queue message process exactly once with deduplication interval options for broker channel produce', async () => {
+    const queue = new BrokerQueue(await adapterFactory());
+
+    type User = { id: number, username: string };
+
+    const channel = queue.channel<User>('user/registered', {
+        process: QueueMessageProcessing.atLeastOnce,
+    });
+
+    const cb: jest.Mock<Parameters<typeof channel.consume>[0]> = jest.fn();
+
+    await channel.consume(cb);
+
+    await channel.produce({ id: 3, username: 'peter' }, {
+        process: QueueMessageProcessing.exactlyOnce,
+        deduplicationInterval: '1s',
+    });
+
+    await sleep(1);
+
+    await channel.produce({ id: 3, username: 'peter' }, {
+        process: QueueMessageProcessing.exactlyOnce,
+        deduplicationInterval: '1s',
+    });
+
+    expect(cb).toHaveBeenCalledTimes(2);
 });
