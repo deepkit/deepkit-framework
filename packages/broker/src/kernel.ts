@@ -37,12 +37,13 @@ import {
 } from './model.js';
 import cluster from 'cluster';
 import { closeSync, openSync, renameSync, writeSync } from 'fs';
-import { snapshotState } from './snaptshot.js';
+import { snapshotState } from './snapshot.js';
+import { fastHash } from './utils.js';
 
 export interface Queue {
     currentId: number;
     name: string;
-    messages: QueueMessage[];
+    messages: Map<string, QueueMessage>;
     consumers: { con: BrokerConnection, handling: QueueMessage[], maxMessagesInParallel: number }[];
 }
 
@@ -412,7 +413,7 @@ export class BrokerState {
     protected getQueue(queueName: string) {
         let queue = this.queues.get(queueName);
         if (!queue) {
-            queue = { currentId: 0, name: queueName, messages: [], consumers: [] };
+            queue = { currentId: 0, name: queueName, messages: new Map(), consumers: [] };
             this.queues.set(queueName, queue);
         }
         return queue;
@@ -433,8 +434,15 @@ export class BrokerState {
     public queuePublish(queueName: string, v: Uint8Array, delay?: number, priority?: number) {
         const queue = this.getQueue(queueName);
 
+        // TODO: option to toggle message deduplication?
+        const key = fastHash(v);
+        if (queue.messages.has(key)) {
+            // TODO: how to handle duplicated messages?
+            return;
+        }
+
         const m: QueueMessage = { id: queue.currentId++, state: QueueMessageState.pending, tries: 0, v, delay: delay || 0, priority };
-        queue.messages.push(m);
+        queue.messages.set(key, m);
 
         if (m.delay > Date.now()) {
             // todo: how to handle delay? many timeouts or one timeout?

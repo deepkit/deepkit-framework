@@ -1,6 +1,7 @@
 import { getBSONDeserializer, getBSONSerializer } from '@deepkit/bson';
 import { BrokerState, Queue } from './kernel.js';
 import { QueueMessage, SnapshotEntry, SnapshotEntryType } from './model.js';
+import { fastHash } from './utils.js';
 
 export function snapshotState(state: BrokerState, writer: (v: Uint8Array) => void) {
 
@@ -12,13 +13,13 @@ export function snapshotState(state: BrokerState, writer: (v: Uint8Array) => voi
             currentId: queue.currentId,
             type: SnapshotEntryType.queue,
             name: queue.name,
-            amount: queue.messages.length,
+            amount: queue.messages.size,
         };
 
         const bson = serializeEntry(q);
         writer(bson);
 
-        for (const message of queue.messages) {
+        for (const message of queue.messages.values()) {
             writer(serializeMessage(message));
         }
     }
@@ -49,7 +50,7 @@ export function restoreState(state: BrokerState, reader: (size: number) => Uint8
         const queue: Queue = {
             currentId: entry.currentId,
             name: entry.name,
-            messages: [],
+            messages: new Map(),
             consumers: [],
         };
 
@@ -60,7 +61,8 @@ export function restoreState(state: BrokerState, reader: (size: number) => Uint8
             if (documentSize === 0) return;
             const message = deserializeMessage(buffer);
             buffer = buffer.subarray(documentSize);
-            queue.messages.push(message);
+            const key = fastHash(message.v);
+            queue.messages.set(key, message);
         }
     }
 

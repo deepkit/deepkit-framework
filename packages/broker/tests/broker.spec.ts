@@ -151,3 +151,21 @@ test('queue', async () => {
 
     expect(await p).toEqual({ id: 3, username: 'peter' });
 });
+
+test('queue message deduplication', async () => {
+    const queue = new BrokerQueue(await adapterFactory());
+
+    type User = { id: number, username: string };
+
+    const channel = queue.channel<User>('user/registered');
+
+    const cb: jest.Mock<Parameters<typeof channel.consume>[0]> = jest.fn();
+
+    await channel.consume(cb);
+
+    await channel.produce({ id: 3, username: 'peter' });
+
+    await channel.produce({ id: 3, username: 'peter' });
+
+    expect(cb).toHaveBeenCalledTimes(1);
+});
