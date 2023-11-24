@@ -1,8 +1,8 @@
-import {ReceiveType, resolveReceiveType, Type} from '@deepkit/type';
-import {EventToken} from '@deepkit/event';
-import {parseTime} from './utils.js';
-import {BrokerAdapterCache} from './broker-cache.js';
-import {QueueMessageProcessing} from "./model";
+import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
+import { EventToken } from '@deepkit/event';
+import { parseTime } from './utils.js';
+import { BrokerAdapterCache } from './broker-cache.js';
+import { QueueMessageProcessing } from './model.js';
 
 export interface BrokerTimeOptions {
     /**

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {arrayRemoveItem, ProcessLock, ProcessLocker} from '@deepkit/core';
+import { arrayRemoveItem, ProcessLock, ProcessLocker } from '@deepkit/core';
 import {
     createRpcMessage,
     RpcConnectionWriter,

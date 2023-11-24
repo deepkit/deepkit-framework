@@ -1,7 +1,7 @@
 import { getBSONDeserializer, getBSONSerializer } from '@deepkit/bson';
 import { BrokerState, Queue} from './kernel.js';
 import { QueueMessage, QueueMessageProcessing, SnapshotEntry, SnapshotEntryType} from './model.js';
-import { handleMessageDeduplication } from "./utils";
+import { handleMessageDeduplication } from './utils.js';
 
 export function snapshotState(state: BrokerState, writer: (v: Uint8Array) => void) {
     const serializeEntry = getBSONSerializer<SnapshotEntry>();

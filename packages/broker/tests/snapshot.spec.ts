@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { BrokerState } from '../src/kernel.js';
-import { restoreState, snapshotState } from '../src/snapshot';
+import { restoreState, snapshotState } from '../src/snapshot.js';
 import { QueueMessageProcessing, QueueMessageState } from '../src/model.js';
 
 test('snapshot process message at least once', () => {
