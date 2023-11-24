@@ -13,10 +13,9 @@ export function fastHash(value: Uint8Array): number {
     return xxHash32(value);
 }
 
-export function handleMessageDeduplication(queue: Queue, value: Uint8Array, ttl: number): boolean {
-    const key = fastHash(value);
-    if (queue.deduplicateMessageHashes.has(key)) return true;
-    setTimeout(() => queue.deduplicateMessageHashes.delete(key), ttl);
-    queue.deduplicateMessageHashes.add(key);
+export function handleMessageDeduplication(hash: string | number, queue: Queue, value: Uint8Array, ttl: number): boolean {
+    if (queue.deduplicateMessageHashes.has(hash)) return true;
+    setTimeout(() => queue.deduplicateMessageHashes.delete(hash), ttl);
+    queue.deduplicateMessageHashes.add(hash);
     return false;
 }

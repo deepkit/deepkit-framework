@@ -53,7 +53,7 @@ import { handleMessageDeduplication } from './utils.js';
 export interface Queue {
     currentId: number;
     name: string;
-    deduplicateMessageHashes: Set<number>;
+    deduplicateMessageHashes: Set<string | number>;
     messages: QueueMessage[];
     consumers: { con: BrokerConnection, handling: Map<number, QueueMessage>, maxMessagesInParallel: number }[];
 }
@@ -445,10 +445,16 @@ export class BrokerState {
     public queuePublish(body: BrokerQueuePublish) {
         const queue = this.getQueue(body.c);
 
-        const m: QueueMessage = { id: queue.currentId++, process: body.process, ttl: 0, state: QueueMessageState.pending, tries: 0, v: body.v, delay: body.delay || 0, priority: body.priority };
+        const m: QueueMessage = { id: queue.currentId++, process: body.process, hash: body.hash, state: QueueMessageState.pending, tries: 0, v: body.v, delay: body.delay || 0, priority: body.priority };
 
         if (body.process === QueueMessageProcessing.exactlyOnce) {
-            if (handleMessageDeduplication(queue, body.v, body.deduplicationInterval)) return;
+            if (!body.deduplicationInterval) {
+                throw new Error('Missing message deduplication interval');
+            }
+            if (!body.hash) {
+                throw new Error('Missing message hash');
+            }
+            if (handleMessageDeduplication(body.hash, queue, body.v, body.deduplicationInterval)) return;
             m.ttl = Date.now() + body.deduplicationInterval;
         }
 

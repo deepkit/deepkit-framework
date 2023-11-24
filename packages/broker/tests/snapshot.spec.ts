@@ -53,8 +53,8 @@ test('snapshot process message exactly least once', () => {
         currentId: 2,
         deduplicateMessageHashes: new Set([4120672452, 1416793493]),
         messages: [
-            { id: 1, tries: 1, process: QueueMessageProcessing.exactlyOnce, ttl: Date.now() + 300000, state: QueueMessageState.inFlight, v: new Uint8Array([1, 2, 3]), lastError: 'error', delay: 0 },
-            { id: 2, tries: 0, process: QueueMessageProcessing.exactlyOnce, ttl: Date.now() + 300000, state: QueueMessageState.pending, v: new Uint8Array([3, 3, 3]), delay: 0 },
+            { id: 1, tries: 1, process: QueueMessageProcessing.exactlyOnce, hash: 4120672452, ttl: Date.now() + 300000, state: QueueMessageState.inFlight, v: new Uint8Array([1, 2, 3]), lastError: 'error', delay: 0 },
+            { id: 2, tries: 0, process: QueueMessageProcessing.exactlyOnce, hash: 1416793493, ttl: Date.now() + 300000, state: QueueMessageState.pending, v: new Uint8Array([3, 3, 3]), delay: 0 },
         ],
         consumers: [],
         name: 'test',
@@ -64,8 +64,8 @@ test('snapshot process message exactly least once', () => {
         currentId: 2,
         deduplicateMessageHashes: new Set([3488907040, 1697215505]),
         messages: [
-            { id: 1, tries: 0, process: QueueMessageProcessing.exactlyOnce, ttl: Date.now() + 300000, state: QueueMessageState.pending, v: new Uint8Array([5, 5, 5]), delay: 0 },
-            { id: 2, tries: 0, process: QueueMessageProcessing.exactlyOnce, ttl: Date.now() + 300000, state: QueueMessageState.pending, v: new Uint8Array([4, 4, 4]), delay: 0 },
+            { id: 1, tries: 0, process: QueueMessageProcessing.exactlyOnce, hash: 3488907040, ttl: Date.now() + 300000, state: QueueMessageState.pending, v: new Uint8Array([5, 5, 5]), delay: 0 },
+            { id: 2, tries: 0, process: QueueMessageProcessing.exactlyOnce, hash: 1697215505, ttl: Date.now() + 300000, state: QueueMessageState.pending, v: new Uint8Array([4, 4, 4]), delay: 0 },
         ],
         consumers: [],
         name: 'test2',

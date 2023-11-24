@@ -63,8 +63,14 @@ export function restoreState(state: BrokerState, reader: (size: number) => Uint8
             buffer = buffer.subarray(documentSize);
             queue.messages.push(message);
             if (message.process === QueueMessageProcessing.exactlyOnce) {
+                if (!message.hash) {
+                    throw new Error('Missing message hash');
+                }
+                if (!message.ttl) {
+                    throw new Error('Missing message ttl');
+                }
                 const ttl = message.ttl - Date.now();
-                handleMessageDeduplication(queue, message.v, ttl);
+                handleMessageDeduplication(message.hash, queue, message.v, ttl);
             }
         }
     }

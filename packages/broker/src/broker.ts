@@ -30,9 +30,19 @@ export interface BrokerTimeOptionsResolved {
     timeout: number;
 }
 
-export type BrokerQueueMessageProcessingOptions = { process: QueueMessageProcessing.atLeastOnce } | { process: QueueMessageProcessing.exactlyOnce; deduplicationInterval?: string };
+export type BrokerQueueMessageProcessingOptions = {
+    process: QueueMessageProcessing.atLeastOnce
+} | {
+    process: QueueMessageProcessing.exactlyOnce;
+    deduplicationInterval?: string,
+    hash?: string | number;
+};
 
-export interface BrokerQueueMessageProcessingOptionsResolved { process: QueueMessageProcessing; deduplicationInterval: number };
+export interface BrokerQueueMessageProcessingOptionsResolved {
+    process: QueueMessageProcessing;
+    deduplicationInterval: number;
+    hash?: string | number;
+}
 
 export type BrokerAdapterQueueProduceOptions = { delay?: string; priority?: number } & BrokerQueueMessageProcessingOptions;
 
@@ -47,6 +57,7 @@ function parseBrokerQueueMessageProcessingOptions(options?: BrokerQueueMessagePr
             return {
                 process: QueueMessageProcessing.exactlyOnce,
                 deduplicationInterval: parseTime(options.deduplicationInterval || '5m')!,
+                hash: options.hash,
             };
 
         case QueueMessageProcessing.atLeastOnce:

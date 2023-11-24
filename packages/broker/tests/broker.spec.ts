@@ -196,7 +196,7 @@ test('queue message process exactly once with deduplication interval options for
     expect(cb).toHaveBeenCalledTimes(2);
 });
 
-test('queue message process exactly once options for broker channel produce', async () => {
+test('queue message process exactly once options for producer', async () => {
     const queue = new BrokerQueue(await adapterFactory());
 
     type User = { id: number, username: string };
@@ -220,7 +220,7 @@ test('queue message process exactly once options for broker channel produce', as
     expect(cb).toHaveBeenCalledTimes(1);
 });
 
-test('queue message process exactly once with deduplication interval options for broker channel produce', async () => {
+test('queue message process exactly once with deduplication interval options for producer', async () => {
     const queue = new BrokerQueue(await adapterFactory());
 
     type User = { id: number, username: string };
@@ -243,6 +243,32 @@ test('queue message process exactly once with deduplication interval options for
     await channel.produce({ id: 3, username: 'peter' }, {
         process: QueueMessageProcessing.exactlyOnce,
         deduplicationInterval: '1s',
+    });
+
+    expect(cb).toHaveBeenCalledTimes(2);
+});
+
+test('queue message process exactly once with custom hash for producer', async () => {
+    const queue = new BrokerQueue(await adapterFactory());
+
+    type User = { id: number, username: string };
+
+    const channel = queue.channel<User>('user/registered', {
+        process: QueueMessageProcessing.atLeastOnce,
+    });
+
+    const cb: jest.Mock<Parameters<typeof channel.consume>[0]> = jest.fn();
+
+    await channel.consume(cb);
+
+    await channel.produce({ id: 3, username: 'peter' }, {
+        process: QueueMessageProcessing.exactlyOnce,
+        hash: 1,
+    });
+
+    await channel.produce({ id: 3, username: 'peter' }, {
+        process: QueueMessageProcessing.exactlyOnce,
+        hash: 2,
     });
 
     expect(cb).toHaveBeenCalledTimes(2);

@@ -1,7 +1,6 @@
 import {
-    BrokerAdapter, BrokerAdapterQueueProduceOptions, BrokerAdapterQueueProduceOptionsResolved,
-    BrokerQueueChannel,
-    BrokerQueueChannelOptions,
+    BrokerAdapter,
+    BrokerAdapterQueueProduceOptionsResolved,
     BrokerQueueMessage,
     BrokerTimeOptionsResolved,
     Release
@@ -29,12 +28,27 @@ import {
     brokerResponseIsLock,
     brokerSet,
     brokerSetCache,
-    BrokerType
+    BrokerType,
+    QueueMessageProcessing
 } from '../model.js';
-import { ClientTransportAdapter, createRpcMessage, RpcBaseClient, RpcMessage, RpcMessageRouteType, RpcWebSocketClientAdapter } from '@deepkit/rpc';
-import { deserializeBSON, deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer, serializeBSON } from '@deepkit/bson';
+import {
+    ClientTransportAdapter,
+    createRpcMessage,
+    RpcBaseClient,
+    RpcMessage,
+    RpcMessageRouteType,
+    RpcWebSocketClientAdapter
+} from '@deepkit/rpc';
+import {
+    deserializeBSON,
+    deserializeBSONWithoutOptimiser,
+    getBSONDeserializer,
+    getBSONSerializer,
+    serializeBSON
+} from '@deepkit/bson';
 import { arrayRemoveItem } from '@deepkit/core';
 import { BrokerCacheItemOptionsResolved } from '../broker-cache.js';
+import { fastHash } from '../utils.js';
 
 interface TypeSerialize {
     encode(v: any): Uint8Array;
@@ -326,10 +340,14 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
     }
 
     async produce<T>(key: string, message: T, type: Type, options?: BrokerAdapterQueueProduceOptionsResolved): Promise<void> {
+        const value = serializeBSON(message, undefined, type);
+        if (options?.process === QueueMessageProcessing.exactlyOnce) {
+            options.hash ??= fastHash(value);
+        }
         await this.pool.getConnection('queue/' + key)
             .sendMessage<BrokerQueuePublish>(BrokerType.QueuePublish, {
                 c: key,
-                v: serializeBSON(message, undefined, type),
+                v: value,
                 ...options,
             } as BrokerQueuePublish).ackThenClose();
     }
