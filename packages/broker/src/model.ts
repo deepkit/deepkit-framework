@@ -8,8 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {BrokerAdapterQueueProduceOptionsResolved, BrokerQueueMessageProcessingOptionsResolved} from "./broker";
-
 export const enum BrokerType {
     //the first 100 are reserved
     Ack,

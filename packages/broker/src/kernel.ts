@@ -445,8 +445,6 @@ export class BrokerState {
     public queuePublish(body: BrokerQueuePublish) {
         const queue = this.getQueue(body.c);
 
-        console.log('queuePublish', body);
-
         const m: QueueMessage = { id: queue.currentId++, process: body.process, ttl: 0, state: QueueMessageState.pending, tries: 0, v: body.v, delay: body.delay || 0, priority: body.priority };
 
         if (body.process === QueueMessageProcessing.exactlyOnce) {

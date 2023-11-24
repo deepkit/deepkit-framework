@@ -18,7 +18,7 @@ export function snapshotState(state: BrokerState, writer: (v: Uint8Array) => voi
         const bson = serializeEntry(q);
         writer(bson);
 
-        for (const message of queue.messages.values()) {
+        for (const message of queue.messages) {
             writer(serializeMessage(message));
         }
     }

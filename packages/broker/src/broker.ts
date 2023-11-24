@@ -36,10 +36,10 @@ export interface BrokerQueueMessageProcessingOptionsResolved { process: QueueMes
 
 export type BrokerAdapterQueueProduceOptions = { delay?: string; priority?: number } & BrokerQueueMessageProcessingOptions;
 
-export type BrokerAdapterQueueProduceOptionsResolved = BrokerQueueMessageProcessingOptionsResolved & {
+export interface BrokerAdapterQueueProduceOptionsResolved extends BrokerQueueMessageProcessingOptionsResolved {
     delay?: number;
     priority?: number;
-};
+}
 
 function parseBrokerQueueMessageProcessingOptions(options?: BrokerQueueMessageProcessingOptions): BrokerQueueMessageProcessingOptionsResolved {
     switch (options?.process) {
