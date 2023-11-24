@@ -8,7 +8,7 @@ test('snapshot process message at least once', () => {
 
     state.queues.set('test', {
         currentId: 2,
-        deduplicateMessageHashes: new Set(),
+        deduplicateMessageHashes: new Set([]),
         messages: [
             { id: 1, tries: 1, process: QueueMessageProcessing.atLeastOnce, ttl: 0, state: QueueMessageState.inFlight, v: new Uint8Array([1, 2, 3]), lastError: 'error', delay: 0 },
             { id: 2, tries: 0, process: QueueMessageProcessing.atLeastOnce, ttl: 0, state: QueueMessageState.pending, v: new Uint8Array([3, 3, 3]), delay: 0 },
@@ -19,7 +19,7 @@ test('snapshot process message at least once', () => {
 
     state.queues.set('test2', {
         currentId: 2,
-        deduplicateMessageHashes: new Set(),
+        deduplicateMessageHashes: new Set([]),
         messages: [
             { id: 1, tries: 0, process: QueueMessageProcessing.atLeastOnce, ttl: 0, state: QueueMessageState.pending, v: new Uint8Array([5, 5, 5]), delay: 0 },
             { id: 2, tries: 0, process: QueueMessageProcessing.atLeastOnce, ttl: 0, state: QueueMessageState.pending, v: new Uint8Array([4, 4, 4]), delay: 0 },
@@ -51,7 +51,7 @@ test('snapshot process message exactly least once', () => {
 
     state.queues.set('test', {
         currentId: 2,
-        deduplicateMessageHashes: new Set(['f59c78c4', '54728d95']),
+        deduplicateMessageHashes: new Set([4120672452, 1416793493]),
         messages: [
             { id: 1, tries: 1, process: QueueMessageProcessing.exactlyOnce, ttl: Date.now() + 300000, state: QueueMessageState.inFlight, v: new Uint8Array([1, 2, 3]), lastError: 'error', delay: 0 },
             { id: 2, tries: 0, process: QueueMessageProcessing.exactlyOnce, ttl: Date.now() + 300000, state: QueueMessageState.pending, v: new Uint8Array([3, 3, 3]), delay: 0 },
@@ -62,7 +62,7 @@ test('snapshot process message exactly least once', () => {
 
     state.queues.set('test2', {
         currentId: 2,
-        deduplicateMessageHashes: new Set(['cff47f20', '65297411']),
+        deduplicateMessageHashes: new Set([3488907040, 1697215505]),
         messages: [
             { id: 1, tries: 0, process: QueueMessageProcessing.exactlyOnce, ttl: Date.now() + 300000, state: QueueMessageState.pending, v: new Uint8Array([5, 5, 5]), delay: 0 },
             { id: 2, tries: 0, process: QueueMessageProcessing.exactlyOnce, ttl: Date.now() + 300000, state: QueueMessageState.pending, v: new Uint8Array([4, 4, 4]), delay: 0 },

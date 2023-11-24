@@ -9,8 +9,8 @@ export function parseTime(value?: string | number): number | undefined {
     return value;
 }
 
-export function fastHash(value: Uint8Array): string {
-    return xxHash32(value).toString(16);
+export function fastHash(value: Uint8Array): number {
+    return xxHash32(value);
 }
 
 export function handleMessageDeduplication(queue: Queue, value: Uint8Array, ttl: number): boolean {

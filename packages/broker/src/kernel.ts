@@ -53,7 +53,7 @@ import { handleMessageDeduplication } from './utils.js';
 export interface Queue {
     currentId: number;
     name: string;
-    deduplicateMessageHashes: Set<string>;
+    deduplicateMessageHashes: Set<number>;
     messages: QueueMessage[];
     consumers: { con: BrokerConnection, handling: Map<number, QueueMessage>, maxMessagesInParallel: number }[];
 }
