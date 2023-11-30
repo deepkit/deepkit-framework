@@ -74,12 +74,12 @@ import ts from 'typescript';
 
 import {
     ensureImportIsEmitted,
-    extractJSDocAttribute,
+    extractJSDocAttribute, getEntityName,
     getGlobalsOfSourceFile,
     getIdentifierName,
     getNameAsString,
     getPropertyName,
-    hasModifier,
+    hasModifier, isBuiltType,
     isNodeWithLocals,
     NodeConverter,
     PackExpression,
@@ -188,15 +188,19 @@ const serverEnv = 'undefined' !== typeof process;
 export const packSize: number = 2 ** packSizeByte; //64
 const reflectionModes = ['always', 'default', 'never'] as const;
 
-interface ReflectionOptions {
+export interface ReflectionOptions {
     /**
      * Allows to exclude type definitions/TS files from being included in the type compilation step.
      * When a global .d.ts is matched, their types won't be embedded (useful to exclude DOM for example)
      */
     exclude?: string[];
+    /**
+     * External imports to reflect
+     */
+    external?: Record<string, '*' | string[]>; // '*' or true?
 }
 
-interface ReflectionConfig {
+export interface ReflectionConfig {
     mode: typeof reflectionModes[number];
     options: ReflectionOptions;
     /**
@@ -497,6 +501,33 @@ function getReceiveTypeParameter(type: TypeNode): TypeReferenceNode | undefined 
     return;
 }
 
+interface DeepkitTypeCompilerOptions extends ReflectionOptions {
+    reflection?: string | string[];
+}
+
+export interface ReflectionTransformerConfig {
+    compilerOptions: ts.CompilerOptions;
+    extends?: string;
+    deepkitTypeCompilerOptions?: DeepkitTypeCompilerOptions;
+}
+
+export interface EmbedDeclaration {
+    name: EntityName,
+    sourceFile: SourceFile,
+    assignType?: boolean;
+}
+
+export class EmbedDeclarations extends Map<Node, EmbedDeclaration> {
+    getByName(name: string): EmbedDeclaration | null {
+        for (const [,d] of this) {
+            if (getEntityName(d.name) === name) {
+                return d;
+            }
+        }
+        return null;
+    }
+}
+
 /**
  * Read the TypeScript AST and generate pack struct (instructions + pre-defined stack).
  *
@@ -506,7 +537,7 @@ function getReceiveTypeParameter(type: TypeNode): TypeReferenceNode | undefined 
  */
 export class ReflectionTransformer implements CustomTransformer {
     sourceFile!: SourceFile;
-    protected f: NodeFactory;
+    public f: NodeFactory;
     protected currentReflectionConfig: ReflectionConfig = { mode: 'never', options: {}, baseDir: '' };
 
     public defaultExcluded: string[] = [
@@ -515,7 +546,7 @@ export class ReflectionTransformer implements CustomTransformer {
         'lib.es2017.typedarrays.d.ts',
     ];
 
-    protected embedAssignType: boolean = false;
+    public embedAssignType: boolean = false;
 
     protected reflectionMode?: typeof reflectionModes[number];
     protected reflectionOptions?: ReflectionOptions;
@@ -533,7 +564,7 @@ export class ReflectionTransformer implements CustomTransformer {
      * Types added to this map will get a type program at the top root level of the program.
      * This is for imported types, which need to be inlined into the current file, as we do not emit type imports (TS will omit them).
      */
-    protected embedDeclarations = new Map<Node, { name: EntityName, sourceFile: SourceFile }>();
+    public embedDeclarations = new EmbedDeclarations();
 
     /**
      * When a node was embedded or compiled (from the maps above), we store it here to know to not add it again.
@@ -557,13 +588,13 @@ export class ReflectionTransformer implements CustomTransformer {
     protected tempResultIdentifier?: Identifier;
     protected parseConfigHost?: ParseConfigHost;
 
-    protected config: { compilerOptions: ts.CompilerOptions, extends?: string, reflectionOptions?: ReflectionOptions, reflection?: string | string[] } = { compilerOptions: {} };
+    protected config: ReflectionTransformerConfig = { compilerOptions: {}};
 
     constructor(
         protected context: TransformationContext,
     ) {
         this.f = context.factory;
-        this.nodeConverter = new NodeConverter(this.f);
+        this.nodeConverter = new NodeConverter(this);
         //it is important to not have undefined values like {paths: undefined} because it would override the read tsconfig.json
         this.compilerOptions = filterUndefined(context.getCompilerOptions());
         this.host = createCompilerHost(this.compilerOptions);
@@ -678,17 +709,17 @@ export class ReflectionTransformer implements CustomTransformer {
         let basePath = this.config.compilerOptions.configFilePath as string;
         if (basePath) {
             basePath = dirname(basePath);
-            if (!this.reflectionMode && currentConfig.reflection !== undefined) this.reflectionMode = this.parseReflectionMode(currentConfig.reflection, basePath);
-            if (!this.compilerOptions && currentConfig.reflectionOptions !== undefined) {
-                this.reflectionOptions = this.parseReflectionOptionsDefaults(currentConfig.reflectionOptions, basePath);
+            if (!this.reflectionMode && currentConfig.deepkitTypeCompilerOptions !== undefined) this.reflectionMode = this.parseReflectionMode(currentConfig.deepkitTypeCompilerOptions.reflection, basePath);
+            if (!this.compilerOptions && currentConfig.deepkitTypeCompilerOptions !== undefined) {
+                this.reflectionOptions = this.parseReflectionOptionsDefaults(currentConfig.deepkitTypeCompilerOptions, basePath);
             }
             while ((this.reflectionMode === undefined || this.compilerOptions === undefined) && 'string' === typeof basePath && currentConfig.extends) {
                 const path = join(basePath, currentConfig.extends);
-                const nextConfig = ts.readConfigFile(path, (path: string) => this.host.readFile(path));
+                const nextConfig = ts.readConfigFile(path, (path: string) => this.host.readFile(path)) as { config: ReflectionTransformerConfig };
                 if (!nextConfig) break;
-                if (!this.reflectionMode && nextConfig.config.reflection !== undefined) this.reflectionMode = this.parseReflectionMode(nextConfig.config.reflection, basePath);
-                if (!this.reflectionOptions && nextConfig.config.reflectionOptions !== undefined) {
-                    this.reflectionOptions = this.parseReflectionOptionsDefaults(nextConfig.config.reflectionOptions, basePath);
+                if (!this.reflectionMode && nextConfig.config.deepkitTypeCompilerOptions !== undefined) this.reflectionMode = this.parseReflectionMode(nextConfig.config.deepkitTypeCompilerOptions.reflection, basePath);
+                if (!this.reflectionOptions && nextConfig.config.deepkitTypeCompilerOptions !== undefined) {
+                    this.reflectionOptions = this.parseReflectionOptionsDefaults(nextConfig.config.deepkitTypeCompilerOptions, basePath);
                 }
                 currentConfig = Object.assign({}, nextConfig.config);
                 basePath = dirname(path);
@@ -975,7 +1006,7 @@ export class ReflectionTransformer implements CustomTransformer {
         const compileDeclarations = (node: Node): any => {
             node = visitEachChild(node, compileDeclarations, this.context);
 
-            if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isEnumDeclaration(node))) {
+            if (isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isEnumDeclaration(node)) {
                 const d = this.compileDeclarations.get(node);
                 if (!d) {
                     return node;
@@ -1982,7 +2013,7 @@ export class ReflectionTransformer implements CustomTransformer {
     //     return node;
     // }
 
-    protected getDeclarationVariableName(typeName: EntityName): Identifier {
+    public getDeclarationVariableName(typeName: EntityName): Identifier {
         if (isIdentifier(typeName)) {
             return this.f.createIdentifier('__Ω' + getIdentifierName(typeName));
         }
@@ -1993,6 +2024,16 @@ export class ReflectionTransformer implements CustomTransformer {
         }
 
         return this.f.createIdentifier('__Ω' + joinQualifiedName(typeName));
+    }
+
+    // TODO: what to do when the external type depends on another external type? should that be automatically resolved, or should the user specify that explicitly as well?
+    protected isImportMarkedAsExternal(importDeclaration: ImportDeclaration, entityName: EntityName, config: ReflectionConfig): boolean {
+        if (!ts.isStringLiteral(importDeclaration.moduleSpecifier)) return false;
+        const external = config.options.external?.[importDeclaration.moduleSpecifier.text];
+        if (!external) return false;
+        if (external === '*') return true;
+        const typeName = getEntityName(entityName);
+        return external.includes(typeName);
     }
 
     protected isExcluded(filePath: string): boolean {
@@ -2183,25 +2224,27 @@ export class ReflectionTransformer implements CustomTransformer {
                                 return;
                             }
 
-                            // check if this is a viable option:
-                            // //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
-                            // const typeVar = this.getDeclarationVariableName(typeName);
-                            // //check if typeVar is exported in referenced file
-                            // const builtType = isNodeWithLocals(found) && found.locals && found.locals.has(typeVar.escapedText);
-                            // if (!builtType) {
-                            //     program.pushOp(ReflectionOp.any);
-                            //     return;
-                            // }
-
                             //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
-                            const reflection = this.findReflectionFromPath(found.fileName);
-                            if (reflection.mode === 'never') {
-                                program.pushOp(ReflectionOp.any);
-                                return;
-                            }
+                            const typeVar = this.getDeclarationVariableName(typeName);
+                            //check if typeVar is exported in referenced file
+                            const builtType = isBuiltType(typeVar, found);
 
-                            // this.addImports.push({ identifier: typeVar, from: resolved.importDeclaration.moduleSpecifier });
-                            this.addImports.push({ identifier: this.getDeclarationVariableName(typeName), from: resolved.importDeclaration.moduleSpecifier });
+                            if (!builtType) {
+                                if (!this.isImportMarkedAsExternal(resolved.importDeclaration, typeName, declarationReflection)) return;
+                                this.embedDeclarations.set(declaration, {
+                                    name: typeName,
+                                    sourceFile: declarationSourceFile
+                                });
+                            } else {
+                                //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
+                                const reflection = this.findReflectionFromPath(found.fileName);
+                                if (reflection.mode === 'never') {
+                                    program.pushOp(ReflectionOp.any);
+                                    return;
+                                }
+
+                                this.addImports.push({ identifier: this.getDeclarationVariableName(typeName), from: resolved.importDeclaration.moduleSpecifier });
+                            }
                         }
                     } else {
                         //it's a reference type inside the same file. Make sure its type is reflected
@@ -2252,7 +2295,27 @@ export class ReflectionTransformer implements CustomTransformer {
                     return;
                 }
 
-                if (resolved.importDeclaration && isIdentifier(typeName)) ensureImportIsEmitted(resolved.importDeclaration, typeName);
+                if (resolved.importDeclaration && isIdentifier(typeName)) {
+                    ensureImportIsEmitted(resolved.importDeclaration, typeName);
+
+                    // check if the referenced declaration has reflection disabled
+                    const declarationReflection = this.findReflectionConfig(declaration, program);
+                    if (declarationReflection.mode !== 'never') {
+                        const declarationSourceFile = resolved.importDeclaration.getSourceFile();
+                        // //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
+                        const typeVar = this.getDeclarationVariableName(typeName);
+                        // //check if typeVar is exported in referenced file
+                        const builtType = isBuiltType(typeVar, declarationSourceFile);
+
+                        if (!builtType && this.isImportMarkedAsExternal(resolved.importDeclaration, typeName, declarationReflection)) {
+                            this.embedDeclarations.set(declaration, {
+                                name: typeName,
+                                sourceFile: declarationSourceFile,
+                                assignType: true,
+                            });
+                        }
+                    }
+                }
                 program.pushFrame();
                 if (type.typeArguments) {
                     for (const typeArgument of type.typeArguments) {
@@ -2352,9 +2415,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
     protected resolveTypeOnlyImport(entityName: EntityName, program: CompilerProgram) {
         program.pushOp(ReflectionOp.any);
-        const typeName = ts.isIdentifier(entityName)
-            ? getIdentifierName(entityName)
-            : getIdentifierName(entityName.right);
+        const typeName = getEntityName(entityName);
         this.resolveTypeName(typeName, program);
     }
 
@@ -2634,7 +2695,7 @@ export class ReflectionTransformer implements CustomTransformer {
      *
      * where we embed assignType() at the beginning of the type.
      */
-    protected wrapWithAssignType(fn: Expression, type: Expression) {
+    public wrapWithAssignType(fn: Expression, type: Expression) {
         this.embedAssignType = true;
 
         return this.f.createCallExpression(
@@ -2788,19 +2849,19 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
             }
 
-            if (reflection === undefined && packageJson.reflection !== undefined) {
+            if (reflection === undefined && packageJson.deepkitTypeCompilerOptions !== undefined) {
                 return {
-                    mode: this.parseReflectionMode(packageJson.reflection, currentDir),
+                    mode: this.parseReflectionMode(packageJson.deepkitTypeCompilerOptions.reflection, currentDir),
                     baseDir: currentDir,
-                    options: this.parseReflectionOptionsDefaults(packageJson.reflectionOptions || {})
+                    options: this.parseReflectionOptionsDefaults(packageJson.deepkitTypeCompilerOptions || {})
                 };
             }
 
-            if (reflection === undefined && tsConfig.reflection !== undefined) {
+            if (reflection === undefined && tsConfig.deepkitTypeCompilerOptions !== undefined) {
                 return {
-                    mode: this.parseReflectionMode(tsConfig.reflection, currentDir),
+                    mode: this.parseReflectionMode(tsConfig.deepkitTypeCompilerOptions.reflection, currentDir),
                     baseDir: currentDir,
-                    options: this.parseReflectionOptionsDefaults(tsConfig.reflectionOptions || {})
+                    options: this.parseReflectionOptionsDefaults(tsConfig.deepkitTypeCompilerOptions || {})
                 };
             }
 

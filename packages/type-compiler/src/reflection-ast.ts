@@ -33,6 +33,7 @@ import type {
 import ts from 'typescript';
 import { cloneNode as tsNodeClone, CloneNodeHook } from '@marcj/ts-clone-node';
 import { SourceFile } from './ts-types.js';
+import { ReflectionTransformer } from './compiler.js';
 
 const {
     isArrowFunction,
@@ -122,7 +123,10 @@ const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNo
 };
 
 export class NodeConverter {
-    constructor(protected f: NodeFactory) {
+    protected f: NodeFactory
+
+    constructor(protected transformer: ReflectionTransformer) {
+        this.f = transformer.f;
     }
 
     toExpression<T extends PackExpression | PackExpression[]>(node?: T): Expression {
@@ -139,14 +143,19 @@ export class NodeConverter {
 
         if (node.pos === -1 && node.end === -1 && node.parent === undefined) {
             if (isArrowFunction(node)) {
-                if (node.body.pos === -1 && node.body.end === -1 && node.body.parent === undefined) return node;
+                // if (node.body.pos === -1 && node.body.end === -1 && node.body.parent === undefined) return node;
                 return this.f.createArrowFunction(node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, this.toExpression(node.body as Expression));
             }
             return node;
         }
         switch (node.kind) {
             case SyntaxKind.Identifier:
-                return finish(node, this.f.createIdentifier(getIdentifierName(node as Identifier)));
+                const typeName = getIdentifierName(node as Identifier);
+                const embedDeclaration = this.transformer.embedDeclarations.getByName(typeName);
+                if (embedDeclaration?.assignType) {
+                    return this.transformer.wrapWithAssignType(finish(node, this.f.createIdentifier(typeName)), this.transformer.getDeclarationVariableName(node as Identifier));
+                }
+                return finish(node, this.f.createIdentifier(typeName));
             case SyntaxKind.StringLiteral:
                 return finish(node, this.f.createStringLiteral((node as StringLiteral).text));
             case SyntaxKind.NumericLiteral:
@@ -186,8 +195,18 @@ function isExternalOrCommonJsModule(file: SourceFile): boolean {
     return (file.externalModuleIndicator || file.commonJsModuleIndicator) !== undefined;
 }
 
+export function isBuiltType(typeVar: Identifier, sourceFile: SourceFile): boolean {
+    return isNodeWithLocals(sourceFile) && !!sourceFile.locals?.has(typeVar.escapedText);
+}
+
 export function isNodeWithLocals(node: Node): node is (Node & { locals: SymbolTable | undefined }) {
     return 'locals' in node;
+}
+
+export function getEntityName(typeName: EntityName): string {
+    return isIdentifier(typeName)
+        ? getIdentifierName(typeName)
+        : getIdentifierName(typeName.right);
 }
 
 //logic copied from typescript
