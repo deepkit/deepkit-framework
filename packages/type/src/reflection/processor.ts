@@ -1220,7 +1220,9 @@ export class Processor {
                             const inputs: Type[] = [];
                             for (let i = 0; i < argumentSize; i++) {
                                 let input = this.pop() as Type;
-                                if ((input.kind === ReflectionKind.never || input.kind === ReflectionKind.unknown) && program.inputs[i]) input = program.inputs[i] as Type;
+                                if ((input.kind === ReflectionKind.never || input.kind === ReflectionKind.unknown) && program.inputs[i]) {
+                                    input = program.inputs[i] as Type;
+                                }
                                 inputs.unshift(input);
                             }
                             const pOrFn = program.stack[pPosition] as number | Packed | (() => Packed);
@@ -1265,7 +1267,6 @@ export class Processor {
                                 }
 
                                 this.push(result, program);
-
                                 //this.reflect/run might create another program onto the stack. switch to it if so
                                 if (this.program !== program) {
                                     //continue to next this.program.
@@ -1507,7 +1508,7 @@ export class Processor {
                 t.indexAccessOrigin = { container: left as TypeObjectLiteral, index: right as Type };
             }
 
-            t.parent = undefined;
+            if (t.parent) t.parent.parent = undefined;
             this.push(t);
         }
     }
@@ -1558,7 +1559,7 @@ export class Processor {
                     index = type.types[1].type;
                     type = type.types[0].type;
                 } else {
-                    throw new Error('Tuple expect');
+                    throw new Error('Tuple expected');
                 }
             }
             const fromType = program.frame.mappedType.fromType;
@@ -1576,6 +1577,12 @@ export class Processor {
                 if (index.kind === ReflectionKind.literal && !(index.literal instanceof RegExp)) {
                     optional = !!index.origin && isMember(index.origin) && index.origin.optional ? true : undefined;
                     index = index.literal;
+                }
+
+                // If the type was a property, then grab the optional modifier
+                // from the property itself.
+                if (type.parent && type.parent.kind === ReflectionKind.propertySignature) {
+                    optional = !!type.parent.optional ? true : undefined;
                 }
 
                 const property: TypeProperty | TypePropertySignature | TypeTupleMember = type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property || type.kind === ReflectionKind.tupleMember
