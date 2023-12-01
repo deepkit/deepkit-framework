@@ -26,14 +26,14 @@ test('assertEqualType 1', () => {
     expect(() => expectEqualType({ kind: ReflectionKind.literal, literal: 'asd' }, {
         kind: ReflectionKind.literal,
         literal: 'asd2'
-    })).toThrow('Invalid type .literal: asd !== asd2');
+    })).toThrow('Invalid type .literal: expected type: asd !== actual type: asd2');
 
     const a: ParentLessType = { kind: ReflectionKind.tuple, types: [{ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string } }] };
     expectEqualType(a, a);
     expect(() => expectEqualType(a, {
         kind: ReflectionKind.tuple,
         types: [{ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.number } }]
-    })).toThrow('Invalid type .types.0.type.kind: 5 !== 6');
+    })).toThrow('Invalid type .types.0.type.kind: expected type: 5 !== actual type: 6');
 
     const b: ParentLessType = {
         kind: ReflectionKind.function,
