@@ -1503,7 +1503,7 @@ export class Processor {
         if (!isType(left)) {
             this.push({ kind: ReflectionKind.never });
         } else {
-            let t: Type = indexAccess(left, right);
+            const t: Type = indexAccess(left, right);
             if (isWithAnnotations(t)) {
                 t.indexAccessOrigin = { container: left as TypeObjectLiteral, index: right as Type };
             }
