@@ -53,12 +53,12 @@ import {
     validationAnnotation,
     widenLiteral
 } from './type.js';
-import { MappedModifier, ReflectionOp } from '@deepkit/type-spec';
-import { isExtendable } from './extends.js';
-import { ClassType, isArray, isClass, isFunction, stringifyValueWithType } from '@deepkit/core';
-import { isWithDeferredDecorators } from '../decorator.js';
-import { ReflectionClass, TData } from './reflection.js';
-import { state } from './state.js';
+import {MappedModifier, ReflectionOp} from '@deepkit/type-spec';
+import {isExtendable} from './extends.js';
+import {ClassType, isArray, isClass, isFunction, stringifyValueWithType} from '@deepkit/core';
+import {isWithDeferredDecorators} from '../decorator.js';
+import {ReflectionClass, TData} from './reflection.js';
+import {state} from './state.js';
 
 export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
 
@@ -1503,13 +1503,12 @@ export class Processor {
         if (!isType(left)) {
             this.push({ kind: ReflectionKind.never });
         } else {
-            const t: Type = indexAccess(left, right);
+            let t: Type = indexAccess(left, right);
             if (isWithAnnotations(t)) {
                 t.indexAccessOrigin = { container: left as TypeObjectLiteral, index: right as Type };
             }
-
             if (t.parent) t.parent.parent = undefined;
-            this.push(t);
+            this.push(copyAndSetParent(t, undefined));
         }
     }
 

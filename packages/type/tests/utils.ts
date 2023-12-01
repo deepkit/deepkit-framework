@@ -125,7 +125,7 @@ export function expectEqualType(actual: any, expected: any, options: { noTypeNam
             }
         }
     } else {
-        if (expected !== actual) throw new Error(`Invalid type ${path}: ${expected} !== ${actual}`);
+        if (expected !== actual) throw new Error(`Invalid type ${path}: expected type: ${expected} !== actual type: ${actual}`);
     }
 
     options.stack.pop();
