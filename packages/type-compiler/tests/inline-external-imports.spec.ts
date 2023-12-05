@@ -1,8 +1,44 @@
 import { test, expect } from '@jest/globals';
+import { ReflectionKind, TypeClass, TypeFunction } from '@deepkit/type';
 
 import { transpile, transpileAndRun } from './utils';
 
-test('symbol type var', () => {
+test('string type alias', () => {
+    const res = transpile({
+        app: `import { NIL } from 'uuid';
+
+            type T = typeof NIL;
+        `
+    }, undefined, {
+        inlineExternalImports: {
+            'uuid': ['NIL'],
+        },
+    });
+
+    expect(res.app).not.toContain('const __ΩNIL = [');
+    expect(res.app).not.toContain('() => __assignType(uuid_1.NIL, __ΩNIL)');
+    expect(res.app).toContain('() => uuid_1.NIL');
+});
+
+test('typeOf string type alias', () => {
+    const res = transpileAndRun({
+        app: `import { typeOf } from '@deepkit/type';
+            import { NIL } from 'uuid';
+
+            typeOf<typeof NIL>();
+        `
+    });
+
+    expect(res).toMatchInlineSnapshot(`
+        {
+          "kind": 13,
+          "literal": "00000000-0000-0000-0000-000000000000",
+          "typeName": undefined,
+        }
+    `);
+});
+
+test('object type alias', () => {
     const res = transpile({
         app: `import { config } from 'rxjs';
 
@@ -14,11 +50,12 @@ test('symbol type var', () => {
         },
     });
 
-    expect(res.app).toContain('const __Ωconfig = [');
-    expect(res.app).toContain('() => __assignType(rxjs_1.config, __Ωconfig)');
+    expect(res.app).not.toContain('const __Ωconfig = [');
+    expect(res.app).not.toContain('() => __assignType(rxjs_1.config, __Ωconfig)');
+    expect(res.app).toContain('() => rxjs_1.config');
 });
 
-test('symbol typeOf', () => {
+test('typeOf object type alias', () => {
     const res = transpileAndRun({
         app: `import { typeOf } from '@deepkit/type';
             import { config } from 'rxjs';
@@ -101,26 +138,12 @@ test('symbol typeOf', () => {
                 "kind": 25,
                 "parent": [Circular],
                 "type": {
-                  "kind": 23,
-                  "types": [
-                    {
-                      "function": [Function],
-                      "kind": 17,
-                      "name": "",
-                      "parameters": [],
-                      "return": {
-                        "kind": 1,
-                      },
-                    },
-                    {
-                      "jit": {},
-                      "kind": 5,
-                      "origin": {
-                        "kind": 13,
-                        "literal": "n!",
-                      },
-                    },
-                  ],
+                  "jit": {},
+                  "kind": 5,
+                  "origin": {
+                    "kind": 13,
+                    "literal": "!",
+                  },
                 },
               },
             },
@@ -129,7 +152,7 @@ test('symbol typeOf', () => {
     `);
 });
 
-test('function type var', () => {
+test('function type alias', () => {
     const res = transpile({
         app: `import { map } from 'rxjs/operators';
 
@@ -145,7 +168,7 @@ test('function type var', () => {
     expect(res.app).toContain('() => __assignType(operators_1.map, __Ωmap)');
 });
 
-test('function typeOf', () => {
+test('typeOf function type alias', () => {
     const res = transpileAndRun({
         app: `import { map } from 'rxjs/operators';
             import { typeOf } from '@deepkit/type';
@@ -154,9 +177,13 @@ test('function typeOf', () => {
         `
     }, undefined, {
         inlineExternalImports: {
-            'rxjs/operators': ['map'],
+            'rxjs/operators': ['map', 'OperatorFunction'],
         },
-    });
+    }) as TypeFunction;
+
+    expect(res.return.kind).not.toBe(ReflectionKind.never);
+
+    console.log(res.return);
 
     expect(res).toMatchInlineSnapshot(`
         {
@@ -273,6 +300,8 @@ test('class type var', () => {
         },
     });
 
+    console.log(res.app);
+
     expect(res.app).toContain('const __ΩObservable = [');
     expect(res.app).toContain('() => __assignType(rxjs_1.Observable, __ΩObservable)');
 })
@@ -281,23 +310,20 @@ test('class typeOf', () => {
         app: `import { Observable } from 'rxjs';
             import { typeOf } from '@deepkit/type';
 
-            typeOf<Observable>();
+            typeOf<Observable<unknown>>();
         `
     }, undefined, {
         inlineExternalImports: {
-            'rxjs': ['Subject'],
+            'rxjs': ['Observable'],
         },
-    });
+    }) as TypeClass;
 
-    expect(res).toMatchInlineSnapshot(`
-        {
-          "classType": [Function],
-          "kind": 20,
-          "typeArguments": [],
-          "typeName": undefined,
-          "types": [],
-        }
-    `);
+    expect(res.implements![0]).toMatchObject({
+        kind: 30,
+        typeName: 'Subscribable',
+    });
+    expect(res.typeArguments).toHaveLength(1);
+    expect(res.types).toHaveLength(1);
 })
 
 test('only a single type is transformed', () => {

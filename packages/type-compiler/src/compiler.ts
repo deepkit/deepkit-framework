@@ -13,6 +13,7 @@ import type {
     ArrayTypeNode,
     ArrowFunction,
     Bundle,
+    CallExpression,
     CallSignatureDeclaration,
     ClassDeclaration,
     ClassElement,
@@ -85,6 +86,7 @@ import {
     isNodeWithLocals,
     NodeConverter,
     PackExpression,
+    SerializedEntityNameAsExpression,
     serializeEntityNameAsExpression,
 } from './reflection-ast.js';
 import { SourceFile } from './ts-types.js';
@@ -511,23 +513,6 @@ export interface ReflectionTransformerConfig {
     deepkitTypeCompilerOptions?: DeepkitTypeCompilerOptions;
 }
 
-export interface EmbedDeclaration {
-    name: EntityName,
-    sourceFile: SourceFile,
-    assignType?: boolean;
-}
-
-export class EmbedDeclarations extends Map<Node, EmbedDeclaration> {
-    getByName(name: string): EmbedDeclaration | null {
-        for (const [,d] of this) {
-            if (getEntityName(d.name) === name) {
-                return d;
-            }
-        }
-        return null;
-    }
-}
-
 /**
  * Read the TypeScript AST and generate pack struct (instructions + pre-defined stack).
  *
@@ -564,7 +549,7 @@ export class ReflectionTransformer implements CustomTransformer {
      * Types added to this map will get a type program at the top root level of the program.
      * This is for imported types, which need to be inlined into the current file, as we do not emit type imports (TS will omit them).
      */
-    public embedDeclarations = new EmbedDeclarations();
+    protected embedDeclarations = new Map<Node, { name: EntityName, sourceFile: SourceFile }>();
 
     /**
      * When a node was embedded or compiled (from the maps above), we store it here to know to not add it again.
@@ -594,7 +579,7 @@ export class ReflectionTransformer implements CustomTransformer {
         protected context: TransformationContext,
     ) {
         this.f = context.factory;
-        this.nodeConverter = new NodeConverter(this.f, this);
+        this.nodeConverter = new NodeConverter(this.f);
         //it is important to not have undefined values like {paths: undefined} because it would override the read tsconfig.json
         this.compilerOptions = filterUndefined(context.getCompilerOptions());
         this.host = createCompilerHost(this.compilerOptions);
@@ -1819,14 +1804,13 @@ export class ReflectionTransformer implements CustomTransformer {
                 //         this.addImports.push({ identifier: narrowed.exprName, from: originImportStatement.moduleSpecifier });
                 //     }
                 // }
+                let expression: SerializedEntityNameAsExpression | CallExpression = serializeEntityNameAsExpression(this.f, narrowed.exprName);
                 if (isIdentifier(narrowed.exprName)) {
                     const resolved = this.resolveDeclaration(narrowed.exprName);
                     if (resolved && findSourceFile(resolved.declaration) !== this.sourceFile && resolved.importDeclaration) {
-                        this.resolveImport(resolved.declaration, resolved.importDeclaration, narrowed.exprName, program);
+                        expression = this.resolveImport(resolved.declaration, resolved.importDeclaration, narrowed.exprName, expression, program);
                     }
                 }
-
-                const expression = serializeEntityNameAsExpression(this.f, narrowed.exprName);
                 program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, expression)));
                 break;
             }
@@ -1935,11 +1919,12 @@ export class ReflectionTransformer implements CustomTransformer {
      * This is a custom resolver based on populated `locals` from the binder. It uses a custom resolution algorithm since
      * we have no access to the binder/TypeChecker directly and instantiating a TypeChecker per file/transformer is incredible slow.
      */
-    protected resolveDeclaration(typeName: EntityName): { declaration: Node, importDeclaration?: ImportDeclaration, typeOnly?: boolean } | void {
-        let current: Node = typeName.parent;
+    protected resolveDeclaration(typeName: EntityName): { declaration: Node, importDeclaration?: ImportDeclaration, sourceFile: SourceFile, typeOnly: boolean } | void {
+        let current: Node = typeName.parent
         if (typeName.kind === SyntaxKind.QualifiedName) return; //namespace access not supported yet, e.g. type a = Namespace.X;
 
         let declaration: Node | undefined = undefined;
+        let sourceFile: SourceFile = this.sourceFile;
 
         while (current) {
             if (isNodeWithLocals(current) && current.locals) {
@@ -1981,11 +1966,13 @@ export class ReflectionTransformer implements CustomTransformer {
             importDeclaration = declaration.parent;
         }
 
-        // TODO: check if it's a built type here?
-
         if (importDeclaration) {
             if (importDeclaration.importClause && importDeclaration.importClause.isTypeOnly) typeOnly = true;
             declaration = this.resolveImportSpecifier(typeName.escapedText, importDeclaration, this.sourceFile);
+            if (!declaration) {
+                sourceFile = importDeclaration.getSourceFile();
+                declaration = this.resolveImportSpecifier(typeName.escapedText, importDeclaration, sourceFile);
+            }
         }
 
         if (declaration && declaration.kind === SyntaxKind.TypeParameter && declaration.parent.kind === SyntaxKind.TypeAliasDeclaration) {
@@ -1995,7 +1982,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
         if (!declaration) return;
 
-        return { declaration, importDeclaration, typeOnly };
+        return { declaration, importDeclaration, typeOnly, sourceFile };
     }
 
     // protected resolveType(node: TypeNode): Declaration | Node {
@@ -2031,16 +2018,10 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.f.createIdentifier('__Ω' + joinQualifiedName(typeName));
     }
 
-    protected resolveImport(declaration: Node, importDeclaration: ImportDeclaration, typeName: Identifier, program: CompilerProgram) {
-        if (isVariableDeclaration(declaration)) {
-            if (declaration.type) {
-                declaration = declaration.type;
-            } else if (declaration.initializer) {
-                declaration = declaration.initializer;
-            }
-        }
-
+    protected resolveImport<T extends Expression>(declaration: Node, importDeclaration: ImportDeclaration, typeName: Identifier, expression: T, program: CompilerProgram): CallExpression | T {
         ensureImportIsEmitted(importDeclaration, typeName);
+
+        if (isTypeAliasDeclaration(declaration)) return expression;
 
         // check if the referenced declaration has reflection disabled
         const declarationReflection = this.findReflectionConfig(declaration, program);
@@ -2055,19 +2036,33 @@ export class ReflectionTransformer implements CustomTransformer {
                 this.embedDeclarations.set(declaration, {
                     name: typeName,
                     sourceFile: declarationSourceFile,
-                    assignType: true,
                 });
+                // if (!isTypeAliasDeclaration(declaration)) {
+                    return this.wrapWithAssignType(expression, runtimeTypeName);
+                // }
             }
         }
+
+        return expression;
     }
 
-    // TODO: what to do when the external type depends on another external type? should that be automatically resolved, or should the user explicitly specify that as well?
     protected shouldInlineExternalImport(importDeclaration: ImportDeclaration, entityName: EntityName, config: ReflectionConfig): boolean {
-        if (!ts.isStringLiteral(importDeclaration.moduleSpecifier)) return false;
+        if (!isStringLiteral(importDeclaration.moduleSpecifier)) return false;
         if (config.options.inlineExternalImports === true) return true;
-        const externalImport = config.options.inlineExternalImports?.[importDeclaration.moduleSpecifier.text];
+        const resolvedModule = this.resolver.resolveImpl(importDeclaration.moduleSpecifier.text, importDeclaration.getSourceFile().fileName);
+        if (!resolvedModule) {
+            throw new Error('Cannot resolve module');
+        }
+        if (!resolvedModule.packageId) {
+            throw new Error('Missing package id for resolved module');
+        }
+        if (!resolvedModule.isExternalLibraryImport) {
+            throw new Error('Resolved module is not an external library import');
+        }
+        const externalImport = config.options.inlineExternalImports?.[resolvedModule.packageId.name];
         if (!externalImport) return false;
         if (externalImport === true) return true;
+        if (!importDeclaration.moduleSpecifier.text.startsWith(resolvedModule.packageId.name)) return true;
         const typeName = getEntityName(entityName);
         return externalImport.includes(typeName);
     }
@@ -2169,14 +2164,15 @@ export class ReflectionTransformer implements CustomTransformer {
             }
 
             if (isModuleDeclaration(declaration) && resolved.importDeclaration) {
+                let expression: SerializedEntityNameAsExpression | CallExpression = serializeEntityNameAsExpression(this.f, typeName);
                 if (isIdentifier(typeName)) {
-                    this.resolveImport(declaration, resolved.importDeclaration, typeName, program);
+                    expression = this.resolveImport(declaration, resolved.importDeclaration, typeName, expression, program)
                 }
 
                 //we can not infer from module declaration, so do `typeof T` in runtime
                 program.pushOp(
                     ReflectionOp.typeof,
-                    program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, serializeEntityNameAsExpression(this.f, typeName)))
+                    program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, expression))
                 );
             } else if (isTypeAliasDeclaration(declaration) || isInterfaceDeclaration(declaration) || isEnumDeclaration(declaration)) {
                 //Set/Map are interface declarations
@@ -2232,7 +2228,6 @@ export class ReflectionTransformer implements CustomTransformer {
                     }
 
                     if (isGlobal) {
-                        //we don't embed non-global imported declarations anymore, only globals
                         this.embedDeclarations.set(declaration, {
                             name: typeName,
                             sourceFile: declarationSourceFile
@@ -2252,7 +2247,7 @@ export class ReflectionTransformer implements CustomTransformer {
                                 return;
                             }
 
-                            const found = this.resolver.resolve(this.sourceFile, resolved.importDeclaration);
+                            const found = this.resolver.resolve(resolved.sourceFile, resolved.importDeclaration);
                             if (!found) {
                                 debug('module not found');
                                 program.pushOp(ReflectionOp.any);
@@ -2326,8 +2321,9 @@ export class ReflectionTransformer implements CustomTransformer {
                     return;
                 }
 
+                let body: Identifier | PropertyAccessExpression | CallExpression = isIdentifier(typeName) ? typeName : this.createAccessorForEntityName(typeName);
                 if (resolved.importDeclaration && isIdentifier(typeName)) {
-                    this.resolveImport(resolved.declaration, resolved.importDeclaration, typeName, program);
+                    body = this.resolveImport(resolved.declaration, resolved.importDeclaration, typeName, body, program);
                 }
                 program.pushFrame();
                 if (type.typeArguments) {
@@ -2335,7 +2331,6 @@ export class ReflectionTransformer implements CustomTransformer {
                         this.extractPackStructOfType(typeArgument, program);
                     }
                 }
-                const body = isIdentifier(typeName) ? typeName : this.createAccessorForEntityName(typeName);
                 const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, body));
                 program.pushOp(isClassDeclaration(declaration) ? ReflectionOp.classReference : ReflectionOp.functionReference, index);
                 program.popFrameImplicit();

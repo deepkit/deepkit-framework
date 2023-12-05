@@ -1,4 +1,13 @@
-import type { CompilerHost, CompilerOptions, ExportDeclaration, Expression, ImportDeclaration, ResolvedModule, SourceFile, StringLiteral, } from 'typescript';
+import type {
+    CompilerHost,
+    CompilerOptions,
+    ExportDeclaration,
+    Expression,
+    ImportDeclaration,
+    ResolvedModuleFull,
+    SourceFile,
+    StringLiteral,
+} from 'typescript';
 import ts from 'typescript';
 import * as micromatch from 'micromatch';
 import { isAbsolute } from 'path';
@@ -61,12 +70,12 @@ export class Resolver {
         return this.resolveSourceFile(from.fileName, (moduleSpecifier as StringLiteral).text);
     }
 
-    resolveImpl(modulePath: string, fromPath: string): ResolvedModule | undefined {
+    resolveImpl(modulePath: string, fromPath: string): ResolvedModuleFull | undefined {
         if (this.host.resolveModuleNames !== undefined) {
-            return this.host.resolveModuleNames([modulePath], fromPath, /*reusedNames*/ undefined, /*redirectedReference*/ undefined, this.compilerOptions)[0];
+            return this.host.resolveModuleNames([modulePath], fromPath, /*reusedNames*/ undefined, /*redirectedReference*/ undefined, this.compilerOptions)[0] as ResolvedModuleFull | undefined;
         }
         const result = resolveModuleName(modulePath, fromPath, this.compilerOptions, this.host);
-        return result.resolvedModule;
+        return result.resolvedModule as ResolvedModuleFull;
     }
 
     /**
