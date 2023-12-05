@@ -16,7 +16,7 @@ import {
     UUID
 } from '@deepkit/type';
 import { getClassName } from '@deepkit/core';
-import { serializeWithoutOptimiser } from '../src/bson-serializer.js';
+import { serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
 
 const { deserialize, serialize } = bson;
 
@@ -728,7 +728,7 @@ test('any', () => {
         ]
     });
 
-    const bson = serializeWithoutOptimiser(data);
+    const bson = serializeBSONWithoutOptimiser(data);
     const deserializer = getBSONDeserializer(undefined, type);
     const back = deserializer(bson);
     console.log('back', back);
@@ -740,7 +740,7 @@ test('circular', () => {
         child?: Model;
     }
 
-    const bson = serializeWithoutOptimiser({ items: [{ id: 0, child: { id: 2 } }] } as Response);
+    const bson = serializeBSONWithoutOptimiser({ items: [{ id: 0, child: { id: 2 } }] } as Response);
 
     interface Response {
         items: Model[];
@@ -757,7 +757,7 @@ test('additional are ignored', () => {
         setVersion: 1,
         ismaster: true,
     };
-    const bson = serializeWithoutOptimiser(data);
+    const bson = serializeBSONWithoutOptimiser(data);
 
     interface IsMasterResponse  {
         ismaster: boolean;
