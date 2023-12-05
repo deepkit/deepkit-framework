@@ -169,7 +169,7 @@ function isGroupAllowed(options: SerializationOptions, groupNames: string[]): bo
 }
 
 
-export type SerializeFunction = (data: any, state?: SerializationOptions) => any;
+export type SerializeFunction<T = any, R = any> = (data: T, state?: SerializationOptions) => R;
 
 export function getPartialType(type: TypeClass | TypeObjectLiteral) {
     const jitContainer = getTypeJitContainer(type);

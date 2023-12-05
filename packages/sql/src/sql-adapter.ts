@@ -565,7 +565,7 @@ export class RawQuery<T> implements FindQuery<T> {
         const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
 
         try {
-            const caster = castFunction(undefined, undefined, undefined, this.type);
+            const caster = castFunction(undefined, undefined, this.type);
             const res = await connection.execAndReturnAll(sql.sql, sql.params);
             return (isArray(res) ? [...res] : []).map(v => caster(v)) as T[];
         } finally {
