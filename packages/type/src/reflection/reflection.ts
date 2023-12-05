@@ -496,6 +496,14 @@ export class ReflectionProperty {
 
     data: { [name: string]: any } = {};
 
+    /**
+     * The type of the property, not the property itself.
+     *
+     * Note: If the property is optional via `property?: T`, this information
+     * is not available here. It's on `property`.
+     * Use `isOptional()` instead, which handles this case plus the case
+     * where optionality is given via union of T and undefined.
+     */
     type: Type;
 
     symbol: symbol;
@@ -585,6 +593,10 @@ export class ReflectionProperty {
 
     getGroups(): string[] {
         return groupAnnotation.getAnnotations(this.getType());
+    }
+
+    isInGroup(...group: string[]): boolean {
+        return this.getGroups().some(v => group.includes(v));
     }
 
     getExcluded(): string[] {
@@ -1263,6 +1275,10 @@ export class ReflectionClass<T> {
 
     getProperties(): ReflectionProperty[] {
         return this.properties;
+    }
+
+    getPropertiesInGroup(...group: string[]): ReflectionProperty[] {
+        return this.properties.filter(v => v.isInGroup(...group));
     }
 
     getMethodNames(): (string | number | symbol)[] {

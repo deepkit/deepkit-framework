@@ -20,16 +20,21 @@ export interface ProviderBase {
 }
 
 /** @reflection never */
+export interface ProviderScope {
+    scope?: 'module' | 'rpc' | 'http' | 'cli' | string;
+}
+
+/** @reflection never */
 export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | AbstractClassType<T> | Type | TagProvider<T> | Function | T;
 
 export function provide<T>(
     provider:
-        | (ProviderBase &
+        | (ProviderBase & ProviderScope &
         (
             | { useValue: T }
             | { useClass: ClassType }
             | { useExisting: any }
-            | { useFactory: (...args: any[]) => T }
+            | { useFactory: (...args: any[]) => T | undefined }
             ))
         | ClassType
         | ((...args: any[]) => T)
@@ -86,7 +91,7 @@ export interface FactoryProvider<T> extends ProviderBase {
     /**
      * A function to invoke to create a value for this `token`.
      */
-    useFactory: (...args: any[]) => T;
+    useFactory: (...args: any[]) => T | undefined;
 }
 
 /** @reflection never */
@@ -152,11 +157,6 @@ export class Tag<T, TP extends TagProvider<T> = TagProvider<T>> {
 
         return t.createTagProvider(provider as NormalizedProvider<T>) as TP;
     }
-}
-
-/** @reflection never */
-export interface ProviderScope {
-    scope?: 'module' | 'rpc' | 'http' | 'cli' | string;
 }
 
 /** @reflection never */

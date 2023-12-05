@@ -1,6 +1,15 @@
 import { getClassTypeFromInstance } from '@deepkit/core';
 import { ReceiveType, resolveReceiveType } from './reflection/reflection.js';
-import { getPartialSerializeFunction, getSerializeFunction, NamingStrategy, SerializationOptions, serializer, Serializer, TemplateRegistry } from './serializer.js';
+import {
+    getPartialSerializeFunction,
+    getSerializeFunction,
+    NamingStrategy,
+    SerializationOptions,
+    SerializeFunction,
+    serializer,
+    Serializer,
+    TemplateRegistry
+} from './serializer.js';
 import { JSONPartial, JSONSingle } from './utils.js';
 import { typeInfer } from './reflection/processor.js';
 import { assert } from './typeguard.js';
@@ -22,17 +31,19 @@ export function cast<T>(data: JSONPartial<T> | unknown, options?: SerializationO
 }
 
 /**
- * Casts/coerces a given data structure to the target data type.
- *
- * Same as deserialize().
+ * Same as cast but returns a ready to use function. Used to improve performance.
  */
-export function castFunction<T>(options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): (data: JSONPartial<T> | unknown) => T {
+export function castFunction<T>(serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): (data: JSONPartial<T> | unknown, options?: SerializationOptions) => T {
     const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy);
-    return (data: JSONPartial<T> | unknown) => fn(data, options);
+    return (data: JSONPartial<T> | unknown, options?: SerializationOptions) => {
+        const item = fn(data, options);
+        assert(item, undefined, type);
+        return item;
+    }
 }
 
 /**
- * Deserialize given data structure from JSON data objects to JavaScript objects.
+ * Deserialize given data structure from JSON data objects to JavaScript objects, without running any validators.
  *
  * Types that are already correct will be used as-is.
  *
@@ -44,7 +55,7 @@ export function castFunction<T>(options?: SerializationOptions, serializerToUse:
  * const data = deserialize<Data>({created: '2009-02-13T23:31:30.123Z'});
  * //data is {created: Date(2009-02-13T23:31:30.123Z)}
  *
- * @throws ValidationError when serialization or validation fails.
+ * @throws ValidationError when deserialization fails.
  * ```
  */
 export function deserialize<T>(data: JSONPartial<T> | unknown, options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): T {
@@ -55,7 +66,7 @@ export function deserialize<T>(data: JSONPartial<T> | unknown, options?: Seriali
 /**
  * Same as deserialize but returns a ready to use function. Used to improve performance.
  */
-export function deserializeFunction<T>(options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): (data: JSONPartial<T> | unknown) => T {
+export function deserializeFunction<T>(serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): SerializeFunction<any, T> {
     return getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy);
 }
 
@@ -175,7 +186,7 @@ export function serialize<T>(data: T, options?: SerializationOptions, serializer
 /**
  * Same as serialize but returns a ready to use function. Used to improve performance.
  */
-export function serializeFunction<T>(options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): (data: T) => any {
+export function serializeFunction<T>(serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): SerializeFunction<T> {
     return getSerializeFunction(resolveReceiveType(type), serializerToUse.serializeRegistry, namingStrategy);
 }
 
@@ -192,6 +203,8 @@ export function cloneClass<T>(target: T, options?: SerializationOptions): T {
 
 /**
  * Tries to deserialize given data as T, and throws an error if it's not possible or validation after conversion fails.
+ *
+ * @deprecated use cast() instead
  *
  * @throws ValidationError when serialization or validation fails.
  */

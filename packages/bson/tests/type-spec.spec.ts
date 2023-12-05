@@ -26,7 +26,7 @@ import {
 import { expect, test } from '@jest/globals';
 import { deserializeBSON } from '../src/bson-deserializer.js';
 import { deserializeBSONWithoutOptimiser } from '../src/bson-parser.js';
-import { serializeBSON, serializeWithoutOptimiser } from '../src/bson-serializer.js';
+import { serializeBSON, serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
 
 (BigInt.prototype as any).toJSON = function () {
     return this.toString();
@@ -95,11 +95,11 @@ export function deserializeFromJson<T>(value: any, type?: ReceiveType<T>): T {
         });
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
-        const bson = serializeWithoutOptimiser({ v: value });
+        const bson = serializeBSONWithoutOptimiser({ v: value });
         const res = (deserializeBSON<T>(bson, 0, undefined, t) as any).v;
         return res;
     } else {
-        const bson = serializeWithoutOptimiser(value);
+        const bson = serializeBSONWithoutOptimiser(value);
         const res = deserializeBSON<T>(bson, 0, undefined, type);
         return res;
     }

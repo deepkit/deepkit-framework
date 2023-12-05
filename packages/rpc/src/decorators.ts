@@ -19,16 +19,19 @@ import {
 } from '@deepkit/type';
 import { ControllerDefinition } from './model.js';
 
-class RpcController {
+export class RpcController {
     // Defaults to the name of the class
     name: string = '';
+
+    classType?: ClassType;
 
     definition?: ControllerDefinition<any>;
 
     actions = new Map<string, RpcAction>();
 
     getPath(): string {
-        return this.definition ? this.definition.path : this.name;
+        const name = this.definition ? this.definition.path : this.name;
+        return name || (this.classType ? reflect(this.classType).typeName || this.classType.name : '');
     }
 }
 
@@ -59,7 +62,7 @@ class RpcClass {
     }
 
     onDecorator(classType: ClassType) {
-        this.t.name ||= reflect(classType).typeName || classType.name;
+        this.t.classType = classType;
     }
 }
 

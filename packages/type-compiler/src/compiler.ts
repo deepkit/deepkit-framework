@@ -90,9 +90,8 @@ import { existsSync, readFileSync } from 'fs';
 import { dirname, isAbsolute, join, resolve } from 'path';
 import stripJsonComments from 'strip-json-comments';
 import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spec';
-import { Resolver } from './resolver.js';
+import { patternMatch, ReflectionMode, reflectionModeMatcher, reflectionModes, Resolver } from './resolver.js';
 import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
-import * as micromatch from 'micromatch';
 
 // don't use from @deepkit/core since we don't want to have a dependency to @deepkit/core
 export function isObject(obj: any): obj is { [key: string]: any } {
@@ -186,7 +185,6 @@ const serverEnv = 'undefined' !== typeof process;
  * It can't be more ops than this given number
  */
 export const packSize: number = 2 ** packSizeByte; //64
-const reflectionModes = ['always', 'default', 'never'] as const;
 
 interface ReflectionOptions {
     /**
@@ -695,7 +693,7 @@ export class ReflectionTransformer implements CustomTransformer {
             }
         }
 
-        debug(`Transform file ${sourceFile.fileName} via config ${this.compilerOptions.configFilePath || 'none'}, reflection=${this.reflectionMode}.`);
+        debug(`Transform file ${sourceFile.fileName} via config ${this.compilerOptions.configFilePath || 'none'}, reflection=${this.reflectionMode} (${this.getModuleType()}).`);
 
         if (this.reflectionMode === 'never') {
             return sourceFile;
@@ -992,15 +990,15 @@ export class ReflectionTransformer implements CustomTransformer {
         this.sourceFile = visitNode(this.sourceFile, compileDeclarations);
 
         if (this.addImports.length) {
-            const compilerOptions = this.compilerOptions;
             const handledIdentifier: string[] = [];
             for (const imp of this.addImports) {
                 if (handledIdentifier.includes(getIdentifierName(imp.identifier))) continue;
                 handledIdentifier.push(getIdentifierName(imp.identifier));
-                if (compilerOptions.module === ModuleKind.CommonJS) {
+                if (this.getModuleType() === 'cjs') {
                     //var {identifier} = require('./bar')
+                    const test = this.f.createIdentifier(getIdentifierName(imp.identifier));
                     const variable = this.f.createVariableStatement(undefined, this.f.createVariableDeclarationList([this.f.createVariableDeclaration(
-                        this.f.createObjectBindingPattern([this.f.createBindingElement(undefined, undefined, imp.identifier)]),
+                        this.f.createObjectBindingPattern([this.f.createBindingElement(undefined, undefined, test)]),
                         undefined, undefined,
                         this.f.createCallExpression(this.f.createIdentifier('require'), undefined, [imp.from])
                     )], NodeFlags.Const));
@@ -1015,7 +1013,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     //import {identifier} from './bar.js'
                     // import { identifier as identifier } is used to avoid automatic elision of imports (in angular builds for example)
                     // that's probably a bit unstable.
-                    const specifier = this.f.createImportSpecifier(false, imp.identifier, imp.identifier);
+                    const specifier = this.f.createImportSpecifier(false, undefined, imp.identifier);
                     const namedImports = this.f.createNamedImports([specifier]);
                     const importStatement = this.f.createImportDeclaration(undefined,
                         this.f.createImportClause(false, undefined, namedImports), imp.from
@@ -1109,6 +1107,10 @@ export class ReflectionTransformer implements CustomTransformer {
         // console.log('transform sourceFile', this.sourceFile.fileName);
         // console.log(createPrinter().printNode(EmitHint.SourceFile, this.sourceFile, this.sourceFile));
         return this.sourceFile;
+    }
+
+    protected getModuleType(): 'cjs' | 'esm' {
+        return this.compilerOptions.module === ModuleKind.CommonJS ? 'cjs' : 'esm';
     }
 
     protected injectResetΩ<T extends FunctionDeclaration | FunctionExpression | MethodDeclaration | ConstructorDeclaration>(node: T): T {
@@ -1997,12 +1999,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
     protected isExcluded(filePath: string): boolean {
         if (!this.currentReflectionConfig.options.exclude) return false;
-
-        const excluded = micromatch.contains(filePath, this.currentReflectionConfig.options.exclude, {
-            basename: true,
-            cwd: this.currentReflectionConfig.baseDir
-        });
-        return excluded;
+        return patternMatch(filePath, this.currentReflectionConfig.options.exclude, this.currentReflectionConfig.baseDir);
     }
 
     protected extractPackStructOfTypeReference(type: TypeReferenceNode | ExpressionWithTypeArguments, program: CompilerProgram): void {
@@ -2144,11 +2141,14 @@ export class ReflectionTransformer implements CustomTransformer {
                     return;
                 }
 
+                const runtimeTypeName = this.getDeclarationVariableName(typeName);
+
                 //to break recursion, we track which declaration has already been compiled
                 if (!this.compiledDeclarations.has(declaration) && !this.compileDeclarations.has(declaration)) {
                     const declarationSourceFile = findSourceFile(declaration) || this.sourceFile;
                     const isGlobal = resolved.importDeclaration === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName;
                     const isFromImport = resolved.importDeclaration !== undefined;
+
 
                     if (this.isExcluded(declarationSourceFile.fileName)) {
                         program.pushOp(ReflectionOp.any);
@@ -2185,7 +2185,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
                             // check if this is a viable option:
                             // //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
-                            // const typeVar = this.getDeclarationVariableName(typeName);
+                            // const typeVar = runtimeRypeName;
                             // //check if typeVar is exported in referenced file
                             // const builtType = isNodeWithLocals(found) && found.locals && found.locals.has(typeVar.escapedText);
                             // if (!builtType) {
@@ -2201,7 +2201,7 @@ export class ReflectionTransformer implements CustomTransformer {
                             }
 
                             // this.addImports.push({ identifier: typeVar, from: resolved.importDeclaration.moduleSpecifier });
-                            this.addImports.push({ identifier: this.getDeclarationVariableName(typeName), from: resolved.importDeclaration.moduleSpecifier });
+                            this.addImports.push({ identifier: runtimeTypeName, from: resolved.importDeclaration.moduleSpecifier });
                         }
                     } else {
                         //it's a reference type inside the same file. Make sure its type is reflected
@@ -2219,7 +2219,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
 
                 const index = program.pushStack(
-                    program.forNode === declaration ? 0 : this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.getDeclarationVariableName(typeName))
+                    program.forNode === declaration ? 0 : this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, runtimeTypeName)
                 );
                 if (type.typeArguments) {
                     for (const argument of type.typeArguments) {
@@ -2647,18 +2647,8 @@ export class ReflectionTransformer implements CustomTransformer {
         );
     }
 
-    protected parseReflectionMode(mode: typeof reflectionModes[number] | '' | boolean | string | string[] | undefined, configPathDir: string): typeof reflectionModes[number] {
-        if (Array.isArray(mode)) {
-            if (!configPathDir) return 'never';
-            const matches = micromatch.contains(this.sourceFile.fileName, mode, {
-                cwd: configPathDir
-            });
-
-            return matches ? 'default' : 'never';
-        }
-        if ('boolean' === typeof mode) return mode ? 'default' : 'never';
-        if (mode === 'default' || mode === 'always') return mode;
-        return 'never';
+    protected parseReflectionMode(mode: ReflectionMode, configPathDir: string): typeof reflectionModes[number] {
+        return reflectionModeMatcher(this.sourceFile.fileName, mode, configPathDir);
     }
 
     protected resolvedTsConfig: { [path: string]: { data: Record<string, any>, exists: boolean } } = {};
