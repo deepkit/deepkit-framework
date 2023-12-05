@@ -1493,7 +1493,7 @@ export function createBSONSizer<T>(type?: ReceiveType<T>, serializer: BSONBinary
     return compiler.build(code, 'data', 'state');
 }
 
-export function serializeWithoutOptimiser(data: any): Uint8Array {
+export function serializeBSONWithoutOptimiser(data: any): Uint8Array {
     const size = getValueSize(data);
     const writer = new Writer(createBuffer(size));
     writer.write(data);
