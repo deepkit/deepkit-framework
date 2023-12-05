@@ -124,9 +124,12 @@ export interface brokerBusResponseHandleMessage {
 }
 
 export interface BrokerQueuePublish {
-    c: string;
+    process: QueueMessageProcessing;
+    deduplicationInterval?: number;
+    hash?: string | number;
     delay?: number;
     priority?: number;
+    c: string;
     v: Uint8Array;
 }
 
@@ -194,9 +197,19 @@ export enum QueueMessageState {
 export interface QueueMessage {
     id: number;
     state: QueueMessageState;
+    hash?: string | number;
+    process: QueueMessageProcessing;
+    // absolute time
+    ttl?: number;
     delay: number;
     priority?: number;
     lastError?: string;
     tries: number;
     v: Uint8Array;
+}
+
+export enum QueueMessageProcessing {
+    exactlyOnce,
+    atLeastOnce,
+    // atMostOnce,
 }

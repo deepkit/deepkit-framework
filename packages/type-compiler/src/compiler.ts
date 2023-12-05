@@ -1899,11 +1899,11 @@ export class ReflectionTransformer implements CustomTransformer {
 
         //todo also read compiler options "types" + typeRoot
 
-        //currently knownLibFilesForCompilerOptions from @typescript/vfs doesn't return correct lib files for ES2022,
-        //so we switch here to es2021 if bigger than es2021.
+        //currently knownLibFilesForCompilerOptions from @typescript/vfs doesn't return correct lib files for esnext,
+        //so we switch here to es2022 if bigger than es2022.
         const options = { ...this.compilerOptions };
-        if (options.target && (options.target > ScriptTarget.ES2021 && options.target < ScriptTarget.ESNext)) {
-            options.target = ScriptTarget.ES2021;
+        if (options.target && (options.target === ScriptTarget.ESNext)) {
+            options.target = ScriptTarget.ES2022;
         }
         const libs = knownLibFilesForCompilerOptions(options, ts);
 

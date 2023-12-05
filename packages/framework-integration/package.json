@@ -49,6 +49,7 @@
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
     "moduleNameMapper": {
+      "./xxHash32.js": "./xxHash32.cjs",
       "(.+)\\.js": "$1"
     },
     "resolver": "../../jest-resolver.js",

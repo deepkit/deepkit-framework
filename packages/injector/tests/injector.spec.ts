@@ -9,7 +9,7 @@ import {
     PartialFactory,
 } from '../src/injector.js';
 import { InjectorModule } from '../src/module.js';
-import { ReflectionClass, ReflectionKind, ReflectionParameter, ReflectionProperty } from '@deepkit/type';
+import { ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { Inject } from '../src/types.js';
 import { provide } from '../src/provider.js';
 
@@ -1024,4 +1024,20 @@ test('PartialFactory', () => {
         expect(a.b).toBeInstanceOf(B);
         expect(a.num).toBe(5);
     }
+});
+
+test('isProvided supports receive type', () => {
+    interface A {
+        b: string;
+    }
+    const providers = [provide<A>({ useValue: { b: 'a' } })];
+    const module = new InjectorModule(providers)
+    expect(module.isProvided<A>()).toBe(true);
+});
+
+test('isProvided supports token', () => {
+    class A {}
+    const providers = [A];
+    const module = new InjectorModule(providers)
+    expect(module.isProvided(A)).toBe(true);
 });

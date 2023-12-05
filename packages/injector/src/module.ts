@@ -1,6 +1,6 @@
 import { NormalizedProvider, ProviderWithScope, TagProvider, Token } from './provider.js';
 import { arrayRemoveItem, ClassType, getClassName, isClass, isPlainObject, isPrototypeOfBase } from '@deepkit/core';
-import { BuildContext, Injector, SetupProviderRegistry } from './injector.js';
+import { BuildContext, getContainerToken, Injector, resolveToken, SetupProviderRegistry } from './injector.js';
 import {
     hasTypeInformation,
     isType,
@@ -8,7 +8,7 @@ import {
     reflect,
     ReflectionKind,
     reflectOrUndefined,
-    resolveReceiveType, stringifyType,
+    resolveReceiveType,
     Type,
     TypeClass,
     typeInfer,
@@ -226,8 +226,9 @@ export function findModuleForConfig(config: ClassType, modules: InjectorModule[]
 
 export type ExportType = Token | InjectorModule;
 
-export function isProvided(providers: ProviderWithScope[], token: any): boolean {
-    return providers.find(v => !(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false) !== undefined;
+
+export function isProvided<T>(providers: ProviderWithScope[], token: Token<T>): boolean {
+    return providers.some(v => getContainerToken(resolveToken(v)) === getContainerToken(token));
 }
 
 export function getScope(provider: ProviderWithScope): string {
@@ -342,8 +343,11 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         return this.exports.includes(token);
     }
 
-    isProvided(classType: ClassType): boolean {
-        return isProvided(this.getProviders(), classType);
+    isProvided<T>(token?: Token<T>, type?: ReceiveType<T>): boolean {
+        if (!token) {
+            token = resolveReceiveType(type);
+        }
+        return isProvided<T>(this.getProviders(), token);
     }
 
     addProvider(...provider: (ProviderWithScope | ProviderWithScope[])[]): this {

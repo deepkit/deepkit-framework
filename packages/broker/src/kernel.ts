@@ -9,7 +9,16 @@
  */
 
 import { arrayRemoveItem, ProcessLock, ProcessLocker } from '@deepkit/core';
-import { createRpcMessage, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnections, RpcMessage, RpcMessageBuilder, RpcMessageRouteType } from '@deepkit/rpc';
+import {
+    createRpcMessage,
+    RpcConnectionWriter,
+    RpcKernel,
+    RpcKernelBaseConnection,
+    RpcKernelConnections,
+    RpcMessage,
+    RpcMessageBuilder,
+    RpcMessageRouteType
+} from '@deepkit/rpc';
 import {
     brokerBusPublish,
     brokerBusResponseHandleMessage,
@@ -33,17 +42,20 @@ import {
     brokerSetCache,
     BrokerType,
     QueueMessage,
+    QueueMessageProcessing,
     QueueMessageState
 } from './model.js';
 import cluster from 'cluster';
 import { closeSync, openSync, renameSync, writeSync } from 'fs';
-import { snapshotState } from './snaptshot.js';
+import { snapshotState } from './snapshot.js';
+import { handleMessageDeduplication } from './utils.js';
 
 export interface Queue {
     currentId: number;
     name: string;
+    deduplicateMessageHashes: Set<string | number>;
     messages: QueueMessage[];
-    consumers: { con: BrokerConnection, handling: QueueMessage[], maxMessagesInParallel: number }[];
+    consumers: { con: BrokerConnection, handling: Map<number, QueueMessage>, maxMessagesInParallel: number }[];
 }
 
 export class BrokerConnection extends RpcKernelBaseConnection {
@@ -158,7 +170,7 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             }
             case BrokerType.QueuePublish: {
                 const body = message.parseBody<BrokerQueuePublish>();
-                this.state.queuePublish(body.c, body.v, body.delay, body.priority);
+                this.state.queuePublish(body);
                 response.ack();
                 break;
             }
@@ -412,7 +424,7 @@ export class BrokerState {
     protected getQueue(queueName: string) {
         let queue = this.queues.get(queueName);
         if (!queue) {
-            queue = { currentId: 0, name: queueName, messages: [], consumers: [] };
+            queue = { currentId: 0, name: queueName, deduplicateMessageHashes: new Set(), messages: [], consumers: [] };
             this.queues.set(queueName, queue);
         }
         return queue;
@@ -420,7 +432,7 @@ export class BrokerState {
 
     public queueSubscribe(queueName: string, connection: BrokerConnection, maxParallel: number) {
         const queue = this.getQueue(queueName);
-        queue.consumers.push({ con: connection, handling: [], maxMessagesInParallel: 1 });
+        queue.consumers.push({ con: connection, handling: new Map(), maxMessagesInParallel: 1 });
     }
 
     public queueUnsubscribe(queueName: string, connection: BrokerConnection) {
@@ -430,11 +442,21 @@ export class BrokerState {
         queue.consumers.splice(index, 1);
     }
 
-    public queuePublish(queueName: string, v: Uint8Array, delay?: number, priority?: number) {
-        const queue = this.getQueue(queueName);
+    public queuePublish(body: BrokerQueuePublish) {
+        const queue = this.getQueue(body.c);
 
-        const m: QueueMessage = { id: queue.currentId++, state: QueueMessageState.pending, tries: 0, v, delay: delay || 0, priority };
-        queue.messages.push(m);
+        const m: QueueMessage = { id: queue.currentId++, process: body.process, hash: body.hash, state: QueueMessageState.pending, tries: 0, v: body.v, delay: body.delay || 0, priority: body.priority };
+
+        if (body.process === QueueMessageProcessing.exactlyOnce) {
+            if (!body.deduplicationInterval) {
+                throw new Error('Missing message deduplication interval');
+            }
+            if (!body.hash) {
+                throw new Error('Missing message hash');
+            }
+            if (handleMessageDeduplication(body.hash, queue, body.v, body.deduplicationInterval)) return;
+            m.ttl = Date.now() + body.deduplicationInterval;
+        }
 
         if (m.delay > Date.now()) {
             // todo: how to handle delay? many timeouts or one timeout?
@@ -442,14 +464,14 @@ export class BrokerState {
         }
 
         for (const consumer of queue.consumers) {
-            if (consumer.handling.length >= consumer.maxMessagesInParallel) continue;
-            consumer.handling.push(m);
+            if (consumer.handling.size >= consumer.maxMessagesInParallel) continue;
+            consumer.handling.set(m.id, m);
             m.tries++;
             m.state = QueueMessageState.inFlight;
             m.lastError = undefined;
             consumer.con.writer.write(createRpcMessage<BrokerQueueResponseHandleMessage>(
                 0, BrokerType.QueueResponseHandleMessage,
-                { c: queueName, v, id: m.id }, RpcMessageRouteType.server
+                { c: body.c, v: body.v, id: m.id }, RpcMessageRouteType.server
             ));
         }
 
@@ -464,10 +486,9 @@ export class BrokerState {
         if (!queue) return;
         const consumer = queue.consumers.find(v => v.con === connection);
         if (!consumer) return;
-        const messageIdx = consumer.handling.findIndex(v => v.id === id);
-        if (messageIdx === -1) return;
-        const message = consumer.handling[messageIdx];
-        consumer.handling.splice(messageIdx, 1);
+        const message = consumer.handling.get(id);
+        if (!message) return;
+        consumer.handling.delete(id);
 
         if (answer.error) {
             message.state = QueueMessageState.error;
