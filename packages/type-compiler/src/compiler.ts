@@ -826,7 +826,6 @@ export class ReflectionTransformer implements CustomTransformer {
             } else if (isArrowFunction(node)) {
                 return this.decorateArrow(node);
             } else if ((isNewExpression(node) || isCallExpression(node)) && node.typeArguments && node.typeArguments.length > 0) {
-
                 if (isCallExpression(node)) {
                     const autoTypeFunctions = ['valuesOf', 'propertiesOf', 'typeOf'];
                     if (isIdentifier(node.expression) && autoTypeFunctions.includes(getIdentifierName(node.expression))) {
@@ -1823,7 +1822,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (isIdentifier(narrowed.exprName)) {
                     const resolved = this.resolveDeclaration(narrowed.exprName);
                     if (resolved && findSourceFile(resolved.declaration) !== this.sourceFile && resolved.importDeclaration) {
-                        ensureImportIsEmitted(resolved.importDeclaration, narrowed.exprName);
+                        this.resolveImport(resolved.declaration, resolved.importDeclaration, narrowed.exprName, program);
                     }
                 }
 
@@ -1982,6 +1981,8 @@ export class ReflectionTransformer implements CustomTransformer {
             importDeclaration = declaration.parent;
         }
 
+        // TODO: check if it's a built type here?
+
         if (importDeclaration) {
             if (importDeclaration.importClause && importDeclaration.importClause.isTypeOnly) typeOnly = true;
             declaration = this.resolveImportSpecifier(typeName.escapedText, importDeclaration, this.sourceFile);
@@ -2030,7 +2031,37 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.f.createIdentifier('__Ω' + joinQualifiedName(typeName));
     }
 
-    // TODO: what to do when the inlineExternalImports type depends on another inlineExternalImports type? should that be automatically resolved, or should the user specify that explicitly as well?
+    protected resolveImport(declaration: Node, importDeclaration: ImportDeclaration, typeName: Identifier, program: CompilerProgram) {
+        if (isVariableDeclaration(declaration)) {
+            if (declaration.type) {
+                declaration = declaration.type;
+            } else if (declaration.initializer) {
+                declaration = declaration.initializer;
+            }
+        }
+
+        ensureImportIsEmitted(importDeclaration, typeName);
+
+        // check if the referenced declaration has reflection disabled
+        const declarationReflection = this.findReflectionConfig(declaration, program);
+        if (declarationReflection.mode !== 'never') {
+            const declarationSourceFile = importDeclaration.getSourceFile();
+
+            const runtimeTypeName = this.getDeclarationVariableName(typeName);
+
+            const builtType = isBuiltType(runtimeTypeName, declarationSourceFile);
+
+            if (!builtType && this.shouldInlineExternalImport(importDeclaration, typeName, declarationReflection)) {
+                this.embedDeclarations.set(declaration, {
+                    name: typeName,
+                    sourceFile: declarationSourceFile,
+                    assignType: true,
+                });
+            }
+        }
+    }
+
+    // TODO: what to do when the external type depends on another external type? should that be automatically resolved, or should the user explicitly specify that as well?
     protected shouldInlineExternalImport(importDeclaration: ImportDeclaration, entityName: EntityName, config: ReflectionConfig): boolean {
         if (!ts.isStringLiteral(importDeclaration.moduleSpecifier)) return false;
         if (config.options.inlineExternalImports === true) return true;
@@ -2138,7 +2169,9 @@ export class ReflectionTransformer implements CustomTransformer {
             }
 
             if (isModuleDeclaration(declaration) && resolved.importDeclaration) {
-                if (isIdentifier(typeName)) ensureImportIsEmitted(resolved.importDeclaration, typeName);
+                if (isIdentifier(typeName)) {
+                    this.resolveImport(declaration, resolved.importDeclaration, typeName, program);
+                }
 
                 //we can not infer from module declaration, so do `typeof T` in runtime
                 program.pushOp(
@@ -2294,25 +2327,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
 
                 if (resolved.importDeclaration && isIdentifier(typeName)) {
-                    ensureImportIsEmitted(resolved.importDeclaration, typeName);
-
-                    // check if the referenced declaration has reflection disabled
-                    const declarationReflection = this.findReflectionConfig(declaration, program);
-                    if (declarationReflection.mode !== 'never') {
-                        const declarationSourceFile = resolved.importDeclaration.getSourceFile();
-                        // //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
-                        const typeVar = this.getDeclarationVariableName(typeName);
-                        // //check if typeVar is exported in referenced file
-                        const builtType = isBuiltType(typeVar, declarationSourceFile);
-
-                        if (!builtType && this.shouldInlineExternalImport(resolved.importDeclaration, typeName, declarationReflection)) {
-                            this.embedDeclarations.set(declaration, {
-                                name: typeName,
-                                sourceFile: declarationSourceFile,
-                                assignType: true,
-                            });
-                        }
-                    }
+                    this.resolveImport(resolved.declaration, resolved.importDeclaration, typeName, program);
                 }
                 program.pushFrame();
                 if (type.typeArguments) {

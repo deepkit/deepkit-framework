@@ -139,11 +139,10 @@ export class NodeConverter {
 
         if (node.pos === -1 && node.end === -1 && node.parent === undefined) {
             if (isArrowFunction(node)) {
-                // if (node.body.pos === -1 && node.body.end === -1 && node.body.parent === undefined) return node;
                 return this.f.createArrowFunction(node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, this.toExpression(node.body as Expression));
             }
-            return node;
         }
+
         switch (node.kind) {
             case SyntaxKind.Identifier:
                 const typeName = getIdentifierName(node as Identifier);
