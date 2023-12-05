@@ -1,9 +1,9 @@
 import { getBSONDeserializer, getBSONSerializer } from '@deepkit/bson';
-import { BrokerState, Queue } from './kernel.js';
-import { QueueMessage, SnapshotEntry, SnapshotEntryType } from './model.js';
+import { BrokerState, Queue} from './kernel.js';
+import { QueueMessage, QueueMessageProcessing, SnapshotEntry, SnapshotEntryType} from './model.js';
+import { handleMessageDeduplication } from './utils.js';
 
 export function snapshotState(state: BrokerState, writer: (v: Uint8Array) => void) {
-
     const serializeEntry = getBSONSerializer<SnapshotEntry>();
     const serializeMessage = getBSONSerializer<QueueMessage>();
 
@@ -49,6 +49,7 @@ export function restoreState(state: BrokerState, reader: (size: number) => Uint8
         const queue: Queue = {
             currentId: entry.currentId,
             name: entry.name,
+            deduplicateMessageHashes: new Set(),
             messages: [],
             consumers: [],
         };
@@ -61,6 +62,16 @@ export function restoreState(state: BrokerState, reader: (size: number) => Uint8
             const message = deserializeMessage(buffer);
             buffer = buffer.subarray(documentSize);
             queue.messages.push(message);
+            if (message.process === QueueMessageProcessing.exactlyOnce) {
+                if (!message.hash) {
+                    throw new Error('Missing message hash');
+                }
+                if (!message.ttl) {
+                    throw new Error('Missing message ttl');
+                }
+                const ttl = message.ttl - Date.now();
+                handleMessageDeduplication(message.hash, queue, message.v, ttl);
+            }
         }
     }
 

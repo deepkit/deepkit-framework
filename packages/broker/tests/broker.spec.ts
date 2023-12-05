@@ -1,8 +1,9 @@
 import { afterEach, expect, jest, test } from '@jest/globals';
-import { BrokerAdapter, BrokerBus,  BrokerLock, BrokerQueue } from '../src/broker.js';
+import { BrokerAdapter, BrokerBus, BrokerLock, BrokerQueue } from '../src/broker.js';
 import { BrokerMemoryAdapter } from '../src/adapters/memory-adapter.js';
 import { sleep } from '@deepkit/core';
 import { BrokerCache } from '../src/broker-cache.js';
+import { QueueMessageProcessing } from '../src/model.js';
 
 jest.setTimeout(10000);
 
@@ -150,4 +151,130 @@ test('queue', async () => {
     await channel.produce({ id: 3, username: 'peter' });
 
     expect(await p).toEqual({ id: 3, username: 'peter' });
+});
+
+test('queue message process exactly once options for broker channel', async () => {
+    const queue = new BrokerQueue(await adapterFactory());
+
+    type User = { id: number, username: string };
+
+    const channel = queue.channel<User>('user/registered', {
+        process: QueueMessageProcessing.exactlyOnce,
+    });
+
+    let consumed: number = 0;
+    await channel.consume(() => {
+        consumed++;
+    });
+
+    await channel.produce({ id: 3, username: 'peter' });
+
+    await channel.produce({ id: 3, username: 'peter' });
+
+    expect(consumed).toBe(1)
+});
+
+test('queue message process exactly once with deduplication interval options for broker channel', async () => {
+    const queue = new BrokerQueue(await adapterFactory());
+
+    type User = { id: number, username: string };
+
+    const channel = queue.channel<User>('user/registered', {
+        process: QueueMessageProcessing.exactlyOnce,
+        deduplicationInterval: '1s',
+    });
+
+    let consumed: number = 0;
+    await channel.consume(() => {
+        consumed++;
+    });
+
+    await channel.produce({ id: 3, username: 'peter' });
+
+    await sleep(1);
+
+    await channel.produce({ id: 3, username: 'peter' });
+
+    expect(consumed).toBe(2);
+});
+
+test('queue message process exactly once options for producer', async () => {
+    const queue = new BrokerQueue(await adapterFactory());
+
+    type User = { id: number, username: string };
+
+    const channel = queue.channel<User>('user/registered', {
+        process: QueueMessageProcessing.atLeastOnce,
+    });
+
+    let consumed: number = 0;
+    await channel.consume(() => {
+        consumed++;
+    });
+
+    await channel.produce({ id: 3, username: 'peter' }, {
+        process: QueueMessageProcessing.exactlyOnce,
+    });
+
+    await channel.produce({ id: 3, username: 'peter' }, {
+        process: QueueMessageProcessing.exactlyOnce,
+    });
+
+    expect(consumed).toBe(1);
+});
+
+test('queue message process exactly once with deduplication interval options for producer', async () => {
+    const queue = new BrokerQueue(await adapterFactory());
+
+    type User = { id: number, username: string };
+
+    const channel = queue.channel<User>('user/registered', {
+        process: QueueMessageProcessing.atLeastOnce,
+    });
+
+    let consumed: number = 0;
+    await channel.consume(() => {
+        consumed++;
+    });
+
+    await channel.produce({ id: 3, username: 'peter' }, {
+        process: QueueMessageProcessing.exactlyOnce,
+        deduplicationInterval: '1s',
+    });
+
+    await sleep(1);
+
+    await channel.produce({ id: 3, username: 'peter' }, {
+        process: QueueMessageProcessing.exactlyOnce,
+        deduplicationInterval: '1s',
+    });
+
+    expect(consumed).toBe(2);
+});
+
+test('queue message process exactly once with custom hash for producer', async () => {
+    const queue = new BrokerQueue(await adapterFactory());
+
+    type User = { id: number, username: string };
+
+    const channel = queue.channel<User>('user/registered', {
+        process: QueueMessageProcessing.atLeastOnce,
+    });
+
+    let consumed: number = 0;
+    await channel.consume(() => {
+        consumed++;
+    });
+
+    await channel.produce({ id: 3, username: 'peter' }, {
+        process: QueueMessageProcessing.exactlyOnce,
+        hash: 1,
+    });
+
+    await channel.produce({ id: 3, username: 'peter' }, {
+        process: QueueMessageProcessing.exactlyOnce,
+        hash: 2,
+    });
+
+    expect(consumed).toBe(2);
 });
