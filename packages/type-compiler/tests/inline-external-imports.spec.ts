@@ -9,7 +9,7 @@ test('class type', () => {
             type A = Observable<unknown>;
         `
     }, undefined, {
-        external: {
+        inlineExternalImports: {
             'rxjs': ['Observable'],
         },
     });
@@ -25,7 +25,7 @@ test('class typeOf', () => {
             typeOf<Observable>();
         `
     }, undefined, {
-        external: {
+        inlineExternalImports: {
             'rxjs': ['Subject'],
         },
     });
@@ -42,7 +42,7 @@ test.todo('function'/*, () => {
             typeOf<typeof preview>();
         `
     }, undefined, {
-        external: {
+        inlineExternalImports: {
             'vite': ['preview'],
         },
     });
@@ -57,7 +57,7 @@ test('only a single type is transformed', () => {
             type B = CorsOrigin;
         `
     }, undefined, {
-        external: {
+        inlineExternalImports: {
             'vite': ['ConfigEnv'],
         },
     });
@@ -73,7 +73,7 @@ test('interface typeOf', () => {
             typeOf<ConfigEnv>();
         `
     }, undefined, {
-        external: {
+        inlineExternalImports: {
             'vite': ['ConfigEnv'],
         },
     });
@@ -130,7 +130,7 @@ test('interface typeOf', () => {
 `);
 });
 
-test('all exports marked as external', () => {
+test('inline all external imports for package', () => {
     const res = transpile({
         app: `import { ConfigEnv, CorsOrigin } from 'vite';
             import { typeOf } from '@deepkit/type';
@@ -139,8 +139,8 @@ test('all exports marked as external', () => {
             type B = CorsOrigin;
         `
     }, undefined, {
-        external: {
-            'vite': '*',
+        inlineExternalImports: {
+            'vite': true,
         },
     });
     expect(res.app).toContain('const __ΩConfigEnv = [');

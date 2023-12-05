@@ -123,11 +123,7 @@ const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNo
 };
 
 export class NodeConverter {
-    protected f: NodeFactory
-
-    constructor(protected transformer: ReflectionTransformer) {
-        this.f = transformer.f;
-    }
+    constructor(protected f: NodeFactory, protected transformer: ReflectionTransformer) {}
 
     toExpression<T extends PackExpression | PackExpression[]>(node?: T): Expression {
         if (node === undefined) return this.f.createIdentifier('undefined');

@@ -197,7 +197,7 @@ export interface ReflectionOptions {
     /**
      * External imports to reflect
      */
-    external?: Record<string, '*' | string[]>; // '*' or true?
+    inlineExternalImports?: true | Record<string, true | string[]>;
 }
 
 export interface ReflectionConfig {
@@ -537,7 +537,7 @@ export class EmbedDeclarations extends Map<Node, EmbedDeclaration> {
  */
 export class ReflectionTransformer implements CustomTransformer {
     sourceFile!: SourceFile;
-    public f: NodeFactory;
+    protected f: NodeFactory;
     protected currentReflectionConfig: ReflectionConfig = { mode: 'never', options: {}, baseDir: '' };
 
     public defaultExcluded: string[] = [
@@ -594,7 +594,7 @@ export class ReflectionTransformer implements CustomTransformer {
         protected context: TransformationContext,
     ) {
         this.f = context.factory;
-        this.nodeConverter = new NodeConverter(this);
+        this.nodeConverter = new NodeConverter(this.f, this);
         //it is important to not have undefined values like {paths: undefined} because it would override the read tsconfig.json
         this.compilerOptions = filterUndefined(context.getCompilerOptions());
         this.host = createCompilerHost(this.compilerOptions);
@@ -2026,14 +2026,15 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.f.createIdentifier('__Ω' + joinQualifiedName(typeName));
     }
 
-    // TODO: what to do when the external type depends on another external type? should that be automatically resolved, or should the user specify that explicitly as well?
-    protected isImportMarkedAsExternal(importDeclaration: ImportDeclaration, entityName: EntityName, config: ReflectionConfig): boolean {
+    // TODO: what to do when the inlineExternalImports type depends on another inlineExternalImports type? should that be automatically resolved, or should the user specify that explicitly as well?
+    protected shouldInlineExternalImport(importDeclaration: ImportDeclaration, entityName: EntityName, config: ReflectionConfig): boolean {
         if (!ts.isStringLiteral(importDeclaration.moduleSpecifier)) return false;
-        const external = config.options.external?.[importDeclaration.moduleSpecifier.text];
-        if (!external) return false;
-        if (external === '*') return true;
+        if (config.options.inlineExternalImports === true) return true;
+        const externalImport = config.options.inlineExternalImports?.[importDeclaration.moduleSpecifier.text];
+        if (!externalImport) return false;
+        if (externalImport === true) return true;
         const typeName = getEntityName(entityName);
-        return external.includes(typeName);
+        return externalImport.includes(typeName);
     }
 
     protected isExcluded(filePath: string): boolean {
@@ -2230,7 +2231,7 @@ export class ReflectionTransformer implements CustomTransformer {
                             const builtType = isBuiltType(typeVar, found);
 
                             if (!builtType) {
-                                if (!this.isImportMarkedAsExternal(resolved.importDeclaration, typeName, declarationReflection)) return;
+                                if (!this.shouldInlineExternalImport(resolved.importDeclaration, typeName, declarationReflection)) return;
                                 this.embedDeclarations.set(declaration, {
                                     name: typeName,
                                     sourceFile: declarationSourceFile
@@ -2307,7 +2308,7 @@ export class ReflectionTransformer implements CustomTransformer {
                         // //check if typeVar is exported in referenced file
                         const builtType = isBuiltType(typeVar, declarationSourceFile);
 
-                        if (!builtType && this.isImportMarkedAsExternal(resolved.importDeclaration, typeName, declarationReflection)) {
+                        if (!builtType && this.shouldInlineExternalImport(resolved.importDeclaration, typeName, declarationReflection)) {
                             this.embedDeclarations.set(declaration, {
                                 name: typeName,
                                 sourceFile: declarationSourceFile,
