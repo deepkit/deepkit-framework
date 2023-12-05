@@ -184,13 +184,15 @@ export function resolveToken(provider: ProviderWithScope): Token {
     return provider.provide;
 }
 
+export type ContainerToken = Exclude<Token, Type | TagProvider<any>>;
+
 /**
  * Returns a value that can be compared with `===` to check if two tokens are actually equal even though
  * they are the result of different type expressions.
  *
  * This is used in the big switch-case statement in the generated code to match DI tokens.
  */
-export function getContainerToken(type: Token): string | number | symbol | bigint | boolean | RegExp | ClassType | Function {
+export function getContainerToken(type: Token): ContainerToken {
     if (isClass(type)) return type;
     if (type instanceof TagProvider) return getContainerToken(type.provider);
 

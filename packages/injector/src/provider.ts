@@ -25,7 +25,7 @@ export interface ProviderScope {
 }
 
 /** @reflection never */
-export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | AbstractClassType<T> | Type | T;
+export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | AbstractClassType<T> | Type | TagProvider<T> | Function | T;
 
 export function provide<T>(
     provider:
@@ -95,7 +95,7 @@ export interface FactoryProvider<T> extends ProviderBase {
 }
 
 /** @reflection never */
-export type Provider<T = any> = ClassType | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T> | TagProvider<T>;
+export type Provider<T = any> = AbstractClassType | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T> | TagProvider<T>;
 
 /** @reflection never */
 export type ProviderProvide<T = any> = ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>;
@@ -163,7 +163,7 @@ export class Tag<T, TP extends TagProvider<T> = TagProvider<T>> {
 export type NormalizedProvider<T = any> = ProviderProvide<T> & ProviderScope;
 
 /** @reflection never */
-export type ProviderWithScope<T = any> = ClassType | (ProviderProvide<T> & ProviderScope) | TagProvider<any>;
+export type ProviderWithScope<T = any> = AbstractClassType | (ProviderProvide<T> & ProviderScope) | TagProvider<any>;
 
 export function isScopedProvider(obj: any): obj is ProviderProvide & ProviderScope {
     return obj.provide && obj.hasOwnProperty('scope');
