@@ -1,7 +1,7 @@
 import { assertType, entity, Positive, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { DirectClient } from '../src/client/client-direct.js';
-import { getActions, rpc, rpcClass } from '../src/decorators.js';
+import { getActions, rpc, rpcClass, RpcController } from '../src/decorators.js';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
 import { Session, SessionState } from '../src/server/security.js';
 import { BehaviorSubject } from 'rxjs';
@@ -12,9 +12,11 @@ test('default name', () => {
     @rpc.controller()
     class Controller {}
 
-    expect(rpcClass._fetch(Controller)).toMatchObject({
-        name: 'Controller',
-    });
+    const controller = new RpcController();
+
+    controller.classType = Controller;
+
+    expect(controller.getPath()).toBe('Controller');
 });
 
 test('decorator', async () => {

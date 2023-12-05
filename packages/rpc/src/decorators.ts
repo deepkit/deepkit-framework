@@ -19,7 +19,7 @@ import {
 } from '@deepkit/type';
 import { ControllerDefinition } from './model.js';
 
-class RpcController {
+export class RpcController {
     // Defaults to the name of the class
     name: string = '';
 
