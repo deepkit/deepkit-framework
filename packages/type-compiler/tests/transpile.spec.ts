@@ -22,6 +22,20 @@ test('resolve import ts', () => {
     expect(res.logger).toContain('Logger.__type =');
 });
 
+test('use global types with esnext target', () => {
+    const res = transpile({
+        'app': `
+            interface User {}
+            export type a = Partial<User>;
+        `
+    }, {
+        target: ts.ScriptTarget.ESNext,
+    });
+
+    expect(res.app).toContain('const __ΩPartial = ');
+    expect(res.app).toContain('() => __ΩPartial');
+});
+
 test('resolve import d.ts', () => {
     const res = transpile({
         'app': `

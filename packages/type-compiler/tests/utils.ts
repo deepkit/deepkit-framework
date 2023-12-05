@@ -65,7 +65,7 @@ export function transform(files: Record<string, string>, options: ts.CompilerOpt
  * The first entry in files is executed as main script
  */
 export function transpileAndRun(files: Record<string, string>, options: ts.CompilerOptions = {}): any {
-    const source = transpile(files);
+    const source = transpile(files, options);
     console.log('transpiled', source);
     const first = Object.keys(files)[0];
 
