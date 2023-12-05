@@ -199,7 +199,7 @@ export interface ReflectionOptions {
     /**
      * External imports to reflect
      */
-    inlineExternalImports?: true | Record<string, true | string[]>;
+    inlineExternalLibraryImports?: true | Record<string, true | string[]>;
 }
 
 export interface ReflectionConfig {
@@ -2032,7 +2032,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
             const builtType = isBuiltType(runtimeTypeName, declarationSourceFile);
 
-            if (!builtType && this.shouldInlineExternalImport(importDeclaration, typeName, declarationReflection)) {
+            if (!builtType && this.shouldInlineExternalLibraryImport(importDeclaration, typeName, declarationReflection)) {
                 this.embedDeclarations.set(declaration, {
                     name: typeName,
                     sourceFile: declarationSourceFile,
@@ -2046,9 +2046,9 @@ export class ReflectionTransformer implements CustomTransformer {
         return expression;
     }
 
-    protected shouldInlineExternalImport(importDeclaration: ImportDeclaration, entityName: EntityName, config: ReflectionConfig): boolean {
+    protected shouldInlineExternalLibraryImport(importDeclaration: ImportDeclaration, entityName: EntityName, config: ReflectionConfig): boolean {
         if (!isStringLiteral(importDeclaration.moduleSpecifier)) return false;
-        if (config.options.inlineExternalImports === true) return true;
+        if (config.options.inlineExternalLibraryImports === true) return true;
         const resolvedModule = this.resolver.resolveImpl(importDeclaration.moduleSpecifier.text, importDeclaration.getSourceFile().fileName);
         if (!resolvedModule) {
             throw new Error('Cannot resolve module');
@@ -2059,7 +2059,7 @@ export class ReflectionTransformer implements CustomTransformer {
         if (!resolvedModule.isExternalLibraryImport) {
             throw new Error('Resolved module is not an external library import');
         }
-        const externalImport = config.options.inlineExternalImports?.[resolvedModule.packageId.name];
+        const externalImport = config.options.inlineExternalLibraryImports?.[resolvedModule.packageId.name];
         if (!externalImport) return false;
         if (externalImport === true) return true;
         if (!importDeclaration.moduleSpecifier.text.startsWith(resolvedModule.packageId.name)) return true;
@@ -2256,7 +2256,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
                             const builtType = isBuiltType(runtimeTypeName, found);
                             if (!builtType) {
-                                if (!this.shouldInlineExternalImport(resolved.importDeclaration, typeName, declarationReflection)) return;
+                                if (!this.shouldInlineExternalLibraryImport(resolved.importDeclaration, typeName, declarationReflection)) return;
                                 this.embedDeclarations.set(declaration, {
                                     name: typeName,
                                     sourceFile: declarationSourceFile

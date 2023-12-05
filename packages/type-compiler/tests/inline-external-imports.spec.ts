@@ -10,7 +10,7 @@ test('string type alias', () => {
             type T = typeof NIL;
         `
     }, undefined, {
-        inlineExternalImports: {
+        inlineExternalLibraryImports: {
             'uuid': ['NIL'],
         },
     });
@@ -45,7 +45,7 @@ test('object type alias', () => {
             type A = typeof config;
         `
     }, undefined, {
-        inlineExternalImports: {
+        inlineExternalLibraryImports: {
             'rxjs': ['config'],
         },
     });
@@ -63,7 +63,7 @@ test('typeOf object type alias', () => {
             typeOf<typeof config>();
         `
     }, undefined, {
-        inlineExternalImports: {
+        inlineExternalLibraryImports: {
             'rxjs': ['config'],
         },
     });
@@ -159,7 +159,7 @@ test('function type alias', () => {
             type A = typeof map;
         `
     }, undefined, {
-        inlineExternalImports: {
+        inlineExternalLibraryImports: {
             'rxjs/operators': ['map'],
         },
     });
@@ -176,7 +176,7 @@ test('typeOf function type alias', () => {
             typeOf<typeof map>();
         `
     }, undefined, {
-        inlineExternalImports: {
+        inlineExternalLibraryImports: {
             'rxjs/operators': ['map', 'OperatorFunction'],
         },
     }) as TypeFunction;
@@ -295,12 +295,39 @@ test('class type var', () => {
             type A = Observable<unknown>;
         `
     }, undefined, {
-        inlineExternalImports: {
+        inlineExternalLibraryImports: {
             'rxjs': ['Observable'],
         },
     });
 
-    console.log(res.app);
+    // TODO: how to resolve the typeof imports? -> __assignType(Subscriber_1.Subscriber, __ΩSubscriber)
+    //     "use strict";
+    //     Object.defineProperty(exports, "__esModule", { value: true });
+    //     exports.__ΩUnsubscribable = exports.__ΩSubscribable = exports.__ΩSubscription = exports.__ΩObserver = exports.__ΩTeardownLogic = exports.__ΩSubscriber = exports.__ΩOperator = exports.__ΩObservable = void 0;
+    //     const __ΩObservable = ['T', () => Observable, 'source', () => __ΩOperator, 'operator', () => Observable, 'this', () => __assignType(Subscriber_1.Subscriber, __ΩSubscriber), 'subscriber', () => __ΩTeardownLogic, '', 'subscribe', 'constructor', 'args', 'create', () => __ΩOperator, () => Observable, 'lift', () => __ΩPartial, () => __ΩObserver, 'observer', () => __assignType(Subscription_1.Subscription, __ΩSubscription), 'value', 'next', 'forEach', () => Observable, 'pipe', 'toPromise', () => __ΩSubscribable, 'Observable', 'b!PP"7"-J3#P"e"!o$#-J3%PPPe$!7&2\'Pe$!7(2)n*/+2,8"0-P"@2."/+3/sPe"!"o0#2%8P"7102Pe"!o4"o3"258P760,PPe#!27$/+28$`09PPe#!7:0;PPe#!-J`0<5e!!o="x"w>y'];
+    //     exports.__ΩObservable = __ΩObservable;
+    //     const __ΩOperator = ['T', 'R', () => Subscriber_2.Subscriber, 'subscriber', 'source', () => __ΩTeardownLogic, 'call', 'b!b"PPPe$"7#2$"2%n&1\'My'];
+    //     exports.__ΩOperator = __ΩOperator;
+    //     const __ΩSubscriber = ['T', () => Subscription_2.Subscription, 'x', '', 'next', 'e', 'error', 'complete', () => Subscriber, 'create', 'isStopped', () => Subscriber, () => __ΩObserver, 'destination', () => Subscriber, () => __ΩObserver, 'constructor', 'value', 'err', 'unsubscribe', '_next', '_error', '_complete', () => __ΩObserver, 'Subscriber', 'b!P7"PPe#!2#8$/$2%8P"2&8$/$2\'8P$/$2(8Pe#!7)0*s)3+<PP"7,"o-"J3.<PPP"7/"o0"J2.8"01Pe"!228$0%P"238$0\'P$0(P$04Pe"!22$05<P"23$06<P$07<5e!!o8"x"w9y'];
+    //     exports.__ΩSubscriber = __ΩSubscriber;
+    //     const __ΩTeardownLogic = [() => Subscription_3.Subscription, () => __ΩUnsubscribable, '', 'PP7!n"P$/#$Jy'];
+    //     exports.__ΩTeardownLogic = __ΩTeardownLogic;
+    //     const __ΩPartial = ['T', 'l+e#!e"!fRb!Pde"!gN#"y'];
+    //     const __ΩObserver = ['T', 'value', '', 'next', 'err', 'error', 'complete', 'b!PPe#!2"$/#4$P"2%$/#4&P$/#4\'My'];
+    //     exports.__ΩObserver = __ΩObserver;
+    //     const __ΩSubscription = [() => Subscription, 'EMPTY', 'closed', '', 'initialTeardown', 'constructor', 'unsubscribe', () => __ΩTeardownLogic, 'teardown', 'add', () => __ΩExclude, () => __ΩTeardownLogic, 'remove', 'Subscription', 'P7!3"s)3#PPP$/$-J2%8"0&P$0\'Pn(2)$0*Pn,$o+#2)$0-5x"w.y'];
+    //     exports.__ΩSubscription = __ΩSubscription;
+    //     const __ΩSubscribable = ['T', () => __ΩPartial, () => __ΩObserver, 'observer', () => __ΩUnsubscribable, 'subscribe', 'b!PPe#!o#"o""2$n%1&My'];
+    //     exports.__ΩSubscribable = __ΩSubscribable;
+    //     const __ΩUnsubscribable = ['unsubscribe', 'PP$1!My'];
+    //     exports.__ΩUnsubscribable = __ΩUnsubscribable;
+    //     const __ΩExclude = ['T', 'U', 'l6!Re$!RPe#!e$"qk#%QRb!b"Pde"!p)y'];
+    //     function __assignType(fn, args) {
+    //         fn.__type = args;
+    //         return fn;
+    //     }
+    //     const rxjs_1 = require("rxjs");
+    //     const __ΩA = [() => __assignType(rxjs_1.Observable, __ΩObservable), 'P#7!y'];
 
     expect(res.app).toContain('const __ΩObservable = [');
     expect(res.app).toContain('() => __assignType(rxjs_1.Observable, __ΩObservable)');
@@ -313,7 +340,7 @@ test('class typeOf', () => {
             typeOf<Observable<unknown>>();
         `
     }, undefined, {
-        inlineExternalImports: {
+        inlineExternalLibraryImports: {
             'rxjs': ['Observable'],
         },
     }) as TypeClass;
@@ -335,7 +362,7 @@ test('only a single type is transformed', () => {
             type B = CorsOrigin;
         `
     }, undefined, {
-        inlineExternalImports: {
+        inlineExternalLibraryImports: {
             'vite': ['ConfigEnv'],
         },
     });
@@ -352,7 +379,7 @@ test('interface typeOf', () => {
             typeOf<ConfigEnv>();
         `
     }, undefined, {
-        inlineExternalImports: {
+        inlineExternalLibraryImports: {
             'vite': ['ConfigEnv'],
         },
     });
@@ -419,7 +446,7 @@ test('inline all external type imports for package', () => {
             type B = CorsOrigin;
         `
     }, undefined, {
-        inlineExternalImports: {
+        inlineExternalLibraryImports: {
             'vite': true,
         },
     });
