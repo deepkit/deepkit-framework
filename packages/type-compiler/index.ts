@@ -12,6 +12,7 @@ import { declarationTransformer, transformer } from './src/compiler.js';
 import type { Program } from 'typescript';
 
 export * from './src/compiler.js';
+export * from './src/plugin.js';
 export * from './src/loader.js';
 
 export default function myTransformerPlugin(program: Program, opts: {}) {
