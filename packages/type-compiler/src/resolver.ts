@@ -73,7 +73,6 @@ export class Resolver {
 
     resolveExternalLibraryImport(importDeclaration: ImportDeclaration): Required<ResolvedModuleFull> {
         const resolvedModule = this.resolveImport(importDeclaration);
-        console.log(resolvedModule);
         if (!resolvedModule.packageId) {
             throw new Error('Missing package id for resolved module');
             /*resolvedModule.packageId = {

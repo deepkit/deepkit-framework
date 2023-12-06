@@ -33,7 +33,7 @@ import type {
 import ts from 'typescript';
 import { cloneNode as tsNodeClone, CloneNodeHook } from '@marcj/ts-clone-node';
 import { SourceFile } from './ts-types.js';
-import { Externals } from './externals';
+import { External } from './external.js';
 
 const {
     isArrowFunction,
@@ -131,7 +131,7 @@ const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNo
 };
 
 export class NodeConverter {
-    constructor(protected f: NodeFactory, protected externals: Externals) {}
+    constructor(protected f: NodeFactory, protected external: External) {}
 
     toExpression<T extends PackExpression | PackExpression[]>(node?: T): Expression {
         if (node === undefined) return this.f.createIdentifier('undefined');
@@ -156,9 +156,9 @@ export class NodeConverter {
         switch (node.kind) {
             case SyntaxKind.Identifier:
                 const name = getIdentifierName(node as Identifier);
-                return this.externals.isEmbeddingLibraryImport() && !this.externals.globalTypes.has(name)
-                    ? this.f.createIdentifier(`${getExternalRuntimeTypeName(this.externals.getEmbeddingLibraryImport().module.packageId.name)}.${name}`)
-                    : this.f.createIdentifier(getRuntimeTypeName(name));
+                return this.external.isEmbeddingExternalLibraryImport() && !this.external.globalTypeNames.has(name)
+                    ? this.f.createIdentifier(`${getExternalRuntimeTypeName(this.external.getEmbeddingExternalLibraryImport().module.packageId.name)}.${name}`)
+                    : finish(node, this.f.createIdentifier(getRuntimeTypeName(name)));
             case SyntaxKind.StringLiteral:
                 return finish(node, this.f.createStringLiteral((node as StringLiteral).text));
             case SyntaxKind.NumericLiteral:
