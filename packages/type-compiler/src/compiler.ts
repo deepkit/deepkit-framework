@@ -536,6 +536,8 @@ export class ReflectionTransformer implements CustomTransformer {
     protected reflectionMode?: typeof reflectionModes[number];
     protected reflectionOptions?: ReflectionOptions;
 
+    protected isMaybeEmbeddingExternalLibraryImport: boolean = false;
+
     /**
      * Types added to this map will get a type program directly under it.
      * This is for types used in the very same file.
@@ -544,6 +546,8 @@ export class ReflectionTransformer implements CustomTransformer {
         TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration,
         { name: EntityName, sourceFile: SourceFile, compiled?: Statement[] }
     >();
+
+    protected externalRuntimeTypeNames = new Set<string>();
 
     /**
      * Types added to this map will get a type program at the top root level of the program.
@@ -1808,7 +1812,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (isIdentifier(narrowed.exprName)) {
                     const resolved = this.resolveDeclaration(narrowed.exprName);
                     if (resolved && findSourceFile(resolved.declaration) !== this.sourceFile && resolved.importDeclaration) {
-                        expression = this.resolveImport(resolved.declaration, resolved.importDeclaration, narrowed.exprName, expression, program);
+                        expression = this.resolveImportExpression(resolved.declaration, resolved.importDeclaration, narrowed.exprName, expression, program);
                     }
                 }
                 program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, expression)));
@@ -2005,43 +2009,57 @@ export class ReflectionTransformer implements CustomTransformer {
     //     return node;
     // }
 
-    public getDeclarationVariableName(typeName: EntityName): Identifier {
-        if (isIdentifier(typeName)) {
-            return this.f.createIdentifier('__Ω' + getIdentifierName(typeName));
+    protected getRuntimeTypeName(typeName: string): string {
+        if (this.externalRuntimeTypeNames.has(typeName)) {
+            return `__ɵΩ${typeName}`;
         }
-
-        function joinQualifiedName(name: EntityName): string {
-            if (isIdentifier(name)) return getIdentifierName(name);
-            return joinQualifiedName(name.left) + '_' + getIdentifierName(name.right);
-        }
-
-        return this.f.createIdentifier('__Ω' + joinQualifiedName(typeName));
+        return `__Ω${typeName}`;
     }
 
-    protected resolveImport<T extends Expression>(declaration: Node, importDeclaration: ImportDeclaration, typeName: Identifier, expression: T, program: CompilerProgram): CallExpression | T {
+    protected getDeclarationVariableName(typeName: EntityName): Identifier {
+        return this.f.createIdentifier(this.getRuntimeTypeName(getNameAsString(typeName)));
+    }
+
+    protected addExternalLibraryImportEmbedDeclaration(declaration: Node, sourceFile: SourceFile, typeName: EntityName): void {
+        this.isMaybeEmbeddingExternalLibraryImport = true;
+
+        this.externalRuntimeTypeNames.add(getNameAsString(typeName));
+
+        this.embedDeclarations.set(declaration, {
+            name: typeName,
+            sourceFile,
+        });
+    }
+
+    protected resolveImportExpression<T extends Expression>(declaration: Node, importDeclaration: ImportDeclaration, typeName: Identifier, expression: T, program: CompilerProgram): CallExpression | T {
         ensureImportIsEmitted(importDeclaration, typeName);
 
-        if (isTypeAliasDeclaration(declaration)) return expression;
+        if (isTypeAliasDeclaration(declaration)) {
+            this.isMaybeEmbeddingExternalLibraryImport = false;
+            return expression;
+        }
 
         // check if the referenced declaration has reflection disabled
         const declarationReflection = this.findReflectionConfig(declaration, program);
         if (declarationReflection.mode !== 'never') {
             const declarationSourceFile = importDeclaration.getSourceFile();
 
+            if (this.isMaybeEmbeddingExternalLibraryImport) {
+                this.addExternalLibraryImportEmbedDeclaration(declaration, declarationSourceFile, typeName);
+                return this.wrapWithAssignType(expression, this.getDeclarationVariableName(typeName));
+            }
+
             const runtimeTypeName = this.getDeclarationVariableName(typeName);
 
             const builtType = isBuiltType(runtimeTypeName, declarationSourceFile);
 
             if (!builtType && this.shouldInlineExternalLibraryImport(importDeclaration, typeName, declarationReflection)) {
-                this.embedDeclarations.set(declaration, {
-                    name: typeName,
-                    sourceFile: declarationSourceFile,
-                });
-                // if (!isTypeAliasDeclaration(declaration)) {
-                    return this.wrapWithAssignType(expression, runtimeTypeName);
-                // }
+                this.addExternalLibraryImportEmbedDeclaration(declaration, declarationSourceFile, typeName);
+                return this.wrapWithAssignType(expression, this.getDeclarationVariableName(typeName));
             }
         }
+
+        this.isMaybeEmbeddingExternalLibraryImport = false;
 
         return expression;
     }
@@ -2166,7 +2184,7 @@ export class ReflectionTransformer implements CustomTransformer {
             if (isModuleDeclaration(declaration) && resolved.importDeclaration) {
                 let expression: SerializedEntityNameAsExpression | CallExpression = serializeEntityNameAsExpression(this.f, typeName);
                 if (isIdentifier(typeName)) {
-                    expression = this.resolveImport(declaration, resolved.importDeclaration, typeName, expression, program)
+                    expression = this.resolveImportExpression(declaration, resolved.importDeclaration, typeName, expression, program)
                 }
 
                 //we can not infer from module declaration, so do `typeof T` in runtime
@@ -2257,11 +2275,9 @@ export class ReflectionTransformer implements CustomTransformer {
                             const builtType = isBuiltType(runtimeTypeName, found);
                             if (!builtType) {
                                 if (!this.shouldInlineExternalLibraryImport(resolved.importDeclaration, typeName, declarationReflection)) return;
-                                this.embedDeclarations.set(declaration, {
-                                    name: typeName,
-                                    sourceFile: declarationSourceFile
-                                });
+                                this.addExternalLibraryImportEmbedDeclaration(declaration, declarationSourceFile, typeName);
                             } else {
+                                this.isMaybeEmbeddingExternalLibraryImport = false;
                                 //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
                                 const reflection = this.findReflectionFromPath(found.fileName);
                                 if (reflection.mode === 'never') {
@@ -2323,7 +2339,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 let body: Identifier | PropertyAccessExpression | CallExpression = isIdentifier(typeName) ? typeName : this.createAccessorForEntityName(typeName);
                 if (resolved.importDeclaration && isIdentifier(typeName)) {
-                    body = this.resolveImport(resolved.declaration, resolved.importDeclaration, typeName, body, program);
+                    body = this.resolveImportExpression(resolved.declaration, resolved.importDeclaration, typeName, body, program);
                 }
                 program.pushFrame();
                 if (type.typeArguments) {

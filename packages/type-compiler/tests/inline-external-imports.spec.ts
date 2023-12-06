@@ -300,25 +300,26 @@ test('class type var', () => {
         },
     });
 
-    // TODO: how to resolve the typeof imports? -> __assignType(Subscriber_1.Subscriber, __ΩSubscriber)
-    //     "use strict";
-    //     Object.defineProperty(exports, "__esModule", { value: true });
-    //     exports.__ΩUnsubscribable = exports.__ΩSubscribable = exports.__ΩSubscription = exports.__ΩObserver = exports.__ΩTeardownLogic = exports.__ΩSubscriber = exports.__ΩOperator = exports.__ΩObservable = void 0;
-    //     const __ΩObservable = ['T', () => Observable, 'source', () => __ΩOperator, 'operator', () => Observable, 'this', () => __assignType(Subscriber_1.Subscriber, __ΩSubscriber), 'subscriber', () => __ΩTeardownLogic, '', 'subscribe', 'constructor', 'args', 'create', () => __ΩOperator, () => Observable, 'lift', () => __ΩPartial, () => __ΩObserver, 'observer', () => __assignType(Subscription_1.Subscription, __ΩSubscription), 'value', 'next', 'forEach', () => Observable, 'pipe', 'toPromise', () => __ΩSubscribable, 'Observable', 'b!PP"7"-J3#P"e"!o$#-J3%PPPe$!7&2\'Pe$!7(2)n*/+2,8"0-P"@2."/+3/sPe"!"o0#2%8P"7102Pe"!o4"o3"258P760,PPe#!27$/+28$`09PPe#!7:0;PPe#!-J`0<5e!!o="x"w>y'];
-    //     exports.__ΩObservable = __ΩObservable;
-    //     const __ΩOperator = ['T', 'R', () => Subscriber_2.Subscriber, 'subscriber', 'source', () => __ΩTeardownLogic, 'call', 'b!b"PPPe$"7#2$"2%n&1\'My'];
-    //     exports.__ΩOperator = __ΩOperator;
-    //     const __ΩSubscriber = ['T', () => Subscription_2.Subscription, 'x', '', 'next', 'e', 'error', 'complete', () => Subscriber, 'create', 'isStopped', () => Subscriber, () => __ΩObserver, 'destination', () => Subscriber, () => __ΩObserver, 'constructor', 'value', 'err', 'unsubscribe', '_next', '_error', '_complete', () => __ΩObserver, 'Subscriber', 'b!P7"PPe#!2#8$/$2%8P"2&8$/$2\'8P$/$2(8Pe#!7)0*s)3+<PP"7,"o-"J3.<PPP"7/"o0"J2.8"01Pe"!228$0%P"238$0\'P$0(P$04Pe"!22$05<P"23$06<P$07<5e!!o8"x"w9y'];
-    //     exports.__ΩSubscriber = __ΩSubscriber;
-    //     const __ΩTeardownLogic = [() => Subscription_3.Subscription, () => __ΩUnsubscribable, '', 'PP7!n"P$/#$Jy'];
-    //     exports.__ΩTeardownLogic = __ΩTeardownLogic;
+    console.log(res.app);
+
+    // TODO: how to resolve the typeof imports? -> __assignType(Subscriber_1.Subscriber, __ɵΩSubscriber)
+    //
+    //     exports.__ΩUnsubscribable = exports.__ɵΩSubscribable = exports.__ɵΩSubscription = exports.__ɵΩObserver = exports.__ɵΩTeardownLogic = exports.__ɵΩSubscriber = exports.__ɵΩOperator = exports.__ɵΩObservable = void 0;
+    //     const __ɵΩObservable = ['T', () => Observable, 'source', () => __ΩOperator, 'operator', () => Observable, 'this', () => __assignType(Subscriber_1.Subscriber, __ɵΩSubscriber), 'subscriber', () => __ΩTeardownLogic, '', 'subscribe', 'constructor', 'args', 'create', () => __ɵΩOperator, () => Observable, 'lift', () => __ΩPartial, () => __ΩObserver, 'observer', () => __assignType(Subscription_1.Subscription, __ɵΩSubscription), 'value', 'next', 'forEach', () => Observable, 'pipe', 'toPromise', () => __ΩSubscribable, 'Observable', 'b!PP"7"-J3#P"e"!o$#-J3%PPPe$!7&2\'Pe$!7(2)n*/+2,8"0-P"@2."/+3/sPe"!"o0#2%8P"7102Pe"!o4"o3"258P760,PPe#!27$/+28$`09PPe#!7:0;PPe#!-J`0<5e!!o="x"w>y'];
+    //     exports.__ɵΩObservable = __ɵΩObservable;
+    //     const __ɵΩOperator = ['T', 'R', () => Subscriber_2.Subscriber, 'subscriber', 'source', () => __ɵΩTeardownLogic, 'call', 'b!b"PPPe$"7#2$"2%n&1\'My'];
+    //     exports.__ɵΩOperator = __ɵΩOperator;
+    //     const __ɵΩSubscriber = ['T', () => Subscription_2.Subscription, 'x', '', 'next', 'e', 'error', 'complete', () => Subscriber, 'create', 'isStopped', () => Subscriber, () => __ɵΩObserver, 'destination', () => Subscriber, () => __ɵΩObserver, 'constructor', 'value', 'err', 'unsubscribe', '_next', '_error', '_complete', () => __ɵΩObserver, 'Subscriber', 'b!P7"PPe#!2#8$/$2%8P"2&8$/$2\'8P$/$2(8Pe#!7)0*s)3+<PP"7,"o-"J3.<PPP"7/"o0"J2.8"01Pe"!228$0%P"238$0\'P$0(P$04Pe"!22$05<P"23$06<P$07<5e!!o8"x"w9y'];
+    //     exports.__ɵΩSubscriber = __ɵΩSubscriber;
+    //     const __ɵΩTeardownLogic = [() => Subscription_3.Subscription, () => __ΩUnsubscribable, '', 'PP7!n"P$/#$Jy'];
+    //     exports.__ɵΩTeardownLogic = __ɵΩTeardownLogic;
     //     const __ΩPartial = ['T', 'l+e#!e"!fRb!Pde"!gN#"y'];
-    //     const __ΩObserver = ['T', 'value', '', 'next', 'err', 'error', 'complete', 'b!PPe#!2"$/#4$P"2%$/#4&P$/#4\'My'];
-    //     exports.__ΩObserver = __ΩObserver;
-    //     const __ΩSubscription = [() => Subscription, 'EMPTY', 'closed', '', 'initialTeardown', 'constructor', 'unsubscribe', () => __ΩTeardownLogic, 'teardown', 'add', () => __ΩExclude, () => __ΩTeardownLogic, 'remove', 'Subscription', 'P7!3"s)3#PPP$/$-J2%8"0&P$0\'Pn(2)$0*Pn,$o+#2)$0-5x"w.y'];
-    //     exports.__ΩSubscription = __ΩSubscription;
-    //     const __ΩSubscribable = ['T', () => __ΩPartial, () => __ΩObserver, 'observer', () => __ΩUnsubscribable, 'subscribe', 'b!PPe#!o#"o""2$n%1&My'];
-    //     exports.__ΩSubscribable = __ΩSubscribable;
+    //     const __ɵΩObserver = ['T', 'value', '', 'next', 'err', 'error', 'complete', 'b!PPe#!2"$/#4$P"2%$/#4&P$/#4\'My'];
+    //     exports.__ɵΩObserver = __ɵΩObserver;
+    //     const __ɵΩSubscription = [() => Subscription, 'EMPTY', 'closed', '', 'initialTeardown', 'constructor', 'unsubscribe', () => __ɵΩTeardownLogic, 'teardown', 'add', () => __ΩExclude, () => __ɵΩTeardownLogic, 'remove', 'Subscription', 'P7!3"s)3#PPP$/$-J2%8"0&P$0\'Pn(2)$0*Pn,$o+#2)$0-5x"w.y'];
+    //     exports.__ɵΩSubscription = __ɵΩSubscription;
+    //     const __ɵΩSubscribable = ['T', () => __ΩPartial, () => __ɵΩObserver, 'observer', () => __ΩUnsubscribable, 'subscribe', 'b!PPe#!o#"o""2$n%1&My'];
+    //     exports.__ɵΩSubscribable = __ɵΩSubscribable;
     //     const __ΩUnsubscribable = ['unsubscribe', 'PP$1!My'];
     //     exports.__ΩUnsubscribable = __ΩUnsubscribable;
     //     const __ΩExclude = ['T', 'U', 'l6!Re$!RPe#!e$"qk#%QRb!b"Pde"!p)y'];
@@ -327,11 +328,32 @@ test('class type var', () => {
     //         return fn;
     //     }
     //     const rxjs_1 = require("rxjs");
-    //     const __ΩA = [() => __assignType(rxjs_1.Observable, __ΩObservable), 'P#7!y'];
+    //     const __ΩA = [() => __assignType(rxjs_1.Observable, __ɵΩObservable), 'P#7!y'];
 
-    expect(res.app).toContain('const __ΩObservable = [');
-    expect(res.app).toContain('() => __assignType(rxjs_1.Observable, __ΩObservable)');
+    expect(res.app).toContain('const __ɵΩObservable = [');
+    expect(res.app).toContain('() => __assignType(rxjs_1.Observable, __ɵΩObservable)');
+    // FIXME: why isn't it being prefixed with `ɵ`?
+    expect(res.app).toContain('const __ɵΩUnsubscribable = [');
 })
+
+test('runtime type name clashing', () => {
+    const res = transpile({
+        app: `import { Observable } from 'rxjs';
+
+            type Subscribable = any;
+
+            type A = Observable<unknown>;
+        `
+    }, undefined, {
+        inlineExternalLibraryImports: {
+            'rxjs': ['Observable'],
+        },
+    });
+
+    expect(res.app).toContain('const __ɵΩSubscribable = [');
+    expect(res.app).toContain('const __ΩSubscribable = [');
+})
+
 test('class typeOf', () => {
     const res = transpileAndRun({
         app: `import { Observable } from 'rxjs';
