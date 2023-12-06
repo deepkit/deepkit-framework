@@ -109,6 +109,10 @@ export function hasModifier(node: { modifiers?: NodeArray<ModifierLike> }, modif
     return node.modifiers.some(v => v.kind === modifier);
 }
 
+export function getExternalRuntimeTypeName(typeName: string): string {
+    return `__ɵΩ${typeName}`;
+}
+
 const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNodeHook<T> | undefined => {
     if (isIdentifier(node)) {
         //ts-clone-node wants to read `node.text` which does not exist. we hook into it and provide the correct value.
@@ -122,7 +126,7 @@ const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNo
 };
 
 export class NodeConverter {
-    constructor(protected f: NodeFactory) {}
+    constructor(protected f: NodeFactory, protected externalRuntimeTypeNames: Set<string>) {}
 
     toExpression<T extends PackExpression | PackExpression[]>(node?: T): Expression {
         if (node === undefined) return this.f.createIdentifier('undefined');
@@ -146,7 +150,8 @@ export class NodeConverter {
 
         switch (node.kind) {
             case SyntaxKind.Identifier:
-                return finish(node, this.f.createIdentifier(getIdentifierName(node as Identifier)));
+                const typeName = getIdentifierName(node as Identifier);
+                return finish(node, this.f.createIdentifier(this.externalRuntimeTypeNames.has(typeName) ? getExternalRuntimeTypeName(typeName) : typeName));
             case SyntaxKind.StringLiteral:
                 return finish(node, this.f.createStringLiteral((node as StringLiteral).text));
             case SyntaxKind.NumericLiteral:

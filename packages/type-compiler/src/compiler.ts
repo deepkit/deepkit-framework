@@ -547,6 +547,8 @@ export class ReflectionTransformer implements CustomTransformer {
         { name: EntityName, sourceFile: SourceFile, compiled?: Statement[] }
     >();
 
+    protected externalSourceFileNames = new Set<string>();
+
     protected externalRuntimeTypeNames = new Set<string>();
 
     /**
@@ -583,7 +585,7 @@ export class ReflectionTransformer implements CustomTransformer {
         protected context: TransformationContext,
     ) {
         this.f = context.factory;
-        this.nodeConverter = new NodeConverter(this.f);
+        this.nodeConverter = new NodeConverter(this.f, this.externalRuntimeTypeNames);
         //it is important to not have undefined values like {paths: undefined} because it would override the read tsconfig.json
         this.compilerOptions = filterUndefined(context.getCompilerOptions());
         this.host = createCompilerHost(this.compilerOptions);
@@ -2025,6 +2027,8 @@ export class ReflectionTransformer implements CustomTransformer {
 
         this.externalRuntimeTypeNames.add(getNameAsString(typeName));
 
+        this.externalSourceFileNames.add(sourceFile.fileName);
+
         this.embedDeclarations.set(declaration, {
             name: typeName,
             sourceFile,
@@ -2237,69 +2241,74 @@ export class ReflectionTransformer implements CustomTransformer {
                 //to break recursion, we track which declaration has already been compiled
                 if (!this.compiledDeclarations.has(declaration) && !this.compileDeclarations.has(declaration)) {
                     const declarationSourceFile = findSourceFile(declaration) || this.sourceFile;
-                    const isGlobal = resolved.importDeclaration === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName;
-                    const isFromImport = resolved.importDeclaration !== undefined;
 
                     if (this.isExcluded(declarationSourceFile.fileName)) {
                         program.pushOp(ReflectionOp.any);
                         return;
                     }
 
-                    if (isGlobal) {
-                        this.embedDeclarations.set(declaration, {
-                            name: typeName,
-                            sourceFile: declarationSourceFile
-                        });
-                    } else if (isFromImport) {
-                        if (resolved.importDeclaration) {
-                            //if explicit `import {type T}`, we do not emit an import and instead push any
-                            if (resolved.typeOnly) {
-                                this.resolveTypeOnlyImport(typeName, program);
-                                return;
-                            }
+                    if (this.externalSourceFileNames.has(declarationSourceFile.fileName)) {
+                        this.addExternalLibraryImportEmbedDeclaration(declaration, declarationSourceFile, typeName);
+                    } else {
+                        const isGlobal = resolved.importDeclaration === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName;
+                        const isFromImport = resolved.importDeclaration !== undefined;
 
-                            // check if the referenced declaration has reflection disabled
-                            const declarationReflection = this.findReflectionConfig(declaration, program);
-                            if (declarationReflection.mode === 'never') {
-                                program.pushOp(ReflectionOp.any);
-                                return;
-                            }
+                        if (isGlobal) {
+                            this.embedDeclarations.set(declaration, {
+                                name: typeName,
+                                sourceFile: declarationSourceFile
+                            });
+                        } else if (isFromImport) {
+                            if (resolved.importDeclaration) {
+                                //if explicit `import {type T}`, we do not emit an import and instead push any
+                                if (resolved.typeOnly) {
+                                    this.resolveTypeOnlyImport(typeName, program);
+                                    return;
+                                }
 
-                            const found = this.resolver.resolve(resolved.sourceFile, resolved.importDeclaration);
-                            if (!found) {
-                                debug('module not found');
-                                program.pushOp(ReflectionOp.any);
-                                return;
-                            }
-
-                            const builtType = isBuiltType(runtimeTypeName, found);
-                            if (!builtType) {
-                                if (!this.shouldInlineExternalLibraryImport(resolved.importDeclaration, typeName, declarationReflection)) return;
-                                this.addExternalLibraryImportEmbedDeclaration(declaration, declarationSourceFile, typeName);
-                            } else {
-                                this.isMaybeEmbeddingExternalLibraryImport = false;
-                                //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
-                                const reflection = this.findReflectionFromPath(found.fileName);
-                                if (reflection.mode === 'never') {
+                                // check if the referenced declaration has reflection disabled
+                                const declarationReflection = this.findReflectionConfig(declaration, program);
+                                if (declarationReflection.mode === 'never') {
                                     program.pushOp(ReflectionOp.any);
                                     return;
                                 }
 
-                                this.addImports.push({ identifier: runtimeTypeName, from: resolved.importDeclaration.moduleSpecifier });
-                            }
-                        }
-                    } else {
-                        //it's a reference type inside the same file. Make sure its type is reflected
-                        const reflection = this.findReflectionConfig(declaration, program);
-                        if (reflection.mode === 'never') {
-                            program.pushOp(ReflectionOp.any);
-                            return;
-                        }
+                                const found = this.resolver.resolve(resolved.sourceFile, resolved.importDeclaration);
+                                if (!found) {
+                                    debug('module not found');
+                                    program.pushOp(ReflectionOp.any);
+                                    return;
+                                }
 
-                        this.compileDeclarations.set(declaration, {
-                            name: typeName,
-                            sourceFile: declarationSourceFile,
-                        });
+                                const builtType = isBuiltType(runtimeTypeName, found);
+                                if (!builtType) {
+                                    if (!this.shouldInlineExternalLibraryImport(resolved.importDeclaration, typeName, declarationReflection)) return;
+                                    this.addExternalLibraryImportEmbedDeclaration(declaration, declarationSourceFile, typeName);
+                                } else {
+                                    this.isMaybeEmbeddingExternalLibraryImport = false;
+                                    //check if the referenced file has reflection info emitted. if not, any is emitted for that reference
+                                    const reflection = this.findReflectionFromPath(found.fileName);
+                                    if (reflection.mode === 'never') {
+                                        program.pushOp(ReflectionOp.any);
+                                        return;
+                                    }
+
+                                    this.addImports.push({ identifier: runtimeTypeName, from: resolved.importDeclaration.moduleSpecifier });
+                                }
+                            }
+                        } else {
+                            //it's a reference type inside the same file. Make sure its type is reflected
+                            const reflection = this.findReflectionConfig(declaration, program);
+                            if (reflection.mode === 'never') {
+                                program.pushOp(ReflectionOp.any);
+                                return;
+                            }
+
+                            this.compileDeclarations.set(declaration, {
+                                name: typeName,
+                                sourceFile: declarationSourceFile,
+                            });
+                        }
                     }
                 }
 
