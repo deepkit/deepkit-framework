@@ -15,6 +15,7 @@ import { isAbsolute } from 'path';
 const {
     createSourceFile,
     resolveModuleName,
+    isStringLiteral,
     SyntaxKind,
     ScriptTarget,
 } = ts;
@@ -70,12 +71,40 @@ export class Resolver {
         return this.resolveSourceFile(from.fileName, (moduleSpecifier as StringLiteral).text);
     }
 
+    resolveExternalLibraryImport(importDeclaration: ImportDeclaration): Required<ResolvedModuleFull> {
+        const resolvedModule = this.resolveImport(importDeclaration);
+        console.log(resolvedModule);
+        if (!resolvedModule.packageId) {
+            throw new Error('Missing package id for resolved module');
+            /*resolvedModule.packageId = {
+                name: (importDeclaration.moduleSpecifier as StringLiteral).text.replace(/[^a-zA-Z0-9]+/g, '_'),
+                subModuleName: '',
+                version: '',
+            };*/
+        }
+        if (!resolvedModule.isExternalLibraryImport) {
+            throw new Error('Resolved module is not an external library import');
+        }
+        return resolvedModule as Required<ResolvedModuleFull>;
+    }
+
+    resolveImport(importDeclaration: ImportDeclaration): ResolvedModuleFull {
+        if (!isStringLiteral(importDeclaration.moduleSpecifier)) {
+            throw new Error('Invalid import declaration module specifier');
+        }
+        const resolvedModule = this.resolveImpl(importDeclaration.moduleSpecifier.text, importDeclaration.getSourceFile().fileName);
+        if (!resolvedModule) {
+            throw new Error('Cannot resolve module');
+        }
+        return resolvedModule;
+    }
+
     resolveImpl(modulePath: string, fromPath: string): ResolvedModuleFull | undefined {
         if (this.host.resolveModuleNames !== undefined) {
             return this.host.resolveModuleNames([modulePath], fromPath, /*reusedNames*/ undefined, /*redirectedReference*/ undefined, this.compilerOptions)[0] as ResolvedModuleFull | undefined;
         }
         const result = resolveModuleName(modulePath, fromPath, this.compilerOptions, this.host);
-        return result.resolvedModule as ResolvedModuleFull;
+        return result.resolvedModule;
     }
 
     /**

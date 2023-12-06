@@ -33,6 +33,7 @@ import type {
 import ts from 'typescript';
 import { cloneNode as tsNodeClone, CloneNodeHook } from '@marcj/ts-clone-node';
 import { SourceFile } from './ts-types.js';
+import { Externals } from './externals';
 
 const {
     isArrowFunction,
@@ -113,6 +114,10 @@ export function getExternalRuntimeTypeName(typeName: string): string {
     return `__ɵΩ${typeName}`;
 }
 
+export function getRuntimeTypeName(typeName: string): string {
+    return `__Ω${typeName}`;
+}
+
 const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNodeHook<T> | undefined => {
     if (isIdentifier(node)) {
         //ts-clone-node wants to read `node.text` which does not exist. we hook into it and provide the correct value.
@@ -126,7 +131,7 @@ const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNo
 };
 
 export class NodeConverter {
-    constructor(protected f: NodeFactory, protected externalRuntimeTypeNames: Set<string>) {}
+    constructor(protected f: NodeFactory, protected externals: Externals) {}
 
     toExpression<T extends PackExpression | PackExpression[]>(node?: T): Expression {
         if (node === undefined) return this.f.createIdentifier('undefined');
@@ -150,8 +155,10 @@ export class NodeConverter {
 
         switch (node.kind) {
             case SyntaxKind.Identifier:
-                const typeName = getIdentifierName(node as Identifier);
-                return finish(node, this.f.createIdentifier(this.externalRuntimeTypeNames.has(typeName) ? getExternalRuntimeTypeName(typeName) : typeName));
+                const name = getIdentifierName(node as Identifier);
+                return this.externals.isEmbeddingLibraryImport() && !this.externals.globalTypes.has(name)
+                    ? this.f.createIdentifier(`${getExternalRuntimeTypeName(this.externals.getEmbeddingLibraryImport().module.packageId.name)}.${name}`)
+                    : this.f.createIdentifier(getRuntimeTypeName(name));
             case SyntaxKind.StringLiteral:
                 return finish(node, this.f.createStringLiteral((node as StringLiteral).text));
             case SyntaxKind.NumericLiteral:
