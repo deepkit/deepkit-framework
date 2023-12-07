@@ -29,6 +29,11 @@ import type {
     StringLiteral,
     StringLiteralLike,
     SymbolTable,
+    ClassDeclaration,
+    ClassElement,
+    InterfaceDeclaration,
+    Modifier,
+    TypeElement, ClassExpression,
 } from 'typescript';
 import ts from 'typescript';
 import { cloneNode as tsNodeClone, CloneNodeHook } from '@marcj/ts-clone-node';
@@ -36,6 +41,10 @@ import { SourceFile } from './ts-types.js';
 import { External } from './external.js';
 
 const {
+    isInterfaceDeclaration,
+    isConstructorDeclaration,
+    isMethodDeclaration,
+    isPropertyDeclaration,
     isArrowFunction,
     isComputedPropertyName,
     isIdentifier,
@@ -133,6 +142,45 @@ const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNo
 export class NodeConverter {
     constructor(protected f: NodeFactory, protected external: External) {}
 
+    public convertedNodes = new Map<Node, Node>;
+
+    private convertClassElementToTypeElement(node: ClassElement): TypeElement {
+        if (isPropertyDeclaration(node)) {
+            return this.f.createPropertySignature(
+                node.modifiers as readonly Modifier[] | undefined,
+                node.name,
+                node.questionToken,
+                node.type,
+            );
+        } else if (isMethodDeclaration(node)) {
+            return this.f.createMethodSignature(
+                node.modifiers as readonly Modifier[] | undefined,
+                node.name,
+                node.questionToken,
+                node.typeParameters,
+                node.parameters,
+                node.type,
+            );
+        } else if (isConstructorDeclaration(node)) {
+            return this.f.createConstructSignature(node.typeParameters, node.parameters, node.type);
+        }
+
+        throw new Error('Unsupported type');
+    }
+
+    convertClassToInterface(node: ClassDeclaration | ClassExpression): InterfaceDeclaration {
+        if (!node.name) {
+            throw new Error('Class name is required');
+        }
+        return this.f.createInterfaceDeclaration(
+            node.modifiers as readonly Modifier[] | undefined,
+            node.name,
+            node.typeParameters,
+            node.heritageClauses, //node.heritageClauses.map(heritageClause => isInterfaceDeclaration(heritageClause.) ? heritageClause : this.f.createh(this.convertClassToInterface(heritageClause))),
+            node.members.map(member => this.convertClassElementToTypeElement(member)),
+        );
+    }
+
     toExpression<T extends PackExpression | PackExpression[]>(node?: T): Expression {
         if (node === undefined) return this.f.createIdentifier('undefined');
 
@@ -156,7 +204,7 @@ export class NodeConverter {
         switch (node.kind) {
             case SyntaxKind.Identifier:
                 const name = getIdentifierName(node as Identifier);
-                return this.external.isEmbeddingExternalLibraryImport() && !this.external.globalTypeNames.has(name)
+                return this.external.isEmbeddingExternalLibraryImport() && !this.external.knownGlobalTypeNames.has(name)
                     ? this.f.createIdentifier(`${getExternalRuntimeTypeName(this.external.getEmbeddingExternalLibraryImport().module.packageId.name)}.${name}`)
                     : finish(node, this.f.createIdentifier(getRuntimeTypeName(name)));
             case SyntaxKind.StringLiteral:

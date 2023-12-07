@@ -20,15 +20,15 @@ export interface ExternalLibraryImport {
 }
 
 export class External {
-    public sourceFileNames = new Set<string>();
+    protected sourceFileNames = new Set<string>();
 
-    public runtimeTypeNames = new Set<string>();
+    public compileExternalLibraryImports = new Map<string, Map<string, ExternalLibraryImport>>;
 
-    public libraryImports = new Map<string, Set<ExternalLibraryImport>>;
+    protected processedEntities = new Set<string>;
 
     public embeddedLibraryVariables = new Set<string>();
 
-    public globalTypeNames = new Set<string>();
+    public knownGlobalTypeNames = new Set<string>();
 
     public sourceFile?: SourceFile;
 
@@ -36,7 +36,7 @@ export class External {
 
     constructor(protected resolver: Resolver) {}
 
-    setEmbeddingExternalLibraryImport(value: ExternalLibraryImport): void {
+    startEmbeddingExternalLibraryImport(value: ExternalLibraryImport): void {
         if (this.embeddingExternalLibraryImport) {
             throw new Error('Already embedding module');
         }
@@ -50,45 +50,12 @@ export class External {
         return this.embeddingExternalLibraryImport;
     }
 
-    addGlobalType(typeName: string) {
-        this.globalTypeNames.add(typeName);
-    }
-
     isEmbeddingExternalLibraryImport(): boolean {
         return !!this.embeddingExternalLibraryImport;
     }
 
     finishEmbeddingExternalLibraryImport(): void {
         delete this.embeddingExternalLibraryImport;
-    }
-
-    public hasExternalLibraryImport(
-        entityName: EntityName,
-        module: Required<ResolvedModuleFull> = this.getEmbeddingExternalLibraryImport().module,
-    ): boolean {
-        const imports = this.libraryImports.get(module.packageId.name);
-        if (!imports) return false;
-        const typeName = getEntityName(entityName);
-        return [...imports].some(d => getNameAsString(d.name) === typeName)
-    }
-
-    public addExternalLibraryImport(name: EntityName, declaration: Node, sourceFile: SourceFile, module?: Required<ResolvedModuleFull>): ExternalLibraryImport {
-        if (!module) {
-            module = this.getEmbeddingExternalLibraryImport().module;
-        }
-        const imports = this.libraryImports.get(module.packageId.name) || new Set();
-        const externalLibraryImport: ExternalLibraryImport = {
-            name,
-            declaration,
-            sourceFile,
-            module,
-        }
-        this.libraryImports.set(module.packageId.name, imports.add(externalLibraryImport));
-        return externalLibraryImport;
-    }
-
-    public addRuntimeTypeName(typeName: EntityName): void {
-        this.runtimeTypeNames.add(getNameAsString(typeName));
     }
 
     public addSourceFile(sourceFile: SourceFile): void {
@@ -111,21 +78,50 @@ export class External {
         return imports.includes(typeName);
     }
 
-    public embedExternalLibraryImport(typeName: EntityName, declaration: Node, sourceFile: SourceFile, importDeclaration?: ImportDeclaration): ExternalLibraryImport {
-        let externalLibraryImport: ExternalLibraryImport;
-        if (importDeclaration) {
-            const resolvedModule = this.resolver.resolveExternalLibraryImport(importDeclaration);
-            externalLibraryImport = this.addExternalLibraryImport(typeName, declaration, sourceFile, resolvedModule);
-        } else {
-            externalLibraryImport = this.addExternalLibraryImport(typeName, declaration, sourceFile);
+    public processExternalLibraryImport(typeName: EntityName, declaration: Node, sourceFile: SourceFile, importDeclaration?: ImportDeclaration): ExternalLibraryImport {
+        const module = importDeclaration
+            ? this.resolver.resolveExternalLibraryImport(importDeclaration)
+            : this.getEmbeddingExternalLibraryImport().module;
+
+        const entityName = getNameAsString(typeName);
+        if (this.processedEntities.has(entityName)) {
+            return {
+                name: typeName,
+                declaration,
+                sourceFile,
+                module,
+            }
         }
 
-        this.addRuntimeTypeName(typeName);
+        this.processedEntities.add(entityName);
+        // const libraryFiles = this.processedExternalLibraryImports.get(module.packageId.name) || new Map();
+        // const libraryFileEntities = libraryFiles.get(module.resolvedFileName) || new Set();
+        // if (libraryFileEntities.has(entityName)) {
+        //     return {
+        //         name: typeName,
+        //         declaration,
+        //         sourceFile,
+        //         module,
+        //     }
+        // }
+        //
+        // libraryFileEntities.add(entityName);
+        // libraryFiles.set(module.resolvedFileName, libraryFileEntities);
+        // this.processedExternalLibraryImports.set(module.packageId.name, libraryFiles);
+
+        const imports = this.compileExternalLibraryImports.get(module.packageId.name) || new Map<string, ExternalLibraryImport>();
+        const externalLibraryImport: ExternalLibraryImport = {
+            name: typeName,
+            declaration,
+            sourceFile,
+            module,
+        }
+        this.compileExternalLibraryImports.set(module.packageId.name, imports.set(entityName, externalLibraryImport));
 
         if (sourceFile.fileName !== this.sourceFile?.fileName) {
             this.addSourceFile(sourceFile);
         }
 
-        return externalLibraryImport;
+        return externalLibraryImport!;
     }
 }
