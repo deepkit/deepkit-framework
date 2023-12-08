@@ -1,14 +1,7 @@
 //@ts-ignore
 import objectInspect from 'object-inspect';
 import { getClassName } from '@deepkit/core';
-import {
-    getTypeJitContainer,
-    isBackReferenceType,
-    isReferenceType,
-    ReflectionKind,
-    stringifyType,
-    Type,
-} from '@deepkit/type';
+import { getTypeJitContainer, isBackReferenceType, isReferenceType, ReflectionKind, stringifyType, Type } from '@deepkit/type';
 
 export function trackByIndex(index: number) {
     return index;

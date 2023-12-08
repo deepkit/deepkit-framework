@@ -1,11 +1,4 @@
-import {
-    isMapType,
-    isMongoIdType,
-    isSetType,
-    isUUIDType,
-    ReflectionKind,
-    TypeRegistry,
-} from '@deepkit/type';
+import { isMapType, isMongoIdType, isSetType, isUUIDType, ReflectionKind, TypeRegistry } from '@deepkit/type';
 import { ClassType, getClassName } from '@deepkit/core';
 import { StringInputComponent } from './string-input.component';
 import { ArrayInputComponent } from './array-input.component';

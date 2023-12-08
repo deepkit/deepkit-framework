@@ -17,7 +17,7 @@ import { SQLFilterBuilder } from '../sql-filter-builder.js';
 import { Sql } from '../sql-builder.js';
 import {
     binaryTypes,
-    databaseAnnotation, getClassType,
+    databaseAnnotation,
     getTypeJitContainer,
     isReferenceType,
     ReflectionClass,
@@ -26,7 +26,7 @@ import {
     resolvePath,
     resolveProperty,
     Serializer,
-    Type,
+    Type
 } from '@deepkit/type';
 import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
 import { splitDotPath } from '../sql-adapter.js';

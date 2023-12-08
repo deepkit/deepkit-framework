@@ -1,5 +1,5 @@
 import { ClassType, getClassName } from '@deepkit/core';
-import { getClassType, isMongoIdType, isSetType, isUUIDType, ReflectionKind, TypeRegistry } from '@deepkit/type';
+import { isMongoIdType, isSetType, isUUIDType, ReflectionKind, TypeRegistry } from '@deepkit/type';
 import { ClassCellComponent } from './components/cell/class-cell.component';
 import { DateCellComponent } from './components/cell/date-cell.component';
 import { EnumCellComponent } from './components/cell/enum-cell.component';

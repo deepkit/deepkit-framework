@@ -5,7 +5,7 @@ import {
     assertType,
     Entity,
     entityAnnotation,
-    findMember, getClassType,
+    findMember,
     isSameType,
     PrimaryKey,
     primaryKeyAnnotation,

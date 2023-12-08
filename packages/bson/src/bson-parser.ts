@@ -10,7 +10,7 @@
 
 import { BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils.js';
 import { buildStringDecoder, decodeUTF8 } from './strings.js';
-import { getClassType, nodeBufferToArrayBuffer, ReflectionKind, SerializationError, Type } from '@deepkit/type';
+import { nodeBufferToArrayBuffer, ReflectionKind, SerializationError, Type } from '@deepkit/type';
 import { hexTable } from './model.js';
 
 declare var Buffer: any;

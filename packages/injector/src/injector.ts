@@ -13,7 +13,6 @@ import {
 import { AbstractClassType, ClassType, CompilerContext, CustomError, getClassName, getPathValue, isArray, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
 import { findModuleForConfig, getScope, InjectorModule, PreparedProvider } from './module.js';
 import {
-    getClassType,
     hasTypeInformation,
     isExtendable,
     isOptional,
@@ -27,7 +26,7 @@ import {
     ReflectionKind,
     resolveReceiveType,
     stringifyType,
-    Type,
+    Type
 } from '@deepkit/type';
 
 export class InjectorError extends CustomError {
@@ -686,7 +685,7 @@ export class Injector implements InjectorInterface {
             while (current && current.indexAccessOrigin) {
                 let found: { module: InjectorModule, path: string } | undefined = undefined;
                 if (current.indexAccessOrigin.container.kind === ReflectionKind.class) {
-                    found = findModuleForConfig(getClassType(current.indexAccessOrigin.container), resolveDependenciesFrom);
+                    found = findModuleForConfig(current.indexAccessOrigin.container.classType, resolveDependenciesFrom);
                 }
                 if (current.indexAccessOrigin.index.kind === ReflectionKind.literal) {
                     accesses.unshift(`[${JSON.stringify(current.indexAccessOrigin.index.literal)}]`);
@@ -838,7 +837,7 @@ export class Injector implements InjectorInterface {
 
                 while (current && current.indexAccessOrigin) {
                     if (current.indexAccessOrigin.container.kind === ReflectionKind.class) {
-                        const found = findModuleForConfig(getClassType(current.indexAccessOrigin.container), resolveDependenciesFrom);
+                        const found = findModuleForConfig(current.indexAccessOrigin.container.classType, resolveDependenciesFrom);
                         if (!found) return () => undefined;
                         config = getPathValue(found.module.getConfig(), found.path);
                     }
