@@ -1,5 +1,5 @@
 import { ClassType, isArray, isFunction } from '@deepkit/core';
-import { binaryTypes, ReflectionKind, Type } from './reflection/type.js';
+import { binaryTypes, getClassType, ReflectionKind, Type } from './reflection/type.js';
 
 interface RegistryDecorator<T> {
     predicate: (type: Type) => boolean,
@@ -22,9 +22,9 @@ export class TypeRegistry<T> {
         }
 
         if (type.kind === ReflectionKind.class) {
-            const classResult = this.classes.get(type.classType);
+            const classResult = this.classes.get(getClassType(type));
             if (classResult) return classResult;
-            if (type.classType === Set || type.classType === Map || binaryTypes.includes(type.classType)) return undefined;
+            if (type.classType === Set || type.classType === Map || binaryTypes.includes(getClassType(type))) return undefined;
         }
         return this.results[type.kind];
     }

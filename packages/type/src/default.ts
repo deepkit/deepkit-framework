@@ -1,4 +1,5 @@
-import { binaryTypes, ReflectionKind, resolveTypeMembers, Type } from './reflection/type.js';
+import { binaryTypes, getClassType, ReflectionKind, resolveTypeMembers, Type } from './reflection/type.js';
+import { ClassType } from '@deepkit/core';
 
 /**
  * Returns a sensible default value for a given type.
@@ -71,7 +72,7 @@ export function defaultValue(type: Type): any {
             if (type.classType === Date) return new Date;
             if (type.classType === Set) return new Set;
             if (type.classType === Map) return new Map;
-            if (binaryTypes.includes(type.classType)) return new type.classType;
+            if (binaryTypes.includes(getClassType(type))) return new (getClassType(type));
 
             const result: any = {};
             const types = resolveTypeMembers(type);

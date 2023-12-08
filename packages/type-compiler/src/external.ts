@@ -8,7 +8,7 @@ const {
     isStringLiteral,
 } = ts;
 
-import { getEntityName, getNameAsString } from './reflection-ast.js';
+import { getEntityName, getNameAsString, hasSourceFile } from './reflection-ast.js';
 import { ReflectionConfig } from './compiler.js';
 import { Resolver } from './resolver.js';
 
@@ -68,6 +68,7 @@ export class External {
 
     public shouldInlineExternalLibraryImport(importDeclaration: ImportDeclaration, entityName: EntityName, config: ReflectionConfig): boolean {
         if (!isStringLiteral(importDeclaration.moduleSpecifier)) return false;
+        if (!hasSourceFile(importDeclaration)) return false;
         if (config.options.inlineExternalLibraryImports === true) return true;
         const resolvedModule = this.resolver.resolveExternalLibraryImport(importDeclaration);
         const imports = config.options.inlineExternalLibraryImports?.[resolvedModule.packageId.name];

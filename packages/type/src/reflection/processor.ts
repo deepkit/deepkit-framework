@@ -590,7 +590,7 @@ export class Processor {
                             break;
                         case ReflectionOp.class: {
                             const types = this.popFrame() as Type[];
-                            let t = { kind: ReflectionKind.class, id: state.nominalId++, classType: Object, types: [] } as TypeClass;
+                            let t = { kind: ReflectionKind.class, id: state.nominalId++, types: [] } as TypeClass;
 
                             function add(member: Type) {
                                 if (member.kind === ReflectionKind.propertySignature) {
@@ -669,6 +669,8 @@ export class Processor {
                             if (args.length) t.arguments = args;
                             t.typeArguments = program.typeParameters;
 
+                            console.log('class', t);
+
                             this.pushType(t);
                             break;
                         }
@@ -712,13 +714,16 @@ export class Processor {
                         case ReflectionOp.classReference: {
                             const ref = this.eatParameter() as number;
                             const classOrFunction = resolveFunction(program.stack[ref] as Function, program.object);
+                            const external = isPack(classOrFunction);
                             const inputs = this.popFrame() as Type[];
                             if (!classOrFunction) {
                                 this.pushType({ kind: ReflectionKind.unknown });
                                 break;
                             }
 
-                            if (!classOrFunction.__type) {
+                            const runtimeType = external ? classOrFunction : classOrFunction.__type;
+
+                            if (!runtimeType) {
                                 if (op === ReflectionOp.classReference) {
                                     this.pushType({ kind: ReflectionKind.class, classType: classOrFunction, typeArguments: inputs, types: [] });
                                 } else if (op === ReflectionOp.functionReference) {
@@ -727,7 +732,7 @@ export class Processor {
                             } else {
                                 //when it's just a simple reference resolution like typeOf<Class>() then enable cache re-use (so always the same type is returned)
                                 const directReference = !!(this.isEnded() && program.previous && program.previous.end === 0);
-                                const result = this.reflect(classOrFunction, inputs, { inline: !directReference, reuseCached: directReference });
+                                const result = this.reflect(runtimeType, inputs, { inline: !directReference, reuseCached: directReference });
                                 if (directReference) program.directReturn = true;
                                 this.push(result, program);
 
@@ -1284,7 +1289,7 @@ export class Processor {
                 if (isType(result)) {
                     if (program.object) {
                         if (result.kind === ReflectionKind.class && result.classType === Object) {
-                            result.classType = program.object;
+                            // result.classType = program.object;
                             applyClassDecorators(result);
                         }
                         if (result.kind === ReflectionKind.function && !result.function) {
@@ -1778,7 +1783,6 @@ export function typeInfer(value: any): Type {
         }
 
         if (isClass(value)) {
-            //unknown class
             return { kind: ReflectionKind.class, classType: value as ClassType, types: [] };
         }
 

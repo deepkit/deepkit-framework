@@ -64,6 +64,10 @@ export function getIdentifierName(node: Identifier | PrivateIdentifier): string 
     return ts.unescapeLeadingUnderscores(node.escapedText);
 }
 
+export function hasSourceFile(node: Node): boolean {
+    return typeof node.getSourceFile === 'function';
+}
+
 export function joinQualifiedName(name: EntityName): string {
     if (isIdentifier(name)) return getIdentifierName(name);
     return joinQualifiedName(name.left) + '_' + getIdentifierName(name.right);
@@ -162,6 +166,7 @@ export class NodeConverter {
                 node.type,
             );
         } else if (isConstructorDeclaration(node)) {
+            // return this.f.createm
             return this.f.createConstructSignature(node.typeParameters, node.parameters, node.type);
         }
 

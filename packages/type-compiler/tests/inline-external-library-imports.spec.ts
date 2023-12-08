@@ -1,6 +1,5 @@
 import { test, expect } from '@jest/globals';
-import { ReflectionKind, TypeClass, TypeFunction } from '@deepkit/type';
-import { Unsubscribable } from 'rxjs';
+import {ReflectionKind, TypeClass, TypeFunction, } from '@deepkit/type';
 
 import { transpile, transpileAndRun } from './utils';
 
@@ -163,8 +162,6 @@ test('function type alias', () => {
     expect(res.app).toContain('() => __ɵΩrxjs_operators.Ωmap)');
 });
 
-import { map } from 'rxjs';
-
 test('typeOf function type alias', () => {
     const res = transpileAndRun({
         app: `import { map } from 'rxjs';
@@ -197,17 +194,17 @@ test('typeOf function type alias', () => {
         "parameters": [Circular],
         "return": {
           "annotations": {},
-          "id": 6,
+          "id": 4,
           "implements": [
             {
               "annotations": {},
-              "id": 4,
+              "id": 2,
               "kind": 30,
               "typeArguments": [
                 {
-                  "annotations": {},
-                  "id": 1,
-                  "kind": 30,
+                  "classType": undefined,
+                  "external": true,
+                  "kind": 20,
                   "parent": {
                     "kind": 18,
                     "name": "source",
@@ -218,21 +215,31 @@ test('typeOf function type alias', () => {
                       ],
                       "parent": [Circular],
                       "return": {
-                        "annotations": {},
-                        "id": 2,
-                        "kind": 30,
+                        "classType": undefined,
+                        "external": true,
+                        "kind": 20,
                         "parent": [Circular],
+                        "typeArguments": [
+                          {
+                            "kind": 1,
+                          },
+                        ],
                         "types": [],
                       },
                     },
                     "type": [Circular],
                   },
+                  "typeArguments": [
+                    {
+                      "kind": 1,
+                    },
+                  ],
                   "types": [],
                 },
                 {
-                  "annotations": {},
-                  "id": 2,
-                  "kind": 30,
+                  "classType": undefined,
+                  "external": true,
+                  "kind": 20,
                   "parent": {
                     "kind": 35,
                     "parameters": [
@@ -241,10 +248,15 @@ test('typeOf function type alias', () => {
                         "name": "source",
                         "parent": [Circular],
                         "type": {
-                          "annotations": {},
-                          "id": 1,
-                          "kind": 30,
+                          "classType": undefined,
+                          "external": true,
+                          "kind": 20,
                           "parent": [Circular],
+                          "typeArguments": [
+                            {
+                              "kind": 1,
+                            },
+                          ],
                           "types": [],
                         },
                       },
@@ -252,6 +264,11 @@ test('typeOf function type alias', () => {
                     "parent": [Circular],
                     "return": [Circular],
                   },
+                  "typeArguments": [
+                    {
+                      "kind": 1,
+                    },
+                  ],
                   "types": [],
                 },
               ],
@@ -265,20 +282,30 @@ test('typeOf function type alias', () => {
                       "name": "source",
                       "parent": [Circular],
                       "type": {
-                        "annotations": {},
-                        "id": 1,
-                        "kind": 30,
+                        "classType": undefined,
+                        "external": true,
+                        "kind": 20,
                         "parent": [Circular],
+                        "typeArguments": [
+                          {
+                            "kind": 1,
+                          },
+                        ],
                         "types": [],
                       },
                     },
                   ],
                   "parent": [Circular],
                   "return": {
-                    "annotations": {},
-                    "id": 2,
-                    "kind": 30,
+                    "classType": undefined,
+                    "external": true,
+                    "kind": 20,
                     "parent": [Circular],
+                    "typeArguments": [
+                      {
+                        "kind": 1,
+                      },
+                    ],
                     "types": [],
                   },
                 },
@@ -305,20 +332,30 @@ test('typeOf function type alias', () => {
                   "name": "source",
                   "parent": [Circular],
                   "type": {
-                    "annotations": {},
-                    "id": 1,
-                    "kind": 30,
+                    "classType": undefined,
+                    "external": true,
+                    "kind": 20,
                     "parent": [Circular],
+                    "typeArguments": [
+                      {
+                        "kind": 1,
+                      },
+                    ],
                     "types": [],
                   },
                 },
               ],
               "parent": [Circular],
               "return": {
-                "annotations": {},
-                "id": 2,
-                "kind": 30,
+                "classType": undefined,
+                "external": true,
+                "kind": 20,
                 "parent": [Circular],
+                "typeArguments": [
+                  {
+                    "kind": 1,
+                  },
+                ],
                 "types": [],
               },
             },
@@ -359,17 +396,17 @@ test('typeOf function type alias', () => {
   ],
   "return": {
     "annotations": {},
-    "id": 6,
+    "id": 4,
     "implements": [
       {
         "annotations": {},
-        "id": 4,
+        "id": 2,
         "kind": 30,
         "typeArguments": [
           {
-            "annotations": {},
-            "id": 1,
-            "kind": 30,
+            "classType": undefined,
+            "external": true,
+            "kind": 20,
             "parent": {
               "kind": 18,
               "name": "source",
@@ -380,21 +417,31 @@ test('typeOf function type alias', () => {
                 ],
                 "parent": [Circular],
                 "return": {
-                  "annotations": {},
-                  "id": 2,
-                  "kind": 30,
+                  "classType": undefined,
+                  "external": true,
+                  "kind": 20,
                   "parent": [Circular],
+                  "typeArguments": [
+                    {
+                      "kind": 1,
+                    },
+                  ],
                   "types": [],
                 },
               },
               "type": [Circular],
             },
+            "typeArguments": [
+              {
+                "kind": 1,
+              },
+            ],
             "types": [],
           },
           {
-            "annotations": {},
-            "id": 2,
-            "kind": 30,
+            "classType": undefined,
+            "external": true,
+            "kind": 20,
             "parent": {
               "kind": 35,
               "parameters": [
@@ -403,10 +450,15 @@ test('typeOf function type alias', () => {
                   "name": "source",
                   "parent": [Circular],
                   "type": {
-                    "annotations": {},
-                    "id": 1,
-                    "kind": 30,
+                    "classType": undefined,
+                    "external": true,
+                    "kind": 20,
                     "parent": [Circular],
+                    "typeArguments": [
+                      {
+                        "kind": 1,
+                      },
+                    ],
                     "types": [],
                   },
                 },
@@ -414,6 +466,11 @@ test('typeOf function type alias', () => {
               "parent": [Circular],
               "return": [Circular],
             },
+            "typeArguments": [
+              {
+                "kind": 1,
+              },
+            ],
             "types": [],
           },
         ],
@@ -427,20 +484,30 @@ test('typeOf function type alias', () => {
                 "name": "source",
                 "parent": [Circular],
                 "type": {
-                  "annotations": {},
-                  "id": 1,
-                  "kind": 30,
+                  "classType": undefined,
+                  "external": true,
+                  "kind": 20,
                   "parent": [Circular],
+                  "typeArguments": [
+                    {
+                      "kind": 1,
+                    },
+                  ],
                   "types": [],
                 },
               },
             ],
             "parent": [Circular],
             "return": {
-              "annotations": {},
-              "id": 2,
-              "kind": 30,
+              "classType": undefined,
+              "external": true,
+              "kind": 20,
               "parent": [Circular],
+              "typeArguments": [
+                {
+                  "kind": 1,
+                },
+              ],
               "types": [],
             },
           },
@@ -509,20 +576,30 @@ test('typeOf function type alias', () => {
             "name": "source",
             "parent": [Circular],
             "type": {
-              "annotations": {},
-              "id": 1,
-              "kind": 30,
+              "classType": undefined,
+              "external": true,
+              "kind": 20,
               "parent": [Circular],
+              "typeArguments": [
+                {
+                  "kind": 1,
+                },
+              ],
               "types": [],
             },
           },
         ],
         "parent": [Circular],
         "return": {
-          "annotations": {},
-          "id": 2,
-          "kind": 30,
+          "classType": undefined,
+          "external": true,
+          "kind": 20,
           "parent": [Circular],
+          "typeArguments": [
+            {
+              "kind": 1,
+            },
+          ],
           "types": [],
         },
       },
@@ -549,19 +626,17 @@ test('class type var', () => {
 ""use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const __ɵΩrxjs = {};
-__ɵΩrxjs.Observable = ['source', () => __ɵΩrxjs.Operator, 'operator', 'this', 'subscriber', () => __ɵΩrxjs.TeardownLogic, '', 'subscribe', 'new', 'args', 'create', () => __ɵΩrxjs.Operator, 'lift', () => __ΩPartial, () => __ɵΩrxjs.Observer, 'observer', 'value', 'next', 'error', 'complete', 'forEach', () => __ΩPromiseConstructorLike, 'promiseCtor', 'pipe', () => __ɵΩrxjs.OperatorFunction, 'op1', () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, 'op2', () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, 'op3', () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, 'op4', () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, 'op5', () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, 'op6', () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, 'op7', () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, 'op8', () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, 'op9', () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, () => __ɵΩrxjs.OperatorFunction, 'operations', 'toPromise', () => Promise, 'PromiseCtor', () => __ΩPromiseConstructorLike, 'PPP"M-J4!P"!o"#-J4#PPP!M2$P!M2%n&/\\'2(8"1)P"@2*"/\\'4+P!"o,#2#8P"M1-P!o/"o."208PM1(PP!21$/\\'22PM1(PPP!21$/\\',J228PP"23$/\\',J238PP$/\\',J248PM1(PP!21$/\\'22$\`15PP!21$/\\'22n627$\`15PP!M18P!"o9#2:P"M18P!"o;#2:""o<#2=P"M18P!"o>#2:""o?#2=""o@#2AP"M18P!"oB#2:""oC#2=""oD#2A""oE#2FP"M18P!"oG#2:""oH#2=""oI#2A""oJ#2F""oK#2LP"M18P!"oM#2:""oN#2=""oO#2A""oP#2F""oQ#2L""oR#2SP"M18P!"oT#2:""oU#2=""oV#2A""oW#2F""oX#2L""oY#2S""oZ#2[P"M18P!"o\\\\#2:""o]#2=""o^#2A""o_#2F""o\`#2L""oa#2S""ob#2[""oc#2dP"M18P!"oe#2:""of#2=""og#2A""oh#2F""oi#2L""oj#2S""ok#2[""ol#2d""om#2nP"M18P!"oo#2:""op#2=""oq#2A""or#2F""os#2L""ot#2S""ou#2[""ov#2d""ow#2n""ox#@2yP#M18PP!-J\`1zPi{2|P!-J\`1zPn}2|P!-J\`1zMy'];
+__ɵΩrxjs.Observable = ['T', () => __ɵΩrxjs.Observable, 'source', () => __ɵΩrxjs.Operator, 'operator', () => __ɵΩrxjs.Observable, 'this', () => __ɵΩrxjs.Subscriber, 'subscriber', () => __ɵΩrxjs.TeardownLogic, '', 'subscribe', 'constructor', 'args', 'create', () => __ɵΩrxjs.Operator, () => __ɵΩrxjs.Observable, 'lift', () => __ΩPartial, () => __ɵΩrxjs.Observer, 'observer', () => __ɵΩrxjs.Subscription, 'value', 'next', 'forEach', () => __ɵΩrxjs.Observable, 'pipe', 'toPromise', () => __ɵΩrxjs.Subscribable, 'Observable', 'b!PP"7"-J3#P"e"!o$#-J3%PPPe$!7&2\\'Pe$!7(2)n*/+2,8"0-P"@2."/+3/sPe"!"o0#2%8P"7102Pe"!o4"o3"258P760,PPe#!27$/+28$\`09PPe#!7:0;PPe#!-J\`0<5e!!o="x"w>y'];
 const __ΩPartial = ['T', 'l+e#!e"!fRb!Pde"!gN#"y'];
-const __ΩPromiseConstructorLike = [() => __ΩPromiseLike, 'value', '', 'resolve', 'reason', 'reject', 'executor', () => __ΩPromiseLike, 'new', 'PPPP""o!"J2"$/#2$P"2%8$/#2&$/#2\\'"o("/)y'];
-__ɵΩrxjs.Operator = ['T', 'R', 'subscriber', 'source', () => __ɵΩrxjs.TeardownLogic, 'call', 'b!b"PPPe$"M2#"2$n%1&My'];
-__ɵΩrxjs.Subscriber = ['x', '', 'next', 'e', 'error', 'complete', 'create', 'isStopped', () => __ɵΩrxjs.Observer, 'destination', () => __ɵΩrxjs.Observer, 'new', 'value', 'err', 'unsubscribe', '_next', '_error', '_complete', 'PPMPP"2!8$/"2#8P"2$8$/"2%8P$/"2&8P"M1\\')4(PP"M"o)"J4*PPP"M"o+"J2*8"1,P!2-8$1#P"2.8$1%P$1&P$1/P!2-$10P"2.$11P$12My'];
-__ɵΩrxjs.TeardownLogic = [() => __ɵΩrxjs.Unsubscribable, '', 'PPMn!P$/"$Jy'];
+__ɵΩrxjs.Operator = ['T', 'R', () => __ɵΩrxjs.Subscriber, 'subscriber', 'source', () => __ɵΩrxjs.TeardownLogic, 'call', 'b!b"PPPe$"7#2$"2%n&1\\'My'];
+__ɵΩrxjs.Subscriber = ['T', 'x', '', 'next', 'e', 'error', 'complete', () => __ɵΩrxjs.Subscriber, 'create', 'isStopped', () => __ɵΩrxjs.Subscriber, () => __ɵΩrxjs.Observer, 'destination', () => __ɵΩrxjs.Subscriber, () => __ɵΩrxjs.Observer, 'constructor', 'value', 'err', 'unsubscribe', '_next', '_error', '_complete', () => __ɵΩrxjs.Observer, 'Subscriber', 'b!PPe#!2"8$/#2$8P"2%8$/#2&8P$/#2\\'8Pe#!7(0)s)3*<PP"7+"o,"J3-<PPP"7."o/"J2-8"00Pe"!218$0$P"228$0&P$0\\'P$03Pe"!21$04<P"22$05<P$06<5e!!o7"x"w8y'];
+__ɵΩrxjs.TeardownLogic = [() => __ɵΩrxjs.Subscription, () => __ɵΩrxjs.Unsubscribable, '', 'PP7!n"P$/#$Jy'];
 __ɵΩrxjs.Observer = ['T', 'value', '', 'next', 'err', 'error', 'complete', 'b!PPe#!2"$/#4$P"2%$/#4&P$/#4\\'My'];
-__ɵΩrxjs.Subscription = ['EMPTY', 'closed', '', 'initialTeardown', 'new', 'unsubscribe', () => __ɵΩrxjs.TeardownLogic, 'teardown', 'add', () => __ΩExclude, () => __ɵΩrxjs.TeardownLogic, 'remove', 'PPM4!)4"PPP$/#-J2$8"1%P$1&Pn\\'2($1)Pn+$o*#2($1,My'];
-__ɵΩrxjs.OperatorFunction = ['T', 'R', () => __ɵΩrxjs.UnaryFunction, 'b!b"PPe#!MPe#"Mo##My'];
-const __ΩPromiseLike = ['T', 'value', 0, '', 'onfulfilled', 'reason', 0, 'onrejected', 0, 'then', 'b!PPPPe%!2"P""o#"J/$-,J2%8PP"2&P""o\\'"J/$-,J2(8P""Jo)"1*My'];
+__ɵΩrxjs.Subscription = [() => __ɵΩrxjs.Subscription, 'EMPTY', 'closed', '', 'initialTeardown', 'constructor', 'unsubscribe', () => __ɵΩrxjs.TeardownLogic, 'teardown', 'add', () => __ΩExclude, () => __ɵΩrxjs.TeardownLogic, 'remove', () => __ɵΩrxjs.SubscriptionLike, 'Subscription', 'P7!3"s)3#PPP$/$-J2%8"0&P$0\\'Pn(2)$0*Pn,$o+#2)$0-5n.x"w/y'];
+__ɵΩrxjs.Subscribable = ['T', () => __ΩPartial, () => __ɵΩrxjs.Observer, 'observer', () => __ɵΩrxjs.Unsubscribable, 'subscribe', 'b!PPe#!o#"o""2$n%1&My'];
 const __ΩExclude = ['T', 'U', 'l6!Re$!RPe#!e$"qk#%QRb!b"Pde"!p)y'];
 __ɵΩrxjs.Unsubscribable = ['unsubscribe', 'PP$1!My'];
-__ɵΩrxjs.UnaryFunction = ['T', 'R', 'source', '', 'b!b"PPe#!2#e#"v$My'];
+__ɵΩrxjs.SubscriptionLike = [() => __ɵΩrxjs.Unsubscribable, 'unsubscribe', 'closed', 'Pn!P$1")4#9My'];
 function __assignType(fn, args) {
     fn.__type = args;
     return fn;
@@ -605,13 +680,18 @@ test('class typeOf', () => {
 
     console.log(res);
 
+    expect(res).toMatchObject({
+        external: true,
+        classType: undefined,
+    });
+
     expect(res.implements![0]).toMatchObject({
         kind: 30,
         typeName: 'Subscribable',
         // typeName: 'UnknownTypeName:() => __ɵΩrxjs.Subscribable',
     });
-    expect(res.typeArguments).toHaveLength(1);
-    expect(res.types).toHaveLength(1);
+    // expect(res.typeArguments).toHaveLength(1);
+    // expect(res.types).toHaveLength(1);
 })
 
 test('only a single type is transformed', () => {

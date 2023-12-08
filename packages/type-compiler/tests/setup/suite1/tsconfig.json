@@ -6,7 +6,9 @@
     "module": "CommonJS",
     "esModuleInterop": true
   },
-  "reflection": true,
+  "deepkitTypeCompilerOptions": {
+    "reflection": true
+  },
   "files": [
     "app.ts"
   ]

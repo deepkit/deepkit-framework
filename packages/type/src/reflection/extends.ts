@@ -11,7 +11,7 @@
 import {
     addType,
     emptyObject,
-    flatten, getTypeJitContainer,
+    flatten, getClassType, getTypeJitContainer,
     indexAccess,
     isMember,
     isOptional,
@@ -33,7 +33,7 @@ import {
     TypeString,
     TypeTemplateLiteral,
     TypeTuple,
-    TypeUnion
+    TypeUnion,
 } from './type.js';
 import { isPrototypeOfBase } from '@deepkit/core';
 import { typeInfer } from './processor.js';
@@ -274,7 +274,7 @@ export function _isExtendable(left: Type, right: Type, extendStack: StackEntry[]
                 //class User extends Base {}
                 //User extends Base = true
                 if (left.classType === right.classType) return true;
-                return isPrototypeOfBase(left.classType, right.classType);
+                return isPrototypeOfBase(left.classType, getClassType(right));
             }
 
             return true;

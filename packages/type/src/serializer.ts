@@ -33,7 +33,7 @@ import {
     embeddedAnnotation,
     EmbeddedOptions,
     excludedAnnotation,
-    FindType,
+    FindType, getClassType,
     getConstructorProperties,
     getTypeJitContainer,
     getTypeObjectLiteralFromTypeClass,
@@ -65,7 +65,7 @@ import {
     typeToObject,
     TypeTuple,
     TypeUnion,
-    validationAnnotation
+    validationAnnotation,
 } from './reflection/type.js';
 import { TypeNumberBrand } from '@deepkit/type-spec';
 import { hasCircularReference, ReflectionClass, ReflectionProperty } from './reflection/reflection.js';
@@ -586,9 +586,9 @@ export class TemplateRegistry {
 
     get(type: Type): Template<Type>[] {
         if (type.kind === ReflectionKind.class) {
-            const classTemplates = this.classTemplates.get(type.classType);
+            const classTemplates = this.classTemplates.get(getClassType(type));
             if (classTemplates && classTemplates.length) return classTemplates;
-            if (type.classType === Set || type.classType === Map || binaryTypes.includes(type.classType)) return [];
+            if (type.classType === Set || type.classType === Map || binaryTypes.includes(getClassType(type))) return [];
         }
         return this.templates[type.kind] ||= [];
     }

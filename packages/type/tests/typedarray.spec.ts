@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { Buffer } from 'buffer';
 import { ReflectionClass } from '../src/reflection/reflection.js';
-import { assertType, binaryTypes, ReflectionKind } from '../src/reflection/type.js';
+import { assertType, binaryTypes, getClassType, ReflectionKind } from '../src/reflection/type.js';
 import { base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer } from '../src/core.js';
 import { deserialize, serialize } from '../src/serializer-facade.js';
 
@@ -25,7 +25,7 @@ test('mapping', async () => {
 
     for (const property of classSchema.getProperties()) {
         assertType(property.type, ReflectionKind.class);
-        expect(binaryTypes.includes(property.type.classType)).toBe(true);
+        expect(binaryTypes.includes(getClassType(property.type))).toBe(true);
         expect(typeof (json as any)[property.getNameAsString()]).toBe('string');
         expect((back as any)[property.getNameAsString()]).toBeInstanceOf(property.type.classType);
     }
