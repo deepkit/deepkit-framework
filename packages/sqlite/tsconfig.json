@@ -19,9 +19,11 @@
       "better-sqlite3"
     ]
   },
-  "reflection": [
-    "tests/**/*.ts"
-  ],
+  "deepkitTypeCompilerOptions": {
+    "reflection": [
+      "tests/**/*.ts"
+    ]
+  },
   "include": [
     "benchmarks",
     "src",

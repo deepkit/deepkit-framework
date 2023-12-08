@@ -1,6 +1,8 @@
 {
   "extends": "./tsconfig.json",
-  "reflection": [
-    "**/*/file1.ts"
-  ]
+  "deepkitTypeCompilerOptions": {
+    "reflection": [
+      "**/*/file1.ts"
+    ]
+  }
 }

@@ -20,9 +20,11 @@
       "sqlstring"
     ]
   },
-  "reflection": [
-    "tests/**/*.ts"
-  ],
+  "deepkitTypeCompilerOptions": {
+    "reflection": [
+      "tests/**/*.ts"
+    ]
+  },
   "include": [
     "src",
     "tests",

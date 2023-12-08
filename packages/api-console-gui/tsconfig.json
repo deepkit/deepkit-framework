@@ -26,9 +26,11 @@
       "marked"
     ]
   },
-  "reflection": [
-    "src/app/store.ts"
-  ],
+  "deepkitTypeCompilerOptions": {
+    "reflection": [
+      "src/app/store.ts"
+    ]
+  },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,

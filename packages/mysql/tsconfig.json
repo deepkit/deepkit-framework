@@ -17,9 +17,11 @@
     "composite": true,
     "types": []
   },
-  "reflection": [
-    "tests/**/*.ts"
-  ],
+  "deepkitTypeCompilerOptions": {
+    "reflection": [
+      "tests/**/*.ts"
+    ]
+  },
   "include": [
     "benchmarks",
     "src",
