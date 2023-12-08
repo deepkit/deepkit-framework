@@ -19,7 +19,9 @@
       "send"
     ]
   },
-  "reflection": true,
+  "deepkitTypeCompilerOptions": {
+    "reflection": true
+  },
   "include": [
     "src",
     "tests",

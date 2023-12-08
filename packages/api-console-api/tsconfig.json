@@ -18,7 +18,9 @@
     "composite": true,
     "types": []
   },
-  "reflection": true,
+  "deepkitTypeCompilerOptions": {
+    "reflection": true
+  },
   "include": [
     "index.ts",
     "src"

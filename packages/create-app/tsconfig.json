@@ -22,7 +22,9 @@
     "main.ts",
     "index.ts"
   ],
-  "reflection": true,
+  "deepkitTypeCompilerOptions": {
+    "reflection": true
+  },
   "references": [
     {
       "path": "../core/tsconfig.json"

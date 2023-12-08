@@ -10,7 +10,7 @@
 
 import { BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils.js';
 import { buildStringDecoder, decodeUTF8 } from './strings.js';
-import { nodeBufferToArrayBuffer, ReflectionKind, SerializationError, Type } from '@deepkit/type';
+import { getClassType, nodeBufferToArrayBuffer, ReflectionKind, SerializationError, Type } from '@deepkit/type';
 import { hexTable } from './model.js';
 
 declare var Buffer: any;
@@ -159,7 +159,7 @@ export class BaseParser {
             return nodeBufferToArrayBuffer(b);
         }
         if (type && type.kind === ReflectionKind.class) {
-            const typedArrayConstructor = type.classType;
+            const typedArrayConstructor = getClassType(type);
             return new typedArrayConstructor(nodeBufferToArrayBuffer(b));
         }
 

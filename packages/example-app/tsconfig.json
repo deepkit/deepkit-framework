@@ -21,7 +21,9 @@
   "ts-node": {
     "experimentalResolver": true
   },
-  "reflection": true,
+  "deepkitTypeCompilerOptions": {
+    "reflection": true
+  },
   "includes": [
     "*.ts",
     "*.tsx"

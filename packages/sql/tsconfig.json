@@ -19,7 +19,9 @@
       "sqlstring"
     ]
   },
-  "reflection": true,
+  "deepkitTypeCompilerOptions": {
+    "reflection": true
+  },
   "include": [
     "benchmarks",
     "src",

@@ -1,7 +1,15 @@
 //@ts-ignore
 import objectInspect from 'object-inspect';
 import { getClassName } from '@deepkit/core';
-import { getTypeJitContainer, isBackReferenceType, isReferenceType, ReflectionKind, stringifyType, Type } from '@deepkit/type';
+import {
+    getClassType,
+    getTypeJitContainer,
+    isBackReferenceType,
+    isReferenceType,
+    ReflectionKind,
+    stringifyType,
+    Type,
+} from '@deepkit/type';
 
 export function trackByIndex(index: number) {
     return index;
@@ -12,7 +20,7 @@ export function isReferenceLike(type: Type): boolean {
 }
 
 function manualTypeStringify(type: Type): string | undefined {
-    if (type.kind === ReflectionKind.class && getClassName(type.classType) === 'UploadedFile') return 'UploadedFile';
+    if (type.kind === ReflectionKind.class && getClassName(getClassType(type)) === 'UploadedFile') return 'UploadedFile';
     //we are not interested in the methods
     if (type.kind === ReflectionKind.method || type.kind === ReflectionKind.methodSignature) return '';
     return;

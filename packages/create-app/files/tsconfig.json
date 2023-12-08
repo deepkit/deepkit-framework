@@ -8,7 +8,9 @@
     "module": "CommonJS",
     "moduleResolution": "node"
   },
-  "reflection": true,
+  "deepkitTypeCompilerOptions": {
+    "reflection": true
+  },
   "files": [
     "client.rpc.ts",
     "app.ts"

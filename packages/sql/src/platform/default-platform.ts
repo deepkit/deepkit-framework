@@ -17,7 +17,7 @@ import { SQLFilterBuilder } from '../sql-filter-builder.js';
 import { Sql } from '../sql-builder.js';
 import {
     binaryTypes,
-    databaseAnnotation,
+    databaseAnnotation, getClassType,
     getTypeJitContainer,
     isReferenceType,
     ReflectionClass,
@@ -26,7 +26,7 @@ import {
     resolvePath,
     resolveProperty,
     Serializer,
-    Type
+    Type,
 } from '@deepkit/type';
 import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
 import { splitDotPath } from '../sql-adapter.js';
@@ -130,7 +130,7 @@ export abstract class DefaultPlatform {
 
     addBinaryType(sqlType: string, size?: number, scale?: number) {
         this.addType((type: Type) => {
-            return type.kind === ReflectionKind.class && binaryTypes.includes(type.classType);
+            return type.kind === ReflectionKind.class && binaryTypes.includes(getClassType(type));
         }, sqlType, size, scale);
     }
 

@@ -19,7 +19,9 @@
     "jsxImportSource": "@deepkit/framework",
     "types": []
   },
-  "reflection": true,
+  "deepkitTypeCompilerOptions": {
+    "reflection": true
+  },
   "include": [
     "./src/**/*.ts"
   ],

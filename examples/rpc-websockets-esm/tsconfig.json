@@ -7,5 +7,7 @@
     "esModuleInterop": true,
     "module": "esnext"
   },
-  "reflection": true
+  "deepkitTypeCompilerOptions": {
+    "reflection": true
+  }
 }

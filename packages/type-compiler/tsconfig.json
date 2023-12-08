@@ -16,7 +16,8 @@
     "composite": true,
     "types": [
       "lz-string",
-      "micromatch"
+      "micromatch",
+      "node"
     ]
   },
   "include": [
@@ -26,6 +27,7 @@
     "compiler-debug.ts",
     "index.ts"
   ],
+  "exclude": ["tests"],
   "references": [
     {
       "path": "../type-spec/tsconfig.json"

@@ -1,5 +1,5 @@
 import { ClassType, getClassName } from '@deepkit/core';
-import { isMongoIdType, isSetType, isUUIDType, ReflectionKind, TypeRegistry } from '@deepkit/type';
+import { getClassType, isMongoIdType, isSetType, isUUIDType, ReflectionKind, TypeRegistry } from '@deepkit/type';
 import { ClassCellComponent } from './components/cell/class-cell.component';
 import { DateCellComponent } from './components/cell/date-cell.component';
 import { EnumCellComponent } from './components/cell/enum-cell.component';
@@ -43,7 +43,7 @@ inputRegistry.set(isMongoIdType, StringInputComponent);
 //     return isMapType(type);
 // }, MapInputComponent);
 inputRegistry.set(type => {
-    return type.kind === ReflectionKind.class && getClassName(type.classType) === 'UploadedFile';
+    return type.kind === ReflectionKind.class && getClassName(getClassType(type)) === 'UploadedFile';
 }, BinaryInputComponent);
 
 
@@ -81,5 +81,5 @@ cellRegistry.set(isMongoIdType, StringCellComponent);
 //     return isMapType(type);
 // }, MapCellComponent);
 cellRegistry.set(type => {
-    return type.kind === ReflectionKind.class && getClassName(type.classType) === 'UploadedFile';
+    return type.kind === ReflectionKind.class && getClassName(getClassType(type)) === 'UploadedFile';
 }, BinaryCellComponent);

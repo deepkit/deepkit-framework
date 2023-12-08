@@ -16,7 +16,9 @@
     "composite": true,
     "types": []
   },
-  "reflection": true,
+  "deepkitTypeCompilerOptions": {
+    "reflection": true
+  },
   "include": [
     "database.ts",
     "./bookstore/*ts"

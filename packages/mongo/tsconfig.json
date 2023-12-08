@@ -21,7 +21,9 @@
       "node"
     ]
   },
-  "reflection": true,
+  "deepkitTypeCompilerOptions": {
+    "reflection": true
+  },
   "include": [
     "src",
     "index.ts"

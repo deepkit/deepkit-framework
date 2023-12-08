@@ -21,7 +21,9 @@
       "ws"
     ]
   },
-  "reflection": true,
+  "deepkitTypeCompilerOptions": {
+    "reflection": true
+  },
   "files": [
     "tests/util.ts",
     "tests/controller-basic.spec.ts",

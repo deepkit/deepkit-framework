@@ -1,4 +1,4 @@
-import { reflect, ReflectionKind, Type } from '@deepkit/type';
+import { getClassType, reflect, ReflectionKind, Type } from '@deepkit/type';
 import { getParentClass } from '@deepkit/core';
 
 export type InjectMeta<T = never> = { __meta?: never & ['inject', T] }
@@ -47,7 +47,7 @@ export function nominalCompatibility(token: Type, provider: Type): number {
         }
 
         if (current.kind === ReflectionKind.class) {
-            const parent = getParentClass(current.classType);
+            const parent = getParentClass(getClassType(current));
             if (parent && (parent as any).__type) {
                 const next = reflect(parent);
                 stack.push({ spec: entry.spec + 1, type: next });

@@ -10,7 +10,7 @@
     "build": "tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
     "build:esm": "tsc --build tsconfig.esm.json",
     "tsc": "tsc --build",
-    "install": "sh install-compiler.sh",
+    "postinstall": "sh install-compiler.sh",
     "tsc-watch": "tsc --build --watch",
     "tsc-watch:esm": "tsc --build --watch tsconfig.esm.json",
     "clean:all": "npm run clean && npm run clean:modules && npm run clean:lock",

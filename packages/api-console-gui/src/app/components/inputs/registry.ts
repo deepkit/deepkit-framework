@@ -1,4 +1,12 @@
-import { isMapType, isMongoIdType, isSetType, isUUIDType, ReflectionKind, TypeRegistry } from '@deepkit/type';
+import {
+    getClassType,
+    isMapType,
+    isMongoIdType,
+    isSetType,
+    isUUIDType,
+    ReflectionKind,
+    TypeRegistry,
+} from '@deepkit/type';
 import { ClassType, getClassName } from '@deepkit/core';
 import { StringInputComponent } from './string-input.component';
 import { ArrayInputComponent } from './array-input.component';
@@ -38,5 +46,5 @@ inputRegistry.set(type => {
     return isMapType(type);
 }, MapInputComponent);
 inputRegistry.set(type => {
-    return type.kind === ReflectionKind.class && getClassName(type.classType) === 'UploadedFile';
+    return type.kind === ReflectionKind.class && getClassName(getClassType(type)) === 'UploadedFile';
 }, BinaryInputComponent);
