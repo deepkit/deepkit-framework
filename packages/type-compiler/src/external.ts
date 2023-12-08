@@ -80,6 +80,10 @@ export class External {
         return imports.includes(typeName);
     }
 
+    public hasProcessedEntity(typeName: EntityName): boolean {
+        return this.processedEntities.has(getNameAsString(typeName));
+    }
+
     public processExternalLibraryImport(typeName: EntityName, declaration: Node, sourceFile: SourceFile, importDeclaration?: ImportDeclaration): ExternalLibraryImport {
         const module = importDeclaration
             ? this.resolver.resolveExternalLibraryImport(importDeclaration)

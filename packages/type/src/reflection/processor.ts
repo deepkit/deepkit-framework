@@ -712,16 +712,15 @@ export class Processor {
                         case ReflectionOp.classReference: {
                             const ref = this.eatParameter() as number;
                             const classOrFunction = resolveFunction(program.stack[ref] as Function, program.object);
-                            const external = isPack(classOrFunction);
+                            const packed = isPack(classOrFunction);
                             const inputs = this.popFrame() as Type[];
                             if (!classOrFunction) {
                                 this.pushType({ kind: ReflectionKind.unknown });
                                 break;
                             }
-                            const pack = external ? classOrFunction : classOrFunction.__type;
+                            const pack = packed ? classOrFunction : classOrFunction.__type;
 
-                            if (!classOrFunction.__type) {
-                                console.log('unknown');
+                            if (!pack) {
                                 if (op === ReflectionOp.classReference) {
                                     this.pushType({ kind: ReflectionKind.class, classType: classOrFunction, typeArguments: inputs, types: [] });
                                 } else if (op === ReflectionOp.functionReference) {
@@ -730,7 +729,7 @@ export class Processor {
                             } else {
                                 //when it's just a simple reference resolution like typeOf<Class>() then enable cache re-use (so always the same type is returned)
                                 const directReference = !!(this.isEnded() && program.previous && program.previous.end === 0);
-                                const result = this.reflect(classOrFunction, inputs, { inline: !directReference, reuseCached: directReference });
+                                const result = this.reflect(pack, inputs, { inline: !directReference, reuseCached: directReference });
                                 if (directReference) program.directReturn = true;
                                 this.push(result, program);
 
@@ -1191,7 +1190,6 @@ export class Processor {
                             const p = isFunction(pOrFn) ? pOrFn() : pOrFn;
                             // process.stdout.write(`inline ${pOrFn.toString()}\n`);
                             if (p === undefined) {
-                                console.log('unknown');
                                 // console.log('inline with invalid reference', pOrFn.toString());
                                 this.push({ kind: ReflectionKind.unknown });
                             } else if ('number' === typeof p) {
@@ -1286,7 +1284,7 @@ export class Processor {
                 // process.stdout.write(`Done ${program.depth} in ${Date.now() - program.started}ms with ${stringifyValueWithType(program.object)} -> ${stringifyShortResolvedType(result as Type)}\n`);
 
                 if (isType(result)) {
-                    if (program.object) {
+                    if (program.object && !isPack(program.object)) {
                         if (result.kind === ReflectionKind.class && result.classType === Object) {
                             result.classType = program.object;
                             applyClassDecorators(result);
