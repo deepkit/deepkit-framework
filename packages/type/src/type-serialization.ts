@@ -2,7 +2,6 @@ import {
     entityAnnotation,
     EntityOptions,
     findMember,
-    getClassType,
     isSameType,
     isTypeIncluded,
     isWithAnnotations,
@@ -346,14 +345,14 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
         }
         case ReflectionKind.class: {
             const types = state.disableMethods ? type.types.filter(filterRemoveFunctions) : type.types;
-            const parent = getParentClass(getClassType(type));
+            const parent = getParentClass(type.classType);
             let superClass: SerializedTypeReference | undefined = undefined;
             try {
                 superClass = parent ? serialize(reflect(parent), state) : undefined;
             } catch {
             }
 
-            const classType = getClassName(getClassType(type));
+            const classType = getClassName(type.classType);
             const globalObject: boolean = envGlobal && envGlobal[classType] === type.classType;
 
             Object.assign(result, {
@@ -639,7 +638,7 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
             }
 
             const classType = type.globalObject ? envGlobal[type.classType] : newClass
-                ? (type.superClass ? class extends getClassType(deserialize(type.superClass, state) as TypeClass) {
+                ? (type.superClass ? class extends (deserialize(type.superClass, state) as TypeClass).classType {
                     constructor(...args: any[]) {
                         super(...args);
                         for (const init of initialize) {

@@ -71,7 +71,7 @@ export function createReferenceClass<T>(
 ): ClassType<T> {
     if (reflection.data.referenceClass) return reflection.data.referenceClass;
 
-    const Reference = reflection.type.kind === ReflectionKind.class ? class extends getClassType(reflection.type) {
+    const Reference = reflection.type.kind === ReflectionKind.class ? class extends reflection.type.classType {
     } : class {
     };
 

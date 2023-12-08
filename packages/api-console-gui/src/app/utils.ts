@@ -2,7 +2,6 @@
 import objectInspect from 'object-inspect';
 import { getClassName } from '@deepkit/core';
 import {
-    getClassType,
     getTypeJitContainer,
     isBackReferenceType,
     isReferenceType,
@@ -20,7 +19,7 @@ export function isReferenceLike(type: Type): boolean {
 }
 
 function manualTypeStringify(type: Type): string | undefined {
-    if (type.kind === ReflectionKind.class && getClassName(getClassType(type)) === 'UploadedFile') return 'UploadedFile';
+    if (type.kind === ReflectionKind.class && getClassName(type.classType) === 'UploadedFile') return 'UploadedFile';
     //we are not interested in the methods
     if (type.kind === ReflectionKind.method || type.kind === ReflectionKind.methodSignature) return '';
     return;

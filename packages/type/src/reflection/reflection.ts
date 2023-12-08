@@ -983,7 +983,7 @@ export class ReflectionClass<T> {
     }
 
     getClassType(): ClassType {
-        return this.type.kind === ReflectionKind.class ? getClassType(this.type) : Object;
+        return this.type.kind === ReflectionKind.class ? this.type.classType : Object;
     }
 
     getClassName(): string {
@@ -1233,7 +1233,7 @@ export class ReflectionClass<T> {
             if (classTypeIn.kind !== ReflectionKind.class) throw new Error(`TypeClass or TypeObjectLiteral expected, not ${ReflectionKind[classTypeIn.kind]}`);
         }
 
-        const classType = isType(classTypeIn) ? getClassType(classTypeIn) : (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
+        const classType = isType(classTypeIn) ? (classTypeIn as TypeClass).classType : (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
 
         if (!classType.prototype.hasOwnProperty(reflectionClassSymbol)) {
             Object.defineProperty(classType.prototype, reflectionClassSymbol, { writable: true, enumerable: false });

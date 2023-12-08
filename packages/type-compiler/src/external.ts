@@ -38,7 +38,7 @@ export class External {
 
     startEmbeddingExternalLibraryImport(value: ExternalLibraryImport): void {
         if (this.embeddingExternalLibraryImport) {
-            throw new Error('Already embedding module');
+            throw new Error('Already embedding external library import');
         }
         this.embeddingExternalLibraryImport = value;
     }
@@ -70,7 +70,8 @@ export class External {
         if (!isStringLiteral(importDeclaration.moduleSpecifier)) return false;
         if (!hasSourceFile(importDeclaration)) return false;
         if (config.options.inlineExternalLibraryImports === true) return true;
-        const resolvedModule = this.resolver.resolveExternalLibraryImport(importDeclaration);
+        const resolvedModule = this.resolver.resolveImport(importDeclaration);
+        if (!resolvedModule.isExternalLibraryImport || !resolvedModule.packageId) return false;
         const imports = config.options.inlineExternalLibraryImports?.[resolvedModule.packageId.name];
         if (!imports) return false;
         if (imports === true) return true;

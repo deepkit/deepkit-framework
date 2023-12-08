@@ -609,7 +609,7 @@ export class Injector implements InjectorInterface {
         const destinationVar = compiler.reserveConst({ token: fromProvider.provide });
 
         if (options.type.kind === ReflectionKind.class) {
-            const found = findModuleForConfig(getClassType(options.type), resolveDependenciesFrom);
+            const found = findModuleForConfig(options.type.classType, resolveDependenciesFrom);
             if (found) {
                 return compiler.reserveVariable('fullConfig', getPathValue(found.module.getConfig(), found.path));
             }
@@ -629,14 +629,14 @@ export class Injector implements InjectorInterface {
             return compiler.reserveVariable('tagRegistry', this.buildContext.tagRegistry);
         }
 
-        if (options.type.kind === ReflectionKind.class && resolveDependenciesFrom[0] instanceof getClassType(options.type)) {
+        if (options.type.kind === ReflectionKind.class && resolveDependenciesFrom[0] instanceof options.type.classType) {
             return compiler.reserveConst(resolveDependenciesFrom[0], 'module');
         }
 
         if (options.type.kind === ReflectionKind.class && isPrototypeOfBase(options.type.classType, Tag)) {
             const tokenVar = compiler.reserveVariable('token', options.type.classType);
             const resolvedVar = compiler.reserveVariable('tagResolved');
-            const entries = this.buildContext.tagRegistry.resolve(getClassType(options.type));
+            const entries = this.buildContext.tagRegistry.resolve(options.type.classType);
             const args: string[] = [];
             for (const entry of entries) {
                 args.push(`${compiler.reserveConst(entry.module)}.injector.resolver(${compiler.reserveConst(getContainerToken(entry.tagProvider.provider.provide))}, scope, ${destinationVar})`);
@@ -655,7 +655,7 @@ export class Injector implements InjectorInterface {
             const pickArguments = getPickArguments(options.type);
             if (pickArguments) {
                 if (pickArguments[0].kind === ReflectionKind.class) {
-                    const found = findModuleForConfig(getClassType(pickArguments[0]), resolveDependenciesFrom);
+                    const found = findModuleForConfig(pickArguments[0].classType, resolveDependenciesFrom);
                     if (found) {
                         const fullConfig = compiler.reserveVariable('fullConfig', getPathValue(found.module.getConfig(), found.path));
                         let index = pickArguments[1];
@@ -778,24 +778,24 @@ export class Injector implements InjectorInterface {
         // }
 
         if (type.kind === ReflectionKind.class) {
-            const found = findModuleForConfig(getClassType(type), resolveDependenciesFrom);
+            const found = findModuleForConfig(type.l, resolveDependenciesFrom);
             if (found) return () => getPathValue(found.module.getConfig(), found.path);
         }
 
         if (type.kind === ReflectionKind.class && type.classType === TagRegistry) return () => this.buildContext.tagRegistry;
 
-        if (type.kind === ReflectionKind.class && resolveDependenciesFrom[0] instanceof getClassType(type)) {
+        if (type.kind === ReflectionKind.class && resolveDependenciesFrom[0] instanceof type.classType) {
             return () => resolveDependenciesFrom[0];
         }
 
         if (type.kind === ReflectionKind.class && isPrototypeOfBase(type.classType, Tag)) {
-            const entries = this.buildContext.tagRegistry.resolve(getClassType(type));
+            const entries = this.buildContext.tagRegistry.resolve(type.classType);
             const args: any[] = [];
             for (const entry of entries) {
                 args.push(entry.module.injector!.resolver!(entry.tagProvider.provider.provide, scope));
             }
 
-            return new (getClassType(type))(args);
+            return new (type.classType)(args);
         }
 
         if (type.kind === ReflectionKind.function && type.typeName === 'PartialFactory') {
@@ -809,7 +809,7 @@ export class Injector implements InjectorInterface {
                 const pickArguments = getPickArguments(type);
                 if (pickArguments) {
                     if (pickArguments[0].kind === ReflectionKind.class) {
-                        const found = findModuleForConfig(getClassType(pickArguments[0]), resolveDependenciesFrom);
+                        const found = findModuleForConfig(pickArguments[0].classType, resolveDependenciesFrom);
                         if (found) {
                             const fullConfig = getPathValue(found.module.getConfig(), found.path);
                             let index = pickArguments[1];
@@ -1027,7 +1027,7 @@ export function partialFactory(
     }
 
     if (type.kind === ReflectionKind.class) {
-        const classType = getClassType(type);
+        const classType = type.classType;
         const reflectionClass = ReflectionClass.from(classType);
 
         const args: { name: string; resolve: (scope?: Scope) => ReturnType<Resolver<any>> }[] = [];

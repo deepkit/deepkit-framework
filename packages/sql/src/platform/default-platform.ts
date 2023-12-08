@@ -130,7 +130,7 @@ export abstract class DefaultPlatform {
 
     addBinaryType(sqlType: string, size?: number, scale?: number) {
         this.addType((type: Type) => {
-            return type.kind === ReflectionKind.class && binaryTypes.includes(getClassType(type));
+            return type.kind === ReflectionKind.class && binaryTypes.includes(type.classType);
         }, sqlType, size, scale);
     }
 

@@ -33,7 +33,7 @@ import {
     embeddedAnnotation,
     EmbeddedOptions,
     excludedAnnotation,
-    FindType, getClassType,
+    FindType,
     getConstructorProperties,
     getTypeJitContainer,
     getTypeObjectLiteralFromTypeClass,
@@ -586,9 +586,9 @@ export class TemplateRegistry {
 
     get(type: Type): Template<Type>[] {
         if (type.kind === ReflectionKind.class) {
-            const classTemplates = this.classTemplates.get(getClassType(type));
+            const classTemplates = this.classTemplates.get(type.classType);
             if (classTemplates && classTemplates.length) return classTemplates;
-            if (type.classType === Set || type.classType === Map || binaryTypes.includes(getClassType(type))) return [];
+            if (type.classType === Set || type.classType === Map || binaryTypes.includes(type.classType)) return [];
         }
         return this.templates[type.kind] ||= [];
     }

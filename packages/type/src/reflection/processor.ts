@@ -590,7 +590,7 @@ export class Processor {
                             break;
                         case ReflectionOp.class: {
                             const types = this.popFrame() as Type[];
-                            let t = { kind: ReflectionKind.class, id: state.nominalId++, types: [] } as TypeClass;
+                            let t = { kind: ReflectionKind.class, id: state.nominalId++, classType: Object, types: [] } as TypeClass;
 
                             function add(member: Type) {
                                 if (member.kind === ReflectionKind.propertySignature) {
@@ -669,8 +669,6 @@ export class Processor {
                             if (args.length) t.arguments = args;
                             t.typeArguments = program.typeParameters;
 
-                            console.log('class', t);
-
                             this.pushType(t);
                             break;
                         }
@@ -720,10 +718,10 @@ export class Processor {
                                 this.pushType({ kind: ReflectionKind.unknown });
                                 break;
                             }
+                            const pack = external ? classOrFunction : classOrFunction.__type;
 
-                            const runtimeType = external ? classOrFunction : classOrFunction.__type;
-
-                            if (!runtimeType) {
+                            if (!classOrFunction.__type) {
+                                console.log('unknown');
                                 if (op === ReflectionOp.classReference) {
                                     this.pushType({ kind: ReflectionKind.class, classType: classOrFunction, typeArguments: inputs, types: [] });
                                 } else if (op === ReflectionOp.functionReference) {
@@ -732,7 +730,7 @@ export class Processor {
                             } else {
                                 //when it's just a simple reference resolution like typeOf<Class>() then enable cache re-use (so always the same type is returned)
                                 const directReference = !!(this.isEnded() && program.previous && program.previous.end === 0);
-                                const result = this.reflect(runtimeType, inputs, { inline: !directReference, reuseCached: directReference });
+                                const result = this.reflect(classOrFunction, inputs, { inline: !directReference, reuseCached: directReference });
                                 if (directReference) program.directReturn = true;
                                 this.push(result, program);
 
@@ -1193,6 +1191,7 @@ export class Processor {
                             const p = isFunction(pOrFn) ? pOrFn() : pOrFn;
                             // process.stdout.write(`inline ${pOrFn.toString()}\n`);
                             if (p === undefined) {
+                                console.log('unknown');
                                 // console.log('inline with invalid reference', pOrFn.toString());
                                 this.push({ kind: ReflectionKind.unknown });
                             } else if ('number' === typeof p) {
@@ -1289,7 +1288,7 @@ export class Processor {
                 if (isType(result)) {
                     if (program.object) {
                         if (result.kind === ReflectionKind.class && result.classType === Object) {
-                            // result.classType = program.object;
+                            result.classType = program.object;
                             applyClassDecorators(result);
                         }
                         if (result.kind === ReflectionKind.function && !result.function) {

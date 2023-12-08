@@ -8,17 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    AbstractClassType,
-    arrayRemoveItem,
-    ClassType,
-    getClassName,
-    getParentClass,
-    indent,
-    isArray,
-    isClass,
-    isFunction,
-} from '@deepkit/core';
+import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, getParentClass, indent, isArray, isClass } from '@deepkit/core';
 import { TypeNumberBrand } from '@deepkit/type-spec';
 import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection.js';
 import { isExtendable } from './extends.js';
@@ -79,8 +69,6 @@ export enum ReflectionKind {
     infer,
 
     callSignature,
-
-    externalClass,
 }
 
 export type TypeDecorator = (annotations: Annotations, decorator: TypeObjectLiteral) => boolean;
@@ -319,7 +307,6 @@ export interface TypeFunction extends TypeAnnotations {
     parent?: Type;
     name?: number | string | symbol,
     description?: string;
-    external?: boolean;
     function?: Function; //reference to the real function if available
     parameters: TypeParameter[];
     return: Type;
@@ -341,8 +328,7 @@ export interface TypePromise extends TypeAnnotations {
 export interface TypeClass extends TypeAnnotations {
     kind: ReflectionKind.class,
     parent?: Type;
-    external?: boolean;
-    classType?: ClassType; // reference to the real class if available
+    classType: ClassType;
     description?: string;
 
     /**
@@ -553,7 +539,7 @@ export function isType(entry: any): entry is Type {
 }
 
 export function isBinary(type: Type): boolean {
-    return type.kind === ReflectionKind.class && binaryTypes.includes(getClassType(type));
+    return type.kind === ReflectionKind.class && binaryTypes.includes(type.classType);
 }
 
 export function isPrimitive<T extends Type>(type: T): boolean {
@@ -1344,9 +1330,6 @@ export function assertType<K extends ReflectionKind, T>(t: Type | undefined, kin
 
 export function getClassType(type: Type): ClassType {
     if (type.kind !== ReflectionKind.class) throw new Error(`Type needs to be TypeClass, but ${ReflectionKind[type.kind]} given.`);
-    if (!type.classType) {
-        throw new Error('TypeClass is missing classType');
-    }
     return type.classType;
 }
 
@@ -2281,9 +2264,6 @@ export const binaryTypes: ClassType[] = [
  */
 export function isGlobalTypeClass(type: Type): type is TypeClass {
     if (type.kind !== ReflectionKind.class) return false;
-    if (!type.classType) {
-        throw new Error('TypeClass is missing classType');
-    }
     if ('undefined' !== typeof window) {
         return (window as any)[getClassName(type.classType)] === type.classType;
     }
@@ -2497,8 +2477,6 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                         stack.push({ type: type.arguments![0], depth: depth + 1 });
                         break;
                     }
-
-                    if (!type.classType) break;
 
                     if (binaryTypes.includes(type.classType)) {
                         result.push(getClassName(type.classType));

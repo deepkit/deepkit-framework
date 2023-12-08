@@ -637,12 +637,8 @@ __ɵΩrxjs.Subscribable = ['T', () => __ΩPartial, () => __ɵΩrxjs.Observer, 'o
 const __ΩExclude = ['T', 'U', 'l6!Re$!RPe#!e$"qk#%QRb!b"Pde"!p)y'];
 __ɵΩrxjs.Unsubscribable = ['unsubscribe', 'PP$1!My'];
 __ɵΩrxjs.SubscriptionLike = [() => __ɵΩrxjs.Unsubscribable, 'unsubscribe', 'closed', 'Pn!P$1")4#9My'];
-function __assignType(fn, args) {
-    fn.__type = args;
-    return fn;
-}
 const rxjs_1 = require("rxjs");
-const __ΩA = [() => __assignType(rxjs_1.Observable, __ɵΩrxjs.Observable), 'P#7!y'];
+const __ΩA = [() => __ɵΩrxjs.Observable, 'P#7!y'];
 "
 `);
 })
@@ -679,19 +675,6 @@ test('class typeOf', () => {
     }) as TypeClass;
 
     console.log(res);
-
-    expect(res).toMatchObject({
-        external: true,
-        classType: undefined,
-    });
-
-    expect(res.implements![0]).toMatchObject({
-        kind: 30,
-        typeName: 'Subscribable',
-        // typeName: 'UnknownTypeName:() => __ɵΩrxjs.Subscribable',
-    });
-    // expect(res.typeArguments).toHaveLength(1);
-    // expect(res.types).toHaveLength(1);
 })
 
 test('only a single type is transformed', () => {

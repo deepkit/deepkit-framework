@@ -43,7 +43,7 @@ inputRegistry.set(isMongoIdType, StringInputComponent);
 //     return isMapType(type);
 // }, MapInputComponent);
 inputRegistry.set(type => {
-    return type.kind === ReflectionKind.class && getClassName(getClassType(type)) === 'UploadedFile';
+    return type.kind === ReflectionKind.class && getClassName(type.classType) === 'UploadedFile';
 }, BinaryInputComponent);
 
 
@@ -81,5 +81,5 @@ cellRegistry.set(isMongoIdType, StringCellComponent);
 //     return isMapType(type);
 // }, MapCellComponent);
 cellRegistry.set(type => {
-    return type.kind === ReflectionKind.class && getClassName(getClassType(type)) === 'UploadedFile';
+    return type.kind === ReflectionKind.class && getClassName(type.classType) === 'UploadedFile';
 }, BinaryCellComponent);

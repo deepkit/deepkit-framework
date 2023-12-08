@@ -25,7 +25,7 @@ test('mapping', async () => {
 
     for (const property of classSchema.getProperties()) {
         assertType(property.type, ReflectionKind.class);
-        expect(binaryTypes.includes(getClassType(property.type))).toBe(true);
+        expect(binaryTypes.includes(property.type.classType)).toBe(true);
         expect(typeof (json as any)[property.getNameAsString()]).toBe('string');
         expect((back as any)[property.getNameAsString()]).toBeInstanceOf(property.type.classType);
     }

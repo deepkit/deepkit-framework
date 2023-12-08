@@ -186,6 +186,11 @@ export class NodeConverter {
         );
     }
 
+    createExternalRuntimeTypePropertyAccessExpression(name: string): PropertyAccessExpression {
+        const { module } = this.external.getEmbeddingExternalLibraryImport();
+        return this.f.createPropertyAccessExpression(this.f.createIdentifier(getExternalRuntimeTypeName(module.packageId.name)), name)
+    }
+
     toExpression<T extends PackExpression | PackExpression[]>(node?: T): Expression {
         if (node === undefined) return this.f.createIdentifier('undefined');
 
@@ -210,8 +215,8 @@ export class NodeConverter {
             case SyntaxKind.Identifier:
                 const name = getIdentifierName(node as Identifier);
                 return this.external.isEmbeddingExternalLibraryImport() && !this.external.knownGlobalTypeNames.has(name)
-                    ? this.f.createIdentifier(`${getExternalRuntimeTypeName(this.external.getEmbeddingExternalLibraryImport().module.packageId.name)}.${name}`)
-                    : finish(node, this.f.createIdentifier(getRuntimeTypeName(name)));
+                    ? this.createExternalRuntimeTypePropertyAccessExpression(name)
+                    : finish(node, this.f.createIdentifier(name));
             case SyntaxKind.StringLiteral:
                 return finish(node, this.f.createStringLiteral((node as StringLiteral).text));
             case SyntaxKind.NumericLiteral:

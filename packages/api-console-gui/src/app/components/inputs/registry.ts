@@ -1,5 +1,4 @@
 import {
-    getClassType,
     isMapType,
     isMongoIdType,
     isSetType,
@@ -46,5 +45,5 @@ inputRegistry.set(type => {
     return isMapType(type);
 }, MapInputComponent);
 inputRegistry.set(type => {
-    return type.kind === ReflectionKind.class && getClassName(getClassType(type)) === 'UploadedFile';
+    return type.kind === ReflectionKind.class && getClassName(type.classType) === 'UploadedFile';
 }, BinaryInputComponent);

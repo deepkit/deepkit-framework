@@ -159,7 +159,7 @@ export class BaseParser {
             return nodeBufferToArrayBuffer(b);
         }
         if (type && type.kind === ReflectionKind.class) {
-            const typedArrayConstructor = getClassType(type);
+            const typedArrayConstructor = type.classType;
             return new typedArrayConstructor(nodeBufferToArrayBuffer(b));
         }
 

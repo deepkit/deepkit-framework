@@ -199,7 +199,7 @@ test('roundTrip class static', () => {
     {
         const type = roundTrip<MyClass>();
         assertType(type, ReflectionKind.class);
-        expect(getClassName(getClassType(type))).toBe('MyClass');
+        expect(getClassName(type.classType)).toBe('MyClass');
         assertType(type.types[0], ReflectionKind.property);
         assertType(type.types[1], ReflectionKind.property);
 
@@ -225,7 +225,7 @@ test('roundTrip class generic', () => {
     {
         const type = roundTrip<MyClass<boolean>>();
         assertType(type, ReflectionKind.class);
-        expect(getClassName(getClassType(type))).toBe('MyClass');
+        expect(getClassName(type.classType)).toBe('MyClass');
         assertType(type.types[0], ReflectionKind.property);
         assertType(type.types[1], ReflectionKind.property);
 
@@ -273,11 +273,11 @@ test('circular basics', () => {
     const type = deserializeType(json);
 
     assertType(type, ReflectionKind.class);
-    expect(getClassName(getClassType(type))).toBe('MyModel');
+    expect(getClassName(type.classType)).toBe('MyModel');
     assertType(type.types[0], ReflectionKind.property);
     expect(type.types[0].name).toBe('sub');
     assertType(type.types[0].type, ReflectionKind.class);
-    expect(getClassName(getClassType(type.types[0].type))).toBe('MyModel');
+    expect(getClassName(type.types[0].type.classType)).toBe('MyModel');
 });
 
 test('circular with decorators', () => {
@@ -289,12 +289,12 @@ test('circular with decorators', () => {
     const type = deserializeType(json);
 
     assertType(type, ReflectionKind.class);
-    expect(getClassName(getClassType(type))).toBe('MyModel');
+    expect(getClassName(type.classType)).toBe('MyModel');
     expect(primaryKeyAnnotation.isPrimaryKey(type)).toBe(false);
     assertType(type.types[0], ReflectionKind.property);
     expect(type.types[0].name).toBe('sub');
     assertType(type.types[0].type, ReflectionKind.class);
-    expect(getClassName(getClassType(type.types[0].type))).toBe('MyModel');
+    expect(getClassName(type.types[0].type.classType)).toBe('MyModel');
     expect(primaryKeyAnnotation.isPrimaryKey(type.types[0].type)).toBe(true);
 });
 

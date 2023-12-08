@@ -274,7 +274,7 @@ export function _isExtendable(left: Type, right: Type, extendStack: StackEntry[]
                 //class User extends Base {}
                 //User extends Base = true
                 if (left.classType === right.classType) return true;
-                return isPrototypeOfBase(left.classType, getClassType(right));
+                return isPrototypeOfBase(left.classType, right.classType);
             }
 
             return true;

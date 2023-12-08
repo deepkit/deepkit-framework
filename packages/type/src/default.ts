@@ -72,7 +72,7 @@ export function defaultValue(type: Type): any {
             if (type.classType === Date) return new Date;
             if (type.classType === Set) return new Set;
             if (type.classType === Map) return new Map;
-            if (binaryTypes.includes(getClassType(type))) return new (getClassType(type));
+            if (binaryTypes.includes(type.classType)) return new type.classType;
 
             const result: any = {};
             const types = resolveTypeMembers(type);
