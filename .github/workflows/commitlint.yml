@@ -1,31 +1,33 @@
 on:
-    pull_request:
-        types: [synchronize, edited, opened]
+  pull_request:
+    types: [synchronize, edited, opened]
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-    lint:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v2
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-            - uses: actions/setup-node@v1
-              with:
-                  node-version: 20.6.0
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 20.6.0
 
-            - name: npm install
-              run: npm ci
+      - name: npm install
+        run: npm ci
 
-            - name: Lint commit messages
-              run: npx commitlint --from $BASE_SHA --to $HEAD_SHA --verbose
-              env:
-                  BASE_SHA: ${{ github.event.pull_request.base.sha }}
-                  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      - name: Lint commit messages
+        run: npx commitlint --from $BASE_SHA --to $HEAD_SHA --verbose
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
-            - name: Lint pull request title
-              run: echo $PR_TITLE | npx commitlint --verbose
-              env:
-                  PR_TITLE: ${{ github.event.pull_request.title }}
+      - name: Lint pull request title
+        run: echo $PR_TITLE | npx commitlint --verbose
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
