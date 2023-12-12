@@ -194,7 +194,7 @@ export const packSize: number = 2 ** packSizeByte; //64
 export interface ReflectionOptions {
     /**
      * Allows to exclude type definitions/TS files from being included in the type compilation step.
-     * When a global .d.ts is matched, their types won't be embeddedLibraryVariables (useful to exclude DOM for example)
+     * When a global .d.ts is matched, their types won't be embedded (useful to exclude DOM for example)
      */
     exclude?: string[];
     /**
@@ -465,7 +465,7 @@ class CompilerProgram {
         return frame.variables.length - 1;
     }
 
-     pushTemplateParameter(name: string, withDefault: boolean = false): number {
+    pushTemplateParameter(name: string, withDefault: boolean = false): number {
         this.pushOp(withDefault ? ReflectionOp.typeParameterDefault : ReflectionOp.typeParameter, this.findOrAddStackEntry(name));
         this.frame.variables.push({
             index: this.frame.variables.length,
@@ -1343,12 +1343,6 @@ export class ReflectionTransformer implements CustomTransformer {
                 const narrowed = node as ClassDeclaration | ClassExpression;
                 //class nodes have always their own program, so the start is always fresh, means we don't need a frame
 
-                /*if (this.external.isEmbeddingExternalLibraryImport()) {
-                    const declaration = this.nodeConverter.convertClassToInterface(narrowed);
-                    this.extractPackStructOfType(declaration, program);
-                    break;
-                }*/
-
                 if (node) {
                     const members: ClassElement[] = [];
 
@@ -1395,7 +1389,6 @@ export class ReflectionTransformer implements CustomTransformer {
                     }
 
                     program.pushOp(ReflectionOp.class)
-                    // program.pushOp(!this.external.isEmbeddingExternalLibraryImport() ? ReflectionOp.class : ReflectionOp.objectLiteral);
 
                     if (narrowed.heritageClauses) {
                         for (const heritageClause of narrowed.heritageClauses) {
@@ -1871,7 +1864,6 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (isIdentifier(narrowed.exprName)) {
                     const resolved = this.resolveDeclaration(narrowed.exprName);
                     if (resolved && findSourceFile(resolved.declaration) !== this.sourceFile && resolved.importDeclaration) {
-                        // ensureImportIsEmitted(resolved.importDeclaration, narrowed.exprName);
                         expression = this.resolveImportExpression(resolved.declaration, resolved.importDeclaration, narrowed.exprName, expression, program);
                     }
                 }
@@ -2102,13 +2094,9 @@ export class ReflectionTransformer implements CustomTransformer {
 
             const builtType = isBuiltType(runtimeTypeName, declarationSourceFile);
 
-            const isEmbeddingExternalLibraryImport = this.external.isEmbeddingExternalLibraryImport();
-
-            if (isEmbeddingExternalLibraryImport || (!builtType && this.external.shouldInlineExternalLibraryImport(importDeclaration, typeName, declarationReflection))) {
+            if (this.external.isEmbeddingExternalLibraryImport() || (!builtType && this.external.shouldInlineExternalLibraryImport(importDeclaration, typeName, declarationReflection))) {
                 const { module } = this.external.processExternalLibraryImport(typeName, declaration, declarationSourceFile, importDeclaration);
                 return this.f.createPropertyAccessExpression(this.f.createIdentifier(getExternalRuntimeTypeName(module.packageId.name)), getNameAsString(typeName));
-                // const newExpression = this.f.createPropertyAccessExpression(this.f.createIdentifier(getExternalRuntimeTypeName(module.packageId.name)), getNameAsString(typeName));
-                // return isFunctionDeclaration(declaration) ? this.wrapWithAssignType(expression, newExpression) : newExpression;
             }
         }
 
@@ -2214,7 +2202,6 @@ export class ReflectionTransformer implements CustomTransformer {
             if (isModuleDeclaration(declaration) && resolved.importDeclaration) {
                 let expression: Expression = serializeEntityNameAsExpression(this.f, typeName);
                 if (isIdentifier(typeName)) {
-                    // ensureImportIsEmitted(resolved.importDeclaration, typeName);
                     expression = this.resolveImportExpression(declaration, resolved.importDeclaration, typeName, expression, program)
                 }
 
@@ -2308,32 +2295,16 @@ export class ReflectionTransformer implements CustomTransformer {
                                     return;
                                 }
 
-                                // const reflection = this.findReflectionFromPath(found.fileName);
-                                // if (reflection.mode === 'never') {
-                                //     if (this.external.shouldInlineExternalLibraryImport(resolved.importDeclaration, typeName, declarationReflection)) {
-                                //         console.log('inline');
-                                //         this.external.processExternalLibraryImport(typeName, declaration, declarationSourceFile, resolved.importDeclaration);
-                                //     } else {
-                                //         program.pushOp(ReflectionOp.any);
-                                //         return;
-                                //     }
-                                // }
-                                //
-                                // this.addImports.push({ identifier: runtimeTypeName, from: resolved.importDeclaration.moduleSpecifier });
-
                                 const reflection = this.findReflectionFromPath(found.fileName);
                                 if (reflection.mode !== 'never') {
                                     this.addImports.push({ identifier: runtimeTypeName, from: resolved.importDeclaration.moduleSpecifier });
                                 } else {
-                                    // const builtType = isBuiltType(runtimeTypeName, found);
-                                    // if (!builtType) {
-                                        if (this.external.shouldInlineExternalLibraryImport(resolved.importDeclaration, typeName, declarationReflection)) {
-                                            this.external.processExternalLibraryImport(typeName, declaration, declarationSourceFile, resolved.importDeclaration);
-                                        } else {
-                                            program.pushOp(ReflectionOp.any);
-                                            return;
-                                        }
-                                    // }
+                                    if (this.external.shouldInlineExternalLibraryImport(resolved.importDeclaration, typeName, declarationReflection)) {
+                                        this.external.processExternalLibraryImport(typeName, declaration, declarationSourceFile, resolved.importDeclaration);
+                                    } else {
+                                        program.pushOp(ReflectionOp.any);
+                                        return;
+                                    }
                                 }
                             }
                         } else {
@@ -2396,11 +2367,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     body = this.resolveImportExpression(resolved.declaration, resolved.importDeclaration, typeName, body, program);
                 }
                 const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, body));
-                //if (this.external.isEmbeddingExternalLibraryImport() || this.external.hasProcessedEntity(typeName)) {
-                //    program.pushOp(isClassDeclaration(declaration) ? ReflectionOp.class : ReflectionOp.function, index);
-                //} else {
-                    program.pushOp(isClassDeclaration(declaration) ? ReflectionOp.classReference : ReflectionOp.functionReference, index);
-                //}
+                program.pushOp(isClassDeclaration(declaration) ? ReflectionOp.classReference : ReflectionOp.functionReference, index);
                 program.popFrameImplicit();
             } else if (isTypeParameterDeclaration(declaration)) {
                 this.resolveTypeParameter(declaration, type, program);

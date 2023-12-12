@@ -145,52 +145,10 @@ const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNo
 
 export class NodeConverter {
     constructor(protected f: NodeFactory, protected external: External) {}
-
-    public convertedNodes = new Map<Node, Node>;
-
-    private convertClassElementToTypeElement(node: ClassElement): TypeElement {
-        if (isPropertyDeclaration(node)) {
-            return this.f.createPropertySignature(
-                node.modifiers as readonly Modifier[] | undefined,
-                node.name,
-                node.questionToken,
-                node.type,
-            );
-        } else if (isMethodDeclaration(node)) {
-            return this.f.createMethodSignature(
-                node.modifiers as readonly Modifier[] | undefined,
-                node.name,
-                node.questionToken,
-                node.typeParameters,
-                node.parameters,
-                node.type,
-            );
-        } else if (isConstructorDeclaration(node)) {
-            // return this.f.createm
-            return this.f.createConstructSignature(node.typeParameters, node.parameters, node.type);
-        }
-
-        throw new Error('Unsupported type');
-    }
-
-    convertClassToInterface(node: ClassDeclaration | ClassExpression): InterfaceDeclaration {
-        if (!node.name) {
-            throw new Error('Class name is required');
-        }
-        return this.f.createInterfaceDeclaration(
-            node.modifiers as readonly Modifier[] | undefined,
-            node.name,
-            node.typeParameters,
-            node.heritageClauses, //node.heritageClauses.map(heritageClause => isInterfaceDeclaration(heritageClause.) ? heritageClause : this.f.createh(this.convertClassToInterface(heritageClause))),
-            node.members.map(member => this.convertClassElementToTypeElement(member)),
-        );
-    }
-
     createExternalRuntimeTypePropertyAccessExpression(name: string): PropertyAccessExpression {
         const { module } = this.external.getEmbeddingExternalLibraryImport();
         return this.f.createPropertyAccessExpression(this.f.createIdentifier(getExternalRuntimeTypeName(module.packageId.name)), name)
     }
-
     toExpression<T extends PackExpression | PackExpression[]>(node?: T): Expression {
         if (node === undefined) return this.f.createIdentifier('undefined');
 

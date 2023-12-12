@@ -112,7 +112,7 @@ test('globals', () => {
         `
     });
 
-    //we just make sure the global was detected and embeddedLibraryVariables
+    //we just make sure the global was detected and embedded
     expect(res.app).toContain('const __ΩPartial = ');
     expect(res.app).toContain('() => __ΩPartial');
 });
