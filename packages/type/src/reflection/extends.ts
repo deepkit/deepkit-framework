@@ -11,7 +11,7 @@
 import {
     addType,
     emptyObject,
-    flatten, getClassType, getTypeJitContainer,
+    flatten, getTypeJitContainer,
     indexAccess,
     isMember,
     isOptional,

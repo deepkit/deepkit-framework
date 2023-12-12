@@ -1,5 +1,4 @@
-import { binaryTypes, getClassType, ReflectionKind, resolveTypeMembers, Type } from './reflection/type.js';
-import { ClassType } from '@deepkit/core';
+import { binaryTypes, ReflectionKind, resolveTypeMembers, Type } from './reflection/type.js';
 
 /**
  * Returns a sensible default value for a given type.

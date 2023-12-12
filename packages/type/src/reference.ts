@@ -11,7 +11,7 @@
 import { ClassType, isObject } from '@deepkit/core';
 import { ReflectionClass, reflectionClassSymbol } from './reflection/reflection.js';
 import { typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core.js';
-import { getClassType, ReflectionKind, Type } from './reflection/type.js';
+import { ReflectionKind, Type } from './reflection/type.js';
 
 export function isReferenceInstance(obj: any): boolean {
     return isObject(obj) && referenceSymbol in obj;
