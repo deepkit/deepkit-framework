@@ -67,17 +67,20 @@ export class External {
     }
 
     public shouldInlineExternalLibraryImport(importDeclaration: ImportDeclaration, entityName: EntityName, config: ReflectionConfig): boolean {
-        if (!isStringLiteral(importDeclaration.moduleSpecifier)) return false;
-        if (!hasSourceFile(importDeclaration)) return false;
-        if (config.options.inlineExternalLibraryImports === true) return true;
-        const resolvedModule = this.resolver.resolveImport(importDeclaration);
-        if (!resolvedModule.isExternalLibraryImport || !resolvedModule.packageId) return false;
-        const imports = config.options.inlineExternalLibraryImports?.[resolvedModule.packageId.name];
-        if (!imports) return false;
-        if (imports === true) return true;
-        if (!importDeclaration.moduleSpecifier.text.startsWith(resolvedModule.packageId.name)) return true;
-        const typeName = getEntityName(entityName);
-        return imports.includes(typeName);
+        try {
+            if (!isStringLiteral(importDeclaration.moduleSpecifier)) return false;
+            if (!hasSourceFile(importDeclaration)) return false;
+            const resolvedModule = this.resolver.resolveExternalLibraryImport(importDeclaration);
+            if (config.options.inlineExternalLibraryImports === true) return true;
+            const imports = config.options.inlineExternalLibraryImports?.[resolvedModule.packageId.name];
+            if (!imports) return false;
+            if (imports === true) return true;
+            if (!importDeclaration.moduleSpecifier.text.startsWith(resolvedModule.packageId.name)) return true;
+            const typeName = getEntityName(entityName);
+            return imports.includes(typeName);
+        } catch {
+            return false;
+        }
     }
 
     public hasProcessedEntity(typeName: EntityName): boolean {

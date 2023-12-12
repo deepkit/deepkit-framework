@@ -1,5 +1,5 @@
 import { test, expect } from '@jest/globals';
-import {ReflectionKind, TypeClass, TypeFunction, } from '@deepkit/type';
+import { TypeClass, TypeFunction } from '@deepkit/type';
 
 import { transpile, transpileAndRun } from './utils';
 
@@ -148,30 +148,30 @@ test('declares scoped variable', () => {
 
 test('function type alias', () => {
     const res = transpile({
-        app: `import { map } from 'rxjs';
+        app: `import { map } from 'rxjs/operators';
 
             type A = typeof map;
         `
     }, undefined, {
         inlineExternalLibraryImports: {
-            'rxjs': ['map'],
+            'rxjs/operators': ['map'],
         },
     });
 
-    expect(res.app).toContain('__ɵΩrxjs_operators.Ωmap = [');
-    expect(res.app).toContain('() => __ɵΩrxjs_operators.Ωmap)');
+    expect(res.app).toContain('__ɵΩrxjs_operators.map = [');
+    expect(res.app).toContain('() => __ɵΩrxjs_operators.map');
 });
 
 test('typeOf function type alias', () => {
     const res = transpileAndRun({
-        app: `import { map } from 'rxjs';
+        app: `import { map } from 'rxjs/operators';
             import { typeOf } from '@deepkit/type';
 
             typeOf<typeof map>();
         `
     }, undefined, {
         inlineExternalLibraryImports: {
-            'rxjs': ['map'],
+            'rxjs/operators': ['map'],
         },
     }) as TypeFunction;
 

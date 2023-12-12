@@ -123,8 +123,8 @@ export function hasModifier(node: { modifiers?: NodeArray<ModifierLike> }, modif
     return node.modifiers.some(v => v.kind === modifier);
 }
 
-export function getExternalRuntimeTypeName(typeName: string): string {
-    return `__ɵΩ${typeName}`;
+export function getExternalRuntimeTypeName(importPath: string): string {
+    return `__ɵΩ${importPath.replace(/[^a-zA-Z0-9]+/g, '_')}`;
 }
 
 export function getRuntimeTypeName(typeName: string): string {

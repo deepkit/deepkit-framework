@@ -73,17 +73,16 @@ export class Resolver {
 
     resolveExternalLibraryImport(importDeclaration: ImportDeclaration): Required<ResolvedModuleFull> {
         const resolvedModule = this.resolveImport(importDeclaration);
-        if (!resolvedModule.packageId) {
-            // FIXME: packageId is undefined when module specifier text is `rxjs/operators`
-            throw new Error('Missing package id for resolved module');
-            /*resolvedModule.packageId = {
-                name: (importDeclaration.moduleSpecifier as StringLiteral).text.replace(/[^a-zA-Z0-9]+/g, '_'),
-                subModuleName: '',
-                version: '',
-            };*/
-        }
         if (!resolvedModule.isExternalLibraryImport) {
             throw new Error('Resolved module is not an external library import');
+        }
+        if (!resolvedModule.packageId) {
+            // packageId will be undefined when importing from sub-paths such as `rxjs/operators`
+            resolvedModule.packageId = {
+                name: (importDeclaration.moduleSpecifier as StringLiteral).text,
+                subModuleName: 'unknown',
+                version: 'unknown',
+            };
         }
         return resolvedModule as Required<ResolvedModuleFull>;
     }
