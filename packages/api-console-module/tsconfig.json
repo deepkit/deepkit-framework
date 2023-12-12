@@ -22,6 +22,9 @@
     "index.ts",
     "node_modules/@deepkit/api-console-gui/src/api.ts"
   ],
+  "exclude": [
+    "tests"
+  ],
   "references": [
     {
       "path": "../api-console-api/tsconfig.json"

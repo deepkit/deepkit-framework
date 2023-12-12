@@ -16,16 +16,17 @@
     "composite": true,
     "types": [
       "lz-string",
-      "micromatch"
+      "micromatch",
+      "node"
     ]
   },
   "include": [
     "src",
-    "tests",
     "install-transformer.ts",
     "compiler-debug.ts",
     "index.ts"
   ],
+  "exclude": ["tests"],
   "references": [
     {
       "path": "../type-spec/tsconfig.json"

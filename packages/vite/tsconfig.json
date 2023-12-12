@@ -18,9 +18,9 @@
   },
   "include": [
     "src",
-    "tests",
     "index.ts"
   ],
+  "exclude": ["tests"],
   "references": [
     {
       "path": "../core/tsconfig.json"
