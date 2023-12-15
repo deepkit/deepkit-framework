@@ -106,6 +106,7 @@ export function isObject(obj: any): obj is { [key: string]: any } {
 const {
     visitEachChild,
     visitNode,
+    isPropertyAssignment,
     isArrayTypeNode,
     isArrowFunction,
     isCallExpression,
@@ -764,8 +765,8 @@ export class ReflectionTransformer implements CustomTransformer {
                         const index = typeParameters.findIndex(v => getIdentifierName(v.name) === name);
 
                         let container: Expression = this.f.createIdentifier('globalThis');
-                        if (isArrowFunction(node.parent) && isVariableDeclaration(node.parent.parent) && isIdentifier(node.parent.parent.name)) {
-                            container = node.parent.parent.name;
+                        if (isArrowFunction(node.parent)) {
+                            container = this.getArrowFunctionΩPropertyAccessIdentifier(node.parent);
                         } else if ((isFunctionDeclaration(node.parent) || isFunctionExpression(node.parent)) && node.parent.name) {
                             container = node.parent.name;
                         } else if (isMethodDeclaration(node.parent) && isIdentifier(node.parent.name)) {
@@ -1117,6 +1118,31 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.compilerOptions.module === ModuleKind.CommonJS ? 'cjs' : 'esm';
     }
 
+    protected getArrowFunctionΩPropertyAccessIdentifier(node: ArrowFunction): Identifier {
+        let { parent } = (node as any).original || node;
+        if (isVariableDeclaration(parent) && isIdentifier(parent.name)) {
+            return parent.name;
+        } else if (isPropertyAssignment(parent) && isIdentifier(parent.name)) {
+            const names: string[] = [];
+            while (parent) {
+                if (isObjectLiteralExpression(parent)) {
+                    parent = parent.parent;
+                } else if (isVariableDeclaration(parent)) {
+                    names.unshift(getIdentifierName(parent.name as Identifier));
+                    break;
+                } else if (isIdentifier(parent.name)) {
+                    names.unshift(getIdentifierName(parent.name));
+                    parent = parent.parent;
+                } else {
+                    throw new Error('Not implemented ' + parent.kind);
+                }
+            }
+            return this.f.createIdentifier(names.join('.'));
+        } else {
+            throw new Error('Unsupported parent ' + parent.kind);
+        }
+    }
+
     protected injectResetΩ<T extends FunctionDeclaration | FunctionExpression | MethodDeclaration | ConstructorDeclaration | ArrowFunction>(node: T): T {
         let hasReceiveType = false;
         for (const param of node.parameters) {
@@ -1125,8 +1151,8 @@ export class ReflectionTransformer implements CustomTransformer {
         if (!hasReceiveType) return node;
 
         let container: Expression = this.f.createIdentifier('globalThis');
-        if (isArrowFunction(node) && isVariableDeclaration((node as any).original.parent) && isIdentifier((node as any).original.parent.name)) {
-            container = (node as any).original.parent.name;
+        if (isArrowFunction(node)) {
+            container = this.getArrowFunctionΩPropertyAccessIdentifier(node);
         } else if ((isFunctionDeclaration(node) || isFunctionExpression(node)) && node.name) {
             container = node.name;
         } else if (isMethodDeclaration(node) && isIdentifier(node.name)) {
