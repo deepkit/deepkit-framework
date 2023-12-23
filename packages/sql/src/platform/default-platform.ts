@@ -189,7 +189,7 @@ export abstract class DefaultPlatform {
         return fields;
     }
 
-    protected getTypeMapping(type: Type): TypeMapping | undefined {
+    public getTypeMapping(type: Type): TypeMapping | undefined {
         let mapping = undefined as TypeMapping | undefined;
         for (const [checker, m] of this.typeMapping.entries()) {
             if ('number' === typeof checker) {

@@ -251,11 +251,21 @@ export class MySQLPersistence extends SQLPersistence {
             valuesSetNames.push('_changed_' + fieldName);
         }
 
+        const changedJsonFields = prepared.changedFields.filter(v => {
+            const fieldType = classSchema.getProperty(v).type;
+            const typeMapping = this.platform.getTypeMapping(fieldType);
+            return typeMapping?.sqlType === 'json';
+        });
+
         for (let i = 0; i < changeSets.length; i++) {
             params.push(prepared.primaryKeys[i]);
             let pkValue = placeholderStrategy.getPlaceholder();
             valuesValues.push('ROW(' + pkValue + ',' + prepared.changedFields.map(name => {
-                params.push(prepared.values[name][i]);
+                const val = prepared.values[name][i];
+                if (val === null && changedJsonFields.includes(name)) {
+                    return 'CAST(NULL AS JSON)';
+                }
+                params.push(val);
                 return placeholderStrategy.getPlaceholder();
             }).join(',') + ')');
         }

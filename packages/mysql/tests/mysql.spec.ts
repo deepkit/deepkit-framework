@@ -190,3 +190,37 @@ test('for update/share', async () => {
     const items = await database.query(Model).forUpdate().find();
     expect(items).toHaveLength(2);
 });
+
+test('json nulls', async () => {
+    @entity.name('model5')
+    class Model {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        doc: { name: string } | null = null;
+    }
+
+    const database = await databaseFactory([Model]);
+
+    {
+        const m = new Model;
+        m.doc = { name: 'Marc' };
+        await database.persist(m);
+    }
+
+    {
+        const m = await database.query(Model).findOne();
+        expect(m).toMatchObject({ doc: { name: 'Marc' } });
+
+        // replace the existing JSON object with null
+        m.doc = null;
+        await database.persist(m);
+    }
+
+    {
+        // create with null JSON object
+        const m = new Model;
+        m.doc = null;
+        await database.persist(m);
+    }
+
+    database.disconnect();
+});
