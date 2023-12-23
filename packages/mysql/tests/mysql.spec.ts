@@ -9,6 +9,7 @@ test('connection MySQLConnectionPool', async () => {
         host: '127.0.0.1',
         user: 'root',
         database: 'default',
+        password: process.env.MYSQL_PW
     });
     const connectionPool = new MySQLConnectionPool(pool);
 

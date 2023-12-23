@@ -511,7 +511,17 @@ export class MySQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
 }
 
 export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
-    protected pool = createPool({ multipleStatements: true, maxAllowedPacket: 16_000_000, ...this.options });
+    protected pool = createPool({
+        multipleStatements: true,
+        maxAllowedPacket: 16_000_000,
+
+        // https://github.com/mariadb-corporation/mariadb-connector-nodejs/blob/master/documentation/callback-api.md#migrating-from-2x-or-mysqlmysql2-to-3x
+        insertIdAsNumber: true,
+        decimalAsNumber: true,
+        bigIntAsNumber: true,
+
+        ...this.options
+    });
     public connectionPool = new MySQLConnectionPool(this.pool);
     public platform = new MySQLPlatform(this.pool);
 
