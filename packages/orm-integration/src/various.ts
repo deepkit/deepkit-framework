@@ -8,14 +8,14 @@ import { randomBytes } from 'crypto';
 Error.stackTraceLimit = 20;
 
 export const variousTests = {
-    async testOneToOneCircularRelation(databaseFactory: DatabaseFactory) {
-        @entity.name('test_one_to_one_circular_relation_inventory')
+    async testOneToOneCircularReferenceRelation(databaseFactory: DatabaseFactory) {
+        @entity.name('test_one_to_one_circular_reference_relation_inventory')
         class Inventory {
             id: number & PrimaryKey & AutoIncrement = 0;
             constructor(public user: User & Reference) {}
         }
 
-        @entity.name('test_one_to_one_circular_relation_user')
+        @entity.name('test_one_to_one_circular_reference_relation_user')
         class User {
             id: number & PrimaryKey & AutoIncrement = 0;
             inventory: Inventory & BackReference = new Inventory(this);
