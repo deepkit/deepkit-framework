@@ -506,6 +506,19 @@ test('router query', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/my-action'))).bodyString).toEqual('');
 });
 
+test('router query with default value', async () => {
+    class Controller {
+        @http.GET('my-action')
+        anyReq(offset: HttpQuery<number> = 0) {
+            return offset;
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    expect((await httpKernel.request(HttpRequest.GET('/my-action'))).json).toEqual(0);
+});
+
 test('router query all', async () => {
     class AnyReqQuery {
         test?: string;
