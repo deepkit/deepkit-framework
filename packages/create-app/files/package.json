@@ -34,11 +34,11 @@
     "@deepkit/stopwatch": "^1.0.1-alpha.108",
     "@deepkit/template": "^1.0.1-alpha.108",
     "@deepkit/type": "^1.0.1-alpha.108",
-    "@deepkit/type-compiler": "^1.0.1-alpha.108",
     "@deepkit/filesystem": "^1.0.1-alpha.108",
     "@deepkit/workflow": "^1.0.1-alpha.108"
   },
   "devDependencies": {
+    "@deepkit/type-compiler": "^1.0.1-alpha.108",
     "faker": "^5.5.3",
     "typescript": "^4.8.2",
     "jest": "^28.1.3",
