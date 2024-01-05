@@ -35,6 +35,7 @@
     "@deepkit/template": "^1.0.1-alpha.72",
     "@deepkit/type": "^1.0.1-alpha.72",
     "@deepkit/type-compiler": "^1.0.1-alpha.72",
+    "@deepkit/filesystem": "^1.0.1-alpha.72",
     "@deepkit/workflow": "^1.0.1-alpha.72"
   },
   "devDependencies": {
