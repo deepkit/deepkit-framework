@@ -810,6 +810,7 @@ export class SQLPersistence extends DatabasePersistence {
             // if (property.isParentReference) continue;
             if (property.isBackReference()) continue;
             if (property.isAutoIncrement()) continue;
+            if (property.isDatabaseSkipped(this.session.adapter.getName())) continue;
             names.push(this.platform.quoteIdentifier(property.name));
         }
 
@@ -821,6 +822,7 @@ export class SQLPersistence extends DatabasePersistence {
                 // if (property.isParentReference) continue;
                 if (property.isBackReference()) continue;
                 if (property.isAutoIncrement()) continue;
+                if (property.isDatabaseSkipped(this.session.adapter.getName())) continue;
 
                 const v = converted[property.name];
                 params.push(v === undefined ? null : v);
