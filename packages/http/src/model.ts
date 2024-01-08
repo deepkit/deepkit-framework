@@ -116,11 +116,104 @@ export class ValidatedBody<T> {
     }
 }
 
+/**
+ * Marks a parameter as HTTP body and reads the value from the request body.
+ *
+ * @example
+ * ```typescript
+ * class Controller {
+ *   @http.GET('/api')
+ *   route(body: HttpBody<{username: string}>) {
+ *     //body is {username: string} and required
+ *     //could also reference an interface or type alias via `HttpBody<MyInterface>`
+ *   }
+ * }
+ *
+ * // curl /api -d '{"username":"Peter"}'
+ */
 export type HttpBody<T> = T & TypeAnnotation<'httpBody'>;
 export type HttpBodyValidation<T> = ValidatedBody<T> & TypeAnnotation<'httpBodyValidation'>;
+
+/**
+ * Marks a parameter as HTTP path and reads the value from the request path.
+ * This is normally not requires since the parameter name automatically maps to the path parameter,
+ * but in case of requesting the path parameter in for example listeners, this is required.
+ * The name option can be used to change the parameter name.
+ *
+ * @example
+ * ```typescript
+ * app.listen(httpWorkflow.onController, (event, request: HttpRequest, groupId: HttpPath<number>) => {
+ *   console.log(groupId); //123
+ * });
+ *
+ * class Controller {
+ *   @http.GET('/api/:groupId')
+ *   route(groupId: number) {
+ *     //groupId is number and required
+ *     //same as `groupId: HttpPath<number>`
+ *   }
+ * }
+ * ```
+ */
 export type HttpPath<T, Options extends { name?: string } = {}> = T & TypeAnnotation<'httpPath', Options>;
+
+/**
+ * Marks a parameter as HTTP header and reads the value from the request header.
+ *
+ * @example
+ * ```typescript
+ * class Controller {
+ *    @http.GET('/api')
+ *    route(authorization: HttpHeader<string>) {
+ *         //authorization is string and required
+ *         //use `authorization?: HttpHeader<string>` to make it optional
+ *    }
+ * }
+ *
+ * // curl /api -H 'Authorization: 123'
+ * ```
+ *
+ * To change the header name, use `param: HttpHeader<string, {name: 'X-My-Header'}>`.
+ */
 export type HttpHeader<T, Options extends { name?: string } = {}> = T & TypeAnnotation<'httpHeader'>;
+
+/**
+ * Marks a parameter as HTTP query and reads the value from the request query string.
+ *
+ * @example
+ * ```typescript
+ * class Controller {
+ *   @http.GET('/api')
+ *   route(limit: HttpQuery<number>) {
+ *      //limit is number and required
+ *      //use `limit?: HttpQuery<number>` to make it optional
+ *   }
+ * }
+ *
+ * // curl /api?limit=10
+ * ```
+ */
 export type HttpQuery<T, Options extends { name?: string } = {}> = T & TypeAnnotation<'httpQuery', Options>;
+
+/**
+ * Marks a parameter as HTTP query objects and reads multiple values from the request query string into an object.
+ *
+ * @example
+ * ```typescript
+ * interface Query {
+ *    limit?: number;
+ *    offset?: number;
+ *    sort?: 'asc' | 'desc';
+ * }
+ *
+ * class Controller {
+ *  @http.GET('/api')
+ *  route(query: HttpQueries<Query>) {
+ *    //query is an object containing limit, offset, and sort
+ * }
+ *
+ * // curl /api?limit=10&offset=20&sort=asc
+ */
 export type HttpQueries<T, Options extends { name?: string } = {}> = T & TypeAnnotation<'httpQueries', Options>;
 
 /**
