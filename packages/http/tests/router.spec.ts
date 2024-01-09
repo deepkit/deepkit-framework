@@ -6,7 +6,7 @@ import { eventDispatcher } from '@deepkit/event';
 import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model.js';
 import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
-import { Excluded, Group, metaAnnotation, MinLength, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
+import { Excluded, Group, integer, Maximum, metaAnnotation, MinLength, Positive, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
 import { Readable } from 'stream';
 
 test('router', async () => {
@@ -1447,4 +1447,37 @@ test('controller inheritance', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/test1'))).json).toEqual('test1');
     expect((await httpKernel.request(HttpRequest.GET('/test2'))).json).toEqual('test2-2');
     expect((await httpKernel.request(HttpRequest.GET('/test3'))).json).toEqual('test3');
+});
+
+test('query default', async () => {
+    @http.controller()
+    class Controller {
+        @http.GET('/test1')
+        test1(
+            limit?: HttpQuery<integer & Positive & Maximum<100>>,
+            offset: HttpQuery<integer & Positive> = 0,
+        ) {
+            return [limit, offset];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.GET('/test1?limit=10'))).json).toEqual([10, 0]);
+    expect((await httpKernel.request(HttpRequest.GET('/test1?limit=10&offset=5'))).json).toEqual([10, 5]);
+});
+
+test('header default', async () => {
+    @http.controller()
+    class Controller {
+        @http.GET('/test1')
+        test1(
+            auth: HttpHeader<string> = '',
+        ) {
+            return [auth];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.GET('/test1').header('auth', '123'))).json).toEqual(['123']);
+    expect((await httpKernel.request(HttpRequest.GET('/test1'))).json).toEqual(['']);
 });

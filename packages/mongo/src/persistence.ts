@@ -94,9 +94,12 @@ export class MongoPersistence extends DatabasePersistence {
                 item['_id'] = ObjectId.generate();
             }
 
-            //replaces references with the foreign key
-            // const converted = scopeSerializer.serialize(item);
-            insert.push(item);
+            const filteredItem = {};
+            for (const property of classSchema.getProperties()) {
+                if (property.isDatabaseSkipped(this.session.adapter.getName())) continue;
+                filteredItem[property.getName()] = item[property.getName()];
+            }
+            insert.push(filteredItem);
         }
 
         if (this.session.logger.active) this.session.logger.log('insert', classSchema.getClassName(), items.length);

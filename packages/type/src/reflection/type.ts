@@ -1385,7 +1385,7 @@ export function isOptional(type: Type): boolean {
  * Whether a property has an initializer/default value.
  */
 export function hasDefaultValue(type: Type): boolean {
-    return type.kind === ReflectionKind.property && type.default !== undefined;
+    return (type.kind === ReflectionKind.property || type.kind === ReflectionKind.parameter) && type.default !== undefined;
 }
 
 /**
