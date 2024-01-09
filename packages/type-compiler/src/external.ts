@@ -1,8 +1,11 @@
 import type {
+    Node,
+    ResolvedModuleFull,
     EntityName,
-    ImportDeclaration, SourceFile,
+    ImportDeclaration,
+    SourceFile,
 } from 'typescript';
-import ts, { Node, ResolvedModuleFull } from 'typescript';
+import ts from 'typescript';
 
 const {
     isStringLiteral,
@@ -67,20 +70,22 @@ export class External {
     }
 
     public shouldInlineExternalLibraryImport(importDeclaration: ImportDeclaration, entityName: EntityName, config: ReflectionConfig): boolean {
+        if (!isStringLiteral(importDeclaration.moduleSpecifier)) return false;
+        if (!hasSourceFile(importDeclaration)) return false;
+        let resolvedModule;
         try {
-            if (!isStringLiteral(importDeclaration.moduleSpecifier)) return false;
-            if (!hasSourceFile(importDeclaration)) return false;
-            const resolvedModule = this.resolver.resolveExternalLibraryImport(importDeclaration);
-            if (config.options.inlineExternalLibraryImports === true) return true;
-            const imports = config.options.inlineExternalLibraryImports?.[resolvedModule.packageId.name];
-            if (!imports) return false;
-            if (imports === true) return true;
-            if (!importDeclaration.moduleSpecifier.text.startsWith(resolvedModule.packageId.name)) return true;
-            const typeName = getEntityName(entityName);
-            return imports.includes(typeName);
+            // throws an error if import is not an external library
+            resolvedModule = this.resolver.resolveExternalLibraryImport(importDeclaration);
         } catch {
             return false;
         }
+        if (config.options.inlineExternalLibraryImports === true) return true;
+        const imports = config.options.inlineExternalLibraryImports?.[resolvedModule.packageId.name];
+        if (!imports) return false;
+        if (imports === true) return true;
+        if (!importDeclaration.moduleSpecifier.text.startsWith(resolvedModule.packageId.name)) return true;
+        const typeName = getEntityName(entityName);
+        return imports.includes(typeName);
     }
 
     public hasProcessedEntity(typeName: EntityName): boolean {
@@ -103,20 +108,6 @@ export class External {
         }
 
         this.processedEntities.add(entityName);
-        // const libraryFiles = this.processedExternalLibraryImports.get(module.packageId.name) || new Map();
-        // const libraryFileEntities = libraryFiles.get(module.resolvedFileName) || new Set();
-        // if (libraryFileEntities.has(entityName)) {
-        //     return {
-        //         name: typeName,
-        //         declaration,
-        //         sourceFile,
-        //         module,
-        //     }
-        // }
-        //
-        // libraryFileEntities.add(entityName);
-        // libraryFiles.set(module.resolvedFileName, libraryFileEntities);
-        // this.processedExternalLibraryImports.set(module.packageId.name, libraryFiles);
 
         const imports = this.compileExternalLibraryImports.get(module.packageId.name) || new Map<string, ExternalLibraryImport>();
         const externalLibraryImport: ExternalLibraryImport = {

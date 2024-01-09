@@ -273,7 +273,7 @@ export function serializeEntityNameAsExpression(f: NodeFactory, node: EntityName
     return node;
 }
 
-export type SerializedEntityNameAsExpression = Identifier | BinaryExpression | PropertyAccessExpression;
+type SerializedEntityNameAsExpression = Identifier | BinaryExpression | PropertyAccessExpression;
 
 /**
  * Serializes an qualified name as an expression for decorator type metadata.

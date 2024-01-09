@@ -2738,7 +2738,7 @@ export class ReflectionTransformer implements CustomTransformer {
      *
      * where we embed assignType() at the beginning of the type.
      */
-    public wrapWithAssignType(fn: Expression, type: Expression) {
+    protected wrapWithAssignType(fn: Expression, type: Expression) {
         this.embedAssignType = true;
 
         return this.f.createCallExpression(
@@ -2886,7 +2886,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 return {
                     mode: this.parseReflectionMode(packageJson.reflection, currentDir),
                     baseDir: currentDir,
-                    options: this.parseReflectionOptionsDefaults(packageJson.reflection || {})
+                    options: this.parseReflectionOptionsDefaults(packageJson.reflectionOptions || {})
                 };
             }
 
