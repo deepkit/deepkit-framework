@@ -2882,11 +2882,11 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
             }
 
-            if (reflection === undefined && packageJson.deepkitTypeCompilerOptions !== undefined) {
+            if (reflection === undefined && packageJson.reflection !== undefined) {
                 return {
-                    mode: this.parseReflectionMode(packageJson.deepkitTypeCompilerOptions.reflection, currentDir),
+                    mode: this.parseReflectionMode(packageJson.reflection, currentDir),
                     baseDir: currentDir,
-                    options: this.parseReflectionOptionsDefaults(packageJson.deepkitTypeCompilerOptions || {})
+                    options: this.parseReflectionOptionsDefaults(packageJson.reflection || {})
                 };
             }
 
