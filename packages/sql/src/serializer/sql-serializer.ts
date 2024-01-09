@@ -189,7 +189,10 @@ export class SqlSerializer extends Serializer {
         this.deserializeRegistry.prepend(ReflectionKind.array, deserializeSqlArray);
 
         //for databases, types decorated with Reference will always only export the primary key.
+        const referenceType = referenceAnnotation.registerType({ kind: ReflectionKind.class, classType: Object, types: [] }, {});
+        this.serializeRegistry.removeDecorator(referenceType);
         this.serializeRegistry.addDecorator(isReferenceType, serializeReferencedType);
+
         //for databases, types decorated with BackReference will always only export the primary key.
         this.serializeRegistry.addDecorator(isBackReferenceType, serializeReferencedType);
 
