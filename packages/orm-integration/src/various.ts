@@ -20,6 +20,25 @@ import { randomBytes } from 'crypto';
 Error.stackTraceLimit = 20;
 
 export const variousTests = {
+    async testOneToOneCircularReferenceRelation(databaseFactory: DatabaseFactory) {
+        @entity.name('totocrr_inventory')
+        class Inventory {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            constructor(public user: User & Reference) {}
+        }
+
+        @entity.name('totocrr_user')
+        class User {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            inventory: Inventory & BackReference = new Inventory(this);
+        }
+
+        const database = await databaseFactory([Inventory, User]);
+
+        const user = cast<User>({});
+
+        await database.persist(user.inventory, user);
+    },
     async testSkipDatabaseFieldForInserts(databaseFactory: DatabaseFactory) {
         @entity.name('test_skip_database_field_insert')
         class User {
