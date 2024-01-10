@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.109](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.108...v1.0.1-alpha.109) (2024-01-10)
+
+
+### Bug Fixes
+
+* **bson:** tests ([607d369](https://github.com/deepkit/deepkit-framework/commit/607d3693a12deafd97c3f12e3b61a0985e6de76c))
+* **create-app:** add missing filesystem dependency ([#533](https://github.com/deepkit/deepkit-framework/issues/533)) ([a70327c](https://github.com/deepkit/deepkit-framework/commit/a70327c8d936e3b184f5eb542c5df60f59f32437))
+* **http:** use default values of route parameters if no http value was provided. ([fa74d16](https://github.com/deepkit/deepkit-framework/commit/fa74d166d5421f8459f64c9b2339b9cf272a1b18)), closes [#529](https://github.com/deepkit/deepkit-framework/issues/529)
+* **injector:** allow to define scope in provide<T>({}) ([2f12c2e](https://github.com/deepkit/deepkit-framework/commit/2f12c2eba63cbe2bc1286c8b507045e34c0abbd3))
+* **orm:** snapshot type `any` correctly ([4898e9b](https://github.com/deepkit/deepkit-framework/commit/4898e9bc067b655284b08aa7e9a75b0bffedcbf6))
+* **rpc:** defer resolving class name ([68fe2a9](https://github.com/deepkit/deepkit-framework/commit/68fe2a9e7bef13462bd304d0d4b55f3afec1b5db))
+* **rpc:** tests with controller path resolution based on reflection ([6909fa8](https://github.com/deepkit/deepkit-framework/commit/6909fa846a7880feeecf0323e5e507ba8f929a72))
+* **sql:** serialize referenced types ([#528](https://github.com/deepkit/deepkit-framework/issues/528)) ([2f68991](https://github.com/deepkit/deepkit-framework/commit/2f689914f1ed0b6055289f1244a60cab0386c10e))
+* **type-compiler:** arrow function receive type ([#521](https://github.com/deepkit/deepkit-framework/issues/521)) ([6bfb246](https://github.com/deepkit/deepkit-framework/commit/6bfb2466753bb99020d8f429097ad1cb3520e500))
+* **type-compiler:** resolve reflection mode paths correctly ([acb2d72](https://github.com/deepkit/deepkit-framework/commit/acb2d72f242a742fe99fdcf9fba892faea701e08))
+* **type-compiler:** set ts compiler options target to es2022 if higher than es20222 when resolving global lib files ([#516](https://github.com/deepkit/deepkit-framework/issues/516)) ([29a1a17](https://github.com/deepkit/deepkit-framework/commit/29a1a17c0092c6304497c28184d8c5b8790b35e5))
+* **type:** make serializer API consistent ([5870005](https://github.com/deepkit/deepkit-framework/commit/587000526c1ca59e28eea3b107b882151aedb08b))
+
+
+### Features
+
+* **broker:** queue message deduplication ([#512](https://github.com/deepkit/deepkit-framework/issues/512)) ([2a8bf2c](https://github.com/deepkit/deepkit-framework/commit/2a8bf2cb2b50184cbe8d0134ec9047d80270f9ce))
+* **injector:** add support for receive type in isProvided ([#511](https://github.com/deepkit/deepkit-framework/issues/511)) ([e405ed3](https://github.com/deepkit/deepkit-framework/commit/e405ed31e65fee1ab50fa752863cd3eb6b08f70f))
+* **mongo,sql:** skip database field for inserts ([#527](https://github.com/deepkit/deepkit-framework/issues/527)) ([9fca388](https://github.com/deepkit/deepkit-framework/commit/9fca388be5efa03727a4f7e9b485dce572a66a51))
+
+
+
+
+
 ## [1.0.1-alpha.108](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.107...v1.0.1-alpha.108) (2023-11-21)
 
 

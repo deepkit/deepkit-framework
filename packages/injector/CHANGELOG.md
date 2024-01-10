@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.109](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.108...v1.0.1-alpha.109) (2024-01-10)
+
+
+### Bug Fixes
+
+* **injector:** allow to define scope in provide<T>({}) ([2f12c2e](https://github.com/deepkit/deepkit-framework/commit/2f12c2eba63cbe2bc1286c8b507045e34c0abbd3))
+
+
+### Features
+
+* **injector:** add support for receive type in isProvided ([#511](https://github.com/deepkit/deepkit-framework/issues/511)) ([e405ed3](https://github.com/deepkit/deepkit-framework/commit/e405ed31e65fee1ab50fa752863cd3eb6b08f70f))
+
+
+
+
+
 ## [1.0.1-alpha.108](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.107...v1.0.1-alpha.108) (2023-11-21)
 
 
