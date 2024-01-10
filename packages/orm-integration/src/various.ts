@@ -1,5 +1,17 @@
 import { expect } from '@jest/globals';
-import { AutoIncrement, BackReference, cast, entity, isReferenceInstance, PrimaryKey, Reference, Unique, uuid, UUID } from '@deepkit/type';
+import {
+    AutoIncrement,
+    BackReference,
+    cast,
+    DatabaseField,
+    entity,
+    isReferenceInstance,
+    PrimaryKey,
+    Reference,
+    Unique,
+    uuid,
+    UUID,
+} from '@deepkit/type';
 import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
 import { DatabaseFactory } from './test.js';
 import { hydrateEntity, isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
@@ -8,6 +20,44 @@ import { randomBytes } from 'crypto';
 Error.stackTraceLimit = 20;
 
 export const variousTests = {
+    async testOneToOneCircularReferenceRelation(databaseFactory: DatabaseFactory) {
+        @entity.name('totocrr_inventory')
+        class Inventory {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            constructor(public user: User & Reference) {}
+        }
+
+        @entity.name('totocrr_user')
+        class User {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            inventory: Inventory & BackReference = new Inventory(this);
+        }
+
+        const database = await databaseFactory([Inventory, User]);
+
+        const user = cast<User>({});
+
+        await database.persist(user.inventory, user);
+    },
+    async testSkipDatabaseFieldForInserts(databaseFactory: DatabaseFactory) {
+        @entity.name('test_skip_database_field_insert')
+        class User {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            username?: string & DatabaseField<{ skip: true }>
+        }
+
+        const database = await databaseFactory([User]);
+
+        const user = cast<User>({ username: 'peter' });
+
+        await database.persist(user);
+
+        {
+            const result = await database.query(User).findOne();
+            expect(result.id).toBe(1)
+            expect(result).not.toHaveProperty('username');
+        }
+    },
     async testRawQuery(databaseFactory: DatabaseFactory) {
         @entity.name('test_connection_user')
         class user {

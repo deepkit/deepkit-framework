@@ -1246,7 +1246,7 @@ test('fn default argument', () => {
     expect(type.kind).toEqual(ReflectionKind.string);
 });
 
-test('ReceiveType', () => {
+test('ReceiveType standard function', () => {
     const code = `
     function cast<T>(type: ReceiveType<T>) {
         return reflect(type);
@@ -1255,9 +1255,51 @@ test('ReceiveType', () => {
 
     const js = transpile(code);
     console.log('js', js);
+    expect(js).toContain('type = cast.Ω?.[0]');
+    expect(js).toContain('cast.Ω = undefined');
+    expect(js).toContain('cast.Ω = [');
+
     const type = transpileAndReturn(code);
     expect(type).toEqual({ kind: ReflectionKind.string });
 });
+
+test('ReceiveType arrow function', () => {
+    const code = `
+    const cast = <T>(type: ReceiveType<T>) => {
+        return reflect(type);
+    }
+    return cast<string>();`;
+
+    const js = transpile(code);
+    console.log('js', js);
+    expect(js).toContain('type = cast.Ω?.[0]');
+    expect(js).toContain('cast.Ω = undefined');
+    expect(js).toContain('cast.Ω = [');
+
+    const type = transpileAndReturn(code);
+    expect(type).toEqual({ kind: ReflectionKind.string });
+});
+
+test('ReceiveType object property assignment arrow function', () => {
+    const code = `
+        const obj = {
+          cast: <T>(type: ReceiveType<T>) => {
+            return reflect(type);
+          },
+        };
+        return obj.cast<string>();
+    `;
+
+    const js = transpile(code);
+    console.log('js', js);
+    expect(js).toContain('type = obj.cast.Ω?.[0]');
+    expect(js).toContain('obj.cast.Ω = undefined');
+    expect(js).toContain('obj.cast.Ω = [');
+
+    const type = transpileAndReturn(code);
+    expect(type).toEqual({ kind: ReflectionKind.string });
+});
+
 
 test('generic static', () => {
     const code = `
