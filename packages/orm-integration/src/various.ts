@@ -627,5 +627,54 @@ export const variousTests = {
             expect(products[0].product.images!.length).toBe(2);
             expect(products[1].product.images!.length).toBe(2);
         }
+    },
+    async nestedEmbeddedTypes(databaseFactory: DatabaseFactory) {
+        class Country {
+            name!: string;
+            id!: string;
+        }
+        class Author {
+            name!: string;
+            country: Country = new Country();
+        }
+
+        @entity.collection('nested-entity')
+        class Book {
+            id!: number & PrimaryKey;
+            name!: string;
+            author: Author = new Author();
+            anyType: any = {};
+        }
+        const database = await databaseFactory([Book]);
+
+        {
+            const book = new Book();
+            book.id = 12345678;
+            book.name = 'Book1';
+            book.author.name = 'Author1';
+            book.author.country.name = 'Country1';
+            book.author.country.id = '1';
+            book.anyType.test1 = '1';
+            book.anyType.test2 = {deep1: '1'};
+            await database.persist(book);
+        }
+
+        {
+            const session = database.createSession();
+            const book = await session.query(Book).filter({ id: 12345678 }).findOne();
+            book.author.country.name = 'somewhere';
+            book.anyType.test1 = '2';
+            book.anyType.test2.deep1 = '2';
+            await session.commit();
+            console.log(book);
+        }
+
+        {
+            const session = database.createSession();
+            const book = await session.query(Book).filter({ id: 12345678 }).findOne();
+            expect(book.author.country.name).toBe('somewhere');
+            expect(book.anyType.test1).toBe('2');
+            expect(book.anyType.test2.deep1).toBe('2');
+        }
     }
 };

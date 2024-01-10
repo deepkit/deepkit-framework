@@ -57,8 +57,8 @@ function serializeSqlAny(type: Type, state: TemplateState) {
         return;
     }
 
-    state.setContext({ stringify: JSON.stringify });
-    state.addSetter(`stringify(${state.accessor})`);
+    state.setContext({ jsonStringify: JSON.stringify });
+    state.addSetter(`jsonStringify(${state.accessor})`);
 }
 
 function deserializeSqlAny(type: Type, state: TemplateState) {
@@ -66,7 +66,8 @@ function deserializeSqlAny(type: Type, state: TemplateState) {
         state.addSetter(`${state.accessor}`);
         return;
     }
-    state.addCode(`${state.accessor} = JSON.parse(${state.accessor});`);
+    state.setContext({ jsonParse: JSON.parse });
+    state.addCode(`${state.setter} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor};`);
 }
 
 /**
@@ -89,7 +90,7 @@ function deserializeSqlArray(type: TypeArray, state: TemplateState) {
 
     if (!isDirectPropertyOfEntity(type)) return;
 
-    state.addCode(`${state.accessor} = 'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor};`);
+    state.addCode(`${state.setter} = 'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor};`);
 }
 
 /**
