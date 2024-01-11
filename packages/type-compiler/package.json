@@ -11,6 +11,11 @@
       "types": "./dist/cjs/index.d.ts",
       "require": "./dist/cjs/index.js",
       "default": "./dist/esm/index.js"
+    },
+    "./plugin": {
+      "types": "./dist/cjs/plugin.d.ts",
+      "require": "./dist/cjs/plugin.js",
+      "default": "./dist/esm/plugin.js"
     }
   },
   "bin": {
@@ -38,6 +43,7 @@
   "dependencies": {
     "@deepkit/type-spec": "^1.0.1-alpha.108",
     "@marcj/ts-clone-node": "^2.0.0",
+    "@rollup/pluginutils": "^5.1.0",
     "@typescript/vfs": "1.5.0",
     "get-tsconfig": "^4.5.0",
     "lz-string": "^1.4.4",
