@@ -1435,8 +1435,10 @@ export class ReflectionClass<T> {
 
 export function extractTypeNameFromFunction(fn: Function): string {
     const str = fn.toString();
-    //either it starts with __Ω* or __\u{3a9}* (bun.js)
-    const match = str.match(/(?:__Ω|__\\u\{3a9\})([\w]+)/);
+    // either it starts with
+    // __Ω* or __ɵΩ* (node.js)
+    // __\u{3a9}* or __\u{275}\u{3a9}* (bun.js)
+    const match = str.match(/(?:__Ω|__\\u\{3a9\}|__ɵΩ|__\\u{275}\\u{3a9}*)([\w]+)/);
     if (match) {
         return match[1];
     }
