@@ -96,6 +96,34 @@ function createJITConverterForSnapshot(
     return compiler.build(functionCode, '_value', 'state');
 }
 
+function cloneValueDeep(value: any): any {
+    if (Array.isArray(value)) return value.map(v => cloneValueDeep(v));
+    if (value instanceof Date) return new Date(value.getTime());
+    if (value instanceof Set) return new Set(value);
+    if (value instanceof Map) return new Map(value);
+    if (value instanceof ArrayBuffer) return value.slice(0);
+    if (value instanceof Uint8Array) return new Uint8Array(value);
+    if (value instanceof Uint16Array) return new Uint16Array(value);
+    if (value instanceof Uint32Array) return new Uint32Array(value);
+    if (value instanceof Int8Array) return new Int8Array(value);
+    if (value instanceof Int16Array) return new Int16Array(value);
+    if (value instanceof Int32Array) return new Int32Array(value);
+    if (value instanceof Float32Array) return new Float32Array(value);
+    if (value instanceof Float64Array) return new Float64Array(value);
+    if (value instanceof BigInt64Array) return new BigInt64Array(value);
+    if (value instanceof BigUint64Array) return new BigUint64Array(value);
+    if (value instanceof DataView) return new DataView(value.buffer.slice(0));
+    if (value instanceof RegExp) return new RegExp(value.source, value.flags);
+    if (isObject(value)) {
+        const copy: any = {};
+        for (const i in value) {
+            copy[i] = cloneValueDeep(value[i]);
+        }
+        return copy;
+    }
+    return value;
+}
+
 class SnapshotSerializer extends Serializer {
     name = 'snapshot';
 
@@ -105,6 +133,12 @@ class SnapshotSerializer extends Serializer {
         //we keep bigint as is
         this.serializeRegistry.register(ReflectionKind.bigint, noopTemplate);
         this.deserializeRegistry.register(ReflectionKind.bigint, noopTemplate);
+
+        //any is cloned as is
+        this.serializeRegistry.register(ReflectionKind.any, (type, state) => {
+            state.setContext({ cloneValueDeep });
+            state.addSetter(`cloneValueDeep(${state.accessor})`);
+        });
     }
 }
 

@@ -12,6 +12,7 @@ import type {
     __String,
     ArrayTypeNode,
     ArrowFunction,
+    Block,
     Bundle,
     CallSignatureDeclaration,
     ClassDeclaration,
@@ -19,6 +20,7 @@ import type {
     ClassExpression,
     CompilerHost,
     CompilerOptions,
+    ConciseBody,
     ConditionalTypeNode,
     ConstructorDeclaration,
     ConstructorTypeNode,
@@ -109,6 +111,7 @@ export function isObject(obj: any): obj is { [key: string]: any } {
 const {
     visitEachChild,
     visitNode,
+    isPropertyAssignment,
     isArrayTypeNode,
     isArrowFunction,
     isCallExpression,
@@ -788,7 +791,9 @@ export class ReflectionTransformer implements CustomTransformer {
                         const index = typeParameters.findIndex(v => getIdentifierName(v.name) === name);
 
                         let container: Expression = this.f.createIdentifier('globalThis');
-                        if ((isFunctionDeclaration(node.parent) || isFunctionExpression(node.parent)) && node.parent.name) {
+                        if (isArrowFunction(node.parent)) {
+                            container = this.getArrowFunctionΩPropertyAccessIdentifier(node.parent);
+                        } else if ((isFunctionDeclaration(node.parent) || isFunctionExpression(node.parent)) && node.parent.name) {
                             container = node.parent.name;
                         } else if (isMethodDeclaration(node.parent) && isIdentifier(node.parent.name)) {
                             container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), node.parent.name);
@@ -817,7 +822,7 @@ export class ReflectionTransformer implements CustomTransformer {
             } else if (isMethodDeclaration(node) || isConstructorDeclaration(node)) {
                 return this.injectResetΩ(node);
             } else if (isArrowFunction(node)) {
-                return this.decorateArrow(node);
+                return this.decorateArrowFunction(this.injectResetΩ(node));
             } else if ((isNewExpression(node) || isCallExpression(node)) && node.typeArguments && node.typeArguments.length > 0) {
                 if (isCallExpression(node)) {
                     const autoTypeFunctions = ['valuesOf', 'propertiesOf', 'typeOf'];
@@ -1173,7 +1178,32 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.compilerOptions.module === ModuleKind.CommonJS ? 'cjs' : 'esm';
     }
 
-    protected injectResetΩ<T extends FunctionDeclaration | FunctionExpression | MethodDeclaration | ConstructorDeclaration>(node: T): T {
+    protected getArrowFunctionΩPropertyAccessIdentifier(node: ArrowFunction): Identifier {
+        let { parent } = (node as any).original || node;
+        if (isVariableDeclaration(parent) && isIdentifier(parent.name)) {
+            return parent.name;
+        } else if (isPropertyAssignment(parent) && isIdentifier(parent.name)) {
+            const names: string[] = [];
+            while (parent) {
+                if (isObjectLiteralExpression(parent)) {
+                    parent = parent.parent;
+                } else if (isVariableDeclaration(parent)) {
+                    names.unshift(getIdentifierName(parent.name as Identifier));
+                    break;
+                } else if (isIdentifier(parent.name)) {
+                    names.unshift(getIdentifierName(parent.name));
+                    parent = parent.parent;
+                } else {
+                    throw new Error('Not implemented ' + parent.kind);
+                }
+            }
+            return this.f.createIdentifier(names.join('.'));
+        } else {
+            throw new Error('Unsupported parent ' + parent.kind);
+        }
+    }
+
+    protected injectResetΩ<T extends FunctionDeclaration | FunctionExpression | MethodDeclaration | ConstructorDeclaration | ArrowFunction>(node: T): T {
         let hasReceiveType = false;
         for (const param of node.parameters) {
             if (param.type && getReceiveTypeParameter(param.type)) hasReceiveType = true;
@@ -1181,7 +1211,9 @@ export class ReflectionTransformer implements CustomTransformer {
         if (!hasReceiveType) return node;
 
         let container: Expression = this.f.createIdentifier('globalThis');
-        if ((isFunctionDeclaration(node) || isFunctionExpression(node)) && node.name) {
+        if (isArrowFunction(node)) {
+            container = this.getArrowFunctionΩPropertyAccessIdentifier(node);
+        } else if ((isFunctionDeclaration(node) || isFunctionExpression(node)) && node.name) {
             container = node.name;
         } else if (isMethodDeclaration(node) && isIdentifier(node.name)) {
             container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), node.name);
@@ -1197,9 +1229,11 @@ export class ReflectionTransformer implements CustomTransformer {
             this.f.createToken(ts.SyntaxKind.EqualsToken),
             this.f.createIdentifier('undefined')
         ));
-        const body = node.body ? this.f.updateBlock(node.body, [reset, ...node.body.statements]) : undefined;
+        const body = node.body ? this.f.updateBlock(node.body as Block, [reset, ...(node.body as Block).statements]) : undefined;
 
-        if (isFunctionDeclaration(node)) {
+        if (isArrowFunction(node)) {
+            return this.f.updateArrowFunction(node, node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, body as ConciseBody) as T;
+        } else if (isFunctionDeclaration(node)) {
             return this.f.updateFunctionDeclaration(node, node.modifiers, node.asteriskToken, node.name,
                 node.typeParameters, node.parameters, node.type, body) as T;
         } else if (isFunctionExpression(node)) {
@@ -2721,10 +2755,10 @@ export class ReflectionTransformer implements CustomTransformer {
     }
 
     /**
-     * const fn = () => { }
-     * => const fn = Object.assign(() => {}, {__type: 34})
+     * const fn = () => {}
+     * => const fn = __assignType(() => {}, [34])
      */
-    protected decorateArrow(expression: ArrowFunction) {
+    protected decorateArrowFunction(expression: ArrowFunction) {
         const encodedType = this.getTypeOfType(expression);
         if (!encodedType) return expression;
 

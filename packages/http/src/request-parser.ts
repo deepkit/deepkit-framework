@@ -5,6 +5,8 @@ import {
     findMember,
     getSerializeFunction,
     getValidatorFunction,
+    hasDefaultValue,
+    isOptional,
     metaAnnotation,
     ReflectionKind,
     ReflectionParameter,
@@ -229,7 +231,7 @@ export function getRequestParserCodeForParameters(
             }
         } else if (parameter.query || parameter.queries || parameter.header) {
             const converted = getSerializeFunction(parameter.parameter.parameter, serializer.deserializeRegistry, undefined, parameter.getName());
-            const validator = getValidatorFunction(undefined, parameter.parameter.parameter,);
+            const validator = getValidatorFunction(undefined, parameter.parameter.parameter);
             const converterVar = compiler.reserveVariable('argumentConverter', converted);
             const validatorVar = compiler.reserveVariable('argumentValidator', validator);
 
@@ -237,7 +239,12 @@ export function getRequestParserCodeForParameters(
             const accessor = queryPath ? `['` + (queryPath.replace(/\./g, `']['`)) + `']` : '';
             const queryAccessor = parameter.header ? `_headers${accessor}` : queryPath ? `_query${accessor}` : '_query';
 
-            setParameters.push(`parameters.${parameter.parameter.name} = ${converterVar}(${queryAccessor}, {loosely: true});`);
+            if (isOptional(parameter.parameter.parameter) || hasDefaultValue(parameter.parameter.parameter)) {
+                setParameters.push(`parameters.${parameter.parameter.name} = ${queryAccessor} === undefined ? undefined : ${converterVar}(${queryAccessor}, {loosely: true});`);
+            } else {
+                setParameters.push(`parameters.${parameter.parameter.name} = ${converterVar}(${queryAccessor}, {loosely: true});`);
+            }
+
             parameterNames.push(`parameters.${parameter.parameter.name}`);
             parameterValidator.push(`${validatorVar}(parameters.${parameter.parameter.name}, {errors: validationErrors}, ${JSON.stringify(parameter.typePath || parameter.getName())});`);
         } else {

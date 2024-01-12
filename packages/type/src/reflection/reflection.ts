@@ -51,7 +51,7 @@ import {
     TypeTemplateLiteral
 } from './type.js';
 import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isArray, isClass, isPrototypeOfBase, stringifyValueWithType } from '@deepkit/core';
-import { Packed, resolvePacked, resolveRuntimeType } from './processor.js';
+import { Packed, resolvePacked, resolveRuntimeType, unpack } from './processor.js';
 import { NoTypeReceived } from '../utils.js';
 import { findCommonLiteral } from '../inheritance.js';
 import type { ValidateFunction } from '../validator.js';
@@ -75,11 +75,25 @@ export type ReceiveType<T> = Packed | Type | ClassType<T>;
 
 export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractClassType | ReflectionClass<any>): Type {
     if (!type) throw new NoTypeReceived();
+    let typeFn: Function | undefined = undefined;
+
+    if (isArray(type)){
+        if (type.__type) return type.__type;
+        // this is fast path for simple references to a type, e.g. cast<User>(), so that User is directly handled
+        // instead of running the VM to resolve to User first.
+        if (type[type.length - 1] === 'n!') {
+            //n! represents a simple inline: [Op.inline, 0]
+            typeFn = (type as any)[0] as Function;
+            type = typeFn() as Packed | Type | ClassType | AbstractClassType | ReflectionClass<any>;
+        }
+    }
+
     if (type instanceof ReflectionClass) return type.type;
     if (isArray(type) && type.__type) return type.__type;
     if (isType(type)) return type as Type;
     if (isClass(type)) return resolveRuntimeType(type) as Type;
-    return resolvePacked(type);
+    const typeName = typeFn ? extractTypeNameFromFunction(typeFn) : undefined;
+    return resolvePacked(type, undefined, {reuseCached: true, typeName});
 }
 
 export function reflect(o: any, ...args: any[]): Type {
@@ -1418,6 +1432,17 @@ export class ReflectionClass<T> {
         return primaryKey;
     }
 }
+
+export function extractTypeNameFromFunction(fn: Function): string {
+    const str = fn.toString();
+    //either it starts with __Ω* or __\u{3a9}* (bun.js)
+    const match = str.match(/(?:__Ω|__\\u\{3a9\})([\w]+)/);
+    if (match) {
+        return match[1];
+    }
+    return 'UnknownTypeName:' + str;
+}
+
 
 // old function to decorate an interface
 // export function decorate<T>(decorate: { [P in keyof T]?: FreeDecoratorFn<any> }, p?: ReceiveType<T>): ReflectionClass<T> {

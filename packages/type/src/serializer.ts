@@ -1610,9 +1610,11 @@ export function serializePropertyOrParameter(type: TypePropertySignature | TypeP
 }
 
 export function validatePropertyOrParameter(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
+    const hasDefault = hasDefaultValue(type);
+
     state.addCode(`
         if (${state.accessor} === undefined) {
-            if (${!type.optional && state.isValidation()}) ${state.assignValidationError('type', 'No value given')}
+            if (${!type.optional && !hasDefault && state.isValidation()}) ${state.assignValidationError('type', 'No value given')}
         } else {
             ${executeTemplates(state.fork(), type.type)}
         }

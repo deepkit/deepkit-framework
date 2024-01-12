@@ -1,10 +1,10 @@
-import { expect, test, jest } from '@jest/globals';
+import { expect, jest, test } from '@jest/globals';
 import { Email, MaxLength, MinLength, Positive, Validate, validate, validates, ValidatorError } from '../src/validator.js';
 import { assert, is } from '../src/typeguard.js';
 import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } from '../src/reflection/type.js';
 import { t } from '../src/decorator.js';
 import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
-import { validatedDeserialize } from '../src/serializer-facade.js';
+import { cast, castFunction, validatedDeserialize } from '../src/serializer-facade.js';
 
 test('primitives', () => {
     expect(validate<string>('Hello')).toEqual([]);
@@ -163,7 +163,12 @@ test('path', () => {
 
     // expect(validate<Container1>({ configs: [{ name: 'a', value: 3 }] })).toEqual([]);
     expect(validate<Container1>({ configs: {} })).toEqual([{ code: 'type', message: 'Not an array', path: 'configs', value: {} }]);
-    expect(validate<Container1>({ configs: [{ name: 'a', value: 123 }, { name: '12' }] })).toEqual([{ code: 'type', message: 'Not a number', path: 'configs.1.value', value: undefined }]);
+    expect(validate<Container1>({ configs: [{ name: 'a', value: 123 }, { name: '12' }] })).toEqual([{
+        code: 'type',
+        message: 'Not a number',
+        path: 'configs.1.value',
+        value: undefined
+    }]);
 
     class Container2 {
         configs: { [name: string]: Config } = {};
@@ -179,7 +184,12 @@ test('class with union literal', () => {
     }
 
     expect(validate<ConnectionOptions>({ readConcernLevel: 'majority' })).toEqual([]);
-    expect(validate<ConnectionOptions>({ readConcernLevel: 'invalid' })).toEqual([{ code: 'type', message: 'No valid union member found. Valid: \'local\' | \'majority\' | \'linearizable\' | \'available\'', path: 'readConcernLevel', value: 'invalid' }]);
+    expect(validate<ConnectionOptions>({ readConcernLevel: 'invalid' })).toEqual([{
+        code: 'type',
+        message: 'No valid union member found. Valid: \'local\' | \'majority\' | \'linearizable\' | \'available\'',
+        path: 'readConcernLevel',
+        value: 'invalid'
+    }]);
 });
 
 test('named tuple', () => {
@@ -269,10 +279,12 @@ test('inline object', () => {
 
 test('readonly constructor properties', () => {
     class Pilot {
-        constructor(readonly name: string, readonly age: number) {}
+        constructor(readonly name: string, readonly age: number) {
+        }
     }
-    expect(validate<Pilot>({name: 'Peter', age: 32})).toEqual([]);
-    expect(validate<Pilot>({name: 'Peter', age: 'sdd'})).toEqual([{code: 'type', message: 'Not a number', path: 'age', value: 'sdd'}]);
+
+    expect(validate<Pilot>({ name: 'Peter', age: 32 })).toEqual([]);
+    expect(validate<Pilot>({ name: 'Peter', age: 'sdd' })).toEqual([{ code: 'type', message: 'Not a number', path: 'age', value: 'sdd' }]);
 });
 
 test('class with statics', () => {
@@ -287,8 +299,8 @@ test('class with statics', () => {
         }
     }
 
-    expect(validate<PilotId>({value: 34})).toEqual([]);
-    expect(validate<PilotId>({value: '33'})).toEqual([{code: 'type', message: 'Not a number', path: 'value', value: '33'}]);
+    expect(validate<PilotId>({ value: 34 })).toEqual([]);
+    expect(validate<PilotId>({ value: '33' })).toEqual([{ code: 'type', message: 'Not a number', path: 'value', value: '33' }]);
 });
 
 test('date', () => {
@@ -296,5 +308,49 @@ test('date', () => {
         public name!: string;
         public createdAt!: Date;
     }
-    expect(validate<Account>({name: "jack", createdAt: 'asd'})).toEqual([{code: 'type', message: 'Not a Date', path: 'createdAt', value: 'asd'}]);
+
+    expect(validate<Account>({ name: 'jack', createdAt: 'asd' })).toEqual([{ code: 'type', message: 'Not a Date', path: 'createdAt', value: 'asd' }]);
+});
+
+test('speed', () => {
+    interface User {
+        username: string;
+        logins: number;
+        created: string;
+    }
+
+    let start, end;
+
+    const iterations = 100_000;
+
+    const c = castFunction<User>();
+    start = performance.now();
+    for (let i = 1; i < iterations; i++) {
+        const user = c({
+            username: 'Peter',
+            logins: 23,
+            created: '2020-01-01',
+        });
+    }
+    end = performance.now();
+    const deepkitInlined = end - start;
+    console.log('deepkitInlined', deepkitInlined);
+
+    start = performance.now();
+    for (let i = 1; i < iterations; i++) {
+        const user = cast<User>({
+            username: 'Peter',
+            logins: 23,
+            created: '2020-01-01',
+        });
+    }
+    end = performance.now();
+    const deepkitRef = end - start;
+    console.log('deepkitRef', deepkitRef);
+
+    const ratio = deepkitRef / deepkitInlined;
+    console.log('ratio', ratio);
+    // there is a performance cost involved in passing User to cast,
+    // but inline vs ref must not be slower than 2.5 times.
+    expect(ratio).toBeLessThan(2.5);
 });

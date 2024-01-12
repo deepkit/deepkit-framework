@@ -13,6 +13,7 @@ import { TypeNumberBrand } from '@deepkit/type-spec';
 import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection.js';
 import { isExtendable } from './extends.js';
 import { state } from './state.js';
+import { resolveRuntimeType } from './processor.js';
 
 export enum ReflectionVisibility {
     public,
@@ -1384,7 +1385,7 @@ export function isOptional(type: Type): boolean {
  * Whether a property has an initializer/default value.
  */
 export function hasDefaultValue(type: Type): boolean {
-    return type.kind === ReflectionKind.property && type.default !== undefined;
+    return (type.kind === ReflectionKind.property || type.kind === ReflectionKind.parameter) && type.default !== undefined;
 }
 
 /**
@@ -2743,6 +2744,6 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
 
 export function annotateClass<T>(clazz: ClassType | AbstractClassType, type?: ReceiveType<T>) {
     (clazz as any).__type = isClass(type) ? (type as any).__type || [] : [];
-    type = resolveReceiveType(type);
+    type = resolveRuntimeType(type);
     (clazz as any).__type.__type = type;
 }

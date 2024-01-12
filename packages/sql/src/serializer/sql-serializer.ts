@@ -10,7 +10,7 @@
 
 import {
     ContainerAccessor,
-    executeTemplates,
+    executeTemplates, isBackReferenceType,
     isReferenceType,
     isUUIDType,
     nodeBufferToArrayBuffer,
@@ -26,7 +26,7 @@ import {
     TypeClass,
     typedArrayToBuffer,
     TypeObjectLiteral,
-    uuidAnnotation
+    uuidAnnotation,
 } from '@deepkit/type';
 
 export const hexTable: string[] = [];
@@ -57,8 +57,8 @@ function serializeSqlAny(type: Type, state: TemplateState) {
         return;
     }
 
-    state.setContext({ stringify: JSON.stringify });
-    state.addSetter(`stringify(${state.accessor})`);
+    state.setContext({ jsonStringify: JSON.stringify });
+    state.addSetter(`jsonStringify(${state.accessor})`);
 }
 
 function deserializeSqlAny(type: Type, state: TemplateState) {
@@ -66,7 +66,8 @@ function deserializeSqlAny(type: Type, state: TemplateState) {
         state.addSetter(`${state.accessor}`);
         return;
     }
-    state.addCode(`${state.accessor} = JSON.parse(${state.accessor});`);
+    state.setContext({ jsonParse: JSON.parse });
+    state.addCode(`${state.setter} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor};`);
 }
 
 /**
@@ -89,15 +90,14 @@ function deserializeSqlArray(type: TypeArray, state: TemplateState) {
 
     if (!isDirectPropertyOfEntity(type)) return;
 
-    state.addCode(`${state.accessor} = 'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor};`);
+    state.addCode(`${state.setter} = 'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor};`);
 }
 
 /**
  * For sql databases, objects will be serialised as JSON string.
  */
 function serializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state: TemplateState) {
-    if (undefined !== referenceAnnotation.getFirst(type)) return;
-    if (!isDirectPropertyOfEntity(type)) return;
+    if (isReferenceType(type) || isBackReferenceType(type) || !isDirectPropertyOfEntity(type)) return;
 
     //TypeClass|TypeObjectLiteral properties are serialized as JSON
     state.setContext({ stringify: JSON.stringify });
@@ -115,6 +115,16 @@ function deserializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state:
     }
 
     serializeObjectLiteral(type, state);
+}
+
+function serializeReferencedType(type: Type, state: TemplateState) {
+    if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) return;
+    // state.setContext({ isObject, isReferenceType, isReferenceHydrated });
+    const reflection = ReflectionClass.from(type);
+    //the primary key is serialised for unhydrated references
+    state.template = `
+        ${executeTemplates(state.fork(state.setter, new ContainerAccessor(state.accessor, JSON.stringify(reflection.getPrimary().getName()))), reflection.getPrimary().getType())}
+    `;
 }
 
 export class SqlSerializer extends Serializer {
@@ -182,15 +192,10 @@ export class SqlSerializer extends Serializer {
         //for databases, types decorated with Reference will always only export the primary key.
         const referenceType = referenceAnnotation.registerType({ kind: ReflectionKind.class, classType: Object, types: [] }, {});
         this.serializeRegistry.removeDecorator(referenceType);
-        this.serializeRegistry.addDecorator(isReferenceType, (type, state) => {
-            if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) return;
-            // state.setContext({ isObject, isReferenceType, isReferenceHydrated });
-            const reflection = ReflectionClass.from(type);
-            //the primary key is serialised for unhydrated references
-            state.template = `
-                ${executeTemplates(state.fork(state.setter, new ContainerAccessor(state.accessor, JSON.stringify(reflection.getPrimary().getName()))), reflection.getPrimary().getType())}
-            `;
-        });
+        this.serializeRegistry.addDecorator(isReferenceType, serializeReferencedType);
+
+        //for databases, types decorated with BackReference will always only export the primary key.
+        this.serializeRegistry.addDecorator(isBackReferenceType, serializeReferencedType);
 
         this.serializeRegistry.registerBinary((type, state) => {
             if (type.classType === ArrayBuffer) {

@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { ReceiveType, resolveReceiveType, typeOf } from '../src/reflection/reflection.js';
 import { ReflectionKind, Type } from '../src/reflection/type.js';
+import { ReflectionOp } from '@deepkit/type-spec';
 
 test('typeOf', () => {
     const type = typeOf<string>();
@@ -28,6 +29,17 @@ test('method call', () => {
 
     const type = db.query<string>();
     expect(type).toEqual({ kind: ReflectionKind.string });
+});
+
+test('maintain name', () => {
+    interface User {}
+
+    function c<T>(type?: ReceiveType<T>) {
+        return resolveReceiveType(type);
+    }
+
+    const t = c<User>();
+    expect(t.typeName).toBe('User');
 });
 
 test('decorator call', () => {

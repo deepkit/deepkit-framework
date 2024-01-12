@@ -57,7 +57,7 @@ import { MappedModifier, ReflectionOp } from '@deepkit/type-spec';
 import { isExtendable } from './extends.js';
 import { ClassType, isArray, isClass, isFunction, stringifyValueWithType } from '@deepkit/core';
 import { isWithDeferredDecorators } from '../decorator.js';
-import { ReflectionClass, TData } from './reflection.js';
+import { extractTypeNameFromFunction, ReflectionClass, TData } from './reflection.js';
 import { state } from './state.js';
 
 export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
@@ -111,26 +111,18 @@ export function unpack(pack: Packed): PackStruct {
     return { ops, stack: pack.length > 1 ? pack.slice(0, -1) : [] };
 }
 
-export function resolvePacked(type: Packed, args: any[] = []): Type {
-    return resolveRuntimeType(type, args) as Type;
+export function resolvePacked(type: Packed, args: any[] = [], options?: ReflectOptions): Type {
+    return resolveRuntimeType(type, args, options) as Type;
 }
 
 function isPack(o: any): o is Packed {
     return isArray(o);
 }
 
-function extractTypeNameFromFunction(fn: Function): string {
-    const str = fn.toString();
-    //either it starts with __Ω* or __\u{3a9}* (bun.js)
-    const match = str.match(/(?:__Ω|__\\u\{3a9\})([\w]+)/);
-    if (match) {
-        return match[1];
-    }
-    return 'UnknownTypeName:' + str;
-}
-
 /**
  * Computes a type of given object. This function caches the result on the object itself.
+ * This is the slow path, using the full type virtual machine to resolve the type.
+ * If you want to handle some fast paths (including cache), try using resolveReceiveType() instead.
  */
 export function resolveRuntimeType(o: ClassType | Function | Packed | any, args: any[] = [], options?: ReflectOptions): Type {
     const type = Processor.get().reflect(o, args, options || { reuseCached: true });
