@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/event",
-  "version": "1.0.1-alpha.110",
+  "version": "1.0.1-alpha.111",
   "description": "Deepkit async event dispatcher",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -29,8 +29,8 @@
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.108",
-    "@deepkit/injector": "^1.0.1-alpha.110",
-    "@deepkit/type": "^1.0.1-alpha.110"
+    "@deepkit/injector": "^1.0.1-alpha.111",
+    "@deepkit/type": "^1.0.1-alpha.111"
   },
   "jest": {
     "transform": {
