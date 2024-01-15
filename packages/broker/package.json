@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@lukeed/ms": "^2.0.1",
-    "js-xxhash": "3.0.0"
+    "js-xxhash": "3.0.1"
   },
   "peerDependencies": {
     "@deepkit/app": "^1.0.1-alpha.40",
