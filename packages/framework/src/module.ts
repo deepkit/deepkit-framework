@@ -30,9 +30,9 @@ import { DatabaseListener } from './database/database-listener.js';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
 import { FileStopwatchStore } from './debug/stopwatch/store.js';
-import { DebugDebugFramesCommand } from './cli/debug-debug-frames.js';
+import { DebugProfileFramesCommand } from './cli/debug-debug-frames.js';
 import { ConnectionWriter, rpcClass, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
-import { AppConfigController } from './cli/app-config.js';
+import { DebugConfigController } from './cli/app-config.js';
 import { Zone } from './zone.js';
 import { DebugBrokerBus } from './debug/broker.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
@@ -109,8 +109,8 @@ export class FrameworkModule extends createModule({
         ServerStartController,
         DebugRouterController,
         DebugDIController,
-        DebugDebugFramesCommand,
-        AppConfigController,
+        DebugProfileFramesCommand,
+        DebugConfigController,
 
         MigrationUpCommand,
         MigrationDownCommand,
@@ -136,6 +136,7 @@ export class FrameworkModule extends createModule({
         RpcKernelBaseConnection,
         ConnectionWriter,
 
+        BrokerDeepkitAdapter,
         BrokerCache,
         BrokerLock,
         BrokerQueue,
@@ -203,19 +204,17 @@ export class FrameworkModule extends createModule({
 
             //only register the RPC controller
             this.addImport(new ApiConsoleModule({ listen: false, markdown: '' }).rename('internalApi'));
-
-            this.addListener(onAppShutdown.listen(async (
-                event, broker: DebugBrokerBus, store: StopwatchStore) => {
-                await store.close();
-                await broker.adapter.disconnect();
-            }));
-
             // this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
         }
 
+        this.addListener(onAppShutdown.listen(async (
+            event, broker: DebugBrokerBus, store: StopwatchStore) => {
+            await store.close();
+            await broker.adapter.disconnect();
+        }));
+
         this.addProvider(DebugBrokerBus);
-        this.addProvider(FileStopwatchStore);
-        this.addProvider({ provide: StopwatchStore, useExisting: FileStopwatchStore });
+        this.addProvider({ provide: StopwatchStore, useClass: FileStopwatchStore });
         this.addProvider({
             provide: Stopwatch,
             useFactory(store: StopwatchStore, config: FrameworkConfig) {
@@ -228,7 +227,7 @@ export class FrameworkModule extends createModule({
                 return stopwatch;
             }
         });
-        this.addExport(Stopwatch);
+        this.addExport(Stopwatch, DebugBrokerBus, StopwatchStore);
     }
 
     postProcess() {

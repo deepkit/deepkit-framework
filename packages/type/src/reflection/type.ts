@@ -273,6 +273,7 @@ export interface TypeParameter extends TypeAnnotations {
     visibility?: ReflectionVisibility,
     readonly?: true;
     optional?: true,
+    description?: string;
 
     /**
      * Set when the parameter has a default value aka initializer.

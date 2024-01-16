@@ -11,8 +11,10 @@
 import { cli, Command } from '@deepkit/app';
 import { HttpRouter } from '@deepkit/http';
 
-@cli.controller('debug:router', {
-})
+/**
+ * @description Prints debugging information about the router.
+ */
+@cli.controller('debug:router')
 export class DebugRouterController implements Command {
     constructor(
         protected router: HttpRouter,

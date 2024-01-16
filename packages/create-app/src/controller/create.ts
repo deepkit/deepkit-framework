@@ -1,4 +1,4 @@
-import { arg, cli } from '@deepkit/app';
+import { cli } from '@deepkit/app';
 import { Logger } from '@deepkit/logger';
 import { existsSync, copySync } from 'fs-extra';
 import { join } from 'path';
@@ -19,7 +19,7 @@ export class CreateController {
     }
 
     async execute(
-        @arg path: string = 'deepkit-app'
+        path: string = 'deepkit-app'
     ) {
         const localPath = join(process.cwd(), path);
         if (existsSync(localPath)) {

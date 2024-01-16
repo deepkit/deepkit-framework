@@ -11,7 +11,7 @@
 import { indent } from '@deepkit/core';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
-import { cli, Command, flag } from '@deepkit/app';
+import { cli, Command, Flag } from '@deepkit/app';
 import { LoggerInterface } from '@deepkit/logger';
 import { MigrationStateEntity, SQLDatabaseAdapter } from '../sql-adapter.js';
 import { DatabaseComparator, DatabaseModel } from '../schema/table.js';
@@ -24,9 +24,10 @@ function serializeSQLLine(sql: string): string {
     return '`' + sql.replace(/`/g, '\\`') + '`';
 }
 
-@cli.controller('migration:create', {
-    description: 'Generates a new migration file based on a database diff'
-})
+/**
+ * @description Generates a new migration file based on a database diff.
+ */
+@cli.controller('migration:create')
 export class MigrationCreateController extends BaseCommand implements Command {
     constructor(
         protected logger: LoggerInterface,
@@ -37,17 +38,17 @@ export class MigrationCreateController extends BaseCommand implements Command {
 
     async execute(
         /**
-         * @description Limit the migration to a specific database
+         * @description Limit the migration to a specific database.
          */
-        @flag database?: string,
+        database?: string & Flag,
         /**
          * @description Do drop any table that is not available anymore as entity. CAUTION: this might wipe your whole database.
          */
-        @flag drop: boolean = false,
+        drop: boolean & Flag = false,
         /**
-         * @description Create an empty migration file
+         * @description Create an empty migration file.
          */
-        @flag empty: boolean = false,
+        empty: boolean & Flag = false,
     ): Promise<void> {
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);
 

@@ -25,14 +25,18 @@ import {
 import { cli } from './command.js';
 import { WorkflowDefinition } from '@deepkit/workflow';
 import { deserialize, ReflectionClass, ReflectionFunction, validate } from '@deepkit/type';
-import { ConsoleTransport, Logger, LoggerInterface, ScopedLogger } from '@deepkit/logger';
+import { ConsoleTransport, Logger, ScopedLogger } from '@deepkit/logger';
+import { Stopwatch } from '@deepkit/stopwatch';
 
+/**
+ * @reflection never
+ */
 export interface ControllerConfig {
     controller?: ClassType,
     name?: string;
     for?: string; //e.g. cli
-    callback?: Function,
-    module: InjectorModule
+    callback?: Function;
+    module: InjectorModule;
 }
 
 export class CliControllerRegistry {
@@ -101,6 +105,7 @@ export class ServiceContainer {
         this.appModule.addProvider({ provide: EventDispatcher, useValue: this.eventDispatcher });
         this.appModule.addProvider({ provide: CliControllerRegistry, useValue: this.cliControllerRegistry });
         this.appModule.addProvider({ provide: MiddlewareRegistry, useValue: this.middlewareRegistry });
+        this.appModule.addProvider({ provide: Stopwatch });
         this.appModule.addProvider({ provide: InjectorContext, useFactory: () => this.injectorContext! });
         this.appModule.addProvider(ConsoleTransport);
         if (!this.appModule.isProvided(Logger)) {

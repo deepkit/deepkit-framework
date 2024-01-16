@@ -1,9 +1,10 @@
 import { cli, Command } from '@deepkit/app';
 import { BrokerServer } from '../broker/broker.js';
 
-@cli.controller('broker:start', {
-    description: 'Starts the broker server manually'
-})
+/**
+ * @description Starts the broker server manually.
+ */
+@cli.controller('server:broker:start')
 export class ServerStartController implements Command {
     constructor(
         protected server: BrokerServer,

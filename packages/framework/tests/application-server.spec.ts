@@ -76,14 +76,14 @@ describe('application-server', () => {
             }
         }
 
-        const app = new App({
+        const app = createTestingApp({
             controllers: [MyController],
             imports: [
                 new FrameworkModule({
                     broker: { startOnBootstrap: false }
                 })
             ]
-        });
+        }).app;
         const applicationServer = app.get(ApplicationServer);
         const injectorContext = app.get(InjectorContext);
         const controller = injectorContext.createChildScope('rpc').get(MyController);
