@@ -10,7 +10,6 @@
 
 import { ClassType, isClass, isPrototypeOfBase, ProcessLocker } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
-import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { ApplicationServer, ApplicationServerListener } from './application-server.js';
 import { DebugRouterController } from './cli/debug-router.js';
@@ -183,8 +182,6 @@ export class FrameworkModule extends createModule({
         }
 
         if (this.config.debug) {
-            mkdirSync(join(this.config.varPath, this.config.debugStorePath), { recursive: true });
-
             Zone.enable();
 
             this.addProvider({

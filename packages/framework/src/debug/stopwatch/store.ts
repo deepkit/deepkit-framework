@@ -1,5 +1,5 @@
 import { decodeCompoundKey, encodeCompoundKey, FrameEnd, FrameStart, FrameType, incrementCompoundKey, StopwatchStore } from '@deepkit/stopwatch';
-import { existsSync, readFileSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync } from 'fs';
 import { appendFile } from 'fs/promises';
 import { join } from 'path';
 import { decodeFrames, encodeAnalytic, encodeFrameData, encodeFrames } from '@deepkit/framework-debug-api';
@@ -10,6 +10,7 @@ import cluster from 'cluster';
 import { performance } from 'perf_hooks';
 import { DebugBrokerBus } from '../broker.js';
 import { BrokerBusChannel } from '@deepkit/broker';
+import { Logger } from '@deepkit/logger';
 
 export class FileStopwatchStore extends StopwatchStore {
     protected lastSync?: any;
@@ -26,10 +27,12 @@ export class FileStopwatchStore extends StopwatchStore {
     protected analyticsPath: string = join(this.config.varPath, this.config.debugStorePath, 'analytics.bin');
 
     protected ended = false;
+    protected folderCreated = false;
 
     constructor(
         protected config: Pick<FrameworkConfig, 'varPath' | 'debugStorePath'>,
         protected broker: DebugBrokerBus,
+        protected logger: Logger,
     ) {
         super();
         this.frameChannel = broker.channel<Uint8Array>('_debug/frames');
@@ -103,6 +106,12 @@ export class FileStopwatchStore extends StopwatchStore {
         this.lastSync = setTimeout(() => this.syncNow(), 250);
     }
 
+    protected ensureVarDebugFolder() {
+        if (this.folderCreated) return;
+        mkdirSync(join(this.config.varPath, this.config.debugStorePath), { recursive: true });
+        this.folderCreated = true;
+    }
+
     protected async syncNow() {
         if (this.ended) return;
 
@@ -130,9 +139,14 @@ export class FileStopwatchStore extends StopwatchStore {
             const dataBytes = encodeFrameData(frameData);
             const analyticsBytes = encodeAnalytic(analytics);
 
-            if (frameBytes.byteLength) await appendFile(this.framesPath, frameBytes);
-            if (dataBytes.byteLength) await appendFile(this.framesDataPath, dataBytes);
-            if (analyticsBytes.byteLength) await appendFile(this.analyticsPath, analyticsBytes);
+            try {
+                this.ensureVarDebugFolder();
+                if (frameBytes.byteLength) await appendFile(this.framesPath, frameBytes);
+                if (dataBytes.byteLength) await appendFile(this.framesDataPath, dataBytes);
+                if (analyticsBytes.byteLength) await appendFile(this.analyticsPath, analyticsBytes);
+            } catch (error) {
+                this.logger.error('Could not write to debug store', String(error));
+            }
 
             if (!this.ended) {
                 //when we ended, broker connection already closed. So we just write to disk.
