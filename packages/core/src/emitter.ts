@@ -11,12 +11,14 @@
 import { arrayRemoveItem } from './array.js';
 
 type AsyncSubscriber<T> = (event: T) => Promise<void> | void;
+type Subscriber<T> = (event: T) => Promise<void> | void;
 
 export type AsyncEventSubscription = { unsubscribe: () => void };
+export type EventSubscription = { unsubscribe: () => void };
 
 let asyncId = 0;
 
-export class AsyncEmitterEvent {
+export class EmitterEvent {
     public readonly id = asyncId++;
     public stopped = false;
     public propagationStopped = false;
@@ -37,7 +39,38 @@ export class AsyncEmitterEvent {
     }
 }
 
-export class AsyncEventEmitter<T extends AsyncEmitterEvent> {
+export class EventEmitter<T extends EmitterEvent> {
+    protected subscribers: Subscriber<T>[] = [];
+
+    constructor(protected parent?: EventEmitter<any>) {
+    }
+
+    public subscribe(callback: Subscriber<T>): EventSubscription {
+        this.subscribers.push(callback);
+
+        return {
+            unsubscribe: () => {
+                arrayRemoveItem(this.subscribers, callback);
+            }
+        };
+    }
+
+    public emit(event: T): void {
+        if (this.parent) this.parent.emit(event);
+        if (event.propagationStopped) return;
+
+        for (const subscriber of this.subscribers) {
+            subscriber(event);
+            if (event.propagationStopped) return;
+        }
+    }
+
+    public hasSubscriptions(): boolean {
+        return this.subscribers.length > 0;
+    }
+}
+
+export class AsyncEventEmitter<T extends EmitterEvent> {
     protected subscribers: AsyncSubscriber<T>[] = [];
 
     constructor(protected parent?: AsyncEventEmitter<any>) {

@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, empty } from '@deepkit/core';
+import { ClassType, EmitterEvent, empty, EventEmitter } from '@deepkit/core';
 import {
     assertType,
     Changes,
@@ -23,7 +23,6 @@ import {
     ReflectionProperty,
     resolveForeignReflectionClass
 } from '@deepkit/type';
-import { Subject } from 'rxjs';
 import { DatabaseAdapter } from './database-adapter.js';
 import { DatabaseSession } from './database-session.js';
 import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event.js';
@@ -101,7 +100,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
     public limit?: number;
     public parameters: { [name: string]: any } = {};
     public sort?: SORT;
-    public readonly change = new Subject<void>();
+    public readonly change = new EventEmitter();
     public returning: (keyof T & string)[] = [];
     public batchSize?: number;
 
@@ -115,7 +114,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
     }
 
     changed(): void {
-        this.change.next();
+        this.change.emit(new EmitterEvent);
     }
 
     hasSort(): boolean {
