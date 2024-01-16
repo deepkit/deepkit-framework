@@ -66,7 +66,7 @@ export class RpcServerActionWithStopwatch extends RpcServerAction {
 }
 
 export class RpcKernelConnectionWithStopwatch extends RpcKernelConnection {
-    protected actionHandler = new RpcServerActionWithStopwatch(this.controllers, this.injector, this.security, this.sessionState);
+    protected actionHandler = new RpcServerActionWithStopwatch(this, this.controllers, this.injector, this.security, this.sessionState);
     stopwatch?: Stopwatch;
 
     setStopwatch(stopwatch: Stopwatch) {

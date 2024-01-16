@@ -44,7 +44,7 @@ import {
     RpcTypes,
 } from '../model.js';
 import { rpcEncodeError, RpcMessage } from '../protocol.js';
-import { RpcMessageBuilder } from './kernel.js';
+import { RpcKernelBaseConnection, RpcMessageBuilder } from './kernel.js';
 import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security.js';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 
@@ -97,6 +97,7 @@ export class RpcServerAction {
     } = {};
 
     constructor(
+        protected connection: RpcKernelBaseConnection,
         protected controllers: Map<string, { controller: ClassType, module?: InjectorModule }>,
         protected injector: InjectorContext,
         protected security: RpcKernelSecurity,
@@ -381,8 +382,12 @@ export class RpcServerAction {
         if (!action) throw new Error(`Action unknown ${body.method}`);
 
         const controllerAccess: RpcControllerAccess = {
-            controllerName: body.controller, actionName: body.method, controllerClassType: classType.controller,
-            actionGroups: action.groups, actionData: action.data
+            controllerName: body.controller,
+            actionName: body.method,
+            controllerClassType: classType.controller,
+            actionGroups: action.groups,
+            actionData: action.data,
+            connection: this.connection,
         };
 
         if (!await this.hasControllerAccess(controllerAccess)) {
