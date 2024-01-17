@@ -11,20 +11,20 @@ jobs:
       matrix:
         node-version: [20.6.0]
     services:
-        storage-ftp:
-            image: garethflowers/ftp-server:0.7.0
-            env:
-                FTP_USER: user
-                FTP_PASS: '123'
-            ports:
-                - "20-21:20-21"
-                - "40000-40009:40000-40009"
-        storage-sftp:
-            image: atmoz/sftp:alpine
-            env:
-                 SFTP_USERS: user:123:::upload
-            ports:
-                - "2222:22"
+      storage-ftp:
+        image: garethflowers/ftp-server:0.7.0
+        env:
+          FTP_USER: user
+          FTP_PASS: '123'
+        ports:
+          - '20-21:20-21'
+          - '40000-40009:40000-40009'
+      storage-sftp:
+        image: atmoz/sftp:alpine
+        env:
+          SFTP_USERS: user:123:::upload
+        ports:
+          - '2222:22'
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -92,7 +92,7 @@ jobs:
     strategy:
       matrix:
         node-version: [20.6.0]
-        postgres-version: [ 14 ]
+        postgres-version: [14]
     services:
       postgres:
         image: postgres:${{ matrix.postgres-version }}
@@ -101,7 +101,7 @@ jobs:
           POSTGRES_PASSWORD: ''
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
-          - "5432:5432"
+          - '5432:5432'
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v2
@@ -112,7 +112,7 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@v1
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: ${{ runner.os }}-postgres-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm ci
@@ -131,16 +131,16 @@ jobs:
     strategy:
       matrix:
         node-version: [20.6.0]
-        mysql-version: [ 8.0 ]
+        mysql-version: [8.0]
     services:
       mysql:
-        image: "mysql:${{ matrix.mysql-version }}"
+        image: 'mysql:${{ matrix.mysql-version }}'
         options: >-
           --health-cmd "mysqladmin ping --silent"
           -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
           -e MYSQL_DATABASE=default
         ports:
-          - "3306:3306"
+          - '3306:3306'
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -150,7 +150,7 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@v1
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: ${{ runner.os }}-mysql-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm ci
@@ -178,7 +178,7 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@v1
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: ${{ runner.os }}-sqlite-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm ci
@@ -197,7 +197,7 @@ jobs:
     strategy:
       matrix:
         node-version: [20.6.0]
-        mongo-version: [ 4.0 ]
+        mongo-version: [4.0]
     services:
       # this is used for the simple-auth test
       mongo:
@@ -224,7 +224,7 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@v1
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: ${{ runner.os }}-mongo-node_modules-${{ hashFiles('**/package-lock.json') }}
       - name: npm install
         run: npm ci

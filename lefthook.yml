@@ -1,0 +1,14 @@
+# https://github.com/evilmartians/lefthook/blob/master/docs/configuration.md
+commit-msg:
+  commands:
+    commitlint:
+      run: npx commitlint --edit {1}
+pre-commit:
+  commands:
+    github-actions:
+      glob: '*.{yaml,yml}'
+      root: '.github'
+      run: echo {staged_files} && actionlint
+    prettier:
+      glob: '[*.{json,yml,yaml,html,ts,tsx,js,jsx},!./package-lock.json]'
+      run: npx prettier --write {staged_files} && git add {staged_files}
