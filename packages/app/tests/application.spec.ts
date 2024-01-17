@@ -6,6 +6,7 @@ import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, eventDispatcher,
 import { cli, Command, Flag } from '../src/command.js';
 import { ClassType, isClass } from '@deepkit/core';
 import { ControllerConfig, ServiceContainer } from '../src/service-container.js';
+import { Stopwatch } from '@deepkit/stopwatch';
 
 Error.stackTraceLimit = 100;
 

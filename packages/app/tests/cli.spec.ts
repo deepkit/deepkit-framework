@@ -144,3 +144,15 @@ test('executeCommand 2', async () => {
     expect(await app(['show-users', '--user', 'Peter'])).toEqual({ code: 0, output: 'showUsers Peter' });
     expect(await app(['show-users', '--user', 'Peter', '--user', 'John'])).toEqual({ code: 0, output: 'showUsers Peter,John' });
 });
+
+test('executeCommand 3', async () => {
+    const app = simpleApp([
+        function showUser(name: string & Flag<{char: 'n'}>, logger: Logger) {
+            logger.log(`showUser ${name}`);
+        }
+    ]);
+
+    expect(await app(['show-user', '--name', 'Peter'])).toEqual({ code: 0, output: 'showUser Peter' });
+    expect(await app(['show-user', '-n', 'Peter'])).toEqual({ code: 0, output: 'showUser Peter' });
+    expect((await app(['show-user', '--help'])).output).toContain('-n, --name');
+});

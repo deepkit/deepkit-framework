@@ -105,8 +105,8 @@ export class ServiceContainer {
         this.appModule.addProvider({ provide: EventDispatcher, useValue: this.eventDispatcher });
         this.appModule.addProvider({ provide: CliControllerRegistry, useValue: this.cliControllerRegistry });
         this.appModule.addProvider({ provide: MiddlewareRegistry, useValue: this.middlewareRegistry });
-        this.appModule.addProvider({ provide: Stopwatch });
         this.appModule.addProvider({ provide: InjectorContext, useFactory: () => this.injectorContext! });
+        this.appModule.addProvider({ provide: Stopwatch });
         this.appModule.addProvider(ConsoleTransport);
         if (!this.appModule.isProvided(Logger)) {
             this.appModule.addProvider({ provide: Logger, useFactory: (t: ConsoleTransport) => new Logger([t]) });

@@ -12,7 +12,9 @@ import { ClassType, getClassName } from '@deepkit/core';
 import {
     ClassDecoratorResult,
     createClassDecoratorContext,
-    deserialize, hasDefaultValue, isOptional,
+    deserialize,
+    hasDefaultValue,
+    isOptional,
     metaAnnotation,
     reflect,
     ReflectionClass,
@@ -286,10 +288,13 @@ function getParamIdentifier(parameter: CommandParameter): string {
     const elementType = parameter.parameter.type.kind === ReflectionKind.array ? parameter.parameter.type.type : parameter.parameter.type;
 
     if (parameter.kind === 'flag' || parameter.kind === 'flag-property') {
+        let name = `--${parameter.name}`;
+        if (parameter.char) name = `-${parameter.char}, ${name}`;
+
         if (parameter.parameter.type.kind === ReflectionKind.boolean) {
-            return `<green>--${parameter.name}</green>`;
+            return `<green>${name}</green>`;
         }
-        return `<green>--${parameter.name} <${stringifyType(elementType)}></green>`;
+        return `<green>${name} ${stringifyType(elementType)}</green>`;
     }
     return `<green>${parameter.name}</green>`;
 }
@@ -319,6 +324,7 @@ function printHelp(script: string, command: ParsedCliControllerConfig, writer: C
 
     for (const parameter of commandParameters) {
         if (parameter.kind === 'argument' || parameter.kind === 'service') continue;
+        if (parameter.hidden) continue;
         const label = getParamIdentifier(parameter);
         const nameWithSpacing = label + ' '.repeat(descriptionSpacing - label.length);
         writer(`  ${nameWithSpacing}${parameter.parameter.description || ''}<yellow>${getParamFlags(parameter.parameter)}</yellow>`);
@@ -424,6 +430,8 @@ function handleConvertError(parameter: TypeParameter | TypeProperty | TypeProper
 
 interface CommandParameter {
     name: string;
+    char: string;
+    hidden: boolean;
     kind: 'argument' | 'flag' | 'flag-property' | 'service';
     reflection: ReflectionProperty | ReflectionParameter;
     parameter: TypeParameter | TypeProperty | TypePropertySignature;
@@ -443,15 +451,17 @@ function collectCommandParameter(config: ParsedCliControllerConfig) {
         const meta = getParameterMeta(reflection.parameter);
         const injectToken = getInjectOptions(reflection.parameter.type);
         const isSimple = supportedAsArgument(reflection.parameter.type);
+        const char = meta.char || '';
+        const hidden = meta.hidden || false;
 
         if ((meta.flag || supportedAsFlag(reflection.parameter.type)) && !injectToken) {
-            result.push({ name: reflection.name, kind: 'flag', reflection, parameter });
+            result.push({ name: reflection.name, char, hidden, kind: 'flag', reflection, parameter });
         } else {
             //it's either a simple string|number positional argument or a service
             if (isSimple && !injectToken) {
-                result.push({ name: parameter.name, kind: 'argument', reflection, parameter });
+                result.push({ name: parameter.name, char, hidden, kind: 'argument', reflection, parameter });
             } else {
-                result.push({ name: parameter.name, kind: 'service', reflection, parameter });
+                result.push({ name: parameter.name, char, hidden, kind: 'service', reflection, parameter });
             }
         }
     }
@@ -461,7 +471,10 @@ function collectCommandParameter(config: ParsedCliControllerConfig) {
         for (const reflection of classSchema.getProperties()) {
             const meta = getParameterMeta(reflection.property);
             if (!meta.flag) continue;
-            result.push({ name: reflection.name, kind: 'flag-property', reflection, parameter: reflection.property });
+            result.push({
+                name: reflection.name, hidden: meta.hidden || false, char: meta.char || '',
+                kind: 'flag-property', reflection, parameter: reflection.property
+            });
         }
     }
 
