@@ -21,10 +21,12 @@
   "reflection": true,
   "include": [
     "src",
-    "tests",
     "browser.ts",
     "index.ts",
     "../../../../Library/Caches/JetBrains/WebStorm2021.2/javascript/typings/jest/27.0.1/node_modules/@types/jest/index.d.ts"
+  ],
+  "exclude": [
+    "tests"
   ],
   "references": [
     {

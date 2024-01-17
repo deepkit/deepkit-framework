@@ -16,13 +16,16 @@
     "declaration": true,
     "composite": true,
     "types": [
-      "dot-prop"
+      "dot-prop",
+      "node"
     ]
   },
   "reflection": true,
   "include": [
     "src",
-    "index.ts",
+    "index.ts"
+  ],
+  "exclude": [
     "tests"
   ],
   "references": []

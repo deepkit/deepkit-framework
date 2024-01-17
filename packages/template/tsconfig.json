@@ -21,9 +21,11 @@
   "reflection": true,
   "include": [
     "src",
-    "tests",
     "index.ts",
     "jsx-runtime.ts"
+  ],
+  "exclude": [
+    "tests"
   ],
   "references": [
     {

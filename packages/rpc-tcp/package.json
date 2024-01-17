@@ -33,8 +33,14 @@
     "@deepkit/rpc": "^1.0.1-alpha.113"
   },
   "jest": {
+    "testEnvironment": "node",
     "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
+      "^.+\\.(ts|tsx)$": [
+        "ts-jest",
+        {
+          "tsconfig": "<rootDir>/tsconfig.spec.json"
+        }
+      ]
     },
     "moduleNameMapper": {
       "(.+)\\.js": "$1"

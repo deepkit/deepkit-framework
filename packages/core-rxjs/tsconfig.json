@@ -18,7 +18,9 @@
   },
   "include": [
     "src",
-    "index.ts",
+    "index.ts"
+  ],
+  "exclude": [
     "tests"
   ],
   "references": [
