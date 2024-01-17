@@ -31,10 +31,12 @@
   "include": [
     "src",
     "jsx",
-    "tests",
     "index.ts",
     "jsx-runtime.ts",
     "loader.ts"
+  ],
+  "exclude": [
+    "tests"
   ],
   "references": [
     {

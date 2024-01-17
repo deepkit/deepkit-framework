@@ -19,9 +19,9 @@
   "reflection": false,
   "include": [
     "src",
-    "tests",
     "index.ts"
   ],
+  "exclude": ["tests"],
   "references": [
   ]
 }

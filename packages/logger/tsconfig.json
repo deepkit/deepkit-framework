@@ -21,8 +21,10 @@
   "reflection": true,
   "include": [
     "src",
-    "tests",
     "index.ts"
+  ],
+  "exclude": [
+    "tests"
   ],
   "references": [
     {

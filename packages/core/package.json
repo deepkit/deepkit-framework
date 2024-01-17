@@ -31,8 +31,14 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "jest": {
+    "testEnvironment": "node",
     "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
+      "^.+\\.(ts|tsx)$": [
+        "ts-jest",
+        {
+          "tsconfig": "<rootDir>/tsconfig.spec.json"
+        }
+      ]
     },
     "moduleNameMapper": {
       "(.+)\\.js": "$1"
