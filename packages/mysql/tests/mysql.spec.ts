@@ -191,3 +191,30 @@ test('for update/share', async () => {
     const items = await database.query(Model).forUpdate().find();
     expect(items).toHaveLength(2);
 });
+
+test('ensure bigints are handled correctly', async () => {
+    @entity.name('model5')
+    class Model {
+        constructor(public id: BigInt & PrimaryKey) {
+        }
+    }
+
+    const database = await databaseFactory([Model]);
+    await database.persist(
+        new Model(9007199254740992n), // max safe integer
+        new Model(9007199254740999n) // overflow for regular Number type
+    );
+
+    const items = await database.query(Model).orderBy('id').find();
+    expect(items.length).toEqual(2);
+
+    // will always succeed since the number fits in a regular Number type
+    expect(typeof items[0].id).toBe('bigint');
+    expect(items[0].id).toEqual(9007199254740992n);
+
+    // will fail if bigints aren't being returned correctly from the database
+    // only passes when using MariaDB 3.x driver w/ bigIntAsNumber option set to false
+    // fails with MariaDB 2.x driver or with 3.x driver w/ bigIntAsNumber option set to true (2.x compatibility mode)
+    expect(typeof items[1].id).toBe('bigint');
+    expect(items[1].id).toEqual(9007199254740999n);
+});
