@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/orm-browser",
-  "version": "1.0.1-alpha.112",
+  "version": "1.0.1-alpha.113",
   "description": "ORM Browser",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -37,20 +37,20 @@
     "rxjs": "~7.5.0"
   },
   "dependencies": {
-    "@deepkit/orm-browser-gui": "^1.0.1-alpha.112"
+    "@deepkit/orm-browser-gui": "^1.0.1-alpha.113"
   },
   "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.112",
-    "@deepkit/broker": "^1.0.1-alpha.112",
-    "@deepkit/bson": "^1.0.1-alpha.112",
-    "@deepkit/core": "^1.0.1-alpha.112",
-    "@deepkit/framework": "^1.0.1-alpha.112",
-    "@deepkit/http": "^1.0.1-alpha.112",
-    "@deepkit/injector": "^1.0.1-alpha.112",
-    "@deepkit/logger": "^1.0.1-alpha.112",
-    "@deepkit/orm": "^1.0.1-alpha.112",
-    "@deepkit/rpc": "^1.0.1-alpha.112",
-    "@deepkit/type": "^1.0.1-alpha.112",
+    "@deepkit/app": "^1.0.1-alpha.113",
+    "@deepkit/broker": "^1.0.1-alpha.113",
+    "@deepkit/bson": "^1.0.1-alpha.113",
+    "@deepkit/core": "^1.0.1-alpha.113",
+    "@deepkit/framework": "^1.0.1-alpha.113",
+    "@deepkit/http": "^1.0.1-alpha.113",
+    "@deepkit/injector": "^1.0.1-alpha.113",
+    "@deepkit/logger": "^1.0.1-alpha.113",
+    "@deepkit/orm": "^1.0.1-alpha.113",
+    "@deepkit/rpc": "^1.0.1-alpha.113",
+    "@deepkit/type": "^1.0.1-alpha.113",
     "@types/node": "20.6.0",
     "rxjs": "~7.5.0"
   },
