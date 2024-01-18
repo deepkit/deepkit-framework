@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist/src",
+    "module": "commonjs",
+    "moduleResolution": "node16",
+    "types": [
+      "node"
+    ]
+  },
+  "files": [
+    "src/server/app.ts"
+  ]
+}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="116px" height="80px" viewBox="0 0 116 80" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 57 (83077) - https://sketch.com -->
+    <title>icon-analyze</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Website" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Artboard" transform="translate(-928.000000, -3768.000000)">
+            <g id="icon-analyze" transform="translate(928.000000, 3768.000000)">
+                <g id="Analyse-Icon-Big">
+                    <circle id="Oval-3-Copy-6" fill="white" cx="6.5" cy="7.5" r="1.5"></circle>
+                    <circle id="Oval-3-Copy-7" fill="white" cx="11.5" cy="7.5" r="1.5"></circle>
+                    <circle id="Oval-3-Copy-8" fill="white" cx="16.5" cy="7.5" r="1.5"></circle>
+                    <path d="M4,0.5 C2.06700338,0.5 0.5,2.06700338 0.5,4 L0.5,76 C0.5,77.9329966 2.06700338,79.5 4,79.5 L111,79.5 C112.932997,79.5 114.5,77.9329966 114.5,76 L114.5,4 C114.5,2.06700338 112.932997,0.5 111,0.5 L4,0.5 Z" id="Rectangle-3-Copy-2" stroke="white"></path>
+                    <path d="M0.5,14.5 L114.504386,14.5" id="Line-8-Copy-2" stroke="white" stroke-linecap="square"></path>
+                    <circle id="Oval-13" stroke="white" cx="30.5" cy="45.5" r="16"></circle>
+                    <rect id="Rectangle-20" fill="white" x="30" y="29" width="1" height="17"></rect>
+                    <rect id="Rectangle-21" fill="white" x="30" y="45" width="17" height="1"></rect>
+                    <rect id="Rectangle-23-Copy" fill="white" x="62" y="55" width="22" height="1"></rect>
+                    <rect id="Rectangle-23-Copy" fill="#FF662A" x="88" y="55" width="12" height="1"></rect>
+                    <rect id="Rectangle-23-Copy" fill="white" transform="translate(89.000000, 45.500000) scale(-1, 1) translate(-89.000000, -45.500000) " x="78" y="45" width="22" height="1"></rect>
+                    <rect id="Rectangle-23-Copy" fill="#FF662A" transform="translate(68.000000, 45.500000) scale(-1, 1) translate(-68.000000, -45.500000) " x="62" y="45" width="12" height="1"></rect>
+                    <rect id="Rectangle-23-Copy" fill="#FF662A" x="62" y="35" width="38" height="1"></rect>
+                    <path d="" id="Path-4-Copy" stroke="#979797"></path>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

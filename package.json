@@ -23,6 +23,7 @@
     "publish-website": "heroku container:push web && heroku container:release web"
   },
   "workspaces": [
+    "website",
     "packages/*",
     "!packages/fs",
     "!packages/orm-browser-example",

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="136px" height="136px" viewBox="0 0 136 136" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 57 (83077) - https://sketch.com -->
+    <title>icon-download</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Website" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Artboard" transform="translate(-153.000000, -3740.000000)">
+            <g id="icon-download" transform="translate(154.000000, 3741.000000)">
+                <g id="Download-Icon-Big">
+                    <circle id="Oval-3-Copy-4" stroke="white" fill-opacity="0.06" fill="#0A69EE" opacity="0.25937035" cx="67" cy="67" r="67"></circle>
+                    <circle id="Oval-3-Copy-4" stroke="white" fill-opacity="0.06" fill="#0A69EE" opacity="0.244512649" cx="67" cy="67" r="52"></circle>
+                    <circle id="Oval-3-Copy-5" stroke="white" cx="67" cy="67" r="40"></circle>
+                    <g id="Group-11-Copy" transform="translate(56.000000, 53.000000)" stroke="#FF662A" stroke-linecap="square">
+                        <path d="M0.5,26.5 L21.5,26.5" id="Line-15"></path>
+                        <path d="M10.5,23.2050898 L10.5,0.495090704" id="Line-12"></path>
+                        <path d="M11,23 L18.9478801,15.0521199" id="Line-13"></path>
+                        <path d="M10,23 L2.05211994,15.0521199" id="Line-14"></path>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

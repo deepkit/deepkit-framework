@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="21px" height="19px" viewBox="0 0 21 19" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>icon-cli</title>
+    <g id="v3" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" opacity="0.397341774">
+        <g id="Deepkit-Frameworkv3" transform="translate(-59.000000, -2319.000000)" stroke="#F9EDDF">
+            <g id="icon-cli" transform="translate(60.000000, 2320.000000)">
+                <rect id="Rectangle" x="-0.5" y="-0.5" width="20" height="18"></rect>
+                <polyline id="Path" points="4 12 7 8.5 4 5"></polyline>
+                <line x1="10" y1="12.5" x2="15" y2="12.5" id="Path"></line>
+            </g>
+        </g>
+    </g>
+</svg>

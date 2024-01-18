@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="142px" height="118px" viewBox="0 0 142 118" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 57 (83077) - https://sketch.com -->
+    <title>icon-run</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Website" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Artboard" transform="translate(-529.000000, -3750.000000)">
+            <g id="icon-run" transform="translate(530.000000, 3750.000000)">
+                <g id="Model-Icon-Big">
+                    <path d="M51,0.5 C50.1715729,0.5 49.5,1.17157288 49.5,2 L49.5,30 C49.5,30.8284271 50.1715729,31.5 51,31.5 L95,31.5 C95.8284271,31.5 96.5,30.8284271 96.5,30 L96.5,2 C96.5,1.17157288 95.8284271,0.5 95,0.5 L51,0.5 Z" id="Rectangle-8-Copy" stroke="white"></path>
+                    <rect id="Rectangle-16-Copy" fill="#0A69EE" x="49" y="7" width="48" height="1"></rect>
+                    <circle id="Oval-6-Copy" fill="#0A69EE" cx="53" cy="4" r="1"></circle>
+                    <circle id="Oval-6-Copy-2" fill="#0A69EE" cx="56" cy="4" r="1"></circle>
+                    <circle id="Oval-6-Copy-3" fill="#0A69EE" cx="59" cy="4" r="1"></circle>
+                    <rect id="Rectangle-16-Copy-2" fill="white" x="49" y="7" width="48" height="1"></rect>
+                    <circle id="Oval-6-Copy-4" fill="white" cx="53" cy="4" r="1"></circle>
+                    <circle id="Oval-6-Copy-5" fill="white" cx="56" cy="4" r="1"></circle>
+                    <circle id="Oval-6-Copy-6" fill="white" cx="59" cy="4" r="1"></circle>
+                    <path d="M19.237576,113 L7,113 L7,80 C7,78.8954305 7.8954305,78 9,78 L9,78 L56,78 C57.1045695,78 58,78.8954305 58,80 L58,113 L47.0360873,113" id="Rectangle-10" stroke="white" stroke-linecap="round"></path>
+                    <rect id="Rectangle-14" stroke="white" x="9.5" y="80.5" width="46" height="30"></rect>
+                    <path d="M63.0007818,113 C63.5530666,113 64.0007818,113.447715 64.0007818,114 C64.0007818,114.264753 63.8957922,114.518701 63.7088345,114.70616 L62.5933461,115.824638 C61.8428951,116.577101 60.8238569,117 59.7611354,117 L4.23886462,117 C3.1761431,117 2.15710486,116.577101 1.40665385,115.824638 L0.291165476,114.70616 C-0.0988357035,114.315113 -0.0979881377,113.681948 0.293058567,113.291947 C0.480517401,113.10499 0.734465509,113 0.999218169,113 L25.5173788,113 C25.5173788,113.552285 25.965094,114 26.5173788,114 L26.5173788,114 L37.4826212,114 C38.034906,114 38.4826212,113.552285 38.4826212,113 L38.4826212,113 L63.0007818,113 Z" id="Combined-Shape" stroke="white"></path>
+                    <path d="M99.5,113.5 L99.5,115 C99.5,115.828427 100.171573,116.5 101,116.5 L106,116.5 C106.828427,116.5 107.5,115.828427 107.5,115 L107.5,113.5 L99.5,113.5 Z" id="Rectangle-9" stroke="white"></path>
+                    <path d="M120.5,113.5 L120.5,115 C120.5,115.828427 121.171573,116.5 122,116.5 L127,116.5 C127.828427,116.5 128.5,115.828427 128.5,115 L128.5,113.5 L120.5,113.5 Z" id="Rectangle-9" stroke="white"></path>
+                    <rect id="Rectangle-15" stroke="white" x="87.5" y="83.5" width="53" height="10" rx="2"></rect>
+                    <rect id="Rectangle-15-Copy" stroke="white" x="87.5" y="93.5" width="53" height="10" rx="2"></rect>
+                    <rect id="Rectangle-15-Copy-2" stroke="white" x="87.5" y="103.5" width="53" height="10" rx="2"></rect>
+                    <circle id="Oval-9" stroke="white" cx="93.5" cy="88.5" r="2"></circle>
+                    <circle id="Oval-9-Copy" stroke="white" cx="93.5" cy="98.5" r="2"></circle>
+                    <circle id="Oval-9-Copy-4" stroke="white" cx="93.5" cy="108.5" r="2"></circle>
+                    <circle id="Oval-9" stroke="white" cx="100.5" cy="88.5" r="2"></circle>
+                    <circle id="Oval-9-Copy-2" stroke="#FF662A" cx="100.5" cy="98.5" r="2"></circle>
+                    <circle id="Oval-9-Copy-5" stroke="white" cx="100.5" cy="108.5" r="2"></circle>
+                    <circle id="Oval-9" stroke="white" cx="107.5" cy="88.5" r="2"></circle>
+                    <circle id="Oval-9-Copy-3" stroke="white" cx="107.5" cy="98.5" r="2"></circle>
+                    <circle id="Oval-9-Copy-6" stroke="#FF662A" cx="107.5" cy="108.5" r="2"></circle>
+                    <polygon id="Rectangle-17" fill="white" points="115 88 125 88 125 89 115 89"></polygon>
+                    <polygon id="Rectangle-17-Copy" fill="white" points="115 98 125 98 125 99 115 99"></polygon>
+                    <polygon id="Rectangle-17-Copy-3" fill="white" points="115 108 125 108 125 109 115 109"></polygon>
+                    <polygon id="Rectangle-17" fill="white" points="127 88 137 88 137 89 127 89"></polygon>
+                    <polygon id="Rectangle-17-Copy-2" fill="#FF662A" points="127 98 137 98 137 99 127 99"></polygon>
+                    <polygon id="Rectangle-17-Copy-4" fill="white" points="127 108 137 108 137 109 127 109"></polygon>
+                    <rect id="Rectangle-18-Copy" fill-opacity="0.5" fill="#F2DABF" x="65" y="38" width="1" height="18"></rect>
+                    <rect id="Rectangle-18-Copy-2" fill-opacity="0.5" fill="#F2DABF" x="32" y="55" width="1" height="18"></rect>
+                    <rect id="Rectangle-19-Copy" fill-opacity="0.5" fill="#F2DABF" x="32" y="55" width="34" height="1"></rect>
+                    <rect id="Rectangle-18-Copy-3" fill="white" transform="translate(80.500000, 47.000000) scale(-1, 1) translate(-80.500000, -47.000000) " x="80" y="38" width="1" height="18"></rect>
+                    <rect id="Rectangle-18-Copy-4" fill="white" transform="translate(113.500000, 64.000000) scale(-1, 1) translate(-113.500000, -64.000000) " x="113" y="55" width="1" height="18"></rect>
+                    <rect id="Rectangle-19-Copy-2" fill="white" transform="translate(97.000000, 55.500000) scale(-1, 1) translate(-97.000000, -55.500000) " x="80" y="55" width="34" height="1"></rect>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

@@ -1,0 +1,251 @@
+:host {
+    display: block;
+    //color: #3C3C3C;
+}
+
+.page {
+    max-width: 1100px;
+    margin: auto;
+    padding: 0;
+
+    @media(max-width: 1120px) {
+        padding: 0 10px;
+    }
+}
+
+.docs-header {
+    padding: 30px 0;
+}
+
+.docs-logo {
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+    color: #171B1E;
+    letter-spacing: 1px;
+
+    img {
+        height: 26px;
+    }
+
+    &:hover {
+        text-decoration: none;
+    }
+
+    div {
+        margin-left: 10px;
+        position: relative;
+    }
+}
+
+.search {
+    position: relative;
+
+    .search-results {
+        position: absolute;
+        left: 0;
+        top: 50px;
+        width: 350px;
+        background-color: black;
+    }
+}
+
+nav {
+    position: fixed;
+    top: 0;
+    bottom: 10px;
+    margin-top: 90px;
+    flex-basis: 220px;
+    text-align: left;
+    width: 200px;
+    padding-bottom: 100px;
+
+    overflow: auto;
+    overflow: overlay;
+    scrollbar-width: thin;
+
+    padding-top: 25px;
+    z-index: 500;
+    transition: opacity 0.2s ease-in-out;
+
+    // hide below 800px
+    @media (max-width: 760px) {
+        pointer-events: none;
+        opacity: 0;
+    }
+
+    &.showMenu {
+        opacity: 1;
+        background-color: #0E1217;
+        pointer-events: all;
+        outline: 10px solid #0E1217;
+        border-right: 1px solid #212933;
+    }
+
+    .category {
+        .category-title {
+            font-weight: bold;
+            color: white;
+        }
+
+        &.category {
+            margin-bottom: 35px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            margin-top: 10px;
+            color: grey;
+        }
+
+        section {
+            padding-left: 5px;
+            margin-bottom: 15px;
+        }
+    }
+
+    a {
+        &.active {
+            color: var(--color-link-active);
+        }
+    }
+
+    &::-webkit-scrollbar {
+        height: 8px;
+        width: 8px;
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: rgba(169, 173, 175, 0.77);
+        border-radius: 8px;
+        border: 2px solid rgba(0, 0, 0, 0.01);
+        background-clip: padding-box;
+
+        &:hover {
+            background: #727475;
+            border: 2px solid rgba(0, 0, 0, 0.01);
+            background-clip: padding-box;
+        }
+    }
+
+    font-size: 14px;
+    line-height: 24px;
+    letter-spacing: 0;
+
+    //&.showMenu {
+    //    position: absolute;
+    //    z-index: 1000;
+    //    margin-left: 0;
+    //    top: 35px;
+    //    left: 0;
+    //    right: 0;
+    //    bottom: 0;
+    //    padding: 0 25px;
+    //    max-width: unset;
+    //    background-color: white;
+    //    text-align: center;
+    //
+    //    .docs-logo {
+    //        justify-content: center;
+    //    }
+    //}
+}
+
+.menu-trigger {
+    position: fixed;
+    z-index: 2000;
+    top: 26px;
+    right: 65px;
+    display: none;
+
+    @media (max-width: 760px) {
+        display: block;
+    }
+}
+
+nav,
+:host ::ng-deep .table-of-content {
+    a, a:link {
+        display: block;
+        color: #D1D1D1;
+        font-weight: 500;
+        margin-top: 1px;
+        text-decoration: none;
+        font-size: 13px;
+
+        &:hover {
+            color: var(--color-link-hover);
+        }
+
+        &.active {
+            font-weight: bold;
+            color: var(--color-link-active);
+        }
+    }
+}
+
+@media (max-width: 880px) {
+    :host ::ng-deep {
+        .app-content {
+            margin-right: 0 !important;
+        }
+
+        codebox {
+            margin-right: 0 !important;
+        }
+
+        .table-of-content {
+            display: none;
+        }
+    }
+}
+
+nav {
+}
+
+.chapters {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 15px;
+
+    svg {
+        margin-left: 5px;
+        position: relative;
+        top: 2px;
+    }
+}
+
+.content-wrapper {
+    margin-left: 225px;
+    padding-top: 35px;
+}
+
+@media(max-width: 760px) {
+    .chapters {
+        display: flex;
+        cursor: pointer;
+    }
+
+    .wrapper {
+        display: block;
+        padding-top: 15px;
+    }
+
+    .content-wrapper {
+        margin-left: 0;
+    }
+
+    //.table-of-content {
+    //    display: none;
+    //}
+
+    nav.showMenu {
+        display: block;
+    }
+
+    //.content {
+    //    padding: 15px;
+    //}
+}

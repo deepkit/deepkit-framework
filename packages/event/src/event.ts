@@ -73,7 +73,7 @@ export class EventToken<T extends BaseEvent = BaseEvent> {
 /**
  * @example
  * ```typescript
- * const userAdded = new EventToken<User>('user.added');
+ * const userAdded = new DataEventToken<User>('user.added');
  *
  * eventDispatcher.listen(userAdded, (event) => {
  *    console.log('user added', event.data); //event.data is from type User

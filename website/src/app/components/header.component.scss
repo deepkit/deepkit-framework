@@ -1,0 +1,136 @@
+:host {
+    display: block;
+    z-index: 1000;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    background: rgba(0, 0, 0, 0.70);
+    backdrop-filter: blur(7px);
+
+    a.logo {
+        img {
+            height: 30px;
+            margin-right: 20px;
+        }
+    }
+}
+
+:host.sticky {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+@keyframes fadeInHeader {
+}
+
+.wrapper {
+    display: flex;
+    align-items: center;
+    height: 80px;
+
+    > a {
+        line-height: 0;
+
+        &:hover {
+            opacity: 0.6;
+        }
+    }
+}
+
+.burger {
+    margin-left: auto;
+    display: none;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1;
+
+    a, a:link {
+        text-decoration: none;
+        text-align: right;
+        font-size: 14px;
+        color: var(--color-text);
+        font-weight: 600;
+        line-height: 26px;
+        margin: 0 20px;
+
+        &:last-child {
+            margin-right: 0;
+        }
+
+        &:hover {
+            color: var(--color-orange);
+        }
+
+        &.active {
+            color: var(--color-orange);
+        }
+
+        img, svg {
+            position: relative;
+            top: 4px;
+        }
+    }
+}
+
+:host.startPage {
+    @media(max-width: 760px) {
+        .burger {
+            display: none;
+        }
+    }
+}
+
+@media(max-width: 760px) {
+    a.logo {
+        text-align: center;
+        flex: 1;
+
+        img {
+            margin-right: 0 !important;
+        }
+    }
+
+    .burger {
+        display: block;
+        position: absolute;
+        right: 15px;
+        top: 25px;
+        border: 10px solid transparent;
+    }
+    nav {
+        display: block;
+
+        a, a:link {
+            padding: 7px 10px;
+            display: block;
+            text-align: left;
+        }
+    }
+
+    nav.main {
+        display: none;
+        background: black;
+        padding-top: 25px;
+    }
+
+    .showMenu {
+
+        nav.main {
+            position: fixed;
+            top: 70px;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            overflow: auto;
+            display: block;
+            height: 100vh;
+        }
+    }
+}
