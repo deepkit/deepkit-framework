@@ -77,8 +77,8 @@ function hasJsDoc(node: any): node is { jsDoc: JSDoc[]; } {
     return 'jsDoc' in node && !!(node as any).jsDoc;
 }
 
-export function extractJSDocAttribute(node: Node, attribute: string): string {
-    if (!hasJsDoc(node)) return '';
+export function extractJSDocAttribute(node: Node | undefined, attribute: string): string {
+    if (!node || !hasJsDoc(node)) return '';
 
     for (const doc of node.jsDoc) {
         if (!doc.tags) continue;

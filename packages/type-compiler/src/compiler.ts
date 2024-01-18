@@ -1448,7 +1448,8 @@ export class ReflectionTransformer implements CustomTransformer {
                         this.resolveTypeName(getIdentifierName(narrowed.name), program);
                     }
 
-                    const description = extractJSDocAttribute(narrowed, 'description');
+                    // for whatever reason: narrowed.name.parent !== narrowed. narrowed.name.parent has jsDoc, narrowed.name not.
+                    const description = extractJSDocAttribute(narrowed.name?.parent, 'description');
                     if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                 }
                 break;
@@ -1759,6 +1760,8 @@ export class ReflectionTransformer implements CustomTransformer {
                     if (hasModifier(parameter, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
                     if (hasModifier(parameter, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
                     if (hasModifier(parameter, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
+                    const description = extractJSDocAttribute(parameter, 'description');
+                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                     if (parameter.initializer && parameter.type && !getReceiveTypeParameter(parameter.type)) {
                         program.pushOp(
                             ReflectionOp.defaultValue,

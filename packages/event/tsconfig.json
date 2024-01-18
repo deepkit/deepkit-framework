@@ -18,12 +18,14 @@
   },
   "include": [
     "src",
-    "tests",
     "index.ts"
   ],
   "deepkitTypeCompilerOptions": {
     "reflection": true
   },
+  "exclude": [
+    "tests"
+  ],
   "references": [
     {
       "path": "../core/tsconfig.json"

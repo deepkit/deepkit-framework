@@ -16,7 +16,8 @@
     "declaration": true,
     "composite": true,
     "types": [
-      "dot-prop"
+      "dot-prop",
+      "node"
     ]
   },
   "deepkitTypeCompilerOptions": {
@@ -24,7 +25,9 @@
   },
   "include": [
     "src",
-    "index.ts",
+    "index.ts"
+  ],
+  "exclude": [
     "tests"
   ],
   "references": []

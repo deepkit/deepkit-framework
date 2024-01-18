@@ -1,12 +1,12 @@
 import { expect, test } from '@jest/globals';
 import { App } from '../src/app.js';
-import { arg, cli, Command } from '../src/command.js';
+import { cli, Command } from '../src/command.js';
 import { ServiceContainer } from '../src/service-container.js';
 
 @cli.controller('my')
 class MyCli implements Command {
     async execute(
-        @arg host: string
+        host: string
     ) {
         return 'bar' === host ? 0 : 1;
     }

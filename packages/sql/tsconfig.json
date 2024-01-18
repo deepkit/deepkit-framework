@@ -25,11 +25,13 @@
   "include": [
     "benchmarks",
     "src",
-    "tests",
     "main.ts",
     "browser.ts",
     "commands.ts",
     "index.ts"
+  ],
+  "exclude": [
+    "tests"
   ],
   "references": [
     {

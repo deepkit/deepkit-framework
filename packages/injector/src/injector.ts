@@ -213,7 +213,7 @@ export interface InjectorInterface {
 /**
  * Returns the injector token type if the given type was decorated with `Inject<T>`.
  */
-function getInjectOptions(type: Type): Type | undefined {
+export function getInjectOptions(type: Type): Type | undefined {
     const annotations = metaAnnotation.getForName(type, 'inject');
     if (!annotations) return;
     const t = annotations[0];
@@ -936,6 +936,14 @@ export class InjectorContext {
 
     resolve<T>(module?: InjectorModule, type?: ReceiveType<T>): Resolver<T> {
         return this.getInjector(module || this.rootModule).createResolver(resolveReceiveType(type), this.scope);
+    }
+
+    getOrUndefined<T>(token?: ReceiveType<T> | Token<T>, module?: InjectorModule): ResolveToken<T> | undefined {
+        try {
+            return this.get(token, module);
+        } catch (error) {
+            return;
+        }
     }
 
     get<T>(token?: ReceiveType<T> | Token<T>, module?: InjectorModule): ResolveToken<T> {

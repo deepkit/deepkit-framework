@@ -2,6 +2,7 @@ import { expect, test } from '@jest/globals';
 import { http, HttpKernel, HttpRegExp, HttpRequest, JSONResponse, RouteParameterResolverContext } from '@deepkit/http';
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '../src/module.js';
+import { createTestingApp } from '../src/testing.js';
 
 test('router parameters', async () => {
     class Controller2 {
@@ -26,7 +27,7 @@ test('router parameters', async () => {
         }
     }
 
-    const app = new App({ controllers: [Controller2], imports: [new FrameworkModule()] });
+    const app = createTestingApp({ controllers: [Controller2], imports: [new FrameworkModule()] }).app;
     const httpHandler = app.get(HttpKernel);
 
     expect((await httpHandler.request(HttpRequest.GET('/user/peter'))).json).toBe('peter');
@@ -68,11 +69,11 @@ test('router parameterResolver', async () => {
         }
     }
 
-    const app = new App({
+    const app = createTestingApp({
         providers: [MyRouteParameterResolver],
         controllers: [Controller],
         imports: [new FrameworkModule()]
-    });
+    }).app;
     const httpHandler = app.get(HttpKernel);
 
     expect((await httpHandler.request(HttpRequest.GET('/user/peter'))).json).toEqual(['peter']);

@@ -22,7 +22,6 @@
   },
   "include": [
     "src",
-    "tests",
     "install-transformer.ts",
     "compiler-debug.ts",
     "index.ts"

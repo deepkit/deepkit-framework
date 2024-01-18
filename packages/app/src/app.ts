@@ -8,19 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, ExtractClassType, getCurrentFileName, isFunction, isObject, setPathValue } from '@deepkit/core';
+import { ClassType, ExtractClassType, isFunction, isObject, pathBasename, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container.js';
 import { InjectorContext, ResolveToken, Token } from '@deepkit/injector';
 import { AppModule, RootModuleDefinition } from './module.js';
-import { Command, Config, Options } from '@oclif/config';
-import { basename, dirname, relative } from 'path';
-import { Main } from '@oclif/command';
-import { ExitError } from '@oclif/errors';
-import { buildOclifCommand } from './oclif.js';
 import { EnvConfiguration } from './configuration.js';
 import { DataEventToken, EventDispatcher, EventListener, EventListenerCallback, EventOfEventToken, EventToken } from '@deepkit/event';
 import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { Logger } from '@deepkit/logger';
+import { executeCommand, getArgsFromEnvironment, getBinFromEnvironment } from './command.js';
 
 export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
     for (const i in partial) {
@@ -327,8 +323,8 @@ export class App<T extends RootModuleDefinition> {
         return this;
     }
 
-    async run(argv?: any[]) {
-        const exitCode = await this.execute(argv ?? process.argv.slice(2), argv ? [] : process.argv.slice(0, 2));
+    async run(argv?: any[], bin?: string[]) {
+        const exitCode = await this.execute(argv, bin);
         if (exitCode > 0) process.exit(exitCode);
     }
 
@@ -340,9 +336,7 @@ export class App<T extends RootModuleDefinition> {
         return this.serviceContainer.getInjectorContext();
     }
 
-    public async execute(argv: string[], binPaths: string[] = []): Promise<number> {
-        let result: any;
-
+    public async execute(argv?: string[], bin?: string[] | string): Promise<number> {
         const eventDispatcher = this.get(EventDispatcher);
         const logger = this.get(Logger);
 
@@ -353,78 +347,20 @@ export class App<T extends RootModuleDefinition> {
             });
         }
 
-        class MyConfig extends Config {
-            commandsMap: { [name: string]: Command.Plugin } = {};
+        const scopedInjectorContext = this.getInjectorContext().createChildScope('cli');
+        const commands = [...this.serviceContainer.cliControllerRegistry.controllers.entries()];
 
-            constructor(options: Options) {
-                super(options);
-                this.root = options.root;
-                this.userAgent = 'Node';
-                this.name = 'app';
-
-                if (binPaths.length === 2) {
-                    const bin = basename(binPaths[0]);
-                    if (bin === 'ts-node-script') {
-                        this.bin = `${relative(process.cwd(), binPaths[1]) || '.'}`;
-                    } else {
-                        this.bin = `${bin} ${relative(process.cwd(), binPaths[1]) || '.'}`;
-                    }
-                } else {
-                    this.bin = `node`;
-                }
-
-                this.version = '0.0.1';
-                this.pjson = {
-                    name: this.name,
-                    version: this.version,
-                    oclif: {
-                        update: {
-                            s3: {} as any,
-                            node: {}
-                        }
-                    }
-                };
-            }
-
-            runHook<T>(event: string, opts: T): Promise<void> {
-                if (event === 'postrun') {
-                    result = (opts as any).result;
-                }
-                return super.runHook(event, opts);
-            }
-
-            findCommand(id: string, opts?: {
-                must: boolean;
-            }) {
-                return this.commandsMap[id]!;
-            }
-
-            get commandIDs() {
-                return Object.keys(this.commandsMap);
-            }
-
-            get commands() {
-                return Object.values(this.commandsMap);
-            }
+        if ('string' !== typeof bin) {
+            bin = bin || getBinFromEnvironment();
+            let binary = pathBasename(bin[0]);
+            let file = pathBasename(bin[1]);
+            bin = `${binary} ${file}`;
         }
 
-        try {
-            const config = new MyConfig({ root: dirname(getCurrentFileName()) });
-            const scopedInjectorContext = this.getInjectorContext().createChildScope('cli');
-
-            for (const [name, info] of this.serviceContainer.cliControllerRegistry.controllers.entries()) {
-                config.commandsMap[name] = buildOclifCommand(name, eventDispatcher, scopedInjectorContext, info);
-            }
-
-            await Main.run(argv, config);
-        } catch (e) {
-            if (e instanceof ExitError) {
-                return e.oclif.exit;
-            } else {
-                console.log(e);
-            }
-            return 12;
-        }
-        return result;
+        return await executeCommand(
+            bin, argv || getArgsFromEnvironment(),
+            eventDispatcher, logger,
+            scopedInjectorContext, commands.map(c => c[1])
+        );
     }
 }

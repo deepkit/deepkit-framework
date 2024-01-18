@@ -20,6 +20,7 @@ import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker.js';
 import { MemoryHttpResponse, RequestBuilder } from '@deepkit/http';
 import { RpcClient, RpcDirectClientAdapter } from '@deepkit/rpc';
 import { FrameworkModule } from './module.js';
+import { DebugBrokerBus } from './debug/broker.js';
 
 /**
  * @deprecated use {@link MemoryHttpResponse} instead
@@ -80,7 +81,7 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
     module.setupGlobalProvider<Logger>().addTransport(injectorReference(MemoryLoggerTransport));
 
     module.addProvider({ provide: WebWorkerFactory, useClass: WebMemoryWorkerFactory }); //don't start HTTP-server
-    module.addProvider({ provide: BrokerServer, useClass: BrokerMemoryServer }); //don't start Broker TCP-server
+    module.addProvider({ provide: BrokerServer, useExisting: BrokerMemoryServer }); //don't start Broker TCP-server
     module.addProvider(BrokerMemoryServer);
     module.addProvider(MemoryLoggerTransport);
     module.addProvider({
@@ -93,6 +94,7 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
     module.addProvider({ provide: BrokerLock, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerLock(adapter) });
     module.addProvider({ provide: BrokerQueue, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerQueue(adapter) });
     module.addProvider({ provide: BrokerBus, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerBus(adapter) });
+    module.addProvider({ provide: DebugBrokerBus, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerBus(adapter) });
 
     if (!module.hasImport(FrameworkModule)) module.addImportAtBeginning(new FrameworkModule);
 

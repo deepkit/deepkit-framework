@@ -218,9 +218,7 @@ export class BrokerQueueChannel<T> {
 }
 
 export class BrokerBus {
-    constructor(
-        public adapter: BrokerAdapterBus
-    ) {
+    constructor(public adapter: BrokerAdapterBus) {
     }
 
     public channel<T>(path: string, type?: ReceiveType<T>): BrokerBusChannel<T> {

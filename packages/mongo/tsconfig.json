@@ -28,6 +28,7 @@
     "src",
     "index.ts"
   ],
+  "exclude": ["tests"],
   "references": [
     {
       "path": "../bson/tsconfig.json"

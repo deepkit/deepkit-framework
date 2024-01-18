@@ -15,8 +15,11 @@ import { ReflectionClass } from "@deepkit/type";
 import { createTable } from 'nice-table';
 import { inspect } from 'util';
 
-@cli.controller('app:config', {})
-export class AppConfigController implements Command {
+/**
+ * @description Prints the current configuration, they type and default value.
+ */
+@cli.controller('debug:config')
+export class DebugConfigController implements Command {
     constructor(
         protected debug: DebugController
     ) {

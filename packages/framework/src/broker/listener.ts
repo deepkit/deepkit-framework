@@ -14,12 +14,14 @@ import { BrokerServer } from './broker.js';
 import { LoggerInterface } from '@deepkit/logger';
 import { BrokerConfig } from '../module.config.js';
 import { BrokerDeepkitAdapter } from '@deepkit/broker';
+import { StopwatchStore } from '@deepkit/stopwatch';
 
 export class BrokerListener {
     constructor(
         protected logger: LoggerInterface,
         protected broker: BrokerDeepkitAdapter,
         protected brokerServer: BrokerServer,
+        protected store: StopwatchStore,
         protected listen: BrokerConfig['listen'],
         protected startOnBootstrap: BrokerConfig['startOnBootstrap'],
     ) {
@@ -35,6 +37,7 @@ export class BrokerListener {
 
     @eventDispatcher.listen(onServerMainShutdown)
     async onMainShutdown() {
+        await this.store.close();
         if (this.startOnBootstrap) {
             this.brokerServer.close();
         }

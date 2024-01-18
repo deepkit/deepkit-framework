@@ -1,9 +1,8 @@
-import { flag } from '@deepkit/app';
+import { Flag } from '@deepkit/app';
 
 export class BaseCommand {
     /**
-     * @description Sets the migration directory
+     * @description Sets the migration directory.
      */
-    @flag
-    protected migrationDir: string = '';
+    protected migrationDir: string & Flag = '';
 }

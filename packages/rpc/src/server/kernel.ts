@@ -304,7 +304,7 @@ export class RpcKernelConnections {
 
 export class RpcKernelConnection extends RpcKernelBaseConnection {
     public myPeerId?: string;
-    protected actionHandler = new RpcServerAction(this.controllers, this.injector, this.security, this.sessionState);
+    protected actionHandler = new RpcServerAction(this, this.controllers, this.injector, this.security, this.sessionState);
 
     public routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client;
 
@@ -386,7 +386,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
     protected async authenticate(message: RpcMessage, response: RpcMessageBuilder) {
         const body = message.parseBody<rpcAuthenticate>();
         try {
-            const session = await this.security.authenticate(body.token);
+            const session = await this.security.authenticate(body.token, this);
             this.sessionState.setSession(session);
             response.reply<rpcResponseAuthenticate>(RpcTypes.AuthenticateResponse, { username: session.username });
         } catch (error) {

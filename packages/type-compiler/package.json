@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/type-compiler",
-  "version": "1.0.1-alpha.110",
+  "version": "1.0.1-alpha.112",
   "description": "Deepkit/type compiler/Typescript transformer",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -56,7 +56,7 @@
       "^.+\\.(ts|tsx)$": [
         "ts-jest",
         {
-          "tsconfig": "<rootDir>/tsconfig.test.json"
+          "tsconfig": "<rootDir>/tsconfig.spec.json"
         }
       ]
     },

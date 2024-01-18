@@ -12,6 +12,7 @@ import style from 'ansi-styles';
 import format from 'format-util';
 import { arrayRemoveItem, ClassType } from '@deepkit/core';
 import { Inject, TransientInjectionTarget } from '@deepkit/injector';
+import { MemoryLoggerTransport } from './memory-logger.js';
 
 export enum LoggerLevel {
     none,
@@ -317,6 +318,22 @@ export class Logger implements LoggerInterface {
 export class ConsoleLogger extends Logger {
     constructor() {
         super([new ConsoleTransport]);
+    }
+}
+
+/**
+ * Logger with pre-configured memory transport.
+ */
+export class MemoryLogger extends Logger {
+    public memory = new MemoryLoggerTransport();
+
+    constructor() {
+        super([]);
+        this.transporter.push(this.memory);
+    }
+
+    getOutput(): string {
+        return this.memory.messageStrings.join('\n');
     }
 }
 

@@ -27,8 +27,10 @@
   "include": [
     "benchmarks",
     "src",
-    "tests",
     "index.ts"
+  ],
+  "exclude": [
+    "tests"
   ],
   "references": [
     {

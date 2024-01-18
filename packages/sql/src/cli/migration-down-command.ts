@@ -9,15 +9,16 @@
  */
 
 import { indent } from '@deepkit/core';
-import { cli, flag } from '@deepkit/app';
+import { cli, Flag } from '@deepkit/app';
 import { LoggerInterface } from '@deepkit/logger';
 import { MigrationProvider } from '../migration/migration-provider.js';
 import { SQLDatabaseAdapter, SqlMigrationHandler } from '../sql-adapter.js';
 import { BaseCommand } from './base-command.js';
 
-@cli.controller('migration:down', {
-    description: 'Executes down migration, reverting old migration files.'
-})
+/**
+ * @description Executes down migration, reverting old migration files.
+ */
+@cli.controller('migration:down')
 export class MigrationDownCommand extends BaseCommand {
     constructor(
         protected logger: LoggerInterface,
@@ -28,13 +29,13 @@ export class MigrationDownCommand extends BaseCommand {
 
     async execute(
         /**
-         * @description Limit migrations to a specific database
+         * @description Limit migrations to a specific database.
          */
-        @flag database?: string,
+        database?: string & Flag,
         /**
-         * @description Sets the migration version without executing actual SQL commands
+         * @description Sets the migration version without executing actual SQL commands.
          */
-        @flag fake: boolean = false,
+        fake: boolean & Flag = false,
     ): Promise<void> {
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);
 

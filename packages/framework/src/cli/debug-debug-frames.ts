@@ -18,8 +18,11 @@ import { decodeFrames } from '@deepkit/framework-debug-api';
 import { sleep } from '@deepkit/core';
 import { FileStopwatchStore } from '../debug/stopwatch/store.js';
 
-@cli.controller('debug:debug:frames', {})
-export class DebugDebugFramesCommand implements Command {
+/**
+ * @description Prints debugging information about profiler frames.
+ */
+@cli.controller('debug:profile-frames')
+export class DebugProfileFramesCommand implements Command {
     constructor(
         protected config: Pick<FrameworkConfig, 'varPath' | 'debugStorePath'>,
         protected logger: LoggerInterface,

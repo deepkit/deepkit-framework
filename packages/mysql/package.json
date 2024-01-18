@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/mysql",
-  "version": "1.0.1-alpha.110",
+  "version": "1.0.1-alpha.113",
   "description": "deepkit/orm MySQL adapter.",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -34,18 +34,23 @@
     "mariadb": "^2.5.2"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.108",
-    "@deepkit/orm": "^1.0.1-alpha.110",
+    "@deepkit/core": "^1.0.1-alpha.113",
+    "@deepkit/orm": "^1.0.1-alpha.113",
     "@deepkit/orm-integration": "^1.0.1-alpha.13",
-    "@deepkit/sql": "^1.0.1-alpha.110",
-    "@deepkit/stopwatch": "^1.0.1-alpha.110",
-    "@deepkit/type": "^1.0.1-alpha.110"
+    "@deepkit/sql": "^1.0.1-alpha.113",
+    "@deepkit/stopwatch": "^1.0.1-alpha.113",
+    "@deepkit/type": "^1.0.1-alpha.113"
   },
   "jest": {
     "runner": "../../jest-serial-runner.js",
     "testEnvironment": "node",
     "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
+      "^.+\\.(ts|tsx)$": [
+        "ts-jest",
+        {
+          "tsconfig": "<rootDir>/tsconfig.spec.json"
+        }
+      ]
     },
     "moduleNameMapper": {
       "(.+)\\.js": "$1"

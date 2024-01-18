@@ -8,33 +8,34 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { cli, flag } from '@deepkit/app';
+import { cli, Flag } from '@deepkit/app';
 import { empty } from '@deepkit/core';
 import { LoggerInterface } from '@deepkit/logger';
 import { MigrationProvider } from '../migration/migration-provider.js';
 import { SqlMigrationHandler } from '../sql-adapter.js';
 import { BaseCommand } from './base-command.js';
 
-@cli.controller('migration:pending', {
-    description: 'Shows pending migration files.'
-})
+/**
+ * @description Shows pending migration files.
+ */
+@cli.controller('migration:pending')
 export class MigrationPendingCommand extends BaseCommand {
     constructor(
         protected logger: LoggerInterface,
         protected provider: MigrationProvider,
     ) {
-        super()
+        super();
     }
 
     async execute(
         /**
-         * @description Show SQL commands
+         * @description Show SQL commands.
          */
-        @flag verbose: boolean = false,
+        verbose: boolean & Flag = false,
         /**
-         * @description Limit migrations to a specific database
+         * @description Limit migrations to a specific database.
          */
-        @flag.char('db') database?: string,
+        database?: string & Flag<{ char: 'db' }>,
     ): Promise<void> {
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);
 

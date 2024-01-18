@@ -9,7 +9,7 @@
  */
 
 import { indent } from '@deepkit/core';
-import { cli, flag } from '@deepkit/app';
+import { cli, Flag } from '@deepkit/app';
 import { LoggerInterface } from '@deepkit/logger';
 import { MigrationProvider } from '../migration/migration-provider.js';
 import { SQLDatabaseAdapter, SqlMigrationHandler } from '../sql-adapter.js';
@@ -17,9 +17,10 @@ import { BaseCommand } from './base-command.js';
 import { Migration } from '../migration/migration.js';
 import { Database } from '@deepkit/orm';
 
-@cli.controller('migration:up', {
-    description: 'Executes pending migration files. Use migration:pending to see which are pending.'
-})
+/**
+ * @description Executes pending migration files. Use migration:pending to see which are pending.
+ */
+@cli.controller('migration:up')
 export class MigrationUpCommand extends BaseCommand {
     constructor(
         protected logger: LoggerInterface,
@@ -30,17 +31,17 @@ export class MigrationUpCommand extends BaseCommand {
 
     async execute(
         /**
-         * @description Limit migrations to a specific database
+         * @description Limit migrations to a specific database.
          */
-        @flag database?: string,
+        database?: string & Flag,
         /**
-         * @description Sets the migration version without executing actual SQL commands
+         * @description Sets the migration version without executing actual SQL commands.
          */
-        @flag fake: boolean = false,
+        fake: boolean & Flag = false,
         /**
-         * Per default only the next migration is executed. With this flag all pending migrations are executed.
+         * @description Per default only the next migration is executed. With this flag all pending migrations are executed.
          */
-        @flag all: boolean = false,
+        all: boolean & Flag = false,
     ): Promise<void> {
         if (this.migrationDir) this.provider.setMigrationDir(this.migrationDir);
 

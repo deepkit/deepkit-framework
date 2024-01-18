@@ -1,14 +1,13 @@
-import { arg, cli, Command, flag } from '@deepkit/app';
 import { LoggerInterface } from '@deepkit/logger';
 import { SQLiteDatabase, User } from '../database.js';
-import { Positive } from '@deepkit/type';
+import { cli, Flag } from '@deepkit/app';
 
 @cli.controller('users')
-export class UsersCommand implements Command {
+export class UsersCommand {
     constructor(protected logger: LoggerInterface, protected database: SQLiteDatabase) {
     }
 
-    async execute(@flag id: number[] = []): Promise<any> {
+    async execute(id: number[] & Flag = []): Promise<any> {
         this.logger.log('Loading users ...', id);
         // const users = await this.database.query(User).find();
         // console.table(users);

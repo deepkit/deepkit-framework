@@ -10,6 +10,8 @@
 
 import { ClassType } from '@deepkit/core';
 
+import { RpcKernelBaseConnection } from './kernel';
+
 export class Session {
     constructor(
         public readonly username: string,
@@ -27,6 +29,7 @@ export interface RpcControllerAccess {
     controllerClassType: ClassType;
     actionName: string;
     actionGroups: string[];
+    connection: RpcKernelBaseConnection;
     actionData: { [name: string]: any };
 }
 
@@ -43,7 +46,7 @@ export class RpcKernelSecurity {
         return true;
     }
 
-    async authenticate(token: any): Promise<Session> {
+    async authenticate(token: any, connection: RpcKernelBaseConnection): Promise<Session> {
         throw new Error('Authentication not implemented');
     }
 
