@@ -1,2 +1,2 @@
-./local.env
-./dist
+/.angular
+/local.env
