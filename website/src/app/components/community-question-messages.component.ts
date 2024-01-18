@@ -51,7 +51,7 @@ import { NgForOf, NgIf } from "@angular/common";
                 <img [src]="question.userAvatar" class="avatar" alt="User Avatar"/>
             </div>
             <div class="content">
-                <div class="user" *ngIf="question.user">@{{question.user}}</div>
+                <div class="user" *ngIf="question.user">&#64;{{question.user}}</div>
                 <app-render-content [content]="question.content"></app-render-content>
             </div>
         </div>
@@ -61,7 +61,7 @@ import { NgForOf, NgIf } from "@angular/common";
                 <img [src]="m.userAvatar" class="avatar" alt="User Avatar"/>
             </div>
             <div class="content" id="answer-{{m.id}}">
-                <div class="user" *ngIf="m.user">@{{m.user}}</div>
+                <div class="user" *ngIf="m.user">&#64;{{m.user}}</div>
                 <app-render-content [content]="m.content"></app-render-content>
             </div>
         </div>

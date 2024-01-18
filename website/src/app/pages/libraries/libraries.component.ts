@@ -84,7 +84,7 @@ import { AppTitle } from "@app/app/components/title";
                 <div class="app-boxes">
                     <a routerLink="/library/type" class="app-box hover library">
                         <h3>Runtime Types</h3>
-                        <div class="subline">@deepkit/type</div>
+                        <div class="subline">&#64;deepkit/type</div>
                         <p>
                             Runtime TypeScript types with reflection, high-performance serialization and validation, and
                             much more.
@@ -92,7 +92,7 @@ import { AppTitle } from "@app/app/components/title";
                     </a>
                     <a routerLink="/library/app" class="app-box hover library">
                         <h3>Deepkit App</h3>
-                        <div class="subline">@deepkit/app</div>
+                        <div class="subline">&#64;deepkit/app</div>
                         <p>
                             A command line interface (CLI) framework for TypeScript with service container, module
                             system,
@@ -101,7 +101,7 @@ import { AppTitle } from "@app/app/components/title";
                     </a>
                     <a routerLink="/library/framework" class="app-box hover library">
                         <h3>Deepkit Framework</h3>
-                        <div class="subline">@deepkit/framework</div>
+                        <div class="subline">&#64;deepkit/framework</div>
                         <p>
                             A framework that brings together all Deepkit libraries with application server,
                             debugging and profiler tools, and much more.
@@ -109,7 +109,7 @@ import { AppTitle } from "@app/app/components/title";
                     </a>
                     <a routerLink="/library/orm" class="app-box hover library">
                         <h3>Deepkit ORM</h3>
-                        <div class="subline">@deepkit/orm</div>
+                        <div class="subline">&#64;deepkit/orm</div>
                         <p>
                             High performance TypeScript ORM with Unit Of Work, migrations, and much more.
                             MySQL, PostgreSQL, SQLite, MongoDB.
@@ -117,7 +117,7 @@ import { AppTitle } from "@app/app/components/title";
                     </a>
                     <a routerLink="/library/rpc" class="app-box hover library">
                         <h3>Deepkit RPC</h3>
-                        <div class="subline">@deepkit/rpc</div>
+                        <div class="subline">&#64;deepkit/rpc</div>
                         <p>
                             A end-to-end typesafe and modern high performance Remote Procedure Call (RPC) framework for
                             TypeScript.
@@ -125,7 +125,7 @@ import { AppTitle } from "@app/app/components/title";
                     </a>
                     <a routerLink="/library/http" class="app-box hover library">
                         <h3>Deepkit HTTP</h3>
-                        <div class="subline">@deepkit/http</div>
+                        <div class="subline">&#64;deepkit/http</div>
                         <p>
                             A HTTP kernel and router with async controller support based on workflow system and
                             decorators.
@@ -133,14 +133,14 @@ import { AppTitle } from "@app/app/components/title";
                     </a>
                     <a routerLink="/library/injector" class="app-box hover library">
                         <h3>Dependency Injection</h3>
-                        <div class="subline">@deepkit/injector</div>
+                        <div class="subline">&#64;deepkit/injector</div>
                         <p>
                             The most advanced dependency injection container for TypeScript.
                         </p>
                     </a>
                     <a routerLink="/library/template" class="app-box hover library">
                         <h3>Template</h3>
-                        <div class="subline">@deepkit/template</div>
+                        <div class="subline">&#64;deepkit/template</div>
                         <p>
                             Fully typesafe and fast template engine based on JSX, with support for dependency injection
                             and async templates.
@@ -148,7 +148,7 @@ import { AppTitle } from "@app/app/components/title";
                     </a>
                     <a routerLink="/library/broker" class="app-box hover library">
                         <h3>Broker</h3>
-                        <div class="subline">@deepkit/broker</div>
+                        <div class="subline">&#64;deepkit/broker</div>
                         <p>
                             Typesafe message bus server for pub/sub pattern, key-value storage, and central atomic app
                             locks.
@@ -156,7 +156,7 @@ import { AppTitle } from "@app/app/components/title";
                     </a>
                     <a routerLink="/documentation/app/logger" class="app-box hover library">
                         <h3>Logger</h3>
-                        <div class="subline">@deepkit/logger</div>
+                        <div class="subline">&#64;deepkit/logger</div>
                         <p>
                             Logger library with support for colors, scopes, various transporter and formatter.
                         </p>

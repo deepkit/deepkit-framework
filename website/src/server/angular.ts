@@ -1,7 +1,7 @@
 import { HtmlResponse, httpWorkflow, Redirect, RouteConfig } from '@deepkit/http';
 import { join } from 'node:path';
 // @ts-ignore
-import type { CommonEngine, RenderOptions } from '@nguniversal/common/engine';
+import type { CommonEngine, RenderOptions } from '@angular/ssr';
 // @ts-ignore
 import type { Router } from '@angular/router';
 import { eventDispatcher } from '@deepkit/event';

@@ -142,7 +142,7 @@ export class RenderQuestions {
 
             <p>
                 How does the bot work in Discord? First of all, you have to join our Discord server. Then, you can ping the bot
-                with <code>@deepkit</code> and ask your question. The bot will automatically create a new thread for you and answer
+                with <code>&#64;deepkit</code> and ask your question. The bot will automatically create a new thread for you and answer
                 your question in a new message.
             </p>
 

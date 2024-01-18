@@ -5,7 +5,7 @@ import { DirectClient, RpcKernel, RpcWebSocketClient } from "@deepkit/rpc";
 import { mergeApplicationConfig } from "@angular/core";
 
 export { platformServer, INITIAL_CONFIG } from "@angular/platform-server";
-export { CommonEngine, } from '@nguniversal/common/engine';
+export { CommonEngine } from '@angular/ssr';
 export { Router } from '@angular/router';
 
 export const bootstrap = (rpcKernel: RpcKernel) => bootstrapApplication(AppComponent, mergeApplicationConfig(config, {
