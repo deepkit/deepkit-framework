@@ -6,6 +6,10 @@
     "!packages/framework-examples"
   ],
   "command": {
+    "version": {
+      "allowBranch": "master",
+      "conventionalCommits": true
+    },
     "publish": {
       "conventionalCommits": true
     }
