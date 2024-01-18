@@ -56,10 +56,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "framework-debug-gui:build:production"
+              "buildTarget": "framework-debug-gui:build:production"
             },
             "development": {
-              "browserTarget": "framework-debug-gui:build:development"
+              "buildTarget": "framework-debug-gui:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -67,7 +67,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "framework-debug-gui:build"
+            "buildTarget": "framework-debug-gui:build"
           }
         },
         "test": {

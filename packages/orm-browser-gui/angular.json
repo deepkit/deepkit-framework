@@ -55,10 +55,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "orm-browser-gui:build:production"
+              "buildTarget": "orm-browser-gui:build:production"
             },
             "development": {
-              "browserTarget": "orm-browser-gui:build:development"
+              "buildTarget": "orm-browser-gui:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -66,7 +66,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "orm-browser-gui:build"
+            "buildTarget": "orm-browser-gui:build"
           }
         },
         "test": {
