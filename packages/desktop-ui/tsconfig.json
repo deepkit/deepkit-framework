@@ -7,7 +7,8 @@
     "downlevelIteration": true,
     "sourceMap": true,
     "strict": true,
-    "target": "es2015",
+    "target": "es2021",
+    "useDefineForClassFields": false,
     "noImplicitAny": true,
     "esModuleInterop": true,
     "types": [
@@ -22,9 +23,9 @@
       "angular-desktop-ui": [
         "dist/"
       ]
-    },
-    "composite": true
+    }
   },
+  "reflection": true,
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,

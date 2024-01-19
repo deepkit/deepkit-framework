@@ -48,10 +48,10 @@ import {
     TypeParameter,
     TypeProperty,
     TypePropertySignature,
-    TypeTemplateLiteral
+    TypeTemplateLiteral,
 } from './type.js';
 import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isArray, isClass, isPrototypeOfBase, stringifyValueWithType } from '@deepkit/core';
-import { Packed, resolvePacked, resolveRuntimeType, unpack } from './processor.js';
+import { Packed, resolvePacked, resolveRuntimeType } from './processor.js';
 import { NoTypeReceived } from '../utils.js';
 import { findCommonLiteral } from '../inheritance.js';
 import type { ValidateFunction } from '../validator.js';
@@ -77,7 +77,7 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
     if (!type) throw new NoTypeReceived();
     let typeFn: Function | undefined = undefined;
 
-    if (isArray(type)){
+    if (isArray(type)) {
         if (type.__type) return type.__type;
         // this is fast path for simple references to a type, e.g. cast<User>(), so that User is directly handled
         // instead of running the VM to resolve to User first.
@@ -91,9 +91,16 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
     if (type instanceof ReflectionClass) return type.type;
     if (isArray(type) && type.__type) return type.__type;
     if (isType(type)) return type as Type;
-    if (isClass(type)) return resolveRuntimeType(type) as Type;
+    if (isClass(type)) {
+        if (!('__type' in type)) {
+            if ((type as any).__cached_type) return (type as any).__cached_type;
+            // disabled reflection for this class, so we return empty TypeClass
+            return (type as any).__cached_type = { kind: ReflectionKind.class, classType: type as any, types: [] } as any;
+        }
+        return resolveRuntimeType(type) as Type;
+    }
     const typeName = typeFn ? extractTypeNameFromFunction(typeFn) : undefined;
-    return resolvePacked(type, undefined, {reuseCached: true, typeName});
+    return resolvePacked(type, undefined, { reuseCached: true, typeName });
 }
 
 export function reflect(o: any, ...args: any[]): Type {
@@ -291,6 +298,9 @@ function hasFunctionExpression(fn: Function): boolean {
     return code.includes('(');
 }
 
+/**
+ * @reflection never
+ */
 export class ReflectionParameter {
     type: Type;
 
@@ -363,6 +373,9 @@ export class ReflectionParameter {
     }
 }
 
+/**
+ * @reflection never
+ */
 export class ReflectionFunction {
     parameters: ReflectionParameter[] = [];
     description: string = '';
@@ -439,6 +452,9 @@ export class ReflectionFunction {
     }
 }
 
+/**
+ * @reflection never
+ */
 export class ReflectionMethod extends ReflectionFunction {
     /**
      * Whether this method acts as validator.
@@ -501,6 +517,9 @@ export function resolveClassType(type: Type): ReflectionClass<any> {
     return ReflectionClass.from(type);
 }
 
+/**
+ * @reflection never
+ */
 export class ReflectionProperty {
     //is this really necessary?
     jsonType?: Type;
@@ -1126,7 +1145,7 @@ export class ReflectionClass<T> {
         const type = {
             kind: this.type.kind === ReflectionKind.class ? ReflectionKind.property : ReflectionKind.propertySignature,
             parent: this.type,
-            ...prop
+            ...prop,
         } as TypeProperty | TypePropertySignature;
         if (type.kind === ReflectionKind.property) {
             type.visibility = prop.visibility ?? ReflectionVisibility.public;
@@ -1260,7 +1279,7 @@ export class ReflectionClass<T> {
         const type = isType(classTypeIn) ? classTypeIn as TypeClass : ('__type' in classType ? resolveRuntimeType(classType, args) : {
             kind: ReflectionKind.class,
             classType,
-            types: []
+            types: [],
         } as TypeClass);
 
         if (type.kind !== ReflectionKind.class) {

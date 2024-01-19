@@ -23,6 +23,9 @@ export async function resolveSrvHosts(hostname: string): Promise<{ options: stri
         resolveSrv(`_mongodb._tcp.${hostname}`, (err?, addresses?) => {
             if (err) return reject(err);
 
+            if (!addresses || !addresses.length) {
+                return reject(new Error(`No SRV records found for ${hostname}`));
+            }
             for (const address of addresses) {
                 if (!matchesParentDomain(hostname, address.name)) {
                     return reject(new Error(`SRV Hostname doesnt match ${hostname} vs ${address.name}`));

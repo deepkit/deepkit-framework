@@ -7,7 +7,7 @@
     "sourceMap": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "node",
     "target": "es2018",
     "module": "CommonJS",
     "esModuleInterop": true,

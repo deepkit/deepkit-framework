@@ -33,8 +33,7 @@
     "@deepkit/logger": "^1.0.1-alpha.43",
     "@deepkit/orm": "^1.0.1-alpha.43",
     "@deepkit/rpc": "^1.0.1-alpha.43",
-    "@deepkit/type": "^1.0.1-alpha.43",
-    "rxjs": "~7.5.0"
+    "@deepkit/type": "^1.0.1-alpha.43"
   },
   "dependencies": {
     "@deepkit/orm-browser-gui": "^1.0.1-alpha.113"
@@ -52,7 +51,7 @@
     "@deepkit/rpc": "^1.0.1-alpha.113",
     "@deepkit/type": "^1.0.1-alpha.113",
     "@types/node": "20.6.0",
-    "rxjs": "~7.5.0"
+    "rxjs": "~7.8.0"
   },
   "jest": {
     "transform": {

@@ -47,7 +47,9 @@ export function webSocketFromBaseUrl(baseUrl: string, portMapping: { [name: numb
 /**
  * Creates a provider for RpcWebSocketClient that is compatible with Angular and Deepkit.
  */
-export function createRpcWebSocketClientProvider(baseUrl: string = typeof location !== 'undefined' ? location.origin : 'http://localhost', portMapping: { [name: number]: number } = { 4200: 8080 }) {
+export function createRpcWebSocketClientProvider(baseUrl: string = typeof location !== 'undefined' ? location.origin : 'http://localhost', portMapping: {
+    [name: number]: number
+} = { 4200: 8080 }) {
     return {
         provide: RpcWebSocketClient,
         useFactory: () => new RpcWebSocketClient(webSocketFromBaseUrl(baseUrl, portMapping))
@@ -71,7 +73,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
 
         if (!this.webSocketConstructor) {
             console.log('webSocketConstructor is undefined', this.webSocketConstructor, await import(wsPackage));
-            throw new Error('No WebSocket implementation found.')
+            throw new Error('No WebSocket implementation found.');
         }
 
         return this.webSocketConstructor;
@@ -95,15 +97,26 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
             connection.onData(new Uint8Array(event.data));
         };
 
-        socket.onclose = () => {
-            connection.onClose();
+        let errored = false;
+        let connected = false;
+
+        socket.onclose = (event) => {
+            if (errored) {
+                const reason = `code ${event.code} reason ${event.reason || 'unknown'}`;
+                const message = connected ? `abnormal error` : `Could not connect: ${reason}`;
+                connection.onError(new Error(message));
+            } else {
+                connection.onClose();
+            }
         };
 
-        socket.onerror = (error: any) => {
-            connection.onError(error);
+        socket.onerror = (error: Event) => {
+            // WebSocket onerror Event has no useful information, but onclose has
+            errored = true;
         };
 
         socket.onopen = async () => {
+            connected = true;
             connection.onConnected({
                 clientAddress: () => {
                     return this.url;

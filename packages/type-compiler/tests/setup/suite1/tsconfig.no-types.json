@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.json",
   "reflection": [
-    "**/*/file1.ts"
+    "**/file1.ts"
   ]
 }

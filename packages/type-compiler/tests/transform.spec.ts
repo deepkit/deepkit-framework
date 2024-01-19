@@ -11,7 +11,7 @@ test('transform simple TS', () => {
         function fn(logger: Logger) {}
     `, ScriptTarget.ESNext, undefined, ScriptKind.TS);
 
-    const res = ts.transform(sourceFile, [(context) => (node) => new ReflectionTransformer(context).withReflectionMode('always').transformSourceFile(node)]);
+    const res = ts.transform(sourceFile, [(context) => (node) => new ReflectionTransformer(context).withReflection({reflection: 'default'}).transformSourceFile(node)]);
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
     const code = printer.printNode(ts.EmitHint.SourceFile, res.transformed[0], res.transformed[0]);
 
@@ -27,7 +27,7 @@ test('transform simple JS', () => {
         function fn(logger) {}
     `, ScriptTarget.ESNext, undefined, ScriptKind.JS);
 
-    const res = ts.transform(sourceFile, [(context) => (node) => new ReflectionTransformer(context).withReflectionMode('always').transformSourceFile(node)]);
+    const res = ts.transform(sourceFile, [(context) => (node) => new ReflectionTransformer(context).withReflection({reflection: 'default'}).transformSourceFile(node)]);
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
     const code = printer.printNode(ts.EmitHint.SourceFile, res.transformed[0], res.transformed[0]);
 
@@ -101,6 +101,7 @@ test('pass type argument arrow function', () => {
         `
     });
 
+    // compiles, but type does not receive anything
     console.log(res);
 });
 
@@ -166,4 +167,38 @@ test('default function name', () => {
     //`function default(` is invalid syntax.
     //as solution we skip that transformation.
     expect(res.app).not.toContain('function default(');
+});
+
+test('declaration file', () => {
+    const res = transform({
+        'app.ts': `
+            import { T } from './types';
+
+            typeOf<T>();
+        `,
+        'types.d.ts': `
+            export type T = string;
+            export type __ΩT = any[];
+        `
+    });
+
+    expect(res['app.ts']).toContain('import { __ΩT } from \'./types');
+});
+
+test('declaration file resolved export all', () => {
+    const res = transform({
+        'app.ts': `
+            import { T } from './module';
+            typeOf<T>();
+        `,
+        'module.d.ts': `
+            export * from './module/types';
+        `,
+        'module/types.d.ts': `
+            export type T = string;
+            export type __ΩT = any[];
+        `
+    });
+
+    expect(res['app.ts']).toContain('import { __ΩT } from \'./module');
 });

@@ -71,8 +71,8 @@ export function transpile<T extends string | Record<string, string>>(files: T, o
             fileName: __dirname + '/module.ts',
             compilerOptions,
             transformers: {
-                before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflectionMode('always')],
-                afterDeclarations: [(context: TransformationContext) => new DeclarationTransformer(context).withReflectionMode('always')],
+                before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflection({ reflection: 'default' })],
+                afterDeclarations: [(context: TransformationContext) => new DeclarationTransformer(context).withReflection({ reflection: 'default' })],
             }
         }).outputText as any;
     }
@@ -95,15 +95,15 @@ export function transpile<T extends string | Record<string, string>>(files: T, o
         options: compilerOptions,
         host: host.compilerHost,
     });
-    for (const d of getPreEmitDiagnostics(program)) {
-        console.log('diagnostics', d.file?.fileName, d.messageText, d.start, d.length);
-    }
+    // for (const d of getPreEmitDiagnostics(program)) {
+    //     console.log('diagnostics', d.file?.fileName, d.messageText, d.start, d.length);
+    // }
     const res: Record<string, string> = {};
 
     program.emit(undefined, (fileName, data) => {
         res[fileName.slice(__dirname.length + 1)] = data;
     }, undefined, undefined, {
-        before: [(context: TransformationContext) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflectionMode('always')],
+        before: [(context: TransformationContext) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflection({ reflection: 'default' })],
     });
 
     return res as any;

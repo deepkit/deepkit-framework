@@ -1,7 +1,7 @@
-import type { CompilerHost, CompilerOptions, ExportDeclaration, Expression, ImportDeclaration, ResolvedModule, SourceFile, StringLiteral, } from 'typescript';
+import type { CompilerHost, CompilerOptions, ExportDeclaration, Expression, ImportDeclaration, ResolvedModule, SourceFile, StringLiteral } from 'typescript';
 import ts from 'typescript';
 import * as micromatch from 'micromatch';
-import { isAbsolute } from 'path';
+import { isAbsolute, join } from 'path';
 
 const {
     createSourceFile,
@@ -10,36 +10,18 @@ const {
     ScriptTarget,
 } = ts;
 
-export const reflectionModes = ['always', 'default', 'never'] as const;
-
-export type ReflectionMode = typeof reflectionModes[number] | '' | boolean | string | string[] | undefined;
-
 export function patternMatch(path: string, patterns: string[], base?: string) {
     const normalized = patterns.map(v => {
         if (v[0] === '!') {
-            if (!isAbsolute(v.slice(1))) return `!${base}/${v.substr(1)}`;
+            if (base && !isAbsolute(v.slice(1))) return '!' + join(base || '', v.substr(1));
             return v;
         }
 
-        if (!isAbsolute(v)) return `${base}/${v}`;
+        if (!isAbsolute(v)) return join(base || '', v);
         return v;
-    })
-    const matched =  micromatch.default([path], normalized, {});
+    });
+    const matched = micromatch.default([path], normalized, {});
     return matched.length > 0;
-}
-
-export function reflectionModeMatcher(
-    filePath: string,
-    mode: ReflectionMode,
-    configPathDir?: string
-): typeof reflectionModes[number] {
-    if (Array.isArray(mode)) {
-        if (!configPathDir) return 'never';
-        return patternMatch(filePath, mode, configPathDir) ? 'default' : 'never';
-    }
-    if ('boolean' === typeof mode) return mode ? 'default' : 'never';
-    if (mode === 'default' || mode === 'always') return mode;
-    return 'never';
 }
 
 /**

@@ -52,7 +52,7 @@ export function transform(files: Record<string, string>, options: ts.CompilerOpt
     for (const fileName of Object.keys(files)) {
         const sourceFile = host.compilerHost.getSourceFile(fullPath(fileName), ScriptTarget.ES2022);
         if (!sourceFile) continue;
-        const transform = ts.transform(sourceFile, [(context) => (node) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflectionMode('always').transformSourceFile(node)]);
+        const transform = ts.transform(sourceFile, [(context) => (node) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflection({reflection: 'default'}).transformSourceFile(node)]);
         const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
         const code = printer.printNode(ts.EmitHint.SourceFile, transform.transformed[0], transform.transformed[0]);
         res[fileName] = code;
@@ -108,7 +108,7 @@ export function transpile(files: Record<string, string>, options: ts.CompilerOpt
     program.emit(undefined, (fileName, data) => {
         res[fileName.slice(__dirname.length + 1).replace(/\.js$/, '')] = data;
     }, undefined, undefined, {
-        before: [(context: TransformationContext) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflectionMode('always')],
+        before: [(context: TransformationContext) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflection({reflection: 'default'})],
     });
 
     return res;

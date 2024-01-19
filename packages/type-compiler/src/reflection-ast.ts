@@ -8,15 +8,16 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import type {
+import ts, {
     ArrowFunction,
     BigIntLiteral,
     BinaryExpression,
-    ComputedPropertyName,
     EntityName,
     Expression,
+    getLeadingCommentRanges,
     Identifier,
     ImportDeclaration,
+    isNoSubstitutionTemplateLiteral,
     JSDoc,
     ModifierLike,
     Node,
@@ -25,12 +26,12 @@ import type {
     NumericLiteral,
     PrivateIdentifier,
     PropertyAccessExpression,
+    PropertyName,
     QualifiedName,
     StringLiteral,
     StringLiteralLike,
     SymbolTable,
 } from 'typescript';
-import ts from 'typescript';
 import { cloneNode as tsNodeClone, CloneNodeHook } from '@marcj/ts-clone-node';
 import { SourceFile } from './ts-types.js';
 
@@ -45,7 +46,7 @@ const {
     isStringLiteralLike,
     setOriginalNode,
     NodeFlags,
-    SyntaxKind
+    SyntaxKind,
 } = ts;
 
 export type PackExpression = Expression | string | number | boolean | bigint;
@@ -54,34 +55,79 @@ export function getIdentifierName(node: Identifier | PrivateIdentifier): string 
     return ts.unescapeLeadingUnderscores(node.escapedText);
 }
 
+export function findSourceFile(node: Node): SourceFile | undefined {
+    if (node.kind === SyntaxKind.SourceFile) return node as SourceFile;
+    let current = node.parent;
+    while (current && current.kind !== SyntaxKind.SourceFile) {
+        current = current.parent;
+    }
+    return current as SourceFile;
+}
+
 export function joinQualifiedName(name: EntityName): string {
     if (isIdentifier(name)) return getIdentifierName(name);
     return joinQualifiedName(name.left) + '_' + getIdentifierName(name.right);
 }
 
-function hasJsDoc(node: any): node is { jsDoc: JSDoc[]; } {
-    return 'jsDoc' in node && !!(node as any).jsDoc;
+export function getCommentOfNode(sourceFile: SourceFile, node: Node): string | undefined {
+    const comment = getLeadingCommentRanges(sourceFile.text, node.pos);
+    if (!comment) return;
+
+    return comment.map(v => sourceFile.text.substring(v.pos, v.end)).join('\n');
 }
 
-export function extractJSDocAttribute(node: Node | undefined, attribute: string): string {
-    if (!node || !hasJsDoc(node)) return '';
-
-    for (const doc of node.jsDoc) {
-        if (!doc.tags) continue;
-        for (const tag of doc.tags) {
-            if (getIdentifierName(tag.tagName) === attribute && 'string' === typeof tag.comment) return tag.comment;
+export function parseJSDocAttributeFromText(comment: string, attribute: string): string | undefined {
+    // no regex
+    const index = comment.indexOf('@' + attribute + ' ');
+    if (index === -1) {
+        let start = 0;
+        while (true) {
+            const withoutContent = comment.indexOf('@' + attribute, start);
+            if (withoutContent === -1) return undefined;
+            //make sure next character is space or end of comment
+            const nextCharacter = comment[withoutContent + attribute.length + 1];
+            if (!nextCharacter || nextCharacter === ' ' || nextCharacter === '\n' || nextCharacter === '\r' || nextCharacter === '\t') {
+                return '';
+            }
+            start = withoutContent + attribute.length + 1;
         }
+        return undefined;
     }
 
-    return '';
+    const start = index + attribute.length + 2;
+    // end is either next attribute @ or end of comment.
+    const nextAttribute = comment.indexOf('@', start);
+    const endOfComment = comment.indexOf('*/', start);
+    const end = nextAttribute === -1 ? endOfComment : Math.min(nextAttribute, endOfComment);
+    const content = comment.substring(start, end).trim();
+
+    // make sure multiline comments are supported, and each line is trimmed and `\s\s\s\*` removed
+    return content.split('\n').map(v => {
+        const indexOfStar = v.indexOf('*');
+        if (indexOfStar === -1) return v.trim();
+        return v.substring(indexOfStar + 1).trim();
+    }).join('\n');
 }
 
-export function getPropertyName(f: NodeFactory, node?: Identifier | StringLiteral | NumericLiteral | ComputedPropertyName | PrivateIdentifier): string | symbol | number | ArrowFunction {
+export function extractJSDocAttribute(sourceFile: SourceFile, node: Node | undefined, attribute: string): string | undefined {
+    // in TypeScript 5.3 they made JSDoc parsing optional and disabled by default.
+    // we need to read the comments manually and then parse @{attribute} {value} manually.
+    // we need reference to SourceFile, since Node.getSourceFile() although available in types,
+    // is not available at runtime sometimes (works in tests, but fails with tsc).
+    if (!node) return undefined;
+    const comment = getCommentOfNode(sourceFile, node);
+    if (!comment) return undefined;
+
+    return parseJSDocAttributeFromText(comment, attribute);
+}
+
+export function getPropertyName(f: NodeFactory, node?: PropertyName): string | symbol | number | ArrowFunction {
     if (!node) return '';
 
     if (isIdentifier(node)) return getIdentifierName(node);
     if (isStringLiteral(node)) return node.text;
     if (isNumericLiteral(node)) return +node.text;
+    if (isNoSubstitutionTemplateLiteral(node)) return node.text;
     if (isComputedPropertyName(node)) {
         return f.createArrowFunction(undefined, undefined, [], undefined, undefined, node.expression);
     }
@@ -90,11 +136,12 @@ export function getPropertyName(f: NodeFactory, node?: Identifier | StringLitera
     return '';
 }
 
-export function getNameAsString(node?: Identifier | StringLiteral | NumericLiteral | ComputedPropertyName | PrivateIdentifier | QualifiedName): string {
+export function getNameAsString(node?: PropertyName | QualifiedName): string {
     if (!node) return '';
     if (isIdentifier(node)) return getIdentifierName(node);
     if (isStringLiteral(node)) return node.text;
     if (isNumericLiteral(node)) return node.text;
+    if (isNoSubstitutionTemplateLiteral(node)) return node.text;
     if (isComputedPropertyName(node)) {
         if (isStringLiteralLike(node) || isNumericLiteral(node)) return (node as StringLiteralLike | NumericLiteral).text;
         return '';
@@ -104,7 +151,7 @@ export function getNameAsString(node?: Identifier | StringLiteral | NumericLiter
     return joinQualifiedName(node);
 }
 
-export function hasModifier(node: { modifiers?: NodeArray<ModifierLike> }, modifier: ts.SyntaxKind): boolean {
+export function hasModifier(node: Node & { modifiers?: NodeArray<ModifierLike> }, modifier: ts.SyntaxKind): boolean {
     if (!node.modifiers) return false;
     return node.modifiers.some(v => v.kind === modifier);
 }
@@ -115,7 +162,7 @@ const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNo
         return {
             text: () => {
                 return getIdentifierName(node);
-            }
+            },
         } as any;
     }
     return;
@@ -171,7 +218,7 @@ export class NodeConverter {
                 setOriginalNodes: true,
                 preserveSymbols: true,
                 setParents: true,
-                hook: cloneHook
+                hook: cloneHook,
             }) as Expression;
         } catch (error) {
             console.error('could not clone node', node);

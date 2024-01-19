@@ -323,6 +323,9 @@ export interface ReflectOptions {
     typeName?: string;
 }
 
+/**
+ * @reflection never
+ */
 export class Processor {
     static typeProcessor?: Processor;
 

@@ -241,7 +241,7 @@ export class RpcClientTransporter {
                         resolve(undefined);
                     },
 
-                    onError: (error: any) => {
+                    onError: (error: Event) => {
                         this.onError();
                         reject(new OfflineError(`Could not connect: ${formatError(error)}`));
                     },

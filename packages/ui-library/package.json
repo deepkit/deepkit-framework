@@ -9,28 +9,25 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
-  "scripts": {
-  },
   "peerDependencies": {
+    "@angular/common": "^17.1.0",
+    "@angular/core": "^17.1.0",
     "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
     "@deepkit/desktop-ui": "^1.0.1-alpha.48",
     "@deepkit/rpc": "^1.0.1-alpha.57",
-    "@angular/core": "^17.1.0",
-    "@angular/common": "^17.1.0",
-    "rxjs": "~7.5.0"
+    "@deepkit/type": "^1.0.1-alpha.13"
   },
   "dependencies": {
     "prismjs": "^1.24.1"
   },
   "devDependencies": {
+    "@angular/common": "^17.1.0",
+    "@angular/core": "^17.1.0",
     "@deepkit/core": "^1.0.1-alpha.52",
-    "@deepkit/type": "^1.0.1-alpha.52",
     "@deepkit/desktop-ui": "^1.0.1-alpha.48",
     "@deepkit/rpc": "^1.0.1-alpha.57",
-    "@angular/core": "^17.1.0",
-    "@angular/common": "^17.1.0",
-    "rxjs": "~7.5.0"
+    "@deepkit/type": "^1.0.1-alpha.52",
+    "rxjs": "~7.8.0"
   },
   "jest": {
     "transform": {

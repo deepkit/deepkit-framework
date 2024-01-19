@@ -18,7 +18,7 @@
   "scripts": {
     "emoji": "ts-node emoji-map.ts",
     "font": "node bin/create-font.js",
-    "build": "rm -rf .angular && ng-packagr",
+    "build": "rm -rf .angular && ng-packagr --config tsconfig.prod.json",
     "prepublishOnly": "webpack && node bin/create-font.js && npm run docs",
     "docs": "typedoc --plugin none --json src/assets/docs.json src"
   },
@@ -62,14 +62,14 @@
     "@types/node": "20.6.0",
     "fs-extra": "^8.1.0",
     "ng-packagr": "^17.1.0",
-    "rxjs": "~7.5.0",
+    "rxjs": "~7.8.0",
     "svg2ttf": "^4.2.0",
     "svgicons2svgfont": "^9.0.4",
     "transformation-matrix-js": "2.7.1",
     "ts-loader": "^9.4.2",
     "ttf2woff": "^2.0.1",
     "typedoc": "0.23.21",
-    "typescript": "5.3.3",
+    "typescript": "~5.3.3",
     "webpack": "^5.75.0",
     "webpack-cli": "^5.0.0",
     "zone.js": "~0.14.3"

@@ -1,6 +1,0 @@
-{
-  "name": "@deepkit/angular-universal/tokens",
-  "version": "1.0.0",
-  "main": "../dist/tokens/index.js",
-  "types": "../dist/tokens/index.d.ts"
-}

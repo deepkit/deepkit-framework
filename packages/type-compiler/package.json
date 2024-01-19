@@ -19,8 +19,8 @@
     }
   },
   "bin": {
-    "deepkit-type-install": "./deepkit-type-install.js",
-    "deepkit-compiler-debug": "./deepkit-compiler-debug.js"
+    "deepkit-compiler-debug": "./deepkit-compiler-debug.js",
+    "deepkit-type-install": "./deepkit-type-install.js"
   },
   "sideEffects": false,
   "publishConfig": {

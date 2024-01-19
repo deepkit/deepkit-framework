@@ -57,6 +57,7 @@ export class WindowHeaderComponent implements OnDestroy {
         @SkipSelf() protected cdParent: ChangeDetectorRef,
         protected element: ElementRef,
     ) {
+        this.windowState = windowState;
         windowState.header = this;
     }
 

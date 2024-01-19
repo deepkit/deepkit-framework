@@ -19,8 +19,7 @@
     "@deepkit/framework": "^1.0.1-alpha.103",
     "@deepkit/orm": "^1.0.1-alpha.102",
     "@deepkit/type": "^1.0.1-alpha.102",
-    "fs-extra": "^9.0.1",
-    "rxjs": "~7.5.0"
+    "fs-extra": "^9.0.1"
   },
   "devDependencies": {
     "@types/fs-extra": "^9.0.1"

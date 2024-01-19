@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.113",
-    "rxjs": "~7.5.0"
+    "rxjs": "~7.8.0"
   },
   "jest": {
     "testEnvironment": "node",

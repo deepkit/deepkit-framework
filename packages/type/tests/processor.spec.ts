@@ -1,21 +1,10 @@
 /** @reflection never */
 import { expect, test } from '@jest/globals';
 import { pack } from '../src/reflection/processor.js';
-import {
-    assertType,
-    copyAndSetParent,
-    findMember,
-    ParentLessType,
-    ReflectionKind,
-    ReflectionVisibility,
-    TypeObjectLiteral,
-    TypePropertySignature,
-    TypeUnion
-} from '../src/reflection/type.js';
+import { copyAndSetParent, ParentLessType, ReflectionKind, ReflectionVisibility, TypeObjectLiteral, TypePropertySignature, TypeUnion } from '../src/reflection/type.js';
 import { MappedModifier, ReflectionOp } from '@deepkit/type-spec';
 import { isExtendable } from '../src/reflection/extends.js';
 import { assertValidParent, expectEqualType, expectType } from './utils.js';
-import { typeOf } from '../src/reflection/reflection.js';
 
 Error.stackTraceLimit = 200;
 
@@ -721,25 +710,4 @@ test('inline class circular', () => {
     (expected.types[0] as TypePropertySignature).parent = expected;
     (expected.types[0] as TypePropertySignature).type = expected;
     expectType({ ops: [ReflectionOp.inline, 0], stack: [external] }, expected);
-});
-
-test('keyof indexAccess on any', () => {
-    type DeepPartial<T> = {
-        [P in keyof T]?: T[P]
-    };
-
-    interface ChangesInterface<T> {
-        $set?: DeepPartial<T>;
-        $inc?: Partial<T>;
-    }
-
-    const t = typeOf<ChangesInterface<any>>();
-    assertType(t, ReflectionKind.objectLiteral);
-    const $set = findMember('$set', t.types);
-    assertType($set, ReflectionKind.propertySignature);
-    assertType($set.type, ReflectionKind.objectLiteral);
-    const indexSignature = $set.type.types[0];
-    assertType(indexSignature, ReflectionKind.indexSignature);
-    assertType(indexSignature.type, ReflectionKind.any);
-    expect(indexSignature.type.parent === indexSignature).toBe(true);
 });

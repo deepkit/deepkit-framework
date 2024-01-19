@@ -38,6 +38,7 @@
     "angular-plotly.js": "^5.2.2",
     "discord.js": "^14.13.0",
     "gray-matter": "^4.0.3",
+    "marked": "^9.0.0",
     "ngx-markdown": "^17.1.1",
     "openai": "^4.8.0",
     "plotly.js-dist-min": "^2.27.0",

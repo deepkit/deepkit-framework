@@ -745,7 +745,8 @@ function handleObjectLiteral(
 
         const template = executeTemplates(propertyState.fork().forPropertyName(writeName), member.type);
         if (!template) {
-            throw new BSONError(`No template found for ${member.type.kind}`);
+            console.error('missing template for member', member.name, 'of', type);
+            throw new BSONError(`No template found for ${String(member.name)}: ${member.type.kind}`);
         }
 
         let converter = `

@@ -11,6 +11,7 @@
     "experimentalDecorators": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
+    "preserveSymlinks": true,
     "importHelpers": true,
     "target": "ES2022",
     "noPropertyAccessFromIndexSignature": false,

@@ -1208,6 +1208,30 @@ test('index access on any', () => {
     }
 });
 
+test('keyof indexAccess on any', () => {
+    type DeepPartial<T> = {
+        [P in keyof T]?: T[P]
+    };
+
+    interface ChangesInterface<T> {
+        $set?: DeepPartial<T>;
+        $inc?: Partial<T>;
+    }
+
+    const t2 = typeOf<string>();
+    const t3 = typeOf<Partial<{bla: string}>>();
+
+    const t = typeOf<ChangesInterface<any>>();
+    assertType(t, ReflectionKind.objectLiteral);
+    const $set = findMember('$set', t.types);
+    assertType($set, ReflectionKind.propertySignature);
+    assertType($set.type, ReflectionKind.objectLiteral);
+    const indexSignature = $set.type.types[0];
+    assertType(indexSignature, ReflectionKind.indexSignature);
+    assertType(indexSignature.type, ReflectionKind.any);
+    expect(indexSignature.type.parent === indexSignature).toBe(true);
+});
+
 test('weird keyof any', () => {
     type a = keyof any;
     type b = { [K in keyof any]: string }

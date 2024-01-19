@@ -4,7 +4,8 @@
     "declarationMap": false,
   },
   "include": [
-    "src/"
+    "src/**/*.ts",
+    "src/*.ts",
   ],
   "angularCompilerOptions": {
     "compilationMode": "partial"

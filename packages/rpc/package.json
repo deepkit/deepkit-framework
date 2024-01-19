@@ -43,7 +43,7 @@
     "@types/dot-prop": "^5.0.1",
     "@types/fs-extra": "^9.0.1",
     "@types/node": "20.6.0",
-    "rxjs": "~7.5.0"
+    "rxjs": "*"
   },
   "jest": {
     "testEnvironment": "node",

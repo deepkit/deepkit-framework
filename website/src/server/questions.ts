@@ -12,6 +12,7 @@ import { Url } from "@app/server/url";
 import { readFile } from "fs/promises";
 import { findParentPath } from "@deepkit/app";
 import { join } from "path";
+import { Chat } from "openai/resources";
 
 export async function getSystem(additionalText: string): Promise<string> {
     const parentPath = findParentPath('src/pages');
@@ -131,7 +132,7 @@ class MessageStreamer {
             textToSend = textToSend + (last ? '' : ' ...');
             await this.message.edit(textToSend);
         } catch (error) {
-            this.logger.warning('Discord error sending text', error);
+            this.logger.warn('Discord error sending text', error);
         }
         this.lastSend = Date.now();
     }
@@ -172,19 +173,19 @@ function streamAnswerToDatabase(logger: Logger, database: Database, message: Com
 
 async function findMessage(logger: Logger, client: Client, communityMessage: CommunityMessage): Promise<Message<true> | undefined> {
     if (!communityMessage.discordMessageId) {
-        logger.warning('Message has no discord messageId', communityMessage.discordMessageId);
+        logger.warn('Message has no discord messageId', communityMessage.discordMessageId);
         return;
     }
 
     if (!communityMessage.discordChannelId && !communityMessage.discordThreadId) {
-        logger.warning('Message has neither discord channel nor thread id', communityMessage.id);
+        logger.warn('Message has neither discord channel nor thread id', communityMessage.id);
         return;
     }
 
     const channelId = communityMessage.discordThreadId || communityMessage.discordChannelId || '';
     const channel = channelId ? await client.channels.fetch(channelId) : undefined;
     if (!channel || (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildPublicThread && channel.type !== ChannelType.GuildPrivateThread)) {
-        logger.warning('Send to discord: Channel not found or wrong type', channelId, { type: channel?.type });
+        logger.warn('Send to discord: Channel not found or wrong type', channelId, { type: channel?.type });
         return;
     }
 
@@ -248,7 +249,7 @@ export class Questions {
             }
 
             if (!messageToEdit) {
-                this.logger.warning('Got an edit answer, but no assistant message in the thread.');
+                this.logger.warn('Got an edit answer, but no assistant message in the thread.');
                 throw new Error('Message not found');
             }
 
@@ -275,7 +276,7 @@ export class Questions {
                 //create a new message in `community` channel
                 const channel = await this.client.channels.fetch(communityMessage.discordThreadId || this.discordChannel);
                 if (!channel || (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildPublicThread && channel.type !== ChannelType.GuildPrivateThread)) {
-                    this.logger.warning('Creating message failed. Channel not found or wrong type', this.discordChannel, { type: channel?.type });
+                    this.logger.warn('Creating message failed. Channel not found or wrong type', this.discordChannel, { type: channel?.type });
                     throw new Error('Channel not found or wrong type');
                 }
 
@@ -318,7 +319,7 @@ export class Questions {
 
         const message = await findMessage(this.logger, this.client, communityMessage);
         if (!message) {
-            this.logger.warning('Message not found', communityMessage.discordMessageId);
+            this.logger.warn('Message not found', communityMessage.discordMessageId);
             return;
         }
 
@@ -388,7 +389,7 @@ ${message.content}
 
         const additionalText = ''; //todo
 
-        const messages: { role: 'system' | 'user' | 'assistant' | 'function', content: string }[] = [
+        const messages: Chat.ChatCompletionMessageParam[] = [
             { role: 'system', content: await getSystem('') },
         ];
 
@@ -409,6 +410,7 @@ text: ${m.content.substring(0, 2000)}
 
         console.log('Debug prompt');
         for (const m of messages) {
+            if ('string' !== typeof m.content) continue;
             console.log('   ', m.role, m.content.slice(0, 200).replace(/\n/g, '\\n'));
         }
 

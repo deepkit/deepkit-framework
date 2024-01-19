@@ -21,7 +21,7 @@
     "@deepkit/sql": "^1.0.1-alpha.0",
     "@deepkit/sqlite": "^1.0.1-alpha.0",
     "buffer": "^5.2.1",
-    "rxjs": "~7.5.0",
+    "rxjs": "*",
     "sift": "^7.0.1",
     "ts-node": "^10.7.0",
     "typescript": "^4.5.0",

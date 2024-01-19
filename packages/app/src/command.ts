@@ -102,6 +102,7 @@ function supportedAsArgument(type: Type): boolean {
     return false;
 }
 
+declare const process: any;
 declare const Deno: any;
 declare const Bun: any;
 
@@ -303,22 +304,20 @@ function printHelp(script: string, command: ParsedCliControllerConfig, writer: C
     const commandParameters = collectCommandParameter(command);
     const args = commandParameters.filter(v => v.kind === 'argument');
 
-    writer('<yellow>USAGE</yellow>');
-    writer(`  $ ${script} ${command.name} [OPTIONS] ${args.map(v => `[${v.name}]`).join(' ')}`);
+    writer(`<yellow>Usage:</yellow> ${script} ${command.name} [OPTIONS] ${args.map(v => `[${v.name}]`).join(' ')}`);
     writer('');
 
-    writer('<yellow>DESCRIPTION</yellow>');
     writer(`${command.description || ''}`);
     writer('');
 
     if (args.length) {
-        writer('<yellow>ARGUMENTS</yellow>');
+        writer('<yellow>Arguments:</yellow>');
         for (const parameter of args) {
             writer(`  ${parameter.name}</green>\t${parameter.parameter.description || ''}<yellow>${getParamFlags(parameter.parameter)}</yellow>`);
         }
     }
 
-    writer('<yellow>OPTIONS</yellow>');
+    writer('<yellow>Options:</yellow>');
 
     const descriptionSpacing = getSpacing(commandParameters.map(getParamIdentifier));
 
