@@ -26,7 +26,7 @@ jobs:
         ports:
           - '2222:22'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
@@ -37,7 +37,6 @@ jobs:
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build \
-            packages/angular-universal/tsconfig.json \
             packages/api-console-module/tsconfig.json \
             packages/broker/tsconfig.json \
             packages/bson/tsconfig.json \
@@ -64,7 +63,6 @@ jobs:
       - name: Test
         run: |
           npm run test:coverage \
-            packages/angular-universal/ \
             packages/broker/ \
             packages/bson/ \
             packages/core/ \
@@ -105,7 +103,7 @@ jobs:
           - '5432:5432'
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
@@ -139,7 +137,7 @@ jobs:
         ports:
           - '3306:3306'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
@@ -163,7 +161,7 @@ jobs:
       matrix:
         node-version: [20.10.0]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
@@ -205,7 +203,7 @@ jobs:
         with:
           mongodb-version: ${{ matrix.mongo-version }}
           mongodb-replica-set: test-rs
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
