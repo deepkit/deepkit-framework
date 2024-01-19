@@ -573,6 +573,10 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         };
 
         if (this.root) {
+            if (this.exports.length !== 0) {
+                throw new Error(`Can not use forRoot and exports at the same time in module ${this.constructor.name}. Either you want to export everything to the root (via forRoot: true), or export a subset to the parent (via exports)`);
+            }
+
             const root = this.findRoot();
             if (root !== this) {
                 for (const prepared of this.preparedProviders) {

@@ -1041,3 +1041,20 @@ test('isProvided supports token', () => {
     const module = new InjectorModule(providers)
     expect(module.isProvided(A)).toBe(true);
 });
+
+test('throw error when both forRoot and exports are used', () => {
+    class A {}
+
+    class TestModule extends InjectorModule {}
+
+    const module = new TestModule();
+    module.forRoot();
+    module.addProvider(A);
+    module.addExport(A);
+
+    const root = new InjectorModule();
+    root.addImport(module);
+
+    const injector = new InjectorContext(root);
+    expect(() => injector.getRootInjector()).toThrowError();
+})
