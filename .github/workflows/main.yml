@@ -31,8 +31,9 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+          cache: yarn
       - name: npm install
-        run: npm ci
+        run: yarn
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build \
@@ -109,13 +110,9 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Cache node_modules
-        uses: actions/cache@v1
-        with:
-          path: '**/node_modules'
-          key: ${{ runner.os }}-postgres-node_modules-${{ hashFiles('**/package-lock.json') }}
+          cache: yarn
       - name: npm install
-        run: npm ci
+        run: yarn
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/postgres/tsconfig.json;
@@ -147,13 +144,9 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Cache node_modules
-        uses: actions/cache@v1
-        with:
-          path: '**/node_modules'
-          key: ${{ runner.os }}-mysql-node_modules-${{ hashFiles('**/package-lock.json') }}
+          cache: yarn
       - name: npm install
-        run: npm ci
+        run: yarn
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
@@ -175,13 +168,9 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Cache node_modules
-        uses: actions/cache@v1
-        with:
-          path: '**/node_modules'
-          key: ${{ runner.os }}-sqlite-node_modules-${{ hashFiles('**/package-lock.json') }}
+          cache: yarn
       - name: npm install
-        run: npm ci
+        run: yarn
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
@@ -221,13 +210,9 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Cache node_modules
-        uses: actions/cache@v1
-        with:
-          path: '**/node_modules'
-          key: ${{ runner.os }}-mongo-node_modules-${{ hashFiles('**/package-lock.json') }}
-      - name: npm install
-        run: npm ci
+          cache: yarn
+      - name: yarn
+        run: yarn
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
