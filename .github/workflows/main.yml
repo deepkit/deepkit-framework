@@ -9,7 +9,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [20.6.0]
+        node-version: [20.10.0]
     services:
       storage-ftp:
         image: garethflowers/ftp-server:0.7.0
@@ -92,7 +92,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [20.6.0]
+        node-version: [20.10.0]
         postgres-version: [14]
     services:
       postgres:
@@ -127,7 +127,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [20.6.0]
+        node-version: [20.10.0]
         mysql-version: [8.0]
     services:
       mysql:
@@ -161,7 +161,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [20.6.0]
+        node-version: [20.10.0]
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -185,7 +185,7 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2004
     strategy:
       matrix:
-        node-version: [20.6.0]
+        node-version: [20.10.0]
         mongo-version: [4.0]
     services:
       # this is used for the simple-auth test

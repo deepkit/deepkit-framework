@@ -2981,7 +2981,6 @@ __metadata:
     rxjs: "npm:~7.8.0"
     svg2ttf: "npm:^4.2.0"
     svgicons2svgfont: "npm:^9.0.4"
-    transformation-matrix-js: "npm:2.7.1"
     ts-loader: "npm:^9.4.2"
     tslib: "npm:^2.0.0"
     ttf2woff: "npm:^2.0.1"
@@ -22176,13 +22175,6 @@ __metadata:
   version: 0.0.3
   resolution: "tr46@npm:0.0.3"
   checksum: 047cb209a6b60c742f05c9d3ace8fa510bff609995c129a37ace03476a9b12db4dbf975e74600830ef0796e18882b2381fb5fb1f6b4f96b832c374de3ab91a11
-  languageName: node
-  linkType: hard
-
-"transformation-matrix-js@npm:2.7.1":
-  version: 2.7.1
-  resolution: "transformation-matrix-js@npm:2.7.1"
-  checksum: 8b31824367c5278633755aaa200e3f1ad600880a2724952677778b7326eef529b2da781739ebfee92a19a39701a0effb8cd4272b234da8073a08c03bba37c21e
   languageName: node
   linkType: hard
 

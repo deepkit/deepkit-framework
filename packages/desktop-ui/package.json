@@ -65,7 +65,6 @@
     "rxjs": "~7.8.0",
     "svg2ttf": "^4.2.0",
     "svgicons2svgfont": "^9.0.4",
-    "transformation-matrix-js": "2.7.1",
     "ts-loader": "^9.4.2",
     "ttf2woff": "^2.0.1",
     "typedoc": "0.23.21",
