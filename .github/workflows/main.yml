@@ -113,6 +113,8 @@ jobs:
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
+      - name: Install yarn
+        run: corepack enable && yarn set version 4.0.2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
@@ -147,6 +149,8 @@ jobs:
           - '3306:3306'
     steps:
       - uses: actions/checkout@v4
+      - name: Install yarn
+        run: corepack enable && yarn set version 4.0.2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
@@ -171,6 +175,8 @@ jobs:
         node-version: [20.10.0]
     steps:
       - uses: actions/checkout@v4
+      - name: Install yarn
+        run: corepack enable && yarn set version 4.0.2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
@@ -213,6 +219,8 @@ jobs:
           mongodb-version: ${{ matrix.mongo-version }}
           mongodb-replica-set: test-rs
       - uses: actions/checkout@v4
+      - name: Install yarn
+        run: corepack enable && yarn set version 4.0.2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
