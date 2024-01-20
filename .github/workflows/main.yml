@@ -35,6 +35,7 @@ jobs:
           cache: yarn
       - name: npm install
         run: yarn
+
       - name: Lint commit messages
         run: ./node_modules/.bin/commitlint --from $BASE_SHA --to $HEAD_SHA --verbose
         env:
@@ -44,6 +45,7 @@ jobs:
         run: echo $PR_TITLE | npx commitlint --verbose
         env:
             PR_TITLE: ${{ github.event.pull_request.title }}
+
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build \
