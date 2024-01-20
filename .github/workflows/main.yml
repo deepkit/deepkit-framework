@@ -28,14 +28,15 @@ jobs:
           - '2222:22'
     steps:
       - uses: actions/checkout@v4
+      - name: Install yarn
+        run: corepack enable && yarn set version 4.0.2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: yarn
       - name: npm install
-        run: corepack enable && yarn set version 4.0.2 && yarn
-
+        run: yarn
       - name: Lint commit messages
         run: ./node_modules/.bin/commitlint --from $BASE_SHA --to $HEAD_SHA --verbose
         env:
