@@ -3567,7 +3567,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/rpc@npm:^1.0.1-alpha.0, @deepkit/rpc@npm:^1.0.1-alpha.113, @deepkit/rpc@npm:^1.0.1-alpha.57, @deepkit/rpc@workspace:packages/rpc":
+"@deepkit/rpc@npm:^1.0.1-alpha.0, @deepkit/rpc@npm:^1.0.1-alpha.102, @deepkit/rpc@npm:^1.0.1-alpha.113, @deepkit/rpc@npm:^1.0.1-alpha.57, @deepkit/rpc@workspace:packages/rpc":
   version: 0.0.0-use.local
   resolution: "@deepkit/rpc@workspace:packages/rpc"
   dependencies:
@@ -23575,6 +23575,7 @@ __metadata:
     "@deepkit/mongo": "npm:^1.0.1-alpha.103"
     "@deepkit/orm": "npm:^1.0.1-alpha.102"
     "@deepkit/postgres": "npm:^1.0.1-alpha.103"
+    "@deepkit/rpc": "npm:^1.0.1-alpha.102"
     "@deepkit/sql": "npm:^1.0.1-alpha.103"
     "@deepkit/type": "npm:^1.0.1-alpha.102"
     "@deepkit/type-compiler": "npm:^1.0.1-alpha.102"
