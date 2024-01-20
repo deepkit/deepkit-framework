@@ -1134,8 +1134,13 @@ test('parameter in controller class url', async () => {
 
 test('parameter from header', async () => {
     class Controller {
-        @http.GET('/:userId')
+        @http.GET('first/:userId')
         handle(userId: number, groupId: HttpHeader<number>) {
+            return [userId, groupId];
+        }
+
+        @http.GET('second/:userId')
+        handle2(userId: number, groupId: HttpHeader<number, {name: 'group_id'}>) {
             return [userId, groupId];
         }
     }
@@ -1144,7 +1149,8 @@ test('parameter from header', async () => {
         expect(event.parameters.arguments).toEqual([2, 1]);
         expect(event.parameters.parameters).toEqual({ userId: 2, groupId: 1 });
     })]);
-    expect((await httpKernel.request(HttpRequest.GET('/2').header('groupId', 1))).json).toEqual([2, 1]);
+    expect((await httpKernel.request(HttpRequest.GET('/first/2').header('groupId', 1))).json).toEqual([2, 1]);
+    expect((await httpKernel.request(HttpRequest.GET('/second/2').header('group_id', 1))).json).toEqual([2, 1]);
 });
 
 test('parameter in for listener', async () => {

@@ -175,7 +175,7 @@ export type HttpPath<T, Options extends { name?: string } = {}> = T & TypeAnnota
  *
  * To change the header name, use `param: HttpHeader<string, {name: 'X-My-Header'}>`.
  */
-export type HttpHeader<T, Options extends { name?: string } = {}> = T & TypeAnnotation<'httpHeader'>;
+export type HttpHeader<T, Options extends { name?: string } = {}> = T & TypeAnnotation<'httpHeader', Options>;
 
 /**
  * Marks a parameter as HTTP query and reads the value from the request query string.
