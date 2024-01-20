@@ -524,7 +524,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
     constructor(
         protected context: TransformationContext,
-        protected cache: Cache,
+        protected cache: Cache = new Cache,
     ) {
         this.f = context.factory;
         this.nodeConverter = new NodeConverter(this.f);
