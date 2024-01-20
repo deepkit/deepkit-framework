@@ -1,3 +1,0 @@
-self-hosted-runner:
-  labels:
-    - buildjet-2vcpu-ubuntu-2004
