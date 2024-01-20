@@ -7,7 +7,7 @@ on:
 
 jobs:
   unit-tests:
-    runs-on: buildjet-2vcpu-ubuntu-2004
+    runs-on: self-ubuntu-22040-4x8gb
     strategy:
       matrix:
         node-version: [20.10.0]
@@ -32,7 +32,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: yarn
       - name: npm install
         run: yarn
 
@@ -95,7 +94,7 @@ jobs:
   orm-postgres:
     needs:
       - unit-tests
-    runs-on: buildjet-2vcpu-ubuntu-2004
+    runs-on: self-ubuntu-22040-4x8gb
     strategy:
       matrix:
         node-version: [20.10.0]
@@ -116,7 +115,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: yarn
       - name: npm install
         run: yarn
       - name: Build
@@ -130,7 +128,7 @@ jobs:
   orm-mysql:
     needs:
       - unit-tests
-    runs-on: buildjet-2vcpu-ubuntu-2004
+    runs-on: self-ubuntu-22040-4x8gb
     strategy:
       matrix:
         node-version: [20.10.0]
@@ -150,7 +148,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: yarn
       - name: npm install
         run: yarn
       - name: Build
@@ -164,7 +161,7 @@ jobs:
   orm-sqlite:
     needs:
       - unit-tests
-    runs-on: buildjet-2vcpu-ubuntu-2004
+    runs-on: self-ubuntu-22040-4x8gb
     strategy:
       matrix:
         node-version: [20.10.0]
@@ -174,7 +171,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: yarn
       - name: npm install
         run: yarn
       - name: Build
@@ -188,7 +184,7 @@ jobs:
   orm-mongo:
     needs:
       - unit-tests
-    runs-on: buildjet-2vcpu-ubuntu-2004
+    runs-on: self-ubuntu-22040-4x8gb
     strategy:
       matrix:
         node-version: [20.10.0]
@@ -216,7 +212,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: yarn
       - name: yarn
         run: yarn
       - name: Build
