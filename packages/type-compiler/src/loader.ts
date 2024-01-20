@@ -1,6 +1,6 @@
 import type { CompilerOptions, SourceFile, TransformationContext } from 'typescript';
 import ts from 'typescript';
-import { ReflectionTransformer } from './compiler.js';
+import { Cache, ReflectionTransformer } from './compiler.js';
 
 export class DeepkitLoader {
     protected options: CompilerOptions = {
@@ -13,6 +13,7 @@ export class DeepkitLoader {
     protected program = ts.createProgram([], this.options, this.host);
 
     protected printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+    protected cache = new Cache;
 
     protected knownFiles: { [path: string]: string } = {};
     protected sourceFiles: { [path: string]: SourceFile } = {};
@@ -42,7 +43,7 @@ export class DeepkitLoader {
 
         ts.transform(sourceFile, [
             (context: TransformationContext) => {
-                const transformer = new ReflectionTransformer(context).forHost(this.host).withReflection({ reflection: 'default' });
+                const transformer = new ReflectionTransformer(context, this.cache).forHost(this.host).withReflection({ reflection: 'default' });
                 return (node: SourceFile): SourceFile => {
                     const sourceFile = transformer.transformSourceFile(node);
 

@@ -16,7 +16,7 @@
     "dev:frontend": "rm -rf .angular && concurrently --kill-others \"npm run app:watch\" \"npm run ssr:watch\"",
     "dev": "rm -rf .angular && concurrently --kill-others \"npm run app:watch\" \"npm run ssr:watch\" \"npm run server:watch\"",
     "app": "NODE_OPTIONS=--preserve-symlinks TS_NODE_PROJECT=tsconfig.server.json node -r ts-node/register -r tsconfig-paths/register src/server/app.ts",
-    "build": "npm run app:build && npm run ssr:build && npm run server:build",
+    "build": "rm -r .angular; npm run app:build && npm run ssr:build && npm run server:build",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "private": true,
@@ -32,6 +32,7 @@
     "@deepkit/logger": "^1.0.1-alpha.102",
     "@deepkit/mongo": "^1.0.1-alpha.103",
     "@deepkit/orm": "^1.0.1-alpha.102",
+    "@deepkit/rpc": "^1.0.1-alpha.102",
     "@deepkit/postgres": "^1.0.1-alpha.103",
     "@deepkit/sql": "^1.0.1-alpha.103",
     "@deepkit/type": "^1.0.1-alpha.102",

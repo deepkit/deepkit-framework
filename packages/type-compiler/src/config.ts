@@ -1,6 +1,6 @@
 import ts, { CompilerOptions, ParseConfigHost } from 'typescript';
 import { dirname, isAbsolute, join } from 'path';
-import { debug } from './debug.js';
+import { debug, isDebug } from './debug.js';
 import { patternMatch } from './resolver.js';
 
 /**
@@ -290,6 +290,10 @@ export function getResolver(
         exclude: config.exclude,
         reflection: config.reflection,
         mergeStrategy: config.mergeStrategy || defaultMergeStrategy,
+    }
+
+    if (isDebug()) {
+        debug(`Found config ${resolvedConfig.path}:\nreflection:`, resolvedConfig.reflection, `\nexclude:`, resolvedConfig.exclude);
     }
 
     const match = (path: string) => {

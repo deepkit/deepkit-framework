@@ -59,7 +59,6 @@ import ts, {
     RestTypeNode,
     SignatureDeclaration,
     Statement,
-    type StringLiteral,
     TemplateLiteralTypeNode,
     TransformationContext,
     TupleTypeNode,
@@ -92,7 +91,7 @@ import { SourceFile } from './ts-types.js';
 import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spec';
 import { Resolver } from './resolver.js';
 import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
-import { debug, isDebug } from './debug.js';
+import { debug } from './debug.js';
 import { getResolver, loadReflectionConfig, Matcher, ReflectionConfig, ReflectionConfigCache, reflectionModeMatcher } from './config.js';
 
 
@@ -458,6 +457,11 @@ function getReceiveTypeParameter(type: TypeNode): TypeReferenceNode | undefined 
     return;
 }
 
+export class Cache {
+    resolverCache: ReflectionConfigCache = {};
+    sourceFiles: { [fileName: string]: SourceFile } = {};
+}
+
 /**
  * Read the TypeScript AST and generate pack struct (instructions + pre-defined stack).
  *
@@ -515,20 +519,16 @@ export class ReflectionTransformer implements CustomTransformer {
     protected tempResultIdentifier?: Identifier;
     protected parseConfigHost: ParseConfigHost;
 
-    protected resolverCache: ReflectionConfigCache = {};
-
-    protected debugPrinted = false;
-
     constructor(
         protected context: TransformationContext,
+        protected cache: Cache,
     ) {
-        // console.log('alreayd new transformer? new ReflectionTransformer');
         this.f = context.factory;
         this.nodeConverter = new NodeConverter(this.f);
         //it is important to not have undefined values like {paths: undefined} because it would override the read tsconfig.json
         this.compilerOptions = filterUndefined(context.getCompilerOptions());
         this.host = createCompilerHost(this.compilerOptions);
-        this.resolver = new Resolver(this.compilerOptions, this.host);
+        this.resolver = new Resolver(this.compilerOptions, this.host, this.cache.sourceFiles);
         this.parseConfigHost = {
             useCaseSensitiveFileNames: true,
             fileExists: (path: string) => this.host.fileExists(path),
@@ -581,7 +581,7 @@ export class ReflectionTransformer implements CustomTransformer {
         if (this.overriddenReflectionMatcher) {
             return this.overriddenReflectionMatcher(sourceFile.fileName);
         }
-        return loadReflectionConfig(this.resolverCache, this.parseConfigHost, this.compilerOptions, sourceFile);
+        return loadReflectionConfig(this.cache.resolverCache, this.parseConfigHost, this.compilerOptions, sourceFile);
     }
 
     transformSourceFile(sourceFile: SourceFile): SourceFile {
@@ -596,11 +596,6 @@ export class ReflectionTransformer implements CustomTransformer {
         this.addImports = [];
 
         const reflection = this.getReflectionConfig(sourceFile);
-        if (isDebug() && !this.debugPrinted) {
-            this.debugPrinted = true;
-            const resolver = getResolver(this.resolverCache, this.parseConfigHost, this.compilerOptions, sourceFile);
-            debug(`Found config ${resolver.config.path}:\nreflection:`, resolver.config.reflection, `\nexclude:`, resolver.config.exclude);
-        }
         debug(`Transform file with reflection=${reflection.mode} (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`);
 
         if (!(sourceFile as any).locals) {
@@ -1938,8 +1933,8 @@ export class ReflectionTransformer implements CustomTransformer {
      * via the exclude option. mainly used to exclude globals and external libraries.
      */
     protected isExcluded(fileName: string): boolean {
-        const resolver = getResolver(this.resolverCache, this.parseConfigHost, this.compilerOptions);
-        const res = reflectionModeMatcher({reflection: 'default', exclude: resolver.config.exclude}, fileName);
+        const resolver = getResolver(this.cache.resolverCache, this.parseConfigHost, this.compilerOptions);
+        const res = reflectionModeMatcher({ reflection: 'default', exclude: resolver.config.exclude }, fileName);
         return res === 'never';
     }
 
@@ -2643,7 +2638,6 @@ export class ReflectionTransformer implements CustomTransformer {
 }
 
 export class DeclarationTransformer extends ReflectionTransformer {
-
     protected addExports: { identifier: string }[] = [];
 
     transformSourceFile(sourceFile: SourceFile): SourceFile {
@@ -2696,15 +2690,17 @@ export class DeclarationTransformer extends ReflectionTransformer {
 
 let loaded = false;
 
+const cache = new Cache;
+
 export const transformer: CustomTransformerFactory = function deepkitTransformer(context) {
     if (!loaded) {
         debug('@deepkit/type transformer loaded\n');
         loaded = true;
     }
-    return new ReflectionTransformer(context);
+    return new ReflectionTransformer(context, cache);
 };
 
 export const declarationTransformer: CustomTransformerFactory = function deepkitDeclarationTransformer(context) {
-    return new DeclarationTransformer(context);
+    return new DeclarationTransformer(context, cache);
 };
 

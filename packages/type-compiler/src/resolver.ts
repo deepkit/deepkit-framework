@@ -30,9 +30,11 @@ export function patternMatch(path: string, patterns: string[], base?: string) {
  * It automatically reads a SourceFile and binds it.
  */
 export class Resolver {
-    protected sourceFiles: { [fileName: string]: SourceFile } = {};
-
-    constructor(public compilerOptions: CompilerOptions, public host: CompilerHost) {
+    constructor(
+        public compilerOptions: CompilerOptions,
+        public host: CompilerHost,
+        protected sourceFiles: { [fileName: string]: SourceFile }
+    ) {
     }
 
     resolve(from: SourceFile, importOrExportNode: ExportDeclaration | ImportDeclaration): SourceFile | undefined {
