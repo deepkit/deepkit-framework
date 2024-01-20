@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: npm install
-        run: corepack enable && yarn set version 4.0.4 && yarn
+        run: corepack enable && yarn set version 4.0.2 && yarn
 
       - name: Lint commit messages
         run: ./node_modules/.bin/commitlint --from $BASE_SHA --to $HEAD_SHA --verbose
@@ -116,7 +116,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: npm install
-        run: corepack enable && yarn set version 4.0.4 && yarn
+        run: corepack enable && yarn set version 4.0.2 && yarn
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/postgres/tsconfig.json;
@@ -149,7 +149,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: npm install
-        run: corepack enable && yarn set version 4.0.4 && yarn
+        run: corepack enable && yarn set version 4.0.2 && yarn
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
@@ -172,7 +172,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: npm install
-        run: corepack enable && yarn set version 4.0.4 && yarn
+        run: corepack enable && yarn set version 4.0.2 && yarn
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
@@ -213,7 +213,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: Install
-        run: corepack enable && yarn set version 4.0.4 && yarn
+        run: corepack enable && yarn set version 4.0.2 && yarn
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
