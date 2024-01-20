@@ -7,7 +7,7 @@ on:
 
 jobs:
   unit-tests:
-    runs-on: self-ubuntu-22040-4x8gb
+    runs-on: ubuntu22-4x16
     strategy:
       matrix:
         node-version: [20.10.0]
@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: npm install
-        run: corepack enable && yarn
+        run: yarn
 
       - name: Lint commit messages
         run: ./node_modules/.bin/commitlint --from $BASE_SHA --to $HEAD_SHA --verbose
@@ -94,7 +94,7 @@ jobs:
   orm-postgres:
     needs:
       - unit-tests
-    runs-on: self-ubuntu-22040-4x8gb
+    runs-on: ubuntu22-4x16
     strategy:
       matrix:
         node-version: [20.10.0]
@@ -128,7 +128,7 @@ jobs:
   orm-mysql:
     needs:
       - unit-tests
-    runs-on: self-ubuntu-22040-4x8gb
+    runs-on: ubuntu22-4x16
     strategy:
       matrix:
         node-version: [20.10.0]
@@ -161,7 +161,7 @@ jobs:
   orm-sqlite:
     needs:
       - unit-tests
-    runs-on: self-ubuntu-22040-4x8gb
+    runs-on: ubuntu22-4x16
     strategy:
       matrix:
         node-version: [20.10.0]
@@ -184,7 +184,7 @@ jobs:
   orm-mongo:
     needs:
       - unit-tests
-    runs-on: self-ubuntu-22040-4x8gb
+    runs-on: ubuntu22-4x16
     strategy:
       matrix:
         node-version: [20.10.0]
