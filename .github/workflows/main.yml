@@ -32,6 +32,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: yarn
       - name: npm install
         run: corepack enable && yarn set version 4.0.2 && yarn
 
@@ -115,6 +116,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: yarn
       - name: npm install
         run: corepack enable && yarn set version 4.0.2 && yarn
       - name: Build
@@ -148,6 +150,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: yarn
       - name: npm install
         run: corepack enable && yarn set version 4.0.2 && yarn
       - name: Build
@@ -171,6 +174,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: yarn
       - name: npm install
         run: corepack enable && yarn set version 4.0.2 && yarn
       - name: Build
@@ -212,6 +216,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: yarn
       - name: Install
         run: corepack enable && yarn set version 4.0.2 && yarn
       - name: Build
