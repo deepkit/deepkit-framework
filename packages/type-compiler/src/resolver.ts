@@ -1,4 +1,13 @@
-import type { CompilerHost, CompilerOptions, ExportDeclaration, Expression, ImportDeclaration, ResolvedModule, SourceFile, StringLiteral } from 'typescript';
+import type {
+    CompilerHost,
+    CompilerOptions,
+    ExportDeclaration,
+    Expression,
+    ImportDeclaration,
+    ResolvedModule,
+    SourceFile,
+    StringLiteral,
+} from 'typescript';
 import ts from 'typescript';
 import * as micromatch from 'micromatch';
 import { isAbsolute, join } from 'path';
@@ -6,7 +15,8 @@ import { isAbsolute, join } from 'path';
 const {
     createSourceFile,
     resolveModuleName,
-    SyntaxKind,
+    isStringLiteral,
+    JSDocParsingMode,
     ScriptTarget,
 } = ts;
 
@@ -27,7 +37,7 @@ export function patternMatch(path: string, patterns: string[], base?: string) {
 /**
  * A utility to resolve a module path and its declaration.
  *
- * It automatically reads a SourceFile and binds it.
+ * It automatically reads a SourceFile, binds and caches it.
  */
 export class Resolver {
     constructor(
@@ -40,28 +50,36 @@ export class Resolver {
     resolve(from: SourceFile, importOrExportNode: ExportDeclaration | ImportDeclaration): SourceFile | undefined {
         const moduleSpecifier: Expression | undefined = importOrExportNode.moduleSpecifier;
         if (!moduleSpecifier) return;
-        if (moduleSpecifier.kind !== SyntaxKind.StringLiteral) return;
+        if (!isStringLiteral(moduleSpecifier)) return;
 
-        return this.resolveSourceFile(from.fileName, (moduleSpecifier as StringLiteral).text);
+        return this.resolveSourceFile(from, moduleSpecifier);
     }
 
-    resolveImpl(modulePath: string, fromPath: string): ResolvedModule | undefined {
-        if (this.host.resolveModuleNames !== undefined) {
-            return this.host.resolveModuleNames([modulePath], fromPath, /*reusedNames*/ undefined, /*redirectedReference*/ undefined, this.compilerOptions)[0];
+    protected resolveImpl(modulePath: StringLiteral, sourceFile: SourceFile): ResolvedModule | undefined {
+        if (this.host.resolveModuleNameLiterals !== undefined) {
+            const results = this.host.resolveModuleNameLiterals(
+                [modulePath], sourceFile.fileName, /*reusedNames*/ undefined,
+                this.compilerOptions, sourceFile, undefined
+            );
+            if (results[0]) return results[0].resolvedModule;
+            return;
         }
-        const result = resolveModuleName(modulePath, fromPath, this.compilerOptions, this.host);
+        if (this.host.resolveModuleNames !== undefined) {
+            return this.host.resolveModuleNames([modulePath.text], sourceFile.fileName, /*reusedNames*/ undefined, /*redirectedReference*/ undefined, this.compilerOptions)[0];
+        }
+        const result = resolveModuleName(modulePath.text, sourceFile.fileName, this.compilerOptions, this.host);
         return result.resolvedModule;
     }
 
     /**
-     * Tries to resolve the d.ts file path for a given module path.
+     * Tries to resolve the .ts/d.ts file path for a given module path.
      * Scans relative paths. Looks into package.json "types" and "exports" (with new 4.7 support)
      *
-     * @param fromPath the path of the file that contains the import. modulePath is relative to that.
+     * @param sourceFile the SourceFile of the file that contains the import. modulePath is relative to that.
      * @param modulePath the x in 'from x'.
      */
-    resolveSourceFile(fromPath: string, modulePath: string): SourceFile | undefined {
-        const result = this.resolveImpl(modulePath, fromPath);
+    resolveSourceFile(sourceFile: SourceFile, modulePath: StringLiteral): SourceFile | undefined {
+        const result = this.resolveImpl(modulePath, sourceFile);
         if (!result) return;
 
         const fileName = result.resolvedFileName;
@@ -69,11 +87,16 @@ export class Resolver {
 
         const source = this.host.readFile(result.resolvedFileName);
         if (!source) return;
-        const sourceFile = this.sourceFiles[fileName] = createSourceFile(fileName, source, this.compilerOptions.target || ScriptTarget.ES2018, true);
+        const moduleSourceFile = this.sourceFiles[fileName] = createSourceFile(fileName, source, {
+            languageVersion: this.compilerOptions.target || ScriptTarget.ES2018,
+            jsDocParsingMode: JSDocParsingMode.ParseNone,
+        }, false);
+
+        this.sourceFiles[fileName] = moduleSourceFile;
 
         //@ts-ignore
-        ts.bindSourceFile(sourceFile, this.compilerOptions);
+        ts.bindSourceFile(moduleSourceFile, this.compilerOptions);
 
-        return sourceFile;
+        return moduleSourceFile;
     }
 }

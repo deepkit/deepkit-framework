@@ -70,7 +70,7 @@ import ts, {
     TypeParameterDeclaration,
     TypeQueryNode,
     TypeReferenceNode,
-    UnionTypeNode,
+    UnionTypeNode
 } from 'typescript';
 
 import {
@@ -458,8 +458,17 @@ function getReceiveTypeParameter(type: TypeNode): TypeReferenceNode | undefined 
 }
 
 export class Cache {
-    resolverCache: ReflectionConfigCache = {};
+    resolver: ReflectionConfigCache = {};
     sourceFiles: { [fileName: string]: SourceFile } = {};
+
+    /**
+     * Signals the cache to check if it needs to be cleared.
+     */
+    tick() {
+        if (Object.keys(this.sourceFiles).length > 300) {
+            this.sourceFiles = {};
+        }
+    }
 }
 
 /**
@@ -472,12 +481,6 @@ export class Cache {
 export class ReflectionTransformer implements CustomTransformer {
     sourceFile!: SourceFile;
     protected f: NodeFactory;
-
-    public defaultExcluded: string[] = [
-        'lib.dom.d.ts',
-        'lib.dom.iterable.d.ts',
-        'lib.es2017.typedarrays.d.ts',
-    ];
 
     protected embedAssignType: boolean = false;
 
@@ -527,6 +530,8 @@ export class ReflectionTransformer implements CustomTransformer {
         this.nodeConverter = new NodeConverter(this.f);
         //it is important to not have undefined values like {paths: undefined} because it would override the read tsconfig.json
         this.compilerOptions = filterUndefined(context.getCompilerOptions());
+        // compilerHost has no internal cache and is cheap to build, so no cache needed.
+        // Resolver loads SourceFile which has cache implemented.
         this.host = createCompilerHost(this.compilerOptions);
         this.resolver = new Resolver(this.compilerOptions, this.host, this.cache.sourceFiles);
         this.parseConfigHost = {
@@ -581,7 +586,7 @@ export class ReflectionTransformer implements CustomTransformer {
         if (this.overriddenReflectionMatcher) {
             return this.overriddenReflectionMatcher(sourceFile.fileName);
         }
-        return loadReflectionConfig(this.cache.resolverCache, this.parseConfigHost, this.compilerOptions, sourceFile);
+        return loadReflectionConfig(this.cache.resolver, this.parseConfigHost, this.compilerOptions, sourceFile);
     }
 
     transformSourceFile(sourceFile: SourceFile): SourceFile {
@@ -1822,7 +1827,7 @@ export class ReflectionTransformer implements CustomTransformer {
         const libs = knownLibFilesForCompilerOptions(options, ts);
 
         for (const lib of libs) {
-            const sourceFile = this.resolver.resolveSourceFile(this.sourceFile.fileName, 'typescript/lib/' + lib.replace('.d.ts', ''));
+            const sourceFile = this.resolver.resolveSourceFile(this.sourceFile, this.f.createStringLiteral('typescript/lib/' + lib.replace('.d.ts', '')));
             if (!sourceFile) continue;
             this.globalSourceFiles.push(sourceFile);
         }
@@ -1933,7 +1938,7 @@ export class ReflectionTransformer implements CustomTransformer {
      * via the exclude option. mainly used to exclude globals and external libraries.
      */
     protected isExcluded(fileName: string): boolean {
-        const resolver = getResolver(this.cache.resolverCache, this.parseConfigHost, this.compilerOptions);
+        const resolver = getResolver(this.cache.resolver, this.parseConfigHost, this.compilerOptions);
         const res = reflectionModeMatcher({ reflection: 'default', exclude: resolver.config.exclude }, fileName);
         return res === 'never';
     }
@@ -2689,7 +2694,6 @@ export class DeclarationTransformer extends ReflectionTransformer {
 }
 
 let loaded = false;
-
 const cache = new Cache;
 
 export const transformer: CustomTransformerFactory = function deepkitTransformer(context) {
@@ -2697,6 +2701,7 @@ export const transformer: CustomTransformerFactory = function deepkitTransformer
         debug('@deepkit/type transformer loaded\n');
         loaded = true;
     }
+    cache.tick();
     return new ReflectionTransformer(context, cache);
 };
 
