@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: npm install
-        run: yarn
+        run: npm install -g yarn@4 && yarn
 
       - name: Lint commit messages
         run: ./node_modules/.bin/commitlint --from $BASE_SHA --to $HEAD_SHA --verbose
