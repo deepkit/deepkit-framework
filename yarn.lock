@@ -18495,7 +18495,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"openai@npm:^4.8.0":
+"openai@npm:^4.24.7":
   version: 4.24.7
   resolution: "openai@npm:4.24.7"
   dependencies:
@@ -23588,7 +23588,7 @@ __metadata:
     jest: "npm:^29.7.0"
     marked: "npm:^9.0.0"
     ngx-markdown: "npm:^17.1.1"
-    openai: "npm:^4.8.0"
+    openai: "npm:^4.24.7"
     plotly.js-dist-min: "npm:^2.27.0"
     prismjs: "npm:^1.29.0"
     pybridge: "npm:^1.1.0"

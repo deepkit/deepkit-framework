@@ -1,7 +1,7 @@
 import { HtmlResponse, httpWorkflow, Redirect, RouteConfig } from '@deepkit/http';
 import { join } from 'node:path';
 // @ts-ignore
-import type { CommonEngine, RenderOptions } from '@angular/ssr';
+import type { CommonEngine, CommonEngineRenderOptions } from '@angular/ssr';
 // @ts-ignore
 import type { Router } from '@angular/router';
 import { eventDispatcher } from '@deepkit/event';
@@ -18,7 +18,7 @@ export class AngularListener {
 
     protected router?: Router;
     protected engine?: CommonEngine;
-    protected renderOptions: RenderOptions = {};
+    protected renderOptions: CommonEngineRenderOptions = {};
 
     constructor(
         private logger: Logger,
@@ -33,10 +33,15 @@ export class AngularListener {
         const dir = findParentPath('dist/app/', __dirname);
         if (!dir) throw new Error('Could not find dist/app/server folder');
 
-        const serverModule = (await require(join(dir, 'server/main.js')));
-        this.engine = new serverModule.CommonEngine(() => serverModule.bootstrap(
-            this.server.getWorker().rpcKernel
-        ), []);
+        const serverModule = (await require(join(dir, 'server/main.js'))) as {
+            CommonEngine: typeof CommonEngine,
+            bootstrap: (rpcKernel: any) => any,
+        };
+        this.engine = new serverModule.CommonEngine({
+            //important to pass as function, otherwise we get `RuntimeError: NG0210`
+            bootstrap: () => serverModule.bootstrap(this.server.getWorker().rpcKernel),
+            providers: undefined,
+        });
         const indexHtml = join(join(dir, 'browser'), 'index.html');
         this.renderOptions.documentFilePath = indexHtml;
 
@@ -55,8 +60,10 @@ export class AngularListener {
             if (!response) {
                 const server = await this.getServer();
                 const page = new PageResponseModel();
-                const renderOptions: RenderOptions = {
-                    ...this.renderOptions, url: event.url, providers: [
+                const renderOptions: CommonEngineRenderOptions = {
+                    ...this.renderOptions,
+                    // bootstrap: () =>server.bootstrap(this.server.getWorker().rpcKernel),
+                    url: event.url, providers: [
                         { provide: 'page-response-model', useValue: page }
                         // { provide: RpcWebSocketClient, useValue: new DirectClient(this.server.getWorker().rpcKernel) },
                     ]

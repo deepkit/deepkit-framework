@@ -28,7 +28,7 @@ ${page}
 My question: ${prompt}
         `;
 
-        const messages: { role: 'system' | 'user' | 'assistant' | 'function', content: string }[] = [
+        const messages: OpenAI.ChatCompletionMessageParam[] = [
             { role: 'system', content: 'You are a documentation chat bot that helps the user to understand a TypeScript framework called Deepkit.' },
             { role: 'user', content: prompt },
         ];

@@ -7,7 +7,7 @@ import { getSystem } from "../questions";
 import { magicSeparator } from "@app/common/models";
 
 class Context {
-    messages: { role: 'system' | 'user' | 'assistant' | 'function', content: string }[] = [];
+    messages: OpenAI.ChatCompletionMessageParam[] = [];
 
     async addSystem(additionalText: string) {
         this.messages.push({ role: 'system', content: await getSystem(additionalText) });

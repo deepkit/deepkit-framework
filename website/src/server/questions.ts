@@ -12,7 +12,6 @@ import { Url } from "@app/server/url";
 import { readFile } from "fs/promises";
 import { findParentPath } from "@deepkit/app";
 import { join } from "path";
-import { Chat } from "openai/resources";
 
 export async function getSystem(additionalText: string): Promise<string> {
     const parentPath = findParentPath('src/pages');
@@ -389,7 +388,7 @@ ${message.content}
 
         const additionalText = ''; //todo
 
-        const messages: Chat.ChatCompletionMessageParam[] = [
+        const messages: OpenAI.ChatCompletionMessageParam[] = [
             { role: 'system', content: await getSystem('') },
         ];
 

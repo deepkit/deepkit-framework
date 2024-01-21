@@ -16,7 +16,7 @@
     "dev:frontend": "rm -rf .angular && concurrently --kill-others \"npm run app:watch\" \"npm run ssr:watch\"",
     "dev": "rm -rf .angular && concurrently --kill-others \"npm run app:watch\" \"npm run ssr:watch\" \"npm run server:watch\"",
     "app": "NODE_OPTIONS=--preserve-symlinks TS_NODE_PROJECT=tsconfig.server.json node -r ts-node/register -r tsconfig-paths/register src/server/app.ts",
-    "build": "rm -r .angular; npm run app:build && npm run ssr:build && npm run server:build",
+    "build": "concurrently npm:app:build npm:ssr:build npm:server:build",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "private": true,
@@ -41,7 +41,7 @@
     "gray-matter": "^4.0.3",
     "marked": "^9.0.0",
     "ngx-markdown": "^17.1.1",
-    "openai": "^4.8.0",
+    "openai": "^4.24.7",
     "plotly.js-dist-min": "^2.27.0",
     "pybridge": "^1.1.0",
     "rehype-raw": "^4.0.0",
