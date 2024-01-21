@@ -1,7 +1,8 @@
 import { cli } from '@deepkit/app';
 import { Logger } from '@deepkit/logger';
 import { existsSync, copySync } from 'fs-extra';
-import { join } from 'path';
+import { basename, join } from 'path';
+import { readFileSync, writeFileSync } from 'fs';
 import { findParentPath } from '@deepkit/app';
 import { spawn } from 'child_process';
 
@@ -41,6 +42,11 @@ export class CreateController {
                 return true;
             }
         });
+
+        const packageJson = join(localPath, 'package.json');
+        const packageJsonContent = JSON.parse(readFileSync(packageJson, 'utf8'));
+        packageJsonContent.name = basename(path);
+        writeFileSync(packageJson, JSON.stringify(packageJsonContent, undefined, 2), 'utf8');
 
         this.logger.log(`Install packages ...`);
 
