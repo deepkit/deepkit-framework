@@ -23,7 +23,7 @@ A CLI application in Deepkit has full access to the DI container and can thus ac
 The easiest way to get started is to use NPM init to create a new Deepkit project.
 
 ```shell
-npm init @deepkit/app my-deepkit-app
+npm init @deepkit/app@latest my-deepkit-app
 ````
 
 This will create a new folder `my-deepkit-app` with all the dependencies and a basic `app.ts` file.
