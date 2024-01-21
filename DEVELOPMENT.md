@@ -12,7 +12,7 @@ Node >= v18 is needed.
 ```shell
 git clone https://github.com/deepkit/deepkit-framework.git
 cd deepkit-framework
-npm install
+yarn install
 ```
 
 When installation is finished you can build the packages:
