@@ -8,6 +8,7 @@
     "target": "es2020",
     "module": "commonjs",
     "preserveSymlinks": true,
+    "skipLibCheck": true,
     "esModuleInterop": true,
     "lib": [
       "es6",
