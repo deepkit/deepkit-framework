@@ -9,6 +9,8 @@
  */
 import { AnalyticData, encodeCompoundKey, FrameCategory, FrameData, FrameEnd, FrameStart, FrameType, TypeOfCategory } from './types.js';
 
+declare var process: any;
+
 export abstract class StopwatchStore {
     public frameQueue: (FrameStart | FrameEnd)[] = [];
     public dataQueue: FrameData[] = [];
