@@ -216,6 +216,11 @@ export interface MatchResult {
 export const defaultExcluded = [
     'lib.dom*.d.ts',
     '*typedarrays.d.ts',
+    'lib.webworker*.d.ts',
+    'lib.decorator*.d.ts',
+    'lib.es2015.proxy.d.ts',
+    'lib.es2020.sharedmemory.d.ts',
+    'lib.es2015.core.d.ts',
 ];
 
 export type Matcher = (path: string) => MatchResult;

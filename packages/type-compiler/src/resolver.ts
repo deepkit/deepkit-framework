@@ -82,6 +82,11 @@ export class Resolver {
         const result = this.resolveImpl(modulePath, sourceFile);
         if (!result) return;
 
+        // only .ts and .d.ts files are supported
+        if (!result.resolvedFileName.endsWith('.ts') && !result.resolvedFileName.endsWith('.d.ts')) {
+            return;
+        }
+
         const fileName = result.resolvedFileName;
         if (this.sourceFiles[fileName]) return this.sourceFiles[fileName];
 
@@ -90,7 +95,7 @@ export class Resolver {
         const moduleSourceFile = this.sourceFiles[fileName] = createSourceFile(fileName, source, {
             languageVersion: this.compilerOptions.target || ScriptTarget.ES2018,
             jsDocParsingMode: JSDocParsingMode.ParseNone,
-        }, false);
+        }, true);
 
         this.sourceFiles[fileName] = moduleSourceFile;
 

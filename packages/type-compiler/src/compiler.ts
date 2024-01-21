@@ -70,7 +70,7 @@ import ts, {
     TypeParameterDeclaration,
     TypeQueryNode,
     TypeReferenceNode,
-    UnionTypeNode
+    UnionTypeNode,
 } from 'typescript';
 
 import {
@@ -461,6 +461,8 @@ export class Cache {
     resolver: ReflectionConfigCache = {};
     sourceFiles: { [fileName: string]: SourceFile } = {};
 
+    globalSourceFiles?: SourceFile[];
+
     /**
      * Signals the cache to check if it needs to be cleared.
      */
@@ -600,8 +602,13 @@ export class ReflectionTransformer implements CustomTransformer {
         this.embedAssignType = false;
         this.addImports = [];
 
+        const start = Date.now();
         const reflection = this.getReflectionConfig(sourceFile);
-        debug(`Transform file with reflection=${reflection.mode} (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`);
+
+        if (reflection.mode === 'never') {
+            debug(`Transform file with reflection=${reflection.mode} (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`);
+            return sourceFile;
+        }
 
         if (!(sourceFile as any).locals) {
             //@ts-ignore
@@ -1008,8 +1015,9 @@ export class ReflectionTransformer implements CustomTransformer {
             // this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...newTopStatements, ...this.sourceFile.statements]);
         }
 
-        // console.log('transform sourceFile', this.sourceFile.fileName);
         // console.log(createPrinter().printNode(EmitHint.SourceFile, this.sourceFile, this.sourceFile));
+        const took = Date.now() - start;
+        debug(`Transform file with reflection=${reflection.mode} took ${took}ms (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`);
         return this.sourceFile;
     }
 
@@ -1809,12 +1817,10 @@ export class ReflectionTransformer implements CustomTransformer {
         'Boolean': ReflectionOp.boolean,
     };
 
-    protected globalSourceFiles?: SourceFile[];
-
     protected getGlobalLibs(): SourceFile[] {
-        if (this.globalSourceFiles) return this.globalSourceFiles;
+        if (this.cache.globalSourceFiles) return this.cache.globalSourceFiles;
 
-        this.globalSourceFiles = [];
+        this.cache.globalSourceFiles = [];
 
         //todo also read compiler options "types" + typeRoot
 
@@ -1827,11 +1833,12 @@ export class ReflectionTransformer implements CustomTransformer {
         const libs = knownLibFilesForCompilerOptions(options, ts);
 
         for (const lib of libs) {
+            if (this.isExcluded(lib)) continue;
             const sourceFile = this.resolver.resolveSourceFile(this.sourceFile, this.f.createStringLiteral('typescript/lib/' + lib.replace('.d.ts', '')));
             if (!sourceFile) continue;
-            this.globalSourceFiles.push(sourceFile);
+            this.cache.globalSourceFiles.push(sourceFile);
         }
-        return this.globalSourceFiles;
+        return this.cache.globalSourceFiles;
     }
 
     /**
@@ -1986,6 +1993,7 @@ export class ReflectionTransformer implements CustomTransformer {
             }
 
             const resolved = this.resolveDeclaration(typeName);
+
             if (!resolved) {
                 //maybe reference to enum
                 if (isQualifiedName(typeName)) {
@@ -2520,13 +2528,16 @@ export class ReflectionTransformer implements CustomTransformer {
      * }
      */
     protected decorateClass(sourceFile: SourceFile, node: ClassDeclaration | ClassExpression): Node {
-        const name = getNameAsString(node.name);
         const reflection = this.isWithReflection(sourceFile, node);
         if (!reflection) {
             return node;
         }
         const type = this.getTypeOfType(node);
-        const __type = this.f.createPropertyDeclaration(this.f.createModifiersFromModifierFlags(ModifierFlags.Static), '__type', undefined, undefined, type);
+        const __type = this.f.createPropertyDeclaration(
+            this.f.createModifiersFromModifierFlags(ModifierFlags.Static), '__type',
+            undefined, undefined,
+            type);
+
         if (isClassDeclaration(node)) {
             // return node;
             return this.f.updateClassDeclaration(node, node.modifiers,
