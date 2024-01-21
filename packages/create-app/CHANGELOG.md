@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.115](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.114...v1.0.1-alpha.115) (2024-01-21)
+
+### Bug Fixes
+
+- **create-app:** update code to newest deepkit version ([7f85620](https://github.com/deepkit/deepkit-framework/commit/7f856206c77b724ff0d0c326d8b6ced3c22043c0))
+
 ## [1.0.1-alpha.114](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.113...v1.0.1-alpha.114) (2024-01-21)
 
 **Note:** Version bump only for package @deepkit/create-app

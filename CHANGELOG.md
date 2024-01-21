@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.115](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.114...v1.0.1-alpha.115) (2024-01-21)
+
+### Bug Fixes
+
+- **create-app:** update code to newest deepkit version ([7f85620](https://github.com/deepkit/deepkit-framework/commit/7f856206c77b724ff0d0c326d8b6ced3c22043c0))
+- **framework:** stopwatch store last sync report error ([bc15c06](https://github.com/deepkit/deepkit-framework/commit/bc15c06bdb8c620c0553a41e483c07b55c390852))
+- **rpc-tcp:** make sure unixsocket folder is created ([00fd4ed](https://github.com/deepkit/deepkit-framework/commit/00fd4ed43a098e15e8fc922c138bdc9df932908b))
+- **website:** add [@latest](https://github.com/latest) to npm init ([f182de5](https://github.com/deepkit/deepkit-framework/commit/f182de57040726c813bccaf7a2ee728ae0c2bd91))
+
 ## [1.0.1-alpha.114](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.113...v1.0.1-alpha.114) (2024-01-21)
 
 ### Bug Fixes

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.115](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.114...v1.0.1-alpha.115) (2024-01-21)
+
+### Bug Fixes
+
+- **framework:** stopwatch store last sync report error ([bc15c06](https://github.com/deepkit/deepkit-framework/commit/bc15c06bdb8c620c0553a41e483c07b55c390852))
+
 ## [1.0.1-alpha.114](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.113...v1.0.1-alpha.114) (2024-01-21)
 
 **Note:** Version bump only for package @deepkit/framework
