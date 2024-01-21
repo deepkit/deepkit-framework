@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync } from 'fs';
 import { appendFile } from 'fs/promises';
 import { join } from 'path';
 import { decodeFrames, encodeAnalytic, encodeFrameData, encodeFrames } from '@deepkit/framework-debug-api';
-import { Mutex } from '@deepkit/core';
+import { formatError, Mutex } from '@deepkit/core';
 import { FrameworkConfig } from '../../module.config.js';
 import { Zone } from '../../zone.js';
 import cluster from 'cluster';
@@ -53,7 +53,12 @@ export class FileStopwatchStore extends StopwatchStore {
 
     async close() {
         //last sync, then stop everything
-        await this.syncNow();
+        try {
+            // close() is called onAppExecuted so it must not throw
+            await this.syncNow();
+        } catch (error) {
+            this.logger.error('Could not sync debug store', formatError(error));
+        }
         this.ended = true;
     }
 
