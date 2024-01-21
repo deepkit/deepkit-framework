@@ -151,7 +151,6 @@ const {
     EmitHint,
     NodeFlags,
     SyntaxKind,
-    ModuleKind,
     ScriptTarget,
     ModifierFlags,
     ScriptKind,
@@ -1022,7 +1021,13 @@ export class ReflectionTransformer implements CustomTransformer {
     }
 
     protected getModuleType(): 'cjs' | 'esm' {
-        return this.compilerOptions.module === ModuleKind.CommonJS ? 'cjs' : 'esm';
+        if (this.compilerOptions.module === ts.ModuleKind.Node16 || this.compilerOptions.module === ts.ModuleKind.NodeNext) {
+            if (this.sourceFile.impliedNodeFormat === ts.ModuleKind.ESNext) {
+                return 'esm';
+            }
+            return 'cjs';
+        }
+        return this.compilerOptions.module === ts.ModuleKind.CommonJS ? 'cjs' : 'esm';
     }
 
     protected getArrowFunctionΩPropertyAccessIdentifier(node: ArrowFunction): Identifier | undefined {
