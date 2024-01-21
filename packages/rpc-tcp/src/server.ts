@@ -1,10 +1,11 @@
 import { asyncOperation, ParsedHost, parseHost } from '@deepkit/core';
 import { RpcKernel } from '@deepkit/rpc';
-import { existsSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import { createServer, Server, Socket } from 'net';
 import type { ServerOptions as WebSocketServerOptions } from 'ws';
 import { WebSocketServer } from 'ws';
 import { IncomingMessage } from 'http';
+import { dirname } from 'path';
 
 /**
  * Uses the node `net` module to create a server. Supports unix sockets.
@@ -15,11 +16,12 @@ export class RpcTcpServer {
 
     constructor(
         protected kernel: RpcKernel,
-        host: string
+        host: string,
     ) {
         this.host = parseHost(host);
-        if (this.host.isUnixSocket && existsSync(this.host.unixSocket)) {
-            unlinkSync(this.host.unixSocket);
+        if (this.host.isUnixSocket) {
+            if (existsSync(this.host.unixSocket)) unlinkSync(this.host.unixSocket);
+            mkdirSync(dirname(this.host.unixSocket), { recursive: true });
         }
     }
 
@@ -48,7 +50,7 @@ export class RpcTcpServer {
                     },
                     bufferedAmount(): number {
                         return socket.writableLength || 0;
-                    }
+                    },
                 });
 
                 socket.on('data', (data: Uint8Array) => {
@@ -83,11 +85,12 @@ export class RpcWebSocketServer {
 
     constructor(
         protected kernel: RpcKernel,
-        host: string
+        host: string,
     ) {
         this.host = parseHost(host);
         if (this.host.isUnixSocket && existsSync(this.host.unixSocket)) {
-            unlinkSync(this.host.unixSocket);
+            if (existsSync(this.host.unixSocket)) unlinkSync(this.host.unixSocket);
+            mkdirSync(dirname(this.host.unixSocket), { recursive: true });
         }
     }
 
@@ -112,7 +115,7 @@ export class RpcWebSocketServer {
                 },
                 clientAddress(): string {
                     return req.socket.remoteAddress || '';
-                }
+                },
             });
 
             ws.on('message', async (message: Uint8Array) => {
