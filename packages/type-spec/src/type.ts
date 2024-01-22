@@ -213,6 +213,14 @@ export enum ReflectionOp {
 
     callSignature, //Same as function but for call signatures (in object literals)
 
+    /**
+     * Assign for Enum, Interface, Class, and TypeAlias declaration at the very end
+     * of the program the typeName. This is so that we have type names available even
+     * if the JS code is minified.
+     *
+     * his operator also assigns originTypes to the type, as it acts as the finalization
+     * step of a type.
+     */
     typeName, //has one parameter, the index of the stack entry that contains the type name. Uses current head of the stack as type and assigns typeName to it.
 
     /**

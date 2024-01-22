@@ -99,8 +99,7 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
         }
         return resolveRuntimeType(type) as Type;
     }
-    const typeName = typeFn ? extractTypeNameFromFunction(typeFn) : undefined;
-    return resolvePacked(type, undefined, { reuseCached: true, typeName });
+    return resolvePacked(type, undefined, { reuseCached: true });
 }
 
 export function reflect(o: any, ...args: any[]): Type {
@@ -1450,16 +1449,6 @@ export class ReflectionClass<T> {
 
         return primaryKey;
     }
-}
-
-export function extractTypeNameFromFunction(fn: Function): string {
-    const str = fn.toString();
-    //either it starts with __Ω* or __\u{3a9}* (bun.js)
-    const match = str.match(/(?:__Ω|__\\u\{3a9\})([\w]+)/);
-    if (match) {
-        return match[1];
-    }
-    return 'UnknownTypeName:' + str;
 }
 
 

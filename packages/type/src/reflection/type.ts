@@ -116,7 +116,7 @@ export interface TypeAnnotations {
      * typeOf<UserCreate>().originTypes[0].typeName = 'Pick'
      * typeOf<UserCreate>().originTypes[0].typeArguments = [User, 'user']
      */
-    originTypes?: { typeName: string, typeArguments: Type[] }[];
+    originTypes?: { typeName: string, typeArguments?: Type[] }[];
 
     annotations?: Annotations; //parsed decorator types as annotations
     decorators?: Type[]; //original decorator type

@@ -1114,11 +1114,7 @@ export class ReflectionTransformer implements CustomTransformer {
             }
         }
 
-        if (isTypeAliasDeclaration(node)) {
-            this.extractPackStructOfType(node.type, typeProgram);
-        } else {
-            this.extractPackStructOfType(node, typeProgram);
-        }
+        this.extractPackStructOfType(node, typeProgram);
 
         if (isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isClassDeclaration(node) || isClassExpression(node)) {
             typeProgram.pushOp(ReflectionOp.nominal);
@@ -1362,6 +1358,12 @@ export class ReflectionTransformer implements CustomTransformer {
                 program.popFrameImplicit();
                 break;
             }
+            case SyntaxKind.TypeAliasDeclaration: {
+                const narrowed = node as TypeAliasDeclaration;
+                this.extractPackStructOfType(narrowed.type, program);
+                if (narrowed.name) this.resolveTypeName(getIdentifierName(narrowed.name), program);
+                break;
+            }
             case SyntaxKind.TypeLiteral:
             case SyntaxKind.InterfaceDeclaration: {
                 //TypeScript does not narrow types down
@@ -1389,6 +1391,10 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
                 const description = descriptionNode && extractJSDocAttribute(this.sourceFile, descriptionNode, 'description');
                 if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
+
+                if (isInterfaceDeclaration(narrowed)) {
+                    if (narrowed.name) this.resolveTypeName(getIdentifierName(narrowed.name), program);
+                }
                 program.popFrameImplicit();
                 break;
             }
@@ -1704,6 +1710,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 program.pushOp(ReflectionOp.enum);
                 const description = extractJSDocAttribute(this.sourceFile, narrowed, 'description');
                 if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
+                if (narrowed.name) this.resolveTypeName(getIdentifierName(narrowed.name), program);
                 program.popFrameImplicit();
                 break;
             }
@@ -2153,7 +2160,7 @@ export class ReflectionTransformer implements CustomTransformer {
                                 if (!resolverDecVariable) {
                                     debug(`Symbol ${runtimeTypeName.escapedText} not found in ${found.fileName}`);
                                     //no __Ω{name} exported, so we can not be sure if the module is built with runtime types
-                                    program.pushOp(ReflectionOp.any);
+                                    this.resolveTypeOnlyImport(typeName, program);
                                     return;
                                 }
 
@@ -2162,13 +2169,13 @@ export class ReflectionTransformer implements CustomTransformer {
                                 const reflection = this.getReflectionConfig(found);
                                 // if this is never, then its generally disabled for this file
                                 if (reflection.mode === 'never') {
-                                    program.pushOp(ReflectionOp.any);
+                                    this.resolveTypeOnlyImport(typeName, program);
                                     return;
                                 }
 
                                 const declarationReflection = this.isWithReflection(found, declaration);
                                 if (!declarationReflection) {
-                                    program.pushOp(ReflectionOp.any);
+                                    this.resolveTypeOnlyImport(typeName, program);
                                     return;
                                 }
 
@@ -2179,7 +2186,7 @@ export class ReflectionTransformer implements CustomTransformer {
                         //it's a reference type inside the same file. Make sure its type is reflected
                         const reflection = this.isWithReflection(program.sourceFile, declaration);
                         if (!reflection) {
-                            program.pushOp(ReflectionOp.any);
+                            this.resolveTypeOnlyImport(typeName, program);
                             return;
                         }
 
@@ -2218,6 +2225,8 @@ export class ReflectionTransformer implements CustomTransformer {
                 //     this.extractPackStructOfType(declaration, program);
                 //     return;
             } else if (isClassDeclaration(declaration) || isFunctionDeclaration(declaration) || isFunctionExpression(declaration) || isArrowFunction(declaration)) {
+                // classes, functions and arrow functions are handled differently, since they exist in runtime.
+
                 //if explicit `import {type T}`, we do not emit an import and instead push any
                 if (resolved.typeOnly) {
                     this.resolveTypeOnlyImport(typeName, program);
@@ -2227,7 +2236,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 //it's a reference type inside the same file. Make sure its type is reflected
                 const reflection = this.isWithReflection(program.sourceFile, declaration);
                 if (!reflection) {
-                    program.pushOp(ReflectionOp.any);
+                    this.resolveTypeOnlyImport(typeName, program);
                     return;
                 }
 
@@ -2338,6 +2347,7 @@ export class ReflectionTransformer implements CustomTransformer {
     }
 
     protected resolveTypeName(typeName: string, program: CompilerProgram) {
+        if (!typeName) return;
         program.pushOp(ReflectionOp.typeName, program.findOrAddStackEntry(typeName));
     }
 

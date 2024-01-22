@@ -51,13 +51,13 @@ import {
     TypeUnion,
     unboxUnion,
     validationAnnotation,
-    widenLiteral
+    widenLiteral,
 } from './type.js';
 import { MappedModifier, ReflectionOp } from '@deepkit/type-spec';
 import { isExtendable } from './extends.js';
 import { ClassType, isArray, isClass, isFunction, stringifyValueWithType } from '@deepkit/core';
 import { isWithDeferredDecorators } from '../decorator.js';
-import { extractTypeNameFromFunction, ReflectionClass, TData } from './reflection.js';
+import { ReflectionClass, TData } from './reflection.js';
 import { state } from './state.js';
 
 export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
@@ -184,19 +184,7 @@ interface Program {
 }
 
 function assignResult<T extends Type>(ref: Type, result: T, assignParents: boolean): T {
-    if (ref.typeName) {
-        if (result.typeName && ref.typeName !== result.typeName) {
-            Object.assign(ref, result, {
-                typeName: ref.typeName,
-                typeArguments: ref.typeArguments,
-                originTypes: [{ typeName: result.typeName, typeArguments: result.typeArguments }, ...(result.originTypes || [])],
-            });
-        } else {
-            Object.assign(ref, result, { typeName: ref.typeName, typeArguments: ref.typeArguments });
-        }
-    } else {
-        Object.assign(ref, result);
-    }
+    Object.assign(ref, result);
 
     if (assignParents) {
         // if (ref.kind === ReflectionKind.class && ref.arguments) {
@@ -977,7 +965,13 @@ export class Processor {
                             (program.stack[program.stackPointer] as TypeProperty).description = program.stack[this.eatParameter() as number] as string;
                             break;
                         case ReflectionOp.typeName: {
-                            (program.stack[program.stackPointer] as Type).typeName = program.stack[this.eatParameter() as number] as string;
+                            const type = (program.stack[program.stackPointer] as Type);
+                            const name = program.stack[this.eatParameter() as number] as string;
+                            if (type.typeName) {
+                                type.originTypes = [{ typeName: type.typeName, typeArguments: type.typeArguments }, ...(type.originTypes || [])];
+                                type.typeArguments = undefined;
+                            }
+                            type.typeName = name;
                             break;
                         }
                         case ReflectionOp.indexSignature: {
@@ -1191,13 +1185,8 @@ export class Processor {
                             } else {
                                 //when it's just a simple reference resolution like typeOf<Class>() then don't issue a new reference (no inline: true)
                                 const directReference = !!(this.isEnded() && program.previous && program.previous.end === 0);
-                                const typeName = (isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '');
-                                const result = this.reflect(p, [], { inline: !directReference, reuseCached: directReference, typeName });
+                                const result = this.reflect(p, [], { inline: !directReference, reuseCached: directReference });
                                 if (directReference) program.directReturn = true;
-
-                                if (isWithAnnotations(result)) {
-                                    result.typeName = (isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '') || result.typeName;
-                                }
                                 this.push(result, program);
 
                                 //this.reflect/run might create another program onto the stack. switch to it if so
@@ -1247,10 +1236,6 @@ export class Processor {
                                 }
                             } else {
                                 const result = this.reflect(p, inputs);
-
-                                if (isWithAnnotations(result)) {
-                                    result.typeName = (isFunction(pOrFn) ? extractTypeNameFromFunction(pOrFn) : '') || result.typeName;
-                                }
 
                                 if (isWithAnnotations(result) && inputs.length) {
                                     result.typeArguments = result.typeArguments || [];

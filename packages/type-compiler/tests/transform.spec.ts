@@ -2,7 +2,7 @@ import * as ts from 'typescript';
 import { createSourceFile, ScriptKind, ScriptTarget } from 'typescript';
 import { expect, test } from '@jest/globals';
 import { ReflectionTransformer } from '../src/compiler.js';
-import { transform } from './utils.js';
+import { transform, transpileAndRun } from './utils.js';
 
 test('transform simple TS', () => {
     const sourceFile = createSourceFile('app.ts', `
@@ -201,4 +201,36 @@ test('declaration file resolved export all', () => {
     });
 
     expect(res['app.ts']).toContain('import { __ΩT } from \'./module');
+});
+
+test('import typeOnly interface', () => {
+    const res = transform({
+        'app.ts': `
+            import type { Cache } from './module';
+            return typeOf<Cache>();
+        `,
+        'module.d.ts': `
+            export interface Cache {
+            }
+        `
+    });
+
+    //make sure OP.typeName with its type name is emitted
+    expect(res['app.ts']).toContain(`['Cache',`);
+});
+
+test('import typeOnly class', () => {
+    const res = transform({
+        'app.ts': `
+            import type { Cache } from './module';
+            typeOf<Cache>();
+        `,
+        'module.d.ts': `
+            export declare class Cache {
+            }
+        `
+    });
+
+    //make sure OP.typeName with its type name is emitted
+    expect(res['app.ts']).toContain(`['Cache',`);
 });

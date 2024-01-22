@@ -539,7 +539,7 @@ test('type emitted at the right place', () => {
 
     const js = transpile(code);
     console.log('js', js);
-    expect(js).toContain(`() => {\n    const __Ωo = ['a', '${packRaw([ReflectionOp.frame])}`);
+    expect(js).toContain(`() => {\n    const __Ωo = ['a', 'o', '${packRaw([ReflectionOp.frame])}`);
     const type = transpileAndReturn(code);
     console.log(type);
 });
@@ -569,8 +569,8 @@ test('no global clash', () => {
 
     const js = transpile(code);
     console.log('js', js);
-    expect(js).toContain(`const __Ωo = ['a', '${packRaw([ReflectionOp.frame])}`);
-    expect(js).toContain(`const __Ωo = ['a', 'b', '${packRaw([ReflectionOp.frame])}`);
+    expect(js).toContain(`const __Ωo = ['a', 'o', '${packRaw([ReflectionOp.frame])}`);
+    expect(js).toContain(`const __Ωo = ['a', 'b', 'o', '${packRaw([ReflectionOp.frame])}`);
     // const clazz = transpileAndReturn(code);
 });
 
