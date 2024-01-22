@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.116](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.115...v1.0.1-alpha.116) (2024-01-22)
+
+### Features
+
+- **injector:** throw error when both forRoot and exports are used in module ([#539](https://github.com/deepkit/deepkit-framework/issues/539)) ([7faa60d](https://github.com/deepkit/deepkit-framework/commit/7faa60da2a9351253ba65340add99451cbdb6594))
+- **type:** refactor typeName embedding ([48a2994](https://github.com/deepkit/deepkit-framework/commit/48a29944064d03d108988949a1ff5b6e42395b57))
+
 ## [1.0.1-alpha.115](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.114...v1.0.1-alpha.115) (2024-01-21)
 
 ### Bug Fixes

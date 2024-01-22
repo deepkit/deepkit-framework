@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/template",
-  "version": "1.0.1-alpha.115",
+  "version": "1.0.1-alpha.116",
   "description": "Deepkit template engine based on TSX",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -39,9 +39,9 @@
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.114",
-    "@deepkit/injector": "^1.0.1-alpha.114",
-    "@deepkit/stopwatch": "^1.0.1-alpha.115",
-    "@deepkit/type": "^1.0.1-alpha.114"
+    "@deepkit/injector": "^1.0.1-alpha.116",
+    "@deepkit/stopwatch": "^1.0.1-alpha.116",
+    "@deepkit/type": "^1.0.1-alpha.116"
   },
   "jest": {
     "transform": {
