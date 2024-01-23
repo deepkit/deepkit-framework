@@ -7,9 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import ts, {
-    __String,
     ArrayTypeNode,
     ArrowFunction,
     Block,
@@ -22,9 +21,9 @@ import ts, {
     CompilerOptions,
     ConciseBody,
     ConditionalTypeNode,
+    ConstructSignatureDeclaration,
     ConstructorDeclaration,
     ConstructorTypeNode,
-    ConstructSignatureDeclaration,
     CustomTransformer,
     CustomTransformerFactory,
     Declaration,
@@ -38,8 +37,8 @@ import ts, {
     FunctionTypeNode,
     Identifier,
     ImportDeclaration,
-    IndexedAccessTypeNode,
     IndexSignatureDeclaration,
+    IndexedAccessTypeNode,
     InferTypeNode,
     InterfaceDeclaration,
     IntersectionTypeNode,
@@ -71,29 +70,46 @@ import ts, {
     TypeQueryNode,
     TypeReferenceNode,
     UnionTypeNode,
+    __String,
 } from 'typescript';
 
 import {
+    MappedModifier,
+    ReflectionOp,
+    TypeNumberBrand,
+} from '@deepkit/type-spec';
+
+import {
+    Matcher,
+    ReflectionConfig,
+    ReflectionConfigCache,
+    getResolver,
+    loadReflectionConfig,
+    reflectionModeMatcher,
+} from './config.js';
+import { debug } from './debug.js';
+import { External, ExternalLibraryImport } from './external.js';
+import {
+    NodeConverter,
+    PackExpression,
     ensureImportIsEmitted,
     extractJSDocAttribute,
     findSourceFile,
+    getEntityName,
+    getExternalRuntimeTypeName,
     getGlobalsOfSourceFile,
     getIdentifierName,
     getNameAsString,
     getPropertyName,
+    getRuntimeTypeName,
     hasModifier,
+    hasSourceFile,
+    isBuiltType,
     isNodeWithLocals,
-    NodeConverter,
-    PackExpression,
     serializeEntityNameAsExpression,
 } from './reflection-ast.js';
-import { SourceFile } from './ts-types.js';
-import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spec';
 import { Resolver } from './resolver.js';
-import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
-import { debug } from './debug.js';
-import { getResolver, loadReflectionConfig, Matcher, ReflectionConfig, ReflectionConfigCache, reflectionModeMatcher } from './config.js';
-
+import { SourceFile } from './ts-types.js';
 
 const {
     visitEachChild,
@@ -160,8 +176,12 @@ export function encodeOps(ops: ReflectionOp[]): string {
     return ops.map(v => String.fromCharCode(v + 33)).join('');
 }
 
-function filterUndefined(object: { [name: string]: any }): { [name: string]: any } {
-    return Object.fromEntries(Object.entries(object).filter(([, v]) => v !== undefined));
+function filterUndefined(object: { [name: string]: any }): {
+    [name: string]: any;
+} {
+    return Object.fromEntries(
+        Object.entries(object).filter(([, v]) => v !== undefined),
+    );
 }
 
 export const packSizeByte: number = 6;
@@ -205,7 +225,11 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.implements]: { params: 1 },
 };
 
-export function debugPackStruct(sourceFile: SourceFile, forType: Node, pack: { ops: ReflectionOp[], stack: PackExpression[] }): void {
+export function debugPackStruct(
+    sourceFile: SourceFile,
+    forType: Node,
+    pack: { ops: ReflectionOp[]; stack: PackExpression[] },
+): void {
     const items: any[] = [];
 
     for (let i = 0; i < pack.ops.length; i++) {
@@ -233,19 +257,24 @@ export function debugPackStruct(sourceFile: SourceFile, forType: Node, pack: { o
 }
 
 interface Frame {
-    variables: { name: string, index: number }[],
+    variables: { name: string; index: number }[];
     opIndex: number;
     conditional?: true;
     previous?: Frame;
 }
 
-function findVariable(frame: Frame, name: string, frameOffset: number = 0): { frameOffset: number, stackIndex: number } | undefined {
+function findVariable(
+    frame: Frame,
+    name: string,
+    frameOffset: number = 0,
+): { frameOffset: number; stackIndex: number } | undefined {
     const variable = frame.variables.find(v => v.name === name);
     if (variable) {
         return { frameOffset, stackIndex: variable.index };
     }
 
-    if (frame.previous) return findVariable(frame.previous, name, frameOffset + 1);
+    if (frame.previous)
+        return findVariable(frame.previous, name, frameOffset + 1);
 
     return;
 }
@@ -271,8 +300,10 @@ class CompilerProgram {
     protected activeCoRoutines: { ops: ReflectionOp[] }[] = [];
     protected coRoutines: { ops: ReflectionOp[] }[] = [];
 
-    constructor(public forNode: Node, public sourceFile: SourceFile) {
-    }
+    constructor(
+        public forNode: Node,
+        public sourceFile: SourceFile,
+    ) {}
 
     buildPackStruct() {
         const ops: ReflectionOp[] = [...this.ops];
@@ -334,7 +365,9 @@ class CompilerProgram {
             // }
         }
         if (this.activeCoRoutines.length) {
-            this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.push(...ops);
+            this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.push(
+                ...ops,
+            );
             return;
         }
 
@@ -343,7 +376,11 @@ class CompilerProgram {
 
     pushOpAtFrame(frame: Frame, ...ops: ReflectionOp[]): void {
         if (this.activeCoRoutines.length) {
-            this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.splice(frame.opIndex, 0, ...ops);
+            this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.splice(
+                frame.opIndex,
+                0,
+                ...ops,
+            );
             return;
         }
 
@@ -369,11 +406,17 @@ class CompilerProgram {
     protected resolveFunctionParameters = new Map<Node, number>();
 
     resolveFunctionParametersIncrease(fn: Node) {
-        this.resolveFunctionParameters.set(fn, (this.resolveFunctionParameters.get(fn) || 0) + 1);
+        this.resolveFunctionParameters.set(
+            fn,
+            (this.resolveFunctionParameters.get(fn) || 0) + 1,
+        );
     }
 
     resolveFunctionParametersDecrease(fn: Node) {
-        this.resolveFunctionParameters.set(fn, (this.resolveFunctionParameters.get(fn) || 1) - 1);
+        this.resolveFunctionParameters.set(
+            fn,
+            (this.resolveFunctionParameters.get(fn) || 1) - 1,
+        );
     }
 
     isResolveFunctionParameters(fn: Node) {
@@ -386,7 +429,9 @@ class CompilerProgram {
      */
     pushFrame(implicit: boolean = false) {
         if (!implicit) this.pushOp(ReflectionOp.frame);
-        const opIndex = this.activeCoRoutines.length ? this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.length : this.ops.length;
+        const opIndex = this.activeCoRoutines.length
+            ? this.activeCoRoutines[this.activeCoRoutines.length - 1].ops.length
+            : this.ops.length;
         this.frame = { previous: this.frame, variables: [], opIndex };
         return this.frame;
     }
@@ -418,7 +463,12 @@ class CompilerProgram {
     }
 
     pushTemplateParameter(name: string, withDefault: boolean = false): number {
-        this.pushOp(withDefault ? ReflectionOp.typeParameterDefault : ReflectionOp.typeParameter, this.findOrAddStackEntry(name));
+        this.pushOp(
+            withDefault
+                ? ReflectionOp.typeParameterDefault
+                : ReflectionOp.typeParameter,
+            this.findOrAddStackEntry(name),
+        );
         this.frame.variables.push({
             index: this.frame.variables.length,
             name,
@@ -436,22 +486,34 @@ function getAssignTypeExpression(call: Expression): Expression | undefined {
         call = call.expression;
     }
 
-    if (isCallExpression(call) && isIdentifier(call.expression) && getIdentifierName(call.expression) === '__assignType' && call.arguments.length > 0) {
+    if (
+        isCallExpression(call) &&
+        isIdentifier(call.expression) &&
+        getIdentifierName(call.expression) === '__assignType' &&
+        call.arguments.length > 0
+    ) {
         return call.arguments[0];
     }
 
     return;
 }
 
-function getReceiveTypeParameter(type: TypeNode): TypeReferenceNode | undefined {
+function getReceiveTypeParameter(
+    type: TypeNode,
+): TypeReferenceNode | undefined {
     if (isUnionTypeNode(type)) {
         for (const t of type.types) {
             const rfn = getReceiveTypeParameter(t);
             if (rfn) return rfn;
         }
-    } else if (isTypeReferenceNode(type) && isIdentifier(type.typeName)
-        && getIdentifierName(type.typeName) === 'ReceiveType' && !!type.typeArguments
-        && type.typeArguments.length === 1) return type;
+    } else if (
+        isTypeReferenceNode(type) &&
+        isIdentifier(type.typeName) &&
+        getIdentifierName(type.typeName) === 'ReceiveType' &&
+        !!type.typeArguments &&
+        type.typeArguments.length === 1
+    )
+        return type;
 
     return;
 }
@@ -491,22 +553,26 @@ export class ReflectionTransformer implements CustomTransformer {
      */
     protected compileDeclarations = new Map<
         TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration,
-        { name: EntityName, sourceFile: SourceFile, compiled?: Statement[] }
+        { name: EntityName; sourceFile: SourceFile; compiled?: Statement[] }
     >();
 
     /**
      * Types added to this map will get a type program at the top root level of the program.
      * This is for imported types, which need to be inlined into the current file, as we do not emit type imports (TS will omit them).
      */
-    protected embedDeclarations = new Map<Node, { name: EntityName, sourceFile: SourceFile }>();
+    protected embedDeclarations = new Map<
+        Node,
+        { name: EntityName; sourceFile: SourceFile }
+    >();
 
     /**
      * When a node was embedded or compiled (from the maps above), we store it here to know to not add it again.
      */
     protected compiledDeclarations = new Set<Node>();
 
-    protected addImports: { from: Expression, identifier: Identifier }[] = [];
+    protected addImports: { from: Expression; identifier: Identifier }[] = [];
 
+    protected external: External;
     protected nodeConverter: NodeConverter;
     protected typeChecker?: TypeChecker;
     protected resolver: Resolver;
@@ -525,25 +591,42 @@ export class ReflectionTransformer implements CustomTransformer {
 
     constructor(
         protected context: TransformationContext,
-        protected cache: Cache = new Cache,
+        protected cache: Cache = new Cache(),
     ) {
         this.f = context.factory;
-        this.nodeConverter = new NodeConverter(this.f);
         //it is important to not have undefined values like {paths: undefined} because it would override the read tsconfig.json
         this.compilerOptions = filterUndefined(context.getCompilerOptions());
         // compilerHost has no internal cache and is cheap to build, so no cache needed.
         // Resolver loads SourceFile which has cache implemented.
         this.host = createCompilerHost(this.compilerOptions);
-        this.resolver = new Resolver(this.compilerOptions, this.host, this.cache.sourceFiles);
+        this.resolver = new Resolver(
+            this.compilerOptions,
+            this.host,
+            this.cache.sourceFiles,
+        );
         this.parseConfigHost = {
             useCaseSensitiveFileNames: true,
             fileExists: (path: string) => this.host.fileExists(path),
             readFile: (path: string) => this.host.readFile(path),
-            readDirectory: (path: string, extensions?: readonly string[], exclude?: readonly string[], include?: readonly string[], depth?: number) => {
+            readDirectory: (
+                path: string,
+                extensions?: readonly string[],
+                exclude?: readonly string[],
+                include?: readonly string[],
+                depth?: number,
+            ) => {
                 if (!this.host.readDirectory) return [];
-                return this.host.readDirectory(path, extensions || [], exclude, include || [], depth);
+                return this.host.readDirectory(
+                    path,
+                    extensions || [],
+                    exclude,
+                    include || [],
+                    depth,
+                );
             },
         };
+        this.external = new External(this.resolver);
+        this.nodeConverter = new NodeConverter(this.f, this.external);
     }
 
     forHost(host: CompilerHost): this {
@@ -556,7 +639,12 @@ export class ReflectionTransformer implements CustomTransformer {
     withReflection(config: ReflectionConfig): this {
         this.overriddenReflectionMatcher = (path: string) => {
             const mode = reflectionModeMatcher(config, path);
-            return { mode, tsConfigPath: '' };
+            return {
+                mode,
+                tsConfigPath: '',
+                inlineExternalLibraryImports:
+                    config.inlineExternalLibraryImports,
+            };
         };
         return this;
     }
@@ -568,7 +656,9 @@ export class ReflectionTransformer implements CustomTransformer {
     getTempResultIdentifier(): Identifier {
         if (this.tempResultIdentifier) return this.tempResultIdentifier;
 
-        const locals = isNodeWithLocals(this.sourceFile) ? this.sourceFile.locals : undefined;
+        const locals = isNodeWithLocals(this.sourceFile)
+            ? this.sourceFile.locals
+            : undefined;
 
         if (locals) {
             let found = 'Ωr';
@@ -587,14 +677,28 @@ export class ReflectionTransformer implements CustomTransformer {
         if (this.overriddenReflectionMatcher) {
             return this.overriddenReflectionMatcher(sourceFile.fileName);
         }
-        return loadReflectionConfig(this.cache.resolver, this.parseConfigHost, this.compilerOptions, sourceFile);
+        return loadReflectionConfig(
+            this.cache.resolver,
+            this.parseConfigHost,
+            this.compilerOptions,
+            sourceFile,
+        );
+    }
+
+    protected setSourceFile(sourceFile: SourceFile) {
+        this.sourceFile = sourceFile;
+        this.external.sourceFile = sourceFile;
     }
 
     transformSourceFile(sourceFile: SourceFile): SourceFile {
-        this.sourceFile = sourceFile;
+        this.setSourceFile(sourceFile);
 
         //if it's not a TS/TSX file, we do not transform it
-        if (sourceFile.scriptKind !== ScriptKind.TS && sourceFile.scriptKind !== ScriptKind.TSX) return sourceFile;
+        if (
+            sourceFile.scriptKind !== ScriptKind.TS &&
+            sourceFile.scriptKind !== ScriptKind.TSX
+        )
+            return sourceFile;
 
         if ((sourceFile as any).deepkitTransformed) return sourceFile;
         (sourceFile as any).deepkitTransformed = true;
@@ -605,7 +709,9 @@ export class ReflectionTransformer implements CustomTransformer {
         const reflection = this.getReflectionConfig(sourceFile);
 
         if (reflection.mode === 'never') {
-            debug(`Transform file with reflection=${reflection.mode} (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`);
+            debug(
+                `Transform file with reflection=${reflection.mode} (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`,
+            );
             return sourceFile;
         }
 
@@ -616,16 +722,24 @@ export class ReflectionTransformer implements CustomTransformer {
 
         if (sourceFile.kind !== SyntaxKind.SourceFile) {
             if ('undefined' === typeof require) {
-                throw new Error(`Invalid TypeScript library imported. SyntaxKind different ${sourceFile.kind} !== ${SyntaxKind.SourceFile}.`);
+                throw new Error(
+                    `Invalid TypeScript library imported. SyntaxKind different ${sourceFile.kind} !== ${SyntaxKind.SourceFile}.`,
+                );
             }
             const path = require.resolve('typescript');
-            throw new Error(`Invalid TypeScript library imported. SyntaxKind different ${sourceFile.kind} !== ${SyntaxKind.SourceFile}. typescript package path: ${path}`);
+            throw new Error(
+                `Invalid TypeScript library imported. SyntaxKind different ${sourceFile.kind} !== ${SyntaxKind.SourceFile}. typescript package path: ${path}`,
+            );
         }
 
         const visitor = (node: Node): any => {
             node = visitEachChild(node, visitor, this.context);
 
-            if ((isInterfaceDeclaration(node) || isTypeAliasDeclaration(node) || isEnumDeclaration(node))) {
+            if (
+                isInterfaceDeclaration(node) ||
+                isTypeAliasDeclaration(node) ||
+                isEnumDeclaration(node)
+            ) {
                 if (this.isWithReflection(sourceFile, node)) {
                     this.compileDeclarations.set(node, {
                         name: node.name,
@@ -634,18 +748,32 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
             }
 
-            if (isMethodDeclaration(node) && node.parent && node.body && isObjectLiteralExpression(node.parent)) {
+            if (
+                isMethodDeclaration(node) &&
+                node.parent &&
+                node.body &&
+                isObjectLiteralExpression(node.parent)
+            ) {
                 //replace MethodDeclaration with MethodExpression
                 // {add(v: number) {}} => {add: function (v: number) {}}
                 //so that __type can be added.
                 //{default(){}} can not be converted without losing the function name, so we skip that for the moment.
                 let valid = true;
-                if (node.name.kind === SyntaxKind.Identifier && getIdentifierName(node.name) === 'default') valid = false;
+                if (
+                    node.name.kind === SyntaxKind.Identifier &&
+                    getIdentifierName(node.name) === 'default'
+                )
+                    valid = false;
                 if (valid) {
                     const method = this.decorateFunctionExpression(
                         this.f.createFunctionExpression(
-                            node.modifiers as ReadonlyArray<Modifier>, node.asteriskToken, isIdentifier(node.name) ? node.name : undefined,
-                            node.typeParameters, node.parameters, node.type, node.body,
+                            node.modifiers as ReadonlyArray<Modifier>,
+                            node.asteriskToken,
+                            isIdentifier(node.name) ? node.name : undefined,
+                            node.typeParameters,
+                            node.parameters,
+                            node.type,
+                            node.body,
                         ),
                     );
                     node = this.f.createPropertyAssignment(node.name, method);
@@ -656,32 +784,63 @@ export class ReflectionTransformer implements CustomTransformer {
                 return this.decorateClass(sourceFile, node);
             } else if (isParameter(node) && node.parent && node.type) {
                 // ReceiveType
-                const typeParameters = isConstructorDeclaration(node.parent) ? node.parent.parent.typeParameters : node.parent.typeParameters;
+                const typeParameters = isConstructorDeclaration(node.parent)
+                    ? node.parent.parent.typeParameters
+                    : node.parent.typeParameters;
                 if (!typeParameters) return node;
 
                 const receiveType = getReceiveTypeParameter(node.type);
                 if (receiveType && receiveType.typeArguments) {
                     const first = receiveType.typeArguments[0];
-                    if (first && isTypeReferenceNode(first) && isIdentifier(first.typeName)) {
+                    if (
+                        first &&
+                        isTypeReferenceNode(first) &&
+                        isIdentifier(first.typeName)
+                    ) {
                         const name = getIdentifierName(first.typeName);
                         //find type parameter position
-                        const index = typeParameters.findIndex(v => getIdentifierName(v.name) === name);
+                        const index = typeParameters.findIndex(
+                            v => getIdentifierName(v.name) === name,
+                        );
 
-                        let container: Expression = this.f.createIdentifier('globalThis');
+                        let container: Expression =
+                            this.f.createIdentifier('globalThis');
                         if (isArrowFunction(node.parent)) {
-                            const next = this.getArrowFunctionΩPropertyAccessIdentifier(node.parent);
+                            const next =
+                                this.getArrowFunctionΩPropertyAccessIdentifier(
+                                    node.parent,
+                                );
                             if (!next) return node;
                             container = next;
-                        } else if ((isFunctionDeclaration(node.parent) || isFunctionExpression(node.parent)) && node.parent.name) {
+                        } else if (
+                            (isFunctionDeclaration(node.parent) ||
+                                isFunctionExpression(node.parent)) &&
+                            node.parent.name
+                        ) {
                             container = node.parent.name;
-                        } else if (isMethodDeclaration(node.parent) && isIdentifier(node.parent.name)) {
-                            container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), node.parent.name);
+                        } else if (
+                            isMethodDeclaration(node.parent) &&
+                            isIdentifier(node.parent.name)
+                        ) {
+                            container = this.f.createPropertyAccessExpression(
+                                this.f.createIdentifier('this'),
+                                node.parent.name,
+                            );
                         } else if (isConstructorDeclaration(node.parent)) {
-                            container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), 'constructor');
+                            container = this.f.createPropertyAccessExpression(
+                                this.f.createIdentifier('this'),
+                                'constructor',
+                            );
                         }
 
-                        return this.f.updateParameterDeclaration(node, node.modifiers as ReadonlyArray<Modifier>, node.dotDotDotToken, node.name,
-                            node.questionToken, receiveType, this.f.createElementAccessChain(
+                        return this.f.updateParameterDeclaration(
+                            node,
+                            node.modifiers as ReadonlyArray<Modifier>,
+                            node.dotDotDotToken,
+                            node.name,
+                            node.questionToken,
+                            receiveType,
+                            this.f.createElementAccessChain(
                                 this.f.createPropertyAccessExpression(
                                     container,
                                     this.f.createIdentifier('Ω'),
@@ -697,16 +856,33 @@ export class ReflectionTransformer implements CustomTransformer {
             } else if (isFunctionExpression(node)) {
                 return this.decorateFunctionExpression(this.injectResetΩ(node));
             } else if (isFunctionDeclaration(node)) {
-                return this.decorateFunctionDeclaration(this.injectResetΩ(node));
-            } else if (isMethodDeclaration(node) || isConstructorDeclaration(node)) {
+                return this.decorateFunctionDeclaration(
+                    this.injectResetΩ(node),
+                );
+            } else if (
+                isMethodDeclaration(node) ||
+                isConstructorDeclaration(node)
+            ) {
                 return this.injectResetΩ(node);
             } else if (isArrowFunction(node)) {
                 return this.decorateArrowFunction(this.injectResetΩ(node));
-            } else if ((isNewExpression(node) || isCallExpression(node)) && node.typeArguments && node.typeArguments.length > 0) {
-
+            } else if (
+                (isNewExpression(node) || isCallExpression(node)) &&
+                node.typeArguments &&
+                node.typeArguments.length > 0
+            ) {
                 if (isCallExpression(node)) {
-                    const autoTypeFunctions = ['valuesOf', 'propertiesOf', 'typeOf'];
-                    if (isIdentifier(node.expression) && autoTypeFunctions.includes(getIdentifierName(node.expression))) {
+                    const autoTypeFunctions = [
+                        'valuesOf',
+                        'propertiesOf',
+                        'typeOf',
+                    ];
+                    if (
+                        isIdentifier(node.expression) &&
+                        autoTypeFunctions.includes(
+                            getIdentifierName(node.expression),
+                        )
+                    ) {
                         const args: Expression[] = [...node.arguments];
 
                         if (!args.length) {
@@ -718,12 +894,18 @@ export class ReflectionTransformer implements CustomTransformer {
                         if (!type) return node;
                         args.push(type);
 
-                        return this.f.updateCallExpression(node, node.expression, node.typeArguments, this.f.createNodeArray(args));
+                        return this.f.updateCallExpression(
+                            node,
+                            node.expression,
+                            node.typeArguments,
+                            this.f.createNodeArray(args),
+                        );
                     }
                 }
 
                 //put the type argument in FN.Ω
-                const expressionToCheck = getAssignTypeExpression(node.expression) || node.expression;
+                const expressionToCheck =
+                    getAssignTypeExpression(node.expression) || node.expression;
                 if (isArrowFunction(expressionToCheck)) {
                     //inline arrow functions are excluded from type passing
                     return node;
@@ -732,10 +914,13 @@ export class ReflectionTransformer implements CustomTransformer {
                 const typeExpressions: Expression[] = [];
                 for (const a of node.typeArguments) {
                     const type = this.getTypeOfType(a);
-                    typeExpressions.push(type || this.f.createIdentifier('undefined'));
+                    typeExpressions.push(
+                        type || this.f.createIdentifier('undefined'),
+                    );
                 }
 
-                let container: Expression = this.f.createIdentifier('globalThis');
+                let container: Expression =
+                    this.f.createIdentifier('globalThis');
                 if (isIdentifier(node.expression)) {
                     container = node.expression;
                 } else if (isPropertyAccessExpression(node.expression)) {
@@ -748,7 +933,9 @@ export class ReflectionTransformer implements CustomTransformer {
                     this.f.createArrayLiteralExpression(typeExpressions),
                 );
 
-                const update: any = isNewExpression(node) ? this.f.updateNewExpression : this.f.updateCallExpression;
+                const update: any = isNewExpression(node)
+                    ? this.f.updateNewExpression
+                    : this.f.updateCallExpression;
 
                 if (isPropertyAccessExpression(node.expression)) {
                     //e.g. http.deep.response();
@@ -758,35 +945,50 @@ export class ReflectionTransformer implements CustomTransformer {
                         const r = this.getTempResultIdentifier();
                         const assignQ = this.f.createBinaryExpression(
                             this.f.createPropertyAccessExpression(
-                                this.f.createPropertyAccessExpression(r, node.expression.name),
+                                this.f.createPropertyAccessExpression(
+                                    r,
+                                    node.expression.name,
+                                ),
                                 'Ω',
                             ),
                             this.f.createToken(SyntaxKind.EqualsToken),
-                            this.f.createArrayLiteralExpression(typeExpressions),
+                            this.f.createArrayLiteralExpression(
+                                typeExpressions,
+                            ),
                         );
 
-                        return update(node,
+                        return update(
+                            node,
                             this.f.createPropertyAccessExpression(
-                                this.f.createParenthesizedExpression(this.f.createBinaryExpression(
+                                this.f.createParenthesizedExpression(
                                     this.f.createBinaryExpression(
                                         this.f.createBinaryExpression(
-                                            r,
-                                            this.f.createToken(ts.SyntaxKind.EqualsToken),
-                                            node.expression.expression,
+                                            this.f.createBinaryExpression(
+                                                r,
+                                                this.f.createToken(
+                                                    ts.SyntaxKind.EqualsToken,
+                                                ),
+                                                node.expression.expression,
+                                            ),
+                                            this.f.createToken(
+                                                ts.SyntaxKind.CommaToken,
+                                            ),
+                                            assignQ,
                                         ),
-                                        this.f.createToken(ts.SyntaxKind.CommaToken),
-                                        assignQ,
+                                        this.f.createToken(
+                                            ts.SyntaxKind.CommaToken,
+                                        ),
+                                        r,
                                     ),
-                                    this.f.createToken(ts.SyntaxKind.CommaToken),
-                                    r,
-                                )),
+                                ),
                                 node.expression.name,
                             ),
                             node.typeArguments,
                             node.arguments,
                         );
-
-                    } else if (isParenthesizedExpression(node.expression.expression)) {
+                    } else if (
+                        isParenthesizedExpression(node.expression.expression)
+                    ) {
                         //e.g. (http.deep()).response();
                         //only work necessary when `http.deep()` is using type args and was converted to:
                         //  (Ω = [], http.deep()).response()
@@ -798,11 +1000,16 @@ export class ReflectionTransformer implements CustomTransformer {
                         const r = this.getTempResultIdentifier();
                         const assignQ = this.f.createBinaryExpression(
                             this.f.createPropertyAccessExpression(
-                                this.f.createPropertyAccessExpression(r, node.expression.name),
+                                this.f.createPropertyAccessExpression(
+                                    r,
+                                    node.expression.name,
+                                ),
                                 'Ω',
                             ),
                             this.f.createToken(SyntaxKind.EqualsToken),
-                            this.f.createArrayLiteralExpression(typeExpressions),
+                            this.f.createArrayLiteralExpression(
+                                typeExpressions,
+                            ),
                         );
 
                         const updatedNode = update(
@@ -815,13 +1022,20 @@ export class ReflectionTransformer implements CustomTransformer {
                                         this.f.createBinaryExpression(
                                             this.f.createBinaryExpression(
                                                 r,
-                                                this.f.createToken(SyntaxKind.EqualsToken),
-                                                node.expression.expression.expression,
+                                                this.f.createToken(
+                                                    SyntaxKind.EqualsToken,
+                                                ),
+                                                node.expression.expression
+                                                    .expression,
                                             ),
-                                            this.f.createToken(SyntaxKind.CommaToken),
+                                            this.f.createToken(
+                                                SyntaxKind.CommaToken,
+                                            ),
                                             assignQ,
                                         ),
-                                        this.f.createToken(SyntaxKind.CommaToken),
+                                        this.f.createToken(
+                                            SyntaxKind.CommaToken,
+                                        ),
                                         r,
                                     ),
                                 ),
@@ -831,7 +1045,9 @@ export class ReflectionTransformer implements CustomTransformer {
                             node.arguments,
                         );
 
-                        return this.f.createParenthesizedExpression(updatedNode);
+                        return this.f.createParenthesizedExpression(
+                            updatedNode,
+                        );
                     } else {
                         //e.g. http.deep.response();
                         //nothing to do
@@ -839,16 +1055,18 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
 
                 //(fn.Ω = [], call())
-                return this.f.createParenthesizedExpression(this.f.createBinaryExpression(
-                    assignQ,
-                    this.f.createToken(SyntaxKind.CommaToken),
-                    node,
-                ));
+                return this.f.createParenthesizedExpression(
+                    this.f.createBinaryExpression(
+                        assignQ,
+                        this.f.createToken(SyntaxKind.CommaToken),
+                        node,
+                    ),
+                );
             }
 
             return node;
         };
-        this.sourceFile = visitNode(this.sourceFile, visitor);
+        this.setSourceFile(visitNode(this.sourceFile, visitor));
 
         const newTopStatements: Statement[] = [];
 
@@ -860,11 +1078,21 @@ export class ReflectionTransformer implements CustomTransformer {
                 break;
             }
 
-            if (this.embedDeclarations.size === 0 && allCompiled) break;
+            if (
+                this.embedDeclarations.size === 0 &&
+                this.external.compileExternalLibraryImports.size === 0 &&
+                allCompiled
+            ) {
+                break;
+            }
 
             for (const [node, d] of [...this.compileDeclarations.entries()]) {
                 if (d.compiled) continue;
-                d.compiled = this.createProgramVarFromNode(node, d.name, this.sourceFile);
+                d.compiled = this.createProgramVarFromNode(
+                    node,
+                    d.name,
+                    this.sourceFile,
+                );
             }
 
             if (this.embedDeclarations.size) {
@@ -874,7 +1102,65 @@ export class ReflectionTransformer implements CustomTransformer {
                 const entries = Array.from(this.embedDeclarations.entries());
                 this.embedDeclarations.clear();
                 for (const [node, d] of entries) {
-                    newTopStatements.push(...this.createProgramVarFromNode(node, d.name, d.sourceFile));
+                    newTopStatements.push(
+                        ...this.createProgramVarFromNode(
+                            node,
+                            d.name,
+                            d.sourceFile,
+                        ),
+                    );
+                }
+            }
+
+            if (this.external.compileExternalLibraryImports.size) {
+                for (const imports of this.external.compileExternalLibraryImports.values()) {
+                    for (const { declaration } of imports.values()) {
+                        this.compiledDeclarations.add(declaration);
+                    }
+                }
+                const entries = Array.from(
+                    this.external.compileExternalLibraryImports.entries(),
+                );
+                this.external.compileExternalLibraryImports.clear();
+                for (const [library, imports] of entries) {
+                    if (!this.external.embeddedLibraryVariables.has(library)) {
+                        const objectLiteral =
+                            this.f.createObjectLiteralExpression();
+                        const variableDeclaration =
+                            this.f.createVariableDeclaration(
+                                this.f.createIdentifier(
+                                    getExternalRuntimeTypeName(library),
+                                ),
+                                undefined,
+                                undefined,
+                                objectLiteral,
+                            );
+                        const variableStatement =
+                            this.f.createVariableStatement(
+                                [],
+                                this.f.createVariableDeclarationList(
+                                    [variableDeclaration],
+                                    NodeFlags.Const,
+                                ),
+                            );
+                        newTopStatements.unshift(variableStatement);
+                        this.external.embeddedLibraryVariables.add(library);
+                    }
+
+                    for (const value of imports.values()) {
+                        this.external.startEmbeddingExternalLibraryImport(
+                            value,
+                        );
+                        newTopStatements.push(
+                            this.createProgramVarForExternalLibraryImport(
+                                value.declaration,
+                                value.name,
+                                value.sourceFile,
+                                value.module.packageId.name,
+                            ),
+                        );
+                        this.external.finishEmbeddingExternalLibraryImport();
+                    }
                 }
             }
         }
@@ -883,7 +1169,11 @@ export class ReflectionTransformer implements CustomTransformer {
         const compileDeclarations = (node: Node): any => {
             node = visitEachChild(node, compileDeclarations, this.context);
 
-            if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isEnumDeclaration(node))) {
+            if (
+                isTypeAliasDeclaration(node) ||
+                isInterfaceDeclaration(node) ||
+                isEnumDeclaration(node)
+            ) {
                 const d = this.compileDeclarations.get(node);
                 if (!d) {
                     return node;
@@ -897,21 +1187,48 @@ export class ReflectionTransformer implements CustomTransformer {
 
             return node;
         };
-        this.sourceFile = visitNode(this.sourceFile, compileDeclarations);
+
+        this.setSourceFile(visitNode(this.sourceFile, compileDeclarations));
 
         if (this.addImports.length) {
             const handledIdentifier: string[] = [];
             for (const imp of this.addImports) {
-                if (handledIdentifier.includes(getIdentifierName(imp.identifier))) continue;
+                if (
+                    handledIdentifier.includes(
+                        getIdentifierName(imp.identifier),
+                    )
+                )
+                    continue;
                 handledIdentifier.push(getIdentifierName(imp.identifier));
                 if (this.getModuleType() === 'cjs') {
                     //var {identifier} = require('./bar')
-                    const test = this.f.createIdentifier(getIdentifierName(imp.identifier));
-                    const variable = this.f.createVariableStatement(undefined, this.f.createVariableDeclarationList([this.f.createVariableDeclaration(
-                        this.f.createObjectBindingPattern([this.f.createBindingElement(undefined, undefined, test)]),
-                        undefined, undefined,
-                        this.f.createCallExpression(this.f.createIdentifier('require'), undefined, [imp.from]),
-                    )], NodeFlags.Const));
+                    const test = this.f.createIdentifier(
+                        getIdentifierName(imp.identifier),
+                    );
+                    const variable = this.f.createVariableStatement(
+                        undefined,
+                        this.f.createVariableDeclarationList(
+                            [
+                                this.f.createVariableDeclaration(
+                                    this.f.createObjectBindingPattern([
+                                        this.f.createBindingElement(
+                                            undefined,
+                                            undefined,
+                                            test,
+                                        ),
+                                    ]),
+                                    undefined,
+                                    undefined,
+                                    this.f.createCallExpression(
+                                        this.f.createIdentifier('require'),
+                                        undefined,
+                                        [imp.from],
+                                    ),
+                                ),
+                            ],
+                            NodeFlags.Const,
+                        ),
+                    );
                     const typeDeclWithComment = addSyntheticLeadingComment(
                         variable,
                         SyntaxKind.MultiLineCommentTrivia,
@@ -923,10 +1240,20 @@ export class ReflectionTransformer implements CustomTransformer {
                     //import {identifier} from './bar.js'
                     // import { identifier as identifier } is used to avoid automatic elision of imports (in angular builds for example)
                     // that's probably a bit unstable.
-                    const specifier = this.f.createImportSpecifier(false, undefined, imp.identifier);
+                    const specifier = this.f.createImportSpecifier(
+                        false,
+                        undefined,
+                        imp.identifier,
+                    );
                     const namedImports = this.f.createNamedImports([specifier]);
-                    const importStatement = this.f.createImportDeclaration(undefined,
-                        this.f.createImportClause(false, undefined, namedImports), imp.from,
+                    const importStatement = this.f.createImportDeclaration(
+                        undefined,
+                        this.f.createImportClause(
+                            false,
+                            undefined,
+                            namedImports,
+                        ),
+                        imp.from,
                     );
                     const typeDeclWithComment = addSyntheticLeadingComment(
                         importStatement,
@@ -966,15 +1293,19 @@ export class ReflectionTransformer implements CustomTransformer {
                 undefined, //this.f.createKeywordTypeNode(SyntaxKind.AnyKeyword),
                 this.f.createBlock(
                     [
-                        this.f.createExpressionStatement(this.f.createBinaryExpression(
-                            this.f.createPropertyAccessExpression(
-                                this.f.createIdentifier('fn'),
-                                this.f.createIdentifier('__type'),
+                        this.f.createExpressionStatement(
+                            this.f.createBinaryExpression(
+                                this.f.createPropertyAccessExpression(
+                                    this.f.createIdentifier('fn'),
+                                    this.f.createIdentifier('__type'),
+                                ),
+                                this.f.createToken(SyntaxKind.EqualsToken),
+                                this.f.createIdentifier('args'),
                             ),
-                            this.f.createToken(SyntaxKind.EqualsToken),
-                            this.f.createIdentifier('args'),
-                        )),
-                        this.f.createReturnStatement(this.f.createIdentifier('fn')),
+                        ),
+                        this.f.createReturnStatement(
+                            this.f.createIdentifier('fn'),
+                        ),
                     ],
                     true,
                 ),
@@ -987,12 +1318,14 @@ export class ReflectionTransformer implements CustomTransformer {
                 this.f.createVariableStatement(
                     undefined,
                     this.f.createVariableDeclarationList(
-                        [this.f.createVariableDeclaration(
-                            this.tempResultIdentifier,
-                            undefined,
-                            undefined,
-                            undefined,
-                        )],
+                        [
+                            this.f.createVariableDeclaration(
+                                this.tempResultIdentifier,
+                                undefined,
+                                undefined,
+                                undefined,
+                            ),
+                        ],
                         ts.NodeFlags.None,
                     ),
                 ),
@@ -1001,36 +1334,58 @@ export class ReflectionTransformer implements CustomTransformer {
 
         if (newTopStatements.length) {
             // we want to keep "use strict", or "use client", etc at the very top
-            const indexOfFirstLiteralExpression = this.sourceFile.statements.findIndex(v => isExpressionStatement(v) && isStringLiteral(v.expression));
+            const indexOfFirstLiteralExpression =
+                this.sourceFile.statements.findIndex(
+                    v =>
+                        isExpressionStatement(v) &&
+                        isStringLiteral(v.expression),
+                );
 
-            const newStatements = indexOfFirstLiteralExpression === -1
-                ? [...newTopStatements, ...this.sourceFile.statements]
-                : [
-                    ...this.sourceFile.statements.slice(0, indexOfFirstLiteralExpression + 1),
-                    ...newTopStatements,
-                    ...this.sourceFile.statements.slice(indexOfFirstLiteralExpression + 1),
-                ];
-            this.sourceFile = this.f.updateSourceFile(this.sourceFile, newStatements);
+            const newStatements =
+                indexOfFirstLiteralExpression === -1
+                    ? [...newTopStatements, ...this.sourceFile.statements]
+                    : [
+                          ...this.sourceFile.statements.slice(
+                              0,
+                              indexOfFirstLiteralExpression + 1,
+                          ),
+                          ...newTopStatements,
+                          ...this.sourceFile.statements.slice(
+                              indexOfFirstLiteralExpression + 1,
+                          ),
+                      ];
+            this.setSourceFile(
+                this.f.updateSourceFile(this.sourceFile, newStatements),
+            );
             // this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...newTopStatements, ...this.sourceFile.statements]);
         }
 
         // console.log(createPrinter().printNode(EmitHint.SourceFile, this.sourceFile, this.sourceFile));
         const took = Date.now() - start;
-        debug(`Transform file with reflection=${reflection.mode} took ${took}ms (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`);
+        debug(
+            `Transform file with reflection=${reflection.mode} took ${took}ms (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`,
+        );
         return this.sourceFile;
     }
 
     protected getModuleType(): 'cjs' | 'esm' {
-        if (this.compilerOptions.module === ts.ModuleKind.Node16 || this.compilerOptions.module === ts.ModuleKind.NodeNext) {
+        if (
+            this.compilerOptions.module === ts.ModuleKind.Node16 ||
+            this.compilerOptions.module === ts.ModuleKind.NodeNext
+        ) {
             if (this.sourceFile.impliedNodeFormat === ts.ModuleKind.ESNext) {
                 return 'esm';
             }
             return 'cjs';
         }
-        return this.compilerOptions.module === ts.ModuleKind.CommonJS ? 'cjs' : 'esm';
+        return this.compilerOptions.module === ts.ModuleKind.CommonJS
+            ? 'cjs'
+            : 'esm';
     }
 
-    protected getArrowFunctionΩPropertyAccessIdentifier(node: ArrowFunction): Identifier | undefined {
+    protected getArrowFunctionΩPropertyAccessIdentifier(
+        node: ArrowFunction,
+    ): Identifier | undefined {
         let { parent } = (node as any).original || node;
         if (isVariableDeclaration(parent) && isIdentifier(parent.name)) {
             return parent.name;
@@ -1054,10 +1409,18 @@ export class ReflectionTransformer implements CustomTransformer {
         return;
     }
 
-    protected injectResetΩ<T extends FunctionDeclaration | FunctionExpression | MethodDeclaration | ConstructorDeclaration | ArrowFunction>(node: T): T {
+    protected injectResetΩ<
+        T extends
+            | FunctionDeclaration
+            | FunctionExpression
+            | MethodDeclaration
+            | ConstructorDeclaration
+            | ArrowFunction,
+    >(node: T): T {
         let hasReceiveType = false;
         for (const param of node.parameters) {
-            if (param.type && getReceiveTypeParameter(param.type)) hasReceiveType = true;
+            if (param.type && getReceiveTypeParameter(param.type))
+                hasReceiveType = true;
         }
         if (!hasReceiveType) return node;
 
@@ -1066,72 +1429,179 @@ export class ReflectionTransformer implements CustomTransformer {
             const next = this.getArrowFunctionΩPropertyAccessIdentifier(node);
             if (!next) return node;
             container = next;
-        } else if ((isFunctionDeclaration(node) || isFunctionExpression(node)) && node.name) {
+        } else if (
+            (isFunctionDeclaration(node) || isFunctionExpression(node)) &&
+            node.name
+        ) {
             container = node.name;
         } else if (isMethodDeclaration(node) && isIdentifier(node.name)) {
-            container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), node.name);
+            container = this.f.createPropertyAccessExpression(
+                this.f.createIdentifier('this'),
+                node.name,
+            );
         } else if (isConstructorDeclaration(node)) {
-            container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), 'constructor');
+            container = this.f.createPropertyAccessExpression(
+                this.f.createIdentifier('this'),
+                'constructor',
+            );
         }
 
-        const reset: Statement = this.f.createExpressionStatement(this.f.createBinaryExpression(
-            this.f.createPropertyAccessExpression(
-                container,
-                this.f.createIdentifier('Ω'),
+        const reset: Statement = this.f.createExpressionStatement(
+            this.f.createBinaryExpression(
+                this.f.createPropertyAccessExpression(
+                    container,
+                    this.f.createIdentifier('Ω'),
+                ),
+                this.f.createToken(ts.SyntaxKind.EqualsToken),
+                this.f.createIdentifier('undefined'),
             ),
-            this.f.createToken(ts.SyntaxKind.EqualsToken),
-            this.f.createIdentifier('undefined'),
-        ));
-        const body = node.body ? this.f.updateBlock(node.body as Block, [reset, ...(node.body as Block).statements]) : undefined;
+        );
+        const body = node.body
+            ? this.f.updateBlock(node.body as Block, [
+                  reset,
+                  ...(node.body as Block).statements,
+              ])
+            : undefined;
 
         if (isArrowFunction(node)) {
-            return this.f.updateArrowFunction(node, node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, body as ConciseBody) as T;
+            return this.f.updateArrowFunction(
+                node,
+                node.modifiers,
+                node.typeParameters,
+                node.parameters,
+                node.type,
+                node.equalsGreaterThanToken,
+                body as ConciseBody,
+            ) as T;
         } else if (isFunctionDeclaration(node)) {
-            return this.f.updateFunctionDeclaration(node, node.modifiers, node.asteriskToken, node.name,
-                node.typeParameters, node.parameters, node.type, body) as T;
+            return this.f.updateFunctionDeclaration(
+                node,
+                node.modifiers,
+                node.asteriskToken,
+                node.name,
+                node.typeParameters,
+                node.parameters,
+                node.type,
+                body,
+            ) as T;
         } else if (isFunctionExpression(node)) {
-            return this.f.updateFunctionExpression(node, node.modifiers, node.asteriskToken, node.name,
-                node.typeParameters, node.parameters, node.type, body || node.body) as T;
+            return this.f.updateFunctionExpression(
+                node,
+                node.modifiers,
+                node.asteriskToken,
+                node.name,
+                node.typeParameters,
+                node.parameters,
+                node.type,
+                body || node.body,
+            ) as T;
         } else if (isMethodDeclaration(node)) {
-            return this.f.updateMethodDeclaration(node, node.modifiers as ReadonlyArray<Modifier>, node.asteriskToken, node.name,
-                node.questionToken, node.typeParameters, node.parameters, node.type, body) as T;
+            return this.f.updateMethodDeclaration(
+                node,
+                node.modifiers as ReadonlyArray<Modifier>,
+                node.asteriskToken,
+                node.name,
+                node.questionToken,
+                node.typeParameters,
+                node.parameters,
+                node.type,
+                body,
+            ) as T;
         } else if (isConstructorDeclaration(node)) {
-            return this.f.updateConstructorDeclaration(node, node.modifiers, node.parameters, body) as T;
+            return this.f.updateConstructorDeclaration(
+                node,
+                node.modifiers,
+                node.parameters,
+                body,
+            ) as T;
         }
         return node;
     }
 
-    protected createProgramVarFromNode(node: Node, name: EntityName, sourceFile: SourceFile): Statement[] {
+    protected createProgramVarForExternalLibraryImport(
+        node: Node,
+        name: EntityName,
+        sourceFile: SourceFile,
+        libraryName: string,
+    ): Statement {
+        const typeProgramExpression = this.createTypeProgramExpression(
+            node,
+            sourceFile,
+        );
+        const left = this.f.createPropertyAccessExpression(
+            this.f.createIdentifier(getExternalRuntimeTypeName(libraryName)),
+            getNameAsString(name),
+        );
+        const assignment = this.f.createAssignment(
+            left,
+            typeProgramExpression!,
+        );
+        return this.f.createExpressionStatement(assignment);
+    }
+
+    protected createTypeProgramExpression(
+        node: Node,
+        sourceFile: SourceFile,
+    ): Expression | undefined {
         const typeProgram = new CompilerProgram(node, sourceFile);
 
-        if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && node.typeParameters) {
+        if (
+            (isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) &&
+            node.typeParameters
+        ) {
             for (const param of node.typeParameters) {
                 if (param.default) {
                     //push default on the stack
                     this.extractPackStructOfType(param.default, typeProgram);
                 }
-                typeProgram.pushTemplateParameter(getIdentifierName(param.name), !!param.default);
+                typeProgram.pushTemplateParameter(
+                    getIdentifierName(param.name),
+                    !!param.default,
+                );
             }
         }
 
-        this.extractPackStructOfType(node, typeProgram);
+        if (isTypeAliasDeclaration(node)) {
+            this.extractPackStructOfType(node.type, typeProgram);
+        } else {
+            this.extractPackStructOfType(node, typeProgram);
+        }
 
-        if (isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isClassDeclaration(node) || isClassExpression(node)) {
+        if (
+            isTypeAliasDeclaration(node) ||
+            isInterfaceDeclaration(node) ||
+            isClassDeclaration(node) ||
+            isClassExpression(node)
+        ) {
             typeProgram.pushOp(ReflectionOp.nominal);
         }
 
-        const typeProgramExpression = this.packOpsAndStack(typeProgram);
+        return this.packOpsAndStack(typeProgram);
+    }
+
+    protected createProgramVarFromNode(
+        node: Node,
+        name: EntityName,
+        sourceFile: SourceFile,
+    ): Statement[] {
+        const typeProgramExpression = this.createTypeProgramExpression(
+            node,
+            sourceFile,
+        );
 
         const variable = this.f.createVariableStatement(
             [],
-            this.f.createVariableDeclarationList([
-                this.f.createVariableDeclaration(
-                    this.getDeclarationVariableName(name),
-                    undefined,
-                    undefined,
-                    typeProgramExpression,
-                ),
-            ], NodeFlags.Const),
+            this.f.createVariableDeclarationList(
+                [
+                    this.f.createVariableDeclaration(
+                        this.getDeclarationVariableName(name),
+                        undefined,
+                        undefined,
+                        typeProgramExpression,
+                    ),
+                ],
+                NodeFlags.Const,
+            ),
         );
 
         //when its commonJS, the `variable` would be exported as `exports.$name = $value`, but all references point just to $name.
@@ -1140,17 +1610,29 @@ export class ReflectionTransformer implements CustomTransformer {
             //propertyName in ExportSpecifier is set to avoid a TS compile error:
             // TypeError: Cannot read properties of undefined (reading 'escapedText')
             //   at Object.idText (/Users/marc/bude/deepkit-framework/packages/benchmark/node_modules/typescript/lib/typescript.js:11875:67)
-            const exportNode = this.f.createExportDeclaration(undefined, false, this.f.createNamedExports([
-                this.f.createExportSpecifier(false, this.getDeclarationVariableName(name), this.getDeclarationVariableName(name)),
-            ]));
+            const exportNode = this.f.createExportDeclaration(
+                undefined,
+                false,
+                this.f.createNamedExports([
+                    this.f.createExportSpecifier(
+                        false,
+                        this.getDeclarationVariableName(name),
+                        this.getDeclarationVariableName(name),
+                    ),
+                ]),
+            );
             return [variable, exportNode];
         }
 
         return [variable];
     }
 
-    protected extractPackStructOfType(node: Node | Declaration | ClassDeclaration | ClassExpression, program: CompilerProgram): void {
-        if (isParenthesizedTypeNode(node)) return this.extractPackStructOfType(node.type, program);
+    protected extractPackStructOfType(
+        node: Node | Declaration | ClassDeclaration | ClassExpression,
+        program: CompilerProgram,
+    ): void {
+        if (isParenthesizedTypeNode(node))
+            return this.extractPackStructOfType(node.type, program);
 
         switch (node.kind) {
             case SyntaxKind.StringKeyword: {
@@ -1202,11 +1684,17 @@ export class ReflectionTransformer implements CustomTransformer {
                 break;
             }
             case SyntaxKind.TrueKeyword: {
-                program.pushOp(ReflectionOp.literal, program.pushStack(this.f.createTrue()));
+                program.pushOp(
+                    ReflectionOp.literal,
+                    program.pushStack(this.f.createTrue()),
+                );
                 break;
             }
             case SyntaxKind.FalseKeyword: {
-                program.pushOp(ReflectionOp.literal, program.pushStack(this.f.createFalse()));
+                program.pushOp(
+                    ReflectionOp.literal,
+                    program.pushStack(this.f.createFalse()),
+                );
                 break;
             }
             case SyntaxKind.ClassDeclaration:
@@ -1223,9 +1711,15 @@ export class ReflectionTransformer implements CustomTransformer {
                             const name = getNameAsString(typeParameter.name);
                             if (typeParameter.default) {
                                 //push default on the stack
-                                this.extractPackStructOfType(typeParameter.default, program);
+                                this.extractPackStructOfType(
+                                    typeParameter.default,
+                                    program,
+                                );
                             }
-                            program.pushTemplateParameter(name, !!typeParameter.default);
+                            program.pushTemplateParameter(
+                                name,
+                                !!typeParameter.default,
+                            );
                         }
                     }
 
@@ -1236,13 +1730,28 @@ export class ReflectionTransformer implements CustomTransformer {
                                     program.pushFrame();
                                     if (extendType.typeArguments) {
                                         for (const typeArgument of extendType.typeArguments) {
-                                            this.extractPackStructOfType(typeArgument, program);
+                                            this.extractPackStructOfType(
+                                                typeArgument,
+                                                program,
+                                            );
                                         }
                                     }
                                     const index = program.pushStack(
-                                        this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.nodeConverter.toExpression(extendType.expression)),
+                                        this.f.createArrowFunction(
+                                            undefined,
+                                            undefined,
+                                            [],
+                                            undefined,
+                                            undefined,
+                                            this.nodeConverter.toExpression(
+                                                extendType.expression,
+                                            ),
+                                        ),
                                     );
-                                    program.pushOp(ReflectionOp.classReference, index);
+                                    program.pushOp(
+                                        ReflectionOp.classReference,
+                                        index,
+                                    );
                                     program.popFrameImplicit();
                                 }
                             }
@@ -1252,7 +1761,9 @@ export class ReflectionTransformer implements CustomTransformer {
                     for (const member of narrowed.members) {
                         const name = getNameAsString(member.name);
                         if (name) {
-                            const has = members.some(v => getNameAsString(v.name) === name);
+                            const has = members.some(
+                                v => getNameAsString(v.name) === name,
+                            );
                             if (has) continue;
                         }
                         members.push(member);
@@ -1264,29 +1775,62 @@ export class ReflectionTransformer implements CustomTransformer {
 
                     if (narrowed.heritageClauses) {
                         for (const heritageClause of narrowed.heritageClauses) {
-                            if (heritageClause.token === SyntaxKind.ExtendsKeyword) {
+                            if (
+                                heritageClause.token ===
+                                SyntaxKind.ExtendsKeyword
+                            ) {
                                 //extends only supports extending one class
                                 const first = heritageClause.types[0];
-                                if (isExpressionWithTypeArguments(first) && first.typeArguments) {
+                                if (
+                                    isExpressionWithTypeArguments(first) &&
+                                    first.typeArguments
+                                ) {
                                     for (const typeArgument of first.typeArguments) {
-                                        this.extractPackStructOfType(typeArgument, program);
+                                        this.extractPackStructOfType(
+                                            typeArgument,
+                                            program,
+                                        );
                                     }
-                                    program.pushOp(ReflectionOp.classExtends, first.typeArguments.length);
+                                    program.pushOp(
+                                        ReflectionOp.classExtends,
+                                        first.typeArguments.length,
+                                    );
                                 }
-                            } else if (heritageClause.token === SyntaxKind.ImplementsKeyword) {
+                            } else if (
+                                heritageClause.token ===
+                                SyntaxKind.ImplementsKeyword
+                            ) {
                                 for (const type of heritageClause.types) {
-                                    this.extractPackStructOfTypeReference(type, program);
+                                    this.extractPackStructOfTypeReference(
+                                        type,
+                                        program,
+                                    );
                                 }
-                                program.pushOp(ReflectionOp.implements, heritageClause.types.length);
+                                program.pushOp(
+                                    ReflectionOp.implements,
+                                    heritageClause.types.length,
+                                );
                             }
                         }
                     }
 
-                    if (narrowed.name) this.resolveTypeName(getIdentifierName(narrowed.name), program);
+                    if (narrowed.name)
+                        this.resolveTypeName(
+                            getIdentifierName(narrowed.name),
+                            program,
+                        );
 
                     // for whatever reason: narrowed.name.parent !== narrowed. narrowed.name.parent has jsDoc, narrowed.name not.
-                    const description = extractJSDocAttribute(this.sourceFile, narrowed.name?.parent, 'description');
-                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
+                    const description = extractJSDocAttribute(
+                        this.sourceFile,
+                        narrowed.name?.parent,
+                        'description',
+                    );
+                    if (description)
+                        program.pushOp(
+                            ReflectionOp.description,
+                            program.findOrAddStackEntry(description),
+                        );
                 }
                 break;
             }
@@ -1309,9 +1853,13 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 //<Type>{[Property in keyof Type]: boolean;};
                 program.pushFrame();
-                program.pushVariable(getIdentifierName(narrowed.typeParameter.name));
+                program.pushVariable(
+                    getIdentifierName(narrowed.typeParameter.name),
+                );
 
-                const constraint = getEffectiveConstraintOfTypeParameter(narrowed.typeParameter);
+                const constraint = getEffectiveConstraintOfTypeParameter(
+                    narrowed.typeParameter,
+                );
                 if (constraint) {
                     this.extractPackStructOfType(constraint, program);
                 } else {
@@ -1320,7 +1868,9 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 let modifier = 0;
                 if (narrowed.questionToken) {
-                    if (narrowed.questionToken.kind === SyntaxKind.QuestionToken) {
+                    if (
+                        narrowed.questionToken.kind === SyntaxKind.QuestionToken
+                    ) {
                         modifier |= MappedModifier.optional;
                     }
                     if (narrowed.questionToken.kind === SyntaxKind.MinusToken) {
@@ -1328,7 +1878,10 @@ export class ReflectionTransformer implements CustomTransformer {
                     }
                 }
                 if (narrowed.readonlyToken) {
-                    if (narrowed.readonlyToken.kind === SyntaxKind.ReadonlyKeyword) {
+                    if (
+                        narrowed.readonlyToken.kind ===
+                        SyntaxKind.ReadonlyKeyword
+                    ) {
                         modifier |= MappedModifier.readonly;
                     }
                     if (narrowed.readonlyToken.kind === SyntaxKind.MinusToken) {
@@ -1350,9 +1903,17 @@ export class ReflectionTransformer implements CustomTransformer {
                 const coRoutineIndex = program.popCoRoutine();
 
                 if (narrowed.nameType) {
-                    program.pushOp(ReflectionOp.mappedType2, coRoutineIndex, modifier);
+                    program.pushOp(
+                        ReflectionOp.mappedType2,
+                        coRoutineIndex,
+                        modifier,
+                    );
                 } else {
-                    program.pushOp(ReflectionOp.mappedType, coRoutineIndex, modifier);
+                    program.pushOp(
+                        ReflectionOp.mappedType,
+                        coRoutineIndex,
+                        modifier,
+                    );
                 }
 
                 program.popFrameImplicit();
@@ -1361,7 +1922,12 @@ export class ReflectionTransformer implements CustomTransformer {
             case SyntaxKind.TypeAliasDeclaration: {
                 const narrowed = node as TypeAliasDeclaration;
                 this.extractPackStructOfType(narrowed.type, program);
-                if (narrowed.name) this.resolveTypeName(getIdentifierName(narrowed.name), program);
+                if (narrowed.name) {
+                    this.resolveTypeName(
+                        getIdentifierName(narrowed.name),
+                        program,
+                    );
+                }
                 break;
             }
             case SyntaxKind.TypeLiteral:
@@ -1372,11 +1938,17 @@ export class ReflectionTransformer implements CustomTransformer {
                 program.pushFrame();
 
                 //first all extend expressions
-                if (isInterfaceDeclaration(narrowed) && narrowed.heritageClauses) {
+                if (
+                    isInterfaceDeclaration(narrowed) &&
+                    narrowed.heritageClauses
+                ) {
                     for (const heritage of narrowed.heritageClauses) {
                         if (heritage.token === SyntaxKind.ExtendsKeyword) {
                             for (const extendType of heritage.types) {
-                                this.extractPackStructOfTypeReference(extendType, program);
+                                this.extractPackStructOfTypeReference(
+                                    extendType,
+                                    program,
+                                );
                             }
                         }
                     }
@@ -1389,21 +1961,41 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (isTypeLiteralNode(narrowed)) {
                     descriptionNode = narrowed.parent;
                 }
-                const description = descriptionNode && extractJSDocAttribute(this.sourceFile, descriptionNode, 'description');
-                if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
+                const description =
+                    descriptionNode &&
+                    extractJSDocAttribute(
+                        this.sourceFile,
+                        descriptionNode,
+                        'description',
+                    );
+                if (description)
+                    program.pushOp(
+                        ReflectionOp.description,
+                        program.findOrAddStackEntry(description),
+                    );
 
                 if (isInterfaceDeclaration(narrowed)) {
-                    if (narrowed.name) this.resolveTypeName(getIdentifierName(narrowed.name), program);
+                    if (narrowed.name)
+                        this.resolveTypeName(
+                            getIdentifierName(narrowed.name),
+                            program,
+                        );
                 }
                 program.popFrameImplicit();
                 break;
             }
             case SyntaxKind.TypeReference: {
-                this.extractPackStructOfTypeReference(node as TypeReferenceNode, program);
+                this.extractPackStructOfTypeReference(
+                    node as TypeReferenceNode,
+                    program,
+                );
                 break;
             }
             case SyntaxKind.ArrayType: {
-                this.extractPackStructOfType((node as ArrayTypeNode).elementType, program);
+                this.extractPackStructOfType(
+                    (node as ArrayTypeNode).elementType,
+                    program,
+                );
                 program.pushOp(ReflectionOp.array);
                 break;
             }
@@ -1434,7 +2026,9 @@ export class ReflectionTransformer implements CustomTransformer {
                         } else {
                             this.extractPackStructOfType(element.type, program);
                         }
-                        const index = program.findOrAddStackEntry(getIdentifierName(element.name));
+                        const index = program.findOrAddStackEntry(
+                            getIdentifierName(element.name),
+                        );
                         program.pushOp(ReflectionOp.namedTupleMember, index);
                         if (element.questionToken) {
                             program.pushOp(ReflectionOp.optional);
@@ -1453,12 +2047,25 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (narrowed.type) {
                     this.extractPackStructOfType(narrowed.type, program);
                     const name = getPropertyName(this.f, narrowed.name);
-                    program.pushOp(ReflectionOp.propertySignature, program.findOrAddStackEntry(name));
-                    if (narrowed.questionToken) program.pushOp(ReflectionOp.optional);
-                    if (hasModifier(narrowed, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
+                    program.pushOp(
+                        ReflectionOp.propertySignature,
+                        program.findOrAddStackEntry(name),
+                    );
+                    if (narrowed.questionToken)
+                        program.pushOp(ReflectionOp.optional);
+                    if (hasModifier(narrowed, SyntaxKind.ReadonlyKeyword))
+                        program.pushOp(ReflectionOp.readonly);
 
-                    const description = extractJSDocAttribute(this.sourceFile, narrowed, 'description');
-                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
+                    const description = extractJSDocAttribute(
+                        this.sourceFile,
+                        narrowed,
+                        'description',
+                    );
+                    if (description)
+                        program.pushOp(
+                            ReflectionOp.description,
+                            program.findOrAddStackEntry(description),
+                        );
                 }
                 break;
             }
@@ -1467,29 +2074,61 @@ export class ReflectionTransformer implements CustomTransformer {
                 const narrowed = node as PropertyDeclaration;
 
                 if (narrowed.type) {
-                    if (!this.isWithReflection(program.sourceFile, narrowed)) return;
+                    if (!this.isWithReflection(program.sourceFile, narrowed))
+                        return;
 
                     this.extractPackStructOfType(narrowed.type, program);
                     const name = getPropertyName(this.f, narrowed.name);
-                    program.pushOp(ReflectionOp.property, program.findOrAddStackEntry(name));
+                    program.pushOp(
+                        ReflectionOp.property,
+                        program.findOrAddStackEntry(name),
+                    );
 
-                    if (narrowed.questionToken) program.pushOp(ReflectionOp.optional);
-                    if (hasModifier(narrowed, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
-                    if (hasModifier(narrowed, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
-                    if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
-                    if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
-                    if (hasModifier(narrowed, SyntaxKind.StaticKeyword)) program.pushOp(ReflectionOp.static);
+                    if (narrowed.questionToken)
+                        program.pushOp(ReflectionOp.optional);
+                    if (hasModifier(narrowed, SyntaxKind.ReadonlyKeyword))
+                        program.pushOp(ReflectionOp.readonly);
+                    if (hasModifier(narrowed, SyntaxKind.PrivateKeyword))
+                        program.pushOp(ReflectionOp.private);
+                    if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword))
+                        program.pushOp(ReflectionOp.protected);
+                    if (hasModifier(narrowed, SyntaxKind.AbstractKeyword))
+                        program.pushOp(ReflectionOp.abstract);
+                    if (hasModifier(narrowed, SyntaxKind.StaticKeyword))
+                        program.pushOp(ReflectionOp.static);
 
                     if (narrowed.initializer) {
                         //important to use Function, since it will be called using a different `this`
-                        program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(
-                            this.f.createFunctionExpression(undefined, undefined, undefined, undefined, undefined, undefined,
-                                this.f.createBlock([this.f.createReturnStatement(narrowed.initializer)])),
-                        ));
+                        program.pushOp(
+                            ReflectionOp.defaultValue,
+                            program.findOrAddStackEntry(
+                                this.f.createFunctionExpression(
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    this.f.createBlock([
+                                        this.f.createReturnStatement(
+                                            narrowed.initializer,
+                                        ),
+                                    ]),
+                                ),
+                            ),
+                        );
                     }
 
-                    const description = extractJSDocAttribute(this.sourceFile, narrowed, 'description');
-                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
+                    const description = extractJSDocAttribute(
+                        this.sourceFile,
+                        narrowed,
+                        'description',
+                    );
+                    if (description)
+                        program.pushOp(
+                            ReflectionOp.description,
+                            program.findOrAddStackEntry(description),
+                        );
                 }
                 break;
             }
@@ -1497,12 +2136,14 @@ export class ReflectionTransformer implements CustomTransformer {
                 //TypeScript does not narrow types down
                 const narrowed = node as ConditionalTypeNode;
 
-
                 // Depending on whether this a distributive conditional type or not, it has to be moved to its own function
                 // my understanding of when a distributive conditional type is used is:
                 // 1. the `checkType` is a simple identifier (just `T`, no `[T]`, no `T | x`, no `{a: T}`, etc)
-                const distributiveOverIdentifier: Identifier | undefined = isTypeReferenceNode(narrowed.checkType) && isIdentifier(narrowed.checkType.typeName)
-                    ? narrowed.checkType.typeName : undefined;
+                const distributiveOverIdentifier: Identifier | undefined =
+                    isTypeReferenceNode(narrowed.checkType) &&
+                    isIdentifier(narrowed.checkType.typeName)
+                        ? narrowed.checkType.typeName
+                        : undefined;
 
                 if (distributiveOverIdentifier) {
                     program.pushFrame();
@@ -1511,7 +2152,9 @@ export class ReflectionTransformer implements CustomTransformer {
 
                     //since the distributive conditional type is a loop that changes only the found `T`, it is necessary to add that as variable,
                     //so call convention can take over.
-                    program.pushVariable(getIdentifierName(distributiveOverIdentifier));
+                    program.pushVariable(
+                        getIdentifierName(distributiveOverIdentifier),
+                    );
                     program.pushCoRoutine();
                 }
 
@@ -1529,7 +2172,11 @@ export class ReflectionTransformer implements CustomTransformer {
                 this.extractPackStructOfType(narrowed.falseType, program);
                 const falseProgram = program.popCoRoutine();
 
-                program.pushOp(ReflectionOp.jumpCondition, trueProgram, falseProgram);
+                program.pushOp(
+                    ReflectionOp.jumpCondition,
+                    trueProgram,
+                    falseProgram,
+                );
                 program.moveFrame(); //pops frame
 
                 if (distributiveOverIdentifier) {
@@ -1545,14 +2192,23 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 const frame = program.findConditionalFrame();
                 if (frame) {
-                    const typeParameterName = getIdentifierName(narrowed.typeParameter.name);
+                    const typeParameterName = getIdentifierName(
+                        narrowed.typeParameter.name,
+                    );
                     let variable = program.findVariable(typeParameterName);
                     if (!variable) {
                         program.pushVariable(typeParameterName, frame);
                         variable = program.findVariable(typeParameterName);
-                        if (!variable) throw new Error('Could not find inserted infer variable');
+                        if (!variable)
+                            throw new Error(
+                                'Could not find inserted infer variable',
+                            );
                     }
-                    program.pushOp(ReflectionOp.infer, variable.frameOffset, variable.stackIndex);
+                    program.pushOp(
+                        ReflectionOp.infer,
+                        variable.frameOffset,
+                        variable.stackIndex,
+                    );
                 } else {
                     program.pushOp(ReflectionOp.never);
                 }
@@ -1569,23 +2225,45 @@ export class ReflectionTransformer implements CustomTransformer {
             case SyntaxKind.CallSignature:
             case SyntaxKind.FunctionDeclaration: {
                 //TypeScript does not narrow types down
-                const narrowed = node as MethodSignature | MethodDeclaration | CallSignatureDeclaration | ConstructorTypeNode
-                    | ConstructSignatureDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
+                const narrowed = node as
+                    | MethodSignature
+                    | MethodDeclaration
+                    | CallSignatureDeclaration
+                    | ConstructorTypeNode
+                    | ConstructSignatureDeclaration
+                    | ConstructorDeclaration
+                    | ArrowFunction
+                    | FunctionExpression
+                    | FunctionTypeNode
+                    | FunctionDeclaration;
 
-                if (!this.isWithReflection(program.sourceFile, narrowed)) return;
+                if (!this.isWithReflection(program.sourceFile, narrowed))
+                    return;
 
                 const name = isCallSignatureDeclaration(node)
-                    ? '' : isConstructorTypeNode(narrowed) || isConstructSignatureDeclaration(node)
-                        ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
-                if (!narrowed.type && narrowed.parameters.length === 0 && !name) return;
+                    ? ''
+                    : isConstructorTypeNode(narrowed) ||
+                        isConstructSignatureDeclaration(node)
+                      ? 'new'
+                      : isConstructorDeclaration(narrowed)
+                        ? 'constructor'
+                        : getPropertyName(this.f, narrowed.name);
+                if (!narrowed.type && narrowed.parameters.length === 0 && !name)
+                    return;
 
                 program.pushFrame();
                 for (let i = 0; i < narrowed.parameters.length; i++) {
                     const parameter = narrowed.parameters[i];
-                    const parameterName = isIdentifier(parameter.name) ? getNameAsString(parameter.name) : 'param' + i;
+                    const parameterName = isIdentifier(parameter.name)
+                        ? getNameAsString(parameter.name)
+                        : 'param' + i;
 
                     const type = parameter.type
-                        ? (parameter.dotDotDotToken && isArrayTypeNode(parameter.type) ? parameter.type.elementType : parameter.type) : undefined;
+                        ? parameter.dotDotDotToken &&
+                          isArrayTypeNode(parameter.type)
+                            ? parameter.type.elementType
+                            : parameter.type
+                        : undefined;
 
                     if (type) {
                         this.extractPackStructOfType(type, program);
@@ -1597,19 +2275,48 @@ export class ReflectionTransformer implements CustomTransformer {
                         program.pushOp(ReflectionOp.rest);
                     }
 
-                    program.pushOp(ReflectionOp.parameter, program.findOrAddStackEntry(parameterName));
+                    program.pushOp(
+                        ReflectionOp.parameter,
+                        program.findOrAddStackEntry(parameterName),
+                    );
 
-                    if (parameter.questionToken) program.pushOp(ReflectionOp.optional);
-                    if (hasModifier(parameter, SyntaxKind.PublicKeyword)) program.pushOp(ReflectionOp.public);
-                    if (hasModifier(parameter, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
-                    if (hasModifier(parameter, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
-                    if (hasModifier(parameter, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
-                    const description = extractJSDocAttribute(this.sourceFile, parameter, 'description');
-                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
-                    if (parameter.initializer && parameter.type && !getReceiveTypeParameter(parameter.type)) {
+                    if (parameter.questionToken)
+                        program.pushOp(ReflectionOp.optional);
+                    if (hasModifier(parameter, SyntaxKind.PublicKeyword))
+                        program.pushOp(ReflectionOp.public);
+                    if (hasModifier(parameter, SyntaxKind.PrivateKeyword))
+                        program.pushOp(ReflectionOp.private);
+                    if (hasModifier(parameter, SyntaxKind.ProtectedKeyword))
+                        program.pushOp(ReflectionOp.protected);
+                    if (hasModifier(parameter, SyntaxKind.ReadonlyKeyword))
+                        program.pushOp(ReflectionOp.readonly);
+                    const description = extractJSDocAttribute(
+                        this.sourceFile,
+                        parameter,
+                        'description',
+                    );
+                    if (description)
+                        program.pushOp(
+                            ReflectionOp.description,
+                            program.findOrAddStackEntry(description),
+                        );
+                    if (
+                        parameter.initializer &&
+                        parameter.type &&
+                        !getReceiveTypeParameter(parameter.type)
+                    ) {
                         program.pushOp(
                             ReflectionOp.defaultValue,
-                            program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, parameter.initializer)),
+                            program.findOrAddStackEntry(
+                                this.f.createArrowFunction(
+                                    undefined,
+                                    undefined,
+                                    [],
+                                    undefined,
+                                    undefined,
+                                    parameter.initializer,
+                                ),
+                            ),
                         );
                     }
                 }
@@ -1621,21 +2328,38 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
 
                 program.pushOp(
-                    isCallSignatureDeclaration(node) ? ReflectionOp.callSignature :
-                        isMethodSignature(narrowed) || isConstructSignatureDeclaration(narrowed)
-                            ? ReflectionOp.methodSignature
-                            : isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed)
-                                ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name),
+                    isCallSignatureDeclaration(node)
+                        ? ReflectionOp.callSignature
+                        : isMethodSignature(narrowed) ||
+                            isConstructSignatureDeclaration(narrowed)
+                          ? ReflectionOp.methodSignature
+                          : isMethodDeclaration(narrowed) ||
+                              isConstructorDeclaration(narrowed)
+                            ? ReflectionOp.method
+                            : ReflectionOp.function,
+                    program.findOrAddStackEntry(name),
                 );
 
                 if (isMethodDeclaration(narrowed)) {
-                    if (hasModifier(narrowed, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
-                    if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
-                    if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
-                    if (hasModifier(narrowed, SyntaxKind.StaticKeyword)) program.pushOp(ReflectionOp.static);
+                    if (hasModifier(narrowed, SyntaxKind.PrivateKeyword))
+                        program.pushOp(ReflectionOp.private);
+                    if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword))
+                        program.pushOp(ReflectionOp.protected);
+                    if (hasModifier(narrowed, SyntaxKind.AbstractKeyword))
+                        program.pushOp(ReflectionOp.abstract);
+                    if (hasModifier(narrowed, SyntaxKind.StaticKeyword))
+                        program.pushOp(ReflectionOp.static);
                 }
-                const description = extractJSDocAttribute(this.sourceFile, narrowed, 'description');
-                if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
+                const description = extractJSDocAttribute(
+                    this.sourceFile,
+                    narrowed,
+                    'description',
+                );
+                if (description)
+                    program.pushOp(
+                        ReflectionOp.description,
+                        program.findOrAddStackEntry(description),
+                    );
                 program.popFrameImplicit();
                 break;
             }
@@ -1646,7 +2370,10 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (narrowed.literal.kind === SyntaxKind.NullKeyword) {
                     program.pushOp(ReflectionOp.null);
                 } else {
-                    program.pushOp(ReflectionOp.literal, program.findOrAddStackEntry(narrowed.literal));
+                    program.pushOp(
+                        ReflectionOp.literal,
+                        program.findOrAddStackEntry(narrowed.literal),
+                    );
                 }
                 break;
             }
@@ -1656,13 +2383,19 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 program.pushFrame();
                 if (narrowed.head.rawText) {
-                    program.pushOp(ReflectionOp.literal, program.findOrAddStackEntry(narrowed.head.rawText));
+                    program.pushOp(
+                        ReflectionOp.literal,
+                        program.findOrAddStackEntry(narrowed.head.rawText),
+                    );
                 }
 
                 for (const span of narrowed.templateSpans) {
                     this.extractPackStructOfType(span.type, program);
                     if (span.literal.rawText) {
-                        program.pushOp(ReflectionOp.literal, program.findOrAddStackEntry(span.literal.rawText));
+                        program.pushOp(
+                            ReflectionOp.literal,
+                            program.findOrAddStackEntry(span.literal.rawText),
+                        );
                     }
                 }
 
@@ -1699,18 +2432,42 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 for (const type of narrowed.members) {
                     const name = getPropertyName(this.f, type.name);
-                    program.pushOp(ReflectionOp.enumMember, program.findOrAddStackEntry(name));
+                    program.pushOp(
+                        ReflectionOp.enumMember,
+                        program.findOrAddStackEntry(name),
+                    );
                     if (type.initializer) {
                         program.pushOp(
                             ReflectionOp.defaultValue,
-                            program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, type.initializer)),
+                            program.findOrAddStackEntry(
+                                this.f.createArrowFunction(
+                                    undefined,
+                                    undefined,
+                                    [],
+                                    undefined,
+                                    undefined,
+                                    type.initializer,
+                                ),
+                            ),
                         );
                     }
                 }
                 program.pushOp(ReflectionOp.enum);
-                const description = extractJSDocAttribute(this.sourceFile, narrowed, 'description');
-                if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
-                if (narrowed.name) this.resolveTypeName(getIdentifierName(narrowed.name), program);
+                const description = extractJSDocAttribute(
+                    this.sourceFile,
+                    narrowed,
+                    'description',
+                );
+                if (description)
+                    program.pushOp(
+                        ReflectionOp.description,
+                        program.findOrAddStackEntry(description),
+                    );
+                if (narrowed.name)
+                    this.resolveTypeName(
+                        getIdentifierName(narrowed.name),
+                        program,
+                    );
                 program.popFrameImplicit();
                 break;
             }
@@ -1720,7 +2477,10 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 //node.parameters = first item is {[name: string]: number} => 'name: string'
                 if (narrowed.parameters.length && narrowed.parameters[0].type) {
-                    this.extractPackStructOfType(narrowed.parameters[0].type, program);
+                    this.extractPackStructOfType(
+                        narrowed.parameters[0].type,
+                        program,
+                    );
                 } else {
                     program.pushOp(ReflectionOp.any);
                 }
@@ -1742,15 +2502,40 @@ export class ReflectionTransformer implements CustomTransformer {
                 //         this.addImports.push({ identifier: narrowed.exprName, from: originImportStatement.moduleSpecifier });
                 //     }
                 // }
+                let expression: Expression = serializeEntityNameAsExpression(
+                    this.f,
+                    narrowed.exprName,
+                );
                 if (isIdentifier(narrowed.exprName)) {
                     const resolved = this.resolveDeclaration(narrowed.exprName);
-                    if (resolved && findSourceFile(resolved.declaration) !== this.sourceFile && resolved.importDeclaration) {
-                        ensureImportIsEmitted(resolved.importDeclaration, narrowed.exprName);
+                    if (
+                        resolved &&
+                        findSourceFile(resolved.declaration) !==
+                            this.sourceFile &&
+                        resolved.importDeclaration
+                    ) {
+                        expression = this.resolveImportExpression(
+                            resolved.declaration,
+                            resolved.importDeclaration,
+                            narrowed.exprName,
+                            expression,
+                        );
                     }
                 }
 
-                const expression = serializeEntityNameAsExpression(this.f, narrowed.exprName);
-                program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, expression)));
+                program.pushOp(
+                    ReflectionOp.typeof,
+                    program.pushStack(
+                        this.f.createArrowFunction(
+                            undefined,
+                            undefined,
+                            [],
+                            undefined,
+                            undefined,
+                            expression,
+                        ),
+                    ),
+                );
                 break;
             }
             case SyntaxKind.TypeOperator: {
@@ -1795,9 +2580,15 @@ export class ReflectionTransformer implements CustomTransformer {
                 const narrowed = node as Identifier;
 
                 //check if it references a variable
-                const variable = program.findVariable(getIdentifierName(narrowed));
+                const variable = program.findVariable(
+                    getIdentifierName(narrowed),
+                );
                 if (variable) {
-                    program.pushOp(ReflectionOp.loads, variable.frameOffset, variable.stackIndex);
+                    program.pushOp(
+                        ReflectionOp.loads,
+                        variable.frameOffset,
+                        variable.stackIndex,
+                    );
                 } else {
                     program.pushOp(ReflectionOp.never);
                 }
@@ -1810,23 +2601,23 @@ export class ReflectionTransformer implements CustomTransformer {
     }
 
     protected knownClasses: { [name: string]: ReflectionOp } = {
-        'Int8Array': ReflectionOp.int8Array,
-        'Uint8Array': ReflectionOp.uint8Array,
-        'Uint8ClampedArray': ReflectionOp.uint8ClampedArray,
-        'Int16Array': ReflectionOp.int16Array,
-        'Uint16Array': ReflectionOp.uint16Array,
-        'Int32Array': ReflectionOp.int32Array,
-        'Uint32Array': ReflectionOp.uint32Array,
-        'Float32Array': ReflectionOp.float32Array,
-        'Float64Array': ReflectionOp.float64Array,
-        'ArrayBuffer': ReflectionOp.arrayBuffer,
-        'BigInt64Array': ReflectionOp.bigInt64Array,
-        'Date': ReflectionOp.date,
-        'RegExp': ReflectionOp.regexp,
-        'String': ReflectionOp.string,
-        'Number': ReflectionOp.number,
-        'BigInt': ReflectionOp.bigint,
-        'Boolean': ReflectionOp.boolean,
+        Int8Array: ReflectionOp.int8Array,
+        Uint8Array: ReflectionOp.uint8Array,
+        Uint8ClampedArray: ReflectionOp.uint8ClampedArray,
+        Int16Array: ReflectionOp.int16Array,
+        Uint16Array: ReflectionOp.uint16Array,
+        Int32Array: ReflectionOp.int32Array,
+        Uint32Array: ReflectionOp.uint32Array,
+        Float32Array: ReflectionOp.float32Array,
+        Float64Array: ReflectionOp.float64Array,
+        ArrayBuffer: ReflectionOp.arrayBuffer,
+        BigInt64Array: ReflectionOp.bigInt64Array,
+        Date: ReflectionOp.date,
+        RegExp: ReflectionOp.regexp,
+        String: ReflectionOp.string,
+        Number: ReflectionOp.number,
+        BigInt: ReflectionOp.bigint,
+        Boolean: ReflectionOp.boolean,
     };
 
     protected getGlobalLibs(): SourceFile[] {
@@ -1839,14 +2630,19 @@ export class ReflectionTransformer implements CustomTransformer {
         //currently knownLibFilesForCompilerOptions from @typescript/vfs doesn't return correct lib files for esnext,
         //so we switch here to es2022 if bigger than es2022.
         const options = { ...this.compilerOptions };
-        if (options.target && (options.target === ScriptTarget.ESNext)) {
+        if (options.target && options.target === ScriptTarget.ESNext) {
             options.target = ScriptTarget.ES2022;
         }
         const libs = knownLibFilesForCompilerOptions(options, ts);
 
         for (const lib of libs) {
             if (this.isExcluded(lib)) continue;
-            const sourceFile = this.resolver.resolveSourceFile(this.sourceFile, this.f.createStringLiteral('typescript/lib/' + lib.replace('.d.ts', '')));
+            const sourceFile = this.resolver.resolveSourceFile(
+                this.sourceFile,
+                this.f.createStringLiteral(
+                    'typescript/lib/' + lib.replace('.d.ts', ''),
+                ),
+            );
             if (!sourceFile) continue;
             this.cache.globalSourceFiles.push(sourceFile);
         }
@@ -1857,11 +2653,17 @@ export class ReflectionTransformer implements CustomTransformer {
      * This is a custom resolver based on populated `locals` from the binder. It uses a custom resolution algorithm since
      * we have no access to the binder/TypeChecker directly and instantiating a TypeChecker per file/transformer is incredible slow.
      */
-    protected resolveDeclaration(typeName: EntityName): { declaration: Node, importDeclaration?: ImportDeclaration, typeOnly?: boolean } | void {
+    protected resolveDeclaration(typeName: EntityName): {
+        declaration: Node;
+        importDeclaration?: ImportDeclaration;
+        sourceFile: SourceFile;
+        typeOnly: boolean;
+    } | void {
         let current: Node = typeName.parent;
         if (typeName.kind === SyntaxKind.QualifiedName) return; //namespace access not supported yet, e.g. type a = Namespace.X;
 
         let declaration: Node | undefined = undefined;
+        let sourceFile: SourceFile = this.sourceFile;
 
         while (current) {
             if (isNodeWithLocals(current) && current.locals) {
@@ -1904,18 +2706,40 @@ export class ReflectionTransformer implements CustomTransformer {
         }
 
         if (importDeclaration) {
-            if (importDeclaration.importClause && importDeclaration.importClause.isTypeOnly) typeOnly = true;
-            declaration = this.resolveImportSpecifier(typeName.escapedText, importDeclaration, this.sourceFile);
+            if (
+                importDeclaration.importClause &&
+                importDeclaration.importClause.isTypeOnly
+            ) {
+                typeOnly = true;
+            }
+            declaration = this.resolveImportSpecifier(
+                typeName.escapedText,
+                importDeclaration,
+                this.sourceFile,
+            );
+            //might be an external library
+            if (!declaration && hasSourceFile(importDeclaration)) {
+                sourceFile = importDeclaration.getSourceFile();
+                declaration = this.resolveImportSpecifier(
+                    typeName.escapedText,
+                    importDeclaration,
+                    sourceFile,
+                );
+            }
         }
 
-        if (declaration && declaration.kind === SyntaxKind.TypeParameter && declaration.parent.kind === SyntaxKind.TypeAliasDeclaration) {
+        if (
+            declaration &&
+            declaration.kind === SyntaxKind.TypeParameter &&
+            declaration.parent.kind === SyntaxKind.TypeAliasDeclaration
+        ) {
             //for alias like `type MyAlias<T> = T`, `T` is returned from `typeChecker.getDeclaredTypeOfSymbol(symbol)`.
             declaration = declaration.parent as TypeAliasDeclaration;
         }
 
         if (!declaration) return;
 
-        return { declaration, importDeclaration, typeOnly };
+        return { declaration, importDeclaration, typeOnly, sourceFile };
     }
 
     // protected resolveType(node: TypeNode): Declaration | Node {
@@ -1938,17 +2762,89 @@ export class ReflectionTransformer implements CustomTransformer {
     //     return node;
     // }
 
+    protected getRuntimeTypeName(typeName: EntityName): Identifier {
+        return this.f.createIdentifier(
+            getRuntimeTypeName(getNameAsString(typeName)),
+        );
+    }
+
+    protected getExternalRuntimeTypeName(
+        typeName: EntityName,
+        externalLibraryImport?: ExternalLibraryImport,
+    ): Identifier {
+        const { expression, name } =
+            this.nodeConverter.createExternalRuntimeTypePropertyAccessExpression(
+                getNameAsString(typeName),
+                externalLibraryImport,
+            );
+        return this.f.createIdentifier(
+            `${getNameAsString(expression as any)}.${getNameAsString(name)}`,
+        );
+    }
+
     protected getDeclarationVariableName(typeName: EntityName): Identifier {
-        if (isIdentifier(typeName)) {
-            return this.f.createIdentifier('__Ω' + getIdentifierName(typeName));
+        return this.external.isEmbeddingExternalLibraryImport() &&
+            !this.external.knownGlobalTypeNames.has(getNameAsString(typeName))
+            ? this.getExternalRuntimeTypeName(typeName)
+            : this.getRuntimeTypeName(typeName);
+    }
+
+    protected shouldEmbedExternalLibraryImport(
+        importDeclaration: ImportDeclaration,
+        typeName: Identifier,
+    ): boolean {
+        if (this.external.isEmbeddingExternalLibraryImport()) return true;
+
+        const runtimeTypeName = this.getRuntimeTypeName(typeName);
+        const sourceFile = importDeclaration.getSourceFile();
+        const builtType = isBuiltType(runtimeTypeName, sourceFile);
+
+        return (
+            !builtType &&
+            this.external.shouldInlineExternalLibraryImport(
+                importDeclaration,
+                typeName,
+                this.getReflectionConfig(sourceFile),
+            )
+        );
+    }
+
+    protected resolveImportExpression(
+        declaration: Node,
+        importDeclaration: ImportDeclaration,
+        typeName: Identifier,
+        expression: Expression,
+    ): Expression {
+        ensureImportIsEmitted(importDeclaration, typeName);
+
+        if (!hasSourceFile(importDeclaration)) return expression;
+
+        // these will be inferred at runtime
+        if (
+            isTypeAliasDeclaration(declaration) ||
+            isVariableDeclaration(declaration)
+        ) {
+            return expression;
         }
 
-        function joinQualifiedName(name: EntityName): string {
-            if (isIdentifier(name)) return getIdentifierName(name);
-            return joinQualifiedName(name.left) + '_' + getIdentifierName(name.right);
+        if (
+            this.shouldEmbedExternalLibraryImport(importDeclaration, typeName)
+        ) {
+            const { module } = this.external.processExternalLibraryImport(
+                typeName,
+                declaration,
+                importDeclaration.getSourceFile(),
+                importDeclaration,
+            );
+            return this.f.createPropertyAccessExpression(
+                this.f.createIdentifier(
+                    getExternalRuntimeTypeName(module.packageId.name),
+                ),
+                getNameAsString(typeName),
+            );
         }
 
-        return this.f.createIdentifier('__Ω' + joinQualifiedName(typeName));
+        return expression;
     }
 
     /**
@@ -1957,29 +2853,59 @@ export class ReflectionTransformer implements CustomTransformer {
      * via the exclude option. mainly used to exclude globals and external libraries.
      */
     protected isExcluded(fileName: string): boolean {
-        const resolver = getResolver(this.cache.resolver, this.parseConfigHost, this.compilerOptions);
-        const res = reflectionModeMatcher({ reflection: 'default', exclude: resolver.config.exclude }, fileName);
+        const resolver = getResolver(
+            this.cache.resolver,
+            this.parseConfigHost,
+            this.compilerOptions,
+        );
+        const res = reflectionModeMatcher(
+            { reflection: 'default', exclude: resolver.config.exclude },
+            fileName,
+        );
         return res === 'never';
     }
 
-    protected extractPackStructOfTypeReference(type: TypeReferenceNode | ExpressionWithTypeArguments, program: CompilerProgram): void {
-        const typeName: EntityName | undefined = isTypeReferenceNode(type) ? type.typeName : (isIdentifier(type.expression) ? type.expression : undefined);
+    protected extractPackStructOfTypeReference(
+        type: TypeReferenceNode | ExpressionWithTypeArguments,
+        program: CompilerProgram,
+    ): void {
+        const typeName: EntityName | undefined = isTypeReferenceNode(type)
+            ? type.typeName
+            : isIdentifier(type.expression)
+              ? type.expression
+              : undefined;
         if (!typeName) {
             program.pushOp(ReflectionOp.any);
             return;
         }
 
-        if (isIdentifier(typeName) && getIdentifierName(typeName) === 'InlineRuntimeType' && type.typeArguments && type.typeArguments[0] && isTypeQueryNode(type.typeArguments[0])) {
-            const expression = serializeEntityNameAsExpression(this.f, type.typeArguments[0].exprName);
+        if (
+            isIdentifier(typeName) &&
+            getIdentifierName(typeName) === 'InlineRuntimeType' &&
+            type.typeArguments &&
+            type.typeArguments[0] &&
+            isTypeQueryNode(type.typeArguments[0])
+        ) {
+            const expression = serializeEntityNameAsExpression(
+                this.f,
+                type.typeArguments[0].exprName,
+            );
             program.pushOp(ReflectionOp.arg, program.pushStack(expression));
             return;
         }
 
-        if (isIdentifier(typeName) && getIdentifierName(typeName) !== 'constructor' && this.knownClasses[getIdentifierName(typeName)]) {
+        if (
+            isIdentifier(typeName) &&
+            getIdentifierName(typeName) !== 'constructor' &&
+            this.knownClasses[getIdentifierName(typeName)]
+        ) {
             const name = getIdentifierName(typeName);
             const op = this.knownClasses[name];
             program.pushOp(op);
-        } else if (isIdentifier(typeName) && getIdentifierName(typeName) === 'Promise') {
+        } else if (
+            isIdentifier(typeName) &&
+            getIdentifierName(typeName) === 'Promise'
+        ) {
             //promise has always one sub type
             if (type.typeArguments && type.typeArguments[0]) {
                 this.extractPackStructOfType(type.typeArguments[0], program);
@@ -1987,16 +2913,35 @@ export class ReflectionTransformer implements CustomTransformer {
                 program.pushOp(ReflectionOp.any);
             }
             program.pushOp(ReflectionOp.promise);
-        } else if (isIdentifier(typeName) && getIdentifierName(typeName) === 'integer') {
-            program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand.integer as number);
-        } else if (isIdentifier(typeName) && getIdentifierName(typeName) !== 'constructor' && TypeNumberBrand[getIdentifierName(typeName) as any] !== undefined) {
-            program.pushOp(ReflectionOp.numberBrand, TypeNumberBrand[getIdentifierName(typeName) as any] as any);
+        } else if (
+            isIdentifier(typeName) &&
+            getIdentifierName(typeName) === 'integer'
+        ) {
+            program.pushOp(
+                ReflectionOp.numberBrand,
+                TypeNumberBrand.integer as number,
+            );
+        } else if (
+            isIdentifier(typeName) &&
+            getIdentifierName(typeName) !== 'constructor' &&
+            TypeNumberBrand[getIdentifierName(typeName) as any] !== undefined
+        ) {
+            program.pushOp(
+                ReflectionOp.numberBrand,
+                TypeNumberBrand[getIdentifierName(typeName) as any] as any,
+            );
         } else {
             //check if it references a variable
             if (isIdentifier(typeName)) {
-                const variable = program.findVariable(getIdentifierName(typeName));
+                const variable = program.findVariable(
+                    getIdentifierName(typeName),
+                );
                 if (variable) {
-                    program.pushOp(ReflectionOp.loads, variable.frameOffset, variable.stackIndex);
+                    program.pushOp(
+                        ReflectionOp.loads,
+                        variable.frameOffset,
+                        variable.stackIndex,
+                    );
                     return;
                 }
             } else if (isInferTypeNode(typeName)) {
@@ -2011,20 +2956,52 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (isQualifiedName(typeName)) {
                     if (isIdentifier(typeName.left)) {
                         const resolved = this.resolveDeclaration(typeName.left);
-                        if (resolved && isEnumDeclaration(resolved.declaration)) {
+                        if (
+                            resolved &&
+                            isEnumDeclaration(resolved.declaration)
+                        ) {
                             let lastExpression: Expression | undefined;
                             let indexValue: number = 0;
                             for (const member of resolved.declaration.members) {
-                                if (getNameAsString(member.name) === getNameAsString(typeName.right)) {
+                                if (
+                                    getNameAsString(member.name) ===
+                                    getNameAsString(typeName.right)
+                                ) {
                                     if (member.initializer) {
-                                        program.pushOp(ReflectionOp.arg, program.pushStack(this.nodeConverter.toExpression(member.initializer)));
+                                        program.pushOp(
+                                            ReflectionOp.arg,
+                                            program.pushStack(
+                                                this.nodeConverter.toExpression(
+                                                    member.initializer,
+                                                ),
+                                            ),
+                                        );
                                     } else if (lastExpression) {
-                                        const exp = this.nodeConverter.toExpression(lastExpression);
-                                        program.pushOp(ReflectionOp.arg, program.pushStack(
-                                            this.f.createBinaryExpression(exp, SyntaxKind.PlusToken, this.nodeConverter.toExpression(indexValue)),
-                                        ));
+                                        const exp =
+                                            this.nodeConverter.toExpression(
+                                                lastExpression,
+                                            );
+                                        program.pushOp(
+                                            ReflectionOp.arg,
+                                            program.pushStack(
+                                                this.f.createBinaryExpression(
+                                                    exp,
+                                                    SyntaxKind.PlusToken,
+                                                    this.nodeConverter.toExpression(
+                                                        indexValue,
+                                                    ),
+                                                ),
+                                            ),
+                                        );
                                     } else {
-                                        program.pushOp(ReflectionOp.arg, program.pushStack(this.nodeConverter.toExpression(indexValue)));
+                                        program.pushOp(
+                                            ReflectionOp.arg,
+                                            program.pushStack(
+                                                this.nodeConverter.toExpression(
+                                                    indexValue,
+                                                ),
+                                            ),
+                                        );
                                     }
                                     return;
                                 } else {
@@ -2054,20 +3031,50 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
             }
 
-            if (isModuleDeclaration(declaration) && resolved.importDeclaration) {
-                if (isIdentifier(typeName)) ensureImportIsEmitted(resolved.importDeclaration, typeName);
+            if (
+                isModuleDeclaration(declaration) &&
+                resolved.importDeclaration
+            ) {
+                let expression: Expression = serializeEntityNameAsExpression(
+                    this.f,
+                    typeName,
+                );
+                if (isIdentifier(typeName)) {
+                    expression = this.resolveImportExpression(
+                        declaration,
+                        resolved.importDeclaration,
+                        typeName,
+                        expression,
+                    );
+                }
 
                 //we can not infer from module declaration, so do `typeof T` in runtime
                 program.pushOp(
                     ReflectionOp.typeof,
-                    program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, serializeEntityNameAsExpression(this.f, typeName))),
+                    program.pushStack(
+                        this.f.createArrowFunction(
+                            undefined,
+                            undefined,
+                            [],
+                            undefined,
+                            undefined,
+                            expression,
+                        ),
+                    ),
                 );
-            } else if (isTypeAliasDeclaration(declaration) || isInterfaceDeclaration(declaration) || isEnumDeclaration(declaration)) {
+            } else if (
+                isTypeAliasDeclaration(declaration) ||
+                isInterfaceDeclaration(declaration) ||
+                isEnumDeclaration(declaration)
+            ) {
                 //Set/Map are interface declarations
                 const name = getNameAsString(typeName);
                 if (name === 'Array') {
                     if (type.typeArguments && type.typeArguments[0]) {
-                        this.extractPackStructOfType(type.typeArguments[0], program);
+                        this.extractPackStructOfType(
+                            type.typeArguments[0],
+                            program,
+                        );
                     } else {
                         program.pushOp(ReflectionOp.any);
                     }
@@ -2077,11 +3084,17 @@ export class ReflectionTransformer implements CustomTransformer {
                 } else if (name === 'Function') {
                     program.pushOp(ReflectionOp.frame);
                     program.pushOp(ReflectionOp.any);
-                    program.pushOp(ReflectionOp.function, program.pushStack(''));
+                    program.pushOp(
+                        ReflectionOp.function,
+                        program.pushStack(''),
+                    );
                     return;
                 } else if (name === 'Set') {
                     if (type.typeArguments && type.typeArguments[0]) {
-                        this.extractPackStructOfType(type.typeArguments[0], program);
+                        this.extractPackStructOfType(
+                            type.typeArguments[0],
+                            program,
+                        );
                     } else {
                         program.pushOp(ReflectionOp.any);
                     }
@@ -2089,12 +3102,18 @@ export class ReflectionTransformer implements CustomTransformer {
                     return;
                 } else if (name === 'Map') {
                     if (type.typeArguments && type.typeArguments[0]) {
-                        this.extractPackStructOfType(type.typeArguments[0], program);
+                        this.extractPackStructOfType(
+                            type.typeArguments[0],
+                            program,
+                        );
                     } else {
                         program.pushOp(ReflectionOp.any);
                     }
                     if (type.typeArguments && type.typeArguments[1]) {
-                        this.extractPackStructOfType(type.typeArguments[1], program);
+                        this.extractPackStructOfType(
+                            type.typeArguments[1],
+                            program,
+                        );
                     } else {
                         program.pushOp(ReflectionOp.any);
                     }
@@ -2102,109 +3121,205 @@ export class ReflectionTransformer implements CustomTransformer {
                     return;
                 }
 
-                const runtimeTypeName = this.getDeclarationVariableName(typeName);
+                let runtimeTypeName = this.getRuntimeTypeName(typeName);
+                let externalLibraryImport: ExternalLibraryImport | undefined;
 
                 //to break recursion, we track which declaration has already been compiled
-                if (!this.compiledDeclarations.has(declaration) && !this.compileDeclarations.has(declaration)) {
-                    const declarationSourceFile = findSourceFile(declaration) || this.sourceFile;
-                    const isGlobal = resolved.importDeclaration === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName;
-                    const isFromImport = resolved.importDeclaration !== undefined;
+                if (
+                    !this.compiledDeclarations.has(declaration) &&
+                    !this.compileDeclarations.has(declaration)
+                ) {
+                    const declarationSourceFile =
+                        findSourceFile(declaration) || this.sourceFile;
 
                     if (this.isExcluded(declarationSourceFile.fileName)) {
                         program.pushOp(ReflectionOp.any);
                         return;
                     }
 
-                    if (isGlobal) {
-                        //we don't embed non-global imported declarations anymore, only globals
-                        this.embedDeclarations.set(declaration, {
-                            name: typeName,
-                            sourceFile: declarationSourceFile,
-                        });
-                    } else if (isFromImport) {
-                        if (resolved.importDeclaration) {
-                            //if explicit `import {type T}`, we do not emit an import and instead push any
-                            if (resolved.typeOnly) {
+                    if (
+                        this.external.hasSourceFile(declarationSourceFile) &&
+                        this.external.isEmbeddingExternalLibraryImport()
+                    ) {
+                        externalLibraryImport =
+                            this.external.processExternalLibraryImport(
+                                typeName,
+                                declaration,
+                                declarationSourceFile,
+                                resolved.importDeclaration,
+                            );
+                    } else {
+                        const isGlobal =
+                            resolved.importDeclaration === undefined &&
+                            declarationSourceFile.fileName !==
+                                this.sourceFile.fileName;
+                        const isFromImport =
+                            resolved.importDeclaration !== undefined;
+
+                        if (isGlobal) {
+                            this.external.knownGlobalTypeNames.add(
+                                getNameAsString(typeName),
+                            );
+                            this.embedDeclarations.set(declaration, {
+                                name: typeName,
+                                sourceFile: declarationSourceFile,
+                            });
+                        } else if (isFromImport) {
+                            if (resolved.importDeclaration) {
+                                //if explicit `import {type T}`, we do not emit an import and instead push any
+                                if (resolved.typeOnly) {
+                                    this.resolveTypeOnlyImport(
+                                        typeName,
+                                        program,
+                                    );
+                                    return;
+                                }
+
+                                // we need to find the declaration file of the import
+                                const found = this.resolver.resolve(
+                                    resolved.sourceFile,
+                                    resolved.importDeclaration,
+                                );
+                                if (!found) {
+                                    debug('module not found');
+                                    program.pushOp(ReflectionOp.any);
+                                    return;
+                                }
+
+                                // Previously we checked for tsconfig.json/package.json with a "reflection" option.
+                                // This is now changed, and we look directly if there is a __Ω{name} exported.
+                                // If so, then we can be 100% sure that the referenced module is built with runtime types.
+                                // Note that if `found` is a TypeScript file (not d.ts), then we need to check using the fileName
+                                // since it is part of the current transpilation phase. Thus, it depends on the
+                                // current config + @reflection decorator instead.
+                                if (found.fileName.endsWith('.d.ts')) {
+                                    // Note that if import was something like `import { XY } from 'my-module'` then resolve()
+                                    // returns the index.d.ts file of the module, not the actual file where XY is exported.
+                                    // this is necessary since we emit an additional import `import { __ΩXY } from 'my-module'`,
+                                    // so we check if whatever file we get from resolve() actually exports __ΩXY.
+                                    const resolverDecVariable =
+                                        this.resolveImportSpecifier(
+                                            runtimeTypeName.escapedText,
+                                            resolved.importDeclaration,
+                                            this.sourceFile,
+                                        );
+
+                                    if (resolverDecVariable) {
+                                        this.addImports.push({
+                                            identifier: runtimeTypeName,
+                                            from: resolved.importDeclaration
+                                                .moduleSpecifier,
+                                        });
+                                    } else {
+                                        const declarationReflection =
+                                            this.getReflectionConfig(
+                                                this.sourceFile,
+                                            );
+                                        if (
+                                            this.external.shouldInlineExternalLibraryImport(
+                                                resolved.importDeclaration,
+                                                typeName,
+                                                declarationReflection,
+                                            )
+                                        ) {
+                                            externalLibraryImport =
+                                                this.external.processExternalLibraryImport(
+                                                    typeName,
+                                                    declaration,
+                                                    declarationSourceFile,
+                                                    resolved.importDeclaration,
+                                                );
+                                        } else {
+                                            debug(
+                                                `Symbol ${runtimeTypeName.escapedText} not found in ${found.fileName}`,
+                                            );
+                                            //no __Ω{name} exported, so we can not be sure if the module is built with runtime types
+                                            this.resolveTypeOnlyImport(
+                                                typeName,
+                                                program,
+                                            );
+                                            return;
+                                        }
+                                    }
+                                } else {
+                                    const reflection =
+                                        this.getReflectionConfig(found);
+                                    // if this is never, then its generally disabled for this file
+                                    if (reflection.mode === 'never') {
+                                        this.resolveTypeOnlyImport(
+                                            typeName,
+                                            program,
+                                        );
+                                        return;
+                                    }
+
+                                    const declarationReflection =
+                                        this.isWithReflection(
+                                            found,
+                                            declaration,
+                                        );
+                                    if (!declarationReflection) {
+                                        this.resolveTypeOnlyImport(
+                                            typeName,
+                                            program,
+                                        );
+                                        return;
+                                    }
+
+                                    this.addImports.push({
+                                        identifier: runtimeTypeName,
+                                        from: resolved.importDeclaration
+                                            .moduleSpecifier,
+                                    });
+                                }
+                            }
+                        } else {
+                            //it's a reference type inside the same file. Make sure its type is reflected
+                            const reflection = this.isWithReflection(
+                                program.sourceFile,
+                                declaration,
+                            );
+                            if (!reflection) {
                                 this.resolveTypeOnlyImport(typeName, program);
                                 return;
                             }
 
-                            // we need to find the declaration file of the import
-                            const found = this.resolver.resolve(this.sourceFile, resolved.importDeclaration);
-                            if (!found) {
-                                debug('module not found');
-                                program.pushOp(ReflectionOp.any);
-                                return;
-                            }
-
-                            // debug('import', getNameAsString(typeName), 'from',
-                            //     (resolved.importDeclaration.moduleSpecifier as StringLiteral).text, ' in', program.sourceFile.fileName);
-
-                            // Previously we checked for tsconfig.json/package.json with a "reflection" option.
-                            // This is now changed, and we look directly if there is a __Ω{name} exported.
-                            // If so, then we can be 100% sure that the referenced module is built with runtime types.
-                            // Note that if `found` is a TypeScript file (not d.ts), then we need to check using the fileName
-                            // since it is part of the current transpilation phase. Thus, it depends on the
-                            // current config + @reflection decorator instead.
-                            if (found.fileName.endsWith('.d.ts')) {
-                                // Note that if import was something like `import { XY } from 'my-module'` then resolve()
-                                // returns the index.d.ts file of the module, not the actual file where XY is exported.
-                                // this is necessary since we emit an additional import `import { __ΩXY } from 'my-module'`,
-                                // so we check if whatever file we get from resolve() actually exports __ΩXY.
-                                const resolverDecVariable = this.resolveImportSpecifier(
-                                    runtimeTypeName.escapedText,
-                                    resolved.importDeclaration,
-                                    this.sourceFile,
-                                );
-
-                                if (!resolverDecVariable) {
-                                    debug(`Symbol ${runtimeTypeName.escapedText} not found in ${found.fileName}`);
-                                    //no __Ω{name} exported, so we can not be sure if the module is built with runtime types
-                                    this.resolveTypeOnlyImport(typeName, program);
-                                    return;
-                                }
-
-                                this.addImports.push({ identifier: runtimeTypeName, from: resolved.importDeclaration.moduleSpecifier });
-                            } else {
-                                const reflection = this.getReflectionConfig(found);
-                                // if this is never, then its generally disabled for this file
-                                if (reflection.mode === 'never') {
-                                    this.resolveTypeOnlyImport(typeName, program);
-                                    return;
-                                }
-
-                                const declarationReflection = this.isWithReflection(found, declaration);
-                                if (!declarationReflection) {
-                                    this.resolveTypeOnlyImport(typeName, program);
-                                    return;
-                                }
-
-                                this.addImports.push({ identifier: runtimeTypeName, from: resolved.importDeclaration.moduleSpecifier });
-                            }
+                            this.compileDeclarations.set(declaration, {
+                                name: typeName,
+                                sourceFile: declarationSourceFile,
+                            });
                         }
-                    } else {
-                        //it's a reference type inside the same file. Make sure its type is reflected
-                        const reflection = this.isWithReflection(program.sourceFile, declaration);
-                        if (!reflection) {
-                            this.resolveTypeOnlyImport(typeName, program);
-                            return;
-                        }
-
-                        this.compileDeclarations.set(declaration, {
-                            name: typeName,
-                            sourceFile: declarationSourceFile,
-                        });
                     }
                 }
 
+                runtimeTypeName = externalLibraryImport
+                    ? this.getExternalRuntimeTypeName(
+                          typeName,
+                          externalLibraryImport,
+                      )
+                    : this.getDeclarationVariableName(typeName);
+
                 const index = program.pushStack(
-                    program.forNode === declaration ? 0 : this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, runtimeTypeName),
+                    program.forNode === declaration
+                        ? 0
+                        : this.f.createArrowFunction(
+                              undefined,
+                              undefined,
+                              [],
+                              undefined,
+                              undefined,
+                              runtimeTypeName,
+                          ),
                 );
                 if (type.typeArguments) {
                     for (const argument of type.typeArguments) {
                         this.extractPackStructOfType(argument, program);
                     }
-                    program.pushOp(ReflectionOp.inlineCall, index, type.typeArguments.length);
+                    program.pushOp(
+                        ReflectionOp.inlineCall,
+                        index,
+                        type.typeArguments.length,
+                    );
                 } else {
                     program.pushOp(ReflectionOp.inline, index);
                 }
@@ -2224,7 +3339,12 @@ export class ReflectionTransformer implements CustomTransformer {
                 //     //<Type>{[Property in keyof Type]: boolean;};
                 //     this.extractPackStructOfType(declaration, program);
                 //     return;
-            } else if (isClassDeclaration(declaration) || isFunctionDeclaration(declaration) || isFunctionExpression(declaration) || isArrowFunction(declaration)) {
+            } else if (
+                isClassDeclaration(declaration) ||
+                isFunctionDeclaration(declaration) ||
+                isFunctionExpression(declaration) ||
+                isArrowFunction(declaration)
+            ) {
                 // classes, functions and arrow functions are handled differently, since they exist in runtime.
 
                 //if explicit `import {type T}`, we do not emit an import and instead push any
@@ -2234,22 +3354,48 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
 
                 //it's a reference type inside the same file. Make sure its type is reflected
-                const reflection = this.isWithReflection(program.sourceFile, declaration);
+                const reflection = this.isWithReflection(
+                    program.sourceFile,
+                    declaration,
+                );
                 if (!reflection) {
                     this.resolveTypeOnlyImport(typeName, program);
                     return;
                 }
 
-                if (resolved.importDeclaration && isIdentifier(typeName)) ensureImportIsEmitted(resolved.importDeclaration, typeName);
                 program.pushFrame();
                 if (type.typeArguments) {
                     for (const typeArgument of type.typeArguments) {
                         this.extractPackStructOfType(typeArgument, program);
                     }
                 }
-                const body = isIdentifier(typeName) ? typeName : this.createAccessorForEntityName(typeName);
-                const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, body));
-                program.pushOp(isClassDeclaration(declaration) ? ReflectionOp.classReference : ReflectionOp.functionReference, index);
+                let body: Identifier | Expression = isIdentifier(typeName)
+                    ? typeName
+                    : this.createAccessorForEntityName(typeName);
+                if (resolved.importDeclaration && isIdentifier(typeName)) {
+                    body = this.resolveImportExpression(
+                        resolved.declaration,
+                        resolved.importDeclaration,
+                        typeName,
+                        body,
+                    );
+                }
+                const index = program.pushStack(
+                    this.f.createArrowFunction(
+                        undefined,
+                        undefined,
+                        [],
+                        undefined,
+                        undefined,
+                        body,
+                    ),
+                );
+                program.pushOp(
+                    isClassDeclaration(declaration)
+                        ? ReflectionOp.classReference
+                        : ReflectionOp.functionReference,
+                    index,
+                );
                 program.popFrameImplicit();
             } else if (isTypeParameterDeclaration(declaration)) {
                 this.resolveTypeParameter(declaration, type, program);
@@ -2269,8 +3415,14 @@ export class ReflectionTransformer implements CustomTransformer {
             if (current.kind === SyntaxKind.ClassDeclaration) return current; //return the class
             if (current.kind === SyntaxKind.ClassExpression) return current; //return the class
             if (current.kind === SyntaxKind.Constructor) return current.parent; //return the class
-            if (current.kind === SyntaxKind.MethodDeclaration) return current.parent; //return the class
-            if (current.kind === SyntaxKind.ArrowFunction || current.kind === SyntaxKind.FunctionDeclaration || current.kind === SyntaxKind.FunctionExpression) return current;
+            if (current.kind === SyntaxKind.MethodDeclaration)
+                return current.parent; //return the class
+            if (
+                current.kind === SyntaxKind.ArrowFunction ||
+                current.kind === SyntaxKind.FunctionDeclaration ||
+                current.kind === SyntaxKind.FunctionExpression
+            )
+                return current;
 
             current = current.parent;
         }
@@ -2331,46 +3483,69 @@ export class ReflectionTransformer implements CustomTransformer {
      * }
      * ```
      */
-    protected needsToBeInferred(declaration: TypeParameterDeclaration, type: TypeReferenceNode | ExpressionWithTypeArguments): boolean {
+    protected needsToBeInferred(
+        declaration: TypeParameterDeclaration,
+        type: TypeReferenceNode | ExpressionWithTypeArguments,
+    ): boolean {
         const declarationUser = this.getTypeUser(declaration);
         const typeUser = this.getTypeUser(type);
 
         return declarationUser !== typeUser;
     }
 
-    protected resolveTypeOnlyImport(entityName: EntityName, program: CompilerProgram) {
+    protected resolveTypeOnlyImport(
+        entityName: EntityName,
+        program: CompilerProgram,
+    ) {
         program.pushOp(ReflectionOp.any);
-        const typeName = ts.isIdentifier(entityName)
-            ? getIdentifierName(entityName)
-            : getIdentifierName(entityName.right);
+        const typeName = getEntityName(entityName);
         this.resolveTypeName(typeName, program);
     }
 
     protected resolveTypeName(typeName: string, program: CompilerProgram) {
         if (!typeName) return;
-        program.pushOp(ReflectionOp.typeName, program.findOrAddStackEntry(typeName));
+        program.pushOp(
+            ReflectionOp.typeName,
+            program.findOrAddStackEntry(typeName),
+        );
     }
 
-    protected resolveTypeParameter(declaration: TypeParameterDeclaration, type: TypeReferenceNode | ExpressionWithTypeArguments, program: CompilerProgram) {
+    protected resolveTypeParameter(
+        declaration: TypeParameterDeclaration,
+        type: TypeReferenceNode | ExpressionWithTypeArguments,
+        program: CompilerProgram,
+    ) {
         //check if `type` was used in an expression. if so, we need to resolve it from runtime, otherwise we mark it as T
         const isUsedInFunction = isFunctionLike(declaration.parent);
-        const resolveRuntimeTypeParameter = (isUsedInFunction && program.isResolveFunctionParameters(declaration.parent)) || (this.needsToBeInferred(declaration, type));
+        const resolveRuntimeTypeParameter =
+            (isUsedInFunction &&
+                program.isResolveFunctionParameters(declaration.parent)) ||
+            this.needsToBeInferred(declaration, type);
 
         if (resolveRuntimeTypeParameter) {
             //go through all parameters and look where `type.name.escapedText` is used (recursively).
             //go through all found parameters and replace `T` with `infer T` and embed its type in `typeof parameter extends Type<infer T> ? T : never`, if T is not directly used
             const argumentName = declaration.name.escapedText as string; //T
-            const foundUsers: { type: Node, parameterName: Identifier }[] = [];
+            const foundUsers: { type: Node; parameterName: Identifier }[] = [];
 
             if (isUsedInFunction) {
-                for (const parameter of (declaration.parent as SignatureDeclaration).parameters) {
+                for (const parameter of (
+                    declaration.parent as SignatureDeclaration
+                ).parameters) {
                     if (!parameter.type) continue;
                     //if deeply available?
                     let found = false;
                     const searchArgument = (node: Node): Node => {
-                        node = visitEachChild(node, searchArgument, this.context);
+                        node = visitEachChild(
+                            node,
+                            searchArgument,
+                            this.context,
+                        );
 
-                        if (isIdentifier(node) && node.escapedText === argumentName) {
+                        if (
+                            isIdentifier(node) &&
+                            node.escapedText === argumentName
+                        ) {
                             //transform to infer T
                             found = true;
                             node = this.f.createInferTypeNode(declaration);
@@ -2380,9 +3555,16 @@ export class ReflectionTransformer implements CustomTransformer {
                     };
 
                     if (isIdentifier(parameter.name)) {
-                        const updatedParameterType = visitEachChild(parameter.type, searchArgument, this.context);
+                        const updatedParameterType = visitEachChild(
+                            parameter.type,
+                            searchArgument,
+                            this.context,
+                        );
                         if (found) {
-                            foundUsers.push({ type: updatedParameterType, parameterName: parameter.name });
+                            foundUsers.push({
+                                type: updatedParameterType,
+                                parameterName: parameter.name,
+                            });
                         }
                     }
                 }
@@ -2397,18 +3579,37 @@ export class ReflectionTransformer implements CustomTransformer {
                 for (const foundUser of foundUsers) {
                     program.pushConditionalFrame();
 
-                    program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, foundUser.parameterName)));
+                    console.log(getIdentifierName(foundUser.parameterName));
+
+                    program.pushOp(
+                        ReflectionOp.typeof,
+                        program.pushStack(
+                            this.f.createArrowFunction(
+                                undefined,
+                                undefined,
+                                [],
+                                undefined,
+                                undefined,
+                                foundUser.parameterName,
+                            ),
+                        ),
+                    );
                     this.extractPackStructOfType(foundUser.type, program);
                     program.pushOp(ReflectionOp.extends);
 
-                    const found = program.findVariable(getIdentifierName(declaration.name));
+                    const found = program.findVariable(
+                        getIdentifierName(declaration.name),
+                    );
                     if (found) {
                         this.extractPackStructOfType(declaration.name, program);
                     } else {
                         //type parameter was never found in X of `Y extends X` (no `infer X` was created), probably due to a not supported parameter type expression.
                         program.pushOp(ReflectionOp.any);
                     }
-                    this.extractPackStructOfType({ kind: SyntaxKind.NeverKeyword } as TypeNode, program);
+                    this.extractPackStructOfType(
+                        { kind: SyntaxKind.NeverKeyword } as TypeNode,
+                        program,
+                    );
                     program.pushOp(ReflectionOp.condition);
                     program.popFrameImplicit();
                 }
@@ -2416,16 +3617,22 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (foundUsers.length > 1) {
                     //todo: intersection end
                 }
-
             } else if (declaration.constraint) {
-                if (isUsedInFunction) program.resolveFunctionParametersIncrease(declaration.parent);
-                const constraint = getEffectiveConstraintOfTypeParameter(declaration);
+                if (isUsedInFunction)
+                    program.resolveFunctionParametersIncrease(
+                        declaration.parent,
+                    );
+                const constraint =
+                    getEffectiveConstraintOfTypeParameter(declaration);
                 if (constraint) {
                     this.extractPackStructOfType(constraint, program);
                 } else {
                     program.pushOp(ReflectionOp.never);
                 }
-                if (isUsedInFunction) program.resolveFunctionParametersDecrease(declaration.parent);
+                if (isUsedInFunction)
+                    program.resolveFunctionParametersDecrease(
+                        declaration.parent,
+                    );
             } else {
                 program.pushOp(ReflectionOp.never);
             }
@@ -2435,28 +3642,51 @@ export class ReflectionTransformer implements CustomTransformer {
         }
     }
 
-    protected createAccessorForEntityName(e: QualifiedName): PropertyAccessExpression {
-        return this.f.createPropertyAccessExpression(isIdentifier(e.left) ? e.left : this.createAccessorForEntityName(e.left), e.right);
+    protected createAccessorForEntityName(
+        e: QualifiedName,
+    ): PropertyAccessExpression {
+        return this.f.createPropertyAccessExpression(
+            isIdentifier(e.left)
+                ? e.left
+                : this.createAccessorForEntityName(e.left),
+            e.right,
+        );
     }
 
-    protected findDeclarationInFile(sourceFile: SourceFile | ModuleDeclaration, declarationName: __String): Declaration | undefined {
+    protected findDeclarationInFile(
+        sourceFile: SourceFile | ModuleDeclaration,
+        declarationName: __String,
+    ): Declaration | undefined {
         if (isNodeWithLocals(sourceFile) && sourceFile.locals) {
             const declarationSymbol = sourceFile.locals.get(declarationName);
-            if (declarationSymbol && declarationSymbol.declarations && declarationSymbol.declarations[0]) {
+            if (
+                declarationSymbol &&
+                declarationSymbol.declarations &&
+                declarationSymbol.declarations[0]
+            ) {
                 return declarationSymbol.declarations[0];
             }
         }
         return;
     }
 
-    protected resolveImportSpecifier(declarationName: __String, importOrExport: ExportDeclaration | ImportDeclaration, sourceFile: SourceFile): Declaration | undefined {
+    protected resolveImportSpecifier(
+        declarationName: __String,
+        importOrExport: ExportDeclaration | ImportDeclaration,
+        sourceFile: SourceFile,
+    ): Declaration | undefined {
         if (!importOrExport.moduleSpecifier) return;
         if (!isStringLiteral(importOrExport.moduleSpecifier)) return;
 
-        const source: SourceFile | ModuleDeclaration | undefined = this.resolver.resolve(sourceFile, importOrExport);
+        const source: SourceFile | ModuleDeclaration | undefined =
+            this.resolver.resolve(sourceFile, importOrExport);
 
         if (!source) {
-            debug('module not found', (importOrExport.moduleSpecifier as any).text, 'Is transpileOnly enabled? It needs to be disabled.');
+            debug(
+                'module not found',
+                (importOrExport.moduleSpecifier as any).text,
+                'Is transpileOnly enabled? It needs to be disabled.',
+            );
             return;
         }
 
@@ -2477,7 +3707,11 @@ export class ReflectionTransformer implements CustomTransformer {
         if (isSourceFile(source)) {
             for (const statement of source.statements) {
                 if (!isExportDeclaration(statement)) continue;
-                const found = this.followExport(declarationName, statement, source);
+                const found = this.followExport(
+                    declarationName,
+                    statement,
+                    source,
+                );
                 if (found) return found;
             }
         }
@@ -2485,14 +3719,24 @@ export class ReflectionTransformer implements CustomTransformer {
         return;
     }
 
-    protected followExport(declarationName: __String, statement: ExportDeclaration, sourceFile: SourceFile): Declaration | undefined {
+    protected followExport(
+        declarationName: __String,
+        statement: ExportDeclaration,
+        sourceFile: SourceFile,
+    ): Declaration | undefined {
         if (statement.exportClause) {
             //export {y} from 'x'
             if (isNamedExports(statement.exportClause)) {
                 for (const element of statement.exportClause.elements) {
                     //see if declarationName is exported
                     if (element.name.escapedText === declarationName) {
-                        const found = this.resolveImportSpecifier(element.propertyName ? element.propertyName.escapedText : declarationName, statement, sourceFile);
+                        const found = this.resolveImportSpecifier(
+                            element.propertyName
+                                ? element.propertyName.escapedText
+                                : declarationName,
+                            statement,
+                            sourceFile,
+                        );
                         if (found) return found;
                     }
                 }
@@ -2500,7 +3744,11 @@ export class ReflectionTransformer implements CustomTransformer {
         } else {
             //export * from 'x'
             //see if `x` exports declarationName (or one of its exports * from 'y')
-            const found = this.resolveImportSpecifier(declarationName, statement, sourceFile);
+            const found = this.resolveImportSpecifier(
+                declarationName,
+                statement,
+                sourceFile,
+            );
             if (found) {
                 return found;
             }
@@ -2530,7 +3778,9 @@ export class ReflectionTransformer implements CustomTransformer {
      * so the code generation is then broken when we simply reuse them. Wrong code like ``User.__type = [.toEqual({`` is then generated.
      * This function is probably not complete, but we add new copies when required.
      */
-    protected valueToExpression(value: undefined | PackExpression | PackExpression[]): Expression {
+    protected valueToExpression(
+        value: undefined | PackExpression | PackExpression[],
+    ): Expression {
         return this.nodeConverter.toExpression(value);
     }
 
@@ -2542,27 +3792,41 @@ export class ReflectionTransformer implements CustomTransformer {
      *     title: string;
      * }
      */
-    protected decorateClass(sourceFile: SourceFile, node: ClassDeclaration | ClassExpression): Node {
+    protected decorateClass(
+        sourceFile: SourceFile,
+        node: ClassDeclaration | ClassExpression,
+    ): Node {
         const reflection = this.isWithReflection(sourceFile, node);
         if (!reflection) {
             return node;
         }
         const type = this.getTypeOfType(node);
         const __type = this.f.createPropertyDeclaration(
-            this.f.createModifiersFromModifierFlags(ModifierFlags.Static), '__type',
-            undefined, undefined,
-            type);
+            this.f.createModifiersFromModifierFlags(ModifierFlags.Static),
+            '__type',
+            undefined,
+            undefined,
+            type,
+        );
 
         if (isClassDeclaration(node)) {
             // return node;
-            return this.f.updateClassDeclaration(node, node.modifiers,
-                node.name, node.typeParameters, node.heritageClauses,
+            return this.f.updateClassDeclaration(
+                node,
+                node.modifiers,
+                node.name,
+                node.typeParameters,
+                node.heritageClauses,
                 this.f.createNodeArray<ClassElement>([...node.members, __type]),
             );
         }
 
-        return this.f.updateClassExpression(node, node.modifiers,
-            node.name, node.typeParameters, node.heritageClauses,
+        return this.f.updateClassExpression(
+            node,
+            node.modifiers,
+            node.name,
+            node.typeParameters,
+            node.heritageClauses,
             this.f.createNodeArray<ClassElement>([...node.members, __type]),
         );
     }
@@ -2585,7 +3849,6 @@ export class ReflectionTransformer implements CustomTransformer {
      * => function name() {}; name.__type = 34;
      */
     protected decorateFunctionDeclaration(declaration: FunctionDeclaration) {
-
         const encodedType = this.getTypeOfType(declaration);
         if (!encodedType) return declaration;
 
@@ -2596,18 +3859,46 @@ export class ReflectionTransformer implements CustomTransformer {
             //since a new default export is created, we do not need ExportKey&DefaultKeyword on the function anymore,
             //but it should preserve all others like Async.
             const modifier: readonly Modifier[] = declaration.modifiers
-                ? declaration.modifiers.filter(v => v.kind !== SyntaxKind.ExportKeyword && v.kind !== SyntaxKind.DefaultKeyword && v.kind !== SyntaxKind.Decorator) as Modifier[]
+                ? (declaration.modifiers.filter(
+                      v =>
+                          v.kind !== SyntaxKind.ExportKeyword &&
+                          v.kind !== SyntaxKind.DefaultKeyword &&
+                          v.kind !== SyntaxKind.Decorator,
+                  ) as Modifier[])
                 : [];
-            return this.f.createExportAssignment(undefined, undefined, this.wrapWithAssignType(
-                this.f.createFunctionExpression(modifier, declaration.asteriskToken, declaration.name, declaration.typeParameters, declaration.parameters, declaration.type, declaration.body),
-                encodedType,
-            ));
+            return this.f.createExportAssignment(
+                undefined,
+                undefined,
+                this.wrapWithAssignType(
+                    this.f.createFunctionExpression(
+                        modifier,
+                        declaration.asteriskToken,
+                        declaration.name,
+                        declaration.typeParameters,
+                        declaration.parameters,
+                        declaration.type,
+                        declaration.body,
+                    ),
+                    encodedType,
+                ),
+            );
         }
 
         const statements: Statement[] = [declaration];
-        statements.push(this.f.createExpressionStatement(
-            this.f.createAssignment(this.f.createPropertyAccessExpression(serializeEntityNameAsExpression(this.f, declaration.name), '__type'), encodedType),
-        ));
+        statements.push(
+            this.f.createExpressionStatement(
+                this.f.createAssignment(
+                    this.f.createPropertyAccessExpression(
+                        serializeEntityNameAsExpression(
+                            this.f,
+                            declaration.name,
+                        ),
+                        '__type',
+                    ),
+                    encodedType,
+                ),
+            ),
+        );
         return statements;
     }
 
@@ -2635,31 +3926,45 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.f.createCallExpression(
             this.f.createIdentifier('__assignType'),
             undefined,
-            [
-                fn,
-                type,
-            ],
+            [fn, type],
         );
     }
 
-    protected isWithReflection(sourceFile: SourceFile, node: Node & { __deepkitConfig?: ReflectionConfig }): boolean {
+    protected isWithReflection(
+        sourceFile: SourceFile,
+        node: Node & { __deepkitConfig?: ReflectionConfig },
+    ): boolean {
         let current: Node | undefined = node;
 
         let reflectionComment: string | undefined = undefined;
 
         while ('undefined' === typeof reflectionComment && current) {
-            const next = extractJSDocAttribute(sourceFile, current, 'reflection');
+            const next = extractJSDocAttribute(
+                sourceFile,
+                current,
+                'reflection',
+            );
             if ('undefined' !== typeof next) reflectionComment = next;
             current = current.parent;
         }
 
-        if (reflectionComment === '' || reflectionComment === 'true' || reflectionComment === 'default'
-            || reflectionComment === 'enabled' || reflectionComment === '1') {
+        if (
+            reflectionComment === '' ||
+            reflectionComment === 'true' ||
+            reflectionComment === 'default' ||
+            reflectionComment === 'enabled' ||
+            reflectionComment === '1'
+        ) {
             return true;
         }
 
-        if (reflectionComment === 'false' || reflectionComment === 'disabled' || reflectionComment === 'never'
-            || reflectionComment === 'no' || reflectionComment === '0') {
+        if (
+            reflectionComment === 'false' ||
+            reflectionComment === 'disabled' ||
+            reflectionComment === 'never' ||
+            reflectionComment === 'no' ||
+            reflectionComment === '0'
+        ) {
             return false;
         }
 
@@ -2672,10 +3977,11 @@ export class DeclarationTransformer extends ReflectionTransformer {
     protected addExports: { identifier: string }[] = [];
 
     transformSourceFile(sourceFile: SourceFile): SourceFile {
-        if ((sourceFile as any).deepkitDeclarationTransformed) return sourceFile;
+        if ((sourceFile as any).deepkitDeclarationTransformed)
+            return sourceFile;
         (sourceFile as any).deepkitDeclarationTransformed = true;
 
-        this.sourceFile = sourceFile;
+        this.setSourceFile(sourceFile);
         this.addExports = [];
 
         const reflection = this.getReflectionConfig(sourceFile);
@@ -2684,16 +3990,25 @@ export class DeclarationTransformer extends ReflectionTransformer {
         const visitor = (node: Node): any => {
             node = visitEachChild(node, visitor, this.context);
 
-            if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && hasModifier(node, SyntaxKind.ExportKeyword)) {
+            if (
+                (isTypeAliasDeclaration(node) ||
+                    isInterfaceDeclaration(node)) &&
+                hasModifier(node, SyntaxKind.ExportKeyword)
+            ) {
                 const reflection = this.isWithReflection(sourceFile, node);
                 if (reflection) {
-                    this.addExports.push({ identifier: getIdentifierName(this.getDeclarationVariableName(node.name)) });
+                    this.addExports.push({
+                        identifier: getIdentifierName(
+                            this.getDeclarationVariableName(node.name),
+                        ),
+                    });
                 }
             }
 
             return node;
         };
-        this.sourceFile = visitNode(this.sourceFile, visitor);
+
+        this.setSourceFile(visitNode(this.sourceFile, visitor));
 
         if (this.addExports.length) {
             const exports: Statement[] = [];
@@ -2703,16 +4018,27 @@ export class DeclarationTransformer extends ReflectionTransformer {
                 handledIdentifier.push(imp.identifier);
 
                 //export declare type __ΩXY = any[];
-                exports.push(this.f.createTypeAliasDeclaration([
-                        this.f.createModifier(SyntaxKind.ExportKeyword),
-                        this.f.createModifier(SyntaxKind.DeclareKeyword),
-                    ], this.f.createIdentifier(imp.identifier),
-                    undefined,
-                    this.f.createArrayTypeNode(this.f.createKeywordTypeNode(SyntaxKind.AnyKeyword)),
-                ));
+                exports.push(
+                    this.f.createTypeAliasDeclaration(
+                        [
+                            this.f.createModifier(SyntaxKind.ExportKeyword),
+                            this.f.createModifier(SyntaxKind.DeclareKeyword),
+                        ],
+                        this.f.createIdentifier(imp.identifier),
+                        undefined,
+                        this.f.createArrayTypeNode(
+                            this.f.createKeywordTypeNode(SyntaxKind.AnyKeyword),
+                        ),
+                    ),
+                );
             }
 
-            this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...this.sourceFile.statements, ...exports]);
+            this.setSourceFile(
+                this.f.updateSourceFile(this.sourceFile, [
+                    ...this.sourceFile.statements,
+                    ...exports,
+                ]),
+            );
         }
 
         return this.sourceFile;
@@ -2720,18 +4046,19 @@ export class DeclarationTransformer extends ReflectionTransformer {
 }
 
 let loaded = false;
-const cache = new Cache;
+const cache = new Cache();
 
-export const transformer: CustomTransformerFactory = function deepkitTransformer(context) {
-    if (!loaded) {
-        debug('@deepkit/type transformer loaded\n');
-        loaded = true;
-    }
-    cache.tick();
-    return new ReflectionTransformer(context, cache);
-};
+export const transformer: CustomTransformerFactory =
+    function deepkitTransformer(context) {
+        if (!loaded) {
+            debug('@deepkit/type transformer loaded\n');
+            loaded = true;
+        }
+        cache.tick();
+        return new ReflectionTransformer(context, cache);
+    };
 
-export const declarationTransformer: CustomTransformerFactory = function deepkitDeclarationTransformer(context) {
-    return new DeclarationTransformer(context, cache);
-};
-
+export const declarationTransformer: CustomTransformerFactory =
+    function deepkitDeclarationTransformer(context) {
+        return new DeclarationTransformer(context, cache);
+    };

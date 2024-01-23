@@ -1,5 +1,6 @@
-import ts, { CompilerOptions, ParseConfigHost } from 'typescript';
 import { dirname, isAbsolute, join } from 'path';
+import ts, { CompilerOptions, ParseConfigHost } from 'typescript';
+
 import { debug, isDebug } from './debug.js';
 import { patternMatch } from './resolver.js';
 
@@ -10,7 +11,7 @@ import { patternMatch } from './resolver.js';
  * in it is allowed to enable it using jsdoc `@reflection`.
  */
 export const reflectionModes = ['default', 'explicit', 'never'] as const;
-export type Mode = typeof reflectionModes[number];
+export type Mode = (typeof reflectionModes)[number];
 export type RawMode = Mode | '' | boolean | string | string[] | undefined;
 
 // don't use from @deepkit/core since we don't want to have a dependency to @deepkit/core
@@ -18,10 +19,10 @@ export function isObject(obj: any): obj is { [key: string]: any } {
     if (!obj) {
         return false;
     }
-    return (typeof obj === 'object' && !Array.isArray(obj));
+    return typeof obj === 'object' && !Array.isArray(obj);
 }
 
-const defaultMergeStrategy= 'merge';
+const defaultMergeStrategy = 'merge';
 
 /**
  * These are the values that can be in the tsconfig.json file.
@@ -54,20 +55,36 @@ export interface TsConfigJson {
          * Per default a few global .d.ts files are excluded like `lib.dom*.d.ts` and `*typedarrays.d.ts`.
          */
         exclude?: string[];
+
+        /**
+         * External library imports to reflect
+         */
+        inlineExternalLibraryImports?: true | Record<string, true | string[]>;
     };
 }
 
 /**
  * Read config and parses under TypeScript specification.
  */
-function readTsConfig(parseConfigHost: ParseConfigHost, path: string): TsConfigJson | undefined {
-    const configFile = ts.readConfigFile(path, (path: string) => parseConfigHost.readFile(path));
+function readTsConfig(
+    parseConfigHost: ParseConfigHost,
+    path: string,
+): TsConfigJson | undefined {
+    const configFile = ts.readConfigFile(path, (path: string) =>
+        parseConfigHost.readFile(path),
+    );
     if (configFile.error) {
-        debug(`Failed to read tsconfig ${path}: ${configFile.error.messageText}`);
+        debug(
+            `Failed to read tsconfig ${path}: ${configFile.error.messageText}`,
+        );
         return;
     }
 
-    const parsed = ts.parseJsonConfigFileContent(configFile.config, parseConfigHost, dirname(path));
+    const parsed = ts.parseJsonConfigFileContent(
+        configFile.config,
+        parseConfigHost,
+        dirname(path),
+    );
     // errors we ignore entirely
     const ignoredErrors = [
         18003, // No inputs were found in config file.
@@ -78,14 +95,18 @@ function readTsConfig(parseConfigHost: ParseConfigHost, path: string): TsConfigJ
     ];
     const errors = parsed.errors.filter(v => !ignoredErrors.includes(v.code));
     if (errors.length) {
-        debug(`Failed to parse tsconfig ${path}: ${parsed.errors.map(v => v.messageText).join(', ')}`);
+        debug(
+            `Failed to parse tsconfig ${path}: ${parsed.errors.map(v => v.messageText).join(', ')}`,
+        );
     }
     const hardErrors = errors.filter(v => !softErrors.includes(v.code));
     if (hardErrors.length) {
         return;
     }
 
-    return Object.assign(configFile.config, { compilerOptions: parsed.options });
+    return Object.assign(configFile.config, {
+        compilerOptions: parsed.options,
+    });
 }
 
 export interface ReflectionConfig {
@@ -100,6 +121,11 @@ export interface ReflectionConfig {
      * or a list of globs to match against.
      */
     reflection?: string[] | Mode;
+
+    /**
+     * External library imports to reflect
+     */
+    inlineExternalLibraryImports?: true | Record<string, true | string[]>;
 }
 
 export interface CurrentConfig extends ReflectionConfig {
@@ -114,14 +140,18 @@ export interface ResolvedConfig extends ReflectionConfig {
     mergeStrategy: 'merge' | 'replace';
 }
 
-export function reflectionModeMatcher(config: ReflectionConfig, filePath: string): Mode {
+export function reflectionModeMatcher(
+    config: ReflectionConfig,
+    filePath: string,
+): Mode {
     if (Array.isArray(config.exclude)) {
         if (patternMatch(filePath, config.exclude)) return 'never';
     }
     if (Array.isArray(config.reflection)) {
         return patternMatch(filePath, config.reflection) ? 'default' : 'never';
     }
-    if (config.reflection === 'default' || config.reflection === 'explicit') return config.reflection;
+    if (config.reflection === 'default' || config.reflection === 'explicit')
+        return config.reflection;
     return 'never';
 }
 
@@ -159,20 +189,33 @@ function resolvePaths(baseDir: string, paths: any): void {
     }
 }
 
-function appendPaths(strategy: 'merge' | 'replace' = defaultMergeStrategy, parent: string[], existing?: string[]) {
+function appendPaths(
+    strategy: 'merge' | 'replace' = defaultMergeStrategy,
+    parent: string[],
+    existing?: string[],
+) {
     // important to always return a new array, otherwise we would modify the parent array with subsequent calls
     if (strategy === 'replace') {
         // replace means we stick with existing if it is defined, otherwise we use parent
-        return [...existing || parent];
+        return [...(existing || parent)];
     }
     if (!existing) return [...parent];
     return [...parent, ...existing];
 }
 
-function applyConfigValues(existing: CurrentConfig, parent: TsConfigJson, baseDir: string) {
-    const parentReflection = isObject(parent.deepkitCompilerOptions) ? parent.deepkitCompilerOptions?.reflection : parent.reflection;
+function applyConfigValues(
+    existing: CurrentConfig,
+    parent: TsConfigJson,
+    baseDir: string,
+) {
+    const parentReflection = isObject(parent.deepkitCompilerOptions)
+        ? parent.deepkitCompilerOptions?.reflection
+        : parent.reflection;
 
-    if (isObject(parent.deepkitCompilerOptions) && 'undefined' === typeof existing.mergeStrategy) {
+    if (
+        isObject(parent.deepkitCompilerOptions) &&
+        'undefined' === typeof existing.mergeStrategy
+    ) {
         existing.mergeStrategy = parent.deepkitCompilerOptions.mergeStrategy;
     }
 
@@ -183,16 +226,29 @@ function applyConfigValues(existing: CurrentConfig, parent: TsConfigJson, baseDi
         } else if ('string' === typeof existing.reflection) {
             // if existing is already a string, there is nothing to inherit from parent
         } else if (Array.isArray(next) && Array.isArray(existing.reflection)) {
-            existing.reflection = appendPaths(existing.mergeStrategy, next, existing.reflection);
-        } else if ('string' === typeof next && Array.isArray(existing.reflection)) {
+            existing.reflection = appendPaths(
+                existing.mergeStrategy,
+                next,
+                existing.reflection,
+            );
+        } else if (
+            'string' === typeof next &&
+            Array.isArray(existing.reflection)
+        ) {
             // debug(`Warning: config parent tsconfig has reflection=${next}, but child tsconfig has reflection=${JSON.stringify(existing.reflection)}. reflection stays as array.`);
         }
     }
 
     if (isObject(parent.deepkitCompilerOptions)) {
         if (`undefined` !== typeof parent.deepkitCompilerOptions.exclude) {
-            const next = ensureStringArray(parent.deepkitCompilerOptions.exclude);
-            existing.exclude = appendPaths(existing.mergeStrategy, next, existing.exclude);
+            const next = ensureStringArray(
+                parent.deepkitCompilerOptions.exclude,
+            );
+            existing.exclude = appendPaths(
+                existing.mergeStrategy,
+                next,
+                existing.exclude,
+            );
         }
     }
 
@@ -210,7 +266,8 @@ function applyConfigValues(existing: CurrentConfig, parent: TsConfigJson, baseDi
 
 export interface MatchResult {
     tsConfigPath: string;
-    mode: typeof reflectionModes[number];
+    mode: (typeof reflectionModes)[number];
+    inlineExternalLibraryImports?: true | Record<string, true | string[]>;
 }
 
 export const defaultExcluded = [
@@ -224,7 +281,7 @@ export const defaultExcluded = [
 ];
 
 export type Matcher = (path: string) => MatchResult;
-export type Resolver = { match: Matcher, config: ResolvedConfig };
+export type Resolver = { match: Matcher; config: ResolvedConfig };
 export type ReflectionConfigCache = { [path: string]: Resolver };
 
 export function getResolver(
@@ -246,24 +303,32 @@ export function getResolver(
     if ('string' === typeof compilerOptions.configFilePath) {
         tsConfigPath = compilerOptions.configFilePath;
         const configFile = readTsConfig(host, compilerOptions.configFilePath);
-        if (configFile) applyConfigValues(config, configFile, dirname(compilerOptions.configFilePath));
+        if (configFile)
+            applyConfigValues(
+                config,
+                configFile,
+                dirname(compilerOptions.configFilePath),
+            );
     } else {
         if (!tsConfigPath && sourceFile) {
             //find tsconfig via sourceFile.fileName
             const baseDir = dirname(sourceFile.fileName);
-            const configPath = ts.findConfigFile(baseDir, (path) => {
+            const configPath = ts.findConfigFile(baseDir, path => {
                 path = isAbsolute(path) ? path : join(baseDir, path);
                 return host.fileExists(path);
             });
             if (configPath) {
                 //configPath might be relative to passed basedir
-                tsConfigPath = isAbsolute(configPath) ? configPath : join(baseDir, configPath);
+                tsConfigPath = isAbsolute(configPath)
+                    ? configPath
+                    : join(baseDir, configPath);
             }
         }
         if (tsConfigPath) {
             //configPath might be relative to passed basedir
             const configFile = readTsConfig(host, tsConfigPath);
-            if (configFile) applyConfigValues(config, configFile, dirname(tsConfigPath));
+            if (configFile)
+                applyConfigValues(config, configFile, dirname(tsConfigPath));
         }
     }
 
@@ -280,14 +345,18 @@ export function getResolver(
             const path = join(basePath, currentConfig.extends);
             if (seen.has(path)) break;
             seen.add(path);
-            const nextConfig = ts.readConfigFile(path, (path: string) => host.readFile(path));
+            const nextConfig = ts.readConfigFile(path, (path: string) =>
+                host.readFile(path),
+            );
             if (!nextConfig) break;
             basePath = dirname(path);
             applyConfigValues(currentConfig, nextConfig.config, basePath);
         }
     }
 
-    config.exclude = config.exclude ? [...defaultExcluded, ...config.exclude] : [...defaultExcluded];
+    config.exclude = config.exclude
+        ? [...defaultExcluded, ...config.exclude]
+        : [...defaultExcluded];
 
     const resolvedConfig: ResolvedConfig = {
         path: tsConfigPath,
@@ -295,18 +364,28 @@ export function getResolver(
         exclude: config.exclude,
         reflection: config.reflection,
         mergeStrategy: config.mergeStrategy || defaultMergeStrategy,
-    }
+        inlineExternalLibraryImports: config.inlineExternalLibraryImports,
+    };
 
-    if (isDebug()) {
-        debug(`Found config ${resolvedConfig.path}:\nreflection:`, resolvedConfig.reflection, `\nexclude:`, resolvedConfig.exclude);
-    }
+    debug(
+        `Found config ${resolvedConfig.path}:\nreflection:`,
+        resolvedConfig.reflection,
+        `\nexclude:`,
+        resolvedConfig.exclude,
+        `\ninlineExternalLibraryImports:`,
+        resolvedConfig.inlineExternalLibraryImports,
+    );
 
     const match = (path: string) => {
         const mode = reflectionModeMatcher(config, path);
-        return { mode, tsConfigPath };
+        return {
+            mode,
+            tsConfigPath,
+            inlineExternalLibraryImports: config.inlineExternalLibraryImports,
+        };
     };
 
-    return cache[tsConfigPath] = { config: resolvedConfig, match };
+    return (cache[tsConfigPath] = { config: resolvedConfig, match });
 }
 
 export function loadReflectionConfig(
