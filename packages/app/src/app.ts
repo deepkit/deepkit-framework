@@ -247,7 +247,9 @@ export class App<T extends RootModuleDefinition> {
         return this;
     }
 
-    command(name: string, callback: (...args: any[]) => any): this {
+    command(name: string | ((...args: any[]) => any), callback?: (...args: any[]) => any): this {
+        callback = isFunction(name) ? name : callback!;
+        name = isFunction(name) ? '' : name;
         this.appModule.addCommand(name, callback);
         return this;
     }
@@ -348,7 +350,6 @@ export class App<T extends RootModuleDefinition> {
         }
 
         const scopedInjectorContext = this.getInjectorContext().createChildScope('cli');
-        const commands = [...this.serviceContainer.cliControllerRegistry.controllers.entries()];
 
         if ('string' !== typeof bin) {
             bin = bin || getBinFromEnvironment();
@@ -360,7 +361,8 @@ export class App<T extends RootModuleDefinition> {
         return await executeCommand(
             bin, argv || getArgsFromEnvironment(),
             eventDispatcher, logger,
-            scopedInjectorContext, commands.map(c => c[1])
+            scopedInjectorContext,
+            this.serviceContainer.cliControllerRegistry.controllers
         );
     }
 }

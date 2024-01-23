@@ -260,7 +260,7 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
 
     public imports: AppModule<any>[] = [];
     public controllers: ClassType[] = [];
-    public commands: { name: string, callback: Function }[] = [];
+    public commands: { name?: string, callback: Function }[] = [];
     public workflows: WorkflowDefinition<any>[] = [];
     public listeners: ListenerType[] = [];
     public middlewares: MiddlewareFactory[] = [];
@@ -369,11 +369,11 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
         return this.controllers;
     }
 
-    getCommands(): { name: string, callback: Function }[] {
+    getCommands(): { name?: string, callback: Function }[] {
         return this.commands;
     }
 
-    addCommand(name: string, callback: (...args: []) => any): this {
+    addCommand(name: string | undefined, callback: (...args: []) => any): this {
         this.assertInjectorNotBuilt();
         this.commands.push({ name, callback });
         return this;

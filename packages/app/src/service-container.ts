@@ -40,7 +40,7 @@ export interface ControllerConfig {
 }
 
 export class CliControllerRegistry {
-    public readonly controllers = new Map<string, ControllerConfig>();
+    public readonly controllers: ControllerConfig[] = [];
 }
 
 export type MiddlewareRegistryEntry = { config: MiddlewareConfig, module: AppModule<any> };
@@ -303,19 +303,22 @@ export class ServiceContainer {
     protected processController(module: AppModule<any>, controller: ControllerConfig) {
         let name = controller.name || '';
         if (controller.controller) {
+
             if (!name) {
                 const cliConfig = cli._fetch(controller.controller);
                 if (cliConfig) {
-                    name = cliConfig.name || '';
+                    controller.name = name || cliConfig.name || '';
+
                     //make sure CLI controllers are provided in cli scope
                     if (!module.isProvided(controller.controller)) {
                         module.addProvider({ provide: controller.controller, scope: 'cli' });
                     }
-                    this.cliControllerRegistry.controllers.set(name, controller);
+                    this.cliControllerRegistry.controllers.push(controller);
                 }
             }
+
         } else if (controller.for === 'cli') {
-            this.cliControllerRegistry.controllers.set(name, controller);
+            this.cliControllerRegistry.controllers.push(controller);
         }
 
         for (const m of this.modules) {
