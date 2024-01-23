@@ -2279,8 +2279,8 @@ export function isGlobalTypeClass(type: Type): type is TypeClass {
 /**
  * Returns true if the given type is TypeClass and references a custom (non-global) class.
  */
-export function isCustomTypeClass(type: Type) {
-    return !isGlobalTypeClass(type);
+export function isCustomTypeClass(type: Type): type is TypeClass {
+    return type.kind === ReflectionKind.class && !isGlobalTypeClass(type);
 }
 
 /**
