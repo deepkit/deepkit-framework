@@ -235,7 +235,7 @@ export class BrokerBusChannel<T> {
     ) {
     }
 
-    async publish<T>(message: T) {
+    async publish(message: T) {
         return this.adapter.publish(this.name, message, this.type);
     }
 
