@@ -80,7 +80,7 @@ test('executeCommand 1', async () => {
          */
         function system_test(logger: Logger) {
             logger.log('system_test');
-        }
+        },
     ]);
 
     const helpMessageRoot = `USAGE
@@ -106,7 +106,7 @@ COMMANDS
 system
   system:test  Wild system command.
 
-For more information on a specific command or topic, type '[command/topic] --help'`
+For more information on a specific command or topic, type '[command/topic] --help'`,
     });
 
     expect(await app(['test', 'Peter'])).toEqual({ code: 0, output: 'Hello Peter' });
@@ -131,7 +131,7 @@ test('executeCommand 2', async () => {
         },
         function showUsers(user: string[] & Flag, logger: Logger) {
             logger.log(`showUsers ${user}`);
-        }
+        },
     ]);
 
     expect(await app(['show-user', 'Peter'])).toEqual({ code: 0, output: 'showUser Peter false' });
@@ -147,12 +147,78 @@ test('executeCommand 2', async () => {
 
 test('executeCommand 3', async () => {
     const app = simpleApp([
-        function showUser(name: string & Flag<{char: 'n'}>, logger: Logger) {
+        function showUser(name: string & Flag<{ char: 'n' }>, logger: Logger) {
             logger.log(`showUser ${name}`);
-        }
+        },
     ]);
 
     expect(await app(['show-user', '--name', 'Peter'])).toEqual({ code: 0, output: 'showUser Peter' });
     expect(await app(['show-user', '-n', 'Peter'])).toEqual({ code: 0, output: 'showUser Peter' });
     expect((await app(['show-user', '--help'])).output).toContain('-n, --name');
+});
+
+test('object literal flag', async () => {
+    interface Options {
+        name: string;
+        age?: number;
+    }
+
+    const app = simpleApp([
+        function showUser(options: Options & Flag, logger: Logger) {
+            logger.log(`name=${options.name} age=${options.age}`);
+        },
+    ]);
+
+    expect(await app(['show-user', '--name', 'Peter'])).toEqual({ code: 0, output: 'name=Peter age=undefined' });
+    expect(await app(['show-user', '--name', 'Peter', '--age', '32'])).toEqual({ code: 0, output: 'name=Peter age=32' });
+});
+
+
+test('multiple object literal flag', async () => {
+    interface Options {
+        name: string;
+        age?: number;
+    }
+
+    interface Options2 {
+        user: string;
+        created?: Date;
+    }
+
+    const app = simpleApp([
+        function showUser(options: Options & Flag, options2: Options2 & Flag, logger: Logger) {
+            logger.log(`name=${options.name} age=${options.age} user=${options2.user} created=${options2.created?.toJSON()}`);
+        },
+    ]);
+
+    expect((await app(['show-user', '--name', 'Peter'])).output).toContain('Invalid value for option --user: undefined');
+    expect(await app(['show-user', '--name', 'Peter', '--user', 'pete'])).toEqual({ code: 0, output: 'name=Peter age=undefined user=pete created=undefined' });
+    expect(await app(['show-user', '--name', 'Peter', '--user', 'pete', '--created', '2021-01-01'])).toEqual({
+        code: 0,
+        output: 'name=Peter age=undefined user=pete created=2021-01-01T00:00:00.000Z',
+    });
+});
+
+
+test('multiple object literal flag duplicate', async () => {
+    interface Options {
+        name: string;
+        age?: number;
+    }
+
+    interface Options2 {
+        name: number;
+    }
+
+    const app = simpleApp([
+        function showUser(options: Options & Flag, options2: Options2 & Flag, logger: Logger) {
+        },
+        function showUser2(options: Options & Flag, options2: Options2 & Flag<{ prefix: '2' }>, logger: Logger) {
+            logger.log(`name=${options.name} age=${options.age} name2=${options2.name}`);
+        },
+    ]);
+
+    expect((await app(['show-user', '--name', 'Peter'])).output).toContain('Duplicate CLI');
+    expect((await app(['show-user2', '--name', 'Peter', '--2.name', '3'])).output).toContain('name=Peter age=undefined name2=3');
+    expect((await app(['show-user2', '--name', 'Peter', '--2.name', 'abc'])).output).toContain('Invalid value for option --2.name: abc');
 });

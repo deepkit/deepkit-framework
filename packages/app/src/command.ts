@@ -14,14 +14,14 @@ import {
     createClassDecoratorContext,
     deserialize,
     hasDefaultValue,
+    isCustomTypeClass,
+    isDateType,
     isOptional,
     metaAnnotation,
     reflect,
     ReflectionClass,
     ReflectionFunction,
     ReflectionKind,
-    ReflectionParameter,
-    ReflectionProperty,
     stringifyType,
     Type,
     TypeAnnotation,
@@ -30,7 +30,7 @@ import {
     TypePropertySignature,
     typeToObject,
     validate,
-    ValidationError
+    ValidationError,
 } from '@deepkit/type';
 import { EventDispatcher } from '@deepkit/event';
 import { getInjectOptions, InjectorContext, InjectorModule } from '@deepkit/injector';
@@ -42,7 +42,7 @@ import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 /**
  * Flag is a command line argument that is prefixed with `--` and can have a value.
  */
-export type Flag<Options extends { char?: string, hidden?: boolean, description?: string } = {}> = TypeAnnotation<'cli:flag', Options>;
+export type Flag<Options extends { char?: string, hidden?: boolean, description?: string, prefix?: string } = {}> = TypeAnnotation<'cli:flag', Options>;
 
 class CommandDecoratorDefinition {
     name: string = '';
@@ -72,15 +72,16 @@ export function isCommand(classType: ClassType<Command>) {
 }
 
 
-function convert(propertySchema: ReflectionParameter | ReflectionProperty, value: any) {
-    if (value === undefined && !propertySchema.isValueRequired()) {
-        return undefined;
+function convert(parameter: CommandParameter, value: any) {
+    if (value === undefined) {
+        if (parameter.optional) return undefined;
+        throw new Error(`Value is required`);
     }
-    if (propertySchema.type.kind === ReflectionKind.array && !Array.isArray(value)) {
+    if (parameter.type.kind === ReflectionKind.array && !Array.isArray(value)) {
         value = [value];
     }
-    value = deserialize(value, undefined, undefined, undefined, propertySchema.type);
-    const errors = validate(value, propertySchema.type);
+    value = deserialize(value, undefined, undefined, undefined, parameter.type);
+    const errors = validate(value, parameter.type);
     if (errors.length) {
         throw errors[0];
     }
@@ -90,14 +91,20 @@ function convert(propertySchema: ReflectionParameter | ReflectionProperty, value
 /**
  * Auto-detect some types as flag.
  */
-function supportedAsFlag(type: Type): boolean {
+function isFlagForced(type: Type): boolean {
     if (supportedAsArgument(type)) return false;
 
     return type.kind === ReflectionKind.boolean;
 }
 
+function supportedFlags(type: Type): boolean {
+    return supportedAsArgument(type) || isFlagForced(type);
+}
+
 function supportedAsArgument(type: Type): boolean {
-    if (type.kind === ReflectionKind.string || type.kind === ReflectionKind.number || type.kind === ReflectionKind.literal) return true;
+    if (type.kind === ReflectionKind.string || type.kind === ReflectionKind.number
+        || type.kind === ReflectionKind.any || type.kind === ReflectionKind.unknown || isDateType(type)
+        || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.literal) return true;
     if (type.kind === ReflectionKind.union) return type.types.every(v => supportedAsArgument(v));
     return false;
 }
@@ -275,24 +282,25 @@ function printTopics(script: string, forTopic: string, commands: ParsedCliContro
     writer(`For more information on a specific command or topic, type '[command/topic] --help'`);
 }
 
-function getParamFlags(parameter: TypeParameter | TypeProperty | TypePropertySignature): string {
+function getParamFlags(parameter: CommandParameter): string {
     const flags: string[] = [];
+    if (!parameter.optional) flags.push('required');
+
     if (parameter.type.kind === ReflectionKind.array) {
         flags.push('multiple');
     }
-    const optional = isOptional(parameter) || hasDefaultValue(parameter);
-    if (optional) flags.push('optional');
+    if (parameter.defaultValue !== undefined) flags.push('default=' + parameter.defaultValue);
     return flags.length ? `[${flags.join(', ')}]` : '';
 }
 
 function getParamIdentifier(parameter: CommandParameter): string {
-    const elementType = parameter.parameter.type.kind === ReflectionKind.array ? parameter.parameter.type.type : parameter.parameter.type;
+    const elementType = parameter.type.kind === ReflectionKind.array ? parameter.type.type : parameter.type;
 
     if (parameter.kind === 'flag' || parameter.kind === 'flag-property') {
         let name = `--${parameter.name}`;
         if (parameter.char) name = `-${parameter.char}, ${name}`;
 
-        if (parameter.parameter.type.kind === ReflectionKind.boolean) {
+        if (parameter.type.kind === ReflectionKind.boolean) {
             return `<green>${name}</green>`;
         }
         return `<green>${name} ${stringifyType(elementType)}</green>`;
@@ -313,7 +321,7 @@ function printHelp(script: string, command: ParsedCliControllerConfig, writer: C
     if (args.length) {
         writer('<yellow>Arguments:</yellow>');
         for (const parameter of args) {
-            writer(`  ${parameter.name}</green>\t${parameter.parameter.description || ''}<yellow>${getParamFlags(parameter.parameter)}</yellow>`);
+            writer(`  ${parameter.name}</green>\t${parameter.description || ''}<yellow>${getParamFlags(parameter)}</yellow>`);
         }
     }
 
@@ -326,7 +334,7 @@ function printHelp(script: string, command: ParsedCliControllerConfig, writer: C
         if (parameter.hidden) continue;
         const label = getParamIdentifier(parameter);
         const nameWithSpacing = label + ' '.repeat(descriptionSpacing - label.length);
-        writer(`  ${nameWithSpacing}${parameter.parameter.description || ''}<yellow>${getParamFlags(parameter.parameter)}</yellow>`);
+        writer(`  ${nameWithSpacing}${parameter.description || ''}<yellow>${getParamFlags(parameter)}</yellow>`);
     }
 }
 
@@ -337,6 +345,7 @@ interface ParameterMeta {
     char: string;
     hidden: boolean;
     description: string;
+    prefix?: string;
 }
 
 function getParameterMeta(parameter: TypeParameter | TypeProperty | TypePropertySignature): ParameterMeta {
@@ -347,6 +356,7 @@ function getParameterMeta(parameter: TypeParameter | TypeProperty | TypeProperty
         flag: !!metaFlag,
         char: flagOptions.char || '',
         hidden: flagOptions.hidden === true,
+        prefix: flagOptions.prefix,
         description: flagOptions.description || '',
     };
 }
@@ -363,7 +373,7 @@ export async function executeCommand(
     logger: LoggerInterface,
     injector: InjectorContext,
     commandsConfigs: ControllerConfig[],
-    writer?: CommandWriter
+    writer?: CommandWriter,
 ): Promise<number> {
     let commands = commandsConfigs.map(v => parseControllerConfig(v));
 
@@ -414,11 +424,11 @@ export async function executeCommand(
     }
 }
 
-function handleConvertError(parameter: TypeParameter | TypeProperty | TypePropertySignature, value: any, error: any) {
-    let group = parameter.kind === ReflectionKind.parameter ? 'argument' : 'property';
-    let name = String(parameter.name);
-    if (getParameterMeta(parameter).flag) {
-        name = '--' + String(parameter.name);
+function handleConvertError(parameter: CommandParameter, value: any, error: any) {
+    let group = parameter.kind === 'argument' ? 'argument' : 'property';
+    let name = getActualCliParameterName(parameter);
+    if (parameter.kind === 'flag' || parameter.kind === 'flag-property') {
+        name = '--' + name;
         group = 'option';
     }
     if (error instanceof ValidationError) {
@@ -431,9 +441,14 @@ interface CommandParameter {
     name: string;
     char: string;
     hidden: boolean;
+    flag: boolean;
+    optional: boolean;
+    description: string;
     kind: 'argument' | 'flag' | 'flag-property' | 'service';
-    reflection: ReflectionProperty | ReflectionParameter;
-    parameter: TypeParameter | TypeProperty | TypePropertySignature;
+    defaultValue?: any;
+    type: Type;
+    prefix: string;
+    collectInto?: string; //members of object literal
 }
 
 function collectCommandParameter(config: ParsedCliControllerConfig) {
@@ -445,39 +460,84 @@ function collectCommandParameter(config: ParsedCliControllerConfig) {
 
     const result: CommandParameter[] = [];
 
+    let objectLiterals = 0;
     for (const reflection of parameters) {
-        const parameter = reflection.parameter;
-        const meta = getParameterMeta(reflection.parameter);
-        const injectToken = getInjectOptions(reflection.parameter.type);
-        const isSimple = supportedAsArgument(reflection.parameter.type);
+        if (reflection.parameter.type.kind === ReflectionKind.objectLiteral || reflection.parameter.type.kind === ReflectionKind.class) {
+            objectLiterals++;
+        }
+    }
+
+    const names = new Set<string>();
+
+    function add(parameter: TypeParameter | TypeProperty | TypePropertySignature, prefixIn: string, collectInto?: string, forceFlag?: boolean) {
+        const meta = getParameterMeta(parameter);
+        const injectToken = getInjectOptions(parameter.type);
+        const isSimple = supportedAsArgument(parameter.type);
         const char = meta.char || '';
         const hidden = meta.hidden || false;
+        const prefix = prefixIn || meta.prefix || '';
+        const optional = isOptional(parameter) || hasDefaultValue(parameter);
+        const description = meta.description || parameter.description || '';
+        const name = String(parameter.name);
+        let defaultValue: any = undefined;
+        try {
+            defaultValue = parameter.kind === ReflectionKind.property || parameter.kind === ReflectionKind.parameter ? parameter.default?.() : undefined;
+        } catch {
+        }
 
-        if ((meta.flag || supportedAsFlag(reflection.parameter.type)) && !injectToken) {
-            result.push({ name: reflection.name, char, hidden, kind: 'flag', reflection, parameter });
+        if (forceFlag || (meta.flag || isFlagForced(parameter.type)) && !injectToken) {
+            // check if parameter.type is an object, e.g. { name: string, age: number }
+            // split it into multiple flags, e.g. --name --age
+            if (parameter.type.kind === ReflectionKind.objectLiteral || isCustomTypeClass(parameter.type)) {
+                for (const property of parameter.type.types) {
+                    if (property.kind !== ReflectionKind.property && property.kind !== ReflectionKind.propertySignature) continue;
+                    if (!supportedFlags(property.type)) continue;
+                    const subName = String(property.name);
+                    if (names.has(prefix + '.' + subName)) {
+                        throw new Error(`Duplicate CLI argument/flag name ${subName} in object literal. Try setting a prefix via ${name}: ${stringifyType(parameter.type)} & Flag<{prefix: '${name}'}> `);
+                    }
+                    names.add(prefix + '.' + subName);
+                    add(property, prefix, name, true);
+                }
+            } else {
+                names.add(name);
+                result.push({ name, defaultValue, char, hidden, optional, description, prefix, collectInto, kind: 'flag', flag: true, type: parameter.type });
+            }
         } else {
+            names.add(name);
             //it's either a simple string|number positional argument or a service
             if (isSimple && !injectToken) {
-                result.push({ name: parameter.name, char, hidden, kind: 'argument', reflection, parameter });
+                result.push({ name, defaultValue, flag: false, char, optional, description, hidden, collectInto, prefix, kind: 'argument', type: parameter.type });
             } else {
-                result.push({ name: parameter.name, char, hidden, kind: 'service', reflection, parameter });
+                result.push({ name, defaultValue, flag: false, char, optional, description, hidden, collectInto, prefix, kind: 'service', type: parameter.type });
             }
         }
+    }
+
+    for (const reflection of parameters) {
+        add(reflection.parameter, '');
     }
 
     if (config.controller) {
         const classSchema = ReflectionClass.from(config.controller);
         for (const reflection of classSchema.getProperties()) {
             const meta = getParameterMeta(reflection.property);
+            const optional = reflection.isOptional() || reflection.hasDefault();
+            const description = meta.description || reflection.property.description || '';
+
             if (!meta.flag) continue;
             result.push({
-                name: reflection.name, hidden: meta.hidden || false, char: meta.char || '',
-                kind: 'flag-property', reflection, parameter: reflection.property
+                name: reflection.name, hidden: meta.hidden || false, prefix: meta.prefix || '', char: meta.char || '',
+                kind: 'flag-property', flag: true, description, optional, type: reflection.property.type,
             });
         }
     }
 
     return result;
+}
+
+function getActualCliParameterName(parameter: { prefix: string, name: string }) {
+    return parameter.prefix ? parameter.prefix + '.' + parameter.name : parameter.name;
 }
 
 export async function runCommand(
@@ -512,28 +572,39 @@ export async function runCommand(
 
     for (const parameter of commandParameters) {
         if (parameter.kind === 'service') {
-            const injectToken = getInjectOptions(parameter.parameter.type);
+            const injectToken = getInjectOptions(parameter.type);
             try {
-                args.push(injector.get(injectToken || parameter.parameter.type));
+                args.push(injector.get(injectToken || parameter.type));
             } catch (error) {
-                handleConvertError(parameter.parameter, parsedArgs[parameter.name], error);
+                handleConvertError(parameter, parsedArgs[parameter.name], error);
             }
             continue;
         }
-        let raw = parsedArgs[parameter.name];
+        const id = getActualCliParameterName(parameter);
+        let raw = parsedArgs[id];
         if (parameter.kind === 'argument') {
             raw = positionalArguments[positionalIndex];
             positionalIndex++;
         }
 
         try {
-            const v = convert(parameter.reflection, raw);
-            parameterValues[parameter.name] = v;
-            if (parameter.kind !== 'flag-property') {
-                args.push(v);
+            const v = convert(parameter, raw);
+            if (parameter.collectInto) {
+                if (!parameterValues[parameter.collectInto]) {
+                    parameterValues[parameter.collectInto] = {};
+                    if (parameter.kind !== 'flag-property') {
+                        args.push(parameterValues[parameter.collectInto]);
+                    }
+                }
+                parameterValues[parameter.collectInto][parameter.name] = v;
+            } else {
+                parameterValues[parameter.name] = v;
+                if (parameter.kind !== 'flag-property') {
+                    args.push(v);
+                }
             }
         } catch (error) {
-            handleConvertError(parameter.parameter, raw, error);
+            handleConvertError(parameter, raw, error);
         }
     }
 
@@ -571,7 +642,7 @@ export async function runCommand(
             command: config.name,
             parameters: parameterValues,
             injector,
-            error: error instanceof Error ? error : new Error(String(error))
+            error: error instanceof Error ? error : new Error(String(error)),
         });
         throw error;
     } finally {
