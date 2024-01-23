@@ -4,13 +4,9 @@ on:
   pull_request:
   push:
 
-
 jobs:
   unit-tests:
     runs-on: ubuntu22-4x16
-    strategy:
-      matrix:
-        node-version: [20.10.0]
     services:
       storage-ftp:
         image: garethflowers/ftp-server:0.7.0
@@ -28,20 +24,10 @@ jobs:
           - '2222:22'
     steps:
       - uses: actions/checkout@v4
-      - name: Install yarn
-        run: corepack enable && yarn set version 4.0.2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: yarn
-      - name: npm install
-        run: yarn
-      - name: Lint commit messages
-        run: ./node_modules/.bin/commitlint --from $BASE_SHA --to $HEAD_SHA --verbose
-        env:
-            BASE_SHA: ${{ github.event.pull_request.base.sha }}
-            HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        timeout-minutes: 10
 
       - name: Build
         run: |
@@ -99,7 +85,6 @@ jobs:
     runs-on: ubuntu22-4x16
     strategy:
       matrix:
-        node-version: [20.10.0]
         postgres-version: [14]
     services:
       postgres:
@@ -113,20 +98,18 @@ jobs:
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
-      - name: Install yarn
-        run: corepack enable && yarn set version 4.0.2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: yarn
-      - name: npm install
-        run: corepack enable && yarn set version 4.0.2 && yarn
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        timeout-minutes: 10
+
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/postgres/tsconfig.json;
+
       - name: Test
         run: npm run test:coverage packages/postgres/
+
       - name: Send coverage
         run: ./node_modules/.bin/codecov -f coverage/*.json
 
@@ -136,7 +119,6 @@ jobs:
     runs-on: ubuntu22-4x16
     strategy:
       matrix:
-        node-version: [20.10.0]
         mysql-version: [8.0]
     services:
       mysql:
@@ -149,20 +131,18 @@ jobs:
           - '3306:3306'
     steps:
       - uses: actions/checkout@v4
-      - name: Install yarn
-        run: corepack enable && yarn set version 4.0.2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: yarn
-      - name: npm install
-        run: corepack enable && yarn set version 4.0.2 && yarn
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        timeout-minutes: 10
+
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/mysql/tsconfig.json
+
       - name: Test
         run: npm run test:coverage packages/mysql/
+
       - name: Send coverage
         run: ./node_modules/.bin/codecov -f coverage/*.json
 
@@ -170,25 +150,20 @@ jobs:
     needs:
       - unit-tests
     runs-on: ubuntu22-4x16
-    strategy:
-      matrix:
-        node-version: [20.10.0]
     steps:
       - uses: actions/checkout@v4
-      - name: Install yarn
-        run: corepack enable && yarn set version 4.0.2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: yarn
-      - name: npm install
-        run: corepack enable && yarn set version 4.0.2 && yarn
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        timeout-minutes: 10
+
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/sqlite/tsconfig.json
+
       - name: Test
         run: npm run test:coverage packages/sqlite/
+
       - name: Send coverage
         run: ./node_modules/.bin/codecov -f coverage/*.json
 
@@ -198,7 +173,6 @@ jobs:
     runs-on: ubuntu22-4x16
     strategy:
       matrix:
-        node-version: [20.10.0]
         mongo-version: [4.0]
     services:
       # this is used for the simple-auth test
@@ -218,20 +192,19 @@ jobs:
         with:
           mongodb-version: ${{ matrix.mongo-version }}
           mongodb-replica-set: test-rs
+
       - uses: actions/checkout@v4
-      - name: Install yarn
-        run: corepack enable && yarn set version 4.0.2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: yarn
-      - name: Install
-        run: corepack enable && yarn set version 4.0.2 && yarn
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        timeout-minutes: 10
+
       - name: Build
         run: |
           ./node_modules/.bin/tsc --build packages/mongo/tsconfig.json
+
       - name: Test
         run: npm run test:coverage packages/mongo/
+
       - name: Send coverage
         run: ./node_modules/.bin/codecov -f coverage/*.json
