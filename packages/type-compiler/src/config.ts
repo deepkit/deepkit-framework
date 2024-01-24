@@ -87,7 +87,9 @@ function readTsConfig(parseConfigHost: ParseConfigHost, path: string): TsConfigJ
         return;
     }
 
-    return Object.assign(configFile.config, { compilerOptions: parsed.options });
+    return Object.assign(configFile.config, {
+        compilerOptions: parsed.options,
+    });
 }
 
 export interface ReflectionConfig {

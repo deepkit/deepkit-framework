@@ -1,5 +1,4 @@
 import * as micromatch from 'micromatch';
-import { isAbsolute, join } from 'path';
 import type {
     CompilerHost,
     CompilerOptions,
@@ -14,18 +13,14 @@ import ts from 'typescript';
 
 const { createSourceFile, resolveModuleName, isStringLiteral, JSDocParsingMode, ScriptTarget } = ts;
 
-export function patternMatch(path: string, patterns: string[], base?: string) {
-    const normalized = patterns.map(v => {
-        if (v[0] === '!') {
-            if (base && !isAbsolute(v.slice(1))) return '!' + join(base || '', v.substr(1));
-            return v;
-        }
+export function patternMatch(path: string, patterns: string[], base?: string): boolean {
+    const include = patterns.filter(pattern => pattern[0] !== '!');
 
-        if (!isAbsolute(v)) return join(base || '', v);
-        return v;
+    const exclude = patterns.filter(pattern => pattern[0] === '!').map(pattern => pattern.substring(1));
+
+    return micromatch.isMatch(path, include, {
+        ignore: exclude,
     });
-    const matched = micromatch.default([path], normalized, {});
-    return matched.length > 0;
 }
 
 /**
