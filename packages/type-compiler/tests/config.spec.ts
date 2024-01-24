@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { ParseConfigHost, ScriptTarget } from 'typescript';
-import { defaultExcluded, getResolver, Resolver, TsConfigJson } from '../src/config.js';
+
+import { Resolver, TsConfigJson, defaultExcluded, getResolver } from '../src/config.js';
 import { patternMatch } from '../src/resolver.js';
 
 process.env.DEBUG = 'deepkit';
@@ -16,7 +17,9 @@ function buildHost(files: { [fileName: string]: TsConfigJson }): ParseConfigHost
         },
         readDirectory: (path: string, extensions?: readonly string[], exclude?: readonly string[], include?: readonly string[], depth?: number) => {
             path = path.endsWith('/') ? path : path + '/';
-            const res = Object.entries(files).filter(([fileName]) => fileName.startsWith(path)).map(([fileName]) => fileName);
+            const res = Object.entries(files)
+                .filter(([fileName]) => fileName.startsWith(path))
+                .map(([fileName]) => fileName);
             if (extensions) return res.filter(fileName => extensions.includes(fileName.split('.').pop()!));
             return res;
         },
@@ -63,7 +66,10 @@ test('empty config', () => {
         exclude: defaultExcluded,
     });
 
-    expect(resolver.match('test.ts')).toEqual({ tsConfigPath: 'tsconfig.json', mode: 'never' });
+    expect(resolver.match('test.ts')).toEqual({
+        tsConfigPath: 'tsconfig.json',
+        mode: 'never',
+    });
     expectDefaultExcluded(resolver);
 });
 
@@ -83,7 +89,10 @@ test('simple config', () => {
         exclude: defaultExcluded,
     });
 
-    expect(resolver.match('test.ts')).toEqual({ tsConfigPath: 'tsconfig.json', mode: 'default' });
+    expect(resolver.match('test.ts')).toEqual({
+        tsConfigPath: 'tsconfig.json',
+        mode: 'default',
+    });
     expectDefaultExcluded(resolver);
 });
 
@@ -106,7 +115,10 @@ test('simple config with exclude', () => {
         exclude: [...defaultExcluded, 'test.ts'],
     });
 
-    expect(resolver.match('test.ts')).toEqual({ tsConfigPath: 'tsconfig.json', mode: 'never' });
+    expect(resolver.match('test.ts')).toEqual({
+        tsConfigPath: 'tsconfig.json',
+        mode: 'never',
+    });
     expectDefaultExcluded(resolver);
 });
 
@@ -130,9 +142,12 @@ test('disable parent', () => {
         exclude: defaultExcluded,
     });
 
-    expect(resolver.match('test.ts')).toEqual({ tsConfigPath: 'tsconfig.json', mode: 'never' });
+    expect(resolver.match('test.ts')).toEqual({
+        tsConfigPath: 'tsconfig.json',
+        mode: 'never',
+    });
     expectDefaultExcluded(resolver);
-})
+});
 
 test('replace strategy does not replace default excludes', () => {
     const host = buildHost({
@@ -154,7 +169,10 @@ test('replace strategy does not replace default excludes', () => {
         exclude: [...defaultExcluded, 'test.ts'],
     });
 
-    expect(resolver.match('test.ts')).toEqual({ tsConfigPath: 'tsconfig.json', mode: 'never' });
+    expect(resolver.match('test.ts')).toEqual({
+        tsConfigPath: 'tsconfig.json',
+        mode: 'never',
+    });
     expectDefaultExcluded(resolver);
 });
 
@@ -184,8 +202,14 @@ test('replace parent config exclude', () => {
         exclude: [...defaultExcluded, 'test2.ts'],
     });
 
-    expect(resolver.match('test.ts')).toEqual({ tsConfigPath: 'tsconfig2.json', mode: 'default' });
-    expect(resolver.match('test2.ts')).toEqual({ tsConfigPath: 'tsconfig2.json', mode: 'never' });
+    expect(resolver.match('test.ts')).toEqual({
+        tsConfigPath: 'tsconfig2.json',
+        mode: 'default',
+    });
+    expect(resolver.match('test2.ts')).toEqual({
+        tsConfigPath: 'tsconfig2.json',
+        mode: 'never',
+    });
     expectDefaultExcluded(resolver);
 });
 
@@ -213,7 +237,10 @@ test('extend reflection array', () => {
         exclude: defaultExcluded,
     });
 
-    expect(resolver.match('test.ts')).toEqual({ tsConfigPath: 'tsconfig.json', mode: 'default' });
+    expect(resolver.match('test.ts')).toEqual({
+        tsConfigPath: 'tsconfig.json',
+        mode: 'default',
+    });
     expectDefaultExcluded(resolver);
 });
 
@@ -242,7 +269,10 @@ test('replace reflection array', () => {
         exclude: defaultExcluded,
     });
 
-    expect(resolver.match('test.ts')).toEqual({ tsConfigPath: 'tsconfig.json', mode: 'never' });
+    expect(resolver.match('test.ts')).toEqual({
+        tsConfigPath: 'tsconfig.json',
+        mode: 'never',
+    });
     expectDefaultExcluded(resolver);
 });
 
@@ -271,8 +301,14 @@ test('circular extend', () => {
         exclude: defaultExcluded,
     });
 
-    expect(resolver.match('test.ts')).toEqual({ tsConfigPath: 'tsconfig.json', mode: 'default' });
-    expect(resolver.match('test2.ts')).toEqual({ tsConfigPath: 'tsconfig.json', mode: 'default' });
+    expect(resolver.match('test.ts')).toEqual({
+        tsConfigPath: 'tsconfig.json',
+        mode: 'default',
+    });
+    expect(resolver.match('test2.ts')).toEqual({
+        tsConfigPath: 'tsconfig.json',
+        mode: 'default',
+    });
     expectDefaultExcluded(resolver);
 });
 
@@ -317,9 +353,7 @@ test('negative match 1', () => {
     const host = buildHost({
         '/app/tsconfig.json': {
             deepkitCompilerOptions: {
-                reflection: [
-                    'model/**/*.ts',
-                ],
+                reflection: ['model/**/*.ts'],
             },
         },
     });
@@ -327,9 +361,7 @@ test('negative match 1', () => {
     expect(resolver.config).toEqual({
         path: '/app/tsconfig.json',
         compilerOptions: {},
-        reflection: [
-            '/app/model/**/*.ts',
-        ],
+        reflection: ['/app/model/**/*.ts'],
         mergeStrategy: 'merge',
         exclude: defaultExcluded,
     });
@@ -343,17 +375,37 @@ test('negative match 2', () => {
     const host = buildHost({
         '/path/portal/tsconfig.json': {
             deepkitCompilerOptions: {
-                reflection: [
-                    'server/controllers/**/*.ts',
-                    'server/services/**/*.ts',
-                    'server/dao/**/*.ts',
-                    '!server/dao/mongoose.ts',
-                    'shared/**/*.ts',
-                ],
+                reflection: ['server/controllers/**/*.ts', 'server/services/**/*.ts', 'server/dao/**/*.ts', '!server/dao/mongoose.ts', 'shared/**/*.ts'],
             },
         },
     });
     const resolver = getResolver({}, host, {}, { fileName: '/path/portal/test.ts' });
     expect(resolver.match('/path/portal/server/dao/models.ts').mode).toBe('default');
     expect(resolver.match('/path/portal/server/dao/mongoose.ts').mode).toBe('never');
+});
+
+test('negative match 3', () => {
+    const host = buildHost({
+        '/path/portal/tsconfig.json': {
+            deepkitCompilerOptions: {
+                reflection: ['!src/lib/graphql/**/*.ts', 'src/**/*.ts'],
+            },
+        },
+    });
+    const resolver = getResolver({}, host, {}, { fileName: '/path/portal/src/index.ts' });
+    expect(resolver.match('/path/portal/src/lib/types.ts').mode).toBe('default');
+    expect(resolver.match('/path/portal/src/lib/graphql/generated.ts').mode).toBe('never');
+});
+
+test('negative match 4', () => {
+    const host = buildHost({
+        '/path/portal/tsconfig.json': {
+            deepkitCompilerOptions: {
+                reflection: ['!src/lib/graphql/generated.ts', 'src/**/*.ts'],
+            },
+        },
+    });
+    const resolver = getResolver({}, host, {}, { fileName: '/path/portal/src/index.ts' });
+    expect(resolver.match('/path/portal/src/lib/types.ts').mode).toBe('default');
+    expect(resolver.match('/path/portal/src/lib/graphql/generated.ts').mode).toBe('never');
 });
