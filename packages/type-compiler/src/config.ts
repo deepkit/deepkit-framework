@@ -1,5 +1,6 @@
 import { dirname, isAbsolute, join } from 'path';
-import ts, { CompilerOptions, ParseConfigHost } from 'typescript';
+import type { CompilerOptions, ParseConfigHost } from 'typescript';
+import ts from 'typescript';
 
 import { debug, isDebug } from './debug.js';
 import { patternMatch } from './resolver.js';
