@@ -13,19 +13,12 @@ import type {
 } from 'typescript';
 import ts from 'typescript';
 
-const {
-    createSourceFile,
-    resolveModuleName,
-    isStringLiteral,
-    JSDocParsingMode,
-    ScriptTarget,
-} = ts;
+const { createSourceFile, resolveModuleName, isStringLiteral, JSDocParsingMode, ScriptTarget } = ts;
 
 export function patternMatch(path: string, patterns: string[], base?: string) {
     const normalized = patterns.map(v => {
         if (v[0] === '!') {
-            if (base && !isAbsolute(v.slice(1)))
-                return '!' + join(base || '', v.substr(1));
+            if (base && !isAbsolute(v.slice(1))) return '!' + join(base || '', v.substr(1));
             return v;
         }
 
@@ -48,26 +41,18 @@ export class Resolver {
         protected sourceFiles: { [fileName: string]: SourceFile },
     ) {}
 
-    resolve(
-        from: SourceFile,
-        importOrExportNode: ExportDeclaration | ImportDeclaration,
-    ): SourceFile | undefined {
-        const moduleSpecifier: Expression | undefined =
-            importOrExportNode.moduleSpecifier;
+    resolve(from: SourceFile, importOrExportNode: ExportDeclaration | ImportDeclaration): SourceFile | undefined {
+        const moduleSpecifier: Expression | undefined = importOrExportNode.moduleSpecifier;
         if (!moduleSpecifier) return;
         if (!isStringLiteral(moduleSpecifier)) return;
 
         return this.resolveSourceFile(from, moduleSpecifier);
     }
 
-    resolveExternalLibraryImport(
-        importDeclaration: ImportDeclaration,
-    ): Required<ResolvedModuleFull> {
+    resolveExternalLibraryImport(importDeclaration: ImportDeclaration): Required<ResolvedModuleFull> {
         const resolvedModule = this.resolveImport(importDeclaration);
         if (!resolvedModule.isExternalLibraryImport) {
-            throw new Error(
-                'Resolved module is not an external library import',
-            );
+            throw new Error('Resolved module is not an external library import');
         }
         if (!resolvedModule.packageId) {
             // packageId will be undefined when importing from sub-paths such as `rxjs/operators`
@@ -119,12 +104,7 @@ export class Resolver {
                 this.compilerOptions,
             )[0];
         }
-        const result = resolveModuleName(
-            modulePath.text,
-            sourceFile.fileName,
-            this.compilerOptions,
-            this.host,
-        );
+        const result = resolveModuleName(modulePath.text, sourceFile.fileName, this.compilerOptions, this.host);
         return result.resolvedModule;
     }
 
@@ -135,18 +115,12 @@ export class Resolver {
      * @param sourceFile the SourceFile of the file that contains the import. modulePath is relative to that.
      * @param modulePath the x in 'from x'.
      */
-    resolveSourceFile(
-        sourceFile: SourceFile,
-        modulePath: StringLiteral,
-    ): SourceFile | undefined {
+    resolveSourceFile(sourceFile: SourceFile, modulePath: StringLiteral): SourceFile | undefined {
         const result = this.resolveImpl(modulePath, sourceFile);
         if (!result) return;
 
         // only .ts and .d.ts files are supported
-        if (
-            !result.resolvedFileName.endsWith('.ts') &&
-            !result.resolvedFileName.endsWith('.d.ts')
-        ) {
+        if (!result.resolvedFileName.endsWith('.ts') && !result.resolvedFileName.endsWith('.d.ts')) {
             return;
         }
 
@@ -159,8 +133,7 @@ export class Resolver {
             fileName,
             source,
             {
-                languageVersion:
-                    this.compilerOptions.target || ScriptTarget.ES2018,
+                languageVersion: this.compilerOptions.target || ScriptTarget.ES2018,
                 jsDocParsingMode: JSDocParsingMode.ParseNone,
             },
             true,

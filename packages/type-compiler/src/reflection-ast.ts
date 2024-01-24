@@ -53,9 +53,7 @@ const {
 
 export type PackExpression = Expression | string | number | boolean | bigint;
 
-export function getIdentifierName(
-    node: Identifier | PrivateIdentifier,
-): string {
+export function getIdentifierName(node: Identifier | PrivateIdentifier): string {
     return ts.unescapeLeadingUnderscores(node.escapedText);
 }
 
@@ -85,20 +83,14 @@ export function joinQualifiedName(name: EntityName): string {
     return joinQualifiedName(name.left) + '_' + getIdentifierName(name.right);
 }
 
-export function getCommentOfNode(
-    sourceFile: SourceFile,
-    node: Node,
-): string | undefined {
+export function getCommentOfNode(sourceFile: SourceFile, node: Node): string | undefined {
     const comment = getLeadingCommentRanges(sourceFile.text, node.pos);
     if (!comment) return;
 
     return comment.map(v => sourceFile.text.substring(v.pos, v.end)).join('\n');
 }
 
-export function parseJSDocAttributeFromText(
-    comment: string,
-    attribute: string,
-): string | undefined {
+export function parseJSDocAttributeFromText(comment: string, attribute: string): string | undefined {
     // no regex
     const index = comment.indexOf('@' + attribute + ' ');
     if (index === -1) {
@@ -107,8 +99,7 @@ export function parseJSDocAttributeFromText(
             const withoutContent = comment.indexOf('@' + attribute, start);
             if (withoutContent === -1) return undefined;
             //make sure next character is space or end of comment
-            const nextCharacter =
-                comment[withoutContent + attribute.length + 1];
+            const nextCharacter = comment[withoutContent + attribute.length + 1];
             if (
                 !nextCharacter ||
                 nextCharacter === ' ' ||
@@ -127,10 +118,7 @@ export function parseJSDocAttributeFromText(
     // end is either next attribute @ or end of comment.
     const nextAttribute = comment.indexOf('@', start);
     const endOfComment = comment.indexOf('*/', start);
-    const end =
-        nextAttribute === -1
-            ? endOfComment
-            : Math.min(nextAttribute, endOfComment);
+    const end = nextAttribute === -1 ? endOfComment : Math.min(nextAttribute, endOfComment);
     const content = comment.substring(start, end).trim();
 
     // make sure multiline comments are supported, and each line is trimmed and `\s\s\s\*` removed
@@ -160,10 +148,7 @@ export function extractJSDocAttribute(
     return parseJSDocAttributeFromText(comment, attribute);
 }
 
-export function getPropertyName(
-    f: NodeFactory,
-    node?: PropertyName,
-): string | symbol | number | ArrowFunction {
+export function getPropertyName(f: NodeFactory, node?: PropertyName): string | symbol | number | ArrowFunction {
     if (!node) return '';
 
     if (isIdentifier(node)) return getIdentifierName(node);
@@ -171,14 +156,7 @@ export function getPropertyName(
     if (isNumericLiteral(node)) return +node.text;
     if (isNoSubstitutionTemplateLiteral(node)) return node.text;
     if (isComputedPropertyName(node)) {
-        return f.createArrowFunction(
-            undefined,
-            undefined,
-            [],
-            undefined,
-            undefined,
-            node.expression,
-        );
+        return f.createArrowFunction(undefined, undefined, [], undefined, undefined, node.expression);
     }
     if (isPrivateIdentifier(node)) return getIdentifierName(node);
 
@@ -201,18 +179,12 @@ export function getNameAsString(node?: PropertyName | QualifiedName): string {
     return joinQualifiedName(node);
 }
 
-export function hasModifier(
-    node: Node & { modifiers?: NodeArray<ModifierLike> },
-    modifier: ts.SyntaxKind,
-): boolean {
+export function hasModifier(node: Node & { modifiers?: NodeArray<ModifierLike> }, modifier: ts.SyntaxKind): boolean {
     if (!node.modifiers) return false;
     return node.modifiers.some(v => v.kind === modifier);
 }
 
-const cloneHook = <T extends Node>(
-    node: T,
-    payload: { depth: number },
-): CloneNodeHook<T> | undefined => {
+const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNodeHook<T> | undefined => {
     if (isIdentifier(node)) {
         //ts-clone-node wants to read `node.text` which does not exist. we hook into it and provide the correct value.
         return {
@@ -234,27 +206,19 @@ export class NodeConverter {
         name: string,
         externalLibraryImport?: ExternalLibraryImport,
     ): PropertyAccessExpression {
-        const { module } =
-            externalLibraryImport ||
-            this.external.getEmbeddingExternalLibraryImport();
+        const { module } = externalLibraryImport || this.external.getEmbeddingExternalLibraryImport();
         return this.f.createPropertyAccessExpression(
-            this.f.createIdentifier(
-                getExternalRuntimeTypeName(module.packageId.name),
-            ),
+            this.f.createIdentifier(getExternalRuntimeTypeName(module.packageId.name)),
             name,
         );
     }
 
-    toExpression<T extends PackExpression | PackExpression[]>(
-        node?: T,
-    ): Expression {
+    toExpression<T extends PackExpression | PackExpression[]>(node?: T): Expression {
         if (node === undefined) return this.f.createIdentifier('undefined');
 
         if (Array.isArray(node)) {
             return this.f.createArrayLiteralExpression(
-                this.f.createNodeArray(
-                    node.map(v => this.toExpression(v)),
-                ) as NodeArray<Expression>,
+                this.f.createNodeArray(node.map(v => this.toExpression(v))) as NodeArray<Expression>,
             );
         }
 
@@ -274,11 +238,7 @@ export class NodeConverter {
 
         if (node.pos === -1 && node.end === -1 && node.parent === undefined) {
             if (isArrowFunction(node)) {
-                if (
-                    node.body.pos === -1 &&
-                    node.body.end === -1 &&
-                    node.body.parent === undefined
-                ) {
+                if (node.body.pos === -1 && node.body.end === -1 && node.body.parent === undefined) {
                     return node;
                 }
 
@@ -298,30 +258,18 @@ export class NodeConverter {
         switch (node.kind) {
             case SyntaxKind.Identifier:
                 const name = getIdentifierName(node as Identifier);
-                return this.external.isEmbeddingExternalLibraryImport() &&
-                    !this.external.knownGlobalTypeNames.has(name)
-                    ? this.createExternalRuntimeTypePropertyAccessExpression(
-                          name,
-                      )
+                return this.external.isEmbeddingExternalLibraryImport() && !this.external.knownGlobalTypeNames.has(name)
+                    ? this.createExternalRuntimeTypePropertyAccessExpression(name)
                     : finish(node, this.f.createIdentifier(name));
 
             case SyntaxKind.StringLiteral:
-                return finish(
-                    node,
-                    this.f.createStringLiteral((node as StringLiteral).text),
-                );
+                return finish(node, this.f.createStringLiteral((node as StringLiteral).text));
 
             case SyntaxKind.NumericLiteral:
-                return finish(
-                    node,
-                    this.f.createNumericLiteral((node as NumericLiteral).text),
-                );
+                return finish(node, this.f.createNumericLiteral((node as NumericLiteral).text));
 
             case SyntaxKind.BigIntLiteral:
-                return finish(
-                    node,
-                    this.f.createBigIntLiteral((node as BigIntLiteral).text),
-                );
+                return finish(node, this.f.createBigIntLiteral((node as BigIntLiteral).text));
 
             case SyntaxKind.TrueKeyword:
                 return finish(node, this.f.createTrue());
@@ -353,32 +301,19 @@ export class NodeConverter {
 
 function isExternalOrCommonJsModule(file: SourceFile): boolean {
     //both attributes are internal and not yet public
-    return (
-        (file.externalModuleIndicator || file.commonJsModuleIndicator) !==
-        undefined
-    );
+    return (file.externalModuleIndicator || file.commonJsModuleIndicator) !== undefined;
 }
 
-export function isBuiltType(
-    typeVar: Identifier,
-    sourceFile: SourceFile,
-): boolean {
-    return (
-        isNodeWithLocals(sourceFile) &&
-        !!sourceFile.locals?.has(typeVar.escapedText)
-    );
+export function isBuiltType(typeVar: Identifier, sourceFile: SourceFile): boolean {
+    return isNodeWithLocals(sourceFile) && !!sourceFile.locals?.has(typeVar.escapedText);
 }
 
-export function isNodeWithLocals(
-    node: Node,
-): node is Node & { locals: SymbolTable | undefined } {
+export function isNodeWithLocals(node: Node): node is Node & { locals: SymbolTable | undefined } {
     return 'locals' in node;
 }
 
 export function getEntityName(typeName: EntityName): string {
-    return isIdentifier(typeName)
-        ? getIdentifierName(typeName)
-        : getIdentifierName(typeName.right);
+    return isIdentifier(typeName) ? getIdentifierName(typeName) : getIdentifierName(typeName.right);
 }
 
 //logic copied from typescript
@@ -387,27 +322,18 @@ export function getGlobalsOfSourceFile(file: SourceFile): SymbolTable | void {
     if (!isNodeWithLocals(file)) return;
     if (!isExternalOrCommonJsModule(file)) return file.locals;
     if (file.jsGlobalAugmentations) return file.jsGlobalAugmentations;
-    if (file.symbol && file.symbol.globalExports)
-        return file.symbol.globalExports;
+    if (file.symbol && file.symbol.globalExports) return file.symbol.globalExports;
 }
 
 /**
  * For imports that can removed (like a class import only used as type only, like `p: Model[]`) we have
  * to modify the import so TS does not remove it.
  */
-export function ensureImportIsEmitted(
-    importDeclaration: ImportDeclaration,
-    specifierName?: Identifier,
-) {
-    if (
-        specifierName &&
-        importDeclaration.importClause &&
-        importDeclaration.importClause.namedBindings
-    ) {
+export function ensureImportIsEmitted(importDeclaration: ImportDeclaration, specifierName?: Identifier) {
+    if (specifierName && importDeclaration.importClause && importDeclaration.importClause.namedBindings) {
         // const binding = importDeclaration.importClause.namedBindings;
         if (isNamedImports(importDeclaration.importClause.namedBindings)) {
-            for (const element of importDeclaration.importClause.namedBindings
-                .elements) {
+            for (const element of importDeclaration.importClause.namedBindings.elements) {
                 if (element.name.escapedText === specifierName.escapedText) {
                     (element.flags as any) |= NodeFlags.Synthesized;
                     return;
@@ -424,10 +350,7 @@ export function ensureImportIsEmitted(
  *
  * @param node The entity name to serialize.
  */
-export function serializeEntityNameAsExpression(
-    f: NodeFactory,
-    node: EntityName,
-): SerializedEntityNameAsExpression {
+export function serializeEntityNameAsExpression(f: NodeFactory, node: EntityName): SerializedEntityNameAsExpression {
     switch (node.kind) {
         case SyntaxKind.Identifier:
             return finish(node, f.createIdentifier(getIdentifierName(node)));
@@ -437,10 +360,7 @@ export function serializeEntityNameAsExpression(
     return node;
 }
 
-type SerializedEntityNameAsExpression =
-    | Identifier
-    | BinaryExpression
-    | PropertyAccessExpression;
+type SerializedEntityNameAsExpression = Identifier | BinaryExpression | PropertyAccessExpression;
 
 /**
  * Serializes an qualified name as an expression for decorator type metadata.
@@ -449,14 +369,8 @@ type SerializedEntityNameAsExpression =
  * @param useFallback A value indicating whether to use logical operators to test for the
  *                    qualified name at runtime.
  */
-function serializeQualifiedNameAsExpression(
-    f: NodeFactory,
-    node: QualifiedName,
-): SerializedEntityNameAsExpression {
-    return f.createPropertyAccessExpression(
-        serializeEntityNameAsExpression(f, node.left),
-        node.right,
-    );
+function serializeQualifiedNameAsExpression(f: NodeFactory, node: QualifiedName): SerializedEntityNameAsExpression {
+    return f.createPropertyAccessExpression(serializeEntityNameAsExpression(f, node.left), node.right);
 }
 
 export type MetaNode = Node & {

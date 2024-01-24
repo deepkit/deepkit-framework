@@ -7,13 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import {
-    ClassType,
-    isArray,
-    isClass,
-    isFunction,
-    stringifyValueWithType,
-} from '@deepkit/core';
+import { ClassType, isArray, isClass, isFunction, stringifyValueWithType } from '@deepkit/core';
 import { MappedModifier, ReflectionOp } from '@deepkit/type-spec';
 
 import { isWithDeferredDecorators } from '../decorator.js';
@@ -66,14 +60,7 @@ import {
     widenLiteral,
 } from './type.js';
 
-export type RuntimeStackEntry =
-    | Type
-    | Object
-    | (() => ClassType | Object)
-    | string
-    | number
-    | boolean
-    | bigint;
+export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
 
 export type Packed = (RuntimeStackEntry | string)[] & {
     __is?: (data: any) => boolean;
@@ -125,11 +112,7 @@ export function unpack(pack: Packed): PackStruct {
     return { ops, stack: pack.length > 1 ? pack.slice(0, -1) : [] };
 }
 
-export function resolvePacked(
-    type: Packed,
-    args: any[] = [],
-    options?: ReflectOptions,
-): Type {
+export function resolvePacked(type: Packed, args: any[] = [], options?: ReflectOptions): Type {
     return resolveRuntimeType(type, args, options) as Type;
 }
 
@@ -147,11 +130,7 @@ export function resolveRuntimeType(
     args: any[] = [],
     options?: ReflectOptions,
 ): Type {
-    const type = Processor.get().reflect(
-        o,
-        args,
-        options || { reuseCached: true },
-    );
+    const type = Processor.get().reflect(o, args, options || { reuseCached: true });
 
     if (isType(type)) {
         return type as Type;
@@ -209,11 +188,7 @@ interface Program {
     object?: ClassType | Function | Packed | any;
 }
 
-function assignResult<T extends Type>(
-    ref: Type,
-    result: T,
-    assignParents: boolean,
-): T {
+function assignResult<T extends Type>(ref: Type, result: T, assignParents: boolean): T {
     Object.assign(ref, result);
 
     if (assignParents) {
@@ -245,10 +220,7 @@ function isConditionTruthy(condition: Type | number): boolean {
     return !!(condition.kind === ReflectionKind.literal && condition.literal);
 }
 
-function createProgram(
-    options: Partial<Program>,
-    inputs?: RuntimeStackEntry[],
-): Program {
+function createProgram(options: Partial<Program>, inputs?: RuntimeStackEntry[]): Program {
     const program: Program = {
         active: true,
         frame: {
@@ -283,9 +255,7 @@ function createProgram(
             }
         }
 
-    program.stackPointer = options.initialStack
-        ? options.initialStack.length - 1
-        : -1;
+    program.stackPointer = options.initialStack ? options.initialStack.length - 1 : -1;
     program.frame.startIndex = program.stackPointer;
 
     return program;
@@ -302,10 +272,7 @@ function isValidCacheEntry(
         let sameInputs = current.inputs.length === inputs.length;
         if (sameInputs) {
             for (let i = 0; i < current.inputs.length; i++) {
-                if (
-                    !inputs[i] ||
-                    !isSameType(current.inputs[i] as Type, inputs[i] as Type)
-                ) {
+                if (!inputs[i] || !isSameType(current.inputs[i] as Type, inputs[i] as Type)) {
                     sameInputs = false;
                     break;
                 }
@@ -335,13 +302,7 @@ function findExistingProgram(
             let sameInputs = current.inputs.length === inputs.length;
             if (sameInputs) {
                 for (let i = 0; i < current.inputs.length; i++) {
-                    if (
-                        !inputs[i] ||
-                        !isSameType(
-                            current.inputs[i] as Type,
-                            inputs[i] as Type,
-                        )
-                    ) {
+                    if (!inputs[i] || !isSameType(current.inputs[i] as Type, inputs[i] as Type)) {
                         sameInputs = false;
                         break;
                     }
@@ -417,9 +378,7 @@ export class Processor {
 
         const took = Date.now() - start;
         if (took > 100) {
-            console.warn(
-                `Type computation took very long ${took}ms for ${stringifyType(result)}`,
-            );
+            console.warn(`Type computation took very long ${took}ms for ${stringifyType(result)}`);
         }
         return result;
     }
@@ -429,9 +388,7 @@ export class Processor {
         inputs: RuntimeStackEntry[] = [],
         options: ReflectOptions = {},
     ): Type {
-        const packed: Packed | undefined = isPack(object)
-            ? object
-            : object.__type;
+        const packed: Packed | undefined = isPack(object) ? object : object.__type;
         if (!packed) {
             if (isFunction(object) && object.length === 0) {
                 //functions without any type annotations do not have the overhead of an assigned __type
@@ -468,11 +425,7 @@ export class Processor {
         //We cache only direct non-generic (inputs empty) types passed to typeOf<>() or resolveRuntimeType(). all other reflect() calls do not use this cache.
         //make sure the same type is returned if already known.
         //packed.length === 0 for deserialized TypeClass with reconstructed classes.
-        if (
-            (options.reuseCached || packed.length === 0) &&
-            packed.__type &&
-            inputs.length === 0
-        ) {
+        if ((options.reuseCached || packed.length === 0) && packed.__type && inputs.length === 0) {
             return packed.__type;
         }
 
@@ -483,9 +436,7 @@ export class Processor {
         for (const cache of this.cache) {
             if (isValidCacheEntry(cache, object, inputs)) {
                 //if program is still active, create new ref otherwise copy computed type
-                const result = cache.active
-                    ? createRef(cache)
-                    : copyAndSetParent(cache.resultType);
+                const result = cache.active ? createRef(cache) : copyAndSetParent(cache.resultType);
                 result.typeName ||= options.typeName;
                 return result;
             }
@@ -501,10 +452,7 @@ export class Processor {
 
         // process.stdout.write(`${options.reuseCached} Cache miss ${stringifyValueWithType(object)}(...${inputs.length})\n`);
         const pack = (packed.__unpack ||= unpack(packed));
-        const program = createProgram(
-            { ops: pack.ops, initialStack: pack.stack, object },
-            inputs,
-        );
+        const program = createProgram({ ops: pack.ops, initialStack: pack.stack, object }, inputs);
         const type = this.runProgram(program);
         type.typeName ||= options.typeName;
 
@@ -530,9 +478,7 @@ export class Processor {
         inputs: RuntimeStackEntry[] = [],
         object?: ClassType | Function | Packed | any,
     ): Type {
-        return this.runProgram(
-            createProgram({ ops, initialStack, object }, inputs),
-        );
+        return this.runProgram(createProgram({ ops, initialStack, object }, inputs));
     }
 
     runProgram(program: Program): Type {
@@ -622,11 +568,7 @@ export class Processor {
                         const ref = this.eatParameter() as number;
                         this.pushType({
                             kind: ReflectionKind.literal,
-                            literal: program.stack[ref] as
-                                | string
-                                | number
-                                | boolean
-                                | bigint,
+                            literal: program.stack[ref] as string | number | boolean | bigint,
                         });
                         break;
                     }
@@ -731,18 +673,14 @@ export class Processor {
                         } as TypeClass;
 
                         function add(member: Type) {
-                            if (
-                                member.kind === ReflectionKind.propertySignature
-                            ) {
+                            if (member.kind === ReflectionKind.propertySignature) {
                                 member = {
                                     ...member,
                                     parent: t,
                                     visibility: ReflectionVisibility.public,
                                     kind: ReflectionKind.property,
                                 } as TypeProperty;
-                            } else if (
-                                member.kind === ReflectionKind.methodSignature
-                            ) {
+                            } else if (member.kind === ReflectionKind.methodSignature) {
                                 member = {
                                     ...member,
                                     parent: t,
@@ -761,16 +699,8 @@ export class Processor {
                                 case ReflectionKind.method: {
                                     const existing = t.types.findIndex(
                                         v =>
-                                            (v.kind ===
-                                                ReflectionKind.property ||
-                                                v.kind ===
-                                                    ReflectionKind.method) &&
-                                            v.name ===
-                                                (
-                                                    member as
-                                                        | TypeProperty
-                                                        | TypeMethod
-                                                ).name,
+                                            (v.kind === ReflectionKind.property || v.kind === ReflectionKind.method) &&
+                                            v.name === (member as TypeProperty | TypeMethod).name,
                                     );
                                     if (existing !== -1) {
                                         //remove entry, since we replace it
@@ -778,30 +708,19 @@ export class Processor {
                                     }
                                     t.types.push(member);
 
-                                    if (
-                                        member.kind === ReflectionKind.method &&
-                                        member.name === 'constructor'
-                                    ) {
+                                    if (member.kind === ReflectionKind.method && member.name === 'constructor') {
                                         for (const parameter of member.parameters) {
-                                            if (
-                                                parameter.visibility !==
-                                                    undefined ||
-                                                parameter.readonly
-                                            ) {
+                                            if (parameter.visibility !== undefined || parameter.readonly) {
                                                 const property = {
                                                     kind: ReflectionKind.property,
                                                     name: parameter.name,
-                                                    visibility:
-                                                        parameter.visibility,
+                                                    visibility: parameter.visibility,
                                                     default: parameter.default,
                                                     type: parameter.type,
                                                 } as TypeProperty;
-                                                if (parameter.optional)
-                                                    property.optional = true;
-                                                if (parameter.readonly)
-                                                    property.readonly = true;
-                                                parameter.type.parent =
-                                                    property;
+                                                if (parameter.optional) property.optional = true;
+                                                if (parameter.readonly) property.readonly = true;
+                                                parameter.type.parent = property;
                                                 add(property);
                                             }
                                         }
@@ -829,8 +748,7 @@ export class Processor {
                         const args = program.frame.inputs.filter(isType);
 
                         for (const member of t.types) member.parent = t;
-                        if (t.arguments)
-                            for (const member of t.arguments) member.parent = t;
+                        if (t.arguments) for (const member of t.arguments) member.parent = t;
 
                         if (args.length) t.arguments = args;
                         t.typeArguments = program.typeParameters;
@@ -839,13 +757,9 @@ export class Processor {
                         break;
                     }
                     case ReflectionOp.widen: {
-                        const current = program.stack[
-                            program.stackPointer
-                        ] as Type;
+                        const current = program.stack[program.stackPointer] as Type;
                         if (current.kind === ReflectionKind.literal) {
-                            this.pushType(
-                                widenLiteral(this.pop() as TypeLiteral),
-                            );
+                            this.pushType(widenLiteral(this.pop() as TypeLiteral));
                         }
                         break;
                     }
@@ -856,9 +770,7 @@ export class Processor {
                             typeArguments.push(this.pop() as Type);
                         }
 
-                        (
-                            program.stack[program.stackPointer] as TypeClass
-                        ).extendsArguments = typeArguments;
+                        (program.stack[program.stackPointer] as TypeClass).extendsArguments = typeArguments;
 
                         break;
                     }
@@ -869,9 +781,7 @@ export class Processor {
                             types.push(this.pop() as Type);
                         }
 
-                        (
-                            program.stack[program.stackPointer] as TypeClass
-                        ).implements = types;
+                        (program.stack[program.stackPointer] as TypeClass).implements = types;
 
                         break;
                     }
@@ -890,10 +800,7 @@ export class Processor {
                     case ReflectionOp.functionReference:
                     case ReflectionOp.classReference: {
                         const ref = this.eatParameter() as number;
-                        const classOrFunction = resolveFunction(
-                            program.stack[ref] as Function,
-                            program.object,
-                        );
+                        const classOrFunction = resolveFunction(program.stack[ref] as Function, program.object);
                         // will be packed if external library import
                         const packed = isPack(classOrFunction);
                         const inputs = this.popFrame() as Type[];
@@ -925,20 +832,15 @@ export class Processor {
                                 program.previous &&
                                 program.previous.end === 0
                             );
-                            const result = this.reflect(
-                                classOrFunction,
-                                inputs,
-                                {
-                                    inline: !directReference,
-                                    reuseCached: directReference,
-                                },
-                            );
+                            const result = this.reflect(classOrFunction, inputs, {
+                                inline: !directReference,
+                                reuseCached: directReference,
+                            });
                             if (directReference) program.directReturn = true;
                             this.push(result, program);
 
                             if (isWithAnnotations(result) && inputs.length) {
-                                result.typeArguments =
-                                    result.typeArguments || [];
+                                result.typeArguments = result.typeArguments || [];
                                 for (let i = 0; i < inputs.length; i++) {
                                     result.typeArguments[i] = inputs[i];
                                 }
@@ -955,8 +857,7 @@ export class Processor {
                     }
                     case ReflectionOp.enum: {
                         const types = this.popFrame() as TypeEnumMember[];
-                        const enumType: { [name: string]: string | number } =
-                            {};
+                        const enumType: { [name: string]: string | number } = {};
 
                         let i = 0;
                         for (const type of types) {
@@ -981,9 +882,7 @@ export class Processor {
                         break;
                     }
                     case ReflectionOp.enumMember: {
-                        const name = program.stack[
-                            this.eatParameter() as number
-                        ] as string | (() => string);
+                        const name = program.stack[this.eatParameter() as number] as string | (() => string);
                         this.pushType({
                             kind: ReflectionKind.enumMember,
                             parent: undefined as any,
@@ -1006,9 +905,7 @@ export class Processor {
                         break;
                     }
                     case ReflectionOp.namedTupleMember: {
-                        const name = program.stack[
-                            this.eatParameter() as number
-                        ] as string;
+                        const name = program.stack[this.eatParameter() as number] as string;
                         const t: Type = {
                             kind: ReflectionKind.tupleMember,
                             type: this.pop() as Type,
@@ -1037,8 +934,7 @@ export class Processor {
                     case ReflectionOp.typeParameterDefault: {
                         const nameRef = this.eatParameter() as number;
                         program.typeParameters = program.typeParameters || [];
-                        let type =
-                            program.frame.inputs[program.frame.variables++];
+                        let type = program.frame.inputs[program.frame.variables++];
 
                         if (op === ReflectionOp.typeParameterDefault) {
                             const defaultValue = this.pop();
@@ -1121,18 +1017,13 @@ export class Processor {
                     case ReflectionOp.callSignature:
                     case ReflectionOp.function: {
                         const types = this.popFrame() as Type[];
-                        const name = program.stack[
-                            this.eatParameter() as number
-                        ] as string;
+                        const name = program.stack[this.eatParameter() as number] as string;
 
                         const returnType =
                             types.length > 0
                                 ? (types[types.length - 1] as Type)
                                 : ({ kind: ReflectionKind.any } as Type);
-                        const parameters =
-                            types.length > 1
-                                ? (types.slice(0, -1) as TypeParameter[])
-                                : [];
+                        const parameters = types.length > 1 ? (types.slice(0, -1) as TypeParameter[]) : [];
 
                         let t =
                             op === ReflectionOp.callSignature
@@ -1163,23 +1054,18 @@ export class Processor {
                     }
                     case ReflectionOp.property:
                     case ReflectionOp.propertySignature: {
-                        const name = program.stack[
-                            this.eatParameter() as number
-                        ] as number | string | symbol | (() => symbol);
+                        const name = program.stack[this.eatParameter() as number] as
+                            | number
+                            | string
+                            | symbol
+                            | (() => symbol);
                         let type = this.pop() as Type;
                         let isOptional = false;
 
-                        if (
-                            type.kind === ReflectionKind.union &&
-                            type.types.length === 2
-                        ) {
-                            const undefinedType = type.types.find(
-                                v => v.kind === ReflectionKind.undefined,
-                            );
+                        if (type.kind === ReflectionKind.union && type.types.length === 2) {
+                            const undefinedType = type.types.find(v => v.kind === ReflectionKind.undefined);
                             const restType = type.types.find(
-                                v =>
-                                    v.kind !== ReflectionKind.null &&
-                                    v.kind !== ReflectionKind.undefined,
+                                v => v.kind !== ReflectionKind.null && v.kind !== ReflectionKind.undefined,
                             );
                             if (restType && undefinedType) {
                                 type = restType;
@@ -1201,8 +1087,7 @@ export class Processor {
                         }
 
                         if (op === ReflectionOp.property) {
-                            (property as TypeProperty).visibility =
-                                ReflectionVisibility.public;
+                            (property as TypeProperty).visibility = ReflectionVisibility.public;
                         }
 
                         property.type.parent = property;
@@ -1211,18 +1096,14 @@ export class Processor {
                     }
                     case ReflectionOp.method:
                     case ReflectionOp.methodSignature: {
-                        const name = program.stack[
-                            this.eatParameter() as number
-                        ] as number | string | symbol;
+                        const name = program.stack[this.eatParameter() as number] as number | string | symbol;
                         const types = this.popFrame() as Type[];
                         const returnType =
                             types.length > 0
                                 ? (types[types.length - 1] as Type)
                                 : ({ kind: ReflectionKind.any } as Type);
                         const parameters: TypeParameter[] =
-                            types.length > 1
-                                ? (types.slice(0, -1) as TypeParameter[])
-                                : [];
+                            types.length > 1 ? (types.slice(0, -1) as TypeParameter[]) : [];
 
                         let t: TypeMethod | TypeMethodSignature =
                             op === ReflectionOp.method
@@ -1247,78 +1128,41 @@ export class Processor {
                         break;
                     }
                     case ReflectionOp.optional:
-                        (
-                            program.stack[program.stackPointer] as
-                                | TypeBaseMember
-                                | TypeTupleMember
-                        ).optional = true;
+                        (program.stack[program.stackPointer] as TypeBaseMember | TypeTupleMember).optional = true;
                         break;
                     case ReflectionOp.readonly:
-                        (
-                            program.stack[
-                                program.stackPointer
-                            ] as TypeBaseMember
-                        ).readonly = true;
+                        (program.stack[program.stackPointer] as TypeBaseMember).readonly = true;
                         break;
                     case ReflectionOp.public:
-                        (
-                            program.stack[
-                                program.stackPointer
-                            ] as TypeBaseMember
-                        ).visibility = ReflectionVisibility.public;
+                        (program.stack[program.stackPointer] as TypeBaseMember).visibility =
+                            ReflectionVisibility.public;
                         break;
                     case ReflectionOp.protected:
-                        (
-                            program.stack[
-                                program.stackPointer
-                            ] as TypeBaseMember
-                        ).visibility = ReflectionVisibility.protected;
+                        (program.stack[program.stackPointer] as TypeBaseMember).visibility =
+                            ReflectionVisibility.protected;
                         break;
                     case ReflectionOp.private:
-                        (
-                            program.stack[
-                                program.stackPointer
-                            ] as TypeBaseMember
-                        ).visibility = ReflectionVisibility.private;
+                        (program.stack[program.stackPointer] as TypeBaseMember).visibility =
+                            ReflectionVisibility.private;
                         break;
                     case ReflectionOp.abstract:
-                        (
-                            program.stack[
-                                program.stackPointer
-                            ] as TypeBaseMember
-                        ).abstract = true;
+                        (program.stack[program.stackPointer] as TypeBaseMember).abstract = true;
                         break;
                     case ReflectionOp.static:
-                        (
-                            program.stack[
-                                program.stackPointer
-                            ] as TypeBaseMember
-                        ).static = true;
+                        (program.stack[program.stackPointer] as TypeBaseMember).static = true;
                         break;
                     case ReflectionOp.defaultValue:
-                        (
-                            program.stack[program.stackPointer] as
-                                | TypeProperty
-                                | TypeEnumMember
-                                | TypeParameter
-                        ).default = program.stack[
-                            this.eatParameter() as number
-                        ] as () => any;
+                        (program.stack[program.stackPointer] as TypeProperty | TypeEnumMember | TypeParameter).default =
+                            program.stack[this.eatParameter() as number] as () => any;
                         break;
                     case ReflectionOp.description:
-                        (
-                            program.stack[program.stackPointer] as TypeProperty
-                        ).description = program.stack[
+                        (program.stack[program.stackPointer] as TypeProperty).description = program.stack[
                             this.eatParameter() as number
                         ] as string;
                         break;
                     case ReflectionOp.typeName: {
-                        const type = program.stack[
-                            program.stackPointer
-                        ] as Type;
-                        const name = program.stack[
-                            this.eatParameter() as number
-                        ] as string;
+                        const type = program.stack[program.stackPointer] as Type;
+                        const name = program.stack[this.eatParameter() as number] as string;
                         if (type.typeName) {
                             type.originTypes = [
                                 {
@@ -1378,9 +1222,7 @@ export class Processor {
                         const left = this.pop() as Type;
                         const condition = this.pop() as Type | number;
                         this.popFrame();
-                        isConditionTruthy(condition)
-                            ? this.pushType(left)
-                            : this.pushType(right);
+                        isConditionTruthy(condition) ? this.pushType(left) : this.pushType(right);
                         break;
                     }
                     case ReflectionOp.jumpCondition: {
@@ -1403,18 +1245,13 @@ export class Processor {
                                 if (last.kind !== ReflectionKind.unknown) {
                                     if (
                                         last.kind === ReflectionKind.union ||
-                                        last.kind ===
-                                            ReflectionKind.intersection
+                                        last.kind === ReflectionKind.intersection
                                     ) {
                                         if (!isTypeIncluded(last.types, type)) {
                                             last.types.push(type);
                                         }
                                     } else {
-                                        if (
-                                            type.parent &&
-                                            type.parent.kind ===
-                                                ReflectionKind.parameter
-                                        ) {
+                                        if (type.parent && type.parent.kind === ReflectionKind.parameter) {
                                             last = {
                                                 kind: ReflectionKind.intersection,
                                                 types: [last, type],
@@ -1431,58 +1268,31 @@ export class Processor {
                                 }
 
                                 if (frameOffset === 0) {
-                                    program.stack[
-                                        frame.startIndex + 1 + stackEntryIndex
-                                    ] = last;
+                                    program.stack[frame.startIndex + 1 + stackEntryIndex] = last;
                                 } else if (frameOffset === 1) {
-                                    program.stack[
-                                        frame.previous!.startIndex +
-                                            1 +
-                                            stackEntryIndex
-                                    ] = last;
+                                    program.stack[frame.previous!.startIndex + 1 + stackEntryIndex] = last;
                                 } else if (frameOffset === 2) {
-                                    program.stack[
-                                        frame.previous!.previous!.startIndex +
-                                            1 +
-                                            stackEntryIndex
-                                    ] = last;
+                                    program.stack[frame.previous!.previous!.startIndex + 1 + stackEntryIndex] = last;
                                 } else if (frameOffset === 3) {
                                     program.stack[
-                                        frame.previous!.previous!.previous!
-                                            .startIndex +
-                                            1 +
-                                            stackEntryIndex
+                                        frame.previous!.previous!.previous!.startIndex + 1 + stackEntryIndex
                                     ] = last;
                                 } else if (frameOffset === 4) {
                                     program.stack[
-                                        frame.previous!.previous!.previous!
-                                            .previous!.startIndex +
-                                            1 +
-                                            stackEntryIndex
+                                        frame.previous!.previous!.previous!.previous!.startIndex + 1 + stackEntryIndex
                                     ] = last;
                                 } else {
                                     let current = frame;
-                                    for (let i = 0; i < frameOffset; i++)
-                                        current = current.previous!;
-                                    program.stack[
-                                        current.startIndex + 1 + stackEntryIndex
-                                    ] = last;
+                                    for (let i = 0; i < frameOffset; i++) current = current.previous!;
+                                    program.stack[current.startIndex + 1 + stackEntryIndex] = last;
                                 }
                             },
                         } as TypeInfer);
                         break;
                     }
                     case ReflectionOp.extends: {
-                        const right = this.pop() as
-                            | string
-                            | number
-                            | boolean
-                            | Type;
-                        const left = this.pop() as
-                            | string
-                            | number
-                            | boolean
-                            | Type;
+                        const right = this.pop() as string | number | boolean | Type;
+                        const left = this.pop() as string | number | boolean | Type;
                         const result = isExtendable(left, right);
                         this.pushType({
                             kind: ReflectionKind.literal,
@@ -1532,57 +1342,31 @@ export class Processor {
                         const frameOffset = this.eatParameter() as number;
                         const stackEntryIndex = this.eatParameter() as number;
                         if (frameOffset === 0) {
-                            this.push(
-                                program.stack[
-                                    program.frame.startIndex +
-                                        1 +
-                                        stackEntryIndex
-                                ],
-                            );
+                            this.push(program.stack[program.frame.startIndex + 1 + stackEntryIndex]);
                         } else if (frameOffset === 1) {
-                            this.push(
-                                program.stack[
-                                    program.frame.previous!.startIndex +
-                                        1 +
-                                        stackEntryIndex
-                                ],
-                            );
+                            this.push(program.stack[program.frame.previous!.startIndex + 1 + stackEntryIndex]);
                         } else if (frameOffset === 2) {
                             this.push(
-                                program.stack[
-                                    program.frame.previous!.previous!
-                                        .startIndex +
-                                        1 +
-                                        stackEntryIndex
-                                ],
+                                program.stack[program.frame.previous!.previous!.startIndex + 1 + stackEntryIndex],
                             );
                         } else if (frameOffset === 3) {
                             this.push(
                                 program.stack[
-                                    program.frame.previous!.previous!.previous!
-                                        .startIndex +
-                                        1 +
-                                        stackEntryIndex
+                                    program.frame.previous!.previous!.previous!.startIndex + 1 + stackEntryIndex
                                 ],
                             );
                         } else if (frameOffset === 4) {
                             this.push(
                                 program.stack[
-                                    program.frame.previous!.previous!.previous!
-                                        .previous!.startIndex +
+                                    program.frame.previous!.previous!.previous!.previous!.startIndex +
                                         1 +
                                         stackEntryIndex
                                 ],
                             );
                         } else {
                             let current = program.frame;
-                            for (let i = 0; i < frameOffset; i++)
-                                current = current.previous!;
-                            this.push(
-                                program.stack[
-                                    current.startIndex + 1 + stackEntryIndex
-                                ],
-                            );
+                            for (let i = 0; i < frameOffset; i++) current = current.previous!;
+                            this.push(program.stack[current.startIndex + 1 + stackEntryIndex]);
                         }
                         break;
                     }
@@ -1648,10 +1432,7 @@ export class Processor {
                     }
                     case ReflectionOp.inline: {
                         const pPosition = this.eatParameter() as number;
-                        const pOrFn = program.stack[pPosition] as
-                            | number
-                            | Packed
-                            | (() => Packed);
+                        const pOrFn = program.stack[pPosition] as number | Packed | (() => Packed);
                         const p = isFunction(pOrFn) ? pOrFn() : pOrFn;
                         // process.stdout.write(`inline ${pOrFn.toString()}\n`);
                         if (p === undefined) {
@@ -1690,17 +1471,13 @@ export class Processor {
                         for (let i = 0; i < argumentSize; i++) {
                             let input = this.pop() as Type;
                             if (
-                                (input.kind === ReflectionKind.never ||
-                                    input.kind === ReflectionKind.unknown) &&
+                                (input.kind === ReflectionKind.never || input.kind === ReflectionKind.unknown) &&
                                 program.inputs[i]
                             )
                                 input = program.inputs[i] as Type;
                             inputs.unshift(input);
                         }
-                        const pOrFn = program.stack[pPosition] as
-                            | number
-                            | Packed
-                            | (() => Packed);
+                        const pOrFn = program.stack[pPosition] as number | Packed | (() => Packed);
                         const p = isFunction(pOrFn) ? pOrFn() : pOrFn;
                         if (p === undefined) {
                             // console.log('inline with invalid reference', pOrFn.toString());
@@ -1710,11 +1487,7 @@ export class Processor {
                                 //self circular reference, usually a 0, which indicates we put the result of the current program as the type on the stack.
                                 this.push(program.resultType);
                             } else {
-                                const found = findExistingProgram(
-                                    this.program,
-                                    program.object,
-                                    inputs,
-                                );
+                                const found = findExistingProgram(this.program, program.object, inputs);
                                 if (found) {
                                     this.push(createRef(found), program);
                                 } else {
@@ -1727,10 +1500,7 @@ export class Processor {
                                         },
                                         inputs,
                                     );
-                                    this.push(
-                                        this.runProgram(nextProgram),
-                                        program,
-                                    );
+                                    this.push(this.runProgram(nextProgram), program);
 
                                     //continue to next this.program that was assigned by runProgram()
                                     program.program++; //manual increment as the for loop would normally do that
@@ -1741,8 +1511,7 @@ export class Processor {
                             const result = this.reflect(p, inputs);
 
                             if (isWithAnnotations(result) && inputs.length) {
-                                result.typeArguments =
-                                    result.typeArguments || [];
+                                result.typeArguments = result.typeArguments || [];
                                 for (let i = 0; i < inputs.length; i++) {
                                     result.typeArguments[i] = inputs[i];
                                 }
@@ -1762,9 +1531,7 @@ export class Processor {
                 }
             }
 
-            result = narrowOriginalLiteral(
-                program.stack[program.stackPointer] as Type,
-            );
+            result = narrowOriginalLiteral(program.stack[program.stackPointer] as Type);
             // process.stdout.write(`Done ${program.depth} in ${Date.now() - program.started}ms with ${stringifyValueWithType(program.object)} -> ${stringifyShortResolvedType(result as Type)}\n`);
 
             if (isType(result)) {
@@ -1773,26 +1540,16 @@ export class Processor {
                     // will be packed if external library import
                     !isPack(program.object)
                 ) {
-                    if (
-                        result.kind === ReflectionKind.class &&
-                        result.classType === Object
-                    ) {
+                    if (result.kind === ReflectionKind.class && result.classType === Object) {
                         result.classType = program.object;
                         applyClassDecorators(result);
                     }
-                    if (
-                        result.kind === ReflectionKind.function &&
-                        !result.function
-                    ) {
+                    if (result.kind === ReflectionKind.function && !result.function) {
                         result.function = program.object;
                     }
                 }
                 if (!program.directReturn) {
-                    result = assignResult(
-                        program.resultType,
-                        result as Type,
-                        !result.inlined,
-                    );
+                    result = assignResult(program.resultType, result as Type, !result.inlined);
                     applyScheduledAnnotations(program.resultType);
                 }
             }
@@ -1859,8 +1616,7 @@ export class Processor {
         function appendAnnotations(a: Type) {
             if (a.annotations === annotations) return;
             if (a.annotations) Object.assign(annotations, a.annotations);
-            if (a.decorators)
-                decorators.push(...(a.decorators as TypeObjectLiteral[]));
+            if (a.decorators) decorators.push(...(a.decorators as TypeObjectLiteral[]));
         }
 
         function handleUnion(a: Type, unionType: TypeUnion): Type {
@@ -1872,9 +1628,7 @@ export class Processor {
 
         function handleAndObject(a: Type, objectType: TypeObjectLiteral): Type {
             if (objectType.types.length === 0) {
-                return isExtendable(a, objectType)
-                    ? a
-                    : { kind: ReflectionKind.never };
+                return isExtendable(a, objectType) ? a : { kind: ReflectionKind.never };
             }
             defaultDecorators.push(objectType);
             annotations[defaultAnnotation.symbol] = defaultDecorators;
@@ -1894,10 +1648,8 @@ export class Processor {
             }
 
             if (
-                (a.kind === ReflectionKind.objectLiteral ||
-                    a.kind === ReflectionKind.class) &&
-                (b.kind === ReflectionKind.objectLiteral ||
-                    b.kind === ReflectionKind.class)
+                (a.kind === ReflectionKind.objectLiteral || a.kind === ReflectionKind.class) &&
+                (b.kind === ReflectionKind.objectLiteral || b.kind === ReflectionKind.class)
             ) {
                 appendAnnotations(a);
                 appendAnnotations(b);
@@ -1905,16 +1657,10 @@ export class Processor {
             }
 
             // object & {then() ...}
-            if (
-                a.kind === ReflectionKind.object &&
-                b.kind === ReflectionKind.objectLiteral
-            ) {
+            if (a.kind === ReflectionKind.object && b.kind === ReflectionKind.objectLiteral) {
                 return b;
             }
-            if (
-                b.kind === ReflectionKind.object &&
-                a.kind === ReflectionKind.objectLiteral
-            ) {
+            if (b.kind === ReflectionKind.object && a.kind === ReflectionKind.objectLiteral) {
                 return a;
             }
 
@@ -2016,8 +1762,7 @@ export class Processor {
                 types: flattenUnionTypes(types),
             };
             const t: Type = unboxUnion(result);
-            if (t.kind === ReflectionKind.union)
-                for (const member of t.types) member.parent = t;
+            if (t.kind === ReflectionKind.union) for (const member of t.types) member.parent = t;
             this.push(t);
         } else {
             program.stack[program.frame.startIndex + 1] = next;
@@ -2047,10 +1792,7 @@ export class Processor {
 
     private handleKeyOf() {
         const type = this.pop() as Type;
-        if (
-            type.kind === ReflectionKind.objectLiteral ||
-            type.kind === ReflectionKind.class
-        ) {
+        if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
             const union = {
                 kind: ReflectionKind.union,
                 origin: type,
@@ -2058,8 +1800,7 @@ export class Processor {
             } as TypeUnion;
             for (const member of type.types) {
                 if (
-                    (member.kind === ReflectionKind.propertySignature ||
-                        member.kind === ReflectionKind.property) &&
+                    (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) &&
                     member.name !== 'new'
                 ) {
                     union.types.push({
@@ -2069,8 +1810,7 @@ export class Processor {
                         origin: member,
                     } as TypeLiteral);
                 } else if (
-                    (member.kind === ReflectionKind.methodSignature ||
-                        member.kind === ReflectionKind.method) &&
+                    (member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method) &&
                     member.name !== 'constructor'
                 ) {
                     union.types.push({
@@ -2130,8 +1870,9 @@ export class Processor {
 
         if (program.frame.mappedType) {
             let type = this.pop() as Type;
-            let index: Type | string | boolean | symbol | number | bigint =
-                program.stack[program.frame.startIndex + 1] as Type;
+            let index: Type | string | boolean | symbol | number | bigint = program.stack[
+                program.frame.startIndex + 1
+            ] as Type;
             if (withName) {
                 if (type.kind === ReflectionKind.tuple) {
                     index = type.types[1].type;
@@ -2141,16 +1882,11 @@ export class Processor {
                 }
             }
             const fromType = program.frame.mappedType.fromType;
-            const isTuple =
-                fromType.origin &&
-                fromType.origin.kind === ReflectionKind.tuple;
+            const isTuple = fromType.origin && fromType.origin.kind === ReflectionKind.tuple;
 
             if (index.kind === ReflectionKind.never) {
                 //ignore
-            } else if (
-                index.kind === ReflectionKind.any ||
-                isSimpleIndex(index)
-            ) {
+            } else if (index.kind === ReflectionKind.any || isSimpleIndex(index)) {
                 const t: TypeIndexSignature = {
                     kind: ReflectionKind.indexSignature,
                     type,
@@ -2162,31 +1898,18 @@ export class Processor {
                 this.push(t);
             } else {
                 let optional: true | undefined = undefined;
-                if (
-                    index.kind === ReflectionKind.literal &&
-                    !(index.literal instanceof RegExp)
-                ) {
-                    optional =
-                        !!index.origin &&
-                        isMember(index.origin) &&
-                        index.origin.optional
-                            ? true
-                            : undefined;
+                if (index.kind === ReflectionKind.literal && !(index.literal instanceof RegExp)) {
+                    optional = !!index.origin && isMember(index.origin) && index.origin.optional ? true : undefined;
                     index = index.literal;
                 }
 
-                const property:
-                    | TypeProperty
-                    | TypePropertySignature
-                    | TypeTupleMember =
+                const property: TypeProperty | TypePropertySignature | TypeTupleMember =
                     type.kind === ReflectionKind.propertySignature ||
                     type.kind === ReflectionKind.property ||
                     type.kind === ReflectionKind.tupleMember
                         ? type
                         : ({
-                              kind: isTuple
-                                  ? ReflectionKind.tupleMember
-                                  : ReflectionKind.propertySignature,
+                              kind: isTuple ? ReflectionKind.tupleMember : ReflectionKind.propertySignature,
                               name: index,
                               type,
                               optional,
@@ -2199,20 +1922,14 @@ export class Processor {
                         if (modifier & MappedModifier.optional) {
                             property.optional = true;
                         }
-                        if (
-                            modifier & MappedModifier.removeOptional &&
-                            property.optional
-                        ) {
+                        if (modifier & MappedModifier.removeOptional && property.optional) {
                             property.optional = undefined;
                         }
                         if (property.kind !== ReflectionKind.tupleMember) {
                             if (modifier & MappedModifier.readonly) {
                                 property.readonly = true;
                             }
-                            if (
-                                modifier & MappedModifier.removeReadonly &&
-                                property.readonly
-                            ) {
+                            if (modifier & MappedModifier.removeReadonly && property.readonly) {
                                 property.readonly = undefined;
                             }
                         }
@@ -2231,10 +1948,7 @@ export class Processor {
             const members = this.popFrame() as Type[];
             let t: Type;
 
-            if (
-                fromType.origin &&
-                fromType.origin.kind === ReflectionKind.tuple
-            ) {
+            if (fromType.origin && fromType.origin.kind === ReflectionKind.tuple) {
                 t = { kind: ReflectionKind.tuple, types: members as any[] };
             } else {
                 t = {
@@ -2298,17 +2012,12 @@ export class Processor {
                     hasPlaceholder = true;
                     lastLiteral = undefined;
                     item.parent = template;
-                    template.types.push(
-                        item as TypeTemplateLiteral['types'][number],
-                    );
+                    template.types.push(item as TypeTemplateLiteral['types'][number]);
                 }
             }
 
             if (hasPlaceholder) {
-                if (
-                    template.types.length === 1 &&
-                    template.types[0].kind === ReflectionKind.string
-                ) {
+                if (template.types.length === 1 && template.types[0].kind === ReflectionKind.string) {
                     template.types[0].parent = result;
                     result.types.push(template.types[0]);
                 } else {
@@ -2321,15 +2030,11 @@ export class Processor {
             }
         }
         const t: Type = unboxUnion(result);
-        if (t.kind === ReflectionKind.union)
-            for (const member of t.types) member.parent = t;
+        if (t.kind === ReflectionKind.union) for (const member of t.types) member.parent = t;
         this.pushType(t);
     }
 
-    protected push(
-        entry: RuntimeStackEntry,
-        program: Program = this.program,
-    ): void {
+    protected push(entry: RuntimeStackEntry, program: Program = this.program): void {
         const i = ++program.stackPointer;
 
         if (i < program.stack.length) {
@@ -2361,8 +2066,7 @@ export class Processor {
             this.program.stackPointer + 1,
         );
         this.program.stackPointer = this.program.frame.startIndex;
-        if (this.program.frame.previous)
-            this.program.frame = this.program.frame.previous;
+        if (this.program.frame.previous) this.program.frame = this.program.frame.previous;
         return result;
     }
 
@@ -2385,10 +2089,8 @@ export class Processor {
         // process.stdout.write(`[${this.program.frame.index}] return ${returnAddress}\n`);
         this.program.stackPointer = this.program.frame.startIndex - 1; //-1 because call convention adds `return address` before entering new frame
         this.push(returnValue);
-        if ('number' === typeof returnAddress)
-            this.program.program = returnAddress - 1; //-1 because iteration does program++
-        if (this.program.frame.previous)
-            this.program.frame = this.program.frame.previous;
+        if ('number' === typeof returnAddress) this.program.program = returnAddress - 1; //-1 because iteration does program++
+        if (this.program.frame.previous) this.program.frame = this.program.frame.previous;
     }
 
     protected pushType(type: Type): void {
@@ -2407,11 +2109,7 @@ function typeInferFromContainer(container: Iterable<any>): Type {
         if (!isTypeIncluded(union.types, type)) union.types.push(type);
     }
 
-    return union.types.length === 0
-        ? { kind: ReflectionKind.any }
-        : union.types.length === 1
-          ? union.types[0]
-          : union;
+    return union.types.length === 0 ? { kind: ReflectionKind.any } : union.types.length === 1 ? union.types[0] : union;
 }
 
 export function typeInfer(value: any): Type {
@@ -2462,11 +2160,7 @@ export function typeInfer(value: any): Type {
         };
     } else if ('object' === typeof value) {
         const constructor = value.constructor;
-        if (
-            'function' === typeof constructor &&
-            constructor !== Object &&
-            isArray(constructor.__type)
-        ) {
+        if ('function' === typeof constructor && constructor !== Object && isArray(constructor.__type)) {
             //with emitted types
             //don't use resolveRuntimeType since we don't allow cache here
             return Processor.get().reflect(constructor, undefined, {
@@ -2475,8 +2169,7 @@ export function typeInfer(value: any): Type {
         }
 
         if (constructor === RegExp) return { kind: ReflectionKind.regexp };
-        if (constructor === Date)
-            return { kind: ReflectionKind.class, classType: Date, types: [] };
+        if (constructor === Date) return { kind: ReflectionKind.class, classType: Date, types: [] };
         if (constructor === Set) {
             const type = typeInferFromContainer(value);
             return {
@@ -2488,12 +2181,8 @@ export function typeInfer(value: any): Type {
         }
 
         if (constructor === Map) {
-            const keyType = typeInferFromContainer(
-                (value as Map<any, any>).keys(),
-            );
-            const valueType = typeInferFromContainer(
-                (value as Map<any, any>).values(),
-            );
+            const keyType = typeInferFromContainer((value as Map<any, any>).keys());
+            const valueType = typeInferFromContainer((value as Map<any, any>).values());
             return {
                 kind: ReflectionKind.class,
                 classType: Map,
@@ -2526,9 +2215,7 @@ export function typeInfer(value: any): Type {
 
         ops.push(ReflectionOp.objectLiteral);
 
-        return Processor.get().runProgram(
-            createProgram({ ops, stack, resultType }),
-        ) as Type;
+        return Processor.get().runProgram(createProgram({ ops, stack, resultType })) as Type;
     }
     return { kind: ReflectionKind.any };
 }
@@ -2543,17 +2230,13 @@ function applyClassDecorators(type: TypeClass) {
             const member = getMember(type, property);
             if (!member) continue;
 
-            if (
-                member.kind === ReflectionKind.propertySignature ||
-                member.kind === ReflectionKind.property
-            ) {
+            if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
                 applyPropertyDecorator(member.type, data);
             }
 
             if (
                 'number' === typeof parameterIndexOrDescriptor &&
-                (member.kind === ReflectionKind.method ||
-                    member.kind === ReflectionKind.methodSignature)
+                (member.kind === ReflectionKind.method || member.kind === ReflectionKind.methodSignature)
             ) {
                 const param = member.parameters[parameterIndexOrDescriptor];
                 if (param) {
@@ -2586,23 +2269,13 @@ function applyPropertyDecorator(type: Type, data: TData) {
 
 function pushObjectLiteralTypes(
     type: TypeObjectLiteral,
-    types: (
-        | TypeIndexSignature
-        | TypePropertySignature
-        | TypeMethodSignature
-        | TypeObjectLiteral
-        | TypeCallSignature
-    )[],
+    types: (TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeObjectLiteral | TypeCallSignature)[],
 ) {
     let annotations: Annotations = {};
     const decorators: Type[] = [];
 
     outer: for (const member of types) {
-        if (
-            member.kind === ReflectionKind.propertySignature &&
-            member.type.kind === ReflectionKind.never
-        )
-            continue;
+        if (member.kind === ReflectionKind.propertySignature && member.type.kind === ReflectionKind.never) continue;
 
         if (member.kind === ReflectionKind.objectLiteral) {
             //all `extends T` expression land at the beginning of the stack frame, and are always an objectLiteral.
@@ -2631,13 +2304,9 @@ function pushObjectLiteralTypes(
         } else if (member.kind === ReflectionKind.indexSignature) {
             //note: is it possible to overwrite an index signature?
             type.types.push(member);
-        } else if (
-            member.kind === ReflectionKind.propertySignature ||
-            member.kind === ReflectionKind.methodSignature
-        ) {
+        } else if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.methodSignature) {
             const toAdd =
-                member.kind === ReflectionKind.propertySignature &&
-                member.type.kind === ReflectionKind.function
+                member.kind === ReflectionKind.propertySignature && member.type.kind === ReflectionKind.function
                     ? ({
                           kind: ReflectionKind.methodSignature,
                           name: member.name,
@@ -2649,8 +2318,7 @@ function pushObjectLiteralTypes(
 
             const existing = type.types.findIndex(
                 v =>
-                    (v.kind === ReflectionKind.propertySignature ||
-                        v.kind === ReflectionKind.methodSignature) &&
+                    (v.kind === ReflectionKind.propertySignature || v.kind === ReflectionKind.methodSignature) &&
                     v.name === toAdd.name,
             );
             if (existing !== -1) {

@@ -61,9 +61,7 @@ test('object type alias', () => {
     );
 
     expect(res.app).not.toContain('const __Ωconfig = [');
-    expect(res.app).not.toContain(
-        '() => __assignType(rxjs_1.config, __Ωconfig)',
-    );
+    expect(res.app).not.toContain('() => __assignType(rxjs_1.config, __Ωconfig)');
     expect(res.app).toContain('() => rxjs_1.config');
 });
 

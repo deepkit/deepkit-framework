@@ -1,18 +1,8 @@
-import {
-    createFSBackedSystem,
-    createVirtualCompilerHost,
-    knownLibFilesForCompilerOptions,
-} from '@typescript/vfs';
+import { createFSBackedSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import * as ts from 'typescript';
-import {
-    ScriptKind,
-    ScriptTarget,
-    TransformationContext,
-    createSourceFile,
-    getPreEmitDiagnostics,
-} from 'typescript';
+import { ScriptKind, ScriptTarget, TransformationContext, createSourceFile, getPreEmitDiagnostics } from 'typescript';
 
 import { ReflectionTransformer } from '../src/compiler.js';
 import { ReflectionConfig } from '../src/config.js';
@@ -23,10 +13,7 @@ function fullPath(fileName: string): string {
     return __dirname + '/' + fileName + (fileName.includes('.') ? '' : '.ts');
 }
 
-function readLibs(
-    compilerOptions: ts.CompilerOptions,
-    files: Map<string, string>,
-) {
+function readLibs(compilerOptions: ts.CompilerOptions, files: Map<string, string>) {
     const getLibSource = (name: string) => {
         return readFileSync(join(defaultLibLocation, name), 'utf8');
     };
@@ -56,12 +43,7 @@ export function transform(
     };
 
     const fsMap = new Map<string, string>();
-    const system = createFSBackedSystem(
-        fsMap,
-        __dirname,
-        ts,
-        defaultLibLocation,
-    );
+    const system = createFSBackedSystem(fsMap, __dirname, ts, defaultLibLocation);
 
     const host = createVirtualCompilerHost(system, compilerOptions, ts);
 
@@ -79,10 +61,7 @@ export function transform(
     }
 
     for (const fileName of Object.keys(files)) {
-        const sourceFile = host.compilerHost.getSourceFile(
-            fullPath(fileName),
-            ScriptTarget.ES2022,
-        );
+        const sourceFile = host.compilerHost.getSourceFile(fullPath(fileName), ScriptTarget.ES2022);
         if (!sourceFile) continue;
         const transform = ts.transform(sourceFile, [
             context => node =>
@@ -95,11 +74,7 @@ export function transform(
                     .transformSourceFile(node),
         ]);
         const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-        const code = printer.printNode(
-            ts.EmitHint.SourceFile,
-            transform.transformed[0],
-            transform.transformed[0],
-        );
+        const code = printer.printNode(ts.EmitHint.SourceFile, transform.transformed[0], transform.transformed[0]);
         res[fileName] = code;
     }
 
@@ -142,12 +117,7 @@ export function transpile(
     for (const [fileName, source] of Object.entries(files)) {
         fsMap.set(fullPath(fileName), source);
     }
-    const system = createFSBackedSystem(
-        fsMap,
-        __dirname,
-        ts,
-        defaultLibLocation,
-    );
+    const system = createFSBackedSystem(fsMap, __dirname, ts, defaultLibLocation);
 
     const host = createVirtualCompilerHost(system, compilerOptions, ts);
     host.compilerHost.getDefaultLibLocation = () => defaultLibLocation;
@@ -159,33 +129,24 @@ export function transpile(
         host: host.compilerHost,
     });
     for (const d of getPreEmitDiagnostics(program)) {
-        console.log(
-            'diagnostics',
-            d.file?.fileName,
-            d.messageText,
-            d.start,
-            d.length,
-        );
+        console.log('diagnostics', d.file?.fileName, d.messageText, d.start, d.length);
     }
     const res: Record<string, string> = {};
 
     program.emit(
         undefined,
         (fileName, data) => {
-            res[fileName.slice(__dirname.length + 1).replace(/\.js$/, '')] =
-                data;
+            res[fileName.slice(__dirname.length + 1).replace(/\.js$/, '')] = data;
         },
         undefined,
         undefined,
         {
             before: [
                 (context: TransformationContext) =>
-                    new ReflectionTransformer(context)
-                        .forHost(host.compilerHost)
-                        .withReflection({
-                            reflection: 'default',
-                            ...reflectionOptions,
-                        }),
+                    new ReflectionTransformer(context).forHost(host.compilerHost).withReflection({
+                        reflection: 'default',
+                        ...reflectionOptions,
+                    }),
             ],
         },
     );
