@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import ts, {
+import type {
     __String,
     ArrayTypeNode,
     ArrowFunction,
@@ -72,6 +72,8 @@ import ts, {
     TypeReferenceNode,
     UnionTypeNode,
 } from 'typescript';
+
+import ts from 'typescript';
 
 import {
     ensureImportIsEmitted,

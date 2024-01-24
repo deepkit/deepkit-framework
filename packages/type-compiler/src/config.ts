@@ -1,4 +1,5 @@
-import ts, { CompilerOptions, ParseConfigHost } from 'typescript';
+import type { CompilerOptions, ParseConfigHost } from 'typescript';
+import ts from 'typescript';
 import { dirname, isAbsolute, join } from 'path';
 import { debug, isDebug } from './debug.js';
 import { patternMatch } from './resolver.js';
@@ -245,6 +246,7 @@ export function getResolver(
     //so we need to load the file manually and apply what we need.
     if ('string' === typeof compilerOptions.configFilePath) {
         tsConfigPath = compilerOptions.configFilePath;
+        if (cache[tsConfigPath]) return cache[tsConfigPath];
         const configFile = readTsConfig(host, compilerOptions.configFilePath);
         if (configFile) applyConfigValues(config, configFile, dirname(compilerOptions.configFilePath));
     } else {
@@ -261,14 +263,12 @@ export function getResolver(
             }
         }
         if (tsConfigPath) {
+            if (cache[tsConfigPath]) return cache[tsConfigPath];
             //configPath might be relative to passed basedir
             const configFile = readTsConfig(host, tsConfigPath);
             if (configFile) applyConfigValues(config, configFile, dirname(tsConfigPath));
         }
     }
-
-    const cached = cache[tsConfigPath];
-    if (cached) return cached;
 
     if (tsConfigPath) {
         let basePath = dirname(tsConfigPath);
