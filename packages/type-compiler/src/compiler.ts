@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
-import ts, {
+import type {
     ArrayTypeNode,
     ArrowFunction,
     Block,
@@ -72,6 +72,7 @@ import ts, {
     UnionTypeNode,
     __String,
 } from 'typescript';
+import ts from 'typescript';
 
 import {
     MappedModifier,

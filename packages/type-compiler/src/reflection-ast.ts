@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { CloneNodeHook, cloneNode as tsNodeClone } from '@marcj/ts-clone-node';
-import ts, {
+import type {
     ArrowFunction,
     BigIntLiteral,
     BinaryExpression,
@@ -29,13 +29,8 @@ import ts, {
     StringLiteral,
     StringLiteralLike,
     SymbolTable,
-    getLeadingCommentRanges,
-    isConstructorDeclaration,
-    isInterfaceDeclaration,
-    isMethodDeclaration,
-    isNoSubstitutionTemplateLiteral,
-    isPropertyDeclaration,
 } from 'typescript';
+import ts from 'typescript';
 
 import { External, ExternalLibraryImport } from './external.js';
 import { SourceFile } from './ts-types.js';
@@ -50,6 +45,8 @@ const {
     isStringLiteral,
     isStringLiteralLike,
     setOriginalNode,
+    getLeadingCommentRanges,
+    isNoSubstitutionTemplateLiteral,
     NodeFlags,
     SyntaxKind,
 } = ts;
