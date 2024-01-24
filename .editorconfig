@@ -15,7 +15,6 @@ quote_type = single
 indent_size = 4
 
 [*.{html,spec.ts}]
-quote_type = double
 max_line_length = 250
 
 [*.md]
