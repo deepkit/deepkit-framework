@@ -20,7 +20,7 @@
       }
     },
     {
-      "files": ["*.spec.ts", "*.html"],
+      "files": ["*.spec.ts", "*.html", "packages/type-compiler/src/compiler.ts"],
       "options": {
         "printWidth": 250
       }
