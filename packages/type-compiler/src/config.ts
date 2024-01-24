@@ -56,6 +56,11 @@ export interface TsConfigJson {
          * Per default a few global .d.ts files are excluded like `lib.dom*.d.ts` and `*typedarrays.d.ts`.
          */
         exclude?: string[];
+
+        /**
+         * External library imports to reflect
+         */
+        inlineExternalLibraryImports?: true | Record<string, true | string[]>;
     };
 }
 
@@ -104,6 +109,11 @@ export interface ReflectionConfig {
      * or a list of globs to match against.
      */
     reflection?: string[] | Mode;
+
+    /**
+     * External library imports to reflect
+     */
+    inlineExternalLibraryImports?: true | Record<string, true | string[]>;
 }
 
 export interface CurrentConfig extends ReflectionConfig {
@@ -217,6 +227,7 @@ function applyConfigValues(existing: CurrentConfig, parent: TsConfigJson, baseDi
 export interface MatchResult {
     tsConfigPath: string;
     mode: (typeof reflectionModes)[number];
+    inlineExternalLibraryImports?: true | Record<string, true | string[]>;
 }
 
 export const defaultExcluded = [
@@ -300,20 +311,25 @@ export function getResolver(
         exclude: config.exclude,
         reflection: config.reflection,
         mergeStrategy: config.mergeStrategy || defaultMergeStrategy,
+        inlineExternalLibraryImports: config.inlineExternalLibraryImports,
     };
 
-    if (isDebug()) {
-        debug(
-            `Found config ${resolvedConfig.path}:\nreflection:`,
-            resolvedConfig.reflection,
-            `\nexclude:`,
-            resolvedConfig.exclude,
-        );
-    }
+    debug(
+        `Found config ${resolvedConfig.path}:\nreflection:`,
+        resolvedConfig.reflection,
+        `\nexclude:`,
+        resolvedConfig.exclude,
+        `\ninlineExternalLibraryImports:`,
+        resolvedConfig.inlineExternalLibraryImports,
+    );
 
     const match = (path: string) => {
         const mode = reflectionModeMatcher(config, path);
-        return { mode, tsConfigPath };
+        return {
+            mode,
+            tsConfigPath,
+            inlineExternalLibraryImports: config.inlineExternalLibraryImports,
+        };
     };
 
     return (cache[tsConfigPath] = { config: resolvedConfig, match });

@@ -7,8 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import ts, {
+import { CloneNodeHook, cloneNode as tsNodeClone } from '@marcj/ts-clone-node';
+import type {
     ArrowFunction,
     BigIntLiteral,
     BinaryExpression,
@@ -30,7 +30,9 @@ import ts, {
     StringLiteralLike,
     SymbolTable,
 } from 'typescript';
-import { cloneNode as tsNodeClone, CloneNodeHook } from '@marcj/ts-clone-node';
+import ts from 'typescript';
+
+import { External, ExternalLibraryImport } from './external.js';
 import { SourceFile } from './ts-types.js';
 
 const {
@@ -53,6 +55,18 @@ export type PackExpression = Expression | string | number | boolean | bigint;
 
 export function getIdentifierName(node: Identifier | PrivateIdentifier): string {
     return ts.unescapeLeadingUnderscores(node.escapedText);
+}
+
+export function getExternalRuntimeTypeName(importPath: string): string {
+    return `__ɵΩ${importPath.replace(/[^a-zA-Z0-9]+/g, '_')}`;
+}
+
+export function getRuntimeTypeName(typeName: string): string {
+    return `__Ω${typeName}`;
+}
+
+export function hasSourceFile(node: Node): boolean {
+    return typeof node.getSourceFile === 'function';
 }
 
 export function findSourceFile(node: Node): SourceFile | undefined {
@@ -86,7 +100,13 @@ export function parseJSDocAttributeFromText(comment: string, attribute: string):
             if (withoutContent === -1) return undefined;
             //make sure next character is space or end of comment
             const nextCharacter = comment[withoutContent + attribute.length + 1];
-            if (!nextCharacter || nextCharacter === ' ' || nextCharacter === '\n' || nextCharacter === '\r' || nextCharacter === '\t') {
+            if (
+                !nextCharacter ||
+                nextCharacter === ' ' ||
+                nextCharacter === '\n' ||
+                nextCharacter === '\r' ||
+                nextCharacter === '\t'
+            ) {
                 return '';
             }
             start = withoutContent + attribute.length + 1;
@@ -102,14 +122,21 @@ export function parseJSDocAttributeFromText(comment: string, attribute: string):
     const content = comment.substring(start, end).trim();
 
     // make sure multiline comments are supported, and each line is trimmed and `\s\s\s\*` removed
-    return content.split('\n').map(v => {
-        const indexOfStar = v.indexOf('*');
-        if (indexOfStar === -1) return v.trim();
-        return v.substring(indexOfStar + 1).trim();
-    }).join('\n');
+    return content
+        .split('\n')
+        .map(v => {
+            const indexOfStar = v.indexOf('*');
+            if (indexOfStar === -1) return v.trim();
+            return v.substring(indexOfStar + 1).trim();
+        })
+        .join('\n');
 }
 
-export function extractJSDocAttribute(sourceFile: SourceFile, node: Node | undefined, attribute: string): string | undefined {
+export function extractJSDocAttribute(
+    sourceFile: SourceFile,
+    node: Node | undefined,
+    attribute: string,
+): string | undefined {
     // in TypeScript 5.3 they made JSDoc parsing optional and disabled by default.
     // we need to read the comments manually and then parse @{attribute} {value} manually.
     // we need reference to SourceFile, since Node.getSourceFile() although available in types,
@@ -143,7 +170,8 @@ export function getNameAsString(node?: PropertyName | QualifiedName): string {
     if (isNumericLiteral(node)) return node.text;
     if (isNoSubstitutionTemplateLiteral(node)) return node.text;
     if (isComputedPropertyName(node)) {
-        if (isStringLiteralLike(node) || isNumericLiteral(node)) return (node as StringLiteralLike | NumericLiteral).text;
+        if (isStringLiteralLike(node) || isNumericLiteral(node))
+            return (node as StringLiteralLike | NumericLiteral).text;
         return '';
     }
     if (isPrivateIdentifier(node)) return getIdentifierName(node);
@@ -169,39 +197,83 @@ const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNo
 };
 
 export class NodeConverter {
-    constructor(protected f: NodeFactory) {
+    constructor(
+        protected f: NodeFactory,
+        protected external: External,
+    ) {}
+
+    createExternalRuntimeTypePropertyAccessExpression(
+        name: string,
+        externalLibraryImport?: ExternalLibraryImport,
+    ): PropertyAccessExpression {
+        const { module } = externalLibraryImport || this.external.getEmbeddingExternalLibraryImport();
+        return this.f.createPropertyAccessExpression(
+            this.f.createIdentifier(getExternalRuntimeTypeName(module.packageId.name)),
+            name,
+        );
     }
 
     toExpression<T extends PackExpression | PackExpression[]>(node?: T): Expression {
         if (node === undefined) return this.f.createIdentifier('undefined');
 
         if (Array.isArray(node)) {
-            return this.f.createArrayLiteralExpression(this.f.createNodeArray(node.map(v => this.toExpression(v))) as NodeArray<Expression>);
+            return this.f.createArrayLiteralExpression(
+                this.f.createNodeArray(node.map(v => this.toExpression(v))) as NodeArray<Expression>,
+            );
         }
 
-        if ('string' === typeof node) return this.f.createStringLiteral(node, true);
+        if ('string' === typeof node) {
+            return this.f.createStringLiteral(node, true);
+        }
+
         if ('number' === typeof node) return this.f.createNumericLiteral(node);
-        if ('bigint' === typeof node) return this.f.createBigIntLiteral(String(node));
-        if ('boolean' === typeof node) return node ? this.f.createTrue() : this.f.createFalse();
+
+        if ('bigint' === typeof node) {
+            return this.f.createBigIntLiteral(String(node));
+        }
+
+        if ('boolean' === typeof node) {
+            return node ? this.f.createTrue() : this.f.createFalse();
+        }
 
         if (node.pos === -1 && node.end === -1 && node.parent === undefined) {
             if (isArrowFunction(node)) {
-                if (node.body.pos === -1 && node.body.end === -1 && node.body.parent === undefined) return node;
-                return this.f.createArrowFunction(node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, this.toExpression(node.body as Expression));
+                if (node.body.pos === -1 && node.body.end === -1 && node.body.parent === undefined) {
+                    return node;
+                }
+
+                return this.f.createArrowFunction(
+                    node.modifiers,
+                    node.typeParameters,
+                    node.parameters,
+                    node.type,
+                    node.equalsGreaterThanToken,
+                    this.toExpression(node.body as Expression),
+                );
             }
+
             return node;
         }
+
         switch (node.kind) {
             case SyntaxKind.Identifier:
-                return finish(node, this.f.createIdentifier(getIdentifierName(node as Identifier)));
+                const name = getIdentifierName(node as Identifier);
+                return this.external.isEmbeddingExternalLibraryImport() && !this.external.knownGlobalTypeNames.has(name)
+                    ? this.createExternalRuntimeTypePropertyAccessExpression(name)
+                    : finish(node, this.f.createIdentifier(name));
+
             case SyntaxKind.StringLiteral:
                 return finish(node, this.f.createStringLiteral((node as StringLiteral).text));
+
             case SyntaxKind.NumericLiteral:
                 return finish(node, this.f.createNumericLiteral((node as NumericLiteral).text));
+
             case SyntaxKind.BigIntLiteral:
                 return finish(node, this.f.createBigIntLiteral((node as BigIntLiteral).text));
+
             case SyntaxKind.TrueKeyword:
                 return finish(node, this.f.createTrue());
+
             case SyntaxKind.FalseKeyword:
                 return finish(node, this.f.createFalse());
         }
@@ -224,7 +296,6 @@ export class NodeConverter {
             console.error('could not clone node', node);
             throw error;
         }
-
     }
 }
 
@@ -233,8 +304,16 @@ function isExternalOrCommonJsModule(file: SourceFile): boolean {
     return (file.externalModuleIndicator || file.commonJsModuleIndicator) !== undefined;
 }
 
-export function isNodeWithLocals(node: Node): node is (Node & { locals: SymbolTable | undefined }) {
+export function isBuiltType(typeVar: Identifier, sourceFile: SourceFile): boolean {
+    return isNodeWithLocals(sourceFile) && !!sourceFile.locals?.has(typeVar.escapedText);
+}
+
+export function isNodeWithLocals(node: Node): node is Node & { locals: SymbolTable | undefined } {
     return 'locals' in node;
+}
+
+export function getEntityName(typeName: EntityName): string {
+    return isIdentifier(typeName) ? getIdentifierName(typeName) : getIdentifierName(typeName.right);
 }
 
 //logic copied from typescript
@@ -265,7 +344,6 @@ export function ensureImportIsEmitted(importDeclaration: ImportDeclaration, spec
 
     (importDeclaration.flags as any) |= NodeFlags.Synthesized;
 }
-
 
 /**
  * Serializes an entity name as an expression for decorator type metadata.
@@ -313,4 +391,3 @@ function finish<T extends MetaNode>(oldNode: MetaNode, newNode: T): T {
     newNode.symbol = newNode._symbol;
     return newNode;
 }
-

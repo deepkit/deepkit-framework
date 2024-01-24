@@ -1,9 +1,11 @@
-import * as ts from 'typescript';
-import { createSourceFile, getPreEmitDiagnostics, ScriptTarget, ScriptKind, TransformationContext } from 'typescript';
 import { createFSBackedSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
-import { ReflectionTransformer } from '../src/compiler.js';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
+import * as ts from 'typescript';
+import { ScriptKind, ScriptTarget, TransformationContext, createSourceFile, getPreEmitDiagnostics } from 'typescript';
+
+import { ReflectionTransformer } from '../src/compiler.js';
+import { ReflectionConfig } from '../src/config.js';
 
 const defaultLibLocation = dirname(require.resolve('typescript')) + '/'; //node_modules/typescript/lib/
 
@@ -22,11 +24,14 @@ function readLibs(compilerOptions: ts.CompilerOptions, files: Map<string, string
     }
 }
 
-const defaultCompilerOptions = {
-}
+const defaultCompilerOptions = {};
 
-export function transform(files: Record<string, string>, options: ts.CompilerOptions = {}): Record<string, string> {
-    const compilerOptions: ts.CompilerOptions = {
+export function transform(
+    files: Record<string, string>,
+    compilerOptions: ts.CompilerOptions = {},
+    reflectionOptions?: ReflectionConfig,
+): Record<string, string> {
+    compilerOptions = {
         ...defaultCompilerOptions,
         target: ts.ScriptTarget.ES2016,
         allowNonTsExtensions: true,
@@ -34,7 +39,7 @@ export function transform(files: Record<string, string>, options: ts.CompilerOpt
         moduleResolution: ts.ModuleResolutionKind.NodeJs,
         experimentalDecorators: true,
         esModuleInterop: true,
-        ...options
+        ...compilerOptions,
     };
 
     const fsMap = new Map<string, string>();
@@ -45,14 +50,29 @@ export function transform(files: Record<string, string>, options: ts.CompilerOpt
     const res: Record<string, string> = {};
 
     for (const [fileName, source] of Object.entries(files)) {
-        const sourceFile = createSourceFile(fullPath(fileName), source, compilerOptions.target || ScriptTarget.ES2018, true, ScriptKind.TS);
+        const sourceFile = createSourceFile(
+            fullPath(fileName),
+            source,
+            compilerOptions.target || ScriptTarget.ES2018,
+            true,
+            ScriptKind.TS,
+        );
         host.updateFile(sourceFile);
     }
 
     for (const fileName of Object.keys(files)) {
         const sourceFile = host.compilerHost.getSourceFile(fullPath(fileName), ScriptTarget.ES2022);
         if (!sourceFile) continue;
-        const transform = ts.transform(sourceFile, [(context) => (node) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflection({reflection: 'default'}).transformSourceFile(node)]);
+        const transform = ts.transform(sourceFile, [
+            context => node =>
+                new ReflectionTransformer(context)
+                    .forHost(host.compilerHost)
+                    .withReflection({
+                        reflection: 'default',
+                        ...reflectionOptions,
+                    })
+                    .transformSourceFile(node),
+        ]);
         const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
         const code = printer.printNode(ts.EmitHint.SourceFile, transform.transformed[0], transform.transformed[0]);
         res[fileName] = code;
@@ -64,16 +84,24 @@ export function transform(files: Record<string, string>, options: ts.CompilerOpt
 /**
  * The first entry in files is executed as main script
  */
-export function transpileAndRun(files: Record<string, string>, options: ts.CompilerOptions = {}): any {
-    const source = transpile(files, options);
+export function transpileAndRun(
+    files: Record<string, string>,
+    compilerOptions: ts.CompilerOptions = {},
+    reflectionOptions?: ReflectionConfig,
+): any {
+    const source = transpile(files, compilerOptions, reflectionOptions);
     console.log('transpiled', source);
     const first = Object.keys(files)[0];
 
     return eval(source[first]);
 }
 
-export function transpile(files: Record<string, string>, options: ts.CompilerOptions = {}): Record<string, string> {
-    const compilerOptions: ts.CompilerOptions = {
+export function transpile(
+    files: Record<string, string>,
+    compilerOptions: ts.CompilerOptions = {},
+    reflectionOptions?: ReflectionConfig,
+): any {
+    compilerOptions = {
         ...defaultCompilerOptions,
         target: ts.ScriptTarget.ES2015,
         allowNonTsExtensions: true,
@@ -82,7 +110,7 @@ export function transpile(files: Record<string, string>, options: ts.CompilerOpt
         experimentalDecorators: true,
         esModuleInterop: true,
         skipLibCheck: true,
-        ...options
+        ...compilerOptions,
     };
 
     const fsMap = new Map<string, string>();
@@ -105,11 +133,23 @@ export function transpile(files: Record<string, string>, options: ts.CompilerOpt
     }
     const res: Record<string, string> = {};
 
-    program.emit(undefined, (fileName, data) => {
-        res[fileName.slice(__dirname.length + 1).replace(/\.js$/, '')] = data;
-    }, undefined, undefined, {
-        before: [(context: TransformationContext) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflection({reflection: 'default'})],
-    });
+    program.emit(
+        undefined,
+        (fileName, data) => {
+            res[fileName.slice(__dirname.length + 1).replace(/\.js$/, '')] = data;
+        },
+        undefined,
+        undefined,
+        {
+            before: [
+                (context: TransformationContext) =>
+                    new ReflectionTransformer(context).forHost(host.compilerHost).withReflection({
+                        reflection: 'default',
+                        ...reflectionOptions,
+                    }),
+            ],
+        },
+    );
 
     return res;
 }

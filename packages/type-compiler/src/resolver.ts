@@ -6,6 +6,7 @@ import type {
     Expression,
     ImportDeclaration,
     ResolvedModule,
+    ResolvedModuleFull,
     SourceFile,
     StringLiteral,
 } from 'typescript';
@@ -43,7 +44,40 @@ export class Resolver {
         return this.resolveSourceFile(from, moduleSpecifier);
     }
 
-    protected resolveImpl(modulePath: StringLiteral, sourceFile: SourceFile): ResolvedModule | undefined {
+    resolveExternalLibraryImport(importDeclaration: ImportDeclaration): Required<ResolvedModuleFull> {
+        const resolvedModule = this.resolveImport(importDeclaration);
+        if (!resolvedModule.isExternalLibraryImport) {
+            throw new Error('Resolved module is not an external library import');
+        }
+        if (!resolvedModule.packageId) {
+            // packageId will be undefined when importing from sub-paths such as `rxjs/operators`
+            resolvedModule.packageId = {
+                name: (importDeclaration.moduleSpecifier as StringLiteral).text,
+                subModuleName: 'unknown',
+                version: 'unknown',
+            };
+        }
+        return resolvedModule as Required<ResolvedModuleFull>;
+    }
+
+    resolveImport(importDeclaration: ImportDeclaration): ResolvedModuleFull {
+        if (!isStringLiteral(importDeclaration.moduleSpecifier)) {
+            throw new Error('Invalid import declaration module specifier');
+        }
+        const resolvedModule = this.resolveImpl(
+            importDeclaration.moduleSpecifier,
+            importDeclaration.getSourceFile(),
+        ) as ResolvedModuleFull;
+        if (!resolvedModule) {
+            throw new Error('Cannot resolve module');
+        }
+        return resolvedModule;
+    }
+
+    protected resolveImpl(
+        modulePath: StringLiteral,
+        sourceFile: SourceFile,
+    ): ResolvedModuleFull | ResolvedModule | undefined {
         if (this.host.resolveModuleNameLiterals !== undefined) {
             const results = this.host.resolveModuleNameLiterals(
                 [modulePath],
