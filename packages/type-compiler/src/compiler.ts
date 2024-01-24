@@ -2048,6 +2048,17 @@ export class ReflectionTransformer implements CustomTransformer {
             }
 
             let declaration: Node = resolved.declaration;
+            const declarationSourceFile = findSourceFile(declaration);
+
+            if (!declarationSourceFile) {
+                program.pushOp(ReflectionOp.never);
+                debug(`Could not find source file for ${getNameAsString(typeName)} in ${program.sourceFile.fileName}`);
+                return;
+            }
+
+            const isGlobal = resolved.importDeclaration === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName;
+            const isFromImport = resolved.importDeclaration !== undefined;
+
             if (isVariableDeclaration(declaration)) {
                 if (declaration.type) {
                     declaration = declaration.type;
@@ -2108,10 +2119,6 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 //to break recursion, we track which declaration has already been compiled
                 if (!this.compiledDeclarations.has(declaration) && !this.compileDeclarations.has(declaration)) {
-                    const declarationSourceFile = findSourceFile(declaration) || this.sourceFile;
-                    const isGlobal = resolved.importDeclaration === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName;
-                    const isFromImport = resolved.importDeclaration !== undefined;
-
                     if (this.isExcluded(declarationSourceFile.fileName)) {
                         program.pushOp(ReflectionOp.any);
                         return;
@@ -2131,14 +2138,6 @@ export class ReflectionTransformer implements CustomTransformer {
                                 return;
                             }
 
-                            // we need to find the declaration file of the import
-                            const found = this.resolver.resolve(this.sourceFile, resolved.importDeclaration);
-                            if (!found) {
-                                debug('module not found');
-                                program.pushOp(ReflectionOp.any);
-                                return;
-                            }
-
                             // debug('import', getNameAsString(typeName), 'from',
                             //     (resolved.importDeclaration.moduleSpecifier as StringLiteral).text, ' in', program.sourceFile.fileName);
 
@@ -2148,7 +2147,7 @@ export class ReflectionTransformer implements CustomTransformer {
                             // Note that if `found` is a TypeScript file (not d.ts), then we need to check using the fileName
                             // since it is part of the current transpilation phase. Thus, it depends on the
                             // current config + @reflection decorator instead.
-                            if (found.fileName.endsWith('.d.ts')) {
+                            if (declarationSourceFile.fileName.endsWith('.d.ts')) {
                                 // Note that if import was something like `import { XY } from 'my-module'` then resolve()
                                 // returns the index.d.ts file of the module, not the actual file where XY is exported.
                                 // this is necessary since we emit an additional import `import { __ΩXY } from 'my-module'`,
@@ -2160,7 +2159,7 @@ export class ReflectionTransformer implements CustomTransformer {
                                 );
 
                                 if (!resolverDecVariable) {
-                                    debug(`Symbol ${runtimeTypeName.escapedText} not found in ${found.fileName}`);
+                                    debug(`Symbol ${runtimeTypeName.escapedText} not found in ${declarationSourceFile.fileName}`);
                                     //no __Ω{name} exported, so we can not be sure if the module is built with runtime types
                                     this.resolveTypeOnlyImport(typeName, program);
                                     return;
@@ -2168,14 +2167,14 @@ export class ReflectionTransformer implements CustomTransformer {
 
                                 this.addImports.push({ identifier: runtimeTypeName, from: resolved.importDeclaration.moduleSpecifier });
                             } else {
-                                const reflection = this.getReflectionConfig(found);
+                                const reflection = this.getReflectionConfig(declarationSourceFile);
                                 // if this is never, then its generally disabled for this file
                                 if (reflection.mode === 'never') {
                                     this.resolveTypeOnlyImport(typeName, program);
                                     return;
                                 }
 
-                                const declarationReflection = this.isWithReflection(found, declaration);
+                                const declarationReflection = this.isWithReflection(declarationSourceFile, declaration);
                                 if (!declarationReflection) {
                                     this.resolveTypeOnlyImport(typeName, program);
                                     return;
@@ -2235,8 +2234,10 @@ export class ReflectionTransformer implements CustomTransformer {
                     return;
                 }
 
-                //it's a reference type inside the same file. Make sure its type is reflected
-                const reflection = this.isWithReflection(program.sourceFile, declaration);
+                // If a function/class declarations comes from a built library (e.g. node_modules), then we
+                // declarationSourceFile is a d.ts file. We do know if they are built in runtime by checking `xy.__type`.
+                // Otherwise, check if the file will be built with runtime types.
+                const reflection = declarationSourceFile.fileName.endsWith('.d.ts') || this.isWithReflection(program.sourceFile, declaration);
                 if (!reflection) {
                     this.resolveTypeOnlyImport(typeName, program);
                     return;
