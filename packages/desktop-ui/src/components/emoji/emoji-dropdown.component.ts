@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import {
     AfterViewInit,
     ChangeDetectorRef,
@@ -24,44 +23,83 @@ import {
     Output,
     SimpleChanges,
     ViewChild,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
+
+import { DropdownComponent } from '../button';
 import * as emojis from './emojis';
 import { EmojiCategory } from './emojis';
-import { DropdownComponent } from '../button';
 
 @Component({
     selector: 'dui-emoji-dropdown',
     template: `
-        <dui-dropdown overlay [center]="true" (shown)="searchInput.focusInput()" #dropdown [height]="360" [width]="320" [minWidth]="320">
+        <dui-dropdown
+            overlay
+            [center]="true"
+            (shown)="searchInput.focusInput()"
+            #dropdown
+            [height]="360"
+            [width]="320"
+            [minWidth]="320"
+        >
             <div class="dropdown">
-                <dui-input round style="width: calc(100% - 13px)" clearer focus #searchInput
-                           icon="search" placeholder="Search" [(ngModel)]="search"></dui-input>
+                <dui-input
+                    round
+                    style="width: calc(100% - 13px)"
+                    clearer
+                    focus
+                    #searchInput
+                    icon="search"
+                    placeholder="Search"
+                    [(ngModel)]="search"
+                ></dui-input>
 
                 <div *ngIf="search">
                     <div class="emojis">
-                        <div class="emoji" *ngFor="let name of find(search)"
-                             [class.selected]="name === emoji"
-                             [attr.id]="'emoji_' + name"
-                             (click)="choose(name)">
-                            <div class="emoji-image"
-                                 [style.backgroundPosition]="emojis.emojis[name] ? (-((emojis.emojis[name].x * 34) + 1) + 'px ' + -((emojis.emojis[name].y * 34) + 1) + 'px') : ''"></div>
+                        <div
+                            class="emoji"
+                            *ngFor="let name of find(search)"
+                            [class.selected]="name === emoji"
+                            [attr.id]="'emoji_' + name"
+                            (click)="choose(name)"
+                        >
+                            <div
+                                class="emoji-image"
+                                [style.backgroundPosition]="
+                                    emojis.emojis[name]
+                                        ? -(emojis.emojis[name].x * 34 + 1) +
+                                          'px ' +
+                                          -(emojis.emojis[name].y * 34 + 1) +
+                                          'px'
+                                        : ''
+                                "
+                            ></div>
                         </div>
                     </div>
                 </div>
                 <ng-container *ngIf="!search">
                     <div *ngIf="getLast(lastEmojis) as lastEmojis">
-                        <div class="category-title">
-                            Frequently used
-                        </div>
+                        <div class="category-title">Frequently used</div>
 
                         <div class="emojis">
-                            <div class="emoji" *ngFor="let name of lastEmojis"
-                                 [attr.id]="'emoji_' + name"
-                                 [class.selected]="name === emoji"
-                                 (click)="choose(name)">
-                                <div class="emoji-image"
-                                     [style.backgroundPosition]="emojis.emojis[name] ? (-((emojis.emojis[name].x * 34) + 1) + 'px ' + -((emojis.emojis[name].y * 34) + 1) + 'px') : ''"></div>
+                            <div
+                                class="emoji"
+                                *ngFor="let name of lastEmojis"
+                                [attr.id]="'emoji_' + name"
+                                [class.selected]="name === emoji"
+                                (click)="choose(name)"
+                            >
+                                <div
+                                    class="emoji-image"
+                                    [style.backgroundPosition]="
+                                        emojis.emojis[name]
+                                            ? -(emojis.emojis[name].x * 34 + 1) +
+                                              'px ' +
+                                              -(emojis.emojis[name].y * 34 + 1) +
+                                              'px'
+                                            : ''
+                                    "
+                                ></div>
                             </div>
                         </div>
                     </div>
@@ -69,16 +107,28 @@ import { DropdownComponent } from '../button';
                     <div *ngFor="let categoryName of categories">
                         <ng-container *ngIf="getCategory(categoryName) as category">
                             <div class="category-title">
-                                {{category.name}}
+                                {{ category.name }}
                             </div>
 
                             <div class="emojis">
-                                <div class="emoji" *ngFor="let name of category.emojis"
-                                     [attr.id]="'emoji_' + name"
-                                     [class.selected]="name === emoji"
-                                     (click)="choose(name)">
-                                    <div class="emoji-image"
-                                         [style.backgroundPosition]="emojis.emojis[name] ? (-((emojis.emojis[name].x * 34) + 1) + 'px ' + -((emojis.emojis[name].y * 34) + 1) + 'px') : ''"></div>
+                                <div
+                                    class="emoji"
+                                    *ngFor="let name of category.emojis"
+                                    [attr.id]="'emoji_' + name"
+                                    [class.selected]="name === emoji"
+                                    (click)="choose(name)"
+                                >
+                                    <div
+                                        class="emoji-image"
+                                        [style.backgroundPosition]="
+                                            emojis.emojis[name]
+                                                ? -(emojis.emojis[name].x * 34 + 1) +
+                                                  'px ' +
+                                                  -(emojis.emojis[name].y * 34 + 1) +
+                                                  'px'
+                                                : ''
+                                        "
+                                    ></div>
                                 </div>
                             </div>
                         </ng-container>
@@ -98,7 +148,8 @@ export class EmojiDropdownComponent implements AfterViewInit {
     @Input() emoji: string = '';
     @Output() emojiChange = new EventEmitter();
 
-    @ViewChild(DropdownComponent, { static: true }) dropdown!: DropdownComponent;
+    @ViewChild(DropdownComponent, { static: true })
+    dropdown!: DropdownComponent;
 
     emojis = emojis;
 
@@ -115,16 +166,22 @@ export class EmojiDropdownComponent implements AfterViewInit {
         'Flags',
     ];
 
-    constructor(protected element: ElementRef, protected cd: ChangeDetectorRef) {
-    }
+    constructor(
+        protected element: ElementRef,
+        protected cd: ChangeDetectorRef,
+    ) {}
 
     getLast(emojis: string[]): string[] | undefined {
         if (!emojis.length) return;
 
-        return [...new Set(emojis.map(v => {
-            if (v[0] === ':') return v.substring(1, v.length - 1);
-            return v[0];
-        }))];
+        return [
+            ...new Set(
+                emojis.map(v => {
+                    if (v[0] === ':') return v.substring(1, v.length - 1);
+                    return v[0];
+                }),
+            ),
+        ];
     }
 
     ngAfterViewInit() {
@@ -189,7 +246,7 @@ export class EmojiDropdownComponent implements AfterViewInit {
 }
 
 @Directive({
-    selector: '[duiEmojiDropdown]'
+    selector: '[duiEmojiDropdown]',
 })
 export class EmojiDropdownDirective implements OnChanges, AfterViewInit, OnDestroy {
     protected dropdown?: ComponentRef<EmojiDropdownComponent>;
@@ -206,9 +263,7 @@ export class EmojiDropdownDirective implements OnChanges, AfterViewInit, OnDestr
         protected elementRef: ElementRef,
         protected view: ViewContainerRef,
         protected resolver: ComponentFactoryResolver,
-    ) {
-
-    }
+    ) {}
 
     ngAfterViewInit() {
         const factory = this.resolver.resolveComponentFactory(EmojiDropdownComponent);

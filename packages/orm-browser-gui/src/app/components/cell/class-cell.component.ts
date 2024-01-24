@@ -1,10 +1,12 @@
 import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular/core';
-import { isReferenceType, ReflectionClass, TypeClass, TypeObjectLiteral } from '@deepkit/type';
-import { objToString } from './utils';
+
+import { ReflectionClass, TypeClass, TypeObjectLiteral, isReferenceType } from '@deepkit/type';
+
 import { BrowserState } from '../../browser-state';
+import { objToString } from './utils';
 
 @Component({
-    template: `{{label}}`
+    template: `{{ label }}`,
 })
 export class ClassCellComponent implements OnChanges, OnInit {
     @Input() model: any;
@@ -14,8 +16,10 @@ export class ClassCellComponent implements OnChanges, OnInit {
 
     label: string = '';
 
-    constructor(public state: BrowserState, protected cd: ChangeDetectorRef) {
-    }
+    constructor(
+        public state: BrowserState,
+        protected cd: ChangeDetectorRef,
+    ) {}
 
     ngOnChanges() {
         this.schema = ReflectionClass.from(this.type);

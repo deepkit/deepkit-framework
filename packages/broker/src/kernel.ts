@@ -7,19 +7,30 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import cluster from 'cluster';
+import { closeSync, openSync, renameSync, writeSync } from 'fs';
 
-import { arrayRemoveItem, ProcessLock, ProcessLocker } from '@deepkit/core';
+import { ProcessLock, ProcessLocker, arrayRemoveItem } from '@deepkit/core';
 import {
-    createRpcMessage,
     RpcConnectionWriter,
     RpcKernel,
     RpcKernelBaseConnection,
     RpcKernelConnections,
     RpcMessage,
     RpcMessageBuilder,
-    RpcMessageRouteType
+    RpcMessageRouteType,
+    createRpcMessage,
 } from '@deepkit/rpc';
+
 import {
+    BrokerQueueMessageHandled,
+    BrokerQueuePublish,
+    BrokerQueueResponseHandleMessage,
+    BrokerQueueSubscribe,
+    BrokerType,
+    QueueMessage,
+    QueueMessageProcessing,
+    QueueMessageState,
     brokerBusPublish,
     brokerBusResponseHandleMessage,
     brokerBusSubscribe,
@@ -31,22 +42,12 @@ import {
     brokerInvalidateCacheMessage,
     brokerLock,
     brokerLockId,
-    BrokerQueueMessageHandled,
-    BrokerQueuePublish,
-    BrokerQueueResponseHandleMessage,
-    BrokerQueueSubscribe,
     brokerResponseGetCache,
     brokerResponseGetCacheMeta,
     brokerResponseIncrement,
     brokerResponseIsLock,
     brokerSetCache,
-    BrokerType,
-    QueueMessage,
-    QueueMessageProcessing,
-    QueueMessageState
 } from './model.js';
-import cluster from 'cluster';
-import { closeSync, openSync, renameSync, writeSync } from 'fs';
 import { snapshotState } from './snapshot.js';
 import { handleMessageDeduplication } from './utils.js';
 
@@ -55,13 +56,17 @@ export interface Queue {
     name: string;
     deduplicateMessageHashes: Set<string | number>;
     messages: QueueMessage[];
-    consumers: { con: BrokerConnection, handling: Map<number, QueueMessage>, maxMessagesInParallel: number }[];
+    consumers: {
+        con: BrokerConnection;
+        handling: Map<number, QueueMessage>;
+        maxMessagesInParallel: number;
+    }[];
 }
 
 export class BrokerConnection extends RpcKernelBaseConnection {
     protected subscribedChannels: string[] = [];
     protected locks = new Map<number, ProcessLock>();
-    protected replies = new Map<number, ((message: RpcMessage) => void)>();
+    protected replies = new Map<number, (message: RpcMessage) => void>();
 
     constructor(
         transportWriter: RpcConnectionWriter,
@@ -90,7 +95,14 @@ export class BrokerConnection extends RpcKernelBaseConnection {
 
         for (const connection of this.connections.connections) {
             if (connection === this) continue;
-            promises.push(connection.sendMessage<brokerEntityFields>(BrokerType.EntityFields, { name, fields }).ackThenClose());
+            promises.push(
+                connection
+                    .sendMessage<brokerEntityFields>(BrokerType.EntityFields, {
+                        name,
+                        fields,
+                    })
+                    .ackThenClose(),
+            );
         }
 
         await Promise.all(promises);
@@ -104,10 +116,10 @@ export class BrokerConnection extends RpcKernelBaseConnection {
                 if (changed) {
                     await this.sendEntityFields(body.name);
                 }
-                response.reply<brokerEntityFields>(
-                    BrokerType.EntityFields,
-                    { name: body.name, fields: this.state.getEntityFields(body.name) }
-                );
+                response.reply<brokerEntityFields>(BrokerType.EntityFields, {
+                    name: body.name,
+                    fields: this.state.getEntityFields(body.name),
+                });
                 break;
             }
             case BrokerType.UnsubscribeEntityFields: {
@@ -116,28 +128,34 @@ export class BrokerConnection extends RpcKernelBaseConnection {
                 if (changed) {
                     await this.sendEntityFields(body.name);
                 }
-                response.reply<brokerEntityFields>(
-                    BrokerType.EntityFields,
-                    { name: body.name, fields: this.state.getEntityFields(body.name) }
-                );
+                response.reply<brokerEntityFields>(BrokerType.EntityFields, {
+                    name: body.name,
+                    fields: this.state.getEntityFields(body.name),
+                });
                 break;
             }
             case BrokerType.AllEntityFields: {
                 const composite = response.composite(BrokerType.AllEntityFields);
                 for (const name of this.state.entityFields.keys()) {
-                    composite.add<brokerEntityFields>(BrokerType.EntityFields, { name, fields: this.state.getEntityFields(name) });
+                    composite.add<brokerEntityFields>(BrokerType.EntityFields, {
+                        name,
+                        fields: this.state.getEntityFields(name),
+                    });
                 }
                 composite.send();
                 break;
             }
             case BrokerType.Lock: {
                 const body = message.parseBody<brokerLock>();
-                this.state.lock(body.id, body.ttl, body.timeout).then(lock => {
-                    this.locks.set(message.id, lock);
-                    response.reply(BrokerType.ResponseLock);
-                }, (error) => {
-                    response.error(error);
-                });
+                this.state.lock(body.id, body.ttl, body.timeout).then(
+                    lock => {
+                        this.locks.set(message.id, lock);
+                        response.reply(BrokerType.ResponseLock);
+                    },
+                    error => {
+                        response.error(error);
+                    },
+                );
                 break;
             }
             case BrokerType.Unlock: {
@@ -188,7 +206,11 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             }
             case BrokerType.QueueMessageHandled: {
                 const body = message.parseBody<BrokerQueueMessageHandled>();
-                this.state.queueMessageHandled(body.c, this, body.id, { error: body.error, success: body.success, delay: body.delay });
+                this.state.queueMessageHandled(body.c, this, body.id, {
+                    error: body.error,
+                    success: body.success,
+                    delay: body.delay,
+                });
                 response.ack();
                 break;
             }
@@ -242,9 +264,10 @@ export class BrokerConnection extends RpcKernelBaseConnection {
                 if (entry && this.state.invalidationCacheMessageConnections.length) {
                     this.state.deleteCache(body.n);
                     const message = createRpcMessage<brokerInvalidateCacheMessage>(
-                        0, BrokerType.ResponseInvalidationCache,
+                        0,
+                        BrokerType.ResponseInvalidationCache,
                         { key: body.n, ttl: entry.ttl },
-                        RpcMessageRouteType.server
+                        RpcMessageRouteType.server,
                     );
 
                     for (const connection of this.state.invalidationCacheMessageConnections) {
@@ -269,7 +292,10 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             case BrokerType.GetCacheMeta: {
                 const body = message.parseBody<brokerGetCache>();
                 const v = this.state.getCache(body.n);
-                response.reply<brokerResponseGetCacheMeta>(BrokerType.ResponseGetCacheMeta, v ? {ttl: v.ttl} : { missing: true });
+                response.reply<brokerResponseGetCacheMeta>(
+                    BrokerType.ResponseGetCacheMeta,
+                    v ? { ttl: v.ttl } : { missing: true },
+                );
                 break;
             }
             case BrokerType.Get: {
@@ -296,7 +322,7 @@ export class BrokerState {
     /**
      * Cache store.
      */
-    public cacheStore = new Map<string, { data: Uint8Array, ttl: number }>();
+    public cacheStore = new Map<string, { data: Uint8Array; ttl: number }>();
 
     public subscriptions = new Map<string, BrokerConnection[]>();
     public entityFields = new Map<string, Map<string, number>>();
@@ -322,7 +348,7 @@ export class BrokerState {
             this.snapshotting = true;
             cluster.fork();
 
-            cluster.on('exit', (worker) => {
+            cluster.on('exit', worker => {
                 this.snapshotting = false;
             });
             return;
@@ -333,7 +359,7 @@ export class BrokerState {
         const snapshotTempPath = this.snapshotPath + '.tmp';
         //open file for writing, create if not exists, truncate if exists
         const file = openSync(snapshotTempPath, 'w+');
-        snapshotState(this, (v) => writeSync(file, v));
+        snapshotState(this, v => writeSync(file, v));
         closeSync(file);
 
         //rename temp file to final file
@@ -412,8 +438,10 @@ export class BrokerState {
         const subscriptions = this.subscriptions.get(channel);
         if (!subscriptions) return;
         const message = createRpcMessage<brokerBusResponseHandleMessage>(
-            0, BrokerType.ResponseSubscribeMessage,
-            { c: channel, v: v }, RpcMessageRouteType.server
+            0,
+            BrokerType.ResponseSubscribeMessage,
+            { c: channel, v: v },
+            RpcMessageRouteType.server,
         );
 
         for (const connection of subscriptions) {
@@ -424,7 +452,13 @@ export class BrokerState {
     protected getQueue(queueName: string) {
         let queue = this.queues.get(queueName);
         if (!queue) {
-            queue = { currentId: 0, name: queueName, deduplicateMessageHashes: new Set(), messages: [], consumers: [] };
+            queue = {
+                currentId: 0,
+                name: queueName,
+                deduplicateMessageHashes: new Set(),
+                messages: [],
+                consumers: [],
+            };
             this.queues.set(queueName, queue);
         }
         return queue;
@@ -432,7 +466,11 @@ export class BrokerState {
 
     public queueSubscribe(queueName: string, connection: BrokerConnection, maxParallel: number) {
         const queue = this.getQueue(queueName);
-        queue.consumers.push({ con: connection, handling: new Map(), maxMessagesInParallel: 1 });
+        queue.consumers.push({
+            con: connection,
+            handling: new Map(),
+            maxMessagesInParallel: 1,
+        });
     }
 
     public queueUnsubscribe(queueName: string, connection: BrokerConnection) {
@@ -445,7 +483,16 @@ export class BrokerState {
     public queuePublish(body: BrokerQueuePublish) {
         const queue = this.getQueue(body.c);
 
-        const m: QueueMessage = { id: queue.currentId++, process: body.process, hash: body.hash, state: QueueMessageState.pending, tries: 0, v: body.v, delay: body.delay || 0, priority: body.priority };
+        const m: QueueMessage = {
+            id: queue.currentId++,
+            process: body.process,
+            hash: body.hash,
+            state: QueueMessageState.pending,
+            tries: 0,
+            v: body.v,
+            delay: body.delay || 0,
+            priority: body.priority,
+        };
 
         if (body.process === QueueMessageProcessing.exactlyOnce) {
             if (!body.deduplicationInterval) {
@@ -469,10 +516,14 @@ export class BrokerState {
             m.tries++;
             m.state = QueueMessageState.inFlight;
             m.lastError = undefined;
-            consumer.con.writer.write(createRpcMessage<BrokerQueueResponseHandleMessage>(
-                0, BrokerType.QueueResponseHandleMessage,
-                { c: body.c, v: body.v, id: m.id }, RpcMessageRouteType.server
-            ));
+            consumer.con.writer.write(
+                createRpcMessage<BrokerQueueResponseHandleMessage>(
+                    0,
+                    BrokerType.QueueResponseHandleMessage,
+                    { c: body.c, v: body.v, id: m.id },
+                    RpcMessageRouteType.server,
+                ),
+            );
         }
 
         //todo: handle queues messages and sending when new consumer connects
@@ -481,7 +532,12 @@ export class BrokerState {
     /**
      * When a queue message has been sent to a consumer and the consumer answers.
      */
-    public queueMessageHandled(queueName: string, connection: BrokerConnection, id: number, answer: { error?: string, success: boolean, delay?: number }) {
+    public queueMessageHandled(
+        queueName: string,
+        connection: BrokerConnection,
+        id: number,
+        answer: { error?: string; success: boolean; delay?: number },
+    ) {
         const queue = this.queues.get(queueName);
         if (!queue) return;
         const consumer = queue.consumers.find(v => v.con === connection);
@@ -505,7 +561,7 @@ export class BrokerState {
         this.cacheStore.set(id, { data, ttl });
     }
 
-    public getCache(id: string): { data: Uint8Array, ttl: number } | undefined {
+    public getCache(id: string): { data: Uint8Array; ttl: number } | undefined {
         return this.cacheStore.get(id);
     }
 
@@ -532,11 +588,10 @@ export class BrokerState {
     public deleteKey(id: string) {
         this.keyStore.delete(id);
     }
-
 }
 
 export class BrokerKernel extends RpcKernel {
-    protected state: BrokerState = new BrokerState;
+    protected state: BrokerState = new BrokerState();
 
     createConnection(writer: RpcConnectionWriter): BrokerConnection {
         return new BrokerConnection(writer, this.connections, this.state);

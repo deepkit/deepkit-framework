@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { EventEmitter } from 'events';
 
 class ImportedFiles extends EventEmitter {
@@ -31,7 +30,5 @@ export const importedFiles = new ImportedFiles();
 export function watch(callback: () => void) {
     //todo: Watch for changes and callback when detected.
     // make sure that files added after this watch function has been called are handled as well
-    importedFiles.on('file', () => {
-
-    });
+    importedFiles.on('file', () => {});
 }

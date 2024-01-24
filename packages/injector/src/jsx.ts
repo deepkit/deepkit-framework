@@ -1,8 +1,9 @@
 import { ClassType, isArray, isFunction } from '@deepkit/core';
-import { reflect, ReflectionKind } from '@deepkit/type';
+import { ReflectionKind, reflect } from '@deepkit/type';
+
 import { InjectorContext, Resolver } from './injector.js';
-import { ProviderWithScope } from './provider.js';
 import { InjectorModule } from './module.js';
+import { ProviderWithScope } from './provider.js';
 
 export function wrapComponent<T extends Function>(fn: T & { __injected?: any }, container: InjectorContext): any {
     if (fn.__injected) return fn.__injected;
@@ -16,14 +17,16 @@ export function wrapComponent<T extends Function>(fn: T & { __injected?: any }, 
     const componentName = fn.name;
 
     for (let i = 1; i < type.parameters.length; i++) {
-        args.push(injector.createResolver(type.parameters[i], undefined, `${componentName}.${type.parameters[i].name}`));
+        args.push(
+            injector.createResolver(type.parameters[i], undefined, `${componentName}.${type.parameters[i].name}`),
+        );
     }
 
     const fnWithInjected = (props: any) => {
-        return fn(props, ...(args.map(v => v())));
+        return fn(props, ...args.map(v => v()));
     };
 
-    return fn.__injected = function (props: any) {
+    return (fn.__injected = function (props: any) {
         const children = fnWithInjected(props);
 
         const propsChildren: any[] = [];
@@ -33,7 +36,6 @@ export function wrapComponent<T extends Function>(fn: T & { __injected?: any }, 
         if ('object' === typeof children && isFunction(children.type)) {
             // NextJS server side has different children return type
             return { ...children, type: wrapComponent(children.type, container) };
-
         } else if ('object' === typeof children && children.props && isArray(children.props.children)) {
             //that's React in frontend
             for (const child of children.props.children) {
@@ -52,7 +54,7 @@ export function wrapComponent<T extends Function>(fn: T & { __injected?: any }, 
         }
 
         return children;
-    } as any;
+    } as any);
 }
 
 export function provideServices<T extends Function>(fn: T, providers: ProviderWithScope[]): T {
@@ -93,7 +95,12 @@ export function provideServices<T extends Function>(fn: T, providers: ProviderWi
  * @param props.module The module to use for the new injector context, instead of providers.
  * @param props.state The state class to use for the new injector context.
  */
-export function ServiceContainer(props: { providers?: ProviderWithScope[], module?: InjectorModule, state?: ClassType, children?: any }): any {
+export function ServiceContainer(props: {
+    providers?: ProviderWithScope[];
+    module?: InjectorModule;
+    state?: ClassType;
+    children?: any;
+}): any {
     const children = props.children;
     const cacheContainer: any = props.providers || props.module;
     if (!cacheContainer) throw new Error('No providers or module given');

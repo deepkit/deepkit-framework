@@ -1,39 +1,39 @@
 :host {
-    display: flex;
+  display: flex;
 
-    &:not(:last-child) {
-        margin-bottom: 12px;
+  &:not(:last-child) {
+    margin-bottom: 12px;
+  }
+
+  .label {
+    width: 30%;
+    margin-right: 8px;
+    line-height: 20px;
+    text-align: right;
+  }
+
+  .field {
+    flex: 1;
+    padding-right: 5px;
+
+    ::ng-deep > * {
+      width: 100%;
     }
+  }
 
-    .label {
-        width: 30%;
-        margin-right: 8px;
-        line-height: 20px;
-        text-align: right;
-    }
-
-    .field {
-        flex: 1;
-        padding-right: 5px;
-
-        ::ng-deep > * {
-            width: 100%;
-        }
-    }
-
-    .description {
-        font-size: 12px;
-        color: var(--text-light);
-    }
+  .description {
+    font-size: 12px;
+    color: var(--text-light);
+  }
 }
 
 :host.left-aligned {
-    .label {
-        text-align: left;
-    }
+  .label {
+    text-align: left;
+  }
 }
 
 .error {
-    margin-top: 2px;
-    color: var(--color-red);
+  margin-top: 2px;
+  color: var(--color-red);
 }

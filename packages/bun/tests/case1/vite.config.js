@@ -1,26 +1,25 @@
-import {defineConfig} from 'vite';
-import {deepkitType} from '../../dist/esm/index.js';
+import { defineConfig } from 'vite';
+
+import { deepkitType } from '../../dist/esm/index.js';
 
 export default defineConfig({
     plugins: [deepkitType()],
 
     build: {
-        "modulePreload": false,
+        modulePreload: false,
         minify: false,
-        target: "esnext",
+        target: 'esnext',
         rollupOptions: {
-            "preserveEntrySignatures": "strict",
+            preserveEntrySignatures: 'strict',
 
-            "output": {
-
-                "preserveModules": true,
-                "esModule": true,
-                "format": "esm",
-
+            output: {
+                preserveModules: true,
+                esModule: true,
+                format: 'esm',
             },
-            "input": {
-                "xxx": "./mod.ts"
-            }
-        }
+            input: {
+                xxx: './mod.ts',
+            },
+        },
     },
 });

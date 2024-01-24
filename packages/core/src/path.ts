@@ -35,8 +35,11 @@ export function pathExtension(path: string): string {
 }
 
 export function pathJoin(...paths: string[]): string {
-    return '/' + paths
-        .map(v => pathNormalize(v).slice(1))
-        .filter(v => !!v)
-        .join('/');
+    return (
+        '/' +
+        paths
+            .map(v => pathNormalize(v).slice(1))
+            .filter(v => !!v)
+            .join('/')
+    );
 }

@@ -7,158 +7,203 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { ClassType, isClass, isPrototypeOfBase, ProcessLocker } from '@deepkit/core';
-import { EventDispatcher } from '@deepkit/event';
 import { join } from 'path';
-import { ApplicationServer, ApplicationServerListener } from './application-server.js';
-import { DebugRouterController } from './cli/debug-router.js';
-import { DebugDIController } from './cli/debug-di.js';
-import { ServerStartController } from './cli/server-start.js';
-import { DebugController } from './debug/debug.controller.js';
-import { registerDebugHttpController } from './debug/http-debug.controller.js';
-import { http, HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
-import { InjectorContext, injectorReference, ProviderWithScope, Token } from '@deepkit/injector';
-import { BrokerConfig, FrameworkConfig } from './module.config.js';
-import { LoggerInterface } from '@deepkit/logger';
-import { SessionHandler } from './session.js';
-import { RpcServer, WebWorkerFactory } from './worker.js';
-import { Stopwatch, StopwatchStore } from '@deepkit/stopwatch';
-import { OrmBrowserController } from './orm-browser/controller.js';
-import { DatabaseListener } from './database/database-listener.js';
-import { Database, DatabaseRegistry } from '@deepkit/orm';
-import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
-import { FileStopwatchStore } from './debug/stopwatch/store.js';
-import { DebugProfileFramesCommand } from './cli/debug-debug-frames.js';
-import { ConnectionWriter, rpcClass, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
-import { DebugConfigController } from './cli/app-config.js';
-import { Zone } from './zone.js';
-import { DebugBrokerBus } from './debug/broker.js';
+
 import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { AppModule, ControllerConfig, createModule, onAppShutdown } from '@deepkit/app';
-import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
-import { normalizeDirectory } from './utils.js';
-import { FilesystemRegistry, PublicFilesystem } from './filesystem.js';
+import { BrokerBus, BrokerCache, BrokerDeepkitAdapter, BrokerLock, BrokerQueue } from '@deepkit/broker';
+import { ClassType, ProcessLocker, isClass, isPrototypeOfBase } from '@deepkit/core';
+import { EventDispatcher } from '@deepkit/event';
 import { Filesystem } from '@deepkit/filesystem';
-import { MediaController } from './debug/media.controller.js';
-import { DebugHttpController } from './debug/debug-http.controller.js';
+import { HttpLogger, HttpModule, HttpRequest, http, serveStaticListener } from '@deepkit/http';
+import { InjectorContext, ProviderWithScope, Token, injectorReference } from '@deepkit/injector';
+import { LoggerInterface } from '@deepkit/logger';
+import { Database, DatabaseRegistry } from '@deepkit/orm';
+import {
+    ConnectionWriter,
+    RpcKernel,
+    RpcKernelBaseConnection,
+    RpcKernelConnection,
+    RpcKernelSecurity,
+    SessionState,
+    rpcClass,
+} from '@deepkit/rpc';
+import {
+    MigrationCreateController,
+    MigrationDownCommand,
+    MigrationPendingCommand,
+    MigrationProvider,
+    MigrationUpCommand,
+} from '@deepkit/sql/commands';
+import { Stopwatch, StopwatchStore } from '@deepkit/stopwatch';
+
+import { ApplicationServer, ApplicationServerListener } from './application-server.js';
 import { BrokerServer } from './broker/broker.js';
 import { BrokerListener } from './broker/listener.js';
-import { BrokerBus, BrokerCache, BrokerDeepkitAdapter, BrokerLock, BrokerQueue } from '@deepkit/broker';
+import { DebugConfigController } from './cli/app-config.js';
+import { DebugProfileFramesCommand } from './cli/debug-debug-frames.js';
+import { DebugDIController } from './cli/debug-di.js';
+import { DebugRouterController } from './cli/debug-router.js';
+import { ServerStartController } from './cli/server-start.js';
+import { DatabaseListener } from './database/database-listener.js';
+import { DebugBrokerBus } from './debug/broker.js';
+import { DebugHttpController } from './debug/debug-http.controller.js';
+import { DebugController } from './debug/debug.controller.js';
+import { registerDebugHttpController } from './debug/http-debug.controller.js';
+import { MediaController } from './debug/media.controller.js';
+import { FileStopwatchStore } from './debug/stopwatch/store.js';
+import { FilesystemRegistry, PublicFilesystem } from './filesystem.js';
+import { BrokerConfig, FrameworkConfig } from './module.config.js';
+import { OrmBrowserController } from './orm-browser/controller.js';
+import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
+import { SessionHandler } from './session.js';
+import { normalizeDirectory } from './utils.js';
+import { RpcServer, WebWorkerFactory } from './worker.js';
+import { Zone } from './zone.js';
 
-export class FrameworkModule extends createModule({
-    config: FrameworkConfig,
-    providers: [
-        ProcessLocker,
-        ApplicationServer,
-        WebWorkerFactory,
-        RpcServer,
-        MigrationProvider,
-        DebugController,
-        BrokerServer,
-        FilesystemRegistry,
-        { provide: DatabaseRegistry, useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic) },
-        {
-            provide: RpcKernel,
-            useFactory(rpcControllers: RpcControllers, injectorContext: InjectorContext, logger: LoggerInterface, stopwatch?: Stopwatch) {
-                const classType = stopwatch ? RpcKernelWithStopwatch : RpcKernel;
-                const kernel: RpcKernel = new classType(injectorContext, logger.scoped('rpc'));
+export class FrameworkModule extends createModule(
+    {
+        config: FrameworkConfig,
+        providers: [
+            ProcessLocker,
+            ApplicationServer,
+            WebWorkerFactory,
+            RpcServer,
+            MigrationProvider,
+            DebugController,
+            BrokerServer,
+            FilesystemRegistry,
+            {
+                provide: DatabaseRegistry,
+                useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic),
+            },
+            {
+                provide: RpcKernel,
+                useFactory(
+                    rpcControllers: RpcControllers,
+                    injectorContext: InjectorContext,
+                    logger: LoggerInterface,
+                    stopwatch?: Stopwatch,
+                ) {
+                    const classType = stopwatch ? RpcKernelWithStopwatch : RpcKernel;
+                    const kernel: RpcKernel = new classType(injectorContext, logger.scoped('rpc'));
 
-                if (kernel instanceof RpcKernelWithStopwatch) {
-                    kernel.stopwatch = stopwatch;
-                }
+                    if (kernel instanceof RpcKernelWithStopwatch) {
+                        kernel.stopwatch = stopwatch;
+                    }
 
-                for (const [name, info] of rpcControllers.controllers.entries()) {
-                    kernel.registerController(info.controller, name, info.module);
-                }
+                    for (const [name, info] of rpcControllers.controllers.entries()) {
+                        kernel.registerController(info.controller, name, info.module);
+                    }
 
-                return kernel;
-            }
-        },
+                    return kernel;
+                },
+            },
 
-        { provide: BrokerDeepkitAdapter, useFactory: (config: BrokerConfig) => new BrokerDeepkitAdapter({ servers: [{ url: config.host }] }) },
-        { provide: BrokerCache, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerCache(adapter) },
-        { provide: BrokerLock, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerLock(adapter) },
-        { provide: BrokerQueue, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerQueue(adapter) },
-        { provide: BrokerBus, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerBus(adapter) },
+            {
+                provide: BrokerDeepkitAdapter,
+                useFactory: (config: BrokerConfig) =>
+                    new BrokerDeepkitAdapter({
+                        servers: [{ url: config.host }],
+                    }),
+            },
+            {
+                provide: BrokerCache,
+                useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerCache(adapter),
+            },
+            {
+                provide: BrokerLock,
+                useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerLock(adapter),
+            },
+            {
+                provide: BrokerQueue,
+                useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerQueue(adapter),
+            },
+            {
+                provide: BrokerBus,
+                useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerBus(adapter),
+            },
 
-        //move to HttpModule?
-        { provide: SessionHandler, scope: 'http' },
+            //move to HttpModule?
+            { provide: SessionHandler, scope: 'http' },
 
-        // { provide: LiveDatabase, scope: 'rpc' },
-        { provide: RpcKernelSecurity, scope: 'rpc' },
+            // { provide: LiveDatabase, scope: 'rpc' },
+            { provide: RpcKernelSecurity, scope: 'rpc' },
 
-        //all of these will be set on scope creation
-        { provide: HttpRequest, scope: 'rpc', useValue: undefined },
-        { provide: RpcInjectorContext, scope: 'rpc', useValue: undefined },
-        { provide: SessionState, scope: 'rpc', useValue: undefined },
-        { provide: RpcKernelBaseConnection, scope: 'rpc', useValue: undefined },
-        { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
-        { provide: ConnectionWriter, scope: 'rpc', useValue: undefined },
-    ],
-    workflows: [
-        // rpcWorkflow,
-    ],
-    listeners: [
-        ApplicationServerListener,
-        DatabaseListener,
-        BrokerListener,
-    ],
-    controllers: [
-        ServerStartController,
-        DebugRouterController,
-        DebugDIController,
-        DebugProfileFramesCommand,
-        DebugConfigController,
+            //all of these will be set on scope creation
+            { provide: HttpRequest, scope: 'rpc', useValue: undefined },
+            { provide: RpcInjectorContext, scope: 'rpc', useValue: undefined },
+            { provide: SessionState, scope: 'rpc', useValue: undefined },
+            {
+                provide: RpcKernelBaseConnection,
+                scope: 'rpc',
+                useValue: undefined,
+            },
+            { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
+            { provide: ConnectionWriter, scope: 'rpc', useValue: undefined },
+        ],
+        workflows: [
+            // rpcWorkflow,
+        ],
+        listeners: [ApplicationServerListener, DatabaseListener, BrokerListener],
+        controllers: [
+            ServerStartController,
+            DebugRouterController,
+            DebugDIController,
+            DebugProfileFramesCommand,
+            DebugConfigController,
 
-        MigrationUpCommand,
-        MigrationDownCommand,
-        MigrationPendingCommand,
-        MigrationCreateController,
-    ],
-    exports: [
-        ProcessLocker,
-        ApplicationServer,
-        WebWorkerFactory,
-        RpcServer,
-        RpcKernelSecurity,
-        RpcKernel,
-        MigrationProvider,
+            MigrationUpCommand,
+            MigrationDownCommand,
+            MigrationPendingCommand,
+            MigrationCreateController,
+        ],
+        exports: [
+            ProcessLocker,
+            ApplicationServer,
+            WebWorkerFactory,
+            RpcServer,
+            RpcKernelSecurity,
+            RpcKernel,
+            MigrationProvider,
 
-        DatabaseRegistry,
-        SessionHandler,
+            DatabaseRegistry,
+            SessionHandler,
 
-        HttpRequest,
-        RpcInjectorContext,
-        SessionState,
-        RpcKernelConnection,
-        RpcKernelBaseConnection,
-        ConnectionWriter,
+            HttpRequest,
+            RpcInjectorContext,
+            SessionState,
+            RpcKernelConnection,
+            RpcKernelBaseConnection,
+            ConnectionWriter,
 
-        BrokerDeepkitAdapter,
-        BrokerCache,
-        BrokerLock,
-        BrokerQueue,
-        BrokerBus,
-        BrokerServer,
+            BrokerDeepkitAdapter,
+            BrokerCache,
+            BrokerLock,
+            BrokerQueue,
+            BrokerBus,
+            BrokerServer,
 
-        FilesystemRegistry,
+            FilesystemRegistry,
 
-        HttpModule,
-    ]
-}, 'framework') {
-    imports = [
-        new HttpModule(),
-    ];
+            HttpModule,
+        ],
+    },
+    'framework',
+) {
+    imports = [new HttpModule()];
 
-    protected dbs: { module: AppModule<any>, classType: ClassType }[] = [];
-    protected filesystems: { module: AppModule<any>, classType: ClassType }[] = [];
+    protected dbs: { module: AppModule<any>; classType: ClassType }[] = [];
+    protected filesystems: { module: AppModule<any>; classType: ClassType }[] = [];
 
-    protected rpcControllers = new RpcControllers;
+    protected rpcControllers = new RpcControllers();
 
     process() {
         this.addImport();
-        this.addProvider({ provide: RpcControllers, useValue: this.rpcControllers });
+        this.addProvider({
+            provide: RpcControllers,
+            useValue: this.rpcControllers,
+        });
 
         this.setupProvider<MigrationProvider>().setMigrationDir(this.config.migrationDir);
         this.setupProvider<DatabaseRegistry>().setMigrateOnStartup(this.config.migrateOnStartup);
@@ -167,17 +212,22 @@ export class FrameworkModule extends createModule({
             this.addListener(HttpLogger);
         }
 
-        this.getImportedModuleByClass(HttpModule).configure({ parser: this.config.httpParse });
+        this.getImportedModuleByClass(HttpModule).configure({
+            parser: this.config.httpParse,
+        });
 
         if (this.config.publicDir) {
             const localPublicDir = join(process.cwd(), this.config.publicDir);
 
-            this.addListener(serveStaticListener(this, normalizeDirectory(this.config.publicDirPrefix), localPublicDir));
+            this.addListener(
+                serveStaticListener(this, normalizeDirectory(this.config.publicDirPrefix), localPublicDir),
+            );
 
             this.addProvider({
-                provide: PublicFilesystem, useFactory: () => {
+                provide: PublicFilesystem,
+                useFactory: () => {
                     return new PublicFilesystem(localPublicDir, this.config.publicDirPrefix);
-                }
+                },
             });
         }
 
@@ -186,7 +236,7 @@ export class FrameworkModule extends createModule({
 
             this.addProvider({
                 provide: OrmBrowserController,
-                useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases())
+                useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases()),
             });
             this.addController(DebugController);
             this.addController(MediaController);
@@ -194,8 +244,7 @@ export class FrameworkModule extends createModule({
             registerDebugHttpController(this, this.config.debugUrl);
 
             @http.controller(this.config.debugUrl)
-            class ScopedDebugHttpController extends DebugHttpController {
-            }
+            class ScopedDebugHttpController extends DebugHttpController {}
 
             this.addController(ScopedDebugHttpController);
 
@@ -204,14 +253,18 @@ export class FrameworkModule extends createModule({
             // this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
         }
 
-        this.addListener(onAppShutdown.listen(async (
-            event, broker: DebugBrokerBus, store: StopwatchStore) => {
-            await store.close();
-            await broker.adapter.disconnect();
-        }));
+        this.addListener(
+            onAppShutdown.listen(async (event, broker: DebugBrokerBus, store: StopwatchStore) => {
+                await store.close();
+                await broker.adapter.disconnect();
+            }),
+        );
 
         this.addProvider(DebugBrokerBus);
-        this.addProvider({ provide: StopwatchStore, useClass: FileStopwatchStore });
+        this.addProvider({
+            provide: StopwatchStore,
+            useClass: FileStopwatchStore,
+        });
 
         const stopwatch = this.setupGlobalProvider<Stopwatch>();
         if (this.config.profile || this.config.debug) {
@@ -266,6 +319,9 @@ export class FrameworkModule extends createModule({
         if (this.rpcControllers.controllers.has(rpcConfig.getPath())) {
             throw new Error(`Already an RPC controller with the name ${rpcConfig.getPath()} registered.`);
         }
-        this.rpcControllers.controllers.set(rpcConfig.getPath(), { controller, module });
+        this.rpcControllers.controllers.set(rpcConfig.getPath(), {
+            controller,
+            module,
+        });
     }
 }

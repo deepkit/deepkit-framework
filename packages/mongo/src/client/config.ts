@@ -7,15 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { parse as parseQueryString } from 'querystring';
+import { parse as parseUrl } from 'url';
 
+import { arrayRemoveItem, eachPair, singleStack } from '@deepkit/core';
+import { ReflectionClass, validatedDeserialize } from '@deepkit/type';
+
+import { resolveSrvHosts } from './dns.js';
+import { MongoError } from './error.js';
 import { Host } from './host.js';
 import { ConnectionOptions } from './options.js';
-import { parse as parseUrl } from 'url';
-import { parse as parseQueryString } from 'querystring';
-import { MongoError } from './error.js';
-import { arrayRemoveItem, eachPair, singleStack } from '@deepkit/core';
-import { resolveSrvHosts } from './dns.js';
-import { ReflectionClass, validatedDeserialize } from '@deepkit/type';
 
 /**
  * Default URL:
@@ -43,14 +44,12 @@ export class MongoClientConfig {
     authUser?: string;
     authPassword?: string;
 
-    options: ConnectionOptions = new ConnectionOptions;
+    options: ConnectionOptions = new ConnectionOptions();
 
     isSrv: boolean = false;
     srvDomain: string = '';
 
-    constructor(
-        connectionString: string
-    ) {
+    constructor(connectionString: string) {
         this.parseConnectionString(connectionString);
     }
 
@@ -153,7 +152,7 @@ export class MongoClientConfig {
             }
 
             const hostsData = await this.resolveSrvHosts();
-            const options = { ...hostsData.options ? parseQueryString(hostsData.options) : {} };
+            const options = { ...(hostsData.options ? parseQueryString(hostsData.options) : {}) };
             const partialOptions = validatedDeserialize<ConnectionOptions>(options) as {};
             for (const [k, v] of eachPair(partialOptions)) {
                 this.options[k] = v;

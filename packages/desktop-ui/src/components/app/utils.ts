@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import {
     ApplicationRef,
     ChangeDetectorRef,
@@ -15,11 +14,12 @@ import {
     ElementRef,
     HostListener,
     Input,
-    OnChanges
+    OnChanges,
 } from '@angular/core';
-import { nextTick } from '@deepkit/core';
-import { Electron } from '../../core/utils';
 
+import { nextTick } from '@deepkit/core';
+
+import { Electron } from '../../core/utils';
 
 @Directive({
     selector: '[openExternal], a[href]',
@@ -66,7 +66,6 @@ export function scheduleWindowResizeEvent() {
         lastScheduleResize = undefined;
     });
 }
-
 
 let lastFrameRequest: any;
 let lastFrameRequestStack = new Set<ChangeDetectorRef>();

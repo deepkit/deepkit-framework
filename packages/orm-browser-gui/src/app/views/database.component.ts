@@ -1,12 +1,14 @@
 import { ChangeDetectorRef, Component, Input, OnDestroy, Optional } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
+
+import { empty } from '@deepkit/core';
 import { DuiDialog, unsubscribe } from '@deepkit/desktop-ui';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
-import { empty } from '@deepkit/core';
+
 import { BrowserState } from '../browser-state';
 import { ControllerClient } from '../client';
 import { trackByIndex, trackByProperty } from '../utils';
-import { ActivatedRoute } from '@angular/router';
-import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'orm-browser-database',
@@ -14,8 +16,7 @@ import { Subscription } from 'rxjs';
         <div class="header">
             <dui-button-group>
                 <dui-tab-button [active]="tab === 'model'" (click)="setTab('model')">Model</dui-tab-button>
-                <dui-tab-button [active]="tab === 'migration'" (click)="setTab('migration')">Migration
-                </dui-tab-button>
+                <dui-tab-button [active]="tab === 'migration'" (click)="setTab('migration')">Migration </dui-tab-button>
                 <dui-tab-button [active]="tab === 'seed'" (click)="setTab('seed')">Seed</dui-tab-button>
             </dui-button-group>
         </div>
@@ -26,15 +27,13 @@ import { Subscription } from 'rxjs';
 
         <div class="layout" [hidden]="tab !== 'model'">
             <ng-container *ngIf="database">
-                <database-graph [database]=database></database-graph>
+                <database-graph [database]="database"></database-graph>
             </ng-container>
         </div>
 
         <div class="layout migration-container" [hidden]="tab !== 'migration'">
             <ng-container *ngIf="database">
-                <div *ngIf="loadingMigrations">
-                    Load migration
-                </div>
+                <div *ngIf="loadingMigrations">Load migration</div>
                 <div *ngIf="!loadingMigrations">
                     <dui-button (click)="resetAll()">Reset all</dui-button>
                     <dui-button (click)="migrate()">Migrate all</dui-button>
@@ -43,11 +42,11 @@ import { Subscription } from 'rxjs';
                         No migrations available. Your models are in sync with the database schema.
                     </div>
                     <div class="migrations" *ngIf="!empty(migrations)">
-                        <div *ngFor="let kv of migrations|keyvalue">
-                            <h3>{{kv.key}}</h3>
-                            <div class="diff text-selection">{{kv.value.diff}}</div>
+                        <div *ngFor="let kv of migrations | keyvalue">
+                            <h3>{{ kv.key }}</h3>
+                            <div class="diff text-selection">{{ kv.value.diff }}</div>
                             <div class="sql text-selection" *ngFor="let sql of kv.value.sql">
-                                {{sql}}
+                                {{ sql }}
                             </div>
                         </div>
                     </div>
@@ -55,7 +54,7 @@ import { Subscription } from 'rxjs';
             </ng-container>
         </div>
     `,
-    styleUrls: ['./database.component.scss']
+    styleUrls: ['./database.component.scss'],
 })
 export class DatabaseComponent implements OnDestroy {
     trackByIndex = trackByIndex;
@@ -64,7 +63,7 @@ export class DatabaseComponent implements OnDestroy {
     tab: string = 'model';
     empty = empty;
 
-    migrations: { [name: string]: { sql: string[], diff: string } } = {};
+    migrations: { [name: string]: { sql: string[]; diff: string } } = {};
 
     loadingMigrations: boolean = false;
 
@@ -81,7 +80,7 @@ export class DatabaseComponent implements OnDestroy {
         @Optional() protected activatedRoute?: ActivatedRoute,
     ) {
         if (activatedRoute) {
-            this.routeSub = activatedRoute.params.subscribe(async (params) => {
+            this.routeSub = activatedRoute.params.subscribe(async params => {
                 this.state.databases = await this.controllerClient.getDatabases();
                 this.database = this.state.getDatabase(decodeURIComponent(params.database));
                 this.cd.detectChanges();
@@ -89,8 +88,7 @@ export class DatabaseComponent implements OnDestroy {
         }
     }
 
-    ngOnDestroy(): void {
-    }
+    ngOnDestroy(): void {}
 
     async setTab(tab: string) {
         this.tab = tab;
@@ -101,7 +99,8 @@ export class DatabaseComponent implements OnDestroy {
 
     async resetAll() {
         if (!this.database) return;
-        if (!await this.duiDialog.confirm('Reset all?', 'All database tables will be reset. All content deleted.')) return;
+        if (!(await this.duiDialog.confirm('Reset all?', 'All database tables will be reset. All content deleted.')))
+            return;
 
         try {
             await this.controllerClient.browser.resetAllTables(this.database.name);
@@ -124,8 +123,7 @@ export class DatabaseComponent implements OnDestroy {
         this.state.onDataChange.emit();
     }
 
-    async loadSeed() {
-    }
+    async loadSeed() {}
 
     async loadMigration() {
         this.loadingMigrations = true;

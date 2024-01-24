@@ -7,41 +7,24 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { CommonModule } from '@angular/common';
 import { NgModule } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+
+import { DuiButtonModule } from '../button';
+import { DuiIconModule } from '../icon';
 import {
     DynamicOptionDirective,
     OptionDirective,
     OptionSeparatorDirective,
-    SelectboxComponent
+    SelectboxComponent,
 } from './selectbox.component';
-import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
-import { DuiIconModule } from '../icon';
-import { DuiButtonModule } from '../button';
 
-export * from "./selectbox.component";
+export * from './selectbox.component';
 
 @NgModule({
-    declarations: [
-        SelectboxComponent,
-        OptionDirective,
-        DynamicOptionDirective,
-        OptionSeparatorDirective,
-    ],
-    exports: [
-        SelectboxComponent,
-        OptionDirective,
-        DynamicOptionDirective,
-        OptionSeparatorDirective,
-    ],
-    imports: [
-        FormsModule,
-        CommonModule,
-        DuiIconModule,
-        DuiButtonModule,
-    ]
+    declarations: [SelectboxComponent, OptionDirective, DynamicOptionDirective, OptionSeparatorDirective],
+    exports: [SelectboxComponent, OptionDirective, DynamicOptionDirective, OptionSeparatorDirective],
+    imports: [FormsModule, CommonModule, DuiIconModule, DuiButtonModule],
 })
-export class DuiSelectModule {
-
-}
+export class DuiSelectModule {}

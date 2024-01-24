@@ -7,22 +7,23 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import {
     AfterViewInit,
     ContentChildren,
     Directive,
     EventEmitter,
-    forwardRef,
     Input,
     OnDestroy,
     Output,
-    QueryList
+    QueryList,
+    forwardRef,
 } from '@angular/core';
-import { WindowMenuState } from '../window/window-menu';
-import { arrayHasItem } from '@deepkit/core';
 import { Subscription } from 'rxjs';
+
+import { arrayHasItem } from '@deepkit/core';
+
 import { Electron } from '../../core/utils';
+import { WindowMenuState } from '../window/window-menu';
 
 @Directive()
 export class MenuBase implements AfterViewInit {
@@ -46,7 +47,7 @@ export class MenuBase implements AfterViewInit {
 
     @Output() click = new EventEmitter();
 
-    @Output() change = new EventEmitter;
+    @Output() change = new EventEmitter();
 
     public type = '';
 
@@ -55,9 +56,7 @@ export class MenuBase implements AfterViewInit {
 
     @ContentChildren(MenuBase) public child?: QueryList<MenuBase>;
 
-    constructor() {
-
-    }
+    constructor() {}
 
     buildTemplate() {
         const submenu: any[] = [];
@@ -73,7 +72,7 @@ export class MenuBase implements AfterViewInit {
 
         const result: { [name: string]: any } = {
             click: () => {
-                this.click.emit()
+                this.click.emit();
             },
         };
 
@@ -112,9 +111,12 @@ export class MenuBase implements AfterViewInit {
                 for (const item of items) {
                     if (!this.registered.has(item)) {
                         this.registered.add(item);
-                        this.subscriptions.set(item, item.change.subscribe(() => {
-                            this.change.emit();
-                        }));
+                        this.subscriptions.set(
+                            item,
+                            item.change.subscribe(() => {
+                                this.change.emit();
+                            }),
+                        );
                     }
                 }
 
@@ -135,14 +137,18 @@ export class MenuBase implements AfterViewInit {
 
 @Directive({
     selector: 'dui-menu-item',
-    providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuItemDirective) }]
+    providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuItemDirective) }],
 })
-export class MenuItemDirective extends MenuBase {
-}
+export class MenuItemDirective extends MenuBase {}
 
 @Directive({
     selector: 'dui-menu-checkbox',
-    providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuCheckboxDirective) }]
+    providers: [
+        {
+            provide: MenuBase,
+            useExisting: forwardRef(() => MenuCheckboxDirective),
+        },
+    ],
 })
 export class MenuCheckboxDirective extends MenuBase {
     @Input() checked: boolean = false;
@@ -156,7 +162,12 @@ export class MenuCheckboxDirective extends MenuBase {
 
 @Directive({
     selector: 'dui-menu-radio',
-    providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuRadioDirective) }]
+    providers: [
+        {
+            provide: MenuBase,
+            useExisting: forwardRef(() => MenuRadioDirective),
+        },
+    ],
 })
 export class MenuRadioDirective extends MenuBase {
     @Input() checked: boolean = false;
@@ -170,14 +181,19 @@ export class MenuRadioDirective extends MenuBase {
 
 @Directive({
     selector: 'dui-menu-separator',
-    providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuSeparatorDirective) }]
+    providers: [
+        {
+            provide: MenuBase,
+            useExisting: forwardRef(() => MenuSeparatorDirective),
+        },
+    ],
 })
 export class MenuSeparatorDirective extends MenuBase {
     type = 'separator';
 }
 
 @Directive({
-    selector: 'dui-menu'
+    selector: 'dui-menu',
 })
 export class MenuDirective extends MenuBase implements OnDestroy, AfterViewInit {
     @Input() position: number = 0;

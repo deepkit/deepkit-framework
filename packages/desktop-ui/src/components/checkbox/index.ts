@@ -7,24 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { NgModule } from '@angular/core';
-import { CheckboxComponent } from './checkbox.component';
-import { DuiIconModule } from '../icon';
 
-export * from './checkbox.component'
+import { DuiIconModule } from '../icon';
+import { CheckboxComponent } from './checkbox.component';
+
+export * from './checkbox.component';
 
 @NgModule({
-    declarations: [
-        CheckboxComponent
-    ],
-    exports: [
-        CheckboxComponent
-    ],
-    imports: [
-        DuiIconModule,
-    ]
+    declarations: [CheckboxComponent],
+    exports: [CheckboxComponent],
+    imports: [DuiIconModule],
 })
-export class DuiCheckboxModule {
-
-}
+export class DuiCheckboxModule {}

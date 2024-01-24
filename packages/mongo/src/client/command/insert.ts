@@ -7,10 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { toFastProperties } from '@deepkit/core';
+import { InlineRuntimeType, ReflectionClass, UUID, typeOf } from '@deepkit/type';
 
 import { BaseResponse, Command } from './command.js';
-import { toFastProperties } from '@deepkit/core';
-import { InlineRuntimeType, ReflectionClass, typeOf, UUID } from '@deepkit/type';
 
 interface InsertResponse extends BaseResponse {
     n: number;
@@ -28,7 +28,7 @@ interface InsertSchema {
 export class InsertCommand<T> extends Command {
     constructor(
         protected schema: ReflectionClass<T>,
-        protected documents: T[]
+        protected documents: T[],
     ) {
         super();
     }
@@ -55,7 +55,7 @@ export class InsertCommand<T> extends Command {
             toFastProperties(jit);
         }
 
-        const res =  await this.sendAndWait<InsertSchema, InsertResponse>(cmd, specialisedSchema);
+        const res = await this.sendAndWait<InsertSchema, InsertResponse>(cmd, specialisedSchema);
         return res.n;
     }
 

@@ -1,35 +1,35 @@
 :host {
-    display: block;
-    width: 100%;
-    margin: 10px 0;
-    border-radius: 5px;
-    border: 1px solid var(--line-color-light);
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  border-radius: 5px;
+  border: 1px solid var(--line-color-light);
 
-    .header {
-        display: flex;
-        overflow: hidden;
+  .header {
+    display: flex;
+    overflow: hidden;
 
-        > div {
-            flex: 0;
-            font-size: 12px;
-            color: var(--text-light);
-            padding: 0 3px;
-        }
+    > div {
+      flex: 0;
+      font-size: 12px;
+      color: var(--text-light);
+      padding: 0 3px;
     }
+  }
 
-    .body {
-        overflow: hidden;
+  .body {
+    overflow: hidden;
 
-        div.code {
-            max-height: 150px;
-            background-color: var(--dui-window-content-bg);
-            padding: 3px 3px 8px;
+    div.code {
+      max-height: 150px;
+      background-color: var(--dui-window-content-bg);
+      padding: 3px 3px 8px;
 
-            pre.code {
-                padding: 0;
-                overflow: unset;
-                font-size: 12px;
-            }
-        }
+      pre.code {
+        padding: 0;
+        overflow: unset;
+        font-size: 12px;
+      }
     }
+  }
 }

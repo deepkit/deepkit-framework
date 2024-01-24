@@ -1,8 +1,9 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+
 import { arrayRemoveItem } from '@deepkit/core';
 
 interface Entry {
-    name: string,
+    name: string;
     value: string;
 }
 
@@ -13,12 +14,24 @@ interface Entry {
             <dui-table noFocusOutline [items]="model" borderless [autoHeight]="true" style="min-height: 100px;">
                 <dui-table-column class="input-cell" [width]="170" name="name">
                     <ng-container *duiTableCell="let item">
-                        <dui-input  style="width: 100%" lightFocus [(ngModel)]="item.name" (ngModelChange)="modelChange.emit(model)" placeholder="Name"></dui-input>
+                        <dui-input
+                            style="width: 100%"
+                            lightFocus
+                            [(ngModel)]="item.name"
+                            (ngModelChange)="modelChange.emit(model)"
+                            placeholder="Name"
+                        ></dui-input>
                     </ng-container>
                 </dui-table-column>
                 <dui-table-column class="input-cell" [width]="170" name="value">
                     <ng-container *duiTableCell="let item">
-                        <dui-input  style="width: 100%" lightFocus [(ngModel)]="item.value" (ngModelChange)="modelChange.emit(model)" placeholder="Value"></dui-input>
+                        <dui-input
+                            style="width: 100%"
+                            lightFocus
+                            [(ngModel)]="item.value"
+                            (ngModelChange)="modelChange.emit(model)"
+                            placeholder="Value"
+                        ></dui-input>
                     </ng-container>
                 </dui-table-column>
                 <dui-table-column name="delete" header=" " [width]="30" [sortable]="false">
@@ -29,15 +42,17 @@ interface Entry {
             </dui-table>
         </ng-container>
 
-        <dui-button-group >
+        <dui-button-group>
             <dui-button square style="margin-left: 2px;" (click)="add()" icon="add"></dui-button>
         </dui-button-group>
     `,
-    styles: [`
-        :host ::ng-deep .table-cell.input-cell {
-            padding: 2px 2px !important;
-        }
-    `]
+    styles: [
+        `
+            :host ::ng-deep .table-cell.input-cell {
+                padding: 2px 2px !important;
+            }
+        `,
+    ],
 })
 export class HeadersComponent {
     @Input() model: Entry[] | undefined;
@@ -48,7 +63,7 @@ export class HeadersComponent {
             this.model = [];
         }
 
-        this.model.push({name: '', value: ''});
+        this.model.push({ name: '', value: '' });
         this.model = this.model.slice();
 
         this.modelChange.emit(this.model);

@@ -14,19 +14,14 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": []
+    "types": [],
   },
-  "include": [
-    "src",
-    "index.ts"
-  ],
-  "exclude": [
-    "tests"
-  ],
+  "include": ["src", "index.ts"],
+  "exclude": ["tests"],
   "reflection": true,
   "references": [
     {
-      "path": "../core/tsconfig.json"
-    }
-  ]
+      "path": "../core/tsconfig.json",
+    },
+  ],
 }

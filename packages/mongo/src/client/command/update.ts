@@ -7,9 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { ReflectionClass, UUID } from '@deepkit/type';
 
 import { BaseResponse, Command } from './command.js';
-import { ReflectionClass, UUID } from '@deepkit/type';
 
 interface UpdateResponse extends BaseResponse {
     n: number;
@@ -19,21 +19,21 @@ interface UpdateSchema {
     update: string;
     $db: string;
     updates: {
-        q: any,
+        q: any;
         // maybe in the future support classSchema. But `u` supports update statements https://docs.mongodb.com/manual/reference/operator/update/#id1
-        u: any,
-        multi: boolean,
-    }[],
+        u: any;
+        multi: boolean;
+    }[];
     lsid?: { id: UUID };
-    txnNumber?: number,
-    autocommit?: boolean,
+    txnNumber?: number;
+    autocommit?: boolean;
     startTransaction?: boolean;
 }
 
 export class UpdateCommand<T extends ReflectionClass<any>> extends Command {
     constructor(
         public schema: T,
-        public updates: { q: any, u: any, multi: boolean }[] = [],
+        public updates: { q: any; u: any; multi: boolean }[] = [],
     ) {
         super();
     }
@@ -42,7 +42,7 @@ export class UpdateCommand<T extends ReflectionClass<any>> extends Command {
         const cmd = {
             update: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
-            updates: this.updates
+            updates: this.updates,
         };
         if (transaction) transaction.applyTransaction(cmd);
 

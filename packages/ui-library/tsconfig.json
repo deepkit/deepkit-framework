@@ -15,21 +15,18 @@
     "importHelpers": true,
     "target": "es2018",
     "module": "es2020",
-    "lib": [
-      "es2018",
-      "dom"
-    ],
-    "types": []
+    "lib": ["es2018", "dom"],
+    "types": [],
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
-    "strictTemplates": true
+    "strictTemplates": true,
   },
   "references": [
     {
-      "path": "../core/tsconfig.json"
-    }
-  ]
+      "path": "../core/tsconfig.json",
+    },
+  ],
 }

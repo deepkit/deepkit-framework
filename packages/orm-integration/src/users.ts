@@ -1,27 +1,27 @@
-import { DatabaseFactory } from './test.js';
-import { AutoIncrement, BackReference, entity, PrimaryKey, Reference } from '@deepkit/type';
 import { expect } from '@jest/globals';
+
 import { getObjectKeysSize } from '@deepkit/core';
+import { AutoIncrement, BackReference, PrimaryKey, Reference, entity } from '@deepkit/type';
+
+import { DatabaseFactory } from './test.js';
 
 @entity.name('users_user')
 class User {
     public id: number & AutoIncrement & PrimaryKey = 0;
-    created: Date = new Date;
+    created: Date = new Date();
 
     posts?: Post[] & BackReference;
 
-    groups?: Group[] & BackReference<{via: UserGroup}>;
+    groups?: Group[] & BackReference<{ via: UserGroup }>;
 
-    constructor(public username: string) {
-    }
+    constructor(public username: string) {}
 }
 
 @entity.name('users_group')
 class Group {
     public id: number & AutoIncrement & PrimaryKey = 0;
 
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
 
 @entity.name('users_userGroup')
@@ -31,19 +31,18 @@ class UserGroup {
     constructor(
         public user: User & Reference,
         public group: Group & Reference,
-    ) {
-    }
+    ) {}
 }
 
 @entity.name('users_post')
 class Post {
     public id: number & AutoIncrement & PrimaryKey = 0;
-    created: Date = new Date;
+    created: Date = new Date();
 
     constructor(
         public author: User & Reference,
-        public title: string) {
-    }
+        public title: string,
+    ) {}
 }
 
 const entities = [User, Group, UserGroup, Post];
@@ -71,15 +70,15 @@ export const usersTests = {
             expect(users[1].groups!.length).toBe(1);
         }
         {
-            const user = await database.query(User).filter({username: 'User1'}).select('username').findOne();
+            const user = await database.query(User).filter({ username: 'User1' }).select('username').findOne();
             expect(user).not.toBeInstanceOf(User);
-            expect(user).toEqual({username: 'User1'});
+            expect(user).toEqual({ username: 'User1' });
         }
 
         {
             const users = await database.query(User).select('username', 'groups').joinWith('groups').find();
             expect(users.length).toBe(2);
-            expect(Object.keys(users[0]).length).toBe(2)
+            expect(Object.keys(users[0]).length).toBe(2);
             expect(Object.keys(users[0])).toContain('username');
             expect(Object.keys(users[0])).toContain('groups');
             expect(users[0].username).toBe('User1');
@@ -113,7 +112,12 @@ export const usersTests = {
         }
 
         {
-            const users = await session.query(User).disableIdentityMap().select('username', 'groups').joinWith('groups').find();
+            const users = await session
+                .query(User)
+                .disableIdentityMap()
+                .select('username', 'groups')
+                .joinWith('groups')
+                .find();
             expect(users.length).toBe(2);
             expect(getObjectKeysSize(users[0])).toBe(2);
             expect(users[0].username).toBe('User1');
@@ -151,5 +155,5 @@ export const usersTests = {
             expect(user.posts!.length).toBe(3);
             expect(user.posts![0]).toBeInstanceOf(Post);
         }
-    }
+    },
 };

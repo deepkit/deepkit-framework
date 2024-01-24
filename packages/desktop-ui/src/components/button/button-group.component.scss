@@ -1,9 +1,9 @@
 :host {
-    //fix for non-integer widths, making icons blurry that come behind those elements
-    display: inline-flex;
-    line-height: 0;
-    white-space: nowrap;
-    align-items: center;
+  //fix for non-integer widths, making icons blurry that come behind those elements
+  display: inline-flex;
+  line-height: 0;
+  white-space: nowrap;
+  align-items: center;
 }
 
 //:host ::ng-deep > * {
@@ -11,47 +11,47 @@
 //}
 
 :host ::ng-deep > * {
-    margin-right: 6px;
+  margin-right: 6px;
 }
 
 :host:last-child ::ng-deep > *:last-child {
-    margin-right: 0;
+  margin-right: 0;
 }
 
 :host ::ng-deep dui-button.active {
-    z-index: 1;
+  z-index: 1;
 }
 
 :host.float-right {
-    margin-left: auto;
+  margin-left: auto;
 }
 
 :host.with-animation {
-    transition: padding-left 300ms ease-in-out;
+  transition: padding-left 300ms ease-in-out;
 }
 
 :host-context(.dui-theme-dark).padding-none {
-    ::ng-deep dui-select:not(:first-child),
-    ::ng-deep dui-input:not(:first-child),
-    ::ng-deep dui-button:not(.square):not(:first-child) {
-        border-left: 1px solid #484c50 !important;
-    }
+  ::ng-deep dui-select:not(:first-child),
+  ::ng-deep dui-input:not(:first-child),
+  ::ng-deep dui-button:not(.square):not(:first-child) {
+    border-left: 1px solid #484c50 !important;
+  }
 }
 
 :host.padding-none {
-    margin-right: 7px;
+  margin-right: 7px;
 }
 
 :host.padding-none ::ng-deep > * {
-    margin-right: -1px;
+  margin-right: -1px;
 
-    &:not(:first-child) {
-        border-top-left-radius: 0;
-        border-bottom-left-radius: 0;
-    }
+  &:not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
 
-    &:not(:last-child) {
-        border-top-right-radius: 0;
-        border-bottom-right-radius: 0;
-    }
+  &:not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
 }

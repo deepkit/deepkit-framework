@@ -1,7 +1,15 @@
 import { expect, test } from '@jest/globals';
 import { BehaviorSubject, Observable, ReplaySubject, Subject, Subscription } from 'rxjs';
-import { decoupleSubject, isBehaviorSubject, isSubject, nextValue, Subscriptions, throttleMessages } from '../src/utils.js';
+
 import { ProgressTracker } from '../src/progress.js';
+import {
+    Subscriptions,
+    decoupleSubject,
+    isBehaviorSubject,
+    isSubject,
+    nextValue,
+    throttleMessages,
+} from '../src/utils.js';
 
 test('nextValue subject', async () => {
     const subject = new Subject();
@@ -43,23 +51,20 @@ test('nextValue behaviorsubject', async () => {
 });
 
 test('is functions', async () => {
-    expect(isSubject(new Observable)).toBe(false);
-    expect(isSubject(new Subject)).toBe(true);
+    expect(isSubject(new Observable())).toBe(false);
+    expect(isSubject(new Subject())).toBe(true);
     expect(isSubject(new BehaviorSubject(undefined))).toBe(true);
 
-    expect(isBehaviorSubject(new Observable)).toBe(false);
-    expect(isBehaviorSubject(new Subject)).toBe(false);
+    expect(isBehaviorSubject(new Observable())).toBe(false);
+    expect(isBehaviorSubject(new Subject())).toBe(false);
     expect(isBehaviorSubject(new BehaviorSubject(undefined))).toBe(true);
 });
-
 
 test('Subscriptions unsubscribe', async () => {
     const subscriptions = new Subscriptions();
 
-    const sub1 = subscriptions.add = new Subscription(() => {
-    });
-    const sub2 = subscriptions.add = new Subscription(() => {
-    });
+    const sub1 = (subscriptions.add = new Subscription(() => {}));
+    const sub2 = (subscriptions.add = new Subscription(() => {}));
 
     expect(subscriptions.list.length).toBe(2);
     expect(sub1.closed).toBe(false);
@@ -75,10 +80,8 @@ test('Subscriptions unsubscribe', async () => {
 test('Subscriptions auto remove', async () => {
     const subscriptions = new Subscriptions();
 
-    const sub1 = subscriptions.add = new Subscription(() => {
-    });
-    const sub2 = subscriptions.add = new Subscription(() => {
-    });
+    const sub1 = (subscriptions.add = new Subscription(() => {}));
+    const sub2 = (subscriptions.add = new Subscription(() => {}));
 
     expect(subscriptions.list.length).toBe(2);
     expect(sub1.closed).toBe(false);
@@ -108,15 +111,19 @@ test('throttleMessages', async () => {
     }, 100);
 
     let i = 0;
-    await throttleMessages(behaviorSubject, async (numbers) => {
-        i++;
-        if (i === 1) {
-            expect(numbers.length).toBe(10);
-        } else {
-            //once the first batch is handled, the observable is filled completely up
-            expect(numbers.length).toBe(90);
-        }
-    }, { batchSize: 10 });
+    await throttleMessages(
+        behaviorSubject,
+        async numbers => {
+            i++;
+            if (i === 1) {
+                expect(numbers.length).toBe(10);
+            } else {
+                //once the first batch is handled, the observable is filled completely up
+                expect(numbers.length).toBe(90);
+            }
+        },
+        { batchSize: 10 },
+    );
 });
 
 test('progress', async () => {

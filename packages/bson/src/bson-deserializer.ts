@@ -1,14 +1,38 @@
-import { executeTemplates, getTypeJitContainer, JitStack, NamingStrategy, ReceiveType, resolveReceiveType, TemplateState, Type } from '@deepkit/type';
 import { CompilerContext, toFastProperties } from '@deepkit/core';
-import { seekElementSize } from './continuation.js';
-import { BSONBinarySerializer, bsonBinarySerializer } from './bson-serializer.js';
-import { ParserV2 } from './bson-parser.js';
+import {
+    JitStack,
+    NamingStrategy,
+    ReceiveType,
+    TemplateState,
+    Type,
+    executeTemplates,
+    getTypeJitContainer,
+    resolveReceiveType,
+} from '@deepkit/type';
 
-function createBSONDeserializer(type: Type, serializer: BSONBinarySerializer, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack: JitStack = new JitStack()) {
+import { ParserV2 } from './bson-parser.js';
+import { BSONBinarySerializer, bsonBinarySerializer } from './bson-serializer.js';
+import { seekElementSize } from './continuation.js';
+
+function createBSONDeserializer(
+    type: Type,
+    serializer: BSONBinarySerializer,
+    namingStrategy: NamingStrategy = new NamingStrategy(),
+    path: string = '',
+    jitStack: JitStack = new JitStack(),
+) {
     const compiler = new CompilerContext();
     compiler.context.set('seekElementSize', seekElementSize);
 
-    const state = new TemplateState('result', '', compiler, serializer.bsonDeserializeRegistry, namingStrategy, jitStack, [path]);
+    const state = new TemplateState(
+        'result',
+        '',
+        compiler,
+        serializer.bsonDeserializeRegistry,
+        namingStrategy,
+        jitStack,
+        [path],
+    );
     state.target = 'deserialize';
 
     const code = `
@@ -24,7 +48,10 @@ function createBSONDeserializer(type: Type, serializer: BSONBinarySerializer, na
 
 export type BSONDeserializer<T> = (bson: Uint8Array, offset?: number) => T;
 
-export function getBSONDeserializer<T>(serializer: BSONBinarySerializer = bsonBinarySerializer, receiveType?: ReceiveType<T>): BSONDeserializer<T> {
+export function getBSONDeserializer<T>(
+    serializer: BSONBinarySerializer = bsonBinarySerializer,
+    receiveType?: ReceiveType<T>,
+): BSONDeserializer<T> {
     const type = resolveReceiveType(receiveType);
 
     const jit = getTypeJitContainer(type);
@@ -39,6 +66,11 @@ export function getBSONDeserializer<T>(serializer: BSONBinarySerializer = bsonBi
     return jit[serializer.deserializeId];
 }
 
-export function deserializeBSON<T>(data: Uint8Array, offset?: number, serializer: BSONBinarySerializer = bsonBinarySerializer, receiveType?: ReceiveType<T>): T {
+export function deserializeBSON<T>(
+    data: Uint8Array,
+    offset?: number,
+    serializer: BSONBinarySerializer = bsonBinarySerializer,
+    receiveType?: ReceiveType<T>,
+): T {
     return getBSONDeserializer(serializer, receiveType)(data, offset) as T;
 }

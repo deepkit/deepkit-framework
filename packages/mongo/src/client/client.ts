@@ -7,29 +7,33 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { ConnectionRequest, MongoConnection, MongoConnectionPool, MongoDatabaseTransaction, MongoStats } from './connection.js';
-import { isErrorRetryableRead, isErrorRetryableWrite, MongoError } from './error.js';
+import { BSONBinarySerializer } from '@deepkit/bson';
 import { sleep } from '@deepkit/core';
+import { ReflectionClass } from '@deepkit/type';
+
+import { mongoBinarySerializer } from '../mongo-serializer.js';
 import { Command } from './command/command.js';
 import { DropDatabaseCommand } from './command/dropDatabase.js';
 import { MongoClientConfig } from './config.js';
-import { ReflectionClass } from '@deepkit/type';
-import { mongoBinarySerializer } from '../mongo-serializer.js';
-import { BSONBinarySerializer } from '@deepkit/bson';
+import {
+    ConnectionRequest,
+    MongoConnection,
+    MongoConnectionPool,
+    MongoDatabaseTransaction,
+    MongoStats,
+} from './connection.js';
+import { MongoError, isErrorRetryableRead, isErrorRetryableWrite } from './error.js';
 
 export class MongoClient {
     protected inCloseProcedure: boolean = false;
 
     public readonly config: MongoClientConfig;
     public connectionPool: MongoConnectionPool;
-    public stats: MongoStats = new MongoStats;
+    public stats: MongoStats = new MongoStats();
 
     protected serializer: BSONBinarySerializer = mongoBinarySerializer;
 
-    constructor(
-        connectionString: string
-    ) {
+    constructor(connectionString: string) {
         this.config = new MongoClientConfig(connectionString);
         this.connectionPool = new MongoConnectionPool(this.config, this.serializer, this.stats);
     }
@@ -54,7 +58,10 @@ export class MongoClient {
     /**
      * Returns an existing or new connection, that needs to be released once done using it.
      */
-    async getConnection(request: Partial<ConnectionRequest> = {}, transaction?: MongoDatabaseTransaction): Promise<MongoConnection> {
+    async getConnection(
+        request: Partial<ConnectionRequest> = {},
+        transaction?: MongoDatabaseTransaction,
+    ): Promise<MongoConnection> {
         if (transaction && transaction.connection) return transaction.connection;
         const connection = await this.connectionPool.getConnection(request);
         if (transaction) {

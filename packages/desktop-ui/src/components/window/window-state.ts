@@ -7,26 +7,30 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ChangeDetectorRef, Injectable, TemplateRef, ViewContainerRef } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
+
+import { arrayRemoveItem } from '@deepkit/core';
+
+import { detectChangesNextFrame } from '../app/utils';
 import { ButtonGroupComponent } from '../button/button.component';
 import { WindowHeaderComponent, WindowToolbarContainerComponent } from './window-header.component';
-import { arrayRemoveItem } from '@deepkit/core';
-import { WindowComponent } from './window.component';
 import { WindowMenuState } from './window-menu';
-import { BehaviorSubject } from 'rxjs';
-import { detectChangesNextFrame } from '../app/utils';
+import { WindowComponent } from './window.component';
 
 @Injectable()
 export class WindowRegistry {
     id = 0;
 
-    registry = new Map<WindowComponent, {
-        state: WindowState,
-        menu: WindowMenuState,
-        cd: ChangeDetectorRef,
-        viewContainerRef: ViewContainerRef
-    }>();
+    registry = new Map<
+        WindowComponent,
+        {
+            state: WindowState;
+            menu: WindowMenuState;
+            cd: ChangeDetectorRef;
+            viewContainerRef: ViewContainerRef;
+        }
+    >();
 
     windowHistory: WindowComponent[] = [];
     activeWindow?: WindowComponent;
@@ -37,7 +41,7 @@ export class WindowRegistry {
     public focused = new BehaviorSubject(false);
 
     constructor() {
-        this.focused.subscribe((v) => {
+        this.focused.subscribe(v => {
             for (const win of this.registry.values()) {
                 win.state.focus.next(v);
             }
@@ -49,12 +53,21 @@ export class WindowRegistry {
         return [...this.registry.keys()].filter(v => !!v.electronWindow).map(v => v.electronWindow);
     }
 
-    register(win: WindowComponent, cd: ChangeDetectorRef, state: WindowState, menu: WindowMenuState, viewContainerRef: ViewContainerRef) {
+    register(
+        win: WindowComponent,
+        cd: ChangeDetectorRef,
+        state: WindowState,
+        menu: WindowMenuState,
+        viewContainerRef: ViewContainerRef,
+    ) {
         this.id++;
         win.id = this.id;
 
         this.registry.set(win, {
-            state, menu, cd, viewContainerRef
+            state,
+            menu,
+            cd,
+            viewContainerRef,
         });
     }
 
@@ -129,18 +142,19 @@ export class WindowState {
     public disableInputs = new BehaviorSubject<boolean>(false);
 
     public toolbars: { [name: string]: TemplateRef<any>[] } = {};
-    public toolbarContainers: { [name: string]: WindowToolbarContainerComponent } = {};
+    public toolbarContainers: {
+        [name: string]: WindowToolbarContainerComponent;
+    } = {};
 
     closable = true;
     maximizable = true;
     minimizable = true;
 
-    constructor() {
-    }
+    constructor() {}
 
     public addToolbarContainer(forName: string, template: TemplateRef<any>) {
         if (!this.toolbars[forName]) {
-            this.toolbars[forName] = []
+            this.toolbars[forName] = [];
         }
 
         this.toolbars[forName].push(template);

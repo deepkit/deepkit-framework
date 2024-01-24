@@ -1,7 +1,14 @@
 import { ApiAction, ApiRoute } from '@deepkit/api-console-api';
 
-
-export function filterAndSortActions(actions: ApiAction[], options: {filterPath: string, groupBy: string, filterCategory: string, filterGroup: string}) {
+export function filterAndSortActions(
+    actions: ApiAction[],
+    options: {
+        filterPath: string;
+        groupBy: string;
+        filterCategory: string;
+        filterGroup: string;
+    },
+) {
     let filtered = actions.filter(v => {
         if (options.filterPath && !v.methodName.includes(options.filterPath)) return false;
         if (options.filterCategory && v.category !== options.filterCategory) return false;
@@ -29,7 +36,16 @@ export function filterAndSortActions(actions: ApiAction[], options: {filterPath:
     return filtered;
 }
 
-export function filterAndSortRoutes(routes: ApiRoute[], options: {filterMethod: string, filterPath: string, groupBy: string, filterCategory: string, filterGroup: string}) {
+export function filterAndSortRoutes(
+    routes: ApiRoute[],
+    options: {
+        filterMethod: string;
+        filterPath: string;
+        groupBy: string;
+        filterCategory: string;
+        filterGroup: string;
+    },
+) {
     let filtered = routes.filter(v => {
         if (options.filterMethod && !v.httpMethods.includes(options.filterMethod)) return false;
         if (options.filterPath && !v.path.includes(options.filterPath)) return false;

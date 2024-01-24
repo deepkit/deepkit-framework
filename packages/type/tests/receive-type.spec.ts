@@ -1,7 +1,9 @@
 import { expect, test } from '@jest/globals';
+
+import { ReflectionOp } from '@deepkit/type-spec';
+
 import { ReceiveType, resolveReceiveType, typeOf } from '../src/reflection/reflection.js';
 import { ReflectionKind, Type } from '../src/reflection/type.js';
-import { ReflectionOp } from '@deepkit/type-spec';
 
 test('typeOf', () => {
     const type = typeOf<string>();
@@ -55,15 +57,13 @@ test('decorator call', () => {
         }
     }
 
-    const http = new HttpDecorator;
+    const http = new HttpDecorator();
 
-    interface User {
-    }
+    interface User {}
 
     class Controller {
         @http.something().response<User>('abc')
-        action() {
-        }
+        action() {}
     }
 
     expect(got).toMatchObject({ kind: ReflectionKind.objectLiteral, typeName: 'User' });

@@ -1,16 +1,14 @@
+import { getClassName, getParentClass } from '@deepkit/core';
+
+import { typeSettings } from './core.js';
+import { ReflectionClass, reflect, typeOf } from './reflection/reflection.js';
 import {
-    entityAnnotation,
     EntityOptions,
-    findMember,
-    isSameType,
-    isTypeIncluded,
-    isWithAnnotations,
     ReflectionKind,
     ReflectionVisibility,
     Type,
     TypeArray,
     TypeClass,
-    typeDecorators,
     TypeEnum,
     TypeFunction,
     TypeIndexSignature,
@@ -20,11 +18,14 @@ import {
     TypeProperty,
     TypeRest,
     TypeTuple,
-    TypeTupleMember
+    TypeTupleMember,
+    entityAnnotation,
+    findMember,
+    isSameType,
+    isTypeIncluded,
+    isWithAnnotations,
+    typeDecorators,
 } from './reflection/type.js';
-import { getClassName, getParentClass } from '@deepkit/core';
-import { reflect, ReflectionClass, typeOf } from './reflection/reflection.js';
-import { typeSettings } from './core.js';
 import { regExpFromString } from './utils.js';
 
 export interface SerializedTypeAnnotations {
@@ -34,7 +35,7 @@ export interface SerializedTypeAnnotations {
 
     typeArguments?: SerializedTypeReference[];
 
-    indexAccessOrigin?: { container: SerializedTypeReference, index: SerializedTypeReference };
+    indexAccessOrigin?: { container: SerializedTypeReference; index: SerializedTypeReference };
 
     // annotations will be generated on deserialization from the decorators
     // annotations?: Annotations; //parsed decorator types as annotations
@@ -43,12 +44,12 @@ export interface SerializedTypeAnnotations {
 }
 
 interface SerializedTypeObjectLiteral extends SerializedTypeAnnotations {
-    kind: ReflectionKind.objectLiteral,
+    kind: ReflectionKind.objectLiteral;
     types: SerializedTypeReference[];
 }
 
 interface SerializedTypeClassType extends SerializedTypeAnnotations {
-    kind: ReflectionKind.class,
+    kind: ReflectionKind.class;
     name?: string; //@entity.name
     globalObject?: true; //Uint8Array, Date, etc
     classType: string; //getClassName result
@@ -59,8 +60,8 @@ interface SerializedTypeClassType extends SerializedTypeAnnotations {
 }
 
 interface SerializedTypeFunction extends SerializedTypeAnnotations {
-    kind: ReflectionKind.function,
-    name?: number | string | symbol,
+    kind: ReflectionKind.function;
+    name?: number | string | symbol;
     parameters: SerializedTypeParameter[];
     return: SerializedTypeReference;
 }
@@ -68,59 +69,77 @@ interface SerializedTypeFunction extends SerializedTypeAnnotations {
 type SerializedTypeReference = number;
 
 interface SimpleSerializedType extends SerializedTypeAnnotations {
-    kind: ReflectionKind.never | ReflectionKind.any | ReflectionKind.unknown | ReflectionKind.void | ReflectionKind.object | ReflectionKind.string
-        | ReflectionKind.number | ReflectionKind.boolean | ReflectionKind.symbol | ReflectionKind.bigint | ReflectionKind.null | ReflectionKind.undefined | ReflectionKind.regexp;
+    kind:
+        | ReflectionKind.never
+        | ReflectionKind.any
+        | ReflectionKind.unknown
+        | ReflectionKind.void
+        | ReflectionKind.object
+        | ReflectionKind.string
+        | ReflectionKind.number
+        | ReflectionKind.boolean
+        | ReflectionKind.symbol
+        | ReflectionKind.bigint
+        | ReflectionKind.null
+        | ReflectionKind.undefined
+        | ReflectionKind.regexp;
     origin?: SerializedTypeReference;
 }
 
 interface SerializedTypeLiteral extends SerializedTypeAnnotations {
-    kind: ReflectionKind.literal,
-    literal: { type: 'symbol', name: string } | string | number | boolean | { type: 'bigint', value: string } | { type: 'regex', regex: string };
+    kind: ReflectionKind.literal;
+    literal:
+        | { type: 'symbol'; name: string }
+        | string
+        | number
+        | boolean
+        | { type: 'bigint'; value: string }
+        | { type: 'regex'; regex: string };
 }
 
 interface SerializedTypeTemplateLiteral extends SerializedTypeAnnotations {
-    kind: ReflectionKind.templateLiteral,
-    types: SerializedTypeReference[]
+    kind: ReflectionKind.templateLiteral;
+    types: SerializedTypeReference[];
 }
 
 interface SerializedTypeParameter extends SerializedTypeAnnotations {
-    kind: ReflectionKind.parameter,
+    kind: ReflectionKind.parameter;
     name: string;
     type: SerializedTypeReference;
 
     //parameter could be a property as well if visibility is set
-    visibility?: ReflectionVisibility,
+    visibility?: ReflectionVisibility;
     readonly?: true;
-    optional?: true,
+    optional?: true;
 
     /**
      * Set when the parameter has a default value aka initializer.
      */
-    default?: true
+    default?: true;
 }
 
 export interface SerializedTypeBaseMember extends SerializedTypeAnnotations {
-    visibility: ReflectionVisibility,
+    visibility: ReflectionVisibility;
     abstract?: true;
-    optional?: true,
+    optional?: true;
     readonly?: true;
 }
 
 export interface SerializedTypeMethod extends SerializedTypeBaseMember {
-    kind: ReflectionKind.method,
-    visibility: ReflectionVisibility,
+    kind: ReflectionKind.method;
+    visibility: ReflectionVisibility;
     name: number | string | symbol;
     parameters: SerializedTypeParameter[];
-    optional?: true,
+    optional?: true;
     abstract?: true;
     return: SerializedTypeReference;
 }
 
 interface SerializedTypeProperty extends SerializedTypeBaseMember {
-    kind: ReflectionKind.property,
-    visibility: ReflectionVisibility,
+    kind: ReflectionKind.property;
+    visibility: ReflectionVisibility;
     name: number | string | symbol;
-    optional?: true,
+    optional?: true;
     readonly?: true;
     abstract?: true;
     description?: string;
@@ -129,44 +148,44 @@ interface SerializedTypeProperty extends SerializedTypeBaseMember {
     /**
      * Set when the property has a default value aka initializer.
      */
-    default?: true
+    default?: true;
 }
 
 interface SerializedTypePromise extends SerializedTypeAnnotations {
-    kind: ReflectionKind.promise,
+    kind: ReflectionKind.promise;
     type: SerializedTypeReference;
 }
 
 interface SerializedTypeEnum extends SerializedTypeAnnotations {
-    kind: ReflectionKind.enum,
+    kind: ReflectionKind.enum;
     enum: { [name: string]: string | number | undefined | null };
     values: (string | number | undefined | null)[];
     indexType: SerializedTypeReference;
 }
 
 export interface SerializedTypeUnion extends SerializedTypeAnnotations {
-    kind: ReflectionKind.union,
+    kind: ReflectionKind.union;
     types: SerializedTypeReference[];
 }
 
 export interface SerializedTypeIntersection extends SerializedTypeAnnotations {
-    kind: ReflectionKind.intersection,
+    kind: ReflectionKind.intersection;
     types: SerializedTypeReference[];
 }
 
 interface SerializedTypeArray extends SerializedTypeAnnotations {
-    kind: ReflectionKind.array,
+    kind: ReflectionKind.array;
     type: SerializedTypeReference;
 }
 
 interface SerializedTypeIndexSignature extends SerializedTypeAnnotations {
-    kind: ReflectionKind.indexSignature,
+    kind: ReflectionKind.indexSignature;
     index: SerializedTypeReference;
     type: SerializedTypeReference;
 }
 
 interface SerializedTypePropertySignature extends SerializedTypeAnnotations {
-    kind: ReflectionKind.propertySignature,
+    kind: ReflectionKind.propertySignature;
     name: number | string | symbol;
     optional?: true;
     readonly?: true;
@@ -175,7 +194,7 @@ interface SerializedTypePropertySignature extends SerializedTypeAnnotations {
 }
 
 interface SerializedTypeMethodSignature extends SerializedTypeAnnotations {
-    kind: ReflectionKind.methodSignature,
+    kind: ReflectionKind.methodSignature;
     name: number | string | symbol;
     optional?: true;
     parameters: SerializedTypeParameter[];
@@ -183,33 +202,33 @@ interface SerializedTypeMethodSignature extends SerializedTypeAnnotations {
 }
 
 export interface SerializedTypeTypeParameter extends SerializedTypeAnnotations {
-    kind: ReflectionKind.typeParameter,
-    name: string,
+    kind: ReflectionKind.typeParameter;
+    name: string;
 }
 
 interface SerializedTypeInfer extends SerializedTypeAnnotations {
-    kind: ReflectionKind.infer,
+    kind: ReflectionKind.infer;
 }
 
 interface SerializedTypeTupleMember extends SerializedTypeAnnotations {
-    kind: ReflectionKind.tupleMember,
+    kind: ReflectionKind.tupleMember;
     type: SerializedTypeReference;
     optional?: true;
     name?: string;
 }
 
 interface SerializedTypeTuple extends SerializedTypeAnnotations {
-    kind: ReflectionKind.tuple,
-    types: SerializedTypeTupleMember[]
+    kind: ReflectionKind.tuple;
+    types: SerializedTypeTupleMember[];
 }
 
 interface SerializedTypeRest extends SerializedTypeAnnotations {
-    kind: ReflectionKind.rest,
-    type: SerializedTypeReference,
+    kind: ReflectionKind.rest;
+    type: SerializedTypeReference;
 }
 
 export type SerializedType =
-    SimpleSerializedType
+    | SimpleSerializedType
     | SerializedTypeLiteral
     | SerializedTypeTemplateLiteral
     | SerializedTypeParameter
@@ -234,11 +253,7 @@ export type SerializedType =
 
 export type SerializedTypes = SerializedType[];
 
-const envGlobal: any = typeof globalThis !== "undefined"
-    ? globalThis
-    : typeof global !== "undefined"
-    ? global
-    : window;
+const envGlobal: any = typeof globalThis !== 'undefined' ? globalThis : typeof global !== 'undefined' ? global : window;
 
 function isWithSerializedAnnotations(type: any): type is SerializedTypeAnnotations {
     return isWithAnnotations(type);
@@ -251,7 +266,11 @@ export interface SerializerState {
 }
 
 function filterRemoveFunctions(v: Type): boolean {
-    return v.kind !== ReflectionKind.function && v.kind !== ReflectionKind.method && v.kind !== ReflectionKind.methodSignature;
+    return (
+        v.kind !== ReflectionKind.function &&
+        v.kind !== ReflectionKind.method &&
+        v.kind !== ReflectionKind.methodSignature
+    );
 }
 
 function exportEntityOptions(type: TypeClass | TypeObjectLiteral, result: SerializedType): void {
@@ -297,7 +316,8 @@ function assignEntityOptions(type: TypeClass | TypeObjectLiteral, serialized: Se
     if (serialized.entityOptions.description !== undefined) entity.description = serialized.entityOptions.description;
     if (serialized.entityOptions.database !== undefined) entity.database = serialized.entityOptions.database;
     if (serialized.entityOptions.collection !== undefined) entity.collection = serialized.entityOptions.collection;
-    if (serialized.entityOptions.singleTableInheritance !== undefined) entity.singleTableInheritance = serialized.entityOptions.singleTableInheritance;
+    if (serialized.entityOptions.singleTableInheritance !== undefined)
+        entity.singleTableInheritance = serialized.entityOptions.singleTableInheritance;
     if (serialized.entityOptions.indexes !== undefined) entity.indexes = serialized.entityOptions.indexes;
 
     entityAnnotation.replaceType(type, [entity]);
@@ -314,12 +334,15 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
     state.refs.set(type, index);
 
     if (type.typeName) result.typeName = type.typeName;
-    if (type.decorators) (result as SerializedTypeAnnotations).decorators = type.decorators.map(v => serialize(v, state));
-    if (type.typeArguments) (result as SerializedTypeAnnotations).typeArguments = type.typeArguments.map(v => serialize(v, state));
-    if (type.indexAccessOrigin) (result as SerializedTypeAnnotations).indexAccessOrigin = {
-        index: serialize(type.indexAccessOrigin.index, state),
-        container: serialize(type.indexAccessOrigin.container, state)
-    };
+    if (type.decorators)
+        (result as SerializedTypeAnnotations).decorators = type.decorators.map(v => serialize(v, state));
+    if (type.typeArguments)
+        (result as SerializedTypeAnnotations).typeArguments = type.typeArguments.map(v => serialize(v, state));
+    if (type.indexAccessOrigin)
+        (result as SerializedTypeAnnotations).indexAccessOrigin = {
+            index: serialize(type.indexAccessOrigin.index, state),
+            container: serialize(type.indexAccessOrigin.container, state),
+        };
 
     switch (type.kind) {
         case ReflectionKind.objectLiteral: {
@@ -349,8 +372,7 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
             let superClass: SerializedTypeReference | undefined = undefined;
             try {
                 superClass = parent ? serialize(reflect(parent), state) : undefined;
-            } catch {
-            }
+            } catch {}
 
             const classType = getClassName(type.classType);
             const globalObject: boolean = envGlobal && envGlobal[classType] === type.classType;
@@ -362,7 +384,9 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
                 globalObject: globalObject ? true : undefined,
                 classType,
                 arguments: type.arguments ? type.arguments.map(member => serialize(member, state)) : undefined,
-                extendsArguments: type.extendsArguments ? type.extendsArguments.map(member => serialize(member, state)) : undefined,
+                extendsArguments: type.extendsArguments
+                    ? type.extendsArguments.map(member => serialize(member, state))
+                    : undefined,
                 superClass,
             } as SerializedTypeClassType);
             exportEntityOptions(type, result);
@@ -371,18 +395,26 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
         case ReflectionKind.literal: {
             Object.assign(result, {
                 kind: ReflectionKind.literal,
-                literal: 'symbol' === typeof type.literal ? { type: 'symbol', name: type.literal.toString().slice(7, -1) } :
-                    'bigint' === typeof type.literal ? { type: 'bigint', value: String(type.literal) } :
-                        type.literal instanceof RegExp ? { type: 'regex', regex: String(type.literal) } :
-                            type.literal
+                literal:
+                    'symbol' === typeof type.literal
+                        ? { type: 'symbol', name: type.literal.toString().slice(7, -1) }
+                        : 'bigint' === typeof type.literal
+                          ? { type: 'bigint', value: String(type.literal) }
+                          : type.literal instanceof RegExp
+                            ? { type: 'regex', regex: String(type.literal) }
+                            : type.literal,
             } as SerializedTypeLiteral);
             break;
         }
         case ReflectionKind.tuple: {
             Object.assign(result, {
                 kind: ReflectionKind.tuple,
-                types: type.types.map(member => ({ ...member, jit: undefined, parent: undefined, type: serialize(member.type, state) })),
-
+                types: type.types.map(member => ({
+                    ...member,
+                    jit: undefined,
+                    parent: undefined,
+                    type: serialize(member.type, state),
+                })),
             } as SerializedTypeTuple);
             break;
         }
@@ -403,7 +435,6 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
             Object.assign(result, {
                 kind: ReflectionKind.union,
                 types: types.map(member => serialize(member, state)),
-
             } as SerializedTypeUnion);
             break;
         }
@@ -411,7 +442,6 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
             Object.assign(result, {
                 kind: ReflectionKind.intersection,
                 types: type.types.map(member => serialize(member, state)),
-
             } as SerializedTypeIntersection);
             break;
         }
@@ -419,7 +449,6 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
             Object.assign(result, {
                 kind: ReflectionKind.templateLiteral,
                 types: type.types.map(member => serialize(member, state)),
-
             } as SerializedTypeTemplateLiteral);
             break;
         }
@@ -444,9 +473,9 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
                     jit: undefined,
                     parent: undefined,
                     type: serialize(v.type, state),
-                    default: v.default !== undefined ? true : undefined
+                    default: v.default !== undefined ? true : undefined,
                 })),
-                return: serialize(type.return, state)
+                return: serialize(type.return, state),
             } as SerializedTypeFunction);
             break;
         }
@@ -459,14 +488,17 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
                 ...type,
                 jit: undefined,
                 parent: undefined,
-                parameters: type.parameters.map(v => ({
-                    ...v,
-                    jit: undefined,
-                    parent: undefined,
-                    type: serialize(v.type, state),
-                    default: v.default !== undefined ? true : undefined
-                } as SerializedTypeParameter)),
-                return: serialize(type.return, state)
+                parameters: type.parameters.map(
+                    v =>
+                        ({
+                            ...v,
+                            jit: undefined,
+                            parent: undefined,
+                            type: serialize(v.type, state),
+                            default: v.default !== undefined ? true : undefined,
+                        }) as SerializedTypeParameter,
+                ),
+                return: serialize(type.return, state),
             } as SerializedTypeMethod);
             break;
         }
@@ -479,14 +511,17 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
                 ...type,
                 jit: undefined,
                 parent: undefined,
-                parameters: type.parameters.map(v => ({
-                    ...v,
-                    jit: undefined,
-                    parent: undefined,
-                    type: serialize(v.type, state),
-                    default: v.default !== undefined ? true : undefined
-                } as SerializedTypeParameter)),
-                return: serialize(type.return, state)
+                parameters: type.parameters.map(
+                    v =>
+                        ({
+                            ...v,
+                            jit: undefined,
+                            parent: undefined,
+                            type: serialize(v.type, state),
+                            default: v.default !== undefined ? true : undefined,
+                        }) as SerializedTypeParameter,
+                ),
+                return: serialize(type.return, state),
             } as SerializedTypeMethodSignature);
             break;
         }
@@ -557,15 +592,15 @@ function serialize(type: Type, state: SerializerState): SerializedTypeReference 
  */
 export function serializeType(type: Type, state: Partial<SerializerState> = {}): SerializedTypes {
     const types: SerializedTypes = [];
-    const serializedState: SerializerState = { types, refs: new Map, ...state };
+    const serializedState: SerializerState = { types, refs: new Map(), ...state };
     serialize(type, serializedState);
     return types;
 }
 
 interface DeserializeState {
     types: SerializedTypes;
-    disableReuse?: boolean, //disable entity reuse from entities registered via @entity.name()
-    deserialized: { [index: number]: { type: Type, refs: Type[], active: boolean } };
+    disableReuse?: boolean; //disable entity reuse from entities registered via @entity.name()
+    deserialized: { [index: number]: { type: Type; refs: Type[]; active: boolean } };
 }
 
 /**
@@ -599,16 +634,17 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
 
     if (type.typeName) result.typeName = type.typeName;
     if (type.typeArguments) result.typeArguments = type.typeArguments.map(v => deserialize(v, state)) as Type[];
-    if (type.indexAccessOrigin) result.indexAccessOrigin = {
-        index: deserialize(type.indexAccessOrigin.index, state) as Type,
-        container: deserialize(type.indexAccessOrigin.container, state) as TypeClass | TypeObjectLiteral
-    };
+    if (type.indexAccessOrigin)
+        result.indexAccessOrigin = {
+            index: deserialize(type.indexAccessOrigin.index, state) as Type,
+            container: deserialize(type.indexAccessOrigin.container, state) as TypeClass | TypeObjectLiteral,
+        };
 
     switch (type.kind) {
         case ReflectionKind.objectLiteral: {
             Object.assign(result, {
                 kind: ReflectionKind.objectLiteral,
-                types: type.types.map(v => deserialize(v, state, result))
+                types: type.types.map(v => deserialize(v, state, result)),
             } as TypeObjectLiteral);
             assignEntityOptions(result as TypeObjectLiteral, type);
             break;
@@ -622,13 +658,18 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
                 }
             }
 
-            const newClass = !type.globalObject && state.disableReuse === true || (!type.name || !typeSettings.registeredEntities[type.name]);
+            const newClass =
+                (!type.globalObject && state.disableReuse === true) ||
+                !type.name ||
+                !typeSettings.registeredEntities[type.name];
 
             const args = type.arguments ? type.arguments.map(v => deserialize(v, state, result)) : undefined;
-            const extendsArguments = type.extendsArguments ? type.extendsArguments.map(v => deserialize(v, state, result)) : undefined;
+            const extendsArguments = type.extendsArguments
+                ? type.extendsArguments.map(v => deserialize(v, state, result))
+                : undefined;
             const types = type.types.map(v => deserialize(v, state, result));
             const constructor = findMember('constructor', types);
-            const initialize: { name: string, index: number }[] = [];
+            const initialize: { name: string; index: number }[] = [];
             if (constructor && constructor.kind === ReflectionKind.method) {
                 for (let i = 0; i < constructor.parameters.length; i++) {
                     if (constructor.parameters[i].visibility !== undefined) {
@@ -637,21 +678,26 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
                 }
             }
 
-            const classType = type.globalObject ? envGlobal[type.classType] : newClass
-                ? (type.superClass ? class extends (deserialize(type.superClass, state) as TypeClass).classType {
-                    constructor(...args: any[]) {
-                        super(...args);
-                        for (const init of initialize) {
-                            this[init.name] = args[init.index];
+            const classType = type.globalObject
+                ? envGlobal[type.classType]
+                : newClass
+                  ? type.superClass
+                      ? class extends (deserialize(type.superClass, state) as TypeClass).classType {
+                            constructor(...args: any[]) {
+                                super(...args);
+                                for (const init of initialize) {
+                                    this[init.name] = args[init.index];
+                                }
+                            }
                         }
-                    }
-                } : class {
-                    constructor(...args: any[]) {
-                        for (const init of initialize) {
-                            (this as any)[init.name] = args[init.index];
+                      : class {
+                            constructor(...args: any[]) {
+                                for (const init of initialize) {
+                                    (this as any)[init.name] = args[init.index];
+                                }
+                            }
                         }
-                    }
-                }) : typeSettings.registeredEntities[type.name!];
+                  : typeSettings.registeredEntities[type.name!];
 
             if (newClass && !type.globalObject) {
                 Object.defineProperty(classType, 'name', { value: type.classType, writable: true, enumerable: false });
@@ -674,15 +720,27 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
         case ReflectionKind.literal: {
             Object.assign(result, {
                 kind: ReflectionKind.literal,
-                literal: 'string' === typeof type.literal ? type.literal : 'number' === typeof type.literal ? type.literal : 'boolean' === typeof type.literal ? type.literal :
-                    'symbol' === type.literal.type ? Symbol(type.literal.name) : 'bigint' === type.literal.type ? BigInt(type.literal.value) : 'regex' === type.literal.type ? regExpFromString(type.literal.regex) : false
+                literal:
+                    'string' === typeof type.literal
+                        ? type.literal
+                        : 'number' === typeof type.literal
+                          ? type.literal
+                          : 'boolean' === typeof type.literal
+                            ? type.literal
+                            : 'symbol' === type.literal.type
+                              ? Symbol(type.literal.name)
+                              : 'bigint' === type.literal.type
+                                ? BigInt(type.literal.value)
+                                : 'regex' === type.literal.type
+                                  ? regExpFromString(type.literal.regex)
+                                  : false,
             } as TypeLiteral);
             break;
         }
         case ReflectionKind.tuple: {
             Object.assign(result, {
                 kind: ReflectionKind.tuple,
-                types: []
+                types: [],
             } as TypeTuple);
             for (const member of type.types) {
                 const deserializedMember: TypeTupleMember = {
@@ -691,7 +749,7 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
                     indexAccessOrigin: undefined,
                     decorators: undefined,
                     parent: result as TypeTuple,
-                    type: { kind: ReflectionKind.unknown }
+                    type: { kind: ReflectionKind.unknown },
                 };
                 deserializedMember.type = deserialize(member.type, state, deserializedMember);
                 (result as TypeTuple).types.push(deserializedMember);
@@ -703,7 +761,7 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
         case ReflectionKind.union: {
             Object.assign(result, {
                 kind: type.kind,
-                types: type.types.map(member => deserialize(member, state, result))
+                types: type.types.map(member => deserialize(member, state, result)),
             });
             break;
         }
@@ -716,7 +774,7 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
             result.kind = type.kind;
             if (type.origin) {
                 Object.assign(result, {
-                    origin: deserialize(type.origin, state, result)
+                    origin: deserialize(type.origin, state, result),
                 });
             }
             break;
@@ -741,7 +799,7 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
                     decorators: undefined,
                     parent: result as TypeFunction,
                     default: p.default ? () => undefined : undefined,
-                    type: { kind: ReflectionKind.unknown }
+                    type: { kind: ReflectionKind.unknown },
                 };
                 parameter.type = deserialize(p.type, state, parameter) as Type;
                 parameters.push(parameter);
@@ -749,7 +807,7 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
             Object.assign(result, {
                 name: type.name,
                 parameters,
-                return: deserialize(type.return, state, result)
+                return: deserialize(type.return, state, result),
             } as TypeFunction);
             break;
         }
@@ -757,7 +815,8 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
         case ReflectionKind.propertySignature: {
             Object.assign(result, {
                 ...type,
-                default: type.kind === ReflectionKind.property ? type.default ? () => undefined : undefined : undefined,
+                default:
+                    type.kind === ReflectionKind.property ? (type.default ? () => undefined : undefined) : undefined,
                 type: deserialize(type.type, state, result),
             } as TypeProperty);
             break;
@@ -766,14 +825,14 @@ function deserialize(type: SerializedType | SerializedTypeReference, state: Dese
         case ReflectionKind.promise:
         case ReflectionKind.rest: {
             Object.assign(result, {
-                type: deserialize(type.type, state, result)
+                type: deserialize(type.type, state, result),
             } as TypeArray | TypeProperty | TypeRest);
             break;
         }
         case ReflectionKind.indexSignature: {
             Object.assign(result, {
                 index: deserialize(type.index, state, result),
-                type: deserialize(type.type, state, result)
+                type: deserialize(type.type, state, result),
             } as TypeIndexSignature);
             break;
         }

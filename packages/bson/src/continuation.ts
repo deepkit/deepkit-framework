@@ -7,9 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { BaseParser } from './bson-parser.js';
+import { BSONError } from './model.js';
 import {
+    BSONType,
     BSON_BINARY_SUBTYPE_BYTE_ARRAY,
     BSON_DATA_ARRAY,
     BSON_DATA_BINARY,
@@ -32,9 +33,7 @@ import {
     BSON_DATA_SYMBOL,
     BSON_DATA_TIMESTAMP,
     BSON_DATA_UNDEFINED,
-    BSONType
 } from './utils.js';
-import { BSONError } from './model.js';
 
 export function seekElementSize(elementType: number, parser: BaseParser): any {
     switch (elementType) {

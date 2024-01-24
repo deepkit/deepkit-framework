@@ -16,42 +16,34 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": []
+    "types": [],
   },
   "reflection": true,
-  "include": [
-    "src",
-    "jsx",
-    "tests",
-    "benchmark",
-    "index.ts",
-    "jsx-runtime",
-    "jsx-runtime.ts"
-  ],
+  "include": ["src", "jsx", "tests", "benchmark", "index.ts", "jsx-runtime", "jsx-runtime.ts"],
   "references": [
     {
-      "path": "../bson/tsconfig.json"
+      "path": "../bson/tsconfig.json",
     },
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../core-rxjs/tsconfig.json"
+      "path": "../core-rxjs/tsconfig.json",
     },
     {
-      "path": "../injector/tsconfig.json"
+      "path": "../injector/tsconfig.json",
     },
     {
-      "path": "../logger/tsconfig.json"
+      "path": "../logger/tsconfig.json",
     },
     {
-      "path": "../rpc/tsconfig.json"
+      "path": "../rpc/tsconfig.json",
     },
     {
-      "path": "../stopwatch/tsconfig.json"
+      "path": "../stopwatch/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

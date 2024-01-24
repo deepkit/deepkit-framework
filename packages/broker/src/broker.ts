@@ -1,8 +1,9 @@
-import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
 import { EventToken } from '@deepkit/event';
-import { parseTime } from './utils.js';
+import { ReceiveType, Type, resolveReceiveType } from '@deepkit/type';
+
 import { BrokerAdapterCache } from './broker-cache.js';
 import { QueueMessageProcessing } from './model.js';
+import { parseTime } from './utils.js';
 
 export interface BrokerTimeOptions {
     /**
@@ -30,13 +31,15 @@ export interface BrokerTimeOptionsResolved {
     timeout: number;
 }
 
-export type BrokerQueueMessageProcessingOptions = {
-    process: QueueMessageProcessing.atLeastOnce
-} | {
-    process: QueueMessageProcessing.exactlyOnce;
-    deduplicationInterval?: string,
-    hash?: string | number;
-};
+export type BrokerQueueMessageProcessingOptions =
+    | {
+          process: QueueMessageProcessing.atLeastOnce;
+      }
+    | {
+          process: QueueMessageProcessing.exactlyOnce;
+          deduplicationInterval?: string;
+          hash?: string | number;
+      };
 
 export interface BrokerQueueMessageProcessingOptionsResolved {
     process: QueueMessageProcessing;
@@ -44,14 +47,19 @@ export interface BrokerQueueMessageProcessingOptionsResolved {
     hash?: string | number;
 }
 
-export type BrokerAdapterQueueProduceOptions = { delay?: string; priority?: number } & BrokerQueueMessageProcessingOptions;
+export type BrokerAdapterQueueProduceOptions = {
+    delay?: string;
+    priority?: number;
+} & BrokerQueueMessageProcessingOptions;
 
 export interface BrokerAdapterQueueProduceOptionsResolved extends BrokerQueueMessageProcessingOptionsResolved {
     delay?: number;
     priority?: number;
 }
 
-function parseBrokerQueueMessageProcessingOptions(options?: BrokerQueueMessageProcessingOptions): BrokerQueueMessageProcessingOptionsResolved {
+function parseBrokerQueueMessageProcessingOptions(
+    options?: BrokerQueueMessageProcessingOptions,
+): BrokerQueueMessageProcessingOptionsResolved {
     switch (options?.process) {
         case QueueMessageProcessing.exactlyOnce:
             return {
@@ -69,12 +77,19 @@ function parseBrokerQueueMessageProcessingOptions(options?: BrokerQueueMessagePr
     }
 }
 
-function parseBrokerQueueChannelProduceOptions(options?: BrokerAdapterQueueProduceOptions, channelOptions?: BrokerQueueChannelOptionsResolved): BrokerAdapterQueueProduceOptionsResolved {
+function parseBrokerQueueChannelProduceOptions(
+    options?: BrokerAdapterQueueProduceOptions,
+    channelOptions?: BrokerQueueChannelOptionsResolved,
+): BrokerAdapterQueueProduceOptionsResolved {
     const processingOptions = parseBrokerQueueMessageProcessingOptions(options);
     if (options?.process == null && channelOptions?.process != null) {
         processingOptions.process = channelOptions.process;
     }
-    if (options?.process == null && processingOptions.process === QueueMessageProcessing.exactlyOnce && channelOptions?.process === QueueMessageProcessing.exactlyOnce) {
+    if (
+        options?.process == null &&
+        processingOptions.process === QueueMessageProcessing.exactlyOnce &&
+        channelOptions?.process === QueueMessageProcessing.exactlyOnce
+    ) {
         processingOptions.deduplicationInterval = channelOptions.deduplicationInterval;
     }
 
@@ -95,7 +110,6 @@ function parseBrokerTimeoutOptions(options: Partial<BrokerTimeOptions>): BrokerT
         timeout: parseTime(options.timeout) ?? 0,
     };
 }
-
 
 export type Release = () => Promise<void>;
 
@@ -132,7 +146,12 @@ export interface BrokerAdapterQueue extends BrokerAdapterBase {
     /**
      * Consume messages from a queue.
      */
-    consume(name: string, callback: (message: any) => Promise<void>, options: { maxParallel: number }, type: Type): Promise<Release>;
+    consume(
+        name: string,
+        callback: (message: any) => Promise<void>,
+        options: { maxParallel: number },
+        type: Type,
+    ): Promise<Release>;
 
     /**
      * Produce a message to a queue.
@@ -160,8 +179,7 @@ export class BrokerQueueMessage<T> {
     constructor(
         public channel: string,
         public data: T,
-    ) {
-    }
+    ) {}
 
     public failed(error: Error) {
         this.state = 'failed';
@@ -177,11 +195,8 @@ export type BrokerQueueChannelOptions = BrokerQueueMessageProcessingOptions;
 
 export type BrokerQueueChannelOptionsResolved = BrokerQueueMessageProcessingOptionsResolved;
 
-
 export class BrokerQueue {
-    constructor(
-        public adapter: BrokerAdapterQueue,
-    ) {}
+    constructor(public adapter: BrokerAdapterQueue) {}
 
     public channel<T>(name: string, options?: BrokerQueueChannelOptions, type?: ReceiveType<T>): BrokerQueueChannel<T> {
         type = resolveReceiveType(type);
@@ -202,24 +217,36 @@ export class BrokerQueueChannel<T> {
     }
 
     async produce<T>(message: T, options?: BrokerAdapterQueueProduceOptions): Promise<void> {
-        await this.adapter.produce(this.name, message, this.type, parseBrokerQueueChannelProduceOptions(options, this.options));
+        await this.adapter.produce(
+            this.name,
+            message,
+            this.type,
+            parseBrokerQueueChannelProduceOptions(options, this.options),
+        );
     }
 
-    async consume(callback: (message: BrokerQueueMessage<T>) => Promise<void> | void, options: { maxParallel?: number } = {}): Promise<Release> {
-        return await this.adapter.consume(this.name, async (message) => {
-            try {
-                await callback(message);
-            } catch (error: any) {
-                message.state = 'failed';
-                message.error = error;
-            }
-        }, Object.assign({ maxParallel: 1 }, options), this.type);
+    async consume(
+        callback: (message: BrokerQueueMessage<T>) => Promise<void> | void,
+        options: { maxParallel?: number } = {},
+    ): Promise<Release> {
+        return await this.adapter.consume(
+            this.name,
+            async message => {
+                try {
+                    await callback(message);
+                } catch (error: any) {
+                    message.state = 'failed';
+                    message.error = error;
+                }
+            },
+            Object.assign({ maxParallel: 1 }, options),
+            this.type,
+        );
     }
 }
 
 export class BrokerBus {
-    constructor(public adapter: BrokerAdapterBus) {
-    }
+    constructor(public adapter: BrokerAdapterBus) {}
 
     public channel<T>(path: string, type?: ReceiveType<T>): BrokerBusChannel<T> {
         type = resolveReceiveType(type);
@@ -232,8 +259,7 @@ export class BrokerBusChannel<T> {
         public name: string,
         private adapter: BrokerAdapterBus,
         private type: Type,
-    ) {
-    }
+    ) {}
 
     async publish(message: T) {
         return this.adapter.publish(this.name, message, this.type);
@@ -244,15 +270,10 @@ export class BrokerBusChannel<T> {
     }
 }
 
-export class BrokerLockError extends Error {
-
-}
+export class BrokerLockError extends Error {}
 
 export class BrokerLock {
-    constructor(
-        public adapter: BrokerAdapterLock
-    ) {
-    }
+    constructor(public adapter: BrokerAdapterLock) {}
 
     public item(id: string, options: Partial<BrokerTimeOptions> = {}): BrokerLockItem {
         const parsedOptions = parseBrokerTimeoutOptions(options);
@@ -269,8 +290,7 @@ export class BrokerLockItem {
         private id: string,
         private adapter: BrokerAdapterLock,
         private options: BrokerTimeOptionsResolved,
-    ) {
-    }
+    ) {}
 
     /**
      * Returns true if the current lock object is the holder of the lock.
@@ -321,4 +341,8 @@ export class BrokerLockItem {
     }
 }
 
-export type BrokerAdapter = BrokerAdapterCache & BrokerAdapterBus & BrokerAdapterLock & BrokerAdapterQueue & BrokerAdapterKeyValue;
+export type BrokerAdapter = BrokerAdapterCache &
+    BrokerAdapterBus &
+    BrokerAdapterLock &
+    BrokerAdapterQueue &
+    BrokerAdapterKeyValue;

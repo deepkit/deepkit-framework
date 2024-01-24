@@ -7,7 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { CloneNodeHook, cloneNode as tsNodeClone } from '@marcj/ts-clone-node';
 import ts, {
     ArrowFunction,
     BigIntLiteral,
@@ -30,7 +30,7 @@ import ts, {
     StringLiteralLike,
     SymbolTable,
 } from 'typescript';
-import { cloneNode as tsNodeClone, CloneNodeHook } from '@marcj/ts-clone-node';
+
 import { SourceFile } from './ts-types.js';
 
 const {
@@ -86,7 +86,13 @@ export function parseJSDocAttributeFromText(comment: string, attribute: string):
             if (withoutContent === -1) return undefined;
             //make sure next character is space or end of comment
             const nextCharacter = comment[withoutContent + attribute.length + 1];
-            if (!nextCharacter || nextCharacter === ' ' || nextCharacter === '\n' || nextCharacter === '\r' || nextCharacter === '\t') {
+            if (
+                !nextCharacter ||
+                nextCharacter === ' ' ||
+                nextCharacter === '\n' ||
+                nextCharacter === '\r' ||
+                nextCharacter === '\t'
+            ) {
                 return '';
             }
             start = withoutContent + attribute.length + 1;
@@ -102,14 +108,21 @@ export function parseJSDocAttributeFromText(comment: string, attribute: string):
     const content = comment.substring(start, end).trim();
 
     // make sure multiline comments are supported, and each line is trimmed and `\s\s\s\*` removed
-    return content.split('\n').map(v => {
-        const indexOfStar = v.indexOf('*');
-        if (indexOfStar === -1) return v.trim();
-        return v.substring(indexOfStar + 1).trim();
-    }).join('\n');
+    return content
+        .split('\n')
+        .map(v => {
+            const indexOfStar = v.indexOf('*');
+            if (indexOfStar === -1) return v.trim();
+            return v.substring(indexOfStar + 1).trim();
+        })
+        .join('\n');
 }
 
-export function extractJSDocAttribute(sourceFile: SourceFile, node: Node | undefined, attribute: string): string | undefined {
+export function extractJSDocAttribute(
+    sourceFile: SourceFile,
+    node: Node | undefined,
+    attribute: string,
+): string | undefined {
     // in TypeScript 5.3 they made JSDoc parsing optional and disabled by default.
     // we need to read the comments manually and then parse @{attribute} {value} manually.
     // we need reference to SourceFile, since Node.getSourceFile() although available in types,
@@ -143,7 +156,8 @@ export function getNameAsString(node?: PropertyName | QualifiedName): string {
     if (isNumericLiteral(node)) return node.text;
     if (isNoSubstitutionTemplateLiteral(node)) return node.text;
     if (isComputedPropertyName(node)) {
-        if (isStringLiteralLike(node) || isNumericLiteral(node)) return (node as StringLiteralLike | NumericLiteral).text;
+        if (isStringLiteralLike(node) || isNumericLiteral(node))
+            return (node as StringLiteralLike | NumericLiteral).text;
         return '';
     }
     if (isPrivateIdentifier(node)) return getIdentifierName(node);
@@ -169,14 +183,15 @@ const cloneHook = <T extends Node>(node: T, payload: { depth: number }): CloneNo
 };
 
 export class NodeConverter {
-    constructor(protected f: NodeFactory) {
-    }
+    constructor(protected f: NodeFactory) {}
 
     toExpression<T extends PackExpression | PackExpression[]>(node?: T): Expression {
         if (node === undefined) return this.f.createIdentifier('undefined');
 
         if (Array.isArray(node)) {
-            return this.f.createArrayLiteralExpression(this.f.createNodeArray(node.map(v => this.toExpression(v))) as NodeArray<Expression>);
+            return this.f.createArrayLiteralExpression(
+                this.f.createNodeArray(node.map(v => this.toExpression(v))) as NodeArray<Expression>,
+            );
         }
 
         if ('string' === typeof node) return this.f.createStringLiteral(node, true);
@@ -187,7 +202,14 @@ export class NodeConverter {
         if (node.pos === -1 && node.end === -1 && node.parent === undefined) {
             if (isArrowFunction(node)) {
                 if (node.body.pos === -1 && node.body.end === -1 && node.body.parent === undefined) return node;
-                return this.f.createArrowFunction(node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, this.toExpression(node.body as Expression));
+                return this.f.createArrowFunction(
+                    node.modifiers,
+                    node.typeParameters,
+                    node.parameters,
+                    node.type,
+                    node.equalsGreaterThanToken,
+                    this.toExpression(node.body as Expression),
+                );
             }
             return node;
         }
@@ -224,7 +246,6 @@ export class NodeConverter {
             console.error('could not clone node', node);
             throw error;
         }
-
     }
 }
 
@@ -233,7 +254,7 @@ function isExternalOrCommonJsModule(file: SourceFile): boolean {
     return (file.externalModuleIndicator || file.commonJsModuleIndicator) !== undefined;
 }
 
-export function isNodeWithLocals(node: Node): node is (Node & { locals: SymbolTable | undefined }) {
+export function isNodeWithLocals(node: Node): node is Node & { locals: SymbolTable | undefined } {
     return 'locals' in node;
 }
 
@@ -265,7 +286,6 @@ export function ensureImportIsEmitted(importDeclaration: ImportDeclaration, spec
 
     (importDeclaration.flags as any) |= NodeFlags.Synthesized;
 }
-
 
 /**
  * Serializes an entity name as an expression for decorator type metadata.
@@ -313,4 +333,3 @@ function finish<T extends MetaNode>(oldNode: MetaNode, newNode: T): T {
     newNode.symbol = newNode._symbol;
     return newNode;
 }
-

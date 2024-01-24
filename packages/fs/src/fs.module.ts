@@ -7,12 +7,12 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { AppModule } from '@deepkit/app';
+import { DeepkitFile } from '@deepkit/framework-shared';
+import { injectable } from '@deepkit/injector';
+import { Database, DatabaseAdapter } from '@deepkit/orm';
 
 import { FsConfig } from './fs.config.js';
-import { Database, DatabaseAdapter } from '@deepkit/orm';
-import { AppModule } from '@deepkit/app';
-import { injectable } from '@deepkit/injector';
-import { DeepkitFile } from '@deepkit/framework-shared';
 
 @injectable
 export class FsModuleBootstrap {
@@ -21,14 +21,11 @@ export class FsModuleBootstrap {
     }
 }
 
-export const FSModule = new AppModule({
-    bootstrap: FsModuleBootstrap,
-    providers: [
-        FsConfig,
-        Database,
-    ],
-    exports: [
-        FsConfig,
-        Database,
-    ]
-}, 'fs');
+export const FSModule = new AppModule(
+    {
+        bootstrap: FsModuleBootstrap,
+        providers: [FsConfig, Database],
+        exports: [FsConfig, Database],
+    },
+    'fs',
+);

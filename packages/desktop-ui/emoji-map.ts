@@ -1,11 +1,11 @@
-import {readFile, writeFile} from "fs-extra";
+import { readFile, writeFile } from 'fs-extra';
 
 (async () => {
     //this was created by using package `emoji-datasource`
     const file = await readFile('src/components/emoji/emoji_pretty.json', 'utf8');
 
-    const result: {[name: string]: any}  = {};
-    const categories: {[name: string]: string[]} = {};
+    const result: { [name: string]: any } = {};
+    const categories: { [name: string]: string[] } = {};
 
     const fileEmojis: any[] = JSON.parse(file);
 
@@ -22,12 +22,11 @@ import {readFile, writeFile} from "fs-extra";
             y: emoji['sheet_y'],
         };
 
-         if (!categories[emoji['category']]) {
-             categories[emoji['category']] = [emoji['short_name']];
-         } else {
-             categories[emoji['category']].push(emoji['short_name']);
-         }
-
+        if (!categories[emoji['category']]) {
+            categories[emoji['category']] = [emoji['short_name']];
+        } else {
+            categories[emoji['category']].push(emoji['short_name']);
+        }
     }
 
     const categoriesNormalized = [];
@@ -57,5 +56,4 @@ import {readFile, writeFile} from "fs-extra";
     `;
 
     await writeFile('src/components/emoji/emojis.ts', mapTS);
-
 })();

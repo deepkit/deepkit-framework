@@ -1,16 +1,24 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+
 import { ReflectionKind, Type } from '@deepkit/type';
 
 @Component({
     template: `
-        <dui-input round textured lightFocus [type]="getType()" focus style="width: 100%"
-                   (focusChange)="$event ? false : done.emit()"
-                   (enter)="done.emit()" (esc)="done.emit()"
-                   (keyDown)="keyDown.emit($event)"
-                   [(ngModel)]="model"
-                   (ngModelChange)="modelChange.emit(this.model)"
+        <dui-input
+            round
+            textured
+            lightFocus
+            [type]="getType()"
+            focus
+            style="width: 100%"
+            (focusChange)="$event ? false : done.emit()"
+            (enter)="done.emit()"
+            (esc)="done.emit()"
+            (keyDown)="keyDown.emit($event)"
+            [(ngModel)]="model"
+            (ngModelChange)="modelChange.emit(this.model)"
         ></dui-input>
-    `
+    `,
 })
 export class StringInputComponent {
     @Input() model: any;

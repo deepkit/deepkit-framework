@@ -25,7 +25,9 @@ export function eachKey<T>(object: ArrayLike<T>): IterableIterator<number>;
 /** @public */
 export function eachKey<T extends { [key: string]: any }, K extends keyof T>(object: T): IterableIterator<string>;
 /** @public */
-export function* eachKey<T extends { [key: string]: any }, K extends keyof T>(object: T | ArrayLike<T>): IterableIterator<string | number> {
+export function* eachKey<T extends { [key: string]: any }, K extends keyof T>(
+    object: T | ArrayLike<T>,
+): IterableIterator<string | number> {
     if (Array.isArray(object)) {
         for (let i = 0; i < object.length; i++) {
             yield i;

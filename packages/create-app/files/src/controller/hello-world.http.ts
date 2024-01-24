@@ -1,10 +1,10 @@
-import { MaxLength } from '@deepkit/type';
 import { http } from '@deepkit/http';
+import { MaxLength } from '@deepkit/type';
+
 import { Service } from '../app/service';
 
 export class HelloWorldControllerHttp {
-    constructor(private service: Service) {
-    }
+    constructor(private service: Service) {}
 
     @http.GET('/')
     async index() {

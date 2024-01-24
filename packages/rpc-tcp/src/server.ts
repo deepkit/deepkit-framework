@@ -1,11 +1,12 @@
-import { asyncOperation, ParsedHost, parseHost } from '@deepkit/core';
-import { RpcKernel } from '@deepkit/rpc';
 import { existsSync, mkdirSync, unlinkSync } from 'fs';
-import { createServer, Server, Socket } from 'net';
+import { IncomingMessage } from 'http';
+import { Server, Socket, createServer } from 'net';
+import { dirname } from 'path';
 import type { ServerOptions as WebSocketServerOptions } from 'ws';
 import { WebSocketServer } from 'ws';
-import { IncomingMessage } from 'http';
-import { dirname } from 'path';
+
+import { ParsedHost, asyncOperation, parseHost } from '@deepkit/core';
+import { RpcKernel } from '@deepkit/rpc';
 
 /**
  * Uses the node `net` module to create a server. Supports unix sockets.

@@ -5,11 +5,10 @@
 This example demonstrates how to overwrite the AccessDenied event and print your own response.
 
 */
-
 import { App } from '@deepkit/app';
 import { eventDispatcher } from '@deepkit/event';
-import { HtmlResponse, http, HttpAccessDeniedError, httpWorkflow } from '@deepkit/http';
 import { FrameworkModule } from '@deepkit/framework';
+import { HtmlResponse, HttpAccessDeniedError, http, httpWorkflow } from '@deepkit/http';
 
 @http.controller()
 class ApiController {
@@ -27,11 +26,7 @@ class AuthListener {
 }
 
 new App({
-    listeners: [
-        AuthListener
-    ],
+    listeners: [AuthListener],
     controllers: [ApiController],
-    imports: [
-        new FrameworkModule(),
-    ],
+    imports: [new FrameworkModule()],
 }).run();

@@ -1,13 +1,14 @@
 import { expect, test } from '@jest/globals';
-import { InjectorContext, injectorReference } from '../src/injector.js';
-import { provide, Tag } from '../src/provider.js';
-import { InjectorModule } from '../src/module.js';
+
 import { InlineRuntimeType, ReflectionKind, Type, typeOf } from '@deepkit/type';
+
+import { InjectorContext, injectorReference } from '../src/injector.js';
+import { InjectorModule } from '../src/module.js';
+import { Tag, provide } from '../src/provider.js';
 import { Inject, InjectMeta, nominalCompatibility } from '../src/types.js';
 
 test('basic', () => {
-    class Service {
-    }
+    class Service {}
 
     const module1 = new InjectorModule([Service]);
 
@@ -18,12 +19,10 @@ test('basic', () => {
 });
 
 test('parent dependency', () => {
-    class Router {
-    }
+    class Router {}
 
     class Controller {
-        constructor(public router: Router) {
-        }
+        constructor(public router: Router) {}
     }
 
     const parent = new InjectorModule([Router]);
@@ -35,8 +34,7 @@ test('parent dependency', () => {
 });
 
 test('scoped provider', () => {
-    class Service {
-    }
+    class Service {}
 
     const module1 = new InjectorModule([{ provide: Service, scope: 'http' }]);
 
@@ -53,8 +51,7 @@ test('scoped provider', () => {
 });
 
 test('scoped provider with dependency to unscoped', () => {
-    class Service {
-    }
+    class Service {}
 
     const module1 = new InjectorModule([{ provide: Service, scope: 'http' }]);
 
@@ -68,8 +65,7 @@ test('scoped provider with dependency to unscoped', () => {
 });
 
 test('reset', () => {
-    class Service {
-    }
+    class Service {}
 
     const module1 = new InjectorModule([Service]);
 
@@ -87,8 +83,7 @@ test('reset', () => {
 });
 
 test('scopes', () => {
-    class Service {
-    }
+    class Service {}
 
     const module1 = new InjectorModule([{ provide: Service, scope: 'http' }]);
     const context = new InjectorContext(module1);
@@ -106,28 +101,22 @@ test('scopes', () => {
 });
 
 test('tags', () => {
-    class ServiceA {
-    }
+    class ServiceA {}
 
-    class ServiceB {
-    }
+    class ServiceB {}
 
     class ServiceC {
-        collect() {
-
-        }
+        collect() {}
     }
 
     interface Collector {
         collect(): void;
     }
 
-    class CollectorTag extends Tag<Collector> {
-    }
+    class CollectorTag extends Tag<Collector> {}
 
     class CollectorManager {
-        constructor(protected collectors: CollectorTag) {
-        }
+        constructor(protected collectors: CollectorTag) {}
 
         getCollectors(): Collector[] {
             return this.collectors.services;
@@ -159,8 +148,10 @@ test('scope late binding', () => {
     }
 
     class Controller {
-        constructor(public session: Session, public request: Request) {
-        }
+        constructor(
+            public session: Session,
+            public request: Request,
+        ) {}
     }
 
     const root1 = new InjectorModule([
@@ -185,12 +176,10 @@ test('scope late binding', () => {
 });
 
 test('all same scope', () => {
-    class RpcKernelConnection {
-    }
+    class RpcKernelConnection {}
 
     class Controller {
-        constructor(public connection: RpcKernelConnection) {
-        }
+        constructor(public connection: RpcKernelConnection) {}
     }
 
     const injector = InjectorContext.forProviders([
@@ -204,25 +193,20 @@ test('all same scope', () => {
 
 test('exports have access to encapsulated module', () => {
     //for exports its important that exported providers still have access to the encapsulated module they were defined in.
-    class ServiceHelper {
-    }
+    class ServiceHelper {}
 
     class Service {
-        constructor(public helper: ServiceHelper) {
-        }
+        constructor(public helper: ServiceHelper) {}
     }
 
     class Controller {
-        constructor(public service: Service) {
-        }
+        constructor(public service: Service) {}
     }
 
     {
         const root = new InjectorModule([Controller]);
 
-        const module1 = new InjectorModule([
-            Service, ServiceHelper
-        ], root, {}, [Service]);
+        const module1 = new InjectorModule([Service, ServiceHelper], root, {}, [Service]);
 
         const injector = new InjectorContext(root);
 
@@ -237,22 +221,17 @@ test('exports have access to encapsulated module', () => {
     }
 
     {
-        class RootModule extends InjectorModule {
-        }
+        class RootModule extends InjectorModule {}
 
-        class MiddleMan extends InjectorModule {
-        }
+        class MiddleMan extends InjectorModule {}
 
-        class ServiceModule extends InjectorModule {
-        }
+        class ServiceModule extends InjectorModule {}
 
         const root = new RootModule([Controller]);
 
         const module1 = new MiddleMan([], root, {}, []);
 
-        const module2 = new ServiceModule([
-            Service, ServiceHelper
-        ], module1, {}, [Service]);
+        const module2 = new ServiceModule([Service, ServiceHelper], module1, {}, [Service]);
 
         module1.exports = [module2];
 
@@ -269,17 +248,13 @@ test('exports have access to encapsulated module', () => {
     }
 
     {
-        class RootModule extends InjectorModule {
-        }
+        class RootModule extends InjectorModule {}
 
-        class MiddleMan1 extends InjectorModule {
-        }
+        class MiddleMan1 extends InjectorModule {}
 
-        class MiddleMan2 extends InjectorModule {
-        }
+        class MiddleMan2 extends InjectorModule {}
 
-        class ServiceModule extends InjectorModule {
-        }
+        class ServiceModule extends InjectorModule {}
 
         const root = new RootModule([Controller]);
 
@@ -287,9 +262,7 @@ test('exports have access to encapsulated module', () => {
 
         const module2 = new MiddleMan2([], module1, {}, []);
 
-        const module3 = new ServiceModule([
-            Service, ServiceHelper
-        ], module2, {}, [Service]);
+        const module3 = new ServiceModule([Service, ServiceHelper], module2, {}, [Service]);
 
         module1.exports = [module2];
         module2.exports = [module3];
@@ -308,17 +281,12 @@ test('exports have access to encapsulated module', () => {
 });
 
 test('useClass redirects and does not create 2 instances when its already provided', () => {
-    class DefaultStrategy {
-    }
+    class DefaultStrategy {}
 
-    class SpecialisedStrategy {
-    }
+    class SpecialisedStrategy {}
 
     {
-        const root = new InjectorModule([
-            DefaultStrategy,
-            { provide: DefaultStrategy, useClass: SpecialisedStrategy }
-        ]);
+        const root = new InjectorModule([DefaultStrategy, { provide: DefaultStrategy, useClass: SpecialisedStrategy }]);
 
         const injector = new InjectorContext(root);
 
@@ -331,7 +299,7 @@ test('useClass redirects and does not create 2 instances when its already provid
     {
         const root = new InjectorModule([
             SpecialisedStrategy,
-            { provide: DefaultStrategy, useClass: SpecialisedStrategy }
+            { provide: DefaultStrategy, useClass: SpecialisedStrategy },
         ]);
 
         const injector = new InjectorContext(root);
@@ -345,7 +313,7 @@ test('useClass redirects and does not create 2 instances when its already provid
     {
         const root = new InjectorModule([
             SpecialisedStrategy,
-            { provide: DefaultStrategy, useExisting: SpecialisedStrategy }
+            { provide: DefaultStrategy, useExisting: SpecialisedStrategy },
         ]);
 
         const injector = new InjectorContext(root);
@@ -358,8 +326,7 @@ test('useClass redirects and does not create 2 instances when its already provid
 
 test('scope merging', () => {
     class Request {
-        constructor(public id: number) {
-        }
+        constructor(public id: number) {}
     }
 
     const root = new InjectorModule([
@@ -393,22 +360,16 @@ test('scope merging', () => {
 });
 
 test('forRoot', () => {
-    class Router {
-    }
+    class Router {}
 
     class Controller {
-        constructor(public router: Router) {
-        }
+        constructor(public router: Router) {}
     }
 
     {
-        const root = new InjectorModule([
-            Controller,
-        ]);
+        const root = new InjectorModule([Controller]);
 
-        const module1 = new InjectorModule([
-            Router
-        ], root, {}, []).forRoot();
+        const module1 = new InjectorModule([Router], root, {}, []).forRoot();
 
         const injector = new InjectorContext(root);
         const controller = injector.get(Controller);
@@ -420,15 +381,11 @@ test('forRoot', () => {
     }
 
     {
-        const root = new InjectorModule([
-            Controller,
-        ]);
+        const root = new InjectorModule([Controller]);
 
         const module1 = new InjectorModule([], root, {}, []);
 
-        const module2 = new InjectorModule([
-            Router
-        ], module1, {}, []).forRoot();
+        const module2 = new InjectorModule([Router], module1, {}, []).forRoot();
 
         const injector = new InjectorContext(root);
         const controller = injector.get(Controller);
@@ -441,22 +398,16 @@ test('forRoot', () => {
 });
 
 test('disableExports', () => {
-    class Router {
-    }
+    class Router {}
 
     class Controller {
-        constructor(public router?: Router) {
-        }
+        constructor(public router?: Router) {}
     }
 
     {
-        const root = new InjectorModule([
-            Controller,
-        ]);
+        const root = new InjectorModule([Controller]);
 
-        const module1 = new InjectorModule([
-            Router
-        ], root, {}, []).disableExports();
+        const module1 = new InjectorModule([Router], root, {}, []).disableExports();
 
         const injector = new InjectorContext(root);
         const controller = injector.get(Controller);
@@ -469,48 +420,39 @@ test('disableExports', () => {
 });
 
 test('unscoped to scope dependency invalid', () => {
-    class HttpRequest {
-    }
+    class HttpRequest {}
 
     class Controller {
-        constructor(public request: HttpRequest) {
-        }
+        constructor(public request: HttpRequest) {}
     }
 
     {
-        const root = new InjectorModule([
-            Controller, { provide: HttpRequest, scope: 'http' },
-        ]);
+        const root = new InjectorModule([Controller, { provide: HttpRequest, scope: 'http' }]);
 
         const injector = new InjectorContext(root);
 
         const scope = injector.createChildScope('http');
-        expect(() => scope.get(Controller)).toThrow(`Dependency 'request: HttpRequest' of Controller.request can not be injected into no scope, since HttpRequest only exists in scope http`);
+        expect(() => scope.get(Controller)).toThrow(
+            `Dependency 'request: HttpRequest' of Controller.request can not be injected into no scope, since HttpRequest only exists in scope http`,
+        );
     }
 });
 
 test('non-exported dependencies can not be overwritten', () => {
-    class Encapsulated {
-    }
+    class Encapsulated {}
 
     class Service {
-        constructor(public encapsulated: Encapsulated) {
-        }
+        constructor(public encapsulated: Encapsulated) {}
     }
 
     class Controller {
-        constructor(public service: Service) {
-        }
+        constructor(public service: Service) {}
     }
 
     {
-        const root = new InjectorModule([
-            Controller
-        ]);
+        const root = new InjectorModule([Controller]);
 
-        const serviceModule = new InjectorModule([
-            Service, Encapsulated,
-        ], root, {}, [Service]);
+        const serviceModule = new InjectorModule([Service, Encapsulated], root, {}, [Service]);
 
         const injector = new InjectorContext(root);
 
@@ -521,17 +463,12 @@ test('non-exported dependencies can not be overwritten', () => {
 
     {
         class MyService {
-            constructor(public encapsulated: Encapsulated) {
-            }
+            constructor(public encapsulated: Encapsulated) {}
         }
 
-        const root = new InjectorModule([
-            Controller, { provide: Service, useClass: MyService }
-        ]);
+        const root = new InjectorModule([Controller, { provide: Service, useClass: MyService }]);
 
-        const serviceModule = new InjectorModule([
-            Service, Encapsulated,
-        ], root, {}, [Service]);
+        const serviceModule = new InjectorModule([Service, Encapsulated], root, {}, [Service]);
 
         const injector = new InjectorContext(root);
 
@@ -541,12 +478,10 @@ test('non-exported dependencies can not be overwritten', () => {
     }
 
     {
-        class MyEncapsulated {
-        }
+        class MyEncapsulated {}
 
         class MyService {
-            constructor(public encapsulated: Encapsulated) {
-            }
+            constructor(public encapsulated: Encapsulated) {}
         }
 
         const root = new InjectorModule([
@@ -555,9 +490,7 @@ test('non-exported dependencies can not be overwritten', () => {
             { provide: Encapsulated, useClass: MyEncapsulated },
         ]);
 
-        const serviceModule = new InjectorModule([
-            Service, Encapsulated,
-        ], root, {}, [Service]);
+        const serviceModule = new InjectorModule([Service, Encapsulated], root, {}, [Service]);
 
         const injector = new InjectorContext(root);
 
@@ -575,18 +508,14 @@ test('forRoot module keeps reference to config', () => {
     }
 
     class Service {
-        constructor(public listen: Config['listen']) {
-        }
+        constructor(public listen: Config['listen']) {}
     }
 
-    class MyModule extends InjectorModule {
-    }
+    class MyModule extends InjectorModule {}
 
     const root = new InjectorModule([]);
 
-    const module = new MyModule([
-        Service
-    ], root, { listen: 'localhost' }).forRoot().setConfigDefinition(Config);
+    const module = new MyModule([Service], root, { listen: 'localhost' }).forRoot().setConfigDefinition(Config);
 
     const injector = new InjectorContext(root);
 
@@ -731,11 +660,9 @@ test('global setup provider', () => {
 });
 
 test('second forRoot modules overwrites first forRoot providers', () => {
-    class Service {
-    }
+    class Service {}
 
-    class NewService {
-    }
+    class NewService {}
 
     const root = new InjectorModule([]);
 
@@ -750,35 +677,29 @@ test('second forRoot modules overwrites first forRoot providers', () => {
 });
 
 test('set service', () => {
-    class Service {
-    }
+    class Service {}
 
-    const injector = InjectorContext.forProviders([
-        { provide: Service, useValue: undefined },
-    ]);
+    const injector = InjectorContext.forProviders([{ provide: Service, useValue: undefined }]);
 
-    const s = new Service;
+    const s = new Service();
     injector.set(Service, s);
 
     expect(injector.get(Service) === s).toBe(true);
 });
 
 test('set service in scope', () => {
-    class Service {
-    }
+    class Service {}
 
     class Connection {
-        constructor(public service: Service) {
-        }
+        constructor(public service: Service) {}
     }
 
-    class Request {
-    }
+    class Request {}
 
     const injector = InjectorContext.forProviders([
         Service,
         { provide: Request, scope: 'tcp' },
-        { provide: Connection, scope: 'tcp' }
+        { provide: Connection, scope: 'tcp' },
     ]);
 
     const s1 = injector.get(Service);
@@ -807,14 +728,12 @@ test('set service in scope', () => {
 });
 
 test('global service from another module is available in sibling module', () => {
-    class HttpRequest {
-    }
+    class HttpRequest {}
 
     const httpModule = new InjectorModule([{ provide: HttpRequest, scope: 'http' }]);
 
     class Controller {
-        constructor(public request: HttpRequest) {
-        }
+        constructor(public request: HttpRequest) {}
     }
 
     const apiModule = new InjectorModule([{ provide: Controller, scope: 'http' }]);
@@ -837,8 +756,7 @@ test('global service from another module is available in sibling module', () => 
 
 test('string reference manually type', () => {
     class Service {
-        add() {
-        }
+        add() {}
     }
 
     const root = new InjectorModule([{ provide: 'service', useClass: Service }]);
@@ -861,14 +779,10 @@ test('provide() with provider', () => {
     }
 
     class Service {
-        constructor(public redis: Redis) {
-        }
+        constructor(public redis: Redis) {}
     }
 
-    const root = new InjectorModule([
-        Service,
-        provide<Redis>({ useValue: new RedisImplementation })
-    ]);
+    const root = new InjectorModule([Service, provide<Redis>({ useValue: new RedisImplementation() })]);
 
     const injector = new InjectorContext(root);
 
@@ -877,8 +791,7 @@ test('provide() with provider', () => {
 });
 
 test('injectorReference from other module', () => {
-    class Service {
-    }
+    class Service {}
 
     class Registry {
         services: any[] = [];
@@ -905,13 +818,10 @@ test('injectorReference from other module', () => {
 
 test('inject its own module', () => {
     class Service {
-        constructor(public module: ApiModule) {
-        }
+        constructor(public module: ApiModule) {}
     }
 
-    class ApiModule extends InjectorModule {
-
-    }
+    class ApiModule extends InjectorModule {}
 
     {
         const module1 = new ApiModule([Service]);
@@ -946,13 +856,10 @@ test('provider with function as token', () => {
     expect(fn()).toBe('hi');
 });
 
-
 test('instantiatedCount singleton', () => {
-    class Service {
-    }
+    class Service {}
 
-    class Registry {
-    }
+    class Registry {}
 
     const module1 = new InjectorModule([Service]);
     const module2 = new InjectorModule([Registry]).addExport(Registry);
@@ -980,8 +887,7 @@ test('instantiatedCount singleton', () => {
 });
 
 test('instantiatedCount scope', () => {
-    class Request {
-    }
+    class Request {}
 
     const module1 = new InjectorModule([{ provide: Request, scope: 'http' }]).addExport(Request);
 
@@ -1003,43 +909,40 @@ test('instantiatedCount scope', () => {
     }
 });
 
-
 test('configuration work in deeply nested imports with overridden service', () => {
     class BrokerConfig {
         listen!: string;
     }
 
     class BrokerServer {
-        constructor(public listen: BrokerConfig['listen']) {
-        }
+        constructor(public listen: BrokerConfig['listen']) {}
     }
 
-    class BrokerModule extends InjectorModule {
-    }
+    class BrokerModule extends InjectorModule {}
 
     class ApplicationServer {
-        constructor(public broker: BrokerServer) {
-        }
+        constructor(public broker: BrokerServer) {}
     }
 
-    class FrameworkModule extends InjectorModule {
-    }
+    class FrameworkModule extends InjectorModule {}
 
-    const brokerModule = new BrokerModule([BrokerServer], undefined, { listen: '0.0.0.0' }).addExport(BrokerServer).setConfigDefinition(BrokerConfig);
+    const brokerModule = new BrokerModule([BrokerServer], undefined, { listen: '0.0.0.0' })
+        .addExport(BrokerServer)
+        .setConfigDefinition(BrokerConfig);
 
-    const frameworkModule = new FrameworkModule([ApplicationServer]).addImport(brokerModule).addExport(BrokerModule, ApplicationServer);
+    const frameworkModule = new FrameworkModule([ApplicationServer])
+        .addImport(brokerModule)
+        .addExport(BrokerModule, ApplicationServer);
 
     class Broker {
-        constructor(public server: BrokerServer) {
-        }
+        constructor(public server: BrokerServer) {}
     }
 
-    class BrokerMemoryServer extends BrokerServer {
-    }
+    class BrokerMemoryServer extends BrokerServer {}
 
-    const root = new InjectorModule([
-        { provide: BrokerServer, useClass: BrokerMemoryServer }
-    ]).addImport(frameworkModule);
+    const root = new InjectorModule([{ provide: BrokerServer, useClass: BrokerMemoryServer }]).addImport(
+        frameworkModule,
+    );
 
     const injector = new InjectorContext(root);
     const applicationServer = injector.get(ApplicationServer);
@@ -1051,20 +954,18 @@ test('configuration work in deeply nested imports with overridden service', () =
     expect(brokerServer.listen).toBe('0.0.0.0');
 });
 
-
 test('exported scoped can be replaced for another scope', () => {
-    class HttpRequest {
-    }
+    class HttpRequest {}
 
-    class HttpModule extends InjectorModule {
-    }
+    class HttpModule extends InjectorModule {}
 
     const httpModule = new HttpModule([{ provide: HttpRequest, scope: 'http' }]).addExport(HttpRequest);
 
-    class FrameworkModule extends InjectorModule {
-    }
+    class FrameworkModule extends InjectorModule {}
 
-    const frameworkModule = new FrameworkModule([{ provide: HttpRequest, scope: 'rpc' }]).addImport(httpModule).addExport(HttpModule, HttpRequest);
+    const frameworkModule = new FrameworkModule([{ provide: HttpRequest, scope: 'rpc' }])
+        .addImport(httpModule)
+        .addExport(HttpModule, HttpRequest);
 
     const root = new InjectorModule().addImport(frameworkModule);
 
@@ -1087,14 +988,12 @@ test('consume config from imported modules', () => {
     }
 
     class ModuleService {
-        constructor(public host: ModuleConfig['host']) {
-        }
+        constructor(public host: ModuleConfig['host']) {}
     }
 
     const moduleModule = new InjectorModule([ModuleService]).setConfigDefinition(ModuleConfig);
 
-    class OverriddenService extends ModuleService {
-    }
+    class OverriddenService extends ModuleService {}
 
     const root = new InjectorModule([OverriddenService]).addImport(moduleModule);
 
@@ -1115,8 +1014,7 @@ test('injector.get by type', () => {
     }
 
     class Controller {
-        constructor(public logger: LoggerInterface) {
-        }
+        constructor(public logger: LoggerInterface) {}
     }
 
     const root = new InjectorModule([Controller, Logger]);
@@ -1140,17 +1038,18 @@ test('exported token from interface', () => {
     }
 
     class ModuleController {
-        constructor(public logger: LoggerInterface) {
-        }
+        constructor(public logger: LoggerInterface) {}
     }
 
     class Controller {
-        constructor(public logger: LoggerInterface) {
-        }
+        constructor(public logger: LoggerInterface) {}
     }
 
     {
-        const module = new InjectorModule([provide<LoggerInterface>(Logger), ModuleController]).addExport(typeOf<LoggerInterface>(), ModuleController);
+        const module = new InjectorModule([provide<LoggerInterface>(Logger), ModuleController]).addExport(
+            typeOf<LoggerInterface>(),
+            ModuleController,
+        );
         const root = new InjectorModule([Controller]).addImport(module);
 
         const injector = new InjectorContext(root);
@@ -1171,7 +1070,10 @@ test('exported token from interface', () => {
             }
         }
 
-        const module = new InjectorModule([provide<LoggerInterface>(Logger), ModuleController]).addExport(typeOf<LoggerInterface>(), ModuleController);
+        const module = new InjectorModule([provide<LoggerInterface>(Logger), ModuleController]).addExport(
+            typeOf<LoggerInterface>(),
+            ModuleController,
+        );
         const root = new InjectorModule([Controller, provide<LoggerInterface>(OverwrittenLogger)]).addImport(module);
 
         const injector = new InjectorContext(root);
@@ -1186,18 +1088,16 @@ test('exported token from interface', () => {
     }
 });
 
-
 test('2 level deep module keeps its instances encapsulated', () => {
-    class Logger {
-    }
+    class Logger {}
 
-
-    class QualificationRepository {
-    }
+    class QualificationRepository {}
 
     class QualificationService {
-        constructor(public qualificationRepo: QualificationRepository, public logger: Logger) {
-        }
+        constructor(
+            public qualificationRepo: QualificationRepository,
+            public logger: Logger,
+        ) {}
     }
 
     class QualificationModule extends InjectorModule {
@@ -1209,24 +1109,22 @@ test('2 level deep module keeps its instances encapsulated', () => {
     }
 
     class EmergencyService {
-        constructor(public qualificationService: QualificationService) {
-        }
+        constructor(public qualificationService: QualificationService) {}
     }
 
-    class EmergencyModule extends InjectorModule {
-    }
+    class EmergencyModule extends InjectorModule {}
 
-    const emergencyModule = new EmergencyModule([EmergencyService]).addImport(new QualificationModule).addExport(EmergencyService);
+    const emergencyModule = new EmergencyModule([EmergencyService])
+        .addImport(new QualificationModule())
+        .addExport(EmergencyService);
 
-    class AnotherModule extends InjectorModule {
-    }
+    class AnotherModule extends InjectorModule {}
 
     class AnotherService {
-        constructor(public qualificationService: QualificationService) {
-        }
+        constructor(public qualificationService: QualificationService) {}
     }
 
-    const anotherModule = new AnotherModule([AnotherService]).addImport(new QualificationModule);
+    const anotherModule = new AnotherModule([AnotherService]).addImport(new QualificationModule());
 
     /**
      * Module hierarchy is like
@@ -1255,45 +1153,43 @@ test('2 level deep module keeps its instances encapsulated', () => {
 
 test('encapsulated module services cannot be used', () => {
     //encapsulated service
-    class Module1Service {
-    }
+    class Module1Service {}
 
-    class MyModule1 extends InjectorModule {
-    }
+    class MyModule1 extends InjectorModule {}
 
     const myModule1 = new MyModule1([Module1Service]);
 
     class Module2Service {
         //this should not be possible, even if we import MyModule1
-        constructor(public module1: Module1Service) {
-        }
+        constructor(public module1: Module1Service) {}
     }
 
-    class MyModule2 extends InjectorModule {
-    }
+    class MyModule2 extends InjectorModule {}
 
     const myModule2 = new MyModule2([Module2Service]).addImport(myModule1);
 
     const app = new InjectorModule([]).addImport(myModule2);
     const injector = new InjectorContext(app);
-    expect(() => injector.get(Module2Service, myModule2)).toThrow(`Undefined dependency "module1: Module1Service" of Module2Service(?)`);
+    expect(() => injector.get(Module2Service, myModule2)).toThrow(
+        `Undefined dependency "module1: Module1Service" of Module2Service(?)`,
+    );
 });
 
 test('external pseudo class without annotation', () => {
     const Stripe = eval('(function Stripe() {this.isStripe = true;})');
 
     class MyService {
-        constructor(public stripe: typeof Stripe) {
-        }
+        constructor(public stripe: typeof Stripe) {}
     }
 
     const app = new InjectorModule([
         {
-            provide: Stripe, useFactory() {
-                return new Stripe;
-            }
+            provide: Stripe,
+            useFactory() {
+                return new Stripe();
+            },
         },
-        MyService
+        MyService,
     ]);
     const injector = new InjectorContext(app);
 
@@ -1306,17 +1202,17 @@ test('external class without annotation', () => {
     const Stripe = eval('(class Stripe { constructor() {this.isStripe = true}})');
 
     class MyService {
-        constructor(public stripe: typeof Stripe) {
-        }
+        constructor(public stripe: typeof Stripe) {}
     }
 
     const app = new InjectorModule([
         {
-            provide: Stripe, useFactory() {
-                return new Stripe;
-            }
+            provide: Stripe,
+            useFactory() {
+                return new Stripe();
+            },
         },
-        MyService
+        MyService,
     ]);
     const injector = new InjectorContext(app);
 
@@ -1333,22 +1229,23 @@ test('inject via string', () => {
         constructor(
             public service1: Inject<any, typeof symbol1>,
             public service2: Inject<any, typeof symbol2>,
-        ) {
-        }
+        ) {}
     }
 
     const app = new InjectorModule([
         {
-            provide: symbol1, useFactory() {
+            provide: symbol1,
+            useFactory() {
                 return { value: 1 };
-            }
+            },
         },
         {
-            provide: symbol2, useFactory() {
+            provide: symbol2,
+            useFactory() {
                 return { value: 2 };
-            }
+            },
         },
-        MyService
+        MyService,
     ]);
     const injector = new InjectorContext(app);
 
@@ -1356,7 +1253,6 @@ test('inject via string', () => {
     expect(service.service1.value).toBe(1);
     expect(service.service2.value).toBe(2);
 });
-
 
 test('inject via symbols', () => {
     const symbol1 = Symbol();
@@ -1366,22 +1262,23 @@ test('inject via symbols', () => {
         constructor(
             public service1: Inject<any, typeof symbol1>,
             public service2: Inject<any, typeof symbol2>,
-        ) {
-        }
+        ) {}
     }
 
     const app = new InjectorModule([
         {
-            provide: symbol1, useFactory() {
+            provide: symbol1,
+            useFactory() {
                 return { value: 1 };
-            }
+            },
         },
         {
-            provide: symbol2, useFactory() {
+            provide: symbol2,
+            useFactory() {
                 return { value: 2 };
-            }
+            },
         },
-        MyService
+        MyService,
     ]);
     const injector = new InjectorContext(app);
 
@@ -1391,16 +1288,13 @@ test('inject via symbols', () => {
 });
 
 test('class inheritance', () => {
-    class A {
-    }
+    class A {}
 
     class B {
-        constructor(public a: A) {
-        }
+        constructor(public a: A) {}
     }
 
-    class C extends B {
-    }
+    class C extends B {}
 
     const app = new InjectorModule([A, C]);
     const injector = new InjectorContext(app);
@@ -1419,8 +1313,7 @@ test('config from a module is available in child modules', () => {
     const rootModule = new InjectorModule().setConfigDefinition(Config);
 
     class Service {
-        constructor(public config: Config) {
-        }
+        constructor(public config: Config) {}
     }
 
     const childModule = new InjectorModule([Service]).setParent(rootModule);
@@ -1435,8 +1328,7 @@ test('type provider', () => {
     const uniqueType: Type = { kind: ReflectionKind.literal, literal: 'uniqueType' };
 
     class Service {
-        constructor(public value: any & InjectMeta<InlineRuntimeType<typeof uniqueType>>) {
-        }
+        constructor(public value: any & InjectMeta<InlineRuntimeType<typeof uniqueType>>) {}
     }
 
     const rootModule = new InjectorModule().addProvider(Service, { provide: uniqueType, useValue: '123' });
@@ -1449,11 +1341,12 @@ test('exported type provider', () => {
     const uniqueType: Type = { kind: ReflectionKind.literal, literal: 'uniqueType' };
 
     class Service {
-        constructor(public value: any & InjectMeta<InlineRuntimeType<typeof uniqueType>>) {
-        }
+        constructor(public value: any & InjectMeta<InlineRuntimeType<typeof uniqueType>>) {}
     }
 
-    const childModule = new InjectorModule([]).addProvider({ provide: uniqueType, useValue: '123' }).addExport(uniqueType);
+    const childModule = new InjectorModule([])
+        .addProvider({ provide: uniqueType, useValue: '123' })
+        .addExport(uniqueType);
     const rootModule = new InjectorModule().addProvider(Service).addImport(childModule);
 
     const injector = new InjectorContext(rootModule);
@@ -1471,8 +1364,7 @@ test('split configuration into multiple types', () => {
     }
 
     class Service {
-        constructor(public dbConfig: DatabaseConfig) {
-        }
+        constructor(public dbConfig: DatabaseConfig) {}
     }
 
     const rootModule = new InjectorModule([Service]).setConfigDefinition(Config);
@@ -1483,8 +1375,7 @@ test('split configuration into multiple types', () => {
 });
 
 test('empty interface provider', () => {
-    interface Test {
-    }
+    interface Test {}
 
     const TEST = {};
 
@@ -1496,8 +1387,7 @@ test('empty interface provider', () => {
 });
 
 test('export provider', () => {
-    interface Test {
-    }
+    interface Test {}
 
     const TEST = {};
 
@@ -1516,12 +1406,11 @@ test('deep config index 2 level via class', () => {
     }
 
     class Config {
-        db: DB = new DB;
+        db: DB = new DB();
     }
 
     class Database {
-        constructor(public url: Config['db']['url']) {
-        }
+        constructor(public url: Config['db']['url']) {}
     }
 
     const rootModule = new InjectorModule([Database]).setConfigDefinition(Config);
@@ -1536,8 +1425,7 @@ test('deep config index 2 level object literal', () => {
     }
 
     class Database {
-        constructor(public url: Config['db']['url']) {
-        }
+        constructor(public url: Config['db']['url']) {}
     }
 
     const rootModule = new InjectorModule([Database]).setConfigDefinition(Config);
@@ -1553,12 +1441,11 @@ test('deep config index direct sub class access', () => {
     }
 
     class Config {
-        db: DB = new DB;
+        db: DB = new DB();
     }
 
     class Database {
-        constructor(public url: DB['url']) {
-        }
+        constructor(public url: DB['url']) {}
     }
 
     const rootModule = new InjectorModule([Database]).setConfigDefinition(Config);

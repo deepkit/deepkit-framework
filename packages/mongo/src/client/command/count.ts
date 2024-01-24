@@ -7,9 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { ReflectionClass, UUID } from '@deepkit/type';
 
 import { BaseResponse, Command } from './command.js';
-import { ReflectionClass, UUID } from '@deepkit/type';
 
 interface CountResponse extends BaseResponse {
     n: number;

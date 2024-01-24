@@ -7,21 +7,21 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import cluster from 'cluster';
 
 import { asyncOperation, getClassName, urlJoin } from '@deepkit/core';
-import { RpcClient, RpcKernel } from '@deepkit/rpc';
-import cluster from 'cluster';
+import { BaseEvent, EventDispatcher, EventToken, eventDispatcher } from '@deepkit/event';
 import { HttpRouter } from '@deepkit/http';
-import { BaseEvent, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { InjectorContext } from '@deepkit/injector';
-import { FrameworkConfig } from './module.config.js';
 import { LoggerInterface } from '@deepkit/logger';
-import { createRpcConnection, WebWorker, WebWorkerFactory } from './worker.js';
-import { RpcControllers } from './rpc.js';
+import { RpcClient, RpcKernel } from '@deepkit/rpc';
 import '@deepkit/type';
 
-export class ServerBootstrapEvent extends BaseEvent {
-}
+import { FrameworkConfig } from './module.config.js';
+import { RpcControllers } from './rpc.js';
+import { WebWorker, WebWorkerFactory, createRpcConnection } from './worker.js';
+
+export class ServerBootstrapEvent extends BaseEvent {}
 
 /**
  * Called only once for application server bootstrap (for main process and workers)
@@ -57,9 +57,7 @@ export const onServerWorkerBootstrap = new EventToken('server.worker.bootstrap',
  */
 export const onServerWorkerBootstrapDone = new EventToken('server.worker.bootstrapDone', ServerBootstrapEvent);
 
-
-export class ServerShutdownEvent extends BaseEvent {
-}
+export class ServerShutdownEvent extends BaseEvent {}
 
 /**
  * Called when application server shuts down (in master process and each worker).
@@ -76,10 +74,27 @@ export const onServerMainShutdown = new EventToken('server.main.shutdown', Serve
  */
 export const onServerWorkerShutdown = new EventToken('server.worker.shutdown', ServerBootstrapEvent);
 
-type ApplicationServerConfig = Pick<FrameworkConfig, 'server' | 'port' | 'host' | 'httpsPort' |
-    'ssl' | 'sslKey' | 'sslCertificate' | 'sslCa' | 'sslCrl' |
-    'varPath' | 'selfSigned' | 'keepAliveTimeout' | 'workers' | 'publicDir' |
-    'debug' | 'debugUrl' | 'gracefulShutdownTimeout' | 'compression'>;
+type ApplicationServerConfig = Pick<
+    FrameworkConfig,
+    | 'server'
+    | 'port'
+    | 'host'
+    | 'httpsPort'
+    | 'ssl'
+    | 'sslKey'
+    | 'sslCertificate'
+    | 'sslCa'
+    | 'sslCrl'
+    | 'varPath'
+    | 'selfSigned'
+    | 'keepAliveTimeout'
+    | 'workers'
+    | 'publicDir'
+    | 'debug'
+    | 'debugUrl'
+    | 'gracefulShutdownTimeout'
+    | 'compression'
+>;
 
 function needsHttpWorker(config: { publicDir?: string }, rpcControllers: RpcControllers, router: HttpRouter) {
     return Boolean(config.publicDir || rpcControllers.controllers.size || router.getRoutes().length);
@@ -91,13 +106,16 @@ export class ApplicationServerListener {
         protected rpcControllers: RpcControllers,
         protected router: HttpRouter,
         protected config: ApplicationServerConfig,
-    ) {
-    }
+    ) {}
 
     @eventDispatcher.listen(onServerMainBootstrapDone)
     onBootstrapDone() {
         for (const [name, controller] of this.rpcControllers.controllers.entries()) {
-            this.logger.log('RPC Controller', `<green>${getClassName(controller.controller)}</green>`, `<grey>${name}</grey>`);
+            this.logger.log(
+                'RPC Controller',
+                `<green>${getClassName(controller.controller)}</green>`,
+                `<grey>${name}</grey>`,
+            );
         }
 
         const routes = this.router.getRoutes();
@@ -112,7 +130,9 @@ export class ApplicationServerListener {
                     lastController = route.action.controller;
                     this.logger.log(`HTTP Controller <green>${getClassName(lastController)}</green>`);
                 }
-                this.logger.log(`  <green>${route.httpMethods.length === 0 ? 'ANY' : route.httpMethods.join(',')}</green> <yellow>${route.getFullPath()}</yellow>`);
+                this.logger.log(
+                    `  <green>${route.httpMethods.length === 0 ? 'ANY' : route.httpMethods.join(',')}</green> <yellow>${route.getFullPath()}</yellow>`,
+                );
             }
         }
 
@@ -131,11 +151,12 @@ export class ApplicationServerListener {
                 this.logger.log(`HTTP listening at <yellow>${url}</yellow>`);
 
                 if (this.config.debug) {
-                    this.logger.log(`Debugger enabled at <yellow>${url}${urlJoin('/', this.config.debugUrl, '/')}</yellow>`);
+                    this.logger.log(
+                        `Debugger enabled at <yellow>${url}${urlJoin('/', this.config.debugUrl, '/')}</yellow>`,
+                    );
                 }
             }
         }
-
     }
 }
 
@@ -160,7 +181,7 @@ export class ApplicationServer {
         protected router: HttpRouter,
     ) {
         this.needsHttpWorker = needsHttpWorker(config, rpcControllers, router);
-        this.onStop = new Promise((resolve) => this.stopResolver = resolve);
+        this.onStop = new Promise(resolve => (this.stopResolver = resolve));
     }
 
     getHttpWorker(): WebWorker {
@@ -183,7 +204,7 @@ export class ApplicationServer {
     protected stopWorkers(): Promise<void> {
         if (this.config.workers === 0) return Promise.resolve();
 
-        return asyncOperation((resolve) => {
+        return asyncOperation(resolve => {
             cluster.on('exit', async () => {
                 if (this.onlineWorkers === 0) {
                     this.logger.debug('All workers offline. Shutting down ...');
@@ -222,13 +243,13 @@ export class ApplicationServer {
                     cluster.fork();
                 }
 
-                await asyncOperation((resolve) => {
+                await asyncOperation(resolve => {
                     cluster.on('online', () => {
                         this.onlineWorkers++;
                         if (this.onlineWorkers === this.config.workers) resolve(undefined);
                     });
 
-                    cluster.on('exit', (w) => {
+                    cluster.on('exit', w => {
                         this.onlineWorkers--;
                         if (this.stopping) return;
                         this.logger.warn(`Worker ${w.id} died. Restarted`);
@@ -245,7 +266,9 @@ export class ApplicationServer {
                             return;
                         }
                         if (this.stopping) {
-                            this.logger.warn(`Received ${signal}. Stopping already in process. Try again to force stop.`);
+                            this.logger.warn(
+                                `Received ${signal}. Stopping already in process. Try again to force stop.`,
+                            );
                             return;
                         }
                         this.stopping = true;
@@ -347,7 +370,7 @@ export class ApplicationServer {
         return new RpcClient({
             connect(connection) {
                 const kernelConnection = createRpcConnection(context, rpcKernel, {
-                    write: (buffer) => connection.onData(buffer),
+                    write: buffer => connection.onData(buffer),
                     close: () => connection.onClose(),
                 });
 
@@ -359,13 +382,11 @@ export class ApplicationServer {
                         queueMicrotask(() => {
                             kernelConnection.feed(message);
                         });
-                    }
+                    },
                 });
-            }
+            },
         });
     }
 }
 
-export class InMemoryApplicationServer extends ApplicationServer {
-
-}
+export class InMemoryApplicationServer extends ApplicationServer {}

@@ -11,7 +11,7 @@ export function escapeHtml(html: string | any): string {
 }
 
 export function escapeAttribute(attribute: string | any): string {
-    return 'string' === typeof attribute ? attribute.replace(qRegex, '\"') : escapeAttribute(String(attribute));
+    return 'string' === typeof attribute ? attribute.replace(qRegex, '"') : escapeAttribute(String(attribute));
 }
 
 /**

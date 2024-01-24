@@ -1,51 +1,51 @@
 :host {
-    display: block;
-    height: 100%;
+  display: block;
+  height: 100%;
 
-    &:focus {
-        outline: 0;
-    }
+  &:focus {
+    outline: 0;
+  }
 }
 
 :host.disabled > * {
-    opacity: 0.6;
+  opacity: 0.6;
 }
 
 :host ::ng-deep dui-list-item.selected {
-    background-color: var(--dui-selection-unfocused);
+  background-color: var(--dui-selection-unfocused);
 }
 
 :host:focus.focusable ::ng-deep dui-list-item.selected {
-    background-color: var(--dui-selection);
-    color: white;
-    --text-light: #d1d1d1;
+  background-color: var(--dui-selection);
+  color: white;
+  --text-light: #d1d1d1;
 }
 
 :host-context(.dui-theme-light).white {
-    background-color: white;
-    border: 1px solid #c5c5c5;
+  background-color: white;
+  border: 1px solid #c5c5c5;
 
-    &:not(:focus) ::ng-deep dui-list-item.selected {
-        background-color: #dcdcdc;
-    }
+  &:not(:focus) ::ng-deep dui-list-item.selected {
+    background-color: #dcdcdc;
+  }
 }
 
 :host-context(.dui-theme-dark).white {
-    background-color: #1e1e1e;
-    border: 1px solid #565656;
+  background-color: #1e1e1e;
+  border: 1px solid #565656;
 }
 
 :host.delimiter-line {
-    ::ng-deep dui-list-item {
-        border-bottom: 1px solid var(--line-color-light);
+  ::ng-deep dui-list-item {
+    border-bottom: 1px solid var(--line-color-light);
 
-        &.selected {
-            border-bottom: 1px solid transparent;
-        }
+    &.selected {
+      border-bottom: 1px solid transparent;
     }
+  }
 
-    &:focus ::ng-deep dui-list-item.selected {
-        margin-top: -1px;
-        border-top: 1px solid transparent;
-    }
+  &:focus ::ng-deep dui-list-item.selected {
+    margin-top: -1px;
+    border-top: 1px solid transparent;
+  }
 }

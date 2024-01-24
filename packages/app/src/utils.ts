@@ -1,6 +1,7 @@
-import { getCurrentFileName } from '@deepkit/core';
 import { existsSync } from 'fs';
 import { dirname, join, resolve } from 'path';
+
+import { getCurrentFileName } from '@deepkit/core';
 
 export function findParentPath(path: string, origin: string = dirname(getCurrentFileName())): string | undefined {
     let current = origin;

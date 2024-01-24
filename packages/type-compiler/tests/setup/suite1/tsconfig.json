@@ -4,10 +4,8 @@
     "moduleResolution": "node",
     "target": "ES2020",
     "module": "CommonJS",
-    "esModuleInterop": true
+    "esModuleInterop": true,
   },
   "reflection": true,
-  "files": [
-    "app.ts"
-  ]
+  "files": ["app.ts"],
 }

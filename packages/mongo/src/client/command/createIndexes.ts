@@ -7,17 +7,17 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BaseResponse, Command } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
+
 import { MongoError } from '../error.js';
+import { BaseResponse, Command } from './command.js';
 
 export interface CreateIndex {
-    key: { [name: string]: 1 },
-    name: string,
-    unique: boolean,
-    sparse: boolean,
-    expireAfterSeconds?: number
+    key: { [name: string]: 1 };
+    name: string;
+    unique: boolean;
+    sparse: boolean;
+    expireAfterSeconds?: number;
 }
 
 interface RequestSchema {

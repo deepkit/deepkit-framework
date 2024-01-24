@@ -7,9 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BehaviorSubject } from 'rxjs';
 import { Component, Input, OnInit } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
+
 import { DialogComponent } from './dialog.component';
 
 class State {
@@ -19,7 +19,7 @@ class State {
 }
 
 export class ProgressDialogState extends BehaviorSubject<State | undefined> {
-    protected readonly state = new State;
+    protected readonly state = new State();
 
     public readonly closer = new BehaviorSubject<boolean>(false);
 
@@ -38,7 +38,7 @@ export class ProgressDialogState extends BehaviorSubject<State | undefined> {
 
     public async waitForClose(): Promise<boolean> {
         return new Promise<boolean>((resolve, reject) => {
-            this.closer.subscribe((next) => {
+            this.closer.subscribe(next => {
                 if (next) {
                     resolve(next);
                 }
@@ -76,12 +76,10 @@ export class ProgressDialogState extends BehaviorSubject<State | undefined> {
 
 @Component({
     template: `
-        <div *ngIf="state$|async as state">
-            <h3>{{state.title}}</h3>
+        <div *ngIf="state$ | async as state">
+            <h3>{{ state.title }}</h3>
             <div>
-                <div style="text-align: right; padding: 2px 0;">
-                    {{state.step}} / {{state.steps}}
-                </div>
+                <div style="text-align: right; padding: 2px 0;">{{ state.step }} / {{ state.steps }}</div>
                 <!--                <mat-progress-bar mode="determinate" [value]="state.step/state.steps * 100"></mat-progress-bar>-->
             </div>
         </div>
@@ -89,16 +87,15 @@ export class ProgressDialogState extends BehaviorSubject<State | undefined> {
         <dui-dialog-actions>
             <button mat-button (click)="onCancelClick()">Cancel</button>
         </dui-dialog-actions>
-    `
+    `,
 })
 export class DuiDialogProgress implements OnInit {
     @Input() public state$!: ProgressDialogState;
 
-    constructor(protected dialog: DialogComponent) {
-    }
+    constructor(protected dialog: DialogComponent) {}
 
     ngOnInit(): void {
-        this.state$.closer.subscribe((v) => {
+        this.state$.closer.subscribe(v => {
             if (v) {
                 this.dialog.close(v);
             }

@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import {
     AfterViewInit,
     ApplicationRef,
@@ -25,14 +24,15 @@ import {
     OnInit,
     Optional,
     Output,
-    SkipSelf
+    SkipSelf,
 } from '@angular/core';
-import { WindowComponent } from '../window/window.component';
-import { WindowState } from '../window/window-state';
-import { FormComponent } from '../form/form.component';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { ActivatedRoute, Router, UrlTree } from '@angular/router';
+
+import { ValueAccessorBase, ngValueAccessor } from '../../core/form';
 import { isMacOs, isRouteActive } from '../../core/utils';
+import { FormComponent } from '../form/form.component';
+import { WindowState } from '../window/window-state';
+import { WindowComponent } from '../window/window.component';
 
 /**
  * hotkey has format of "ctrl+shift+alt+key", e.g "ctrl+s" or "shift+o"
@@ -70,7 +70,7 @@ function isHotKeyActive(hotkey: HotKey, event: KeyboardEvent) {
                 match = false;
                 break;
             }
-            if (key === 'meta' && (!event.ctrlKey && !event.metaKey)) {
+            if (key === 'meta' && !event.ctrlKey && !event.metaKey) {
                 match = false;
                 break;
             }
@@ -93,29 +93,30 @@ function isHotKeyActive(hotkey: HotKey, event: KeyboardEvent) {
     return false;
 }
 
-
 @Component({
     selector: 'dui-button-hotkey',
-    styles: [`
-        :host {
-            display: inline-flex;
-            flex-direction: row;
-        }
+    styles: [
+        `
+            :host {
+                display: inline-flex;
+                flex-direction: row;
+            }
 
-        span {
-            text-transform: uppercase;
-            color: var(--text-grey);
-            margin-left: 3px;
-            font-size: 11px;
-        }
-    `],
+            span {
+                text-transform: uppercase;
+                color: var(--text-grey);
+                margin-left: 3px;
+                font-size: 11px;
+            }
+        `,
+    ],
     template: `
-        <span *ngIf="metaKey">{{isMac ? '⌘' : 'WIN'}}</span>
-        <span *ngIf="ctrlKey">{{isMac ? '⌃' : 'CTRL'}}</span>
-        <span *ngIf="altKey">{{isMac ? '⌥' : 'ALT'}}</span>
+        <span *ngIf="metaKey">{{ isMac ? '⌘' : 'WIN' }}</span>
+        <span *ngIf="ctrlKey">{{ isMac ? '⌃' : 'CTRL' }}</span>
+        <span *ngIf="altKey">{{ isMac ? '⌥' : 'ALT' }}</span>
         <span *ngIf="shiftKey">⇧</span>
-        <span *ngIf="key">{{key}}</span>
-    `
+        <span *ngIf="key">{{ key }}</span>
+    `,
 })
 export class ButtonHotkeyComponent implements OnChanges, OnInit {
     @Input() hotkey?: HotKey;
@@ -167,7 +168,11 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
         <ng-content></ng-content>
         <dui-icon *ngIf="icon && iconRight !== false" [color]="iconColor" [name]="icon" [size]="iconSize"></dui-icon>
         <div *ngIf="showHotkey" class="show-hotkey" [style.width.px]="hotKeySize(showHotkey) * 6"></div>
-        <dui-button-hotkey *ngIf="showHotkey" style="position: absolute; right: 6px; top: 0;" [hotkey]="showHotkey"></dui-button-hotkey>
+        <dui-button-hotkey
+            *ngIf="showHotkey"
+            style="position: absolute; right: 6px; top: 0;"
+            [hotkey]="showHotkey"
+        ></dui-button-hotkey>
     `,
     host: {
         '[attr.tabindex]': '1',
@@ -321,7 +326,7 @@ export class ButtonComponent implements OnInit, AfterViewInit {
 }
 
 @Directive({
-    selector: '[hotkey]'
+    selector: '[hotkey]',
 })
 export class HotkeyDirective {
     @Input() hotkey!: HotKey;
@@ -333,8 +338,7 @@ export class HotkeyDirective {
         private elementRef: ElementRef,
         private app: ApplicationRef,
         @Optional() private button?: ButtonComponent,
-    ) {
-    }
+    ) {}
 
     @HostListener('document:keydown', ['$event'])
     onKeyDown(event: KeyboardEvent) {
@@ -398,10 +402,10 @@ export class HotkeyDirective {
     selector: 'dui-button-group',
     template: '<ng-content></ng-content>',
     host: {
-        '[class.float-right]': 'float===\'right\'',
-        '(transitionend)': 'transitionEnded()'
+        '[class.float-right]': "float==='right'",
+        '(transitionend)': 'transitionEnded()',
     },
-    styleUrls: ['./button-group.component.scss']
+    styleUrls: ['./button-group.component.scss'],
 })
 export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
     /**
@@ -426,8 +430,7 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
         @SkipSelf() protected cd: ChangeDetectorRef,
         @Optional() private windowState?: WindowState,
         @Optional() private windowComponent?: WindowComponent,
-    ) {
-    }
+    ) {}
 
     public activateOneTimeAnimation() {
         (this.element.nativeElement as HTMLElement).classList.add('with-animation');
@@ -437,8 +440,7 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
         this.updatePaddingLeft();
     }
 
-    ngOnDestroy(): void {
-    }
+    ngOnDestroy(): void {}
 
     transitionEnded() {
         (this.element.nativeElement as HTMLElement).classList.remove('with-animation');
@@ -455,7 +457,11 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
         if (this.float === 'sidebar' && this.windowComponent) {
             if (this.windowComponent.content) {
                 if (this.windowComponent.content!.isSidebarVisible()) {
-                    const newLeft = Math.max(0, this.windowComponent.content!.getSidebarWidth() - this.element.nativeElement.offsetLeft) + 'px';
+                    const newLeft =
+                        Math.max(
+                            0,
+                            this.windowComponent.content!.getSidebarWidth() - this.element.nativeElement.offsetLeft,
+                        ) + 'px';
                     if (this.element.nativeElement.style.paddingLeft == newLeft) {
                         //no transition change, doesn't trigger transitionEnd
                         (this.element.nativeElement as HTMLElement).classList.remove('with-animation');
@@ -470,12 +476,9 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
     }
 }
 
-
 @Component({
     selector: 'dui-button-groups',
-    template: `
-        <ng-content></ng-content>
-    `,
+    template: ` <ng-content></ng-content> `,
     host: {
         '[class.align-left]': `align === 'left'`,
         '[class.align-center]': `align === 'center'`,
@@ -489,7 +492,7 @@ export class ButtonGroupsComponent {
 
 @Directive({
     selector: '[duiFileChooser]',
-    providers: [ngValueAccessor(FileChooserDirective)]
+    providers: [ngValueAccessor(FileChooserDirective)],
 })
 export class FileChooserDirective extends ValueAccessorBase<any> implements OnDestroy, OnChanges {
     @Input() duiFileMultiple?: boolean | '' = false;
@@ -516,12 +519,18 @@ export class FileChooserDirective extends ValueAccessorBase<any> implements OnDe
                 if (this.duiFileMultiple !== false) {
                     const paths: string[] = [];
                     for (let i = 0; i < files.length; i++) {
-                        const file = files.item(i) as any as { path: string, name: string };
+                        const file = files.item(i) as any as {
+                            path: string;
+                            name: string;
+                        };
                         paths.push(file.path);
                     }
                     this.innerValue = paths;
                 } else {
-                    const file = files.item(0) as any as { path: string, name: string };
+                    const file = files.item(0) as any as {
+                        path: string;
+                        name: string;
+                    };
                     this.innerValue = file.path;
                 }
                 this.duiFileChooserChange.emit(this.innerValue);
@@ -530,8 +539,7 @@ export class FileChooserDirective extends ValueAccessorBase<any> implements OnDe
         });
     }
 
-    ngOnDestroy() {
-    }
+    ngOnDestroy() {}
 
     ngOnChanges(): void {
         (this.input as any).webkitdirectory = this.duiFileDirectory !== false;
@@ -561,7 +569,7 @@ function readFile(file: File): Promise<Uint8Array | undefined> {
                 }
             }
         };
-        reader.onerror = (error) => {
+        reader.onerror = error => {
             console.log('Error: ', error);
             reject();
         };
@@ -572,7 +580,7 @@ function readFile(file: File): Promise<Uint8Array | undefined> {
 
 @Directive({
     selector: '[duiFilePicker]',
-    providers: [ngValueAccessor(FileChooserDirective)]
+    providers: [ngValueAccessor(FileChooserDirective)],
 })
 export class FilePickerDirective extends ValueAccessorBase<any> implements OnDestroy, AfterViewInit {
     @Input() duiFileMultiple?: boolean | '' = false;
@@ -611,7 +619,10 @@ export class FilePickerDirective extends ValueAccessorBase<any> implements OnDes
                 } else {
                     const file = files.item(0);
                     if (file) {
-                        this.innerValue = { data: await readFile(file), name: file.name };
+                        this.innerValue = {
+                            data: await readFile(file),
+                            name: file.name,
+                        };
                     }
                 }
                 this.duiFilePickerChange.emit(this.innerValue);
@@ -620,8 +631,7 @@ export class FilePickerDirective extends ValueAccessorBase<any> implements OnDes
         });
     }
 
-    ngOnDestroy() {
-    }
+    ngOnDestroy() {}
 
     ngAfterViewInit() {
         if (this.duiFileAutoOpen) this.onClick();
@@ -639,7 +649,7 @@ export class FilePickerDirective extends ValueAccessorBase<any> implements OnDes
     host: {
         '[class.file-drop-hover]': 'i > 0',
     },
-    providers: [ngValueAccessor(FileChooserDirective)]
+    providers: [ngValueAccessor(FileChooserDirective)],
 })
 export class FileDropDirective extends ValueAccessorBase<any> implements OnDestroy {
     @Input() duiFileDropMultiple?: boolean | '' = false;
@@ -726,6 +736,5 @@ export class FileDropDirective extends ValueAccessorBase<any> implements OnDestr
         this.cdParent.detectChanges();
     }
 
-    ngOnDestroy() {
-    }
+    ngOnDestroy() {}
 }

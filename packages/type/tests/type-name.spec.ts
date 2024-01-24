@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
+
 import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
-import { assertType, ReflectionKind } from '../src/reflection/type.js';
+import { ReflectionKind, assertType } from '../src/reflection/type.js';
 
 test('keep type name', () => {
     type T<a> = a;
@@ -94,8 +95,7 @@ test('keep last type name', () => {
 });
 
 test('class emit typeName', () => {
-    class Entity {
-    }
+    class Entity {}
 
     class Entity2 {
         string!: number;
@@ -104,9 +104,7 @@ test('class emit typeName', () => {
     /**
      * @description my Entity 3
      */
-    class Entity3 {
-
-    }
+    class Entity3 {}
 
     const type1 = typeOf<Entity>();
     const type2 = typeOf<Entity2>();

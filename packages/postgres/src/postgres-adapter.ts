@@ -7,23 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import type { Pool, PoolClient, PoolConfig } from 'pg';
+import pg from 'pg';
 
-import {
-    asAliasName,
-    DefaultPlatform,
-    prepareBatchUpdate,
-    splitDotPath,
-    SqlBuilder,
-    SQLConnection,
-    SQLConnectionPool,
-    SQLDatabaseAdapter,
-    SQLDatabaseQuery,
-    SQLDatabaseQueryFactory,
-    SQLPersistence,
-    SQLQueryModel,
-    SQLQueryResolver,
-    SQLStatement
-} from '@deepkit/sql';
+import { AbstractClassType, ClassType, asyncOperation, empty } from '@deepkit/core';
 import {
     DatabaseLogger,
     DatabasePersistenceChangeSet,
@@ -32,15 +19,38 @@ import {
     DeleteResult,
     OrmEntity,
     PatchResult,
+    UniqueConstraintFailure,
     primaryKeyObjectConverter,
-    UniqueConstraintFailure
 } from '@deepkit/orm';
-import { PostgresPlatform } from './postgres-platform.js';
-import type { Pool, PoolClient, PoolConfig } from 'pg';
-import pg from 'pg';
-import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';
+import {
+    DefaultPlatform,
+    SQLConnection,
+    SQLConnectionPool,
+    SQLDatabaseAdapter,
+    SQLDatabaseQuery,
+    SQLDatabaseQueryFactory,
+    SQLPersistence,
+    SQLQueryModel,
+    SQLQueryResolver,
+    SQLStatement,
+    SqlBuilder,
+    asAliasName,
+    prepareBatchUpdate,
+    splitDotPath,
+} from '@deepkit/sql';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
-import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, ReflectionKind, ReflectionProperty, resolvePath } from '@deepkit/type';
+import {
+    Changes,
+    ReceiveType,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    getPatchSerializeFunction,
+    getSerializeFunction,
+    resolvePath,
+} from '@deepkit/type';
+
+import { PostgresPlatform } from './postgres-platform.js';
 
 function handleError(error: Error | string): void {
     const message = 'string' === typeof error ? error : error.message;
@@ -53,7 +63,12 @@ function handleError(error: Error | string): void {
 export class PostgresStatement extends SQLStatement {
     protected released = false;
 
-    constructor(protected logger: DatabaseLogger, protected sql: string, protected client: PoolClient, protected stopwatch?: Stopwatch) {
+    constructor(
+        protected logger: DatabaseLogger,
+        protected sql: string,
+        protected client: PoolClient,
+        protected stopwatch?: Stopwatch,
+    ) {
         super();
     }
 
@@ -97,8 +112,7 @@ export class PostgresStatement extends SQLStatement {
         }
     }
 
-    release() {
-    }
+    release() {}
 }
 
 export class PostgresConnection extends SQLConnection {
@@ -200,7 +214,11 @@ export class PostgresConnectionPool extends SQLConnectionPool {
         super();
     }
 
-    async getConnection(logger?: DatabaseLogger, transaction?: PostgresDatabaseTransaction, stopwatch?: Stopwatch): Promise<PostgresConnection> {
+    async getConnection(
+        logger?: DatabaseLogger,
+        transaction?: PostgresDatabaseTransaction,
+        stopwatch?: Stopwatch,
+    ): Promise<PostgresConnection> {
         //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
         //and only release the connection when the transaction is commit/rollback is executed.
 
@@ -242,11 +260,18 @@ function typeSafeDefaultValue(property: ReflectionProperty): any {
 }
 
 export class PostgresPersistence extends SQLPersistence {
-    constructor(protected platform: DefaultPlatform, public connectionPool: PostgresConnectionPool, session: DatabaseSession<any>) {
+    constructor(
+        protected platform: DefaultPlatform,
+        public connectionPool: PostgresConnectionPool,
+        session: DatabaseSession<any>,
+    ) {
         super(platform, connectionPool, session);
     }
 
-    async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+    async batchUpdate<T extends OrmEntity>(
+        classSchema: ReflectionClass<T>,
+        changeSets: DatabasePersistenceChangeSet<T>[],
+    ): Promise<void> {
         const prepared = prepareBatchUpdate(this.platform, classSchema, changeSets);
         if (!prepared) return;
 
@@ -265,15 +290,24 @@ export class PostgresPersistence extends SQLPersistence {
         for (let i = 0; i < changeSets.length; i++) {
             params.push(prepared.primaryKeys[i]);
             let pkValue = placeholderStrategy.getPlaceholder() + this.platform.typeCast(classSchema, prepared.pkName);
-            valuesValues.push('(' + pkValue + ',' + valuesNames.map(name => {
-                params.push(prepared.values[name][i]);
-                return placeholderStrategy.getPlaceholder() + this.platform.typeCast(classSchema, name);
-            }).join(',') + ')');
+            valuesValues.push(
+                '(' +
+                    pkValue +
+                    ',' +
+                    valuesNames
+                        .map(name => {
+                            params.push(prepared.values[name][i]);
+                            return placeholderStrategy.getPlaceholder() + this.platform.typeCast(classSchema, name);
+                        })
+                        .join(',') +
+                    ')',
+            );
         }
 
         for (let i = 0; i < changeSets.length; i++) {
             params.push(prepared.primaryKeys[i]);
-            let valuesSetValueSql = placeholderStrategy.getPlaceholder() + this.platform.typeCast(classSchema, prepared.pkName);
+            let valuesSetValueSql =
+                placeholderStrategy.getPlaceholder() + this.platform.typeCast(classSchema, prepared.pkName);
             for (const fieldName of prepared.changedFields) {
                 valuesSetValueSql += ', ' + prepared.valuesSet[fieldName][i];
             }
@@ -372,21 +406,26 @@ export class PostgresPersistence extends SQLPersistence {
     protected getPlaceholderSymbol() {
         return '$' + this.placeholderPosition++;
     }
-
 }
 
 export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T> {
-
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         const primaryKey = this.classSchema.getPrimary();
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
-        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(
+            this.classSchema,
+            this.platform.serializer.deserializeRegistry,
+        );
 
         const sqlBuilder = new SqlBuilder(this.platform);
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const select = sqlBuilder.select(this.classSchema, model, { select: [`${tableName}.${pkField}`] });
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(
+            this.session.logger,
+            this.session.assignedTransaction,
+            this.session.stopwatch,
+        );
         try {
             const sql = `
                 WITH _ AS (${select.sql})
@@ -411,50 +450,75 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
         const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimary();
-        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(
+            this.classSchema,
+            this.platform.serializer.deserializeRegistry,
+        );
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
-        const patchSerialize = getPatchSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
+        const patchSerialize = getPatchSerializeFunction(
+            this.classSchema.type,
+            this.platform.serializer.serializeRegistry,
+        );
         const $set = changes.$set ? patchSerialize(changes.$set, undefined) : undefined;
         const set: string[] = [];
 
-        if ($set) for (const i in $set) {
-            if (!$set.hasOwnProperty(i)) continue;
-            if ($set[i] === undefined || $set[i] === null) {
-                set.push(`${this.platform.quoteIdentifier(i)} = NULL`);
-            } else {
-                fieldsSet[i] = 1;
+        if ($set)
+            for (const i in $set) {
+                if (!$set.hasOwnProperty(i)) continue;
+                if ($set[i] === undefined || $set[i] === null) {
+                    set.push(`${this.platform.quoteIdentifier(i)} = NULL`);
+                } else {
+                    fieldsSet[i] = 1;
 
-                select.push(`$${selectParams.length + 1}${this.platform.typeCast(this.classSchema, i)} as ${this.platform.quoteIdentifier(asAliasName(i))}`);
-                selectParams.push($set[i]);
+                    select.push(
+                        `$${selectParams.length + 1}${this.platform.typeCast(this.classSchema, i)} as ${this.platform.quoteIdentifier(asAliasName(i))}`,
+                    );
+                    selectParams.push($set[i]);
+                }
             }
-        }
 
-        if (changes.$unset) for (const i in changes.$unset) {
-            if (!changes.$unset.hasOwnProperty(i)) continue;
-            fieldsSet[i] = 1;
-            select.push(`NULL as ${this.platform.quoteIdentifier(i)}`);
-        }
+        if (changes.$unset)
+            for (const i in changes.$unset) {
+                if (!changes.$unset.hasOwnProperty(i)) continue;
+                fieldsSet[i] = 1;
+                select.push(`NULL as ${this.platform.quoteIdentifier(i)}`);
+            }
 
         for (const i of model.returning) {
-            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.deserializeRegistry) };
+            aggregateFields[i] = {
+                converted: getSerializeFunction(
+                    resolvePath(i, this.classSchema.type),
+                    this.platform.serializer.deserializeRegistry,
+                ),
+            };
             select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
         }
 
-        if (changes.$inc) for (const i in changes.$inc) {
-            if (!changes.$inc.hasOwnProperty(i)) continue;
-            fieldsSet[i] = 1;
-            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
-            select.push(`((${this.platform.getColumnAccessor('', i)})${this.platform.typeCast(this.classSchema, i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`);
-        }
+        if (changes.$inc)
+            for (const i in changes.$inc) {
+                if (!changes.$inc.hasOwnProperty(i)) continue;
+                fieldsSet[i] = 1;
+                aggregateFields[i] = {
+                    converted: getSerializeFunction(
+                        resolvePath(i, this.classSchema.type),
+                        this.platform.serializer.serializeRegistry,
+                    ),
+                };
+                select.push(
+                    `((${this.platform.getColumnAccessor('', i)})${this.platform.typeCast(this.classSchema, i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`,
+                );
+            }
 
         for (const i in fieldsSet) {
             if (i.includes('.')) {
                 let [firstPart, secondPart] = splitDotPath(i);
                 const path = '{' + secondPart.replace(/\./g, ',').replace(/[\]\[]/g, '') + '}';
-                set.push(`${this.platform.quoteIdentifier(firstPart)} = jsonb_set(${this.platform.quoteIdentifier(firstPart)}, '${path}', to_jsonb(_b.${this.platform.quoteIdentifier(asAliasName(i))}))`);
+                set.push(
+                    `${this.platform.quoteIdentifier(firstPart)} = jsonb_set(${this.platform.quoteIdentifier(firstPart)}, '${path}', to_jsonb(_b.${this.platform.quoteIdentifier(asAliasName(i))}))`,
+                );
             } else {
                 set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
             }
@@ -490,7 +554,11 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
                 RETURNING ${returningSelect.join(', ')}
         `;
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(
+            this.session.logger,
+            this.session.assignedTransaction,
+            this.session.stopwatch,
+        );
         try {
             const result = await connection.execAndReturnAll(sql, selectSQL.params);
 
@@ -511,13 +579,21 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
     }
 }
 
-export class PostgresSQLDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T> {
-}
+export class PostgresSQLDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T> {}
 
 export class PostgresSQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
-    createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): PostgresSQLDatabaseQuery<T> {
-        return new PostgresSQLDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
-            new PostgresSQLQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession)
+    createQuery<T extends OrmEntity>(
+        type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>,
+    ): PostgresSQLDatabaseQuery<T> {
+        return new PostgresSQLDatabaseQuery<T>(
+            ReflectionClass.from(type),
+            this.databaseSession,
+            new PostgresSQLQueryResolver<T>(
+                this.connectionPool,
+                this.platform,
+                ReflectionClass.from(type),
+                this.databaseSession,
+            ),
         );
     }
 }
@@ -549,7 +625,7 @@ export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
     }
 
     createTransaction(session: DatabaseSession<this>): PostgresDatabaseTransaction {
-        return new PostgresDatabaseTransaction;
+        return new PostgresDatabaseTransaction();
     }
 
     queryFactory(session: DatabaseSession<any>): SQLDatabaseQueryFactory {

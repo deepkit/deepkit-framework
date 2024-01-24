@@ -1,5 +1,15 @@
-import { getTypeJitContainer, isNullable, isOptional, ReflectionClass, ReflectionKind, stringifyType, Type, TypeProperty, TypePropertySignature } from '@deepkit/type';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
+import {
+    ReflectionClass,
+    ReflectionKind,
+    Type,
+    TypeProperty,
+    TypePropertySignature,
+    getTypeJitContainer,
+    isNullable,
+    isOptional,
+    stringifyType,
+} from '@deepkit/type';
 
 export function trackByIndex(index: number, item: any) {
     return index;
@@ -30,10 +40,14 @@ export function showTypeString(type: Type, options: { defaultIsOptional?: boolea
     const id = options.defaultIsOptional ? 'showTypeStringDefaultOptional' : 'showTypeString';
     const jit = getTypeJitContainer(type);
     if (jit[id]) return jit[id];
-    return jit[id] = stringifyType(type, { ...options, showNames: true, showFullDefinition: false });
+    return (jit[id] = stringifyType(type, { ...options, showNames: true, showFullDefinition: false }));
 }
 
 export function getParentProperty(type: Type): TypeProperty | TypePropertySignature | undefined {
-    if (type.parent && (type.parent.kind === ReflectionKind.property || type.parent.kind === ReflectionKind.propertySignature)) return type.parent;
+    if (
+        type.parent &&
+        (type.parent.kind === ReflectionKind.property || type.parent.kind === ReflectionKind.propertySignature)
+    )
+        return type.parent;
     return;
 }

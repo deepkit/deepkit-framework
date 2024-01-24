@@ -7,21 +7,19 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+
+import { ValueAccessorBase, ngValueAccessor } from '../../core/form';
 
 @Component({
     selector: 'dui-tab-button',
-    template: `
-        <ng-content></ng-content>
-    `,
+    template: ` <ng-content></ng-content> `,
     host: {
         '[attr.tabindex]': '1',
         '[class.active]': 'isActive()',
     },
     styleUrls: ['./tab-button.component.scss'],
-    providers: [ngValueAccessor(TabButtonComponent)]
+    providers: [ngValueAccessor(TabButtonComponent)],
 })
 export class TabButtonComponent extends ValueAccessorBase<any> {
     /**
@@ -41,6 +39,6 @@ export class TabButtonComponent extends ValueAccessorBase<any> {
 
     isActive(): boolean {
         if (this.value !== undefined) return this.value === this.innerValue;
-        return this.active !== false
+        return this.active !== false;
     }
 }

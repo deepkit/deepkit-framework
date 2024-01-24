@@ -1,14 +1,31 @@
 import { expect, test } from '@jest/globals';
+
 import { typeOf } from '../src/reflection/reflection.js';
 import { cast } from '../src/serializer-facade.js';
 
 type BSONTypeAlias =
     | 'number'
-    | 'double' | 'string' | 'object' | 'array'
-    | 'binData' | 'undefined' | 'objectId' | 'bool'
-    | 'date' | 'null' | 'regex' | 'dbPointer' | 'javascript'
-    | 'symbol' | 'javascriptWithScope' | 'int' | 'timestamp'
-    | 'long' | 'decimal' | 'minKey' | 'maxKey';
+    | 'double'
+    | 'string'
+    | 'object'
+    | 'array'
+    | 'binData'
+    | 'undefined'
+    | 'objectId'
+    | 'bool'
+    | 'date'
+    | 'null'
+    | 'regex'
+    | 'dbPointer'
+    | 'javascript'
+    | 'symbol'
+    | 'javascriptWithScope'
+    | 'int'
+    | 'timestamp'
+    | 'long'
+    | 'decimal'
+    | 'minKey'
+    | 'maxKey';
 
 /** https://docs.mongodb.com/manual/reference/operator/query-bitwise */
 type BitwiseQuery = number | number[];
@@ -16,10 +33,8 @@ type BitwiseQuery = number | number[];
 // we can search using alternative types in mongodb e.g.
 // string types can be searched using a regex in mongo
 // array types can be searched using their element type
-type RegExpForString<T> = T extends string ? (RegExp | T) : T;
-type MongoAltQuery<T> =
-    T extends Array<infer U> ? (T | RegExpForString<U>) :
-        RegExpForString<T>;
+type RegExpForString<T> = T extends string ? RegExp | T : T;
+type MongoAltQuery<T> = T extends Array<infer U> ? T | RegExpForString<U> : RegExpForString<T>;
 
 /** https://docs.mongodb.com/manual/reference/operator/query/#query-selectors */
 type QuerySelector<T> = {
@@ -41,7 +56,7 @@ type QuerySelector<T> = {
     $expr?: any;
     $jsonSchema?: any;
     $mod?: T extends number ? [number, number] : never;
-    $regex?: T extends string ? (RegExp | string) : never;
+    $regex?: T extends string ? RegExp | string : never;
     $options?: T extends string ? string : never;
     // Geospatial
     $geoIntersects?: { $geometry: object };
@@ -93,7 +108,6 @@ type FilterQuery<T> = {
 } & RootQuerySelector<T>;
 
 test('filter', () => {
-
     interface Product {
         id: number;
         title: string;

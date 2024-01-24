@@ -7,14 +7,14 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { createHash, createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from 'crypto';
-import { MongoAuth } from './auth.js';
-import { MongoClientConfig } from '../../config.js';
-import { BaseResponse, Command } from '../command.js';
-import { MongoError } from '../../error.js';
 // @ts-ignore
 import saslprep from 'saslprep';
+
+import { MongoClientConfig } from '../../config.js';
+import { MongoError } from '../../error.js';
+import { BaseResponse, Command } from '../command.js';
+import { MongoAuth } from './auth.js';
 
 interface SaslStartCommand {
     saslStart: 1;
@@ -23,7 +23,7 @@ interface SaslStartCommand {
     payload: Uint8Array;
     autoAuthorize: 1;
     options: {
-        skipEmptyExchange: true
+        skipEmptyExchange: true;
     };
 }
 
@@ -72,13 +72,7 @@ function HI(data: string, salt: Buffer, iterations: number, cryptoAlgorithm: str
     }
 
     //should we implement a cache like the original driver?
-    return pbkdf2Sync(
-        data,
-        salt,
-        iterations,
-        cryptoAlgorithm === 'sha1' ? 20 : 32,
-        cryptoAlgorithm
-    );
+    return pbkdf2Sync(data, salt, iterations, cryptoAlgorithm === 'sha1' ? 20 : 32, cryptoAlgorithm);
 }
 
 function xor(a: Buffer, b: Buffer) {
@@ -106,10 +100,11 @@ export abstract class ScramAuth implements MongoAuth {
             mechanism: this.mechanism,
             payload: Buffer.concat([Buffer.from('n,,', 'utf8'), this.clientFirstMessageBare(username, this.nonce)]),
             autoAuthorize: 1,
-            options: { skipEmptyExchange: true }
+            options: { skipEmptyExchange: true },
         });
 
-        const processedPassword = this.mechanism === 'SCRAM-SHA-256' ? saslprep(password) : passwordDigest(username, password);
+        const processedPassword =
+            this.mechanism === 'SCRAM-SHA-256' ? saslprep(password) : passwordDigest(username, password);
 
         const payloadAsString = Buffer.from(startResponse.payload).toString('utf8');
         const payloadStart = this.parseStartPayload(payloadAsString);
@@ -118,17 +113,15 @@ export abstract class ScramAuth implements MongoAuth {
             processedPassword,
             Buffer.from(payloadStart.s, 'base64'),
             payloadStart.i,
-            this.cryptoMethod
+            this.cryptoMethod,
         );
 
         const clientKey = HMAC(this.cryptoMethod, saltedPassword, 'Client Key');
         const serverKey = HMAC(this.cryptoMethod, saltedPassword, 'Server Key');
         const storedKey = H(this.cryptoMethod, clientKey);
-        const authMessage = [
-            this.clientFirstMessageBare(username, this.nonce),
-            payloadAsString,
-            withoutProof
-        ].join(',');
+        const authMessage = [this.clientFirstMessageBare(username, this.nonce), payloadAsString, withoutProof].join(
+            ',',
+        );
 
         const clientSignature = HMAC(this.cryptoMethod, storedKey, authMessage);
         const clientProof = `p=${xor(clientKey, clientSignature).toString('base64')}`;
@@ -139,7 +132,7 @@ export abstract class ScramAuth implements MongoAuth {
             saslContinue: 1,
             $db: config.getAuthSource(),
             conversationId: startResponse.conversationId,
-            payload: Buffer.from(clientFinal)
+            payload: Buffer.from(clientFinal),
         });
 
         const payloadContinueString = Buffer.from(continueResponse.payload).toString('utf8');
@@ -156,7 +149,7 @@ export abstract class ScramAuth implements MongoAuth {
             saslContinue: 1,
             $db: config.getAuthSource(),
             conversationId: startResponse.conversationId,
-            payload: Buffer.alloc(0)
+            payload: Buffer.alloc(0),
         });
 
         if (continueResponse2.done) return;

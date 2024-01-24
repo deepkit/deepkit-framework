@@ -1,16 +1,18 @@
-import { Database } from '@deepkit/orm';
-import { entity, MongoId, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
+
+import { Database } from '@deepkit/orm';
+import { MongoId, PrimaryKey, entity } from '@deepkit/type';
+
 import { MongoDatabaseAdapter } from '../../../src/adapter.js';
 
 test('simple-auth', async () => {
     class BaseEntity {
-        id: MongoId & PrimaryKey = "507f1f77bcf86cd799439011";
-        created: Date = new Date;
-        updated: Date = new Date;
+        id: MongoId & PrimaryKey = '507f1f77bcf86cd799439011';
+        created: Date = new Date();
+        updated: Date = new Date();
 
         static from<T extends typeof BaseEntity>(this: T, data: Partial<InstanceType<T>>): InstanceType<T> {
-            return Object.assign(new this, data) as InstanceType<T>;
+            return Object.assign(new this(), data) as InstanceType<T>;
         }
     }
 

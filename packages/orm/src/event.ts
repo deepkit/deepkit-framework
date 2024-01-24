@@ -7,11 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType } from '@deepkit/core';
 import { BaseEvent } from '@deepkit/event';
 import type { Changes } from '@deepkit/type';
 import { PrimaryKeyType, ReflectionClass } from '@deepkit/type';
+
 import type { DatabasePersistenceChangeSet } from './database-adapter.js';
 import type { DatabaseSession } from './database-session.js';
 import type { Query } from './query.js';
@@ -31,9 +31,7 @@ export class DatabaseEvent extends BaseEvent {
 }
 
 export class UnitOfWorkCommitEvent<T> extends DatabaseEvent {
-    constructor(
-        public readonly databaseSession: DatabaseSession<any>
-    ) {
+    constructor(public readonly databaseSession: DatabaseSession<any>) {
         super();
     }
 }
@@ -42,7 +40,7 @@ export class UnitOfWorkEvent<T> extends DatabaseEvent {
     constructor(
         public readonly classSchema: ReflectionClass<T>,
         public readonly databaseSession: DatabaseSession<any>,
-        public readonly items: T[]
+        public readonly items: T[],
     ) {
         super();
     }
@@ -65,7 +63,7 @@ export class UnitOfWorkUpdateEvent<T extends object> extends DatabaseEvent {
     constructor(
         public readonly classSchema: ReflectionClass<T>,
         public readonly databaseSession: DatabaseSession<any>,
-        public readonly changeSets: DatabasePersistenceChangeSet<T>[]
+        public readonly changeSets: DatabasePersistenceChangeSet<T>[],
     ) {
         super();
     }
@@ -79,7 +77,7 @@ export class QueryDatabaseEvent<T extends OrmEntity> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
-        public query: Query<T>
+        public query: Query<T>,
     ) {
         super();
     }
@@ -94,7 +92,7 @@ export class QueryDatabaseDeleteEvent<T extends OrmEntity> extends DatabaseEvent
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
         public query: Query<T>,
-        public readonly deleteResult: DeleteResult<T>
+        public readonly deleteResult: DeleteResult<T>,
     ) {
         super();
     }
@@ -112,7 +110,7 @@ export class QueryDatabasePatchEvent<T extends object> extends DatabaseEvent {
         public readonly classSchema: ReflectionClass<T>,
         public query: Query<T>,
         public readonly patch: Changes<T>,
-        public readonly patchResult: PatchResult<T>
+        public readonly patchResult: PatchResult<T>,
     ) {
         super();
     }

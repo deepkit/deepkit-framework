@@ -7,33 +7,32 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ControllerSymbol } from '@deepkit/rpc';
-import { ChangesInterface, deserializeType, entity, ReflectionClass } from '@deepkit/type';
+import { ChangesInterface, ReflectionClass, deserializeType, entity } from '@deepkit/type';
+
 import { FakerTypes } from './faker.js';
 
 export type DatabaseCommit = {
     [dbName: string]: {
-        addedIds: { [entityName: string]: number[] },
-        added: { [entityName: string]: any[] },
-        removed: { [entityName: string]: { [pkName: string]: any }[] },
+        addedIds: { [entityName: string]: number[] };
+        added: { [entityName: string]: any[] };
+        removed: { [entityName: string]: { [pkName: string]: any }[] };
         changed: {
             [entityName: string]: {
-                pk: { [pkName: string]: any },
-                changes: ChangesInterface<any>
-            }[]
-        }
-    }
-}
+                pk: { [pkName: string]: any };
+                changes: ChangesInterface<any>;
+            }[];
+        };
+    };
+};
 
 @entity.name('orm-browser/database')
 export class DatabaseInfo {
     constructor(
         public name: string,
         public adapter: string,
-        public serializedTypes: any[] = []
-    ) {
-    }
+        public serializedTypes: any[] = [],
+    ) {}
 
     protected classSchemas?: ReflectionClass<any>[];
 
@@ -55,8 +54,7 @@ export class DatabaseInfo {
 
 @entity.name('orm-broser/migration/entity')
 export class MigrationEntityInfo {
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
 
 @entity.name('orm-broser/migration')
@@ -64,7 +62,7 @@ export class MigrationInfo {
     entites: { [name: string]: MigrationEntityInfo } = {};
 }
 
-export type SeedResult = { function: string, example: any }[];
+export type SeedResult = { function: string; example: any }[];
 
 export type EntityPropertySeedReference = 'random' | 'random-seed' | 'create';
 
@@ -78,8 +76,7 @@ export class EntityPropertySeed {
     faker: string = '';
     properties: { [name: string]: EntityPropertySeed } = {};
 
-    constructor(public name: string = '') {
-    }
+    constructor(public name: string = '') {}
 
     getArray(): EntityPropertyArraySeed {
         if (!this.array) this.array = new EntityPropertyArraySeed();
@@ -96,12 +93,12 @@ export class EntityPropertySeed {
 export class EntityPropertyArraySeed {
     min: number = 1;
     max: number = 5;
-    seed: EntityPropertySeed = new EntityPropertySeed;
+    seed: EntityPropertySeed = new EntityPropertySeed();
 }
 
 @entity.name('orm-browser/seed/property/map')
 export class EntityPropertyMapSeed {
-    key: { fake: boolean, faker: string } = { fake: true, faker: 'random.word' };
+    key: { fake: boolean; faker: string } = { fake: true, faker: 'random.word' };
     min: number = 1;
     max: number = 5;
     seed: EntityPropertySeed = new EntityPropertySeed();
@@ -121,9 +118,11 @@ export class SeedDatabase {
     entities: { [name: string]: EntitySeed } = {};
 }
 
-export type QueryResult = { error?: string, log: string[], executionTime: number, result: any };
+export type QueryResult = { error?: string; log: string[]; executionTime: number; result: any };
 
-export const BrowserControllerInterface = ControllerSymbol<BrowserControllerInterface>('orm-browser/controller', [DatabaseInfo]);
+export const BrowserControllerInterface = ControllerSymbol<BrowserControllerInterface>('orm-browser/controller', [
+    DatabaseInfo,
+]);
 
 export interface BrowserControllerInterface {
     getDatabases(): DatabaseInfo[];
@@ -134,7 +133,7 @@ export interface BrowserControllerInterface {
 
     migrate(name: string): Promise<void>;
 
-    getMigrations(name: string): Promise<{ [name: string]: { sql: string[], diff: string } }>;
+    getMigrations(name: string): Promise<{ [name: string]: { sql: string[]; diff: string } }>;
 
     getFakerTypes(): Promise<FakerTypes>;
 
@@ -142,7 +141,14 @@ export interface BrowserControllerInterface {
 
     query(dbName: string, entityName: string, query: string): Promise<QueryResult>;
 
-    getItems(dbName: string, entityName: string, filter: { [name: string]: any }, sort: { [name: string]: any }, limit: number, skip: number): Promise<{ items: any[], executionTime: number }>;
+    getItems(
+        dbName: string,
+        entityName: string,
+        filter: { [name: string]: any },
+        sort: { [name: string]: any },
+        limit: number,
+        skip: number,
+    ): Promise<{ items: any[]; executionTime: number }>;
 
     getCount(dbName: string, entityName: string, filter: { [name: string]: any }): Promise<number>;
 

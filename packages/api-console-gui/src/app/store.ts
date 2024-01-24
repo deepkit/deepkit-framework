@@ -1,19 +1,26 @@
-import { ApiAction, ApiRoute } from '@deepkit/api-console-api';
-import { DisconnectableObservable, RemoteController, RpcClient, RpcClientEventIncomingMessage, RpcClientEventOutgoingMessage } from '@deepkit/rpc';
 import { Observable, Subject, Subscription } from 'rxjs';
+
+import { ApiAction, ApiRoute } from '@deepkit/api-console-api';
 import {
-    deserialize,
+    DisconnectableObservable,
+    RemoteController,
+    RpcClient,
+    RpcClientEventIncomingMessage,
+    RpcClientEventOutgoingMessage,
+} from '@deepkit/rpc';
+import {
     Excluded,
+    ReflectionClass,
+    ReflectionKind,
+    Type,
+    TypeParameter,
+    deserialize,
     isBackReferenceType,
     isMapType,
     isOptional,
     isReferenceType,
     isSetType,
-    ReflectionClass,
-    ReflectionKind,
     serialize,
-    Type,
-    TypeParameter,
 } from '@deepkit/type';
 
 export class DataStructure {
@@ -22,10 +29,7 @@ export class DataStructure {
 
     typeIndex: number = -1; //for unions
 
-    constructor(
-        public value: any,
-    ) {
-    }
+    constructor(public value: any) {}
 
     children: DataStructure[] = [];
 
@@ -47,7 +51,10 @@ export function extractDataStructure(ds: DataStructure, type: Type): any {
         const valueProperty = type.typeArguments[1];
 
         for (const childDs of ds.children) {
-            v[extractDataStructure(childDs.properties['key'], keyProperty)] = extractDataStructure(childDs.properties['value'], valueProperty);
+            v[extractDataStructure(childDs.properties['key'], keyProperty)] = extractDataStructure(
+                childDs.properties['value'],
+                valueProperty,
+            );
         }
 
         return v;
@@ -60,7 +67,11 @@ export function extractDataStructure(ds: DataStructure, type: Type): any {
         return ds.value;
     } else if (type.kind === ReflectionKind.array || isSetType(type)) {
         const list: any = [];
-        const valueProperty = isSetType(type) ? type.typeArguments![0] : type.kind === ReflectionKind.array ? type.type : undefined;
+        const valueProperty = isSetType(type)
+            ? type.typeArguments![0]
+            : type.kind === ReflectionKind.array
+              ? type.type
+              : undefined;
         if (!valueProperty) return list;
 
         for (const childDs of ds.children) {
@@ -118,19 +129,17 @@ export class RouteState {
         public id: string,
         public fullUrl: string,
         public method: string = 'GET',
-    ) {
-    }
+    ) {}
 
-    headers: { name: string, value: string }[] = [];
+    headers: { name: string; value: string }[] = [];
 
-    fullHeaders: { name: string, value: string }[] = [];
+    fullHeaders: { name: string; value: string }[] = [];
 
     urls: DataStructure = new DataStructure(undefined);
     params: DataStructure = new DataStructure(undefined);
     body: DataStructure = new DataStructure(undefined);
 
     resolvedBody?: any & Excluded;
-
 }
 
 export class Request {
@@ -139,7 +148,8 @@ export class Request {
 
     get result() {
         if (this.loadedResult === undefined) {
-            this.loadedResult = localStorage.getItem('@deepkit/api-console/request/result/' + this.bodyStoreId) || undefined;
+            this.loadedResult =
+                localStorage.getItem('@deepkit/api-console/request/result/' + this.bodyStoreId) || undefined;
         }
         return this.loadedResult || undefined;
     }
@@ -151,7 +161,8 @@ export class Request {
 
     get json() {
         if (this.loadedJson === undefined) {
-            this.loadedJson = localStorage.getItem('@deepkit/api-console/request/json/' + this.bodyStoreId) || undefined;
+            this.loadedJson =
+                localStorage.getItem('@deepkit/api-console/request/json/' + this.bodyStoreId) || undefined;
         }
         return this.loadedJson || undefined;
     }
@@ -161,7 +172,7 @@ export class Request {
         if (v) localStorage.setItem('@deepkit/api-console/request/json/' + this.bodyStoreId, v);
     }
 
-    headers: { name: string, value: string }[] = [];
+    headers: { name: string; value: string }[] = [];
 
     took: number = 0;
     error: string = '';
@@ -186,8 +197,8 @@ export class Request {
     constructor(
         public id: string,
         public method: string,
-        public url: string) {
-    }
+        public url: string,
+    ) {}
 }
 
 export class ViewHttp {
@@ -225,13 +236,20 @@ export class ViewRpc {
 }
 
 export class Environment {
-    headers: { name: string, value: string }[] = [];
+    headers: { name: string; value: string }[] = [];
 
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
 
-export type RpcExecutionSubscription = { id: number, emitted: any[], unsubscribed: boolean, unsubscribe: () => void, completed: boolean, error?: any, sub: Subscription };
+export type RpcExecutionSubscription = {
+    id: number;
+    emitted: any[];
+    unsubscribed: boolean;
+    unsubscribe: () => void;
+    completed: boolean;
+    error?: any;
+    sub: Subscription;
+};
 
 export class RpcExecution {
     created: Date = new Date();
@@ -284,8 +302,7 @@ export class RpcExecution {
         public controllerPath: string,
         public method: string,
         public args: any[],
-    ) {
-    }
+    ) {}
 
     actionId() {
         return this.controllerPath + '.' + this.method;
@@ -293,10 +310,7 @@ export class RpcExecution {
 }
 
 export class RpcActionState {
-    constructor(
-        public id: string,
-    ) {
-    }
+    constructor(public id: string) {}
 
     params: DataStructure = new DataStructure(undefined);
 }
@@ -309,10 +323,7 @@ export class RpcClientConfiguration {
     incomingMessages: RpcClientEventIncomingMessage[] & Excluded = [];
     outgoingMessages: RpcClientEventOutgoingMessage[] & Excluded = [];
 
-    constructor(
-        public name: string,
-    ) {
-    }
+    constructor(public name: string) {}
 }
 
 export class StoreValue {
@@ -324,8 +335,8 @@ export class StoreValue {
 
     selectedRoute?: string;
 
-    viewRpc: ViewRpc = new ViewRpc;
-    viewHttp: ViewHttp = new ViewHttp;
+    viewRpc: ViewRpc = new ViewRpc();
+    viewHttp: ViewHttp = new ViewHttp();
 
     environments: Environment[] = [new Environment('default')];
     activeEnvironmentIndex: number = 0;
@@ -365,7 +376,7 @@ export class StoreValue {
 }
 
 export class Store {
-    public state = new StoreValue;
+    public state = new StoreValue();
 
     constructor() {
         this.restore();
@@ -377,9 +388,7 @@ export class Store {
         try {
             this.state = deserialize<StoreValue>(JSON.parse(t));
             console.log('this.state', this.state);
-        } catch {
-        }
-
+        } catch {}
     }
 
     store() {

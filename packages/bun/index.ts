@@ -1,7 +1,8 @@
-export * from './src/plugin.js';
+import { plugin } from 'bun';
+
 import { deepkitType } from './src/plugin.js';
 
-import { plugin } from 'bun';
+export * from './src/plugin.js';
 
 if (plugin) {
     plugin(deepkitType());

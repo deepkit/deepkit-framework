@@ -8,7 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { float, float32, int8, integer, PrimaryKey, Reference } from '../src/reflection/type.js';
+
+import { PrimaryKey, Reference, float, float32, int8, integer } from '../src/reflection/type.js';
 import { is } from '../src/typeguard.js';
 
 test('primitive string', () => {
@@ -58,18 +59,20 @@ test('primitive number float32', () => {
     expect(is<float32>('a')).toEqual(false);
     expect(is<float32>(123)).toEqual(true);
     expect(is<float32>(123.4)).toEqual(true);
-    expect(is<float32>(3.40282347e+38)).toEqual(true);
+    expect(is<float32>(3.40282347e38)).toEqual(true);
     //JS precision issue:
-    expect(is<float32>(3.40282347e+38 + 100000000000000000000000)).toEqual(false);
-    expect(is<float32>(-3.40282347e+38)).toEqual(true);
-    expect(is<float32>(-3.40282347e+38 - 100000000000000000000000)).toEqual(false);
+    expect(is<float32>(3.40282347e38 + 100000000000000000000000)).toEqual(false);
+    expect(is<float32>(-3.40282347e38)).toEqual(true);
+    expect(is<float32>(-3.40282347e38 - 100000000000000000000000)).toEqual(false);
     expect(is<float32>(true)).toEqual(false);
     expect(is<float32>({})).toEqual(false);
 });
 
 test('enum', () => {
     enum MyEnum {
-        a, b, c
+        a,
+        b,
+        c,
     }
 
     expect(is<MyEnum>(0)).toEqual(true);
@@ -83,7 +86,9 @@ test('enum', () => {
 
 test('enum const', () => {
     const enum MyEnum {
-        a, b, c
+        a,
+        b,
+        c,
     }
 
     expect(is<MyEnum>(0)).toEqual(true);
@@ -97,7 +102,9 @@ test('enum const', () => {
 
 test('enum string', () => {
     enum MyEnum {
-        a = 'a', b = 'b', c = 'c'
+        a = 'a',
+        b = 'b',
+        c = 'c',
     }
 
     expect(is<MyEnum>('a')).toEqual(true);
@@ -144,8 +151,22 @@ test('set', () => {
 
 test('map', () => {
     expect(is<Map<string, number>>(new Map([['a', 1]]))).toEqual(true);
-    expect(is<Map<string, number>>(new Map([['a', 1], ['b', 2]]))).toEqual(true);
-    expect(is<Map<string, number>>(new Map<any, any>([['a', 1], ['b', 'b']]))).toEqual(false);
+    expect(
+        is<Map<string, number>>(
+            new Map([
+                ['a', 1],
+                ['b', 2],
+            ]),
+        ),
+    ).toEqual(true);
+    expect(
+        is<Map<string, number>>(
+            new Map<any, any>([
+                ['a', 1],
+                ['b', 'b'],
+            ]),
+        ),
+    ).toEqual(false);
     expect(is<Map<string, number>>(new Map<any, any>([[2, 1]]))).toEqual(false);
 });
 
@@ -198,10 +219,10 @@ test('array any', () => {
     expect(is<any[]>(true)).toEqual(false);
     expect(is<any[]>({})).toEqual(false);
 
-    expect(is<any[]>({length:1})).toEqual(false);
-    expect(is<any[]>({length:0})).toEqual(false);
-    expect(is<any[]>({length:null})).toEqual(false);
-    expect(is<any[]>({length:undefined})).toEqual(false);
+    expect(is<any[]>({ length: 1 })).toEqual(false);
+    expect(is<any[]>({ length: 0 })).toEqual(false);
+    expect(is<any[]>({ length: null })).toEqual(false);
+    expect(is<any[]>({ length: undefined })).toEqual(false);
 });
 
 test('union', () => {
@@ -225,8 +246,8 @@ test('object literal', () => {
     expect(is<{ a?: string }>({})).toEqual(true);
     expect(is<{ a?: string }>({ a: 'abc' })).toEqual(true);
     expect(is<{ a?: string }>({ a: 123 })).toEqual(false);
-    expect(is<{ a: string, b: number }>({ a: 'a', b: 12 })).toEqual(true);
-    expect(is<{ a: string, b: number }>({ a: 'a', b: 'asd' })).toEqual(false);
+    expect(is<{ a: string; b: number }>({ a: 'a', b: 12 })).toEqual(true);
+    expect(is<{ a: string; b: number }>({ a: 'a', b: 'asd' })).toEqual(false);
 });
 
 test('class', () => {
@@ -277,11 +298,11 @@ test('object literal methods', () => {
 });
 
 test('multiple index signature', () => {
-    expect(is<{ [name: string]: string | number, [name: number]: string }>({})).toEqual(true);
-    expect(is<{ [name: string]: string | number, [name: number]: number }>({ a: 'abc' })).toEqual(true);
-    expect(is<{ [name: string]: string | number, [name: number]: number }>({ a: 123 })).toEqual(true);
-    expect(is<{ [name: string]: string | number, [name: number]: number }>({ 1: 123 })).toEqual(true);
-    expect(is<{ [name: string]: string | number, [name: number]: number }>({ 1: 'abc' })).toEqual(false);
+    expect(is<{ [name: string]: string | number; [name: number]: string }>({})).toEqual(true);
+    expect(is<{ [name: string]: string | number; [name: number]: number }>({ a: 'abc' })).toEqual(true);
+    expect(is<{ [name: string]: string | number; [name: number]: number }>({ a: 123 })).toEqual(true);
+    expect(is<{ [name: string]: string | number; [name: number]: number }>({ 1: 123 })).toEqual(true);
+    expect(is<{ [name: string]: string | number; [name: number]: number }>({ 1: 'abc' })).toEqual(false);
 });
 
 test('brands', () => {
@@ -388,8 +409,8 @@ test('class with literal and default', () => {
         readConcernLevel: 'local' = 'local';
     }
 
-    expect(is<ConnectionOptions>({readConcernLevel: 'local'})).toBe(true);
-    expect(is<ConnectionOptions>({readConcernLevel: 'local2'})).toBe(false);
+    expect(is<ConnectionOptions>({ readConcernLevel: 'local' })).toBe(true);
+    expect(is<ConnectionOptions>({ readConcernLevel: 'local2' })).toBe(false);
 });
 
 test('union literal', () => {
@@ -397,6 +418,6 @@ test('union literal', () => {
         readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';
     }
 
-    expect(is<ConnectionOptions>({readConcernLevel: 'majority'})).toBe(true);
-    expect(is<ConnectionOptions>({readConcernLevel: 'majority2'})).toBe(false);
+    expect(is<ConnectionOptions>({ readConcernLevel: 'majority' })).toBe(true);
+    expect(is<ConnectionOptions>({ readConcernLevel: 'majority2' })).toBe(false);
 });

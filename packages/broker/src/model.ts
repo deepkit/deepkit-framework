@@ -63,8 +63,8 @@ export interface brokerDelete {
 }
 
 export interface brokerIncrement {
-    n: string,
-    v?: number
+    n: string;
+    v?: number;
 }
 
 export interface brokerResponseIncrement {
@@ -72,17 +72,17 @@ export interface brokerResponseIncrement {
 }
 
 export interface brokerSet {
-    n: string,
-    v: Uint8Array,
+    n: string;
+    v: Uint8Array;
 }
 
 export interface brokerInvalidateCache {
-    n: string,
+    n: string;
 }
 
 export interface brokerSetCache {
-    n: string,
-    v: Uint8Array,
+    n: string;
+    v: Uint8Array;
     ttl: number;
     tags?: string[];
 }
@@ -93,13 +93,15 @@ export interface brokerInvalidateCacheMessage {
 }
 
 export interface brokerResponseGetCache {
-    v?: Uint8Array,
-    ttl?: number,
+    v?: Uint8Array;
+    ttl?: number;
 }
 
-export type brokerResponseGetCacheMeta = {
-    ttl: number,
-} | { missing: true };
+export type brokerResponseGetCacheMeta =
+    | {
+          ttl: number;
+      }
+    | { missing: true };
 
 export interface brokerGet {
     n: string;
@@ -110,8 +112,8 @@ export interface brokerGetCache {
 }
 
 export interface brokerBusPublish {
-    c: string,
-    v: Uint8Array,
+    c: string;
+    v: Uint8Array;
 }
 
 export interface brokerBusSubscribe {
@@ -119,8 +121,8 @@ export interface brokerBusSubscribe {
 }
 
 export interface brokerBusResponseHandleMessage {
-    c: string,
-    v: Uint8Array,
+    c: string;
+    v: Uint8Array;
 }
 
 export interface BrokerQueuePublish {
@@ -162,9 +164,9 @@ export interface brokerLockId {
 }
 
 export interface brokerLock {
-    id: string,
-    ttl: number,
-    timeout?: number,
+    id: string;
+    ttl: number;
+    timeout?: number;
 }
 
 export interface brokerResponseIsLock {
@@ -172,8 +174,8 @@ export interface brokerResponseIsLock {
 }
 
 export interface brokerEntityFields {
-    name: string,
-    fields: string[],
+    name: string;
+    fields: string[];
 }
 
 export enum SnapshotEntryType {
@@ -181,11 +183,11 @@ export enum SnapshotEntryType {
 }
 
 export type SnapshotEntry = {
-    type: SnapshotEntryType.queue,
+    type: SnapshotEntryType.queue;
     currentId: number;
     name: string;
     amount: number;
-}
+};
 
 export enum QueueMessageState {
     pending,

@@ -7,15 +7,14 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { empty } from '@deepkit/core';
 
-export type NumberFields<T> = { [K in keyof T]: T[K] extends number | bigint ? K : never }[keyof T]
-export type Expression<T> = { [P in keyof T & string]?: string; }
-export type Partial<T> = { [P in keyof T & string]?: T[P] }
+export type NumberFields<T> = { [K in keyof T]: T[K] extends number | bigint ? K : never }[keyof T];
+export type Expression<T> = { [P in keyof T & string]?: string };
+export type Partial<T> = { [P in keyof T & string]?: T[P] };
 
 export type DeepPartial<T> = {
-    [P in keyof T]?: T[P]
+    [P in keyof T]?: T[P];
 } & { [deepPath: string]: any };
 
 export interface ChangesInterface<T> {
@@ -32,9 +31,7 @@ export class Changes<T extends object> {
 
     fieldNames: string[] = [];
 
-    constructor(
-        changes?: ChangesInterface<T>
-    ) {
+    constructor(changes?: ChangesInterface<T>) {
         if (changes) {
             this.$set = empty(changes.$set) ? undefined : changes.$set;
             this.$unset = empty(changes.$unset) ? undefined : changes.$unset;
@@ -105,14 +102,18 @@ export class Changes<T extends object> {
     }
 
     has(name: keyof T & string): boolean {
-        return Boolean((this.$set && name in this.$set) || (this.$unset && name in this.$unset) || (this.$inc && name in this.$inc));
+        return Boolean(
+            (this.$set && name in this.$set) ||
+                (this.$unset && name in this.$unset) ||
+                (this.$inc && name in this.$inc),
+        );
     }
 }
 
 export class ItemChanges<T extends object> extends Changes<T> {
     constructor(
         changes: ChangesInterface<T> = {},
-        protected item: T
+        protected item: T,
     ) {
         super(changes);
     }

@@ -1,7 +1,9 @@
 import { test } from '@jest/globals';
-import { setAdapterFactory } from '@deepkit/filesystem/test';
-import { FilesystemSftpAdapter } from '../src/sftp-adapter.js';
 import { platform } from 'os';
+
+import { setAdapterFactory } from '@deepkit/filesystem/test';
+
+import { FilesystemSftpAdapter } from '../src/sftp-adapter.js';
 
 setAdapterFactory(async () => {
     let adapter = new FilesystemSftpAdapter({
@@ -9,7 +11,7 @@ setAdapterFactory(async () => {
         port: 2222,
         user: 'user',
         password: '123',
-        root: 'upload'
+        root: 'upload',
     });
 
     if (platform() === 'darwin') {
@@ -18,7 +20,7 @@ setAdapterFactory(async () => {
             host: 'storage-sftp.orb.local',
             user: 'user',
             password: '123',
-            root: 'upload'
+            root: 'upload',
         });
     }
 

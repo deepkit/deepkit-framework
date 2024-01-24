@@ -7,15 +7,35 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import {
+    AbstractClassType,
+    ClassType,
+    arrayRemoveItem,
+    getClassName,
+    getClassTypeFromInstance,
+    isClass,
+    stringifyValueWithType,
+} from '@deepkit/core';
+import {
+    ItemChanges,
+    PrimaryKeyFields,
+    ReceiveType,
+    ReflectionClass,
+    ReflectionKind,
+    Type,
+    is,
+    isSameType,
+    stringifyType,
+} from '@deepkit/type';
 
-import { OrmEntity } from './type.js';
-import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, getClassTypeFromInstance, isClass, stringifyValueWithType } from '@deepkit/core';
-import { is, isSameType, ItemChanges, PrimaryKeyFields, ReceiveType, ReflectionClass, ReflectionKind, stringifyType, Type } from '@deepkit/type';
-import { Query } from './query.js';
 import { DatabaseSession, DatabaseTransaction } from './database-session.js';
+import { Query } from './query.js';
+import { OrmEntity } from './type.js';
 
 export abstract class DatabaseAdapterQueryFactory {
-    abstract createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): Query<T>;
+    abstract createQuery<T extends OrmEntity>(
+        type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>,
+    ): Query<T>;
 }
 
 export interface DatabasePersistenceChangeSet<T extends object> {
@@ -29,7 +49,10 @@ export abstract class DatabasePersistence {
 
     abstract insert<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void>;
 
-    abstract update<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void>;
+    abstract update<T extends OrmEntity>(
+        classSchema: ReflectionClass<T>,
+        changeSets: DatabasePersistenceChangeSet<T>[],
+    ): Promise<void>;
 
     /**
      * When DatabasePersistence instance is not used anymore, this function will be called.
@@ -95,7 +118,7 @@ export abstract class DatabaseAdapter {
 
     rawFactory(session: DatabaseSession<this>): RawFactory<any> {
         return new RawFactory();
-    };
+    }
 
     abstract createPersistence(session: DatabaseSession<this>): DatabasePersistence;
 
@@ -159,7 +182,6 @@ export class DatabaseEntityRegistry {
             for (const entity of this.entities) {
                 if (is(item, undefined, undefined, entity.type)) return entity;
             }
-
         } else {
             //its a regular class
             return ReflectionClass.from(getClassTypeFromInstance(item));

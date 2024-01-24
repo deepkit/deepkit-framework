@@ -1,25 +1,35 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { getSerializeFunction, ReflectionKind, serializer, Type } from '@deepkit/type';
+
+import { ReflectionKind, Type, getSerializeFunction, serializer } from '@deepkit/type';
+
 import { DataStructure } from '../../store';
 
 @Component({
     template: `
-        <dui-input lightFocus type="textarea" style="width: 100%" [(ngModel)]="jsonContent" (ngModelChange)="jsonDone()"></dui-input>
+        <dui-input
+            lightFocus
+            type="textarea"
+            style="width: 100%"
+            [(ngModel)]="jsonContent"
+            (ngModelChange)="jsonDone()"
+        ></dui-input>
     `,
-    styles: [`
-        .json-editor {
-            height: 100%;
-            padding: 0 12px;
-            display: flex;
-            flex-direction: column;
-        }
+    styles: [
+        `
+            .json-editor {
+                height: 100%;
+                padding: 0 12px;
+                display: flex;
+                flex-direction: column;
+            }
 
-        .json-editor dui-input {
-            margin-top: 15px;
-            width: 100%;
-            flex: 1;
-        }
-    `]
+            .json-editor dui-input {
+                margin-top: 15px;
+                width: 100%;
+                flex: 1;
+            }
+        `,
+    ],
 })
 export class JsonInputComponent {
     @Input() model!: DataStructure;
@@ -41,9 +51,6 @@ export class JsonInputComponent {
             const obj = JSON.parse(this.jsonContent);
             this.model.value = getSerializeFunction(this.type, serializer.deserializeRegistry)(obj);
             this.modelChange.emit(this.model);
-
-        } catch (error) {
-        }
+        } catch (error) {}
     }
-
 }

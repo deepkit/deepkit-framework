@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { FakerTypes } from '@deepkit/orm-browser-api';
+
 import { DialogComponent } from '@deepkit/desktop-ui';
+import { FakerTypes } from '@deepkit/orm-browser-api';
 
 @Component({
     template: `
@@ -10,8 +11,10 @@ import { DialogComponent } from '@deepkit/desktop-ui';
         <dui-table borderless noFocusOutline [items]="items" [filterQuery]="filterQuery" [filterFields]="filterFields">
             <dui-table-column name="chosen" [width]="50" header="✓">
                 <ng-container *duiTableCell="let item">
-                    <dui-checkbox [ngModel]="item.chosen"
-                                  (ngModelChange)="$event ? chose(item.name) : false"></dui-checkbox>
+                    <dui-checkbox
+                        [ngModel]="item.chosen"
+                        (ngModelChange)="$event ? chose(item.name) : false"
+                    ></dui-checkbox>
                 </ng-container>
             </dui-table-column>
 
@@ -24,21 +27,23 @@ import { DialogComponent } from '@deepkit/desktop-ui';
             <dui-button closeDialog>Cancel</dui-button>
         </dui-dialog-actions>
     `,
-    styles: [`
-        dui-table {
-            flex: 1
-        }
+    styles: [
+        `
+            dui-table {
+                flex: 1;
+            }
 
-        .header {
-            margin-bottom: 12px;
-        }
+            .header {
+                margin-bottom: 12px;
+            }
 
-        :host {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-    `]
+            :host {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+            }
+        `,
+    ],
 })
 export class FakerTypeDialogComponent implements OnInit {
     static dialogDefaults = {
@@ -51,14 +56,13 @@ export class FakerTypeDialogComponent implements OnInit {
     @Input() fakerTypes!: FakerTypes;
     @Input() selected?: string;
 
-    items: { chosen: boolean, name: string, type: string, example: string }[] = [];
+    items: { chosen: boolean; name: string; type: string; example: string }[] = [];
 
     filterQuery: string = '';
 
     @Output() chosen = new EventEmitter<string>();
 
-    constructor(protected dialog: DialogComponent) {
-    }
+    constructor(protected dialog: DialogComponent) {}
 
     chose(type: string) {
         this.dialog.close();
@@ -72,4 +76,3 @@ export class FakerTypeDialogComponent implements OnInit {
         this.items = this.items.slice();
     }
 }
-

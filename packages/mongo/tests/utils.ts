@@ -1,7 +1,9 @@
 import { afterEach } from '@jest/globals';
-import { Database } from '@deepkit/orm';
-import { MongoDatabaseAdapter } from '../src/adapter.js';
 import { performance } from 'perf_hooks';
+
+import { Database } from '@deepkit/orm';
+
+import { MongoDatabaseAdapter } from '../src/adapter.js';
 
 /**
  * Executes given exec() method 3 times and averages the consumed time.

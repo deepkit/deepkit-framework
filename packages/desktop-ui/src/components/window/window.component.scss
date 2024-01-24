@@ -1,29 +1,29 @@
 :host {
-    position: relative;
-    height: 100%;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .disable-inputs {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    opacity: 0.001;
-    background-color: black;
-    z-index: 1000000;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  opacity: 0.001;
+  background-color: black;
+  z-index: 1000000;
 }
 
 :host-context(.electron.platform-darwin.dui-theme-light) {
-    background: #ffffffad;
+  background: #ffffffad;
 }
 
 :host-context(.platform-native.dui-theme-dark):not(.in-dialog) {
-    border-top: 1px solid #868686;
-    border-right: 1px solid #5d5d5d;
-    border-left: 1px solid #5d5d5d;
-    border-bottom: 1px solid #5b5b5b;
+  border-top: 1px solid #868686;
+  border-right: 1px solid #5d5d5d;
+  border-left: 1px solid #5d5d5d;
+  border-bottom: 1px solid #5b5b5b;
 }

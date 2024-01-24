@@ -1,24 +1,30 @@
 import { expect, test } from '@jest/globals';
-import { createWorkflow, WorkflowEvent } from '../src/workflow.js';
-import { eventDispatcher, EventDispatcher, EventToken } from '@deepkit/event';
+
+import { EventDispatcher, EventToken, eventDispatcher } from '@deepkit/event';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
+
+import { WorkflowEvent, createWorkflow } from '../src/workflow.js';
 
 class EndEvent extends WorkflowEvent {
     test: string = 'hi';
 }
 
-const workflow1 = createWorkflow('myFlow', {
-    start: WorkflowEvent,
-    doIt: WorkflowEvent,
-    failed: WorkflowEvent,
-    success: WorkflowEvent,
-    end: EndEvent,
-}, {
-    start: 'doIt',
-    doIt: ['failed', 'success'],
-    success: 'end',
-    failed: 'end'
-});
+const workflow1 = createWorkflow(
+    'myFlow',
+    {
+        start: WorkflowEvent,
+        doIt: WorkflowEvent,
+        failed: WorkflowEvent,
+        success: WorkflowEvent,
+        end: EndEvent,
+    },
+    {
+        start: 'doIt',
+        doIt: ['failed', 'success'],
+        success: 'end',
+        failed: 'end',
+    },
+);
 
 test('workflow', async () => {
     expect(workflow1.onDoIt).toBeInstanceOf(EventToken);
@@ -94,15 +100,15 @@ test('workflow events apply next', async () => {
     const w = workflow1.create('start', dispatcher);
 
     let endCalled = false;
-    dispatcher.listen(workflow1.onDoIt, async (event) => {
+    dispatcher.listen(workflow1.onDoIt, async event => {
         event.next('success');
     });
 
-    dispatcher.listen(workflow1.onSuccess, async (event) => {
+    dispatcher.listen(workflow1.onSuccess, async event => {
         event.next('end', new EndEvent());
     });
 
-    dispatcher.listen(workflow1.onEnd, async (event) => {
+    dispatcher.listen(workflow1.onEnd, async event => {
         expect(event.test).toBe('hi');
         endCalled = true;
     });
@@ -117,7 +123,7 @@ test('workflow events apply next invalid', async () => {
     const dispatcher = new EventDispatcher(InjectorContext.forProviders([]));
     const w = workflow1.create('start', dispatcher);
 
-    dispatcher.listen(workflow1.onDoIt, async (event) => {
+    dispatcher.listen(workflow1.onDoIt, async event => {
         event.next('end');
     });
 
@@ -130,8 +136,7 @@ test('workflow events apply injector', async () => {
     }
 
     class Listener {
-        constructor(private myService: MyService) {
-        }
+        constructor(private myService: MyService) {}
 
         @eventDispatcher.listen(workflow1.onDoIt)
         onDoIt() {

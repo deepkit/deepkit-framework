@@ -1,30 +1,11 @@
 import { isPropertyMemberType } from '@deepkit/type';
 import {
-    binaryBigIntAnnotation,
     BinaryBigIntType,
-    buildFunction,
-    callExtractedFunctionIfAvailable,
-    collapsePath,
     ContainerAccessor,
-    createTypeGuardFunction,
-    embeddedAnnotation,
     EmbeddedOptions,
-    excludedAnnotation,
-    executeTemplates,
-    extendTemplateLiteral,
-    extractStateToFunctionAndCallIt,
-    getIndexCheck,
-    getNameExpression,
-    getStaticDefaultCodeForProperty,
-    hasDefaultValue,
-    isNullable,
-    isOptional,
-    mongoIdAnnotation,
     ReflectionClass,
     ReflectionKind,
-    resolveTypeMembers,
     RuntimeCode,
-    sortSignatures,
     TemplateState,
     Type,
     TypeClass,
@@ -37,8 +18,28 @@ import {
     TypeTemplateLiteral,
     TypeTuple,
     TypeUnion,
-    uuidAnnotation
+    binaryBigIntAnnotation,
+    buildFunction,
+    callExtractedFunctionIfAvailable,
+    collapsePath,
+    createTypeGuardFunction,
+    embeddedAnnotation,
+    excludedAnnotation,
+    executeTemplates,
+    extendTemplateLiteral,
+    extractStateToFunctionAndCallIt,
+    getIndexCheck,
+    getNameExpression,
+    getStaticDefaultCodeForProperty,
+    hasDefaultValue,
+    isNullable,
+    isOptional,
+    mongoIdAnnotation,
+    resolveTypeMembers,
+    sortSignatures,
+    uuidAnnotation,
 } from '@deepkit/type';
+
 import { seekElementSize } from './continuation.js';
 import { BSONType, digitByteSize, isSerializable } from './utils.js';
 
@@ -76,7 +77,10 @@ export function deserializeAny(type: Type, state: TemplateState) {
 }
 
 export function deserializeNumber(type: Type, state: TemplateState) {
-    const readBigInt = type.kind === ReflectionKind.bigint ? `state.parser.parseBinaryBigInt()` : `Number(state.parser.parseBinaryBigInt())`;
+    const readBigInt =
+        type.kind === ReflectionKind.bigint
+            ? `state.parser.parseBinaryBigInt()`
+            : `Number(state.parser.parseBinaryBigInt())`;
 
     state.addCode(`
         if (state.elementType === ${BSONType.INT}) {
@@ -608,9 +612,9 @@ export function bsonTypeGuardArray(elementType: Type, state: TemplateState) {
     `);
 }
 
-export function getEmbeddedClassesForProperty(type: Type): { type: TypeClass, options: EmbeddedOptions }[] {
+export function getEmbeddedClassesForProperty(type: Type): { type: TypeClass; options: EmbeddedOptions }[] {
     if (type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property) type = type.type;
-    const res: { type: TypeClass, options: EmbeddedOptions }[] = [];
+    const res: { type: TypeClass; options: EmbeddedOptions }[] = [];
 
     if (type.kind === ReflectionKind.union) {
         for (const t of type.types) {
@@ -717,15 +721,24 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
         const staticDefault = getStaticDefaultCodeForProperty(member, setter, state);
         let throwInvalidTypeError = '';
         if (!isOptional(member) && !hasDefaultValue(member)) {
-            throwInvalidTypeError = state.fork().extendPath(member.name).throwCode(member.type as Type, '', `'undefined value'`);
+            throwInvalidTypeError = state
+                .fork()
+                .extendPath(member.name)
+                .throwCode(member.type as Type, '', `'undefined value'`);
         }
         setDefaults.push(`if (!${valueSetVar}) { ${staticDefault || throwInvalidTypeError} } `);
 
         let seekOnExplicitUndefined = '';
         //handle explicitly set `undefined`, by jumping over the registered deserializers. if `null` is given and the property has no null type, we treat it as undefined.
         if (isOptional(member) || hasDefaultValue(member)) {
-            const setUndefined = isOptional(member) ? `${setter} = undefined;` : hasDefaultValue(member) ? `` : `${setter} = undefined;`;
-            const check = isNullable(member) ? `elementType === ${BSONType.UNDEFINED}` : `elementType === ${BSONType.UNDEFINED} || elementType === ${BSONType.NULL}`;
+            const setUndefined = isOptional(member)
+                ? `${setter} = undefined;`
+                : hasDefaultValue(member)
+                  ? ``
+                  : `${setter} = undefined;`;
+            const check = isNullable(member)
+                ? `elementType === ${BSONType.UNDEFINED}`
+                : `elementType === ${BSONType.UNDEFINED} || elementType === ${BSONType.NULL}`;
             seekOnExplicitUndefined = `
             if (${check}) {
                 ${setUndefined}
@@ -897,7 +910,9 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
         let seekOnExplicitUndefined = '';
         //handle explicitly set `undefined`, by jumping over the registered deserializers. if `null` is given and the property has no null type, we treat it as undefined.
         if (isOptional(member) || hasDefaultValue(member)) {
-            const check = isNullable(member) ? `elementType === ${BSONType.UNDEFINED}` : `elementType === ${BSONType.UNDEFINED} || elementType === ${BSONType.NULL}`;
+            const check = isNullable(member)
+                ? `elementType === ${BSONType.UNDEFINED}`
+                : `elementType === ${BSONType.UNDEFINED} || elementType === ${BSONType.NULL}`;
             seekOnExplicitUndefined = `
             if (${check}) {
                 seekElementSize(elementType, state.parser);
@@ -1019,5 +1034,9 @@ export function bsonTypeGuardLiteral(type: TypeLiteral, state: TemplateState) {
 export function bsonTypeGuardTemplateLiteral(type: TypeTemplateLiteral, state: TemplateState) {
     state.setContext({ extendTemplateLiteral: extendTemplateLiteral });
     const typeVar = state.setVariable('type', type);
-    state.addSetterAndReportErrorIfInvalid('type', 'Invalid literal', `state.elementType === ${BSONType.STRING} && extendTemplateLiteral({kind: ${ReflectionKind.literal}, literal: state.parser.read(state.elementType)}, ${typeVar})`);
+    state.addSetterAndReportErrorIfInvalid(
+        'type',
+        'Invalid literal',
+        `state.elementType === ${BSONType.STRING} && extendTemplateLiteral({kind: ${ReflectionKind.literal}, literal: state.parser.read(state.elementType)}, ${typeVar})`,
+    );
 }

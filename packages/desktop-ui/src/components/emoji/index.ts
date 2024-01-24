@@ -7,37 +7,22 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { CommonModule } from '@angular/common';
 import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
-import { EmojiDropdownComponent, EmojiDropdownDirective } from './emoji-dropdown.component';
-import { DuiInputModule } from '../input';
+
 import { DuiButtonModule } from '../button';
+import { DuiInputModule } from '../input';
+import { EmojiDropdownComponent, EmojiDropdownDirective } from './emoji-dropdown.component';
 import { EmojiComponent } from './emoji.component';
 
-export { EmojiComponent } from "./emoji.component";
+export { EmojiComponent } from './emoji.component';
 
-export { EmojiDropdownComponent, EmojiDropdownDirective } from "./emoji-dropdown.component";
+export { EmojiDropdownComponent, EmojiDropdownDirective } from './emoji-dropdown.component';
 
 @NgModule({
-    declarations: [
-        EmojiDropdownComponent,
-        EmojiDropdownDirective,
-        EmojiComponent,
-    ],
-    exports: [
-        EmojiDropdownComponent,
-        EmojiDropdownDirective,
-        EmojiComponent,
-    ],
-    imports: [
-        FormsModule,
-        CommonModule,
-        DuiInputModule,
-        DuiButtonModule,
-    ]
+    declarations: [EmojiDropdownComponent, EmojiDropdownDirective, EmojiComponent],
+    exports: [EmojiDropdownComponent, EmojiDropdownDirective, EmojiComponent],
+    imports: [FormsModule, CommonModule, DuiInputModule, DuiButtonModule],
 })
-export class DuiEmojiModule {
-
-}
+export class DuiEmojiModule {}

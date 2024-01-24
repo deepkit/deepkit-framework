@@ -7,14 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { Overlay, OverlayRef } from '@angular/cdk/overlay';
+import { ComponentPortal } from '@angular/cdk/portal';
 import {
     AfterViewInit,
     ApplicationRef,
     ChangeDetectorRef,
     Component,
     ComponentRef,
-    Directive, ElementRef,
+    Directive,
+    ElementRef,
     EventEmitter,
     HostListener,
     Injector,
@@ -28,25 +30,27 @@ import {
     TemplateRef,
     Type,
     ViewChild,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
-import { Overlay, OverlayRef } from '@angular/cdk/overlay';
-import { ComponentPortal } from '@angular/cdk/portal';
+import { Subscription } from 'rxjs';
+
+import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app';
+import { IN_DIALOG } from '../app/token';
+import { ButtonComponent } from '../button';
+import { RenderComponentDirective } from '../core/render-component.directive';
 import { WindowRegistry } from '../window/window-state';
 import { WindowComponent } from '../window/window.component';
-import { RenderComponentDirective } from '../core/render-component.directive';
-import { IN_DIALOG } from '../app/token';
-import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app';
-import { Subscription } from 'rxjs';
-import { ButtonComponent } from '../button';
 
 @Component({
     template: `
         <dui-window>
-            <dui-window-content class="{{class}}">
-                <ng-container *ngIf="component"
-                              #renderComponentDirective
-                              [renderComponent]="component" [renderComponentInputs]="componentInputs">
+            <dui-window-content class="{{ class }}">
+                <ng-container
+                    *ngIf="component"
+                    #renderComponentDirective
+                    [renderComponent]="component"
+                    [renderComponentInputs]="componentInputs"
+                >
                 </ng-container>
 
                 <ng-container *ngIf="content" [ngTemplateOutlet]="content"></ng-container>
@@ -66,9 +70,9 @@ import { ButtonComponent } from '../button';
         </dui-window>
     `,
     host: {
-        '[attr.tabindex]': '1'
+        '[attr.tabindex]': '1',
     },
-    styleUrls: ['./dialog-wrapper.component.scss']
+    styleUrls: ['./dialog-wrapper.component.scss'],
 })
 export class DialogWrapperComponent {
     @Input() component?: Type<any>;
@@ -79,12 +83,10 @@ export class DialogWrapperComponent {
     content?: TemplateRef<any> | undefined;
     class: string = '';
 
-    @ViewChild(RenderComponentDirective, { static: false }) renderComponentDirective?: RenderComponentDirective;
+    @ViewChild(RenderComponentDirective, { static: false })
+    renderComponentDirective?: RenderComponentDirective;
 
-    constructor(
-        protected cd: ChangeDetectorRef,
-    ) {
-    }
+    constructor(protected cd: ChangeDetectorRef) {}
 
     public setActions(actions: TemplateRef<any> | undefined) {
         this.actions = actions;
@@ -99,13 +101,16 @@ export class DialogWrapperComponent {
 
 @Component({
     selector: 'dui-dialog',
-    template: `
-        <ng-template #template>
-            <ng-content></ng-content>
-        </ng-template>`,
-    styles: [`:host {
-        display: none;
-    }`]
+    template: ` <ng-template #template>
+        <ng-content></ng-content>
+    </ng-template>`,
+    styles: [
+        `
+            :host {
+                display: none;
+            }
+        `,
+    ],
 })
 export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     @Input() title: string = '';
@@ -156,11 +161,10 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         protected registry: WindowRegistry,
         @Optional() @SkipSelf() protected cdParent?: ChangeDetectorRef,
         @Optional() protected window?: WindowComponent,
-    ) {
-    }
+    ) {}
 
     public toPromise(): Promise<any> {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
             this.closed.subscribe((v: any) => {
                 resolve(v);
             });
@@ -217,12 +221,12 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
 
         let positionStrategy = overlay
             .position()
-            .global().centerHorizontally().top(offsetTop + 'px');
+            .global()
+            .centerHorizontally()
+            .top(offsetTop + 'px');
 
         if (this.center) {
-            positionStrategy = overlay
-                .position()
-                .global().centerHorizontally().centerVertically();
+            positionStrategy = overlay.position().global().centerHorizontally().centerVertically();
         }
 
         this.overlayRef = overlay.create({
@@ -233,7 +237,11 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
             maxWidth: this.maxWidth || '90%',
             maxHeight: this.maxHeight || '90%',
             hasBackdrop: true,
-            panelClass: [this.class, (this.center ? 'dialog-overlay' : 'dialog-overlay-with-animation'), this.noPadding !== false ? 'dialog-overlay-no-padding' : ''],
+            panelClass: [
+                this.class,
+                this.center ? 'dialog-overlay' : 'dialog-overlay-with-animation',
+                this.noPadding !== false ? 'dialog-overlay-no-padding' : '',
+            ],
             scrollStrategy: overlay.scrollStrategies.reposition(),
             positionStrategy: positionStrategy,
         });
@@ -294,8 +302,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         }
     }
 
-    ngAfterViewInit() {
-    }
+    ngAfterViewInit() {}
 
     public close(v?: any) {
         this.beforeUnload();
@@ -317,23 +324,25 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
  * performance and injection issues.
  */
 @Directive({
-    'selector': '[dialogContainer]',
+    selector: '[dialogContainer]',
 })
 export class DialogDirective {
-    constructor(protected dialog: DialogComponent, public template: TemplateRef<any>) {
+    constructor(
+        protected dialog: DialogComponent,
+        public template: TemplateRef<any>,
+    ) {
         this.dialog.setDialogContainer(this.template);
     }
 }
 
 @Component({
     selector: 'dui-dialog-actions',
-    template: '<ng-template #template><ng-content></ng-content></ng-template>'
+    template: '<ng-template #template><ng-content></ng-content></ng-template>',
 })
 export class DialogActionsComponent implements AfterViewInit, OnDestroy {
     @ViewChild('template', { static: true }) template!: TemplateRef<any>;
 
-    constructor(protected dialog: DialogComponent) {
-    }
+    constructor(protected dialog: DialogComponent) {}
 
     ngAfterViewInit(): void {
         this.dialog.setActions(this.template);
@@ -349,20 +358,17 @@ export class DialogActionsComponent implements AfterViewInit, OnDestroy {
 @Component({
     selector: 'dui-dialog-error',
     template: '<ng-content></ng-content>',
-    styleUrls: ['./dialog-error.component.scss']
+    styleUrls: ['./dialog-error.component.scss'],
 })
-export class DialogErrorComponent {
-}
-
+export class DialogErrorComponent {}
 
 @Directive({
-    selector: '[closeDialog]'
+    selector: '[closeDialog]',
 })
 export class CloseDialogDirective {
     @Input() closeDialog: any;
 
-    constructor(protected dialog: DialogComponent) {
-    }
+    constructor(protected dialog: DialogComponent) {}
 
     @HostListener('click')
     onClick() {
@@ -374,7 +380,7 @@ export class CloseDialogDirective {
  * A directive to open the given dialog on regular left click.
  */
 @Directive({
-    'selector': '[openDialog]',
+    selector: '[openDialog]',
 })
 export class OpenDialogDirective implements AfterViewInit, OnChanges, OnDestroy {
     @Input() openDialog?: DialogComponent;
@@ -388,11 +394,9 @@ export class OpenDialogDirective implements AfterViewInit, OnChanges, OnDestroy 
     constructor(
         protected elementRef: ElementRef,
         @Optional() protected button?: ButtonComponent,
-    ) {
-    }
+    ) {}
 
-    ngOnDestroy() {
-    }
+    ngOnDestroy() {}
 
     ngOnChanges() {
         this.link();

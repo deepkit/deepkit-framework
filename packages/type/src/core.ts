@@ -7,8 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { Buffer } from 'buffer';
+
 import { ClassType } from '@deepkit/core';
 
 //on unpopulated properties access
@@ -28,7 +28,7 @@ export interface TypeSettings {
 export const typeSettings: TypeSettings = { registeredEntities: {}, unpopulatedCheck: UnpopulatedCheck.Throw };
 
 export interface TypedArrayClassType<T> {
-    new(...args: any[]): T;
+    new (...args: any[]): T;
 
     readonly BYTES_PER_ELEMENT: number;
 }
@@ -143,7 +143,6 @@ export function typedArrayToBase64(typedArray: TypedArray): string {
 export function arrayBufferFrom(data: string, encoding?: string): ArrayBuffer {
     return nodeBufferToArrayBuffer(Buffer.from(data, encoding as any));
 }
-
 
 /**
  * Same as Buffer.from(arrayBuffer).toString(encoding), but more in line with the current API.

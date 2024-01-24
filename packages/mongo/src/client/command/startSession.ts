@@ -7,11 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { UUID } from '@deepkit/type';
 
-import { BaseResponse, Command } from './command.js';
 import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
-import { UUID } from '@deepkit/type';
+import { BaseResponse, Command } from './command.js';
 
 interface SessionResponse extends BaseResponse {
     id: { id: UUID };

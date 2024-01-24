@@ -1,12 +1,14 @@
-import { App, AppModule } from '@deepkit/app';
 import { expect, jest, test } from '@jest/globals';
-import { http } from '../src/decorator.js';
-import { HttpRequest } from '../src/model.js';
-import { RouteConfig, RouteParameterResolver, RouteParameterResolverContext, } from '../src/router.js';
-import { createHttpKernel } from './utils.js';
-import { HttpModule } from '../src/module.js';
-import { HttpKernel } from '../src/kernel.js';
+
+import { App, AppModule } from '@deepkit/app';
 import { ReflectionClass } from '@deepkit/type';
+
+import { http } from '../src/decorator.js';
+import { HttpKernel } from '../src/kernel.js';
+import { HttpRequest } from '../src/model.js';
+import { HttpModule } from '../src/module.js';
+import { RouteConfig, RouteParameterResolver, RouteParameterResolverContext } from '../src/router.js';
+import { createHttpKernel } from './utils.js';
 
 test('parameter resolver by name', async () => {
     class Resolver implements RouteParameterResolver {
@@ -18,8 +20,7 @@ test('parameter resolver by name', async () => {
     @http.controller()
     class Controller {
         @http.GET().resolveParameterByName('value', Resolver)
-        route(value: unknown) {
-        }
+        route(value: unknown) {}
     }
 
     jest.spyOn(Resolver.prototype, 'resolve');
@@ -39,7 +40,7 @@ test('parameter resolver by name', async () => {
         request: expect.anything() as any,
         query: {},
         parameters: { value: 'value' },
-        type: reflectionParameter
+        type: reflectionParameter,
     };
     expect(Resolver.prototype.resolve).toHaveBeenCalledWith(expectedContext);
     expect(Controller.prototype.route).toHaveBeenCalledWith('value');

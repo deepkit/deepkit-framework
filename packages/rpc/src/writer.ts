@@ -7,10 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { BehaviorSubject, Subject, Subscriber, Subscription, SubscriptionLike } from 'rxjs';
-import { rpcChunk, RpcTypes } from './model.js';
-import { createRpcMessage, readRpcMessage, RpcMessageReader } from './protocol.js';
+
+import { RpcTypes, rpcChunk } from './model.js';
+import { RpcMessageReader, createRpcMessage, readRpcMessage } from './protocol.js';
 import type { RpcConnectionWriter } from './server/kernel.js';
 
 export class SingleProgress extends Subject<SingleProgress> {
@@ -23,7 +23,7 @@ export class SingleProgress extends Subject<SingleProgress> {
     protected lastTime = 0;
 
     protected triggerFinished?: Function;
-    finished = new Promise((resolve) => {
+    finished = new Promise(resolve => {
         this.triggerFinished = resolve;
     });
 
@@ -47,7 +47,6 @@ export class SingleProgress extends Subject<SingleProgress> {
         this.total = total;
         this.lastTime = Date.now();
     }
-
 
     public setBatch(size: number) {
         this.current += size;
@@ -75,8 +74,8 @@ export class SingleProgress extends Subject<SingleProgress> {
 }
 
 export class Progress extends BehaviorSubject<number> {
-    public readonly upload = new SingleProgress;
-    public readonly download = new SingleProgress;
+    public readonly upload = new SingleProgress();
+    public readonly download = new SingleProgress();
 
     constructor() {
         super(0);
@@ -103,7 +102,6 @@ export class RpcMessageWriterOptions {
      * In bytes.
      */
     public chunkSize: number = 100_000;
-
 }
 
 /**
@@ -121,9 +119,8 @@ export class RpcMessageWriter implements RpcConnectionWriter {
     constructor(
         protected writer: RpcConnectionWriter,
         protected reader: RpcMessageReader,
-        protected options: RpcMessageWriterOptions
-    ) {
-    }
+        protected options: RpcMessageWriterOptions,
+    ) {}
 
     close(): void {
         this.writer.close();
@@ -145,10 +142,10 @@ export class RpcMessageWriter implements RpcConnectionWriter {
                 const chunkMessage = createRpcMessage<rpcChunk>(message.id, RpcTypes.Chunk, {
                     id: chunkId,
                     total: buffer.byteLength,
-                    v: slice
+                    v: slice,
                 });
                 offset += slice.byteLength;
-                const promise = new Promise((resolve) => {
+                const promise = new Promise(resolve => {
                     this.reader.onChunkAck(message.id, resolve);
                 });
                 this.writer.write(chunkMessage);
@@ -190,7 +187,7 @@ export class ClientProgress {
      * ```
      */
     static track(): Progress {
-        const progress = new Progress;
+        const progress = new Progress();
         ClientProgress.nextProgress = progress;
         return progress;
     }

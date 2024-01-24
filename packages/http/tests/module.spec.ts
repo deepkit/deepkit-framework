@@ -1,10 +1,12 @@
-import { App } from '@deepkit/app';
 import { expect, test } from '@jest/globals';
-import { HttpModule } from '../src/module.js';
-import { HttpKernel } from '../src/kernel.js';
-import { HttpRequest } from '../src/model.js';
+
+import { App } from '@deepkit/app';
+
 import { http } from '../src/decorator.js';
 import { httpWorkflow } from '../src/http.js';
+import { HttpKernel } from '../src/kernel.js';
+import { HttpRequest } from '../src/model.js';
+import { HttpModule } from '../src/module.js';
 import { HttpRouterRegistry } from '../src/router.js';
 
 test('module basic functionality', async () => {
@@ -16,12 +18,8 @@ test('module basic functionality', async () => {
     }
 
     const app = new App({
-        controllers: [
-            Controller,
-        ],
-        imports: [
-            new HttpModule()
-        ]
+        controllers: [Controller],
+        imports: [new HttpModule()],
     });
 
     const httpKernel = app.get(HttpKernel);
@@ -43,17 +41,13 @@ test('functional listener', async () => {
 
     const gotUrls: string[] = [];
     const app = new App({
-        controllers: [
-            Controller,
-        ],
+        controllers: [Controller],
         listeners: [
             httpWorkflow.onController.listen(event => {
                 gotUrls.push(event.request.url || '');
             }),
         ],
-        imports: [
-            new HttpModule(),
-        ]
+        imports: [new HttpModule()],
     });
 
     const httpKernel = app.get(HttpKernel);
@@ -74,15 +68,18 @@ test('functional listener', async () => {
 });
 
 test('functional routes using use()', async () => {
-    type User = { id: number, username: string };
+    type User = { id: number; username: string };
 
     class MyService {
-        users: User[] = [{ id: 1, username: 'peter' }, { id: 2, username: 'marie' }];
+        users: User[] = [
+            { id: 1, username: 'peter' },
+            { id: 2, username: 'marie' },
+        ];
     }
 
     const app = new App({
         providers: [MyService],
-        imports: [new HttpModule()]
+        imports: [new HttpModule()],
     });
 
     function userController(router: HttpRouterRegistry, service: MyService) {
@@ -97,7 +94,10 @@ test('functional routes using use()', async () => {
     {
         const response = await httpKernel.request(HttpRequest.GET('/users'));
         expect(response.statusCode).toBe(200);
-        expect(response.json).toEqual([{ id: 1, username: 'peter' }, { id: 2, username: 'marie' }]);
+        expect(response.json).toEqual([
+            { id: 1, username: 'peter' },
+            { id: 2, username: 'marie' },
+        ]);
     }
 
     {

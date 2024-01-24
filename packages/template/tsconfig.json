@@ -16,29 +16,23 @@
     "composite": true,
     "jsx": "react-jsx",
     "jsxImportSource": "..",
-    "types": ["estree"]
+    "types": ["estree"],
   },
   "reflection": true,
-  "include": [
-    "src",
-    "index.ts",
-    "jsx-runtime.ts"
-  ],
-  "exclude": [
-    "tests"
-  ],
+  "include": ["src", "index.ts", "jsx-runtime.ts"],
+  "exclude": ["tests"],
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../injector/tsconfig.json"
+      "path": "../injector/tsconfig.json",
     },
     {
-      "path": "../stopwatch/tsconfig.json"
+      "path": "../stopwatch/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

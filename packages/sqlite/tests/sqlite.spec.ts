@@ -1,12 +1,28 @@
 import { expect, test } from '@jest/globals';
+
+import { sleep } from '@deepkit/core';
+import { DatabaseEntityRegistry } from '@deepkit/orm';
+import { User, UserCredentials } from '@deepkit/orm-integration';
+import { sql } from '@deepkit/sql';
+import {
+    AutoIncrement,
+    BackReference,
+    Entity,
+    PrimaryKey,
+    Reference,
+    ReflectionClass,
+    UUID,
+    cast,
+    entity,
+    isReferenceInstance,
+    serialize,
+    typeOf,
+    uuid,
+} from '@deepkit/type';
+
+import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter.js';
 import { SQLitePlatform } from '../src/sqlite-platform.js';
 import { databaseFactory } from './factory.js';
-import { User, UserCredentials } from '@deepkit/orm-integration';
-import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter.js';
-import { sleep } from '@deepkit/core';
-import { AutoIncrement, BackReference, cast, Entity, entity, isReferenceInstance, PrimaryKey, Reference, ReflectionClass, serialize, typeOf, UUID, uuid } from '@deepkit/type';
-import { DatabaseEntityRegistry } from '@deepkit/orm';
-import { sql } from '@deepkit/sql';
 
 test('reflection circular reference', () => {
     const user = ReflectionClass.from(User);
@@ -32,10 +48,9 @@ test('tables', () => {
 test('class basic', async () => {
     class Product {
         id: number & PrimaryKey = 0;
-        created: Date = new Date;
+        created: Date = new Date();
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = await databaseFactory([Product]);
@@ -117,12 +132,9 @@ test('sqlite autoincrement', async () => {
     @entity.name('sqlite-user')
     class User {
         id?: number & PrimaryKey & AutoIncrement;
-        created: Date = new Date;
+        created: Date = new Date();
 
-        constructor(
-            public name: string
-        ) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = await databaseFactory([User]);
@@ -146,13 +158,12 @@ test('sqlite autoincrement', async () => {
 test('sqlite relation', async () => {
     @entity.name('sqlite-author')
     class Author {
-        created: Date = new Date;
+        created: Date = new Date();
 
         constructor(
             public id: number & PrimaryKey,
             public name: string,
-        ) {
-        }
+        ) {}
     }
 
     @entity.name('sqlite-book')
@@ -161,8 +172,7 @@ test('sqlite relation', async () => {
             public id: number & PrimaryKey,
             public author: Author & Reference,
             public name: string,
-        ) {
-        }
+        ) {}
     }
 
     const database = await databaseFactory([Author, Book]);
@@ -183,7 +193,6 @@ test('sqlite relation', async () => {
     expect(await session.query(Author).count()).toBe(2);
     expect(await session.query(Book).count()).toBe(1);
 });
-
 
 test('transaction', async () => {
     const sqlite = new SQLiteDatabaseAdapter('app.sqlite');
@@ -246,11 +255,11 @@ test('connection pool', async () => {
         const c10 = await sqlite.connectionPool.getConnection();
         // this blocks
         let c11: any;
-        sqlite.connectionPool.getConnection().then((c) => {
+        sqlite.connectionPool.getConnection().then(c => {
             c11 = c;
         });
         let c12: any;
-        sqlite.connectionPool.getConnection().then((c) => {
+        sqlite.connectionPool.getConnection().then(c => {
             c12 = c;
         });
         await sleep(0.01);
@@ -296,10 +305,8 @@ test(':memory: connection pool', async () => {
     const sqlite = new SQLiteDatabaseAdapter(':memory:');
 
     // create a connection, or return null if it takes longer than 100 ms
-    const createConnectionOrNull = () => Promise.race([
-        sqlite.connectionPool.getConnection(),
-        sleep(0.1).then(() => null),
-    ]);
+    const createConnectionOrNull = () =>
+        Promise.race([sqlite.connectionPool.getConnection(), sleep(0.1).then(() => null)]);
 
     {
         const c1 = await sqlite.connectionPool.getConnection();
@@ -358,23 +365,23 @@ test('m2m', async () => {
         id: number & PrimaryKey & AutoIncrement = 0;
         tags: Tag[] & BackReference<{ via: typeof BookToTag }> = [];
 
-        constructor(public title: string) {
-        }
+        constructor(public title: string) {}
     }
 
     class Tag {
         id: number & PrimaryKey & AutoIncrement = 0;
         books: Book[] & BackReference<{ via: typeof BookToTag }> = [];
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     class BookToTag {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public book: Book & Reference, public tag: Tag & Reference) {
-        }
+        constructor(
+            public book: Book & Reference,
+            public tag: Tag & Reference,
+        ) {}
     }
 
     const database = await databaseFactory([Book, Tag, BookToTag]);
@@ -397,7 +404,7 @@ test('bool and json', async () => {
     const database = await databaseFactory([Model]);
 
     {
-        const m = new Model;
+        const m = new Model();
         m.flag = true;
         m.doc.flag = true;
         await database.persist(m);
@@ -413,8 +420,7 @@ test('change different fields of multiple entities', async () => {
         firstName: string = '';
         lastName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -451,8 +457,7 @@ test('change pk', async () => {
     class Model {
         firstName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -492,8 +497,7 @@ test('for update/share', async () => {
     class Model {
         firstName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -542,15 +546,19 @@ test('multiple joins', async () => {
     class Flat {
         public id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public property: Property & Reference, public name: string) {
-        }
+        constructor(
+            public property: Property & Reference,
+            public name: string,
+        ) {}
     }
 
     class Tenant {
         public id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public property: Property & Reference, public name: string) {
-        }
+        constructor(
+            public property: Property & Reference,
+            public name: string,
+        ) {}
     }
 
     class Property {
@@ -558,8 +566,7 @@ test('multiple joins', async () => {
         flats: Flat[] & BackReference = [];
         tenants: Tenant[] & BackReference = [];
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = await databaseFactory([Property, Tenant, Flat]);
@@ -593,7 +600,13 @@ test('multiple joins', async () => {
     }
 
     {
-        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({ name: 'desc' }).end().find();
+        const list = await database
+            .query(Property)
+            .joinWith('flats')
+            .useJoinWith('tenants')
+            .sort({ name: 'desc' })
+            .end()
+            .find();
         expect(list).toHaveLength(1);
         expect(list[0].flats).toMatchObject([{ name: 'flat1' }, { name: 'flat2' }]);
         expect(list[0].tenants).toMatchObject([{ name: 'tenant2' }, { name: 'tenant1' }]);
@@ -631,7 +644,13 @@ test('multiple joins', async () => {
     }
 
     {
-        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({ name: 'desc' }).end().find();
+        const list = await database
+            .query(Property)
+            .joinWith('flats')
+            .useJoinWith('tenants')
+            .sort({ name: 'desc' })
+            .end()
+            .find();
         expect(list).toHaveLength(2);
 
         expect(list[0].name).toBe('immo2');
@@ -644,7 +663,14 @@ test('multiple joins', async () => {
     }
 
     {
-        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({ name: 'desc' }).end().sort({ id: 'asc' }).find();
+        const list = await database
+            .query(Property)
+            .joinWith('flats')
+            .useJoinWith('tenants')
+            .sort({ name: 'desc' })
+            .end()
+            .sort({ id: 'asc' })
+            .find();
         expect(list).toHaveLength(2);
 
         expect(list[0].name).toBe('immo1');
@@ -660,20 +686,25 @@ test('multiple joins', async () => {
 test('unloaded relation not deep checked', async () => {
     class BaseModel {
         id: number & PrimaryKey & AutoIncrement = 0;
-        created: Date = new Date;
-        modified: Date = new Date;
-
+        created: Date = new Date();
+        modified: Date = new Date();
     }
 
     class Category extends BaseModel {
-        constructor(public name: string, public title: string = '') {
+        constructor(
+            public name: string,
+            public title: string = '',
+        ) {
             super();
             this.title = title || name;
         }
     }
 
     class Product extends BaseModel {
-        constructor(public category: Category & Reference, public title: string) {
+        constructor(
+            public category: Category & Reference,
+            public title: string,
+        ) {
             super();
         }
     }
@@ -700,9 +731,8 @@ test('deep join population', async () => {
 
         constructor(
             public title: string,
-            public price: number
-        ) {
-        }
+            public price: number,
+        ) {}
     }
 
     @entity.name('basketEntry')
@@ -713,8 +743,7 @@ test('deep join population', async () => {
             public basket: Basket & Reference,
             public product: Product & Reference,
             public amount: number = 1,
-        ) {
-        }
+        ) {}
     }
 
     @entity.name('basket')
@@ -749,8 +778,7 @@ test('joinWith', async () => {
         ref?: MyEntity & Reference;
         refs?: MyEntity[] & BackReference;
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([MyEntity]);
@@ -759,17 +787,11 @@ test('joinWith', async () => {
     entity1.ref = entity2;
     await database.persist(entity1, entity2);
 
-    const result = await database
-        .query(MyEntity)
-        .joinWith('ref')
-        .joinWith('refs')
-        .orderBy('id')
-        .find();
+    const result = await database.query(MyEntity).joinWith('ref').joinWith('refs').orderBy('id').find();
 
     expect(result[0].id).toBe(1);
     expect(result[0].ref).toBe(result[1]);
     expect(result[0].refs).toEqual([]);
-
 
     expect(result[1].id).toBe(2);
     expect(result[1].ref).toBe(undefined);
@@ -782,15 +804,15 @@ test('joinWith', async () => {
             ref: {
                 id: 2,
                 ref: null,
-                refs: [undefined] //circular ref is serialised as undefined
+                refs: [undefined], //circular ref is serialised as undefined
             },
-            refs: []
+            refs: [],
         },
         {
             id: 2,
             ref: null,
-            refs: [{ id: 1, ref: undefined, refs: [] }] //circular ref is serialised as undefined
-        }
+            refs: [{ id: 1, ref: undefined, refs: [] }], //circular ref is serialised as undefined
+        },
     ]);
 });
 
@@ -798,8 +820,7 @@ test('self-reference serialization', async () => {
     class MyEntity {
         ref?: MyEntity & Reference;
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([MyEntity]);

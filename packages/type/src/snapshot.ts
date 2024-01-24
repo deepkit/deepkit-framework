@@ -7,12 +7,20 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { CompilerContext, isObject, toFastProperties } from '@deepkit/core';
-import { typeSettings, UnpopulatedCheck } from './core.js';
+
+import { UnpopulatedCheck, typeSettings } from './core.js';
 import { ReflectionClass, ReflectionProperty } from './reflection/reflection.js';
-import { ContainerAccessor, executeTemplates, noopTemplate, serializer, Serializer, TemplateRegistry, TemplateState } from './serializer.js';
 import { PrimaryKeyFields, ReflectionKind } from './reflection/type.js';
+import {
+    ContainerAccessor,
+    Serializer,
+    TemplateRegistry,
+    TemplateState,
+    executeTemplates,
+    noopTemplate,
+    serializer,
+} from './serializer.js';
 
 function createJITConverterForSnapshot(
     schema: ReflectionClass<any>,
@@ -142,8 +150,7 @@ class SnapshotSerializer extends Serializer {
     }
 }
 
-
-export const snapshotSerializer = new SnapshotSerializer;
+export const snapshotSerializer = new SnapshotSerializer();
 
 /**
  * Creates a new JIT compiled function to convert the class instance to a snapshot.
@@ -152,13 +159,15 @@ export const snapshotSerializer = new SnapshotSerializer;
  *
  * Generated function is cached.
  */
-export function getConverterForSnapshot(
-    reflectionClass: ReflectionClass<any>
-): (value: any) => any {
+export function getConverterForSnapshot(reflectionClass: ReflectionClass<any>): (value: any) => any {
     const jit = reflectionClass.getJitContainer();
     if (jit.snapshotConverter) return jit.snapshotConverter;
 
-    jit.snapshotConverter = createJITConverterForSnapshot(reflectionClass, reflectionClass.getProperties(), snapshotSerializer.serializeRegistry);
+    jit.snapshotConverter = createJITConverterForSnapshot(
+        reflectionClass,
+        reflectionClass.getProperties(),
+        snapshotSerializer.serializeRegistry,
+    );
     toFastProperties(jit);
     return jit.snapshotConverter;
 }
@@ -173,13 +182,15 @@ export function createSnapshot<T>(reflectionClass: ReflectionClass<T>, item: T) 
 /**
  * Extracts the primary key of a snapshot and converts to class type.
  */
-export function getPrimaryKeyExtractor<T>(
-    reflectionClass: ReflectionClass<T>
-): (value: any) => Partial<T> {
+export function getPrimaryKeyExtractor<T>(reflectionClass: ReflectionClass<T>): (value: any) => Partial<T> {
     const jit = reflectionClass.getJitContainer();
     if (jit.primaryKey) return jit.primaryKey;
 
-    jit.primaryKey = createJITConverterForSnapshot(reflectionClass, reflectionClass.getPrimaries(), snapshotSerializer.deserializeRegistry);
+    jit.primaryKey = createJITConverterForSnapshot(
+        reflectionClass,
+        reflectionClass.getPrimaries(),
+        snapshotSerializer.deserializeRegistry,
+    );
     toFastProperties(jit);
     return jit.primaryKey;
 }
@@ -192,7 +203,7 @@ export function getPrimaryKeyExtractor<T>(
  */
 export function getPrimaryKeyHashGenerator(
     reflectionClass: ReflectionClass<any>,
-    serializerToUse: Serializer = serializer
+    serializerToUse: Serializer = serializer,
 ): (value: any) => string {
     const jit = reflectionClass.getJitContainer();
 
@@ -222,10 +233,7 @@ export function getSimplePrimaryKeyHashGenerator(reflectionClass: ReflectionClas
     return (data: PrimaryKeyFields<any>) => simplePrimaryKeyHash(data[primary.name]);
 }
 
-function createPrimaryKeyHashGenerator(
-    reflectionClass: ReflectionClass<any>,
-    serializer: Serializer
-) {
+function createPrimaryKeyHashGenerator(reflectionClass: ReflectionClass<any>, serializer: Serializer) {
     const context = new CompilerContext();
     const setProperties: string[] = [];
     context.context.set('isObject', isObject);
@@ -242,7 +250,9 @@ function createPrimaryKeyHashGenerator(
 
             for (const pk of property.getResolvedReflectionClass().getPrimaries()) {
                 if (pk.type.kind === ReflectionKind.class && pk.type.types.length) {
-                    throw new Error(`Class as primary key (${property.getResolvedReflectionClass().getClassName()}.${pk.getNameAsString()}) is not supported`);
+                    throw new Error(
+                        `Class as primary key (${property.getResolvedReflectionClass().getClassName()}.${pk.getNameAsString()}) is not supported`,
+                    );
                 }
 
                 const deepAccessor = new ContainerAccessor(accessor, JSON.stringify(pk.getNameAsString()));
@@ -278,7 +288,9 @@ function createPrimaryKeyHashGenerator(
         }
 
         if (property.type.kind === ReflectionKind.class && property.type.types.length) {
-            throw new Error(`Class as primary key (${reflectionClass.getClassName()}.${property.getNameAsString()}) is not supported`);
+            throw new Error(
+                `Class as primary key (${reflectionClass.getClassName()}.${property.getNameAsString()}) is not supported`,
+            );
         }
 
         setProperties.push(`

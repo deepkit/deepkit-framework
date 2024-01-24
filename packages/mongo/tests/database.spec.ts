@@ -1,15 +1,16 @@
 import { expect, test } from '@jest/globals';
+
 import { Database } from '@deepkit/orm';
+import { MongoId, PrimaryKey, entity } from '@deepkit/type';
+
 import { MongoDatabaseAdapter } from '../src/adapter.js';
-import { entity, MongoId, PrimaryKey } from '@deepkit/type';
 
 test('simple', async () => {
     @entity.name('asd')
     class Test {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
@@ -21,8 +22,13 @@ test('simple', async () => {
     }
 
     {
-        expect(await database.query(Test).filter({name: {$regex: /asd/}}).has()).toBe(true);
-        const item = await database.query(Test).filter({name: 'asd'}).findOne();
+        expect(
+            await database
+                .query(Test)
+                .filter({ name: { $regex: /asd/ } })
+                .has(),
+        ).toBe(true);
+        const item = await database.query(Test).filter({ name: 'asd' }).findOne();
         expect(item).toBeInstanceOf(Test);
         expect(item.name).toBe('asd');
     }
@@ -34,8 +40,7 @@ test('unit of work', async () => {
     class Test {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
@@ -48,15 +53,15 @@ test('unit of work', async () => {
     await session.commit();
 
     {
-        expect(await session.query(Test).filter({name: 'asd'}).has()).toBe(true);
-        const item = await session.query(Test).filter({name: 'asd'}).findOne();
+        expect(await session.query(Test).filter({ name: 'asd' }).has()).toBe(true);
+        const item = await session.query(Test).filter({ name: 'asd' }).findOne();
         expect(item).toBeInstanceOf(Test);
         expect(item.name).toBe('asd');
     }
 
     await session.remove(item);
     await session.commit();
-    expect(await session.query(Test).filter({name: 'asd'}).has()).toBe(false);
+    expect(await session.query(Test).filter({ name: 'asd' }).has()).toBe(false);
     database.disconnect();
 });
 
@@ -65,8 +70,7 @@ test('repository', async () => {
     class Test {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
@@ -75,11 +79,10 @@ test('repository', async () => {
     await database.persist(item);
 
     class TestRepository {
-        constructor(protected database: Database<MongoDatabaseAdapter>) {
-        }
+        constructor(protected database: Database<MongoDatabaseAdapter>) {}
 
         async findById(id: string) {
-            return this.database.query(Test).filter({_id: id}).findOne();
+            return this.database.query(Test).filter({ _id: id }).findOne();
         }
     }
 
@@ -96,21 +99,20 @@ test('session', async () => {
     class Test {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
     await database.query(Test).deleteMany();
 
-    await database.session(async (session) => {
+    await database.session(async session => {
         const item = new Test('asd');
         session.add(item);
     });
 
     {
-        expect(await database.query(Test).filter({name: 'asd'}).has()).toBe(true);
-        const item = await database.query(Test).filter({name: 'asd'}).findOne();
+        expect(await database.query(Test).filter({ name: 'asd' }).has()).toBe(true);
+        const item = await database.query(Test).filter({ name: 'asd' }).findOne();
         expect(item).toBeInstanceOf(Test);
         expect(item.name).toBe('asd');
     }

@@ -7,9 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { Column, DatabaseModel, ForeignKey, IndexModel, parseType, SchemaParser, Table } from '@deepkit/sql';
 import { isNumeric } from '@deepkit/core';
+import { Column, DatabaseModel, ForeignKey, IndexModel, SchemaParser, Table, parseType } from '@deepkit/sql';
 
 export class MysqlSchemaParser extends SchemaParser {
     public defaultSchema = '';
@@ -23,7 +22,7 @@ export class MysqlSchemaParser extends SchemaParser {
         'decimal',
         'float',
         'double',
-        'bit'
+        'bit',
     ];
 
     async parse(database: DatabaseModel, limitTableNames?: string[]) {
@@ -84,7 +83,10 @@ export class MysqlSchemaParser extends SchemaParser {
         let foreignKey: ForeignKey | undefined;
         for (const row of rows) {
             if (row.constraint_name !== lastId) {
-                const foreignTable = database.getTableForFull(row.referenced_table_name, this.platform.getSchemaDelimiter());
+                const foreignTable = database.getTableForFull(
+                    row.referenced_table_name,
+                    this.platform.getSchemaDelimiter(),
+                );
                 foreignKey = table.addForeignKey(row.constraint_name, foreignTable);
                 lastId = row.constraint_name;
             }

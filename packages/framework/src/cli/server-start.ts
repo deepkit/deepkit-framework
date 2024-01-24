@@ -7,10 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { AppModule, Command, Flag, ServiceContainer, cli } from '@deepkit/app';
+import { DefaultFormatter, Logger, LoggerInterface } from '@deepkit/logger';
 
 import { ApplicationServer } from '../application-server.js';
-import { AppModule, cli, Command, Flag, ServiceContainer } from '@deepkit/app';
-import { DefaultFormatter, Logger, LoggerInterface } from '@deepkit/logger';
 import { FrameworkModule } from '../module.js';
 
 /**
@@ -21,8 +21,7 @@ export class ServerStartController implements Command {
     constructor(
         protected logger: LoggerInterface,
         protected serviceContainer: ServiceContainer,
-    ) {
-    }
+    ) {}
 
     async execute(
         host?: string & Flag,
@@ -32,7 +31,7 @@ export class ServerStartController implements Command {
         selfSigned?: boolean & Flag,
     ): Promise<void> {
         if (this.logger instanceof Logger) {
-            if (!this.logger.hasFormatters()) this.logger.addFormatter(new DefaultFormatter);
+            if (!this.logger.hasFormatters()) this.logger.addFormatter(new DefaultFormatter());
         }
 
         const overwrite: { [name: string]: any } = {};

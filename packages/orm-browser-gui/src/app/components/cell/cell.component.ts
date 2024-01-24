@@ -1,16 +1,28 @@
-import { Component, ComponentFactoryResolver, ComponentRef, Input, OnChanges, OnDestroy, ViewContainerRef } from '@angular/core';
+import {
+    Component,
+    ComponentFactoryResolver,
+    ComponentRef,
+    Input,
+    OnChanges,
+    OnDestroy,
+    ViewContainerRef,
+} from '@angular/core';
+
 import { Type } from '@deepkit/type';
+
 import { cellRegistry } from '../../registry';
 import { TypeDecoration } from './utils';
 
 @Component({
     selector: 'orm-browser-property-view',
     template: ``,
-    styles: [`
-        :host {
-            display: none;
-        }
-    `]
+    styles: [
+        `
+            :host {
+                display: none;
+            }
+        `,
+    ],
 })
 export class CellComponent implements OnDestroy, OnChanges {
     @Input() type!: Type;
@@ -22,8 +34,7 @@ export class CellComponent implements OnDestroy, OnChanges {
     constructor(
         private containerRef: ViewContainerRef,
         private resolver: ComponentFactoryResolver,
-    ) {
-    }
+    ) {}
 
     ngOnDestroy() {
         this.unlink();

@@ -4,20 +4,20 @@ This is the API package of the Deepkit Framework Debugger.
 
 ## Storage Architecture
 
-The debugger storage works together with @deepkit/stopwatch. 
+The debugger storage works together with @deepkit/stopwatch.
 Stopwatcher is a library that exposes the classes, functions, and decorators to work indirectly
-with the debugger storage. It collects all data points and puts them into a queue. 
+with the debugger storage. It collects all data points and puts them into a queue.
 The debugger (if enabled) then reads this queue and puts it on disk and streams changes to a broker,
 so GUI clients can display the data in real-time.
 
 Example:
-```typescript
 
-const stopwatch = new Stopwatch;
+```typescript
+const stopwatch = new Stopwatch();
 
 const frame = stopwatch.start('my/frame');
 
-frame.data({arbitrary: 'data'});
+frame.data({ arbitrary: 'data' });
 
 frame.end();
 ```
@@ -31,7 +31,7 @@ user can provide additional data as arbitrary object.
 There are two different fundamental data types: Frames and Frame Data.
 
 Frames is a union of 3 types: FrameStart, FrameData, and FrameEnd. Each frame has a unique
-id which is shared among those 3 types. Each has also a timestamp and other metadata. 
+id which is shared among those 3 types. Each has also a timestamp and other metadata.
 Using the id and timestamp all frames can be displayed on a flamegraph.
 
 Frame Data is additional data that is not directly displayed in the flamegraph, however can
@@ -48,8 +48,8 @@ Each FrameEnd package has a total byte size of min (32 + 8 + 8 + 64)/8 = 14 byte
 
 Sample calculation to get a feeling of how big a FrameLog can become:
 A program executes 20 methods which are profiled, 5 events, 1 request, 5 workflow events, making total of 31 frames, average label size of 8 characters
-=> (31)*(20+8)B = 868 bytes for FrameStart
-=> (31)*(14)B = 434 bytes for FrameEnd
+=> (31)_(20+8)B = 868 bytes for FrameStart
+=> (31)_(14)B = 434 bytes for FrameEnd
 ==> total of 1302 bytes for all frames per program profiling.
 Logging 768 such program executions costs 1 megabytes.
 
@@ -73,25 +73,35 @@ it means that the Frame Data header file needs to be rewritten entirely, which m
 
 ```typescript
 enum FrameCategory {
-    http, rpc, cli, job, function, lock, workflow, event, database, email, template
+  http,
+  rpc,
+  cli,
+  job,
+  function,
+  lock,
+  workflow,
+  event,
+  database,
+  email,
+  template,
 }
 
 interface FrameStart {
-    id: number;
-    worker: number;
-    label: string;
-    timestamp: number;
-    context: number;
-    category: FrameCategory;
+  id: number;
+  worker: number;
+  label: string;
+  timestamp: number;
+  context: number;
+  category: FrameCategory;
 }
 interface FrameEnd {
-    id: number;
-    worker: number;
-    timestamp: number;
+  id: number;
+  worker: number;
+  timestamp: number;
 }
 ```
 
 ### Use-Cases
 
-1. DB query: We want to log which query took how long. We store at the FrameStart label "EntityName: Type" (Type=Update|Insert|Delete). 
+1. DB query: We want to log which query took how long. We store at the FrameStart label "EntityName: Type" (Type=Update|Insert|Delete).
    The full query including parameters are stored in Frame Data.

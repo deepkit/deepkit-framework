@@ -7,12 +7,20 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { InjectorModule, ProviderWithScope, Token, NormalizedProvider } from '@deepkit/injector';
 import { AbstractClassType, ClassType, CustomError, ExtractClassType, isClass } from '@deepkit/core';
 import { EventListener, EventToken } from '@deepkit/event';
+import { InjectorModule, NormalizedProvider, ProviderWithScope, Token } from '@deepkit/injector';
+import {
+    ReflectionFunction,
+    ReflectionMethod,
+    Type,
+    TypeClass,
+    getPartialSerializeFunction,
+    reflect,
+    serializer,
+} from '@deepkit/type';
 import { WorkflowDefinition } from '@deepkit/workflow';
-import { getPartialSerializeFunction, reflect, ReflectionFunction, ReflectionMethod, serializer, Type, TypeClass } from '@deepkit/type';
+
 import { ControllerConfig } from './service-container.js';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
@@ -173,8 +181,7 @@ export interface RootModuleDefinition extends ModuleDefinition {
     imports?: (AppModule<any> | FunctionalModule)[];
 }
 
-export class ConfigurationInvalidError extends CustomError {
-}
+export class ConfigurationInvalidError extends CustomError {}
 
 let moduleId = 0;
 
@@ -183,27 +190,27 @@ let moduleId = 0;
  */
 type PartialDeep<T> = T extends string | number | bigint | boolean | null | undefined | symbol | Date
     ? T | undefined
-    // Arrays, Sets and Maps and their readonly counterparts have their items made
-    // deeply partial, but their own instances are left untouched
-    : T extends Array<infer ArrayType>
-        ? Array<PartialDeep<ArrayType>>
-        : T extends ReadonlyArray<infer ArrayType>
-            ? ReadonlyArray<ArrayType>
-            : T extends Set<infer SetType>
-                ? Set<PartialDeep<SetType>>
-                : T extends ReadonlySet<infer SetType>
-                    ? ReadonlySet<SetType>
-                    : T extends Map<infer KeyType, infer ValueType>
-                        ? Map<PartialDeep<KeyType>, PartialDeep<ValueType>>
-                        : T extends ReadonlyMap<infer KeyType, infer ValueType>
-                            ? ReadonlyMap<PartialDeep<KeyType>, PartialDeep<ValueType>>
-                            // ...and finally, all other objects.
-                            : {
-                                [K in keyof T]?: PartialDeep<T[K]>;
-                            };
+    : // Arrays, Sets and Maps and their readonly counterparts have their items made
+      // deeply partial, but their own instances are left untouched
+      T extends Array<infer ArrayType>
+      ? Array<PartialDeep<ArrayType>>
+      : T extends ReadonlyArray<infer ArrayType>
+        ? ReadonlyArray<ArrayType>
+        : T extends Set<infer SetType>
+          ? Set<PartialDeep<SetType>>
+          : T extends ReadonlySet<infer SetType>
+            ? ReadonlySet<SetType>
+            : T extends Map<infer KeyType, infer ValueType>
+              ? Map<PartialDeep<KeyType>, PartialDeep<ValueType>>
+              : T extends ReadonlyMap<infer KeyType, infer ValueType>
+                ? ReadonlyMap<PartialDeep<KeyType>, PartialDeep<ValueType>>
+                : // ...and finally, all other objects.
+                  {
+                      [K in keyof T]?: PartialDeep<T[K]>;
+                  };
 
 export interface AppModuleClass<C> {
-    new(config?: PartialDeep<C>): AppModule<any, C>;
+    new (config?: PartialDeep<C>): AppModule<any, C>;
 }
 
 /**
@@ -222,7 +229,10 @@ export interface AppModuleClass<C> {
  * });
  * ```
  */
-export function createModule<T extends CreateModuleDefinition>(options: T, name: string = ''): AppModuleClass<ExtractClassType<T['config']>> {
+export function createModule<T extends CreateModuleDefinition>(
+    options: T,
+    name: string = '',
+): AppModuleClass<ExtractClassType<T['config']>> {
     return class AnonAppModule extends AppModule<T> {
         constructor(config?: PartialDeep<ExtractClassType<T['config']>>) {
             super(options, name);
@@ -255,12 +265,15 @@ export type ListenerType = EventListener<any> | ClassType;
  *   }
  * }
  */
-export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractClassType<T['config']> = any> extends InjectorModule<C, AppModule<any>> {
+export class AppModule<
+    T extends RootModuleDefinition = {},
+    C extends ExtractClassType<T['config']> = any,
+> extends InjectorModule<C, AppModule<any>> {
     public setupConfigs: ((module: AppModule<any>, config: any) => void)[] = [];
 
     public imports: AppModule<any>[] = [];
     public controllers: ClassType[] = [];
-    public commands: { name?: string, callback: Function }[] = [];
+    public commands: { name?: string; callback: Function }[] = [];
     public workflows: WorkflowDefinition<any>[] = [];
     public listeners: ListenerType[] = [];
     public middlewares: MiddlewareFactory[] = [];
@@ -309,30 +322,22 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
      * When all configuration loaders have been loaded, this method is called.
      * It allows to further manipulate the module state depending on the final config.
      */
-    process() {
-
-    }
+    process() {}
 
     /**
      * A hook that allows to react on a registered provider in some module.
      */
-    processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
-
-    }
+    processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {}
 
     /**
      * A hook that allows to react on a registered controller in some module.
      */
-    processController(module: AppModule<any>, config: ControllerConfig) {
-
-    }
+    processController(module: AppModule<any>, config: ControllerConfig) {}
 
     /**
      * A hook that allows to react on a registered event listeners in some module.
      */
-    processListener(module: AppModule<any>, listener: AddedListener) {
-
-    }
+    processListener(module: AppModule<any>, listener: AddedListener) {}
 
     /**
      * After `process` and when all modules have been processed by the service container.
@@ -341,9 +346,7 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
      *
      * Last chance to set up the injector context, via this.setupProvider().
      */
-    postProcess() {
-
-    }
+    postProcess() {}
 
     /**
      * Renames this module instance.
@@ -369,7 +372,7 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
         return this.controllers;
     }
 
-    getCommands(): { name?: string, callback: Function }[] {
+    getCommands(): { name?: string; callback: Function }[] {
         return this.commands;
     }
 
@@ -453,7 +456,10 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
         }
 
         if (this.options.config) {
-            const configNormalized = getPartialSerializeFunction(reflect(this.options.config) as TypeClass, serializer.deserializeRegistry)(config);
+            const configNormalized = getPartialSerializeFunction(
+                reflect(this.options.config) as TypeClass,
+                serializer.deserializeRegistry,
+            )(config);
             Object.assign(this.config, configNormalized);
         }
 

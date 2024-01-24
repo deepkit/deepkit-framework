@@ -1,13 +1,15 @@
 import { Component, OnDestroy } from '@angular/core';
+import { Subscription } from 'rxjs';
+
 import { ModuleApi } from '@deepkit/framework-debug-api';
 import { LiveSubject } from '@deepkit/ui-library';
+
 import { ControllerClient } from '../../client';
-import { Subscription } from 'rxjs';
 
 @Component({
     template: `
-        <div class="modules overlay-scrollbar" >
-            <module-detail *ngIf="apiModule|asyncRender as m" [m]="m"></module-detail>
+        <div class="modules overlay-scrollbar">
+            <module-detail *ngIf="apiModule | asyncRender as m" [m]="m"></module-detail>
         </div>
         <div class="bottom-bar">
             <span class="">— encapsulated</span>
@@ -16,7 +18,7 @@ import { Subscription } from 'rxjs';
             <span class="for-root">— for root</span>
         </div>
     `,
-    styleUrls: ['./modules.component.scss']
+    styleUrls: ['./modules.component.scss'],
 })
 export class ModulesComponent implements OnDestroy {
     public apiModule = new LiveSubject<ModuleApi>(subject => {

@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { BaseImplementation, ElementNotFoundException } from './base.js';
 
 interface ItemElement<T, TYPE> {
@@ -36,7 +35,7 @@ export class GroupArraySort<T = string, TYPE = string> extends BaseImplementatio
     public sameTypeExtraGrouping: boolean = false;
     public throwOnNonExistingDependency: boolean = true;
 
-    set(elements: Map<{ item: T, type: TYPE }, T[]>) {
+    set(elements: Map<{ item: T; type: TYPE }, T[]>) {
         for (const [key, deps] of elements.entries()) {
             this.add(key.item, key.type, deps);
         }
@@ -44,7 +43,9 @@ export class GroupArraySort<T = string, TYPE = string> extends BaseImplementatio
 
     public add(item: T, type: TYPE, dependencies: T[] = []) {
         this.elements.set(item, {
-            item, type, dependencies,
+            item,
+            type,
+            dependencies,
             dependenciesCount: dependencies.length,
             visited: false,
             addedAtLevel: -1,
@@ -139,7 +140,7 @@ export class GroupArraySort<T = string, TYPE = string> extends BaseImplementatio
     }
 
     public getGroups() {
-        const groups: { type: TYPE, items: T[] }[] = [];
+        const groups: { type: TYPE; items: T[] }[] = [];
 
         for (const group of this.groups) {
             groups.push({ type: group.type, items: this.sorted.slice(group.position, group.position + group.length) });

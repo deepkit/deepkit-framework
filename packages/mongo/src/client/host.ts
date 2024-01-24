@@ -38,8 +38,7 @@ export class Host {
     constructor(
         public readonly hostname: string,
         public readonly port: number = 27017,
-    ) {
-    }
+    ) {}
 
     get id() {
         return `${this.hostname}:${this.port}`;
@@ -54,8 +53,12 @@ export class Host {
     }
 
     isReadable(): boolean {
-        return this.type === HostType.primary || this.type === HostType.standalone
-            || this.type === HostType.mongos || this.type === HostType.secondary;
+        return (
+            this.type === HostType.primary ||
+            this.type === HostType.standalone ||
+            this.type === HostType.mongos ||
+            this.type === HostType.secondary
+        );
     }
 
     setType(type: HostType) {
@@ -63,7 +66,7 @@ export class Host {
             //type changed. Should we do anything special?
         }
         this.type = type;
-        this.typeSetAt = new Date;
+        this.typeSetAt = new Date();
     }
 
     getType() {

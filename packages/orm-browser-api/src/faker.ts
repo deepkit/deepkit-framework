@@ -2,10 +2,13 @@ import { ReflectionKind, Type } from '@deepkit/type';
 
 export type FakerDataType = 'string' | 'date' | 'number' | 'boolean' | 'any';
 
-export type FakerTypes = Record<string, {
-    example: any,
-    type: FakerDataType
-}>;
+export type FakerTypes = Record<
+    string,
+    {
+        example: any;
+        type: FakerDataType;
+    }
+>;
 
 export function getType(v: any): FakerDataType {
     if ('string' === typeof v) return 'string';

@@ -1,8 +1,9 @@
 import { createFilter } from '@rollup/pluginutils';
-import ts from 'typescript';
-import { declarationTransformer, transformer } from '@deepkit/type-compiler';
-import type { Plugin } from 'vite';
 import { cwd } from 'process';
+import ts from 'typescript';
+import type { Plugin } from 'vite';
+
+import { declarationTransformer, transformer } from '@deepkit/type-compiler';
 
 export interface Options {
     include?: string;
@@ -24,14 +25,17 @@ export function deepkitType(options: Options = {}): Plugin {
         transform(code: string, fileName: string) {
             if (!filter(fileName)) return null;
             const transformed = ts.transpileModule(code, {
-                'compilerOptions': Object.assign({
-                    'target': ts.ScriptTarget.ESNext,
-                    'module': ts.ModuleKind.ESNext,
-                    configFilePath: options.tsConfig || cwd() + '/tsconfig.json',
-                }, options.compilerOptions || {}),
+                compilerOptions: Object.assign(
+                    {
+                        target: ts.ScriptTarget.ESNext,
+                        module: ts.ModuleKind.ESNext,
+                        configFilePath: options.tsConfig || cwd() + '/tsconfig.json',
+                    },
+                    options.compilerOptions || {},
+                ),
                 fileName,
                 //@ts-ignore
-                transformers
+                transformers,
             });
 
             return {

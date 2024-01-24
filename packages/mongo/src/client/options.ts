@@ -32,7 +32,8 @@ export class ConnectionOptions {
     readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';
 
     //unknown is there to prevent Typescript generating wrong options.d.ts
-    readPreference: 'primary' | 'primaryPreferred' | 'secondary' | 'secondaryPreferred' | 'nearest' | 'unknown' = 'primary';
+    readPreference: 'primary' | 'primaryPreferred' | 'secondary' | 'secondaryPreferred' | 'nearest' | 'unknown' =
+        'primary';
 
     maxStalenessSeconds?: number;
     readPreferenceTags?: string;

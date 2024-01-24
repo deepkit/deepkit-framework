@@ -15,19 +15,15 @@
     "outDir": "./dist",
     "declaration": true,
     "composite": true,
-    "types": []
+    "types": [],
   },
-  "include": [
-    "src",
-    "tests",
-    "index.ts"
-  ],
+  "include": ["src", "tests", "index.ts"],
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

@@ -7,8 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { EmbeddedOptions, getEmbeddedProperty, NamingStrategy, ReflectionKind, Serializer, Type, TypeClass, TypeProperty } from '@deepkit/type';
+import {
+    EmbeddedOptions,
+    NamingStrategy,
+    ReflectionKind,
+    Serializer,
+    Type,
+    TypeClass,
+    TypeProperty,
+    getEmbeddedProperty,
+} from '@deepkit/type';
 
 export const TWO_PWR_32_DBL_N = (1 << 16) * (1 << 16);
 
@@ -81,7 +89,12 @@ export function digitByteSize(v: number): number {
     return 11;
 }
 
-export function getEmbeddedPropertyName(serializer: Serializer, namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions): string {
+export function getEmbeddedPropertyName(
+    serializer: Serializer,
+    namingStrategy: NamingStrategy,
+    property: TypeProperty,
+    embedded: EmbeddedOptions,
+): string {
     let embeddedPropertyName = String(namingStrategy.getPropertyName(property, serializer.name));
     if (embedded.prefix !== undefined) {
         embeddedPropertyName = embedded.prefix + embeddedPropertyName;
@@ -89,7 +102,16 @@ export function getEmbeddedPropertyName(serializer: Serializer, namingStrategy: 
     return embeddedPropertyName;
 }
 
-export function getEmbeddedAccessor(type: TypeClass, autoPrefix: boolean, accessor: string, serializer: Serializer, namingStrategy: NamingStrategy, property: TypeProperty, embedded: EmbeddedOptions, container?: string): string {
+export function getEmbeddedAccessor(
+    type: TypeClass,
+    autoPrefix: boolean,
+    accessor: string,
+    serializer: Serializer,
+    namingStrategy: NamingStrategy,
+    property: TypeProperty,
+    embedded: EmbeddedOptions,
+    container?: string,
+): string {
     const containerProperty = getEmbeddedProperty(type);
 
     let embeddedPropertyName = String(namingStrategy.getPropertyName(property, serializer.name));
@@ -99,7 +121,7 @@ export function getEmbeddedAccessor(type: TypeClass, autoPrefix: boolean, access
         embeddedPropertyName = String(containerProperty.name) + '_' + embeddedPropertyName;
     }
 
-    if ((autoPrefix || embedded.prefix !== undefined)) {
+    if (autoPrefix || embedded.prefix !== undefined) {
         //if autoPrefix or a prefix is set the embeddedPropertyName is emitted in a container, either manually provided or from accessor.
         if (containerProperty) return embeddedPropertyName;
         if (container) return embeddedPropertyName;
@@ -111,5 +133,9 @@ export function getEmbeddedAccessor(type: TypeClass, autoPrefix: boolean, access
 }
 
 export function isSerializable(type: Type): boolean {
-    return type.kind !== ReflectionKind.methodSignature && type.kind !== ReflectionKind.method && type.kind !== ReflectionKind.function;
+    return (
+        type.kind !== ReflectionKind.methodSignature &&
+        type.kind !== ReflectionKind.method &&
+        type.kind !== ReflectionKind.function
+    );
 }

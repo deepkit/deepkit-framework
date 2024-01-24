@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+
 import '../src/optimize-tsx';
 import { isOptimisedHtmlString, parseCode } from '../src/optimize-tsx.js';
 
@@ -28,7 +29,6 @@ test('template test', async () => {
     // console.dir(parseCode(`const a = { [jsx.safeString]: 'a' }`), { depth: null });
     // console.dir(parseCode(`const a = escape(e)`), { depth: null });
     // console.dir(parseCode(`const a = escape(e).safeHtml`), { depth: null });
-
     // console.dir(parseCode(`'a' + children + 'b'`), { depth: null });
     // console.dir(parseCode(`const a = {a: b}`), { depth: null });
     // console.dir(generateCode({ type: 'Identifier', name: 'assd'}), { depth: null });

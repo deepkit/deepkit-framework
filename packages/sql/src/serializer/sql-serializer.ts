@@ -7,25 +7,25 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import {
     ContainerAccessor,
-    executeTemplates, isBackReferenceType,
-    isReferenceType,
-    isUUIDType,
-    nodeBufferToArrayBuffer,
-    nodeBufferToTypedArray,
-    referenceAnnotation,
     ReflectionClass,
     ReflectionKind,
-    serializeObjectLiteral,
     Serializer,
     TemplateState,
     Type,
     TypeArray,
     TypeClass,
-    typedArrayToBuffer,
     TypeObjectLiteral,
+    executeTemplates,
+    isBackReferenceType,
+    isReferenceType,
+    isUUIDType,
+    nodeBufferToArrayBuffer,
+    nodeBufferToTypedArray,
+    referenceAnnotation,
+    serializeObjectLiteral,
+    typedArrayToBuffer,
     uuidAnnotation,
 } from '@deepkit/type';
 
@@ -67,7 +67,9 @@ function deserializeSqlAny(type: Type, state: TemplateState) {
         return;
     }
     state.setContext({ jsonParse: JSON.parse });
-    state.addCode(`${state.setter} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor};`);
+    state.addCode(
+        `${state.setter} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor};`,
+    );
 }
 
 /**
@@ -90,7 +92,9 @@ function deserializeSqlArray(type: TypeArray, state: TemplateState) {
 
     if (!isDirectPropertyOfEntity(type)) return;
 
-    state.addCode(`${state.setter} = 'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor};`);
+    state.addCode(
+        `${state.setter} = 'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor};`,
+    );
 }
 
 /**
@@ -111,7 +115,9 @@ function deserializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state:
     if (!isReferenceType(type) && isDirectPropertyOfEntity(type)) {
         //TypeClass|TypeObjectLiteral properties are serialized as JSON
         state.setContext({ jsonParse: JSON.parse });
-        state.addCode(`${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`);
+        state.addCode(
+            `${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`,
+        );
     }
 
     serializeObjectLiteral(type, state);
@@ -190,7 +196,10 @@ export class SqlSerializer extends Serializer {
         this.deserializeRegistry.prepend(ReflectionKind.array, deserializeSqlArray);
 
         //for databases, types decorated with Reference will always only export the primary key.
-        const referenceType = referenceAnnotation.registerType({ kind: ReflectionKind.class, classType: Object, types: [] }, {});
+        const referenceType = referenceAnnotation.registerType(
+            { kind: ReflectionKind.class, classType: Object, types: [] },
+            {},
+        );
         this.serializeRegistry.removeDecorator(referenceType);
         this.serializeRegistry.addDecorator(isReferenceType, serializeReferencedType);
 
@@ -213,29 +222,43 @@ export class SqlSerializer extends Serializer {
                 state.addSetter(`nodeBufferToArrayBuffer(${state.accessor})`);
             } else {
                 state.setContext({ nodeBufferToTypedArray });
-                state.addSetter(`nodeBufferToTypedArray(${state.accessor}, ${state.setVariable('typeArray', type.classType)})`);
+                state.addSetter(
+                    `nodeBufferToTypedArray(${state.accessor}, ${state.setVariable('typeArray', type.classType)})`,
+                );
             }
         });
     }
 }
 
-export const sqlSerializer: Serializer = new SqlSerializer;
+export const sqlSerializer: Serializer = new SqlSerializer();
 
 export function uuid4Binary(u: any): Buffer {
     return 'string' === typeof u ? Buffer.from(u.replace(/-/g, ''), 'hex') : Buffer.alloc(0);
 }
 
 export function uuid4Stringify(buffer: Buffer): string {
-    return hexTable[buffer[0]] + hexTable[buffer[1]] + hexTable[buffer[2]] + hexTable[buffer[3]]
-        + '-'
-        + hexTable[buffer[4]] + hexTable[buffer[5]]
-        + '-'
-        + hexTable[buffer[6]] + hexTable[buffer[7]]
-        + '-'
-        + hexTable[buffer[8]] + hexTable[buffer[9]]
-        + '-'
-        + hexTable[buffer[10]] + hexTable[buffer[11]] + hexTable[buffer[12]] + hexTable[buffer[13]] + hexTable[buffer[14]] + hexTable[buffer[15]]
-        ;
+    return (
+        hexTable[buffer[0]] +
+        hexTable[buffer[1]] +
+        hexTable[buffer[2]] +
+        hexTable[buffer[3]] +
+        '-' +
+        hexTable[buffer[4]] +
+        hexTable[buffer[5]] +
+        '-' +
+        hexTable[buffer[6]] +
+        hexTable[buffer[7]] +
+        '-' +
+        hexTable[buffer[8]] +
+        hexTable[buffer[9]] +
+        '-' +
+        hexTable[buffer[10]] +
+        hexTable[buffer[11]] +
+        hexTable[buffer[12]] +
+        hexTable[buffer[13]] +
+        hexTable[buffer[14]] +
+        hexTable[buffer[15]]
+    );
 }
 
 //

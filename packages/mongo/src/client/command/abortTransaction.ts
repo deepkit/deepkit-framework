@@ -7,18 +7,18 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { UUID } from '@deepkit/type';
-import { BaseResponse, Command } from './command.js';
+
 import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
+import { BaseResponse, Command } from './command.js';
 
 interface Request {
-    abortTransaction: number,
-    $db: string,
-    lsid?: { id: UUID },
-    txnNumber?: number,
-    autocommit?: boolean,
+    abortTransaction: number;
+    $db: string;
+    lsid?: { id: UUID };
+    txnNumber?: number;
+    autocommit?: boolean;
 }
 
 export class AbortTransactionCommand extends Command {

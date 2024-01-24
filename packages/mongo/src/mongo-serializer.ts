@@ -7,20 +7,19 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { BSONBinarySerializer, ValueWithBSONSerializer } from '@deepkit/bson';
 import {
     ContainerAccessor,
     EmptySerializer,
+    ReflectionClass,
+    ReflectionKind,
+    TemplateState,
+    Type,
     executeTemplates,
     isBinaryBigIntType,
     isMongoIdType,
     isReferenceType,
     isUUIDType,
-    ReflectionClass,
-    ReflectionKind,
-    TemplateState,
-    Type
 } from '@deepkit/type';
 
 /**

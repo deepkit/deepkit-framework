@@ -7,10 +7,22 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType, getClassName } from '@deepkit/core';
+import { EventDispatcher } from '@deepkit/event';
+import { InjectorContext, InjectorModule, getInjectOptions } from '@deepkit/injector';
+import { LoggerInterface } from '@deepkit/logger';
+import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import {
     ClassDecoratorResult,
+    ReflectionClass,
+    ReflectionFunction,
+    ReflectionKind,
+    Type,
+    TypeAnnotation,
+    TypeParameter,
+    TypeProperty,
+    TypePropertySignature,
+    ValidationError,
     createClassDecoratorContext,
     deserialize,
     hasDefaultValue,
@@ -19,30 +31,25 @@ import {
     isOptional,
     metaAnnotation,
     reflect,
-    ReflectionClass,
-    ReflectionFunction,
-    ReflectionKind,
     stringifyType,
-    Type,
-    TypeAnnotation,
-    TypeParameter,
-    TypeProperty,
-    TypePropertySignature,
     typeToObject,
     validate,
-    ValidationError,
 } from '@deepkit/type';
-import { EventDispatcher } from '@deepkit/event';
-import { getInjectOptions, InjectorContext, InjectorModule } from '@deepkit/injector';
-import { ControllerConfig } from './service-container.js';
-import { LoggerInterface } from '@deepkit/logger';
+
 import { onAppError, onAppExecute, onAppExecuted, onAppShutdown } from './app.js';
-import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import { ControllerConfig } from './service-container.js';
 
 /**
  * Flag is a command line argument that is prefixed with `--` and can have a value.
  */
-export type Flag<Options extends { char?: string, hidden?: boolean, description?: string, prefix?: string } = {}> = TypeAnnotation<'cli:flag', Options>;
+export type Flag<
+    Options extends {
+        char?: string;
+        hidden?: boolean;
+        description?: string;
+        prefix?: string;
+    } = {},
+> = TypeAnnotation<'cli:flag', Options>;
 
 class CommandDecoratorDefinition {
     name: string = '';
@@ -50,7 +57,7 @@ class CommandDecoratorDefinition {
 }
 
 class CommandDecorator {
-    t = new CommandDecoratorDefinition;
+    t = new CommandDecoratorDefinition();
 
     controller(name: string, options?: { description?: string }) {
         this.t.name = name;
@@ -58,7 +65,6 @@ class CommandDecorator {
             if (options.description) this.t.description = options.description;
         }
     }
-
 }
 
 export const cli: ClassDecoratorResult<typeof CommandDecorator> = createClassDecoratorContext(CommandDecorator);
@@ -70,7 +76,6 @@ export interface Command {
 export function isCommand(classType: ClassType<Command>) {
     return !!cli._fetch(classType);
 }
-
 
 function convert(parameter: CommandParameter, value: any) {
     if (value === undefined) {
@@ -102,9 +107,16 @@ function supportedFlags(type: Type): boolean {
 }
 
 function supportedAsArgument(type: Type): boolean {
-    if (type.kind === ReflectionKind.string || type.kind === ReflectionKind.number
-        || type.kind === ReflectionKind.any || type.kind === ReflectionKind.unknown || isDateType(type)
-        || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.literal) return true;
+    if (
+        type.kind === ReflectionKind.string ||
+        type.kind === ReflectionKind.number ||
+        type.kind === ReflectionKind.any ||
+        type.kind === ReflectionKind.unknown ||
+        isDateType(type) ||
+        type.kind === ReflectionKind.bigint ||
+        type.kind === ReflectionKind.literal
+    )
+        return true;
     if (type.kind === ReflectionKind.union) return type.types.every(v => supportedAsArgument(v));
     return false;
 }
@@ -145,7 +157,10 @@ export function getArgsFromEnvironment(): string[] {
     return [];
 }
 
-export function parseCliArgs(args: string[], aliases: { [name: string]: string } = {}): { [name: string]: boolean | string | string[] } {
+export function parseCliArgs(
+    args: string[],
+    aliases: { [name: string]: string } = {},
+): { [name: string]: boolean | string | string[] } {
     const result: { [name: string]: boolean | string | string[] } = {};
     let current: string | undefined = undefined;
 
@@ -208,7 +223,7 @@ function getSpacing(names: string[]): number {
 }
 
 export interface ParsedCliControllerConfig {
-    controller?: ClassType,
+    controller?: ClassType;
     callback?: Function;
     description?: string;
     name: string;
@@ -228,9 +243,13 @@ export interface ParsedCliControllerConfig {
  * //system_subSystem_test => system:sub-system:test
  */
 function commandNameFromSymbol(symbolName: string) {
-    return symbolName.replace(/_+/g, ':')
-        .replace(/([A-Z])/g, '-$1').replace(/^-/, '').toLowerCase()
-        .replace(/-command$/, '').replace(/-controller/, '-');
+    return symbolName
+        .replace(/_+/g, ':')
+        .replace(/([A-Z])/g, '-$1')
+        .replace(/^-/, '')
+        .toLowerCase()
+        .replace(/-command$/, '')
+        .replace(/-controller/, '-');
 }
 
 export function parseControllerConfig(config: ControllerConfig): ParsedCliControllerConfig {
@@ -254,7 +273,13 @@ export function parseControllerConfig(config: ControllerConfig): ParsedCliContro
         if (type.kind === ReflectionKind.class && type.description) description = type.description || '';
     }
 
-    return { controller: config.controller, callback: config.callback, description, name, module: config.module };
+    return {
+        controller: config.controller,
+        callback: config.callback,
+        description,
+        name,
+        module: config.module,
+    };
 }
 
 function printTopics(script: string, forTopic: string, commands: ParsedCliControllerConfig[], writer: CommandWriter) {
@@ -323,7 +348,9 @@ function printHelp(script: string, command: ParsedCliControllerConfig, writer: C
     if (args.length) {
         writer('<yellow>Arguments:</yellow>');
         for (const parameter of args) {
-            writer(`  ${parameter.name}</green>\t${parameter.description || ''}<yellow>${getParamFlags(parameter)}</yellow>`);
+            writer(
+                `  ${parameter.name}</green>\t${parameter.description || ''}<yellow>${getParamFlags(parameter)}</yellow>`,
+            );
         }
     }
 
@@ -387,7 +414,7 @@ export async function executeCommand(
     const first = argv[0] === 'help' || argv[0] === '--help' ? '' : argv[0];
     const command = commands.find(cmd => cmd.name === first);
 
-    if (argv.length === 0 || (argv.length === 1) || help) {
+    if (argv.length === 0 || argv.length === 1 || help) {
         const topicPrefix = argv.length === 1 && first ? first + ':' : '';
 
         if (command && help) {
@@ -434,7 +461,9 @@ function handleConvertError(logger: LoggerInterface, parameter: CommandParameter
         group = 'option';
     }
     if (error instanceof ValidationError) {
-        logger.log(`<red>Invalid value for ${group} ${name}: ${value}.</red> ${error.errors[0].message} [${error.errors[0].code}]`);
+        logger.log(
+            `<red>Invalid value for ${group} ${name}: ${value}.</red> ${error.errors[0].message} [${error.errors[0].code}]`,
+        );
         return;
     }
     logger.log(`<red>Invalid value for ${group} ${name}: ${value}.</red> ${String(error.message)}`);
@@ -458,21 +487,29 @@ function collectCommandParameter(config: ParsedCliControllerConfig) {
     const parameters = config.callback
         ? ReflectionFunction.from(config.callback).getParameters()
         : config.controller
-            ? ReflectionClass.from(config.controller).getMethod('execute').getParameters()
-            : [];
+          ? ReflectionClass.from(config.controller).getMethod('execute').getParameters()
+          : [];
 
     const result: CommandParameter[] = [];
 
     let objectLiterals = 0;
     for (const reflection of parameters) {
-        if (reflection.parameter.type.kind === ReflectionKind.objectLiteral || reflection.parameter.type.kind === ReflectionKind.class) {
+        if (
+            reflection.parameter.type.kind === ReflectionKind.objectLiteral ||
+            reflection.parameter.type.kind === ReflectionKind.class
+        ) {
             objectLiterals++;
         }
     }
 
     const names = new Set<string>();
 
-    function add(parameter: TypeParameter | TypeProperty | TypePropertySignature, prefixIn: string, collectInto?: string, forceFlag?: boolean) {
+    function add(
+        parameter: TypeParameter | TypeProperty | TypePropertySignature,
+        prefixIn: string,
+        collectInto?: string,
+        forceFlag?: boolean,
+    ) {
         const meta = getParameterMeta(parameter);
         const injectToken = getInjectOptions(parameter.type);
         const isSimple = supportedAsArgument(parameter.type);
@@ -484,35 +521,76 @@ function collectCommandParameter(config: ParsedCliControllerConfig) {
         const name = String(parameter.name);
         let defaultValue: any = undefined;
         try {
-            defaultValue = parameter.kind === ReflectionKind.property || parameter.kind === ReflectionKind.parameter ? parameter.default?.() : undefined;
-        } catch {
-        }
+            defaultValue =
+                parameter.kind === ReflectionKind.property || parameter.kind === ReflectionKind.parameter
+                    ? parameter.default?.()
+                    : undefined;
+        } catch {}
 
-        if (forceFlag || (meta.flag || isFlagForced(parameter.type)) && !injectToken) {
+        if (forceFlag || ((meta.flag || isFlagForced(parameter.type)) && !injectToken)) {
             // check if parameter.type is an object, e.g. { name: string, age: number }
             // split it into multiple flags, e.g. --name --age
             if (parameter.type.kind === ReflectionKind.objectLiteral || isCustomTypeClass(parameter.type)) {
                 for (const property of parameter.type.types) {
-                    if (property.kind !== ReflectionKind.property && property.kind !== ReflectionKind.propertySignature) continue;
+                    if (property.kind !== ReflectionKind.property && property.kind !== ReflectionKind.propertySignature)
+                        continue;
                     if (!supportedFlags(property.type)) continue;
                     const subName = String(property.name);
                     if (names.has(prefix + '.' + subName)) {
-                        throw new Error(`Duplicate CLI argument/flag name ${subName} in object literal. Try setting a prefix via ${name}: ${stringifyType(parameter.type)} & Flag<{prefix: '${name}'}> `);
+                        throw new Error(
+                            `Duplicate CLI argument/flag name ${subName} in object literal. Try setting a prefix via ${name}: ${stringifyType(parameter.type)} & Flag<{prefix: '${name}'}> `,
+                        );
                     }
                     names.add(prefix + '.' + subName);
                     add(property, prefix, name, true);
                 }
             } else {
                 names.add(name);
-                result.push({ name, defaultValue, char, hidden, optional, description, prefix, collectInto, kind: 'flag', flag: true, type: parameter.type });
+                result.push({
+                    name,
+                    defaultValue,
+                    char,
+                    hidden,
+                    optional,
+                    description,
+                    prefix,
+                    collectInto,
+                    kind: 'flag',
+                    flag: true,
+                    type: parameter.type,
+                });
             }
         } else {
             names.add(name);
             //it's either a simple string|number positional argument or a service
             if (isSimple && !injectToken) {
-                result.push({ name, defaultValue, flag: false, char, optional, description, hidden, collectInto, prefix, kind: 'argument', type: parameter.type });
+                result.push({
+                    name,
+                    defaultValue,
+                    flag: false,
+                    char,
+                    optional,
+                    description,
+                    hidden,
+                    collectInto,
+                    prefix,
+                    kind: 'argument',
+                    type: parameter.type,
+                });
             } else {
-                result.push({ name, defaultValue, flag: false, char, optional, description, hidden, collectInto, prefix, kind: 'service', type: parameter.type });
+                result.push({
+                    name,
+                    defaultValue,
+                    flag: false,
+                    char,
+                    optional,
+                    description,
+                    hidden,
+                    collectInto,
+                    prefix,
+                    kind: 'service',
+                    type: parameter.type,
+                });
             }
         }
     }
@@ -530,8 +608,15 @@ function collectCommandParameter(config: ParsedCliControllerConfig) {
 
             if (!meta.flag) continue;
             result.push({
-                name: reflection.name, hidden: meta.hidden || false, prefix: meta.prefix || '', char: meta.char || '',
-                kind: 'flag-property', flag: true, description, optional, type: reflection.property.type,
+                name: reflection.name,
+                hidden: meta.hidden || false,
+                prefix: meta.prefix || '',
+                char: meta.char || '',
+                kind: 'flag-property',
+                flag: true,
+                description,
+                optional,
+                type: reflection.property.type,
             });
         }
     }
@@ -539,7 +624,7 @@ function collectCommandParameter(config: ParsedCliControllerConfig) {
     return result;
 }
 
-function getActualCliParameterName(parameter: { prefix: string, name: string }) {
+function getActualCliParameterName(parameter: { prefix: string; name: string }) {
     return parameter.prefix ? parameter.prefix + '.' + parameter.name : parameter.name;
 }
 
@@ -553,8 +638,8 @@ export async function runCommand(
     const parameters = config.callback
         ? ReflectionFunction.from(config.callback).getParameters()
         : config.controller
-            ? ReflectionClass.from(config.controller).getMethod('execute').getParameters()
-            : [];
+          ? ReflectionClass.from(config.controller).getMethod('execute').getParameters()
+          : [];
 
     const stopwatch = injector.get(Stopwatch);
     const aliases: { [name: string]: string } = {};
@@ -616,8 +701,14 @@ export async function runCommand(
 
     const label = config.controller ? getClassName(config.controller) : config.callback ? config.callback.name : '';
 
-    await eventDispatcher.dispatch(onAppExecute, { command: config.name, parameters: parameterValues, injector });
-    const frame = stopwatch.active ? stopwatch.start(config.name + '(' + label + ')', FrameCategory.cli, true) : undefined;
+    await eventDispatcher.dispatch(onAppExecute, {
+        command: config.name,
+        parameters: parameterValues,
+        injector,
+    });
+    const frame = stopwatch.active
+        ? stopwatch.start(config.name + '(' + label + ')', FrameCategory.cli, true)
+        : undefined;
 
     let exitCode: any = 1;
     try {
@@ -641,7 +732,12 @@ export async function runCommand(
             }
         }
         exitCode = 'number' === typeof exitCode ? exitCode : 0;
-        await eventDispatcher.dispatch(onAppExecuted, { exitCode, command: config.name, parameters: parameterValues, injector });
+        await eventDispatcher.dispatch(onAppExecuted, {
+            exitCode,
+            command: config.name,
+            parameters: parameterValues,
+            injector,
+        });
         return exitCode;
     } catch (error) {
         await eventDispatcher.dispatch(onAppError, {
@@ -653,6 +749,10 @@ export async function runCommand(
         throw error;
     } finally {
         if (frame) frame.end();
-        await eventDispatcher.dispatch(onAppShutdown, { command: config.name, parameters: parameterValues, injector });
+        await eventDispatcher.dispatch(onAppShutdown, {
+            command: config.name,
+            parameters: parameterValues,
+            injector,
+        });
     }
 }

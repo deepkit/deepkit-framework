@@ -1,8 +1,9 @@
-import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
+import { asyncOperation, formatError } from '@deepkit/core';
+import { ConsoleLogger, LoggerInterface } from '@deepkit/logger';
+import { ReceiveType, Type, resolveReceiveType } from '@deepkit/type';
+
 import { BrokerAdapterBase, BrokerInvalidateCacheMessage } from './broker.js';
 import { parseTime } from './utils.js';
-import { ConsoleLogger, LoggerInterface } from '@deepkit/logger';
-import { asyncOperation, formatError } from '@deepkit/core';
 
 export interface BrokerCacheOptions {
     /**
@@ -70,11 +71,10 @@ function parseBrokerCacheOptions(options: Partial<BrokerCacheOptions>): BrokerCa
     };
 }
 
-export class BrokerCacheError extends Error {
-}
+export class BrokerCacheError extends Error {}
 
 export interface BrokerAdapterCache extends BrokerAdapterBase {
-    getCache(key: string, type: Type): Promise<{ value: any, ttl: number } | undefined>;
+    getCache(key: string, type: Type): Promise<{ value: any; ttl: number } | undefined>;
 
     getCacheMeta(key: string): Promise<{ ttl: number } | undefined>;
 
@@ -102,8 +102,7 @@ export class BrokerCacheStore {
      */
     cache = new Map<string, CacheStoreEntry>();
 
-    constructor(public config: BrokerCacheOptionsResolved) {
-    }
+    constructor(public config: BrokerCacheOptionsResolved) {}
 
     invalidate(key: string) {
         if (this.config.maxStale) {
@@ -125,7 +124,7 @@ export class BrokerCacheStore {
     set(key: string, value: CacheStoreEntry) {
         if (!this.config.inMemoryTtl) return;
 
-        const ttl = value.inMemoryTtl = Date.now() + this.config.inMemoryTtl;
+        const ttl = (value.inMemoryTtl = Date.now() + this.config.inMemoryTtl);
         this.cache.set(key, value);
 
         setTimeout(() => {
@@ -146,17 +145,16 @@ export class BrokerCacheItem<T> {
         private store: BrokerCacheStore,
         private type: Type,
         private logger: LoggerInterface,
-    ) {
-    }
+    ) {}
 
     protected build(entry: CacheStoreEntry): Promise<void> {
-        return entry.building = asyncOperation<void>(async (resolve) => {
+        return (entry.building = asyncOperation<void>(async resolve => {
             entry.value = await this.builder();
             entry.ttl = Date.now() + this.options.ttl;
             entry.built++;
             entry.building = undefined;
             resolve();
-        });
+        }));
     }
 
     async set(value: T) {
@@ -209,7 +207,11 @@ export class BrokerCacheItem<T> {
                 return entry.value;
             }
         } else {
-            entry = { value: undefined, built: 0, ttl: Date.now() + this.options.ttl };
+            entry = {
+                value: undefined,
+                built: 0,
+                ttl: Date.now() + this.options.ttl,
+            };
             this.store.set(this.key, entry);
         }
 
@@ -235,17 +237,25 @@ export class BrokerCache {
     ) {
         this.config = parseBrokerCacheOptions(config);
         this.store = new BrokerCacheStore(this.config);
-        this.adapter.onInvalidateCache((message) => {
+        this.adapter.onInvalidateCache(message => {
             this.store.invalidate(message.key);
         });
     }
 
-    item<T>(key: string, builder: CacheBuilder<T>, options?: Partial<BrokerCacheItemOptions>, type?: ReceiveType<T>): BrokerCacheItem<T> {
+    item<T>(
+        key: string,
+        builder: CacheBuilder<T>,
+        options?: Partial<BrokerCacheItemOptions>,
+        type?: ReceiveType<T>,
+    ): BrokerCacheItem<T> {
         return new BrokerCacheItem(
-            key, builder,
+            key,
+            builder,
             parseBrokerCacheItemOptions(Object.assign({}, this.config, options)),
-            this.adapter, this.store, resolveReceiveType(type),
-            this.logger
+            this.adapter,
+            this.store,
+            resolveReceiveType(type),
+            this.logger,
         );
     }
 }

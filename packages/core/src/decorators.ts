@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { getClassName } from './core.js';
 import { toFastProperties } from './perf.js';
 
@@ -35,7 +34,11 @@ export function log() {
  * @public
  */
 export function stack() {
-    return function (target: object, propertyKey: string, descriptor: TypedPropertyDescriptor<(...args: any[]) => Promise<any>>) {
+    return function (
+        target: object,
+        propertyKey: string,
+        descriptor: TypedPropertyDescriptor<(...args: any[]) => Promise<any>>,
+    ) {
         const orig = descriptor.value;
 
         // console.log('sync patch', propertyKey, constructor.prototype[propertyKey]);
@@ -69,7 +72,11 @@ export function stack() {
  * @public
  */
 export function singleStack() {
-    return function (target: object, propertyKey: string, descriptor: TypedPropertyDescriptor<(...args: any[]) => Promise<any>>) {
+    return function (
+        target: object,
+        propertyKey: string,
+        descriptor: TypedPropertyDescriptor<(...args: any[]) => Promise<any>>,
+    ) {
         const orig = descriptor.value;
 
         descriptor.value = async function (...args: any[]) {

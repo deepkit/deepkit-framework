@@ -1,8 +1,9 @@
 import { expect, test } from '@jest/globals';
-import { ArraySort } from '../src/array-sort.js';
-import { bench } from './utils.js';
-import { CircularDependencyException, ElementNotFoundException } from '../src/base.js';
 import { fail } from 'assert';
+
+import { ArraySort } from '../src/array-sort.js';
+import { CircularDependencyException, ElementNotFoundException } from '../src/base.js';
+import { bench } from './utils.js';
 
 function getElementsFlat(count: number) {
     const elements = new Map<string, string[]>();
@@ -30,7 +31,6 @@ test('bench', () => {
     bench(1, `ArraySort ${count}`, () => {
         sorter.sort();
     });
-
 });
 
 test('circular disabled', () => {
@@ -78,7 +78,6 @@ test('not found', () => {
         }
     }
 });
-
 
 test('blub', () => {
     const sorter = new ArraySort();

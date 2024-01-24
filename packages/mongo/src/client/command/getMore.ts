@@ -8,8 +8,8 @@ export interface GetMoreMessage {
     maxTimeMS?: number;
     comment?: string;
 
-    lsid?: { id: UUID },
-    txnNumber?: number,
-    startTransaction?: boolean,
-    autocommit?: boolean,
+    lsid?: { id: UUID };
+    txnNumber?: number;
+    startTransaction?: boolean;
+    autocommit?: boolean;
 }

@@ -1,12 +1,12 @@
 import { expect, test } from '@jest/globals';
+
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
-import { FrameworkConfig } from '../src/module.config.js';
+
 import { BrokerServer } from '../src/broker/broker.js';
+import { FrameworkConfig } from '../src/module.config.js';
 
 test('basic DI', async () => {
-    const module = new InjectorModule()
-        .setConfigDefinition(FrameworkConfig)
-        .addProvider(BrokerServer);
+    const module = new InjectorModule().setConfigDefinition(FrameworkConfig).addProvider(BrokerServer);
 
     const injector = new InjectorContext(module);
     const server = injector.get(BrokerServer);

@@ -7,8 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType } from '@deepkit/core';
+
 import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client.js';
 
 /**
@@ -29,14 +29,16 @@ export class RpcWebSocketClient extends RpcClient {
 /**
  * @deprecated use RpcWebSocketClient instead
  */
-export class DeepkitClient extends RpcWebSocketClient {
-}
+export class DeepkitClient extends RpcWebSocketClient {}
 
 /**
  * Returns the WebSocket URL for the given base URL and allows port mapping.
  * Default port-mapping maps Angular server :4200 to :8080
  */
-export function webSocketFromBaseUrl(baseUrl: string, portMapping: { [name: number]: number } = { 4200: 8080 }): string {
+export function webSocketFromBaseUrl(
+    baseUrl: string,
+    portMapping: { [name: number]: number } = { 4200: 8080 },
+): string {
     let url = baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
     for (const [from, to] of Object.entries(portMapping)) {
         url = url.replace(':' + from, ':' + to);
@@ -47,20 +49,22 @@ export function webSocketFromBaseUrl(baseUrl: string, portMapping: { [name: numb
 /**
  * Creates a provider for RpcWebSocketClient that is compatible with Angular and Deepkit.
  */
-export function createRpcWebSocketClientProvider(baseUrl: string = typeof location !== 'undefined' ? location.origin : 'http://localhost', portMapping: {
-    [name: number]: number
-} = { 4200: 8080 }) {
+export function createRpcWebSocketClientProvider(
+    baseUrl: string = typeof location !== 'undefined' ? location.origin : 'http://localhost',
+    portMapping: {
+        [name: number]: number;
+    } = { 4200: 8080 },
+) {
     return {
         provide: RpcWebSocketClient,
-        useFactory: () => new RpcWebSocketClient(webSocketFromBaseUrl(baseUrl, portMapping))
+        useFactory: () => new RpcWebSocketClient(webSocketFromBaseUrl(baseUrl, portMapping)),
     };
 }
 
 export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
     protected webSocketConstructor?: typeof WebSocket;
 
-    constructor(public url: string) {
-    }
+    constructor(public url: string) {}
 
     async getWebSocketConstructor(): Promise<typeof WebSocket> {
         if (this.webSocketConstructor) return this.webSocketConstructor;
@@ -100,7 +104,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
         let errored = false;
         let connected = false;
 
-        socket.onclose = (event) => {
+        socket.onclose = event => {
             if (errored) {
                 const reason = `code ${event.code} reason ${event.reason || 'unknown'}`;
                 const message = connected ? `abnormal error` : `Could not connect: ${reason}`;
@@ -129,7 +133,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
                 },
                 send(message) {
                     socket.send(message);
-                }
+                },
             });
         };
     }

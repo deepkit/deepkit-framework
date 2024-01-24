@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { pathBasename, pathExtension, pathNormalize } from '@deepkit/core';
 import { entity } from '@deepkit/type';
 
@@ -49,8 +48,7 @@ export class DebugRequest {
         public method: string,
         public url: string,
         public clientIp: string,
-    ) {
-    }
+    ) {}
 
     took(): number {
         return this.ended ? this.ended - this.started : 0;
@@ -59,7 +57,6 @@ export class DebugRequest {
 
 @entity.name('deepkit/debugger/media-file')
 export class MediaFile {
-
     public filesystem: number = 0;
     public size: number = 0;
     public lastModified?: Date;

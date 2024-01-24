@@ -7,11 +7,12 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import style from 'ansi-styles';
 import format from 'format-util';
-import { arrayRemoveItem, ClassType } from '@deepkit/core';
+
+import { ClassType, arrayRemoveItem } from '@deepkit/core';
 import { Inject, TransientInjectionTarget } from '@deepkit/injector';
+
 import { MemoryLoggerTransport } from './memory-logger.js';
 
 export enum LoggerLevel {
@@ -36,8 +37,7 @@ export interface LogMessage {
 }
 
 export class ConsoleTransport implements LoggerTransport {
-    constructor(protected withColors: boolean = true) {
-    }
+    constructor(protected withColors: boolean = true) {}
 
     write(message: LogMessage): void {
         if (message.level === LoggerLevel.error) {
@@ -56,13 +56,15 @@ export class JSONTransport implements LoggerTransport {
     out: { write: (v: string) => any } = process.stdout;
 
     write(message: LogMessage) {
-        this.out.write(JSON.stringify({
-            message: message.message,
-            level: message.level,
-            date: message.date,
-            scope: message.scope,
-            data: message.data,
-        }) + '\n');
+        this.out.write(
+            JSON.stringify({
+                message: message.message,
+                level: message.level,
+                date: message.date,
+                scope: message.scope,
+                data: message.data,
+            }) + '\n',
+        );
     }
 
     supportsColor() {
@@ -81,18 +83,7 @@ export interface LoggerFormatter {
 }
 
 export class ColorFormatter implements LoggerFormatter {
-    static colors: string[] = [
-        'black',
-        'red',
-        'green',
-        'yellow',
-        'blue',
-        'cyan',
-        'magenta',
-        'white',
-        'gray',
-        'grey',
-    ];
+    static colors: string[] = ['black', 'red', 'green', 'yellow', 'blue', 'cyan', 'magenta', 'white', 'gray', 'grey'];
 
     format(message: LogMessage): void {
         if (message.level === LoggerLevel.error || message.level === LoggerLevel.alert) {
@@ -191,8 +182,8 @@ export interface LoggerInterface {
 }
 
 export class Logger implements LoggerInterface {
-    protected colorFormatter = new ColorFormatter;
-    protected removeColorFormatter = new RemoveColorFormatter;
+    protected colorFormatter = new ColorFormatter();
+    protected removeColorFormatter = new RemoveColorFormatter();
 
     /**
      * Setting a log level means only logs below or equal to this level will be handled.
@@ -208,8 +199,7 @@ export class Logger implements LoggerInterface {
         protected transporter: LoggerTransport[] = [],
         protected formatter: LoggerFormatter[] = [],
         protected scope: string = '',
-    ) {
-    }
+    ) {}
 
     data(data: LogData): this {
         this.logData = data;
@@ -217,7 +207,11 @@ export class Logger implements LoggerInterface {
     }
 
     scoped(name: string): Logger {
-        const scopedLogger = (this.scopes[name] ||= new (this.constructor as any)(this.transporter, this.formatter, name));
+        const scopedLogger = (this.scopes[name] ||= new (this.constructor as any)(
+            this.transporter,
+            this.formatter,
+            name,
+        ));
         scopedLogger.level = this.level;
         return scopedLogger;
     }
@@ -272,7 +266,14 @@ export class Logger implements LoggerInterface {
         }
 
         const rawMessage: string = (format as any)(...messages);
-        const message: LogMessage = { message: rawMessage, rawMessage, level, date: new Date, scope: this.scope, data };
+        const message: LogMessage = {
+            message: rawMessage,
+            rawMessage,
+            level,
+            date: new Date(),
+            scope: this.scope,
+            data,
+        };
         this.format(message);
 
         for (const transport of this.transporter) {
@@ -317,7 +318,7 @@ export class Logger implements LoggerInterface {
  */
 export class ConsoleLogger extends Logger {
     constructor() {
-        super([new ConsoleTransport]);
+        super([new ConsoleTransport()]);
     }
 }
 

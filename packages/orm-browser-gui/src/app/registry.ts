@@ -1,19 +1,20 @@
 import { ClassType, getClassName } from '@deepkit/core';
-import { isMongoIdType, isSetType, isUUIDType, ReflectionKind, TypeRegistry } from '@deepkit/type';
+import { ReflectionKind, TypeRegistry, isMongoIdType, isSetType, isUUIDType } from '@deepkit/type';
+
+import { ArrayCellComponent } from './components/cell/array-cell.component';
+import { BinaryCellComponent } from './components/cell/binary-cell.component';
 import { ClassCellComponent } from './components/cell/class-cell.component';
 import { DateCellComponent } from './components/cell/date-cell.component';
 import { EnumCellComponent } from './components/cell/enum-cell.component';
+import { JsonCellComponent } from './components/cell/json-cell.component';
 import { StringCellComponent } from './components/cell/string-cell.component';
+import { ArrayInputComponent } from './components/edit/array-input.component';
+import { BinaryInputComponent } from './components/edit/binary-input.component';
 import { ClassInputComponent } from './components/edit/class-input.component';
 import { DateInputComponent } from './components/edit/date-input.component';
 import { EnumInputComponent } from './components/edit/enum-input.component';
-import { StringInputComponent } from './components/edit/string-input.component';
-import { ArrayInputComponent } from './components/edit/array-input.component';
-import { ArrayCellComponent } from './components/cell/array-cell.component';
 import { JsonInputComponent } from './components/edit/json-input.component';
-import { JsonCellComponent } from './components/cell/json-cell.component';
-import { BinaryInputComponent } from './components/edit/binary-input.component';
-import { BinaryCellComponent } from './components/cell/binary-cell.component';
+import { StringInputComponent } from './components/edit/string-input.component';
 
 export const inputRegistry = new TypeRegistry<ClassType>();
 
@@ -45,13 +46,6 @@ inputRegistry.set(isMongoIdType, StringInputComponent);
 inputRegistry.set(type => {
     return type.kind === ReflectionKind.class && getClassName(type.classType) === 'UploadedFile';
 }, BinaryInputComponent);
-
-
-
-
-
-
-
 
 export const cellRegistry = new TypeRegistry<ClassType>();
 

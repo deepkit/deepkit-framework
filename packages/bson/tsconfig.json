@@ -15,26 +15,17 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": [
-      "bson",
-      "node"
-    ]
+    "types": ["bson", "node"],
   },
   "reflection": true,
-  "include": [
-    "benchmarks",
-    "src",
-    "index.ts"
-  ],
-  "exclude": [
-    "tests"
-  ],
+  "include": ["benchmarks", "src", "index.ts"],
+  "exclude": ["tests"],
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

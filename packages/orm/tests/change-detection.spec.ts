@@ -1,18 +1,19 @@
 import { expect, test } from '@jest/globals';
-import { atomicChange, deserialize, PrimaryKey, Reference, ReflectionClass, serializer } from '@deepkit/type';
-import { Formatter } from '../src/formatter.js';
-import { DatabaseQueryModel } from '../src/query.js';
+
+import { PrimaryKey, Reference, ReflectionClass, atomicChange, deserialize, serializer } from '@deepkit/type';
+
 import { DatabaseSession } from '../src/database-session.js';
-import { MemoryDatabaseAdapter } from '../src/memory-db.js';
+import { Formatter } from '../src/formatter.js';
 import { getClassState, getInstanceStateFromItem } from '../src/identity-map.js';
+import { MemoryDatabaseAdapter } from '../src/memory-db.js';
+import { DatabaseQueryModel } from '../src/query.js';
 import { buildChangesFromInstance } from '../src/utils.js';
 
 test('change-detection', () => {
     class Image {
         id: number & PrimaryKey = 0;
 
-        constructor(public data: string) {
-        }
+        constructor(public data: string) {}
     }
 
     class User {
@@ -20,11 +21,10 @@ test('change-detection', () => {
 
         image?: Image & Reference;
 
-        constructor(public username: string) {
-        }
+        constructor(public username: string) {}
     }
 
-    const session = new DatabaseSession(new MemoryDatabaseAdapter);
+    const session = new DatabaseSession(new MemoryDatabaseAdapter());
 
     {
         const formatter = new Formatter(ReflectionClass.from(User), serializer);
@@ -179,7 +179,7 @@ test('change-detection object', () => {
 test('change-detection union', () => {
     class s {
         id!: number & PrimaryKey;
-        tags?: { type: 'a', name: string } | { type: 'b', size: number };
+        tags?: { type: 'a'; name: string } | { type: 'b'; size: number };
     }
 
     {
@@ -346,7 +346,7 @@ test('change-detection object in object', () => {
 test('change-detection class', () => {
     class s {
         id!: number & PrimaryKey;
-        config!: { a?: string, b?: string };
+        config!: { a?: string; b?: string };
     }
 
     {
@@ -371,11 +371,17 @@ test('change-detection class', () => {
 test('change-detection class in array', () => {
     class s {
         id!: number & PrimaryKey;
-        config!: { name: string, value: string }[];
+        config!: { name: string; value: string }[];
     }
 
     {
-        const item = deserialize<s>({ id: 1, config: [{ name: 'foo', value: 'bar' }, { name: 'foo2', value: 'bar2' }] });
+        const item = deserialize<s>({
+            id: 1,
+            config: [
+                { name: 'foo', value: 'bar' },
+                { name: 'foo2', value: 'bar2' },
+            ],
+        });
         getInstanceStateFromItem(item).markAsPersisted();
         expect(buildChangesFromInstance(item)).toMatchObject({});
 
@@ -385,10 +391,16 @@ test('change-detection class in array', () => {
         item.config = [{ name: 'foo2', value: 'bar2' }];
         expect(buildChangesFromInstance(item)).toMatchObject({ $set: { config: item.config } });
 
-        item.config = [{ name: 'foo3', value: 'bar' }, { name: 'foo2', value: 'bar2' }];
+        item.config = [
+            { name: 'foo3', value: 'bar' },
+            { name: 'foo2', value: 'bar2' },
+        ];
         expect(buildChangesFromInstance(item)).toMatchObject({ $set: { config: item.config } });
 
-        item.config = [{ name: 'foo', value: 'bar' }, { name: 'foo4', value: 'bar2' }];
+        item.config = [
+            { name: 'foo', value: 'bar' },
+            { name: 'foo4', value: 'bar2' },
+        ];
         expect(buildChangesFromInstance(item)).toMatchObject({ $set: { config: item.config } });
 
         item.config = [{ name: 'foo4', value: 'bar2' }];
@@ -397,10 +409,17 @@ test('change-detection class in array', () => {
         item.config = [];
         expect(buildChangesFromInstance(item)).toMatchObject({ $set: { config: item.config } });
 
-        item.config = [{ name: 'foo', value: 'bar' }, { name: 'foo2', value: 'bar2' }, { name: 'foo3', value: 'bar3' }];
+        item.config = [
+            { name: 'foo', value: 'bar' },
+            { name: 'foo2', value: 'bar2' },
+            { name: 'foo3', value: 'bar3' },
+        ];
         expect(buildChangesFromInstance(item)).toMatchObject({ $set: { config: item.config } });
 
-        item.config = [{ name: 'foo', value: 'bar' }, { name: 'foo2', value: 'bar2' }];
+        item.config = [
+            { name: 'foo', value: 'bar' },
+            { name: 'foo2', value: 'bar2' },
+        ];
         expect(buildChangesFromInstance(item)).toMatchObject({});
     }
 });

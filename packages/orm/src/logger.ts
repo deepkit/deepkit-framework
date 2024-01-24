@@ -6,7 +6,7 @@ export class DatabaseLogger {
     public active: boolean = false;
 
     enableLogging(): void {
-        if (!this.logger) this.logger = new Logger([new ConsoleTransport], [new TimestampFormatter]);
+        if (!this.logger) this.logger = new Logger([new ConsoleTransport()], [new TimestampFormatter()]);
         this.active = true;
     }
 

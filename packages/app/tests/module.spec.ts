@@ -1,9 +1,11 @@
 import { expect, test } from '@jest/globals';
-import { Minimum, MinLength } from '@deepkit/type';
-import { injectorReference, provide } from '@deepkit/injector';
-import { ServiceContainer } from '../src/service-container.js';
+
 import { ClassType } from '@deepkit/core';
+import { injectorReference, provide } from '@deepkit/injector';
+import { MinLength, Minimum } from '@deepkit/type';
+
 import { AppModule, createModule } from '../src/module.js';
+import { ServiceContainer } from '../src/service-container.js';
 
 class MyModuleConfig {
     param1!: string & MinLength<5>;
@@ -11,18 +13,17 @@ class MyModuleConfig {
 }
 
 class ModuleService {
-    constructor(public readonly config: MyModuleConfig) {
-    }
+    constructor(public readonly config: MyModuleConfig) {}
 }
 
-class MyModule extends createModule({
-    config: MyModuleConfig,
-    providers: [
-        ModuleService
-    ],
-    exports: [ModuleService]
-}, 'myModule') {
-}
+class MyModule extends createModule(
+    {
+        config: MyModuleConfig,
+        providers: [ModuleService],
+        exports: [ModuleService],
+    },
+    'myModule',
+) {}
 
 class AppModuleConfig {
     database: string = 'mongodb://localhost/my-app';
@@ -36,8 +37,7 @@ class AppModuleConfig {
 type MyServiceConfig = Pick<AppModuleConfig, 'debug'>;
 
 class MyService {
-    constructor(private config: MyServiceConfig) {
-    }
+    constructor(private config: MyServiceConfig) {}
 
     isDebug(): boolean {
         return this.config.debug;
@@ -45,15 +45,11 @@ class MyService {
 }
 
 class MyService2 {
-    constructor(public debug: AppModuleConfig['debug']) {
-    }
+    constructor(public debug: AppModuleConfig['debug']) {}
 }
 
 class MyAppModule extends createModule({
-    providers: [
-        MyService,
-        MyService2,
-    ],
+    providers: [MyService, MyService2],
     config: AppModuleConfig,
 }) {
     imports = [new MyModule()];
@@ -70,31 +66,43 @@ function getServiceOnNewServiceContainer<T>(module: AppModule<any>, service: Cla
 
 test('import', () => {
     {
-        expect(() => getServiceOnNewServiceContainer(new MyAppModule, ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(type): Not a string'
+        expect(() => getServiceOnNewServiceContainer(new MyAppModule(), ModuleService)).toThrow(
+            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(type): Not a string',
         );
     }
 
     {
-        expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '23' } }), ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(minLength): Min length is 5'
+        expect(() =>
+            getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '23' } }), ModuleService),
+        ).toThrow(
+            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(minLength): Min length is 5',
         );
     }
 
     {
-        expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345' } }), ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(type): Not a number'
+        expect(() =>
+            getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345' } }), ModuleService),
+        ).toThrow(
+            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(type): Not a number',
         );
     }
 
     {
-        expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345', param2: 55 } }), ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(minimum): Number needs to be greater than or equal to 100'
+        expect(() =>
+            getServiceOnNewServiceContainer(
+                new MyAppModule({ myModule: { param1: '12345', param2: 55 } }),
+                ModuleService,
+            ),
+        ).toThrow(
+            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(minimum): Number needs to be greater than or equal to 100',
         );
     }
 
     {
-        const myService = getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345', param2: 100 } }), ModuleService);
+        const myService = getServiceOnNewServiceContainer(
+            new MyAppModule({ myModule: { param1: '12345', param2: 100 } }),
+            ModuleService,
+        );
         expect(myService.config).toEqual({ param1: '12345', param2: 100 });
     }
 });
@@ -113,38 +121,48 @@ test('basic configured', () => {
     }
 
     {
-        const myService = getServiceOnNewServiceContainer(createConfiguredApp().configure({
-            debug: false
-        }), MyService);
+        const myService = getServiceOnNewServiceContainer(
+            createConfiguredApp().configure({
+                debug: false,
+            }),
+            MyService,
+        );
         expect(myService.isDebug()).toBe(false);
     }
 
     {
-        const myService = getServiceOnNewServiceContainer(createConfiguredApp().configure({
-            debug: true
-        }), MyService);
+        const myService = getServiceOnNewServiceContainer(
+            createConfiguredApp().configure({
+                debug: true,
+            }),
+            MyService,
+        );
         expect(myService.isDebug()).toBe(true);
     }
 
     {
-        const myService2 = getServiceOnNewServiceContainer(createConfiguredApp().configure({
-            debug: false
-        }), MyService2);
+        const myService2 = getServiceOnNewServiceContainer(
+            createConfiguredApp().configure({
+                debug: false,
+            }),
+            MyService2,
+        );
         expect(myService2.debug).toBe(false);
     }
 
     {
-        const myService2 = getServiceOnNewServiceContainer(createConfiguredApp().configure({
-            debug: true
-        }), MyService2);
+        const myService2 = getServiceOnNewServiceContainer(
+            createConfiguredApp().configure({
+                debug: true,
+            }),
+            MyService2,
+        );
         expect(myService2.debug).toBe(true);
     }
 });
 
 test('configured provider', () => {
-    class Transporter {
-
-    }
+    class Transporter {}
 
     class Logger {
         transporter: any[] = [];
@@ -155,41 +173,54 @@ test('configured provider', () => {
     }
 
     const AppModule = createModule({
-        providers: [
-            Transporter,
-            Logger,
-        ],
+        providers: [Transporter, Logger],
     });
 
     {
         const module = new AppModule();
-        const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider<Logger>().addTransport('first').addTransport('second');
-        })).getInjector(module).get(Logger);
+        const logger = new ServiceContainer(
+            module.setup(module => {
+                module.setupProvider<Logger>().addTransport('first').addTransport('second');
+            }),
+        )
+            .getInjector(module)
+            .get(Logger);
         expect(logger.transporter).toEqual(['first', 'second']);
     }
 
     {
         const module = new AppModule();
-        const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider<Logger>().transporter = ['first', 'second', 'third'];
-        })).getInjector(module).get(Logger);
+        const logger = new ServiceContainer(
+            module.setup(module => {
+                module.setupProvider<Logger>().transporter = ['first', 'second', 'third'];
+            }),
+        )
+            .getInjector(module)
+            .get(Logger);
         expect(logger.transporter).toEqual(['first', 'second', 'third']);
     }
 
     {
         const module = new AppModule();
-        const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider<Logger>().addTransport(new Transporter);
-        })).getInjector(module).get(Logger);
+        const logger = new ServiceContainer(
+            module.setup(module => {
+                module.setupProvider<Logger>().addTransport(new Transporter());
+            }),
+        )
+            .getInjector(module)
+            .get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
 
     {
         const module = new AppModule();
-        const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider<Logger>().addTransport(injectorReference(Transporter));
-        })).getInjector(module).get(Logger);
+        const logger = new ServiceContainer(
+            module.setup(module => {
+                module.setupProvider<Logger>().addTransport(injectorReference(Transporter));
+            }),
+        )
+            .getInjector(module)
+            .get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
 
@@ -206,15 +237,13 @@ test('same module loaded twice', () => {
     }
 
     class Service {
-        constructor(public path: Config['path']) {
-        }
+        constructor(public path: Config['path']) {}
     }
 
     class ApiModule extends createModule({
         config: Config,
-        providers: [Service]
-    }) {
-    }
+        providers: [Service],
+    }) {}
 
     {
         const app = new AppModule({ imports: [new ApiModule({ path: '/a' })] });
@@ -233,10 +262,7 @@ test('same module loaded twice', () => {
         const b = new ApiModule({ path: '/b' });
 
         const app = new AppModule({
-            imports: [
-                a,
-                b,
-            ]
+            imports: [a, b],
         });
         const serviceContainer = new ServiceContainer(app);
 
@@ -249,34 +275,30 @@ test('same module loaded twice', () => {
 });
 
 test('interface provider can be exported', () => {
-   interface Test {}
+    interface Test {}
 
-   const TEST = {};
+    const TEST = {};
 
-   const Test = provide<Test>({ useValue: TEST });
+    const Test = provide<Test>({ useValue: TEST });
 
-   const test = new AppModule({ providers: [Test], exports: [Test] });
+    const test = new AppModule({ providers: [Test], exports: [Test] });
 
-   const app = new AppModule({ imports: [test] });
+    const app = new AppModule({ imports: [test] });
 
     const serviceContainer = new ServiceContainer(app);
 
-   expect(serviceContainer.getInjector(app).get<Test>()).toBe(TEST);
+    expect(serviceContainer.getInjector(app).get<Test>()).toBe(TEST);
 });
 
 test('non-exported providers can not be overwritten', () => {
-    class SubClass {
-    }
+    class SubClass {}
 
-    class Overwritten {
-    }
+    class Overwritten {}
 
     const sub = new AppModule({ providers: [SubClass] });
     const app = new AppModule({
         providers: [Overwritten, { provide: SubClass, useClass: Overwritten }],
-        imports: [
-            sub
-        ]
+        imports: [sub],
     });
 
     const serviceContainer = new ServiceContainer(app);
@@ -286,18 +308,14 @@ test('non-exported providers can not be overwritten', () => {
 });
 
 test('exported providers can not be overwritten', () => {
-    class SubClass {
-    }
+    class SubClass {}
 
-    class Overwritten {
-    }
+    class Overwritten {}
 
     const sub = new AppModule({ providers: [SubClass], exports: [SubClass] });
     const app = new AppModule({
         providers: [Overwritten, { provide: SubClass, useClass: Overwritten }],
-        imports: [
-            sub
-        ]
+        imports: [sub],
     });
 
     const serviceContainer = new ServiceContainer(app);
@@ -308,8 +326,7 @@ test('exported providers can not be overwritten', () => {
 
 test('instance is used as is', () => {
     class Service {
-        constructor(public label: string) {
-        }
+        constructor(public label: string) {}
     }
 
     class ApiModule extends createModule({}) {
@@ -321,7 +338,10 @@ test('instance is used as is', () => {
         }
 
         process() {
-            this.addProvider({ provide: Service, useValue: new Service(this.label) });
+            this.addProvider({
+                provide: Service,
+                useValue: new Service(this.label),
+            });
         }
     }
 
@@ -330,12 +350,10 @@ test('instance is used as is', () => {
 });
 
 test('change config of a imported module dynamically', () => {
-    class Logger {
-    }
+    class Logger {}
 
     class Query {
-        constructor(public logger?: Logger) {
-        }
+        constructor(public logger?: Logger) {}
     }
 
     class DatabaseConfig {
@@ -344,7 +362,7 @@ test('change config of a imported module dynamically', () => {
 
     class DatabaseModule extends createModule({
         config: DatabaseConfig,
-        providers: [Query]
+        providers: [Query],
     }) {
         process() {
             if (this.config.logging) {
@@ -358,7 +376,7 @@ test('change config of a imported module dynamically', () => {
     }
 
     class ApiModule extends createModule({
-        config: ApiConfig
+        config: ApiConfig,
     }) {
         imports = [new DatabaseModule({ logging: false })];
 
@@ -381,12 +399,10 @@ test('change config of a imported module dynamically', () => {
         expect(serviceContainer.getInjector(DatabaseModule).get(Query).logger).toBe(undefined);
     }
 
-
     {
         const serviceContainer = new ServiceContainer(new ApiModule({ debug: true }));
         expect(serviceContainer.getInjector(DatabaseModule).get(Query).logger).toBeInstanceOf(Logger);
     }
-
 
     {
         const serviceContainer = new ServiceContainer(new ApiModule());
@@ -404,7 +420,7 @@ test('scoped injector', () => {
     }
 
     const module = new AppModule({
-        providers: [{ provide: Service, scope: 'http' }]
+        providers: [{ provide: Service, scope: 'http' }],
     });
 
     const serviceContainer = new ServiceContainer(new AppModule({ imports: [module] }));

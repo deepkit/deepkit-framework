@@ -1,20 +1,22 @@
 import { expect, test } from '@jest/globals';
+
+import { getInstanceStateFromItem } from '@deepkit/orm';
 import {
-    arrayBufferFrom,
     BackReference,
-    cast,
-    entity,
     MongoId,
-    nodeBufferToArrayBuffer,
     PrimaryKey,
     Reference,
     ReflectionClass,
     ReflectionKind,
-    serialize,
     UUID,
+    arrayBufferFrom,
+    cast,
+    entity,
+    nodeBufferToArrayBuffer,
+    serialize,
     uuid,
 } from '@deepkit/type';
-import { getInstanceStateFromItem } from '@deepkit/orm';
+
 import { SimpleModel, SuperSimple } from './entities.js';
 import { createDatabase } from './utils.js';
 
@@ -27,8 +29,7 @@ test('test save undefined values', async () => {
     class Model {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name?: string) {
-        }
+        constructor(public name?: string) {}
     }
 
     // const collection = await session.adapter.connection.getCollection(getClassSchema(Model));
@@ -153,7 +154,9 @@ test('save model', async () => {
     expect(await session.query(SimpleModel).filter({ name: 'myName' }).findOneOrUndefined()).not.toBeUndefined();
     expect(await session.query(SimpleModel).filter({ name: 'myNameNOTEXIST' }).findOneOrUndefined()).toBeUndefined();
 
-    await expect(session.query(SimpleModel).filter({ name: 'myNameNOTEXIST' }).findOne()).rejects.toThrowError('not found');
+    await expect(session.query(SimpleModel).filter({ name: 'myNameNOTEXIST' }).findOne()).rejects.toThrowError(
+        'not found',
+    );
 
     const found = await session.query(SimpleModel).filter({ id: instance.id }).findOne();
     expect(found).toBeInstanceOf(SimpleModel);
@@ -170,10 +173,14 @@ test('save model', async () => {
     expect(listAll[0].name).toBe('myName');
     expect(listAll[0].id).toBe(instance.id);
 
-    expect((await session.query(SimpleModel).filter({ name: 'noneExisting' }).patchOne({ name: 'myName2' })).modified).toBe(0);
+    expect(
+        (await session.query(SimpleModel).filter({ name: 'noneExisting' }).patchOne({ name: 'myName2' })).modified,
+    ).toBe(0);
 
     expect(await session.query(SimpleModel).filter({ id: instance.id }).ids(true)).toEqual([instance.id]);
-    expect((await session.query(SimpleModel).filter({ id: instance.id }).patchOne({ name: 'myName2' })).modified).toBe(1);
+    expect((await session.query(SimpleModel).filter({ id: instance.id }).patchOne({ name: 'myName2' })).modified).toBe(
+        1,
+    );
 
     {
         const found = await session.query(SimpleModel).filter({ id: instance.id }).findOne();
@@ -203,15 +210,38 @@ test('test patchAll', async () => {
     await db.persist(new SimpleModel('myName2'));
     await db.persist(new SimpleModel('peter'));
 
-    expect(await session.query(SimpleModel).filter({ name: { $regex: /^myName?/ } }).count()).toBe(2);
-    expect(await session.query(SimpleModel).filter({ name: { $regex: /^peter.*/ } }).count()).toBe(1);
+    expect(
+        await session
+            .query(SimpleModel)
+            .filter({ name: { $regex: /^myName?/ } })
+            .count(),
+    ).toBe(2);
+    expect(
+        await session
+            .query(SimpleModel)
+            .filter({ name: { $regex: /^peter.*/ } })
+            .count(),
+    ).toBe(1);
 
-    await session.query(SimpleModel).filter({ name: { $regex: /^myName?/ } }).patchMany({
-        name: 'peterNew'
-    });
+    await session
+        .query(SimpleModel)
+        .filter({ name: { $regex: /^myName?/ } })
+        .patchMany({
+            name: 'peterNew',
+        });
 
-    expect(await session.query(SimpleModel).filter({ name: { $regex: /^myName?/ } }).count()).toBe(0);
-    expect(await session.query(SimpleModel).filter({ name: { $regex: /^peter.*/ } }).count()).toBe(3);
+    expect(
+        await session
+            .query(SimpleModel)
+            .filter({ name: { $regex: /^myName?/ } })
+            .count(),
+    ).toBe(0);
+    expect(
+        await session
+            .query(SimpleModel)
+            .filter({ name: { $regex: /^peter.*/ } })
+            .count(),
+    ).toBe(3);
 
     const fields = await session.query(SimpleModel).filter({ name: 'peterNew' }).select('name').findOne();
     expect(fields!.name).toBe('peterNew');
@@ -269,8 +299,22 @@ test('test delete', async () => {
     expect(getInstanceStateFromItem(instance2).isKnownInDatabase()).toBe(true);
     expect(await session.query(SimpleModel).count()).toBe(2);
 
-    expect((await session.query(SimpleModel).filter({ name: { $regex: /myName[0-9]/ } }).find()).length).toBe(2);
-    expect((await session.query(SimpleModel).filter({ name: { $regex: /myName[0-9]/ } }).deleteMany()).modified).toBe(2);
+    expect(
+        (
+            await session
+                .query(SimpleModel)
+                .filter({ name: { $regex: /myName[0-9]/ } })
+                .find()
+        ).length,
+    ).toBe(2);
+    expect(
+        (
+            await session
+                .query(SimpleModel)
+                .filter({ name: { $regex: /myName[0-9]/ } })
+                .deleteMany()
+        ).modified,
+    ).toBe(2);
     expect(await session.query(SimpleModel).count()).toBe(0);
 
     expect(getInstanceStateFromItem(instance1).isKnownInDatabase()).toBe(false);
@@ -280,10 +324,16 @@ test('test delete', async () => {
     await session.commit();
     expect(await session.query(SimpleModel).count()).toBe(2);
 
-    await session.query(SimpleModel).filter({ name: { $regex: /myName[0-9]/ } }).deleteOne();
+    await session
+        .query(SimpleModel)
+        .filter({ name: { $regex: /myName[0-9]/ } })
+        .deleteOne();
     expect(await session.query(SimpleModel).count()).toBe(1);
 
-    await session.query(SimpleModel).filter({ name: { $regex: /myName[0-9]/ } }).deleteOne();
+    await session
+        .query(SimpleModel)
+        .filter({ name: { $regex: /myName[0-9]/ } })
+        .deleteOne();
     expect(await session.query(SimpleModel).count()).toBe(0);
 });
 
@@ -344,7 +394,6 @@ test('no id', async () => {
     await db.persist(instance);
 });
 
-
 test('second object id', async () => {
     const db = await createDatabase('testing');
     const session = db.createSession();
@@ -369,7 +418,10 @@ test('second object id', async () => {
     const dbItem = await session.query(SecondObjectId).filter({ name: 'myName' }).findOne();
     expect(dbItem!.name).toBe('myName');
 
-    const dbItemBySecondId = await session.query(SecondObjectId).filter({ secondId: '5bf4a1ccce060e0b38864c9e' }).findOne();
+    const dbItemBySecondId = await session
+        .query(SecondObjectId)
+        .filter({ secondId: '5bf4a1ccce060e0b38864c9e' })
+        .findOne();
     expect(dbItemBySecondId!.name).toBe('myName');
 
     // const collection = await session.adapter.connection.getCollection(getClassSchema(SecondObjectId));
@@ -395,8 +447,7 @@ test('references back', async () => {
 
         public images: Image[] & BackReference = [];
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     @entity.name('image1')
@@ -529,32 +580,37 @@ test('test identityMap', async () => {
 test('aggregation without accumulators', async () => {
     class File {
         public _id: MongoId & PrimaryKey = '';
-        created: Date = new Date;
+        created: Date = new Date();
 
         downloads: number = 0;
 
         category: string = 'none';
 
-        constructor(public path: string) {
-        }
+        constructor(public path: string) {}
     }
 
     const db = await createDatabase('aggregation');
 
-    await db.persist(cast<File>({ path: 'file1', category: 'images' }),
+    await db.persist(
+        cast<File>({ path: 'file1', category: 'images' }),
         cast<File>({ path: 'file2', category: 'images' }),
-        cast<File>({ path: 'file3', category: 'pdfs' }));
+        cast<File>({ path: 'file3', category: 'pdfs' }),
+    );
 
-    await db.query(File).filter({ path: 'file1' }).patchOne({ $inc: { downloads: 15 } });
-    await db.query(File).filter({ path: 'file2' }).patchOne({ $inc: { downloads: 5 } });
+    await db
+        .query(File)
+        .filter({ path: 'file1' })
+        .patchOne({ $inc: { downloads: 15 } });
+    await db
+        .query(File)
+        .filter({ path: 'file2' })
+        .patchOne({ $inc: { downloads: 5 } });
 
-    const res = await db.query(File)
-        .groupBy('category')
-        .orderBy('category', 'asc')
-        .find();
+    const res = await db.query(File).groupBy('category').orderBy('category', 'asc').find();
     expect(res).toEqual([{ category: 'images' }, { category: 'pdfs' }]);
 
-    const res2 = await db.query(File)
+    const res2 = await db
+        .query(File)
         .withSum('downloads', 'downloadsSum')
         .groupBy('category')
         .orderBy('category', 'asc')
@@ -570,8 +626,7 @@ test('raw', async () => {
     class Model {
         public _id: MongoId & PrimaryKey = '';
 
-        constructor(public id: number) {
-        }
+        constructor(public id: number) {}
     }
 
     const db = await createDatabase('raw');
@@ -582,7 +637,9 @@ test('raw', async () => {
         await session.commit();
     }
 
-    const result = await db.raw<Model, { count: number }>([{ $match: { id: { $gt: 500 } } }, { $count: 'count' }]).findOne();
+    const result = await db
+        .raw<Model, { count: number }>([{ $match: { id: { $gt: 500 } } }, { $count: 'count' }])
+        .findOne();
     expect(result.count).toBe(499);
 
     const items = await db.raw<Model>([{ $match: { id: { $lt: 500 } } }]).find();
@@ -594,8 +651,7 @@ test('batch', async () => {
     class Model {
         public _id: MongoId & PrimaryKey = '';
 
-        constructor(public id: number) {
-        }
+        constructor(public id: number) {}
     }
 
     const db = await createDatabase('batch');

@@ -1,6 +1,4 @@
 {
   "extends": "../tsconfig.json",
-  "files": [
-    "file3.ts"
-  ]
+  "files": ["file3.ts"],
 }

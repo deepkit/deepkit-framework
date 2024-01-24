@@ -7,7 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { Overlay } from '@angular/cdk/overlay';
+import { ComponentPortal } from '@angular/cdk/portal';
+import { DOCUMENT } from '@angular/common';
 import {
     ApplicationRef,
     ChangeDetectorRef,
@@ -22,60 +24,61 @@ import {
     Input,
     OnDestroy,
     Type,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
-import { DialogComponent } from './dialog.component';
-import { isTargetChildOf } from '../../core/utils';
-import { DuiDialogProgress, ProgressDialogState } from './progress-dialog.component';
-import { DOCUMENT } from '@angular/common';
-import { WindowRegistry } from '../window/window-state';
-import { Overlay } from '@angular/cdk/overlay';
-import { ComponentPortal } from '@angular/cdk/portal';
 
+import { isTargetChildOf } from '../../core/utils';
+import { WindowRegistry } from '../window/window-state';
+import { DialogComponent } from './dialog.component';
+import { DuiDialogProgress, ProgressDialogState } from './progress-dialog.component';
 
 @Component({
     template: `
-        <h3>{{title || 'No title'}}</h3>
-        <div *ngIf="content">{{content}}</div>
+        <h3>{{ title || 'No title' }}</h3>
+        <div *ngIf="content">{{ content }}</div>
 
         <dui-dialog-actions>
             <dui-button hotkey="escape" [closeDialog]="false">Cancel</dui-button>
             <dui-button focus [closeDialog]="true">OK</dui-button>
         </dui-dialog-actions>
-    `
+    `,
 })
 export class DuiDialogConfirm {
     @Input() title: string = 'Confirm';
     @Input() content: string = '';
 
     static dialogDefaults = {
-        maxWidth: '700px'
+        maxWidth: '700px',
     };
 }
 
 @Component({
     template: `
-        <h3>{{title || 'No title'}}</h3>
-        <div *ngIf="content" class="text-selection" style="white-space: pre-line;">{{content}}</div>
+        <h3>{{ title || 'No title' }}</h3>
+        <div *ngIf="content" class="text-selection" style="white-space: pre-line;">
+            {{ content }}
+        </div>
 
         <dui-dialog-actions>
-            <dui-button focus hotkey="escape"  [closeDialog]="true">OK</dui-button>
+            <dui-button focus hotkey="escape" [closeDialog]="true">OK</dui-button>
         </dui-dialog-actions>
-    `
+    `,
 })
 export class DuiDialogAlert {
     @Input() title: string = 'Alert';
     @Input() content: string = '';
 
     static dialogDefaults = {
-        maxWidth: '700px'
+        maxWidth: '700px',
     };
 }
 
 @Component({
     template: `
-        <h3>{{title || 'No title'}}</h3>
-        <div *ngIf="content" class="text-selection" style="white-space: pre-line;">{{content}}</div>
+        <h3>{{ title || 'No title' }}</h3>
+        <div *ngIf="content" class="text-selection" style="white-space: pre-line;">
+            {{ content }}
+        </div>
         <div style="padding-top: 5px;">
             <dui-input style="width: 100%" (enter)="dialog.close(value)" focus [(ngModel)]="value"></dui-input>
         </div>
@@ -84,7 +87,7 @@ export class DuiDialogAlert {
             <dui-button hotkey="escape" [closeDialog]="false">Cancel</dui-button>
             <dui-button [closeDialog]="value">OK</dui-button>
         </dui-dialog-actions>
-    `
+    `,
 })
 export class DuiDialogPrompt {
     @Input() title: string = 'Alert';
@@ -93,11 +96,10 @@ export class DuiDialogPrompt {
     @Input() value: string = '';
 
     static dialogDefaults = {
-        maxWidth: '700px'
+        maxWidth: '700px',
     };
 
-    constructor(public dialog: DialogComponent) {
-    }
+    constructor(public dialog: DialogComponent) {}
 }
 
 @Injectable()
@@ -108,8 +110,7 @@ export class DuiDialog {
         protected injector: Injector,
         protected registry: WindowRegistry,
         protected overlay: Overlay,
-    ) {
-    }
+    ) {}
 
     protected getComponentRef(viewContainerRef: ViewContainerRef | null = null): ComponentRef<DialogComponent> {
         if (!viewContainerRef && !this.registry.activeWindow) {
@@ -118,7 +119,7 @@ export class DuiDialog {
             const portal = new ComponentPortal(DialogComponent);
 
             const comp = overlayRef.attach(portal);
-            comp.instance.closed.subscribe((v) => {
+            comp.instance.closed.subscribe(v => {
                 overlayRef.dispose();
             });
 
@@ -138,7 +139,7 @@ export class DuiDialog {
         inputs: { [name in keyof T]?: any } = {},
         dialogInputs: Partial<DialogComponent> = {},
         viewContainerRef: ViewContainerRef | null = null,
-    ): { dialog: DialogComponent, close: Promise<any>, component: T } {
+    ): { dialog: DialogComponent; close: Promise<any>; component: T } {
         const comp = this.getComponentRef(viewContainerRef);
         comp.instance.visible = true;
         comp.instance.component = component;
@@ -157,8 +158,8 @@ export class DuiDialog {
         comp.instance.show();
         comp.changeDetectorRef.detectChanges();
 
-        const close = new Promise((resolve) => {
-            comp.instance.closed.subscribe((v) => {
+        const close = new Promise(resolve => {
+            comp.instance.closed.subscribe(v => {
                 comp.destroy();
                 resolve(v);
             });
@@ -176,18 +177,27 @@ export class DuiDialog {
         return dialog.toPromise();
     }
 
-    public async confirm(title: string, content?: string, dialodInputs: { [name: string]: any } = {}): Promise<boolean> {
+    public async confirm(
+        title: string,
+        content?: string,
+        dialodInputs: { [name: string]: any } = {},
+    ): Promise<boolean> {
         const { dialog } = this.open(DuiDialogConfirm, { title, content }, dialodInputs);
         return dialog.toPromise();
     }
 
-    public async prompt(title: string, value: string, content?: string, dialodInputs: { [name: string]: any } = {}): Promise<false | string> {
+    public async prompt(
+        title: string,
+        value: string,
+        content?: string,
+        dialodInputs: { [name: string]: any } = {},
+    ): Promise<false | string> {
         const { dialog } = this.open(DuiDialogPrompt, { title, value, content }, dialodInputs);
         return dialog.toPromise();
     }
 
     public progress(): ProgressDialogState {
-        const state$ = new ProgressDialogState;
+        const state$ = new ProgressDialogState();
         this.open(DuiDialogProgress, { state$ });
         return state$;
     }

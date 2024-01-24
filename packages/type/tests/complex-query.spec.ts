@@ -1,10 +1,10 @@
-import { ReflectionClass, ReflectionProperty, typeOf } from '../src/reflection/reflection.js';
 import { expect, test } from '@jest/globals';
+
 import { isExtendable } from '../src/reflection/extends.js';
+import { ReflectionClass, ReflectionProperty, typeOf } from '../src/reflection/reflection.js';
 import { stringifyResolvedType } from '../src/reflection/type.js';
 
-export interface OrmEntity {
-}
+export interface OrmEntity {}
 
 export type FilterQuery<T> = {
     [P in keyof T & string]?: T[P];
@@ -23,7 +23,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER, SORT> {
     public filter?: FILTER;
     public having?: FILTER;
     public groupBy: Set<string> = new Set<string>();
-    public aggregate = new Map<string, { property: ReflectionProperty, func: string }>();
+    public aggregate = new Map<string, { property: ReflectionProperty; func: string }>();
     public select: Set<string> = new Set<string>();
     public skip?: number;
     public itemsPerPage: number = 50;
@@ -32,8 +32,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER, SORT> {
     public sort?: SORT;
     public returning: (keyof T & string)[] = [];
 
-    changed(): void {
-    }
+    changed(): void {}
 
     hasSort(): boolean {
         return this.sort !== undefined;
@@ -99,42 +98,64 @@ export class BaseQuery<T extends OrmEntity> {
 
     constructor(
         public readonly classSchema: ReflectionClass<any>,
-        model?: DatabaseQueryModel<T, T, T>
+        model?: DatabaseQueryModel<T, T, T>,
     ) {
         this.model = model || this.createModel<T>();
     }
 
     groupBy<K extends FieldName<T>[]>(...field: K): this {
         const c = this.clone();
-        c.model.groupBy = new Set([...field as string[]]);
+        c.model.groupBy = new Set([...(field as string[])]);
         return c as any;
     }
 
-    withSum<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withSum<K extends FieldName<T>, AS extends string>(
+        field: K,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'sum', as) as any;
     }
 
-    withGroupConcat<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [C in [AS] as `${AS}`]: T[K][] }> {
+    withGroupConcat<K extends FieldName<T>, AS extends string>(
+        field: K,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [C in [AS] as `${AS}`]: T[K][] }> {
         return this.aggregateField(field, 'group_concat', as) as any;
     }
 
-    withCount<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withCount<K extends FieldName<T>, AS extends string>(
+        field: K,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'count', as) as any;
     }
 
-    withMax<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withMax<K extends FieldName<T>, AS extends string>(
+        field: K,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'max', as) as any;
     }
 
-    withMin<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withMin<K extends FieldName<T>, AS extends string>(
+        field: K,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'min', as) as any;
     }
 
-    withAverage<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withAverage<K extends FieldName<T>, AS extends string>(
+        field: K,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'avg', as) as any;
     }
 
-    aggregateField<K extends FieldName<T>, AS extends string>(field: K, func: string, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    aggregateField<K extends FieldName<T>, AS extends string>(
+        field: K,
+        func: string,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         throw new Error();
     }
 
@@ -215,12 +236,18 @@ export class BaseQuery<T extends OrmEntity> {
      * Adds a left join in the filter. Does NOT populate the reference with values.
      * Accessing `field` in the entity (if not optional field) results in an error.
      */
-    join<K extends keyof T, ENTITY = FlattenIfArray<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
+    join<K extends keyof T, ENTITY = FlattenIfArray<T[K]>>(
+        field: K,
+        type: 'left' | 'inner' = 'left',
+        populate: boolean = false,
+    ): this {
         throw new Error();
     }
 }
 
-export type Methods<T> = { [K in keyof T]: K extends keyof Query<any> ? never : T[K] extends ((...args: any[]) => any) ? K : never }[keyof T];
+export type Methods<T> = {
+    [K in keyof T]: K extends keyof Query<any> ? never : T[K] extends (...args: any[]) => any ? K : never;
+}[keyof T];
 
 /**
  * This a generic query abstraction which should supports most basics database interactions.
@@ -334,13 +361,11 @@ interface User {
 }
 
 test('complex query', () => {
-
     const queryUser = typeOf<Query<User>>();
     const queryAny = typeOf<Query<any>>();
 
     type t1 = Query<User> extends Query<any> ? true : never;
     type t2 = Query<any> extends Query<User> ? true : never;
-
 
     type t3 = FieldName<any>;
     expect(stringifyResolvedType(typeOf<t3>())).toBe('string');
@@ -357,7 +382,7 @@ test('complex query', () => {
 });
 
 test('T in constraint', () => {
-    type Q<T> = {a: keyof T & string};
+    type Q<T> = { a: keyof T & string };
 
     type qAny = Q<any>;
     type qUser = Q<User>;
@@ -365,7 +390,7 @@ test('T in constraint', () => {
     type t0 = any extends User ? true : never;
     type t1 = Q<any> extends Q<User> ? true : never;
     type t2 = qAny extends qUser ? true : never;
-    type t3 = {a: string} extends {a: 'id' | 'username'} ? true : never;
+    type t3 = { a: string } extends { a: 'id' | 'username' } ? true : never;
     type t4 = string extends 'id' | 'username' ? true : never;
 
     interface Q1<T> {

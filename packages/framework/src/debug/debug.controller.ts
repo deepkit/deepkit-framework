@@ -7,6 +7,14 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { existsSync, readFileSync, statSync, truncateSync } from 'fs';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
+import { Subject } from 'rxjs';
+
+import { AppModule, ServiceContainer } from '@deepkit/app';
+import { ClassType, changeClass, getClassName, isClass } from '@deepkit/core';
+import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/event';
 import {
     Config,
     ConfigOption,
@@ -14,9 +22,6 @@ import {
     DatabaseEntity,
     DebugControllerInterface,
     DebugRequest,
-    decodeFrameData,
-    decodeFrames,
-    deserializeFrameData,
     Event,
     Filesystem,
     ModuleApi,
@@ -25,25 +30,22 @@ import {
     Route,
     RpcAction,
     RpcActionParameter,
-    Workflow
+    Workflow,
+    decodeFrameData,
+    decodeFrames,
+    deserializeFrameData,
 } from '@deepkit/framework-debug-api';
-import { rpc, rpcClass } from '@deepkit/rpc';
 import { HttpRouter, parseRouteControllerAction } from '@deepkit/http';
-import { changeClass, ClassType, getClassName, isClass } from '@deepkit/core';
-import { EventDispatcher, isEventListenerContainerEntryService } from '@deepkit/event';
+import { Token, getScope, resolveToken } from '@deepkit/injector';
 import { DatabaseAdapter, DatabaseRegistry } from '@deepkit/orm';
-import { existsSync, readFileSync, statSync, truncateSync } from 'fs';
-import { join } from 'path';
-import { FrameworkConfig } from '../module.config.js';
-import { FileStopwatchStore } from './stopwatch/store.js';
-import { Subject } from 'rxjs';
-import { unlink } from 'fs/promises';
-import { getScope, resolveToken, Token } from '@deepkit/injector';
-import { AppModule, ServiceContainer } from '@deepkit/app';
-import { RpcControllers } from '../rpc.js';
-import { ReflectionClass, serializeType, stringifyType } from '@deepkit/type';
-import { FilesystemRegistry } from '../filesystem.js';
+import { rpc, rpcClass } from '@deepkit/rpc';
 import { FrameCategory, FrameCategoryData, FrameType } from '@deepkit/stopwatch';
+import { ReflectionClass, serializeType, stringifyType } from '@deepkit/type';
+
+import { FilesystemRegistry } from '../filesystem.js';
+import { FrameworkConfig } from '../module.config.js';
+import { RpcControllers } from '../rpc.js';
+import { FileStopwatchStore } from './stopwatch/store.js';
 
 @rpc.controller(DebugControllerInterface)
 export class DebugController implements DebugControllerInterface {
@@ -60,15 +62,14 @@ export class DebugController implements DebugControllerInterface {
         protected filesystemRegistry: FilesystemRegistry,
         protected stopwatchStore?: FileStopwatchStore,
         // protected liveDatabase: LiveDatabase,
-    ) {
-    }
+    ) {}
 
     @rpc.action()
     async subscribeStopwatchFramesData(): Promise<Subject<Uint8Array>> {
         if (!this.stopwatchStore || !this.stopwatchStore.frameDataChannel) throw new Error('not enabled');
 
         const subject = new Subject<Uint8Array>();
-        const close = await this.stopwatchStore.frameDataChannel.subscribe((v) => {
+        const close = await this.stopwatchStore.frameDataChannel.subscribe(v => {
             subject.next(v);
         });
         subject.subscribe().add(() => {
@@ -82,7 +83,7 @@ export class DebugController implements DebugControllerInterface {
         if (!this.stopwatchStore || !this.stopwatchStore.frameChannel) throw new Error('not enabled');
 
         const subject = new Subject<Uint8Array>();
-        const close = await this.stopwatchStore.frameChannel.subscribe((v) => {
+        const close = await this.stopwatchStore.frameChannel.subscribe(v => {
             subject.next(v);
         });
         subject.subscribe().add(() => {
@@ -116,9 +117,9 @@ export class DebugController implements DebugControllerInterface {
         }
 
         return [
-            existsSync(framesPath)  ? readFileSync(framesPath) : new Uint8Array(),
-            existsSync(frameDataPath)  ? readFileSync(frameDataPath) : new Uint8Array(),
-            existsSync(frameDataPath)  ? readFileSync(frameDataPath) : new Uint8Array(),
+            existsSync(framesPath) ? readFileSync(framesPath) : new Uint8Array(),
+            existsSync(frameDataPath) ? readFileSync(frameDataPath) : new Uint8Array(),
+            existsSync(frameDataPath) ? readFileSync(frameDataPath) : new Uint8Array(),
         ];
     }
 
@@ -136,7 +137,7 @@ export class DebugController implements DebugControllerInterface {
     httpRequests(): DebugRequest[] {
         const requests: { [cid: number]: DebugRequest } = {};
 
-        decodeFrames(this.getFrames(), (frame) => {
+        decodeFrames(this.getFrames(), frame => {
             if (frame.type === FrameType.start) {
                 if (frame.category !== FrameCategory.http) return;
                 requests[frame.cid] = new DebugRequest(frame.cid, frame.timestamp, '', '', '');
@@ -147,7 +148,7 @@ export class DebugController implements DebugControllerInterface {
             }
         });
 
-        decodeFrameData(this.getFramesData(), (frame) => {
+        decodeFrameData(this.getFramesData(), frame => {
             const r = requests[frame.cid];
             if (!r) return;
             const data = deserializeFrameData(frame) as FrameCategoryData[FrameCategory.http];
@@ -169,9 +170,16 @@ export class DebugController implements DebugControllerInterface {
         for (const db of this.databaseRegistry.getDatabases()) {
             const entities: DatabaseEntity[] = [];
             for (const classSchema of db.entityRegistry.all()) {
-                entities.push({ name: classSchema.name, className: classSchema.getClassName() });
+                entities.push({
+                    name: classSchema.name,
+                    className: classSchema.getClassName(),
+                });
             }
-            databases.push({ name: db.name, entities, adapter: (db.adapter as DatabaseAdapter).getName() });
+            databases.push({
+                name: db.name,
+                entities,
+                adapter: (db.adapter as DatabaseAdapter).getName(),
+            });
         }
 
         return databases;
@@ -182,7 +190,11 @@ export class DebugController implements DebugControllerInterface {
         const filesystems: Filesystem[] = [];
 
         for (const fs of this.filesystemRegistry.getFilesystems()) {
-            filesystems.push({ name: getClassName(fs), adapter: getClassName(fs.adapter), options: {} });
+            filesystems.push({
+                name: getClassName(fs),
+                adapter: getClassName(fs.adapter),
+                options: {},
+            });
         }
 
         return filesystems;
@@ -218,7 +230,10 @@ export class DebugController implements DebugControllerInterface {
                 parameters: [],
                 groups: route.groups,
                 category: route.category,
-                controller: route.action.type === 'controller' ? getClassName(route.action.controller) + '.' + route.action.methodName : route.action.fn.name,
+                controller:
+                    route.action.type === 'controller'
+                        ? getClassName(route.action.controller) + '.' + route.action.methodName
+                        : route.action.fn.name,
                 description: route.description,
             };
             const parsedRoute = parseRouteControllerAction(route);
@@ -292,9 +307,13 @@ export class DebugController implements DebugControllerInterface {
             }
         }
 
-        return changeClass({
-            appConfig, modulesConfig,
-        }, Config);
+        return changeClass(
+            {
+                appConfig,
+                modulesConfig,
+            },
+            Config,
+        );
     }
 
     @rpc.action()
@@ -327,10 +346,13 @@ export class DebugController implements DebugControllerInterface {
     getWorkflow(name: string): Workflow {
         const w = this.serviceContainer.workflowRegistry.get(name);
 
-        return changeClass({
-            places: Object.keys(w.places),
-            transitions: w.transitions,
-        }, Workflow);
+        return changeClass(
+            {
+                places: Object.keys(w.places),
+                transitions: w.transitions,
+            },
+            Workflow,
+        );
     }
 
     // @rpc.action()
@@ -391,10 +413,22 @@ export class DebugController implements DebugControllerInterface {
                     //We want to know which token has been imported by whom
                     if (preparedProvider.modules[0] !== module) {
                         //was imported from originally preparedProvider.modules[0]
-                        moduleApi.importedServices.push(new ModuleImportedService(getTokenId(token), getTokenLabel(token), getClassName(preparedProvider.modules[0])));
+                        moduleApi.importedServices.push(
+                            new ModuleImportedService(
+                                getTokenId(token),
+                                getTokenLabel(token),
+                                getClassName(preparedProvider.modules[0]),
+                            ),
+                        );
                     } else if (preparedProvider.modules.length > 1) {
                         //was imported and overwritten by this module
-                        moduleApi.importedServices.push(new ModuleImportedService(getTokenId(token), getTokenLabel(token), getClassName(preparedProvider.modules[1])));
+                        moduleApi.importedServices.push(
+                            new ModuleImportedService(
+                                getTokenId(token),
+                                getTokenLabel(token),
+                                getClassName(preparedProvider.modules[1]),
+                            ),
+                        );
                     }
                 }
             }

@@ -7,13 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { Observable, Subscription } from 'rxjs';
 import { ChangeDetectorRef, EventEmitter } from '@angular/core';
 import { ActivatedRoute, Router, UrlTree } from '@angular/router';
+import { Observable, Subscription } from 'rxjs';
+
 import { nextTick } from '@deepkit/core';
 
-const electron = 'undefined' === typeof window ? undefined : (window as any).electron || ((window as any).require ? (window as any).require('electron') : undefined);
+const electron =
+    'undefined' === typeof window
+        ? undefined
+        : (window as any).electron || ((window as any).require ? (window as any).require('electron') : undefined);
 
 export async function getHammer() {
     if ('undefined' === typeof window) return;
@@ -62,7 +65,6 @@ export class AsyncEventEmitter<T> extends EventEmitter<T> {
     }
 }
 
-
 export class ExecutionState {
     public running = false;
     public error: string = '';
@@ -70,8 +72,7 @@ export class ExecutionState {
     constructor(
         protected readonly cd: ChangeDetectorRef,
         protected readonly func: (...args: any[]) => Promise<any> | any,
-    ) {
-    }
+    ) {}
 
     public async execute(...args: any[]) {
         if (this.running) {
@@ -91,7 +92,6 @@ export class ExecutionState {
             this.running = false;
             this.cd.detectChanges();
         }
-
     }
 }
 
@@ -146,10 +146,14 @@ export function triggerResize() {
     });
 }
 
-export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] = [], customChecker?: (currentlyFocused: HTMLElement | null) => boolean): Observable<void> {
+export function focusWatcher(
+    target: HTMLElement,
+    allowedFocuses: HTMLElement[] = [],
+    customChecker?: (currentlyFocused: HTMLElement | null) => boolean,
+): Observable<void> {
     if (target.ownerDocument!.body.tabIndex === -1) target.ownerDocument!.body.tabIndex = 1;
 
-    return new Observable<void>((observer) => {
+    return new Observable<void>(observer => {
         let currentlyFocused: HTMLElement | null = target;
 
         function isFocusAllowed() {
@@ -211,13 +215,23 @@ export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] 
     });
 }
 
-export function isRouteActive(route: { routerLink?: string | UrlTree | any[]; routerLinkExact?: boolean; router?: Router, activatedRoute?: ActivatedRoute }): boolean {
+export function isRouteActive(route: {
+    routerLink?: string | UrlTree | any[];
+    routerLinkExact?: boolean;
+    router?: Router;
+    activatedRoute?: ActivatedRoute;
+}): boolean {
     if (!route.router) return false;
 
     if ('string' === typeof route.routerLink) {
         return route.router.isActive(route.routerLink, route.routerLinkExact === true);
     } else if (Array.isArray(route.routerLink)) {
-        return route.router.isActive(route.router.createUrlTree(route.routerLink, { relativeTo: route.activatedRoute }), route.routerLinkExact === true);
+        return route.router.isActive(
+            route.router.createUrlTree(route.routerLink, {
+                relativeTo: route.activatedRoute,
+            }),
+            route.routerLinkExact === true,
+        );
     } else {
         return route.router.isActive(route.routerLink!, route.routerLinkExact === true);
     }

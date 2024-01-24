@@ -7,10 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { MongoAuth } from './auth.js';
-import { BaseResponse, Command } from '../command.js';
 import { MongoClientConfig } from '../../config.js';
+import { BaseResponse, Command } from '../command.js';
+import { MongoAuth } from './auth.js';
 
 interface AuthenticateCommand {
     authenticate: 1;
@@ -19,8 +18,7 @@ interface AuthenticateCommand {
     username?: string;
 }
 
-interface AuthenticateResponse extends BaseResponse {
-}
+interface AuthenticateResponse extends BaseResponse {}
 
 export class X509Auth implements MongoAuth {
     async auth(command: Command, config: MongoClientConfig): Promise<void> {
@@ -28,7 +26,7 @@ export class X509Auth implements MongoAuth {
             authenticate: 1,
             mechanism: 'MONGODB-X509',
             $db: '$external',
-            username: config.authUser
+            username: config.authUser,
         });
     }
 }

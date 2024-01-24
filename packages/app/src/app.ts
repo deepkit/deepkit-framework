@@ -7,18 +7,29 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType, ExtractClassType, isFunction, isObject, pathBasename, setPathValue } from '@deepkit/core';
-import { ConfigLoader, ServiceContainer } from './service-container.js';
+import {
+    DataEventToken,
+    EventDispatcher,
+    EventListener,
+    EventListenerCallback,
+    EventOfEventToken,
+    EventToken,
+} from '@deepkit/event';
 import { InjectorContext, ResolveToken, Token } from '@deepkit/injector';
-import { AppModule, RootModuleDefinition } from './module.js';
-import { EnvConfiguration } from './configuration.js';
-import { DataEventToken, EventDispatcher, EventListener, EventListenerCallback, EventOfEventToken, EventToken } from '@deepkit/event';
-import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { Logger } from '@deepkit/logger';
-import { executeCommand, getArgsFromEnvironment, getBinFromEnvironment } from './command.js';
+import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
 
-export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
+import { executeCommand, getArgsFromEnvironment, getBinFromEnvironment } from './command.js';
+import { EnvConfiguration } from './configuration.js';
+import { AppModule, RootModuleDefinition } from './module.js';
+import { ConfigLoader, ServiceContainer } from './service-container.js';
+
+export function setPartialConfig(
+    target: { [name: string]: any },
+    partial: { [name: string]: any },
+    incomingPath: string = '',
+) {
     for (const i in partial) {
         const path = (incomingPath ? incomingPath + '.' : '') + i;
         if (isObject(partial[i])) {
@@ -29,7 +40,11 @@ export function setPartialConfig(target: { [name: string]: any }, partial: { [na
     }
 }
 
-type EnvNamingStrategy = 'same' | 'upper' | 'lower' | ((name: string) => string | 'same' | 'upper' | 'lower' | undefined);
+type EnvNamingStrategy =
+    | 'same'
+    | 'upper'
+    | 'lower'
+    | ((name: string) => string | 'same' | 'upper' | 'lower' | undefined);
 
 function camelToUpperCase(str: string) {
     return str.replace(/[A-Z]+/g, (letter: string) => `_${letter.toUpperCase()}`).toUpperCase();
@@ -59,7 +74,7 @@ function parseEnv(
     incomingDotPath: string,
     incomingEnvPath: string,
     namingStrategy: EnvNamingStrategy,
-    envContainer: { [name: string]: any }
+    envContainer: { [name: string]: any },
 ) {
     for (const property of schema.getProperties()) {
         const name = convertNameStrategy(namingStrategy, property.name);
@@ -72,7 +87,7 @@ function parseEnv(
                 (incomingDotPath ? incomingDotPath + '.' : '') + property.name,
                 (incomingEnvPath ? incomingEnvPath + '_' : '') + name,
                 namingStrategy,
-                envContainer
+                envContainer,
             );
         } else {
             const dotPath = (incomingDotPath ? incomingDotPath + '.' : '') + property.name;
@@ -92,12 +107,12 @@ interface EnvConfigOptions {
     /**
      * A path or paths to optional .env files that will be processed and mapped to app/module config
      */
-    envFilePath?: string | string[],
+    envFilePath?: string | string[];
     /**
      * A naming strategy for converting env variables to app/module config. Defaults to 'upper'.
      * For example, allows converting DB_HOST to dbHost
      */
-    namingStrategy?: EnvNamingStrategy,
+    namingStrategy?: EnvNamingStrategy;
     /**
      * A prefix for environment variables that helps to avoid potential collisions
      * By default this will be set to APP_
@@ -107,13 +122,13 @@ interface EnvConfigOptions {
      * naming strategy
      *
      */
-    prefix?: string
+    prefix?: string;
 }
 
 const defaultEnvConfigOptions: Required<EnvConfigOptions> = {
     prefix: 'APP_',
     envFilePath: ['.env'],
-    namingStrategy: 'upper'
+    namingStrategy: 'upper',
 };
 
 class EnvConfigLoader {
@@ -124,7 +139,7 @@ class EnvConfigLoader {
     constructor(options?: EnvConfigOptions) {
         const normalizedOptions = {
             ...defaultEnvConfigOptions,
-            ...options
+            ...options,
         };
 
         const { prefix, envFilePath, namingStrategy } = normalizedOptions;
@@ -142,12 +157,19 @@ class EnvConfigLoader {
         const env = Object.assign({}, envConfiguration.getAll());
         Object.assign(env, process.env);
 
-        parseEnv(config, this.prefix, schema, '', convertNameStrategy(this.namingStrategy, module.name), this.namingStrategy, env);
+        parseEnv(
+            config,
+            this.prefix,
+            schema,
+            '',
+            convertNameStrategy(this.namingStrategy, module.name),
+            this.namingStrategy,
+            env,
+        );
     }
 }
 
-export class RootAppModule<T extends RootModuleDefinition> extends AppModule<T> {
-}
+export class RootAppModule<T extends RootModuleDefinition> extends AppModule<T> {}
 
 export interface AppEvent {
     /**
@@ -166,7 +188,6 @@ export interface AppEvent {
 export interface AppExecutedEvent extends AppEvent {
     exitCode: number;
 }
-
 
 export interface AppErrorEvent extends AppEvent {
     error: Error;
@@ -212,12 +233,8 @@ export class App<T extends RootModuleDefinition> {
 
     public appModule: AppModule<T>;
 
-    constructor(
-        appModuleOptions: T,
-        serviceContainer?: ServiceContainer,
-        appModule?: AppModule<any>
-    ) {
-        this.appModule = appModule || new RootAppModule(appModuleOptions) as any;
+    constructor(appModuleOptions: T, serviceContainer?: ServiceContainer, appModule?: AppModule<any>) {
+        this.appModule = appModule || (new RootAppModule(appModuleOptions) as any);
         this.serviceContainer = serviceContainer || new ServiceContainer(this.appModule);
     }
 
@@ -233,7 +250,7 @@ export class App<T extends RootModuleDefinition> {
      * At this point no services can be requested as the service container was not built.
      */
     setup(...args: Parameters<this['appModule']['setup']>): this {
-        this.appModule = (this.appModule.setup as any)(...args as any[]);
+        this.appModule = (this.appModule.setup as any)(...(args as any[]));
         return this;
     }
 
@@ -264,13 +281,21 @@ export class App<T extends RootModuleDefinition> {
         return this;
     }
 
-    listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): this {
+    listen<T extends EventToken<any>, DEPS extends any[]>(
+        eventToken: T,
+        callback: EventListenerCallback<T['event']>,
+        order: number = 0,
+    ): this {
         const listener: EventListener<any> = { callback, order, eventToken };
         this.appModule.listeners.push(listener);
         return this;
     }
 
-    public async dispatch<T extends EventToken<any>>(eventToken: T, event?: EventOfEventToken<T>, injector?: InjectorContext): Promise<void> {
+    public async dispatch<T extends EventToken<any>>(
+        eventToken: T,
+        event?: EventOfEventToken<T>,
+        injector?: InjectorContext,
+    ): Promise<void> {
         return await this.get(EventDispatcher).dispatch(eventToken, event, injector);
     }
 
@@ -320,7 +345,7 @@ export class App<T extends RootModuleDefinition> {
                 } catch (error) {
                     throw new Error(`Invalid JSON in env variable ${variableName}. Parse error: ${error}`);
                 }
-            }
+            },
         });
         return this;
     }
@@ -330,7 +355,10 @@ export class App<T extends RootModuleDefinition> {
         if (exitCode > 0) process.exit(exitCode);
     }
 
-    get<T>(token?: ReceiveType<T> | Token<T>, moduleOrClass?: AppModule<any> | ClassType<AppModule<any>>): ResolveToken<T> {
+    get<T>(
+        token?: ReceiveType<T> | Token<T>,
+        moduleOrClass?: AppModule<any> | ClassType<AppModule<any>>,
+    ): ResolveToken<T> {
         return this.serviceContainer.getInjector(moduleOrClass || this.appModule).get(token) as ResolveToken<T>;
     }
 
@@ -359,10 +387,12 @@ export class App<T extends RootModuleDefinition> {
         }
 
         return await executeCommand(
-            bin, argv || getArgsFromEnvironment(),
-            eventDispatcher, logger,
+            bin,
+            argv || getArgsFromEnvironment(),
+            eventDispatcher,
+            logger,
             scopedInjectorContext,
-            this.serviceContainer.cliControllerRegistry.controllers
+            this.serviceContainer.cliControllerRegistry.controllers,
         );
     }
 }

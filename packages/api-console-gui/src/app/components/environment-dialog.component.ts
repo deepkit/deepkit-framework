@@ -1,7 +1,9 @@
 import { Component, Input } from '@angular/core';
-import { Environment, Store } from '../store';
+
 import { arrayRemoveItem, copy } from '@deepkit/core';
 import { DialogComponent } from '@deepkit/desktop-ui';
+
+import { Environment, Store } from '../store';
 
 @Component({
     template: `
@@ -19,20 +21,27 @@ import { DialogComponent } from '@deepkit/desktop-ui';
         </div>
 
         <dui-dialog-actions>
-            <dui-button style="margin-right: auto;" [disabled]="store.state.environments.length === 1" (click)="remove()">Delete</dui-button>
+            <dui-button
+                style="margin-right: auto;"
+                [disabled]="store.state.environments.length === 1"
+                (click)="remove()"
+                >Delete</dui-button
+            >
             <dui-button closeDialog>OK</dui-button>
         </dui-dialog-actions>
-    `
+    `,
 })
 export class EnvironmentDialogComponent {
     static dialogDefaults = {
-        width: '500px'
+        width: '500px',
     };
 
     @Input() environment!: Environment;
 
-    constructor(public store: Store, protected dialogComponent: DialogComponent) {
-    }
+    constructor(
+        public store: Store,
+        protected dialogComponent: DialogComponent,
+    ) {}
 
     remove() {
         if (!this.store.state.environments.length) return;

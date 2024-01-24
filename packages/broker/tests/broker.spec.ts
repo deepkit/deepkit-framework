@@ -1,14 +1,16 @@
 import { afterEach, expect, jest, test } from '@jest/globals';
-import { BrokerAdapter, BrokerBus, BrokerLock, BrokerQueue } from '../src/broker.js';
-import { BrokerMemoryAdapter } from '../src/adapters/memory-adapter.js';
+
 import { sleep } from '@deepkit/core';
+
+import { BrokerMemoryAdapter } from '../src/adapters/memory-adapter.js';
 import { BrokerCache } from '../src/broker-cache.js';
+import { BrokerAdapter, BrokerBus, BrokerLock, BrokerQueue } from '../src/broker.js';
 import { QueueMessageProcessing } from '../src/model.js';
 
 jest.setTimeout(10000);
 
 let lastAdapter: BrokerAdapter | undefined;
-export let adapterFactory: () => Promise<BrokerAdapter> = async () => lastAdapter = new BrokerMemoryAdapter();
+export let adapterFactory: () => Promise<BrokerAdapter> = async () => (lastAdapter = new BrokerMemoryAdapter());
 
 export function setAdapterFactory(factory: () => Promise<BrokerAdapter>) {
     adapterFactory = factory;
@@ -18,12 +20,12 @@ afterEach(() => {
     if (lastAdapter) lastAdapter.disconnect();
 });
 
-type User = { id: number, username: string, created: Date };
+type User = { id: number; username: string; created: Date };
 
 test('cache2', async () => {
     const cache = new BrokerCache(await adapterFactory());
 
-    const created = new Date;
+    const created = new Date();
     let called = 0;
     const builder = async () => {
         called++;
@@ -54,9 +56,13 @@ test('cache3', async () => {
     const cache = new BrokerCache(await adapterFactory());
 
     let build = 0;
-    const item = cache.item<number>('key', async () => {
-        return build++;
-    }, { ttl: '100ms' });
+    const item = cache.item<number>(
+        'key',
+        async () => {
+            return build++;
+        },
+        { ttl: '100ms' },
+    );
 
     expect(await item.exists()).toBe(false);
 
@@ -79,11 +85,11 @@ test('cache3', async () => {
 test('bus', async () => {
     const bus = new BrokerBus(await adapterFactory());
 
-    type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
+    type Events = { type: 'user-created'; id: number } | { type: 'user-deleted'; id: number };
 
     const channel = bus.channel<Events>('/events');
 
-    await channel.subscribe((event) => {
+    await channel.subscribe(event => {
         expect(event).toEqual({ type: 'user-created', id: 2 });
     });
 
@@ -137,12 +143,12 @@ test('lock2', async () => {
 test('queue', async () => {
     const queue = new BrokerQueue(await adapterFactory());
 
-    type User = { id: number, username: string };
+    type User = { id: number; username: string };
 
     const channel = queue.channel<User>('user/registered');
 
-    const p = new Promise<any>(async (resolve) => {
-        await channel.consume(async (message) => {
+    const p = new Promise<any>(async resolve => {
+        await channel.consume(async message => {
             console.log(message);
             resolve(message.data);
         });
@@ -156,7 +162,7 @@ test('queue', async () => {
 test('queue message process exactly once options for broker channel', async () => {
     const queue = new BrokerQueue(await adapterFactory());
 
-    type User = { id: number, username: string };
+    type User = { id: number; username: string };
 
     const channel = queue.channel<User>('user/registered', {
         process: QueueMessageProcessing.exactlyOnce,
@@ -171,13 +177,13 @@ test('queue message process exactly once options for broker channel', async () =
 
     await channel.produce({ id: 3, username: 'peter' });
 
-    expect(consumed).toBe(1)
+    expect(consumed).toBe(1);
 });
 
 test('queue message process exactly once with deduplication interval options for broker channel', async () => {
     const queue = new BrokerQueue(await adapterFactory());
 
-    type User = { id: number, username: string };
+    type User = { id: number; username: string };
 
     const channel = queue.channel<User>('user/registered', {
         process: QueueMessageProcessing.exactlyOnce,
@@ -201,7 +207,7 @@ test('queue message process exactly once with deduplication interval options for
 test('queue message process exactly once options for producer', async () => {
     const queue = new BrokerQueue(await adapterFactory());
 
-    type User = { id: number, username: string };
+    type User = { id: number; username: string };
 
     const channel = queue.channel<User>('user/registered', {
         process: QueueMessageProcessing.atLeastOnce,
@@ -212,13 +218,19 @@ test('queue message process exactly once options for producer', async () => {
         consumed++;
     });
 
-    await channel.produce({ id: 3, username: 'peter' }, {
-        process: QueueMessageProcessing.exactlyOnce,
-    });
+    await channel.produce(
+        { id: 3, username: 'peter' },
+        {
+            process: QueueMessageProcessing.exactlyOnce,
+        },
+    );
 
-    await channel.produce({ id: 3, username: 'peter' }, {
-        process: QueueMessageProcessing.exactlyOnce,
-    });
+    await channel.produce(
+        { id: 3, username: 'peter' },
+        {
+            process: QueueMessageProcessing.exactlyOnce,
+        },
+    );
 
     expect(consumed).toBe(1);
 });
@@ -226,7 +238,7 @@ test('queue message process exactly once options for producer', async () => {
 test('queue message process exactly once with deduplication interval options for producer', async () => {
     const queue = new BrokerQueue(await adapterFactory());
 
-    type User = { id: number, username: string };
+    type User = { id: number; username: string };
 
     const channel = queue.channel<User>('user/registered', {
         process: QueueMessageProcessing.atLeastOnce,
@@ -237,17 +249,23 @@ test('queue message process exactly once with deduplication interval options for
         consumed++;
     });
 
-    await channel.produce({ id: 3, username: 'peter' }, {
-        process: QueueMessageProcessing.exactlyOnce,
-        deduplicationInterval: '1s',
-    });
+    await channel.produce(
+        { id: 3, username: 'peter' },
+        {
+            process: QueueMessageProcessing.exactlyOnce,
+            deduplicationInterval: '1s',
+        },
+    );
 
     await sleep(1);
 
-    await channel.produce({ id: 3, username: 'peter' }, {
-        process: QueueMessageProcessing.exactlyOnce,
-        deduplicationInterval: '1s',
-    });
+    await channel.produce(
+        { id: 3, username: 'peter' },
+        {
+            process: QueueMessageProcessing.exactlyOnce,
+            deduplicationInterval: '1s',
+        },
+    );
 
     expect(consumed).toBe(2);
 });
@@ -255,7 +273,7 @@ test('queue message process exactly once with deduplication interval options for
 test('queue message process exactly once with custom hash for producer', async () => {
     const queue = new BrokerQueue(await adapterFactory());
 
-    type User = { id: number, username: string };
+    type User = { id: number; username: string };
 
     const channel = queue.channel<User>('user/registered', {
         process: QueueMessageProcessing.atLeastOnce,
@@ -266,15 +284,21 @@ test('queue message process exactly once with custom hash for producer', async (
         consumed++;
     });
 
-    await channel.produce({ id: 3, username: 'peter' }, {
-        process: QueueMessageProcessing.exactlyOnce,
-        hash: 1,
-    });
+    await channel.produce(
+        { id: 3, username: 'peter' },
+        {
+            process: QueueMessageProcessing.exactlyOnce,
+            hash: 1,
+        },
+    );
 
-    await channel.produce({ id: 3, username: 'peter' }, {
-        process: QueueMessageProcessing.exactlyOnce,
-        hash: 2,
-    });
+    await channel.produce(
+        { id: 3, username: 'peter' },
+        {
+            process: QueueMessageProcessing.exactlyOnce,
+            hash: 2,
+        },
+    );
 
     expect(consumed).toBe(2);
 });

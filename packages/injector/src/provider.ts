@@ -8,8 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { AbstractClassType, ClassType, isClass, isFunction } from '@deepkit/core';
+import { ReceiveType, Type, resolveReceiveType } from '@deepkit/type';
+
 import type { InjectorModule } from './module.js';
-import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
 
 export interface ProviderBase {
     /**
@@ -25,20 +26,31 @@ export interface ProviderScope {
 }
 
 /** @reflection never */
-export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | AbstractClassType<T> | Type | TagProvider<T> | Function | T;
+export type Token<T = any> =
+    | symbol
+    | number
+    | bigint
+    | RegExp
+    | boolean
+    | string
+    | AbstractClassType<T>
+    | Type
+    | TagProvider<T>
+    | Function
+    | T;
 
 export function provide<T>(
     provider:
-        | (ProviderBase & ProviderScope &
-        (
-            | { useValue: T }
-            | { useClass: ClassType }
-            | { useExisting: any }
-            | { useFactory: (...args: any[]) => T | undefined }
-            ))
+        | (ProviderBase &
+              ProviderScope &
+              (
+                  | { useValue: T }
+                  | { useClass: ClassType }
+                  | { useExisting: any }
+                  | { useFactory: (...args: any[]) => T | undefined }
+              ))
         | ClassType
-        | ((...args: any[]) => T)
-    ,
+        | ((...args: any[]) => T),
     type?: ReceiveType<T>,
 ): NormalizedProvider {
     if (isClass(provider)) return { provide: resolveReceiveType(type), useClass: provider };
@@ -95,7 +107,13 @@ export interface FactoryProvider<T> extends ProviderBase {
 }
 
 /** @reflection never */
-export type Provider<T = any> = AbstractClassType | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T> | TagProvider<T>;
+export type Provider<T = any> =
+    | AbstractClassType
+    | ValueProvider<T>
+    | ClassProvider<T>
+    | ExistingProvider<T>
+    | FactoryProvider<T>
+    | TagProvider<T>;
 
 /** @reflection never */
 export type ProviderProvide<T = any> = ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>;
@@ -108,10 +126,7 @@ interface TagRegistryEntry<T> {
 
 /** @reflection never */
 export class TagRegistry {
-    constructor(
-        public tags: TagRegistryEntry<any>[] = []
-    ) {
-    }
+    constructor(public tags: TagRegistryEntry<any>[] = []) {}
 
     register(tagProvider: TagProvider<any>, module: InjectorModule) {
         return this.tags.push({ tagProvider, module });
@@ -127,8 +142,7 @@ export class TagProvider<T> {
     constructor(
         public provider: NormalizedProvider<T>,
         public tag: Tag<T>,
-    ) {
-    }
+    ) {}
 }
 
 /** @reflection never */
@@ -136,20 +150,19 @@ export class Tag<T, TP extends TagProvider<T> = TagProvider<T>> {
     _!: () => T;
     _2!: () => TP;
 
-    constructor(
-        public readonly services: T[] = []
-    ) {
-    }
+    constructor(public readonly services: T[] = []) {}
 
     protected createTagProvider(provider: NormalizedProvider<any>): TP {
         return new TagProvider(provider, this) as TP;
     }
 
-    static provide<P extends ClassType<T> | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>,
+    static provide<
+        P extends ClassType<T> | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>,
         T extends ReturnType<InstanceType<B>['_']>,
         TP extends ReturnType<InstanceType<B>['_2']>,
-        B extends ClassType<Tag<any>>>(this: B, provider: P): TP {
-        const t = new this;
+        B extends ClassType<Tag<any>>,
+    >(this: B, provider: P): TP {
+        const t = new this();
 
         if (isClass(provider)) {
             return t.createTagProvider({ provide: provider }) as TP;
@@ -195,10 +208,7 @@ export function isTransient(provider: ProviderWithScope): boolean {
     return provider.transient === true;
 }
 
-export function getProviders(
-    providers: ProviderWithScope[],
-    requestScope: 'module' | 'session' | 'request' | string,
-) {
+export function getProviders(providers: ProviderWithScope[], requestScope: 'module' | 'session' | 'request' | string) {
     const result: Provider<any>[] = [];
 
     function normalize(provider: ProviderWithScope<any>): Provider<any> {

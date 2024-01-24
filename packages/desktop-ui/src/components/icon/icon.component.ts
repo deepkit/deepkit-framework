@@ -7,12 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { Component, HostBinding, Input, OnChanges, OnInit } from '@angular/core';
 
 @Component({
     selector: 'dui-icon',
-    template: `{{name}}`,
+    template: `{{ name }}`,
     host: {
         '[class.ui-icon]': 'true',
         '[style.fontSize.px]': 'usedSize',
@@ -20,7 +19,7 @@ import { Component, HostBinding, Input, OnChanges, OnInit } from '@angular/core'
         '[style.width.px]': 'usedSize',
         '[style.color]': 'color',
     },
-    styleUrls: ['./icon.component.scss']
+    styleUrls: ['./icon.component.scss'],
 })
 export class IconComponent implements OnInit, OnChanges {
     /**
@@ -50,8 +49,7 @@ export class IconComponent implements OnInit, OnChanges {
         return false !== this.disabled;
     }
 
-    constructor() {
-    }
+    constructor() {}
 
     ngOnChanges(): void {
         if (this.size) {
@@ -69,6 +67,5 @@ export class IconComponent implements OnInit, OnChanges {
         }
     }
 
-    ngOnInit() {
-    }
+    ngOnInit() {}
 }

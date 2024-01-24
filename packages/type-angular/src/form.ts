@@ -7,27 +7,36 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { AbstractControl, FormArray, FormControl, FormControlOptions, FormControlState, FormGroup, ValidationErrors, ValidatorFn } from "@angular/forms";
-import { ClassType, isClass, isFunction } from "@deepkit/core";
 import {
+    AbstractControl,
+    FormArray,
+    FormControl,
+    FormControlOptions,
+    FormControlState,
+    FormGroup,
+    ValidationErrors,
+    ValidatorFn,
+} from '@angular/forms';
+
+import { ClassType, isClass, isFunction } from '@deepkit/core';
+import {
+    ReceiveType,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    Type,
+    UnpopulatedCheck,
+    ValidationErrorItem,
     deserialize,
     getValidatorFunction,
     hasDefaultValue,
     isCustomTypeClass,
     isOptional,
-    ReceiveType,
-    ReflectionClass,
-    ReflectionKind,
-    ReflectionProperty,
     resolveReceiveType,
     serialize,
-    Type,
     typeSettings,
-    UnpopulatedCheck,
     validationAnnotation,
-    ValidationErrorItem
-} from "@deepkit/type";
+} from '@deepkit/type';
 
 type PropPath = string | (() => string);
 
@@ -58,7 +67,10 @@ function isRequired(type: Type) {
         return true;
     }
 
-    if (type.parent && (type.parent.kind === ReflectionKind.property || type.parent.kind === ReflectionKind.propertySignature)) {
+    if (
+        type.parent &&
+        (type.parent.kind === ReflectionKind.property || type.parent.kind === ReflectionKind.propertySignature)
+    ) {
         return !isOptional(type.parent) && !hasDefaultValue(type.parent);
     }
     return !isOptional(type);
@@ -81,7 +93,12 @@ function errorsToAngularErrors(errors: ValidationErrorItem[]): any {
 export class TypedFormControl2<T = any> extends FormControl {
     deepkitErrors?: ValidationErrorItem[];
 
-    constructor(propPath: PropPath, public type: Type, value: FormControlState<T> | T, validatorOrOpts?: ValidatorFn | ValidatorFn[] | FormControlOptions | null) {
+    constructor(
+        propPath: PropPath,
+        public type: Type,
+        value: FormControlState<T> | T,
+        validatorOrOpts?: ValidatorFn | ValidatorFn[] | FormControlOptions | null,
+    ) {
         super(value, validatorOrOpts);
 
         Object.defineProperty(this, 'value', {
@@ -98,7 +115,7 @@ export class TypedFormControl2<T = any> extends FormControl {
                     }
                 }
                 value = v;
-            }
+            },
         });
     }
 
@@ -115,7 +132,8 @@ function createControl<T>(
     prop: Type,
     parent?: FormGroup | FormArray,
 ): AbstractControl {
-    const type = prop.kind === ReflectionKind.property || prop.kind === ReflectionKind.propertySignature ? prop.type : prop;
+    const type =
+        prop.kind === ReflectionKind.property || prop.kind === ReflectionKind.propertySignature ? prop.type : prop;
 
     let control: AbstractControl & WithDeepkitErrors;
 
@@ -200,7 +218,9 @@ export class TypedFormGroup<T extends object, TRawValue extends T = T> extends F
     }
 
     getDeepkitErrors() {
-        return this.getAllDeepkitErrors().map(v => v.path + ': ' + v.message).join(', ');
+        return this.getAllDeepkitErrors()
+            .map(v => v.path + ': ' + v.message)
+            .join(', ');
     }
 
     getAllDeepkitErrors() {
@@ -247,7 +267,7 @@ export class TypedFormGroup<T extends object, TRawValue extends T = T> extends F
                 Object.defineProperty(value, prop.name, {
                     // configurable: false,
                     set: (newValue: any) => set(value, prop, newValue, d),
-                    get: () => d?.get ? d.get() : (o as any)[prop.name],
+                    get: () => (d?.get ? d.get() : (o as any)[prop.name]),
                 });
             }
             (this as any).value = value;
@@ -265,11 +285,17 @@ export class TypedFormGroup<T extends object, TRawValue extends T = T> extends F
         this.updateValueAndValidity(options);
     }
 
-    constructor(public type: Type, public path?: PropPath) {
+    constructor(
+        public type: Type,
+        public path?: PropPath,
+    ) {
         super({}, null);
         this.reflection = ReflectionClass.from(type);
         for (const prop of this.reflection.getProperties()) {
-            this.registerControl(prop.name, createControl(() => getPropPath(path, prop.name), prop.name, prop.property, this));
+            this.registerControl(
+                prop.name,
+                createControl(() => getPropPath(path, prop.name), prop.name, prop.property, this),
+            );
         }
     }
 

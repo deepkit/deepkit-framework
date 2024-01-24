@@ -7,7 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { Overlay } from '@angular/cdk/overlay';
 import {
     AfterViewInit,
     ChangeDetectorRef,
@@ -26,13 +26,13 @@ import {
     SimpleChanges,
     SkipSelf,
     TemplateRef,
-    ViewChild
+    ViewChild,
 } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
-import { Overlay } from '@angular/cdk/overlay';
-import { DropdownComponent } from '../button/dropdown.component';
+
+import { ValueAccessorBase, ngValueAccessor } from '../../core/form';
 import { ButtonComponent } from '../button/button.component';
+import { DropdownComponent } from '../button/dropdown.component';
 
 /**
  * Necessary directive to get a dynamic rendered option.
@@ -49,26 +49,22 @@ import { ButtonComponent } from '../button/button.component';
     selector: '[dynamicOption]',
 })
 export class DynamicOptionDirective {
-    constructor(
-        public template: TemplateRef<any>
-    ) {
-    }
+    constructor(public template: TemplateRef<any>) {}
 }
 
 @Component({
     selector: 'dui-option',
-    template: `
-        <ng-content></ng-content>`
+    template: ` <ng-content></ng-content>`,
 })
 export class OptionDirective {
     @Input() value: any;
 
     @Input() disabled: boolean = false;
 
-    @ContentChild(DynamicOptionDirective, { static: false }) dynamic?: DynamicOptionDirective;
+    @ContentChild(DynamicOptionDirective, { static: false })
+    dynamic?: DynamicOptionDirective;
 
-    constructor(public readonly element: ElementRef) {
-    }
+    constructor(public readonly element: ElementRef) {}
 }
 
 @Directive({
@@ -76,12 +72,10 @@ export class OptionDirective {
     providers: [{ provide: OptionDirective, useExisting: OptionSeparatorDirective }],
 })
 export class OptionSeparatorDirective {
-    constructor() {
-    }
+    constructor() {}
 }
 
-class NotSelected {
-}
+class NotSelected {}
 
 @Component({
     selector: 'dui-select',
@@ -89,14 +83,19 @@ class NotSelected {
         <ng-container *ngIf="button">
             <dui-button-group padding="none">
                 <ng-content select="dui-button"></ng-content>
-                <dui-button class="split-knob"
-                            style="padding: 0 2px;"
-                            [openDropdown]="dropdown" tight textured icon="arrow_down"></dui-button>
+                <dui-button
+                    class="split-knob"
+                    style="padding: 0 2px;"
+                    [openDropdown]="dropdown"
+                    tight
+                    textured
+                    icon="arrow_down"
+                ></dui-button>
             </dui-button-group>
         </ng-container>
 
         <ng-container *ngIf="!button">
-            <div class="placeholder" *ngIf="!isSelected">{{placeholder}}</div>
+            <div class="placeholder" *ngIf="!isSelected">{{ placeholder }}</div>
             <div class="value">
                 <ng-container *ngIf="innerValue !== undefined && optionsValueMap.get(innerValue) as option">
                     <ng-container *ngIf="option.dynamic" [ngTemplateOutlet]="option.dynamic.template"></ng-container>
@@ -120,7 +119,10 @@ class NotSelected {
                         (click)="select(option.value)"
                         [selected]="innerValue === option.value"
                     >
-                        <ng-container *ngIf="option.dynamic" [ngTemplateOutlet]="option.dynamic.template"></ng-container>
+                        <ng-container
+                            *ngIf="option.dynamic"
+                            [ngTemplateOutlet]="option.dynamic.template"
+                        ></ng-container>
                         <div *ngIf="!option.dynamic">
                             <div [innerHTML]="option.element.nativeElement.innerHTML"></div>
                         </div>
@@ -136,9 +138,12 @@ class NotSelected {
         '[class.textured]': 'textured !== false',
         '[class.small]': 'small !== false',
     },
-    providers: [ngValueAccessor(SelectboxComponent)]
+    providers: [ngValueAccessor(SelectboxComponent)],
 })
-export class SelectboxComponent<T> extends ValueAccessorBase<T | NotSelected> implements AfterViewInit, OnDestroy, OnChanges {
+export class SelectboxComponent<T>
+    extends ValueAccessorBase<T | NotSelected>
+    implements AfterViewInit, OnDestroy, OnChanges
+{
     @Input() placeholder: string = '';
 
     /**
@@ -153,7 +158,8 @@ export class SelectboxComponent<T> extends ValueAccessorBase<T | NotSelected> im
 
     @ContentChild(ButtonComponent, { static: false }) button?: ButtonComponent;
 
-    @ContentChildren(OptionDirective, { descendants: true }) options?: QueryList<OptionDirective>;
+    @ContentChildren(OptionDirective, { descendants: true })
+    options?: QueryList<OptionDirective>;
     @ViewChild('dropdown', { static: false }) dropdown!: DropdownComponent;
 
     public label: string = '';
@@ -169,7 +175,7 @@ export class SelectboxComponent<T> extends ValueAccessorBase<T | NotSelected> im
         @SkipSelf() public readonly cdParent: ChangeDetectorRef,
     ) {
         super(injector, cd, cdParent);
-        this.innerValue = new NotSelected;
+        this.innerValue = new NotSelected();
     }
 
     isSeparator(item: any): boolean {
@@ -200,8 +206,7 @@ export class SelectboxComponent<T> extends ValueAccessorBase<T | NotSelected> im
         this.dropdown.toggle();
     }
 
-    ngOnChanges(changes: SimpleChanges) {
-    }
+    ngOnChanges(changes: SimpleChanges) {}
 
     open() {
         if (this.dropdown) this.dropdown.open();

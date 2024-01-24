@@ -7,12 +7,13 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { MenuDirective } from '../app/menu.component';
-import { arrayRemoveItem, nextTick } from '@deepkit/core';
-import { Subscription } from 'rxjs';
 import { Injectable } from '@angular/core';
+import { Subscription } from 'rxjs';
+
+import { arrayRemoveItem, nextTick } from '@deepkit/core';
+
 import { Electron } from '../../core/utils';
+import { MenuDirective } from '../app/menu.component';
 
 @Injectable()
 export class WindowMenuState {
@@ -23,9 +24,12 @@ export class WindowMenuState {
 
     addMenu(menu: MenuDirective) {
         this.menus.push(menu);
-        this.subscriptions.set(menu, menu.change.subscribe(() => {
-            this.build();
-        }));
+        this.subscriptions.set(
+            menu,
+            menu.change.subscribe(() => {
+                this.build();
+            }),
+        );
 
         this.build();
     }
@@ -40,7 +44,7 @@ export class WindowMenuState {
     build() {
         nextTick(() => {
             this._build();
-        })
+        });
     }
 
     protected _build() {
@@ -55,13 +59,15 @@ export class WindowMenuState {
         }
 
         if (!template.length) {
-            template.push(...[
-                { role: 'appMenu' },
-                { role: 'fileMenu' },
-                { role: 'editMenu' },
-                { role: 'viewMenu' },
-                { role: 'windowMenu' },
-            ]);
+            template.push(
+                ...[
+                    { role: 'appMenu' },
+                    { role: 'fileMenu' },
+                    { role: 'editMenu' },
+                    { role: 'viewMenu' },
+                    { role: 'windowMenu' },
+                ],
+            );
         }
 
         if (Electron.isAvailable()) {

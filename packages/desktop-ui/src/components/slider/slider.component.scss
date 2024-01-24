@@ -1,71 +1,71 @@
 :host {
-    display: inline-block;
-    position: relative;
-    width: 150px;
+  display: inline-block;
+  position: relative;
+  width: 150px;
 
-    --knob-size: 17px;
-    --height: 17px;
+  --knob-size: 17px;
+  --height: 17px;
 
-    height: var(--height);
+  height: var(--height);
 }
 
 .bg {
-    margin-top: 7px;
-    height: 3px;
-    background-color: var(--line-color);
-    border-radius: 1px;
+  margin-top: 7px;
+  height: 3px;
+  background-color: var(--line-color);
+  border-radius: 1px;
 }
 
 .active-line {
-    margin-top: 7px;
-    border-radius: 3px;
-    width: 30%;
-    height: 3px;
-    background-color: var(--dui-selection);
+  margin-top: 7px;
+  border-radius: 3px;
+  width: 30%;
+  height: 3px;
+  background-color: var(--dui-selection);
 }
 
 .knob-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: var(--knob-size);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: var(--knob-size);
 }
 
 .knob {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: var(--knob-size);
-    height: var(--knob-size);
-    border: 1px solid #c9c9c9;
-    background-color: white;
-    border-radius: var(--knob-size);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--knob-size);
+  height: var(--knob-size);
+  border: 1px solid #c9c9c9;
+  background-color: white;
+  border-radius: var(--knob-size);
 }
 
 :host-context(.dui-theme-dark) {
-    --knob-size: 15px;
+  --knob-size: 15px;
 
-    .knob {
-        background-color: #cbcbcb;
-        top: 1px;
-    }
+  .knob {
+    background-color: #cbcbcb;
+    top: 1px;
+  }
 }
 
 :host.mini {
-    --knob-size: 11px;
-    --height: 11px;
-    opacity: 0.8;
+  --knob-size: 11px;
+  --height: 11px;
+  opacity: 0.8;
 
-    .bg, .active-line {
-        margin-top: 4px;
-    }
+  .bg,
+  .active-line {
+    margin-top: 4px;
+  }
 
-    .active-line {
-        background-color: var(--line-color-prominent);
-    }
+  .active-line {
+    background-color: var(--line-color-prominent);
+  }
 }
 
 :host-context(.dui-theme-dark).mini {
-    --knob-size: 9px;
+  --knob-size: 9px;
 }
-

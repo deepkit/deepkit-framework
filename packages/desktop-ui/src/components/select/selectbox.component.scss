@@ -1,178 +1,178 @@
-@import "../../scss/mixins";
+@import '../../scss/mixins';
 
 :host {
-    &:focus {
-        outline: 0;
-    }
+  &:focus {
+    outline: 0;
+  }
 }
 
 :host:not(.split) {
-    display: inline-block;
-    position: relative;
-    vertical-align: middle;
-    width: 100px;
-    height: 21px;
-    line-height: 18px;
-    text-align: left;
-    padding-left: 8px;
-    padding-right: 20px;
-    border-radius: 4px;
-    font-size: 12px;
+  display: inline-block;
+  position: relative;
+  vertical-align: middle;
+  width: 100px;
+  height: 21px;
+  line-height: 18px;
+  text-align: left;
+  padding-left: 8px;
+  padding-right: 20px;
+  border-radius: 4px;
+  font-size: 12px;
 }
 
 :host.small {
-    height: 18px;
-    font-size: 11px;
-    font-weight: 500;
+  height: 18px;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 :host.split {
-    display: inline-flex;
-    flex-direction: row;
+  display: inline-flex;
+  flex-direction: row;
 }
 
 :host.disabled {
-    opacity: 0.6;
-    color: grey;
-    pointer-events: none;
+  opacity: 0.6;
+  color: grey;
+  pointer-events: none;
 }
 
 .knob {
-    position: absolute;
-    right: -1px;
-    bottom: -1px;
-    top: -1px;
-    padding-left: 1px;
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  top: -1px;
+  padding-left: 1px;
 
-    /* Sketch doesnt export gradient borders at this point */
-    border-radius: 0 3px 3px 0;
-    width: 17px;
-    color: white;
+  /* Sketch doesnt export gradient borders at this point */
+  border-radius: 0 3px 3px 0;
+  width: 17px;
+  color: white;
 
-    display: flex;
-    align-items: center;
-    align-content: center;
-    justify-content: space-around;
+  display: flex;
+  align-items: center;
+  align-content: center;
+  justify-content: space-around;
 }
 
 .split-knob {
-    flex: 0 25px;
+  flex: 0 25px;
 }
 
 dui-icon {
-    color: white;
+  color: white;
 }
 
 select {
-    position: absolute;
-    border: 0;
-    color: transparent;
-    background-color: transparent;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100%;
-    outline: 0;
+  position: absolute;
+  border: 0;
+  color: transparent;
+  background-color: transparent;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  outline: 0;
 }
 
 .placeholder,
 .value {
-    position: absolute;
-    left: 8px;
-    top: 0;
-    right: 17px;
-    bottom: 0;
+  position: absolute;
+  left: 8px;
+  top: 0;
+  right: 17px;
+  bottom: 0;
 
-    white-space: pre;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
 
-    dui-icon {
-        overflow: visible;
-    }
+  dui-icon {
+    overflow: visible;
+  }
 }
 
 .placeholder {
-    display: block;
-    color: var(--text-grey);
+  display: block;
+  color: var(--text-grey);
 }
 
 .value {
-    display: none;
+  display: none;
 }
 
 :host.selected {
-    .placeholder {
-        display: none;
-    }
+  .placeholder {
+    display: none;
+  }
 
-    .value {
-        display: inline-flex;
-        align-items: center;
-    }
+  .value {
+    display: inline-flex;
+    align-items: center;
+  }
 }
 
 :host-context(.dui-theme-light):not(.split) {
-    background: white;
-    border-top: 1px solid #c9c9c9;
-    border-bottom: 1px solid #acacac;
-    border-left: 1px solid #c2c2c2;
-    border-right: 1px solid #c2c2c2;
-    box-shadow: 0 1px 0 #e5e5e5;
+  background: white;
+  border-top: 1px solid #c9c9c9;
+  border-bottom: 1px solid #acacac;
+  border-left: 1px solid #c2c2c2;
+  border-right: 1px solid #c2c2c2;
+  box-shadow: 0 1px 0 #e5e5e5;
 
-    &:not(.disabled):not(.textured) .knob {
-        border-top: 1px solid #4990fa;
-        border-right: 1px solid #3383fc;
-        border-bottom: 1px solid #0063ff;
-        background-image: linear-gradient(-180deg, #69A3FB 0%, #599AFC 20%, #428DFD 45%, #1974FF 83%, #0D6DFF 100%);
+  &:not(.disabled):not(.textured) .knob {
+    border-top: 1px solid #4990fa;
+    border-right: 1px solid #3383fc;
+    border-bottom: 1px solid #0063ff;
+    background-image: linear-gradient(-180deg, #69a3fb 0%, #599afc 20%, #428dfd 45%, #1974ff 83%, #0d6dff 100%);
+  }
+
+  &.disabled dui-icon {
+    border-top: 1px solid transparent;
+    border-bottom: 1px solid transparent;
+    border-right: 1px solid transparent;
+    color: grey;
+  }
+
+  &.textured {
+    @include box-textured;
+
+    dui-icon {
+      color: #585858;
     }
 
-    &.disabled dui-icon {
-        border-top: 1px solid transparent;
-        border-bottom: 1px solid transparent;
-        border-right: 1px solid transparent;
-        color: grey;
+    &:not(.disabled).active,
+    &:not(.disabled):active {
+      @include box-textured-active;
     }
-
-    &.textured {
-        @include box-textured;
-
-        dui-icon {
-            color: #585858;
-        }
-
-        &:not(.disabled).active,
-        &:not(.disabled):active {
-            @include box-textured-active;
-        }
-    }
+  }
 }
 
 :host-context(.dui-theme-dark):not(.split).textured {
-    background-color: #62696f;
+  background-color: #62696f;
 
-    &.active,
-    &:active {
-        background: #797f84;
-    }
+  &.active,
+  &:active {
+    background: #797f84;
+  }
 }
 
 :host-context(.dui-theme-dark):not(.split) {
-    background-image: linear-gradient(-180deg, #787878 1px, #696969 1px, #696969 95%);
-    border-left: 1px solid #303030;
-    border-right: 1px solid #303030;
+  background-image: linear-gradient(-180deg, #787878 1px, #696969 1px, #696969 95%);
+  border-left: 1px solid #303030;
+  border-right: 1px solid #303030;
 
-    &.active,
-    &:active {
-        @include box-textured-dark-active;
-    }
+  &.active,
+  &:active {
+    @include box-textured-dark-active;
+  }
 
-    &:not(.disabled):not(.textured) .knob {
-        border-top: 1px solid #293239;
-        border-bottom: 1px solid #232a31;
-        border-right: 1px solid #273037;
-        background-image: linear-gradient(-180deg, #1768E5 0%, #145CCC 100%);
-    }
+  &:not(.disabled):not(.textured) .knob {
+    border-top: 1px solid #293239;
+    border-bottom: 1px solid #232a31;
+    border-right: 1px solid #273037;
+    background-image: linear-gradient(-180deg, #1768e5 0%, #145ccc 100%);
+  }
 }

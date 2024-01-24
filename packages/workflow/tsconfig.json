@@ -14,29 +14,25 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": []
+    "types": [],
   },
   "reflection": true,
-  "include": [
-    "src",
-    "tests",
-    "index.ts"
-  ],
+  "include": ["src", "tests", "index.ts"],
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../event/tsconfig.json"
+      "path": "../event/tsconfig.json",
     },
     {
-      "path": "../injector/tsconfig.json"
+      "path": "../injector/tsconfig.json",
     },
     {
-      "path": "../stopwatch/tsconfig.json"
+      "path": "../stopwatch/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

@@ -7,25 +7,41 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { AfterViewInit, ApplicationRef, inject, NgModule, OnDestroy, Type, ɵComponentDef as ComponentDef, ɵNG_COMP_DEF as NG_COMP_DEF } from '@angular/core';
-import { getClassName, nextTick, throttleTime } from '@deepkit/core';
-import { EventDispatcher, EventDispatcherUnsubscribe, EventOfEventToken, EventToken } from '@deepkit/event';
+import {
+    AfterViewInit,
+    ApplicationRef,
+    ɵComponentDef as ComponentDef,
+    ɵNG_COMP_DEF as NG_COMP_DEF,
+    NgModule,
+    OnDestroy,
+    Type,
+    inject,
+} from '@angular/core';
 import { Subscription } from 'rxjs';
 
+import { getClassName, nextTick, throttleTime } from '@deepkit/core';
+import { EventDispatcher, EventDispatcherUnsubscribe, EventOfEventToken, EventToken } from '@deepkit/event';
+
 export function observeAction() {
-    return function (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<any>): TypedPropertyDescriptor<any> | void {
+    return function (
+        target: Object,
+        propertyKey: string | symbol,
+        descriptor: TypedPropertyDescriptor<any>,
+    ): TypedPropertyDescriptor<any> | void {
         const originalMethod = descriptor.value;
 
         descriptor.value = function (...args: any[]) {
             const result = originalMethod.apply(this, args);
 
             if (result && result.then) {
-                result.then(() => {
-                    ReactiveChangeDetectionModule.tick();
-                }, () => {
-                    ReactiveChangeDetectionModule.tick();
-                });
+                result.then(
+                    () => {
+                        ReactiveChangeDetectionModule.tick();
+                    },
+                    () => {
+                        ReactiveChangeDetectionModule.tick();
+                    },
+                );
             } else {
                 ReactiveChangeDetectionModule.tick();
             }
@@ -53,7 +69,11 @@ function getRealMethodHookName(value: string): string {
     return 'ng' + value.substr(0, 1).toUpperCase() + value.substr(1);
 }
 
-function addComponentHook<T>(target: T, hookName: 'onDestroy' | 'onChanges' | 'onInit' | 'afterViewInit', fn: (this: T) => void) {
+function addComponentHook<T>(
+    target: T,
+    hookName: 'onDestroy' | 'onChanges' | 'onInit' | 'afterViewInit',
+    fn: (this: T) => void,
+) {
     const cdef: ComponentDef<any> = ((target as any).constructor as any)[NG_COMP_DEF];
     if (cdef) {
         //prod build
@@ -80,7 +100,6 @@ function addComponentHook<T>(target: T, hookName: 'onDestroy' | 'onChanges' | 'o
  */
 export function unsubscribe<T extends OnDestroy>() {
     return function (target: T, propertyKey: string | symbol) {
-
         function unsub(value: any) {
             if (value && value.unsubscribe) {
                 try {
@@ -107,7 +126,7 @@ export function unsubscribe<T extends OnDestroy>() {
                     unsub(value);
                 }
                 store[propertyKey] = value;
-            }
+            },
         });
 
         addComponentHook(target, 'onDestroy', function () {
@@ -162,7 +181,7 @@ export function eventHandler<T extends EventToken, C>(eventToken: T, component: 
             const unsub = eventDispatcher.listen(eventToken, listener);
             listeners.push(unsub);
             return unsub;
-        }
+        },
     };
 }
 
@@ -194,7 +213,7 @@ export function EventListener(eventToken: EventToken) {
             const store = lazyInitialize(instance);
             const eventDispatcher = inject(EventDispatcher);
             console.log('listen', eventToken, propertyKey);
-            store['Ωlistener_' + propertyKey] = eventDispatcher.listen(eventToken, (event) => {
+            store['Ωlistener_' + propertyKey] = eventDispatcher.listen(eventToken, event => {
                 instance[propertyKey](event);
             });
             return instance;
@@ -228,7 +247,6 @@ export function reactiveComponent<T extends AfterViewInit>() {
  */
 export function observe<T extends {}>(options: { unsubscribe?: true } = {}) {
     return function (target: T, propertyKey: string | symbol) {
-
         function unsub(value: any) {
             if (value && value.unsubscribe) {
                 try {
@@ -273,7 +291,7 @@ export function observe<T extends {}>(options: { unsubscribe?: true } = {}) {
                 ReactiveChangeDetectionModule.tick();
 
                 store[propertyKey] = value;
-            }
+            },
         });
 
         addComponentHook(target, 'onDestroy', function () {

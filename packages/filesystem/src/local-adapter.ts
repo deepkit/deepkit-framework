@@ -1,6 +1,8 @@
-import { FileType, FileVisibility, Reporter, FilesystemAdapter, FilesystemFile } from './filesystem.js';
-import { pathDirectory, pathNormalize } from '@deepkit/core';
 import type * as fs from 'fs/promises';
+
+import { pathDirectory, pathNormalize } from '@deepkit/core';
+
+import { FileType, FileVisibility, FilesystemAdapter, FilesystemFile, Reporter } from './filesystem.js';
 
 export interface FilesystemLocalAdapterOptions {
     root: string;
@@ -8,11 +10,11 @@ export interface FilesystemLocalAdapterOptions {
         file: {
             public: number; //default 0o644
             private: number; //default 0o600
-        },
+        };
         directory: {
             public: number; //default 0o755
             private: number; //default 0o700
-        }
+        };
     };
 }
 
@@ -25,13 +27,13 @@ export class FilesystemNodeLocalAdapter implements FilesystemAdapter {
         permissions: {
             file: {
                 public: 0o644,
-                private: 0o600
+                private: 0o600,
             },
             directory: {
                 public: 0o755,
-                private: 0o700
-            }
-        }
+                private: 0o700,
+            },
+        },
     };
 
     constructor(options: Partial<FilesystemLocalAdapterOptions>) {
@@ -84,7 +86,10 @@ export class FilesystemNodeLocalAdapter implements FilesystemAdapter {
 
     async makeDirectory(path: string, visibility: FileVisibility): Promise<void> {
         const fs = await this.getFs();
-        await fs.mkdir(this.getPath(path), { recursive: true, mode: this.getMode('directory', visibility) });
+        await fs.mkdir(this.getPath(path), {
+            recursive: true,
+            mode: this.getMode('directory', visibility),
+        });
     }
 
     async deleteDirectory(path: string, reporter: Reporter): Promise<void> {
@@ -209,8 +214,13 @@ export class FilesystemNodeLocalAdapter implements FilesystemAdapter {
     async write(path: string, contents: Uint8Array, visibility: FileVisibility, reporter: Reporter): Promise<void> {
         path = this.getPath(path);
         const fs = await this.getFs();
-        await fs.mkdir(pathDirectory(path), { recursive: true, mode: this.getMode('directory', visibility) });
-        await fs.writeFile(path, contents, { mode: this.getMode('file', visibility) });
+        await fs.mkdir(pathDirectory(path), {
+            recursive: true,
+            mode: this.getMode('directory', visibility),
+        });
+        await fs.writeFile(path, contents, {
+            mode: this.getMode('file', visibility),
+        });
     }
 
     async append(path: string, contents: Uint8Array, reporter: Reporter): Promise<void> {

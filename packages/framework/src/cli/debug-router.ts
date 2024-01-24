@@ -7,8 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { cli, Command } from '@deepkit/app';
+import { Command, cli } from '@deepkit/app';
 import { HttpRouter } from '@deepkit/http';
 
 /**
@@ -16,10 +15,7 @@ import { HttpRouter } from '@deepkit/http';
  */
 @cli.controller('debug:router')
 export class DebugRouterController implements Command {
-    constructor(
-        protected router: HttpRouter,
-    ) {
-    }
+    constructor(protected router: HttpRouter) {}
 
     async execute(): Promise<void> {
         this.router.resolve('GET', '/');

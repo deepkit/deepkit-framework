@@ -7,17 +7,24 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { dirname, join } from 'path';
-import { appendFile, ensureDir, pathExists, readFile, remove, stat, unlink, writeFile } from 'fs-extra';
-import { AlreadyEncoded, DeepkitFile, FileMode, FileType, FilterQuery, StreamBehaviorSubject } from '@deepkit/framework-shared';
-import { eachKey, eachPair, ProcessLocker } from '@deepkit/core';
 import * as crypto from 'crypto';
+import { appendFile, ensureDir, pathExists, readFile, remove, stat, unlink, writeFile } from 'fs-extra';
+import { dirname, join } from 'path';
+
+import { ProcessLocker, eachKey, eachPair } from '@deepkit/core';
+import { Exchange, LiveDatabase, inject, injectable } from '@deepkit/framework';
+import {
+    AlreadyEncoded,
+    DeepkitFile,
+    FileMode,
+    FileType,
+    FilterQuery,
+    StreamBehaviorSubject,
+} from '@deepkit/framework-shared';
 import { Database } from '@deepkit/orm';
-import { Exchange, inject, injectable, LiveDatabase } from '@deepkit/framework';
 import { ClassSchema, jsonSerializer, t } from '@deepkit/type';
 
-export type PartialFile = { id: string, path: string, mode: FileMode, md5?: string, version: number };
+export type PartialFile = { id: string; path: string; mode: FileMode; md5?: string; version: number };
 
 export function getMd5(content: string | Buffer): string {
     const buffer: Buffer = 'string' === typeof content ? new Buffer(content, 'utf8') : new Buffer(content);
@@ -44,8 +51,7 @@ export class FS<T extends DeepkitFile> {
         private liveDatabase: LiveDatabase,
         private locker: ProcessLocker,
         @inject('fs.dir') private fileDir: string /* .deepkit/data/files/ */,
-    ) {
-    }
+    ) {}
 
     public setFileDir(dir: string) {
         this.fileDir = dir;
@@ -87,18 +93,24 @@ export class FS<T extends DeepkitFile> {
 
             this.exchange.publishFile(file.id, {
                 type: 'remove',
-                path: file.path
+                path: file.path,
             });
         }
 
-        await this.database.query(this.fileType.classSchema).filter({
-            $and: [{
-                id: { $in: fileIds }
-            }]
-        } as FilterQuery<T>).deleteMany();
+        await this.database
+            .query(this.fileType.classSchema)
+            .filter({
+                $and: [
+                    {
+                        id: { $in: fileIds },
+                    },
+                ],
+            } as FilterQuery<T>)
+            .deleteMany();
 
         //find which md5s are still linked
-        const foundMd5s = await this.database.query(this.fileType.classSchema)
+        const foundMd5s = await this.database
+            .query(this.fileType.classSchema)
             .select('md5')
             .filter({ md5: { $in: Object.keys(md5ToCheckMap) } } as FilterQuery<T>)
             .find();
@@ -128,11 +140,17 @@ export class FS<T extends DeepkitFile> {
     }
 
     public async findOne(path: string, filter: FilterQuery<T> = {}): Promise<T | undefined> {
-        return await this.database.query(this.fileType.classSchema).filter({ path: path, ...filter } as T).findOneOrUndefined();
+        return await this.database
+            .query(this.fileType.classSchema)
+            .filter({ path: path, ...filter } as T)
+            .findOneOrUndefined();
     }
 
     public async registerFile(md5: string, path: string, fields: Partial<T> = {}): Promise<T> {
-        const file = await this.database.query(this.fileType.classSchema).filter({ md5: md5 } as T).findOneOrUndefined();
+        const file = await this.database
+            .query(this.fileType.classSchema)
+            .filter({ md5: md5 } as T)
+            .findOneOrUndefined();
 
         if (!file) {
             throw new Error(`No file with '${md5}' found.`);
@@ -157,11 +175,17 @@ export class FS<T extends DeepkitFile> {
     }
 
     public async hasMd5InDb(md5: string): Promise<boolean> {
-        return await this.database.query(this.fileType.classSchema).filter({ md5 } as FilterQuery<T>).has();
+        return await this.database
+            .query(this.fileType.classSchema)
+            .filter({ md5 } as FilterQuery<T>)
+            .has();
     }
 
     public async hasMd5(md5: string) {
-        const file = await this.database.query(this.fileType.classSchema).filter({ md5: md5 } as FilterQuery<T>).findOneOrUndefined();
+        const file = await this.database
+            .query(this.fileType.classSchema)
+            .filter({ md5: md5 } as FilterQuery<T>)
+            .findOneOrUndefined();
 
         if (file && file.md5) {
             const localPath = this.getLocalPathForMd5(md5);
@@ -258,11 +282,14 @@ export class FS<T extends DeepkitFile> {
             //the local file as well, since local path is based on md5.
             //when there is still an file with that md5 in the database, do not remove the old one.
             if (meta.md5 && meta.md5 !== newMd5) {
-                await this.database.query(this.fileType.classSchema as any as ClassSchema<DeepkitFile>).filter({ id: meta.id }).patchOne({ md5: newMd5, size: data.byteLength });
+                await this.database
+                    .query(this.fileType.classSchema as any as ClassSchema<DeepkitFile>)
+                    .filter({ id: meta.id })
+                    .patchOne({ md5: newMd5, size: data.byteLength });
                 await this.refreshFileMetaCache(path, fields, meta.id, newMd5);
 
                 //we need to check whether the local file needs to be removed
-                if (!await this.hasMd5InDb(meta.md5)) {
+                if (!(await this.hasMd5InDb(meta.md5))) {
                     //there's no db-file anymore linking using this local file, so remove it
                     const localPath = this.getLocalPathForMd5(meta.md5);
                     if (await pathExists(localPath)) {
@@ -298,7 +325,7 @@ export class FS<T extends DeepkitFile> {
             mode: FileMode.closed,
             path: path,
             version: version,
-            md5: newMd5
+            md5: newMd5,
         };
     }
 
@@ -309,14 +336,17 @@ export class FS<T extends DeepkitFile> {
         await this.exchange.set('file-meta/' + cacheKey, FSCacheMessage, { id, md5 });
     }
 
-    public async getFileMetaCache(path: string, fields: Partial<T> = {}): Promise<{ id?: string, md5?: string }> {
+    public async getFileMetaCache(path: string, fields: Partial<T> = {}): Promise<{ id?: string; md5?: string }> {
         const filter = { path, ...fields };
         const cacheKey = JSON.stringify(jsonSerializer.for(this.fileType.classSchema).partialSerialize(filter));
 
         const fromCache = await this.exchange.get('file-meta/' + cacheKey, FSCacheMessage);
         if (fromCache) return fromCache;
 
-        const item = await this.database.query(this.fileType.classSchema).filter({ path, ...fields }).findOneOrUndefined();
+        const item = await this.database
+            .query(this.fileType.classSchema)
+            .filter({ path, ...fields })
+            .findOneOrUndefined();
         if (item) {
             await this.refreshFileMetaCache(path, fields, item.id, item.md5);
             return { id: item.id, md5: item.md5 };
@@ -333,9 +363,9 @@ export class FS<T extends DeepkitFile> {
         data: Buffer,
         fields: Partial<T> = {},
         options: {
-            cropSizeAt?: number
-            cropSizeAtTo?: number
-        } = {}
+            cropSizeAt?: number;
+            cropSizeAtTo?: number;
+        } = {},
     ) {
         const lock = await this.locker.acquireLock('file:' + path);
         let version = await this.exchange.version();
@@ -357,7 +387,7 @@ export class FS<T extends DeepkitFile> {
             const localPath = this.getLocalPathForId(meta.id!);
 
             const localDir = dirname(localPath);
-            if (!await pathExists(localDir)) {
+            if (!(await pathExists(localDir))) {
                 await ensureDir(localDir);
             }
 
@@ -391,7 +421,10 @@ export class FS<T extends DeepkitFile> {
         }
     }
 
-    public async subscribe(path: string, fields: Partial<T> = {}): Promise<StreamBehaviorSubject<Uint8Array | undefined>> {
+    public async subscribe(
+        path: string,
+        fields: Partial<T> = {},
+    ): Promise<StreamBehaviorSubject<Uint8Array | undefined>> {
         const subject = new StreamBehaviorSubject<any>(undefined);
 
         const file = await this.findOne(path, fields);
@@ -414,7 +447,7 @@ export class FS<T extends DeepkitFile> {
 
                 //it's important that this callback is called right after we returned the subject,
                 //and subscribed to the subject, otherwise append won't work correctly and might be hit by a race-condition.
-                const exchangeSubscription = await this.exchange.subscribeFile(id, async (message) => {
+                const exchangeSubscription = await this.exchange.subscribeFile(id, async message => {
                     if (message.type === 'set') {
                         const data = await this.read(path, fields);
                         subject.next(data);
@@ -435,7 +468,6 @@ export class FS<T extends DeepkitFile> {
                         exchangeSubscription.unsubscribe();
                     }
                 });
-
             } finally {
                 await lock.unlock();
             }
@@ -446,14 +478,18 @@ export class FS<T extends DeepkitFile> {
         } else {
             subject.next(undefined);
 
-            const sub = this.liveDatabase.query(this.fileType.classSchema).filter({
-                path: path,
-                ...fields
-            }).onCreation().subscribe((id) => {
-                if (!subject.isStopped) {
-                    streamContent(id);
-                }
-            });
+            const sub = this.liveDatabase
+                .query(this.fileType.classSchema)
+                .filter({
+                    path: path,
+                    ...fields,
+                })
+                .onCreation()
+                .subscribe(id => {
+                    if (!subject.isStopped) {
+                        streamContent(id);
+                    }
+                });
 
             subject.addTearDown(() => {
                 if (sub) sub.unsubscribe();

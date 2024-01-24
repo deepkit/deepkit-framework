@@ -7,9 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { ReflectionClass, UUID } from '@deepkit/type';
 
 import { BaseResponse, Command } from './command.js';
-import { ReflectionClass, UUID } from '@deepkit/type';
 
 interface DeleteResponse extends BaseResponse {
     n: number;
@@ -18,7 +18,7 @@ interface DeleteResponse extends BaseResponse {
 interface DeleteSchema {
     delete: string;
     $db: string;
-    deletes: { q: any, limit: number }[];
+    deletes: { q: any; limit: number }[];
     lsid?: { id: UUID };
     txnNumber?: number;
     autocommit?: boolean;
@@ -26,7 +26,6 @@ interface DeleteSchema {
 }
 
 export class DeleteCommand<T extends ReflectionClass<any>> extends Command {
-
     constructor(
         public schema: T,
         public filter: { [name: string]: any } = {},
@@ -44,8 +43,8 @@ export class DeleteCommand<T extends ReflectionClass<any>> extends Command {
                 {
                     q: this.filter,
                     limit: this.limit,
-                }
-            ]
+                },
+            ],
         };
 
         if (transaction) transaction.applyTransaction(cmd);

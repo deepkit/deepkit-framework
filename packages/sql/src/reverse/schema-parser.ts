@@ -7,10 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { DefaultPlatform } from '../platform/default-platform.js';
 import { Column, DatabaseModel } from '../schema/table.js';
 import { SQLConnection } from '../sql-adapter.js';
-import { DefaultPlatform } from '../platform/default-platform.js';
 
 const type3Regex = /^([^(]+)\(\s*(\d+)\s*,\s*(\d+)\s*\)$/;
 const type2Regex = /^([^(]+)\(\s*(\d+)\s*\)$/;
@@ -37,13 +36,11 @@ export function parseType(column: Column, type: string) {
     }
 }
 
-
 export abstract class SchemaParser {
     constructor(
         protected connection: SQLConnection,
         protected platform: DefaultPlatform,
-    ) {
-    }
+    ) {}
 
     abstract parse(database: DatabaseModel, limitTableNames?: string[]): Promise<void>;
 }

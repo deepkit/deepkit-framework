@@ -1,10 +1,27 @@
-import { ApiAction, ApiConsoleApi, ApiDocument, ApiEntryPoints, ApiRoute, ApiRouteResponse } from '@deepkit/api-console-api';
-import { getActions, rpc, RpcKernel } from '@deepkit/rpc';
-import { HttpRouteFilter, HttpRouterFilterResolver, parseRouteControllerAction } from '@deepkit/http';
-import { ClassType, getClassName, isClass } from '@deepkit/core';
-import { Config } from './module.config.js';
 import { readFile } from 'fs/promises';
-import { ReflectionClass, ReflectionKind, serializeType, Type, TypeClass, TypeObjectLiteral, TypePropertySignature } from '@deepkit/type';
+
+import {
+    ApiAction,
+    ApiConsoleApi,
+    ApiDocument,
+    ApiEntryPoints,
+    ApiRoute,
+    ApiRouteResponse,
+} from '@deepkit/api-console-api';
+import { ClassType, getClassName, isClass } from '@deepkit/core';
+import { HttpRouteFilter, HttpRouterFilterResolver, parseRouteControllerAction } from '@deepkit/http';
+import { RpcKernel, getActions, rpc } from '@deepkit/rpc';
+import {
+    ReflectionClass,
+    ReflectionKind,
+    Type,
+    TypeClass,
+    TypeObjectLiteral,
+    TypePropertySignature,
+    serializeType,
+} from '@deepkit/type';
+
+import { Config } from './module.config.js';
 
 class ControllerNameGenerator {
     controllers = new Map<ClassType | Function, string>();
@@ -34,8 +51,7 @@ export class ApiConsoleController implements ApiConsoleApi {
         protected filterResolver: HttpRouterFilterResolver,
         protected filter: HttpRouteFilter,
         protected rpcKernel?: RpcKernel,
-    ) {
-    }
+    ) {}
 
     @rpc.action()
     async getDocument(): Promise<ApiDocument> {
@@ -52,7 +68,7 @@ export class ApiConsoleController implements ApiConsoleApi {
 
     @rpc.action()
     getEntryPoints(): ApiEntryPoints {
-        const entryPoints = new ApiEntryPoints;
+        const entryPoints = new ApiEntryPoints();
         entryPoints.httpRoutes = this.getHttpRoutes();
         entryPoints.rpcActions = this.getRpcActions();
         return entryPoints;
@@ -62,19 +78,18 @@ export class ApiConsoleController implements ApiConsoleApi {
         if (!this.rpcKernel) return [];
 
         const rpcActions: ApiAction[] = [];
-        const nameGenerator = new ControllerNameGenerator;
+        const nameGenerator = new ControllerNameGenerator();
 
         for (const [path, controller] of this.rpcKernel.controllers.entries()) {
             const actions = getActions(controller.controller);
             for (const [methodName, action] of actions.entries()) {
-
                 const rpcAction = new ApiAction(
                     nameGenerator.getName(controller.controller),
                     path,
                     methodName,
                     action.description,
                     action.groups,
-                    action.category
+                    action.category,
                 );
 
                 const reflectionMethod = ReflectionClass.from(controller.controller).getMethod(methodName);
@@ -98,15 +113,18 @@ export class ApiConsoleController implements ApiConsoleApi {
     protected getHttpRoutes() {
         const routes: ApiRoute[] = [];
 
-        const nameGenerator = new ControllerNameGenerator;
+        const nameGenerator = new ControllerNameGenerator();
 
         for (const route of this.filterResolver.resolve(this.filter.model)) {
             if (route.internal) continue;
 
-            const controllerName = nameGenerator.getName( route.action.type === 'controller' ? route.action.controller : route.action.fn);
+            const controllerName = nameGenerator.getName(
+                route.action.type === 'controller' ? route.action.controller : route.action.fn,
+            );
 
             const routeD = new ApiRoute(
-                route.getFullPath(), route.httpMethods,
+                route.getFullPath(),
+                route.httpMethods,
                 controllerName,
                 route.action.type === 'controller' ? route.action.methodName : '',
                 route.description,
@@ -115,9 +133,13 @@ export class ApiConsoleController implements ApiConsoleApi {
             );
 
             for (const response of route.responses) {
-                routeD.responses.push(new ApiRouteResponse(
-                    response.statusCode, response.description, response.type ? serializeType(response.type) : undefined
-                ));
+                routeD.responses.push(
+                    new ApiRouteResponse(
+                        response.statusCode,
+                        response.description,
+                        response.type ? serializeType(response.type) : undefined,
+                    ),
+                );
             }
 
             const parsedRoute = parseRouteControllerAction(route);
@@ -140,10 +162,15 @@ export class ApiConsoleController implements ApiConsoleApi {
                             // property.name = parameter.typePath;
                             // querySchema.registerProperty(property);
                             (queryType as TypeObjectLiteral).types.push({
-                                kind: ReflectionKind.propertySignature, name: parameter.typePath, type: parameter.parameter.type as Type
-                            } as TypePropertySignature)
+                                kind: ReflectionKind.propertySignature,
+                                name: parameter.typePath,
+                                type: parameter.parameter.type as Type,
+                            } as TypePropertySignature);
                         } else {
-                            if (parameter.parameter.type.kind !== ReflectionKind.class && parameter.parameter.type.kind !== ReflectionKind.objectLiteral) {
+                            if (
+                                parameter.parameter.type.kind !== ReflectionKind.class &&
+                                parameter.parameter.type.kind !== ReflectionKind.objectLiteral
+                            ) {
                                 continue;
                             }
                             //anything else is on the root level
@@ -153,15 +180,15 @@ export class ApiConsoleController implements ApiConsoleApi {
                         (queryType as TypeObjectLiteral).types.push({
                             kind: ReflectionKind.propertySignature,
                             name: parameter.typePath || parameter.getName(),
-                            type: parameter.parameter.type as Type
-                        } as TypePropertySignature)
+                            type: parameter.parameter.type as Type,
+                        } as TypePropertySignature);
                     }
                 } else if (parameter.isPartOfPath()) {
                     urlType.types.push({
                         kind: ReflectionKind.propertySignature,
                         name: parameter.typePath || parameter.getName(),
-                        type: parameter.parameter.type as Type
-                    } as TypePropertySignature)
+                        type: parameter.parameter.type as Type,
+                    } as TypePropertySignature);
                 } else {
                     //its a dependency injection token
                 }

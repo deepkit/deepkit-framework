@@ -1,7 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { BehaviorSubject } from 'rxjs';
 
-
 test('rxjs complete on complete', () => {
     const subject = new BehaviorSubject<string[]>([]);
 
@@ -9,7 +8,7 @@ test('rxjs complete on complete', () => {
     subject.subscribe({
         complete: () => {
             completed = true;
-        }
+        },
     });
 
     subject.complete();

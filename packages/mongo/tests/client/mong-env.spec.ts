@@ -1,5 +1,6 @@
-import {expect, test} from '@jest/globals';
-import {MongoEnv} from './env-setup.js';
+import { expect, test } from '@jest/globals';
+
+import { MongoEnv } from './env-setup.js';
 
 // jest.setTimeout(213123);
 

@@ -1,16 +1,16 @@
+import { CommonModule } from '@angular/common';
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { AppComponent } from './app.component';
 import { RouterModule } from '@angular/router';
-import { ApiConsoleModule } from './api-console.module';
+
 import { DuiAppModule, DuiButtonModule, DuiIconModule, DuiWindowModule } from '@deepkit/desktop-ui';
 import { DeepkitUIModule } from '@deepkit/ui-library';
-import { CommonModule } from '@angular/common';
+
+import { ApiConsoleModule } from './api-console.module';
+import { AppComponent } from './app.component';
 
 @NgModule({
-    declarations: [
-        AppComponent,
-    ],
+    declarations: [AppComponent],
     imports: [
         BrowserModule,
         CommonModule,
@@ -21,9 +21,8 @@ import { CommonModule } from '@angular/common';
         DuiAppModule.forRoot(),
         DuiWindowModule.forRoot(),
         DuiButtonModule,
-        DuiIconModule
+        DuiIconModule,
     ],
-    bootstrap: [AppComponent]
+    bootstrap: [AppComponent],
 })
-export class AppModule {
-}
+export class AppModule {}

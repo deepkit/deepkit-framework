@@ -1,14 +1,18 @@
-import { getTypeJitContainer, ParentLessType, ReflectionKind, Type } from '../src/reflection/type.js';
-import { Processor, RuntimeStackEntry } from '../src/reflection/processor.js';
 import { expect } from '@jest/globals';
-import { ReflectionOp } from '@deepkit/type-spec';
+
 import { isArray, isObject } from '@deepkit/core';
+import { ReflectionOp } from '@deepkit/type-spec';
+
+import { Processor, RuntimeStackEntry } from '../src/reflection/processor.js';
+import { ParentLessType, ReflectionKind, Type, getTypeJitContainer } from '../src/reflection/type.js';
 
 export function assertValidParent(a: Type): void {
     visitWithParent(a, (type, path, parent) => {
         if (type.parent && type.parent !== parent) {
             if (!parent) throw new Error('Parent was set, but not expected at ' + path);
-            throw new Error(`Invalid parent set at ${path}. Got ${ReflectionKind[type.parent.kind]} but expected ${parent ? ReflectionKind[parent.kind] : 'undefined'}`);
+            throw new Error(
+                `Invalid parent set at ${path}. Got ${ReflectionKind[type.parent.kind]} but expected ${parent ? ReflectionKind[parent.kind] : 'undefined'}`,
+            );
         }
     });
 }
@@ -18,7 +22,14 @@ function reflectionName(kind: ReflectionKind): string {
 }
 
 let visitStackId: number = 0;
-export function visitWithParent(type: Type, visitor: (type: Type, path: string, parent?: Type) => false | void, onCircular?: () => void, stack: number = visitStackId++, path: string = '', parent?: Type): void {
+export function visitWithParent(
+    type: Type,
+    visitor: (type: Type, path: string, parent?: Type) => false | void,
+    onCircular?: () => void,
+    stack: number = visitStackId++,
+    path: string = '',
+    parent?: Type,
+): void {
     const jit = getTypeJitContainer(type);
     if (jit.visitId === visitStackId) {
         if (onCircular) onCircular();
@@ -37,7 +48,15 @@ export function visitWithParent(type: Type, visitor: (type: Type, path: string, 
         case ReflectionKind.class:
         case ReflectionKind.intersection:
         case ReflectionKind.templateLiteral:
-            for (const member of type.types) visitWithParent(member, visitor, onCircular, stack, (path && path + '.') + 'types[' + reflectionName(member.kind) + ']', type);
+            for (const member of type.types)
+                visitWithParent(
+                    member,
+                    visitor,
+                    onCircular,
+                    stack,
+                    (path && path + '.') + 'types[' + reflectionName(member.kind) + ']',
+                    type,
+                );
             break;
         case ReflectionKind.string:
         case ReflectionKind.number:
@@ -45,13 +64,36 @@ export function visitWithParent(type: Type, visitor: (type: Type, path: string, 
         case ReflectionKind.symbol:
         case ReflectionKind.regexp:
         case ReflectionKind.boolean:
-            if (type.origin) visitWithParent(type.origin, visitor, onCircular, stack, (path && path + '.') + 'origin[' + reflectionName(type.origin.kind) + ']', type);
+            if (type.origin)
+                visitWithParent(
+                    type.origin,
+                    visitor,
+                    onCircular,
+                    stack,
+                    (path && path + '.') + 'origin[' + reflectionName(type.origin.kind) + ']',
+                    type,
+                );
             break;
         case ReflectionKind.function:
         case ReflectionKind.method:
         case ReflectionKind.methodSignature:
-            visitWithParent(type.return, visitor, onCircular, stack, (path && path + '.') + 'return[' + reflectionName(type.return.kind) + ']', type);
-            for (const member of type.parameters) visitWithParent(member, visitor, onCircular, stack, (path && path + '.') + 'parameters[' + reflectionName(member.kind) + ']', type);
+            visitWithParent(
+                type.return,
+                visitor,
+                onCircular,
+                stack,
+                (path && path + '.') + 'return[' + reflectionName(type.return.kind) + ']',
+                type,
+            );
+            for (const member of type.parameters)
+                visitWithParent(
+                    member,
+                    visitor,
+                    onCircular,
+                    stack,
+                    (path && path + '.') + 'parameters[' + reflectionName(member.kind) + ']',
+                    type,
+                );
             break;
         case ReflectionKind.propertySignature:
         case ReflectionKind.property:
@@ -61,26 +103,54 @@ export function visitWithParent(type: Type, visitor: (type: Type, path: string, 
         case ReflectionKind.tupleMember:
         case ReflectionKind.rest:
             const name = 'name' in type ? String(type.name) : 'type';
-            visitWithParent(type.type, visitor, onCircular, stack, (path && path + '.') + name + '[' + reflectionName(type.type.kind) + ']', type);
+            visitWithParent(
+                type.type,
+                visitor,
+                onCircular,
+                stack,
+                (path && path + '.') + name + '[' + reflectionName(type.type.kind) + ']',
+                type,
+            );
             break;
         case ReflectionKind.indexSignature:
-            visitWithParent(type.index, visitor, onCircular, stack, (path && path + '.') + 'index[' + reflectionName(type.index.kind) + ']', type);
-            visitWithParent(type.type, visitor, onCircular, stack, (path && path + '.') + 'type[' + reflectionName(type.type.kind) + ']', type);
+            visitWithParent(
+                type.index,
+                visitor,
+                onCircular,
+                stack,
+                (path && path + '.') + 'index[' + reflectionName(type.index.kind) + ']',
+                type,
+            );
+            visitWithParent(
+                type.type,
+                visitor,
+                onCircular,
+                stack,
+                (path && path + '.') + 'type[' + reflectionName(type.type.kind) + ']',
+                type,
+            );
             break;
     }
 }
 
-
 export function expectType<E extends ParentLessType>(
-    pack: ReflectionOp[] | { ops: ReflectionOp[], stack: RuntimeStackEntry[], inputs?: RuntimeStackEntry[] },
-    expectObject: E | number | string | boolean
+    pack: ReflectionOp[] | { ops: ReflectionOp[]; stack: RuntimeStackEntry[]; inputs?: RuntimeStackEntry[] },
+    expectObject: E | number | string | boolean,
 ): void {
-    const type = Processor.get().run(isArray(pack) ? pack : pack.ops, isArray(pack) ? [] : pack.stack, isArray(pack) ? [] : pack.inputs);
+    const type = Processor.get().run(
+        isArray(pack) ? pack : pack.ops,
+        isArray(pack) ? [] : pack.stack,
+        isArray(pack) ? [] : pack.inputs,
+    );
 
     // console.log('computed type', inspect(type, undefined, 4));
     if (isObject(expectObject)) {
         expectEqualType(type, expectObject);
-        if (expectObject.kind === ReflectionKind.class || expectObject.kind === ReflectionKind.objectLiteral || expectObject.kind === ReflectionKind.function) {
+        if (
+            expectObject.kind === ReflectionKind.class ||
+            expectObject.kind === ReflectionKind.objectLiteral ||
+            expectObject.kind === ReflectionKind.function
+        ) {
             assertValidParent(type);
         }
     } else {
@@ -91,7 +161,12 @@ export function expectType<E extends ParentLessType>(
 /**
  * Types can not be compared via toEqual since they contain circular references (.parent) and other stuff can not be easily assigned.
  */
-export function expectEqualType(actual: any, expected: any, options: { noTypeNames?: true, noOrigin?: true, excludes?: string[], stack?: any[] } = {}, path: string = ''): void {
+export function expectEqualType(
+    actual: any,
+    expected: any,
+    options: { noTypeNames?: true; noOrigin?: true; excludes?: string[]; stack?: any[] } = {},
+    path: string = '',
+): void {
     if (!options.stack) options.stack = [];
 
     if (options.stack.includes(expected)) {
@@ -115,8 +190,10 @@ export function expectEqualType(actual: any, expected: any, options: { noTypeNam
             if (options.noTypeNames && (i === 'typeName' || i === 'typeArguments')) continue;
 
             if (isArray(expected[i])) {
-                if (!isArray(actual[i])) throw new Error(`Not equal array type: ${path}, ${expected[i]} vs ${actual[i]} at ${i}`);
-                if (actual[i].length !== expected[i].length) throw new Error('Not equal array length: ' + path + '.' + i);
+                if (!isArray(actual[i]))
+                    throw new Error(`Not equal array type: ${path}, ${expected[i]} vs ${actual[i]} at ${i}`);
+                if (actual[i].length !== expected[i].length)
+                    throw new Error('Not equal array length: ' + path + '.' + i);
                 for (let j = 0; j < expected[i].length; j++) {
                     expectEqualType(expected[i][j], actual[i][j], options, path + '.' + i + '.' + j);
                 }

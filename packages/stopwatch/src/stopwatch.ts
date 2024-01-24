@@ -7,7 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { AnalyticData, encodeCompoundKey, FrameCategory, FrameData, FrameEnd, FrameStart, FrameType, TypeOfCategory } from './types.js';
+import {
+    AnalyticData,
+    FrameCategory,
+    FrameData,
+    FrameEnd,
+    FrameStart,
+    FrameType,
+    TypeOfCategory,
+    encodeCompoundKey,
+} from './types.js';
 
 declare var process: any;
 
@@ -20,15 +29,11 @@ export abstract class StopwatchStore {
     protected runningFrames = 0;
     protected lastCollectAnalytics = 0;
 
-    protected sync() {
+    protected sync() {}
 
-    }
+    async close() {}
 
-    async close() {
-
-    }
-
-    abstract run<T>(data: { [name: string]: any }, cb: () => Promise<T>): Promise<T>
+    abstract run<T>(data: { [name: string]: any }, cb: () => Promise<T>): Promise<T>;
 
     abstract getZone(): { [name: string]: any } | undefined;
 
@@ -94,8 +99,7 @@ export class StopwatchFrame<C extends FrameCategory> implements StopwatchFrameIn
         public context: number,
         public category: number,
         public cid: number,
-    ) {
-    }
+    ) {}
 
     data(data: Partial<TypeOfCategory<C>>) {
         this.store.data({ cid: this.cid, category: this.category, data });
@@ -115,11 +119,9 @@ export class StopwatchFrame<C extends FrameCategory> implements StopwatchFrameIn
 }
 
 export class NoopStopwatchFrame<C extends FrameCategory> implements StopwatchFrameInterface<C> {
-    data(data: any) {
-    }
+    data(data: any) {}
 
-    end() {
-    }
+    end() {}
 
     run<T>(cb: () => Promise<T>, data: { [p: string]: any } = {}): Promise<T> {
         return cb();
@@ -136,9 +138,7 @@ export class Stopwatch {
      */
     public active: boolean = false;
 
-    constructor(
-        protected store?: StopwatchStore,
-    ) {
+    constructor(protected store?: StopwatchStore) {
         this.active = this.store !== undefined;
     }
 
@@ -156,7 +156,11 @@ export class Stopwatch {
      * When a new context is created, it's important to use StopwatchFrame.run() so that all
      * sub frames are correctly assigned to the new context.
      */
-    public start<C extends FrameCategory>(label: string, category: C = FrameCategory.none as C, newContext: boolean = false): StopwatchFrameInterface<C> {
+    public start<C extends FrameCategory>(
+        label: string,
+        category: C = FrameCategory.none as C,
+        newContext: boolean = false,
+    ): StopwatchFrameInterface<C> {
         if (!this.active) return new NoopStopwatchFrame();
         if (!this.store) throw new Error('Stopwatch not active');
 
@@ -175,8 +179,12 @@ export class Stopwatch {
         const id = ++frameId;
         const cid = encodeCompoundKey(id, 0);
         this.store.add({
-            cid, type: FrameType.start, category,
-            context: context, label, timestamp: 0,
+            cid,
+            type: FrameType.start,
+            category,
+            context: context,
+            label,
+            timestamp: 0,
         });
 
         return new StopwatchFrame(this.store, context, category, cid);

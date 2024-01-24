@@ -5,9 +5,8 @@
  *
  * The critical section that needs adjustment is in the `function getScriptTransformers` in `node_modules/typescript/lib/tsc.js`.
  */
-
-import { dirname, join, relative } from 'path';
 import { readFileSync, writeFileSync } from 'fs';
+import { dirname, join, relative } from 'path';
 
 let to = process.argv[2] || process.cwd();
 

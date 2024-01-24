@@ -1,9 +1,11 @@
-import { AutoIncrement, DatabaseField, entity, PrimaryKey, ReflectionKind } from '@deepkit/type';
+import { expect, test } from '@jest/globals';
+
+import { DatabaseEntityRegistry } from '@deepkit/orm';
+import { AutoIncrement, DatabaseField, PrimaryKey, ReflectionKind, entity } from '@deepkit/type';
+
+import { DefaultPlatform } from '../src/platform/default-platform.js';
 import { SchemaParser } from '../src/reverse/schema-parser.js';
 import { DatabaseModel } from '../src/schema/table.js';
-import { DefaultPlatform } from '../src/platform/default-platform.js';
-import { expect, test } from '@jest/globals';
-import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 @entity.name('person').collection('persons')
 abstract class Person {
@@ -27,8 +29,7 @@ class Freelance extends Person {
 }
 
 class MySchemaParser extends SchemaParser {
-    async parse(database: DatabaseModel, limitTableNames?: string[]) {
-    }
+    async parse(database: DatabaseModel, limitTableNames?: string[]) {}
 }
 
 class MyPlatform extends DefaultPlatform {
@@ -47,9 +48,7 @@ test('tables', () => {
     expect(tables.length).toBe(1);
     const table = tables[0];
 
-    expect(table.columns.map(v => v.name)).toEqual([
-        'id', 'firstName', 'lastName', 'type', 'email', 'token'
-    ]);
+    expect(table.columns.map(v => v.name)).toEqual(['id', 'firstName', 'lastName', 'type', 'email', 'token']);
     expect(table.getColumn('type').type).toBe('text');
     expect(table.getColumn('type').isNotNull).toBe(true);
 });

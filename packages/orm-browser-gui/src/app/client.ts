@@ -7,11 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { Injectable } from '@angular/core';
-import { DeepkitClient } from '@deepkit/rpc';
-import { BrowserControllerInterface, DatabaseInfo } from '@deepkit/orm-browser-api';
+
 import { asyncOperation } from '@deepkit/core';
+import { BrowserControllerInterface, DatabaseInfo } from '@deepkit/orm-browser-api';
+import { DeepkitClient } from '@deepkit/rpc';
 
 @Injectable()
 export class ControllerClient {
@@ -19,8 +19,7 @@ export class ControllerClient {
 
     public browser = this.client.controller(BrowserControllerInterface);
 
-    constructor(public client: DeepkitClient) {
-    }
+    constructor(public client: DeepkitClient) {}
 
     static getServerHost(): string {
         const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
@@ -33,7 +32,7 @@ export class ControllerClient {
 
     getDatabases(): Promise<DatabaseInfo[]> {
         if (this.loadDatabases) return this.loadDatabases;
-        this.loadDatabases = asyncOperation(async (resolve) => {
+        this.loadDatabases = asyncOperation(async resolve => {
             resolve(await this.browser.getDatabases());
         });
         return this.loadDatabases;

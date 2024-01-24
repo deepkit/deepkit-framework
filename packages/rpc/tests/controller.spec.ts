@@ -1,12 +1,14 @@
-import { assertType, entity, Positive, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { DirectClient } from '../src/client/client-direct.js';
-import { getActions, rpc, rpcClass, RpcController } from '../src/decorators.js';
-import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
-import { Session, SessionState } from '../src/server/security.js';
 import { BehaviorSubject } from 'rxjs';
+
 import { getClassName, sleep } from '@deepkit/core';
 import { ProgressTracker } from '@deepkit/core-rxjs';
+import { Positive, ReflectionClass, ReflectionKind, assertType, entity } from '@deepkit/type';
+
+import { DirectClient } from '../src/client/client-direct.js';
+import { RpcController, getActions, rpc, rpcClass } from '../src/decorators.js';
+import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
+import { Session, SessionState } from '../src/server/security.js';
 
 test('default name', () => {
     @rpc.controller()
@@ -23,12 +25,10 @@ test('decorator', async () => {
     @rpc.controller('name')
     class Controller {
         @rpc.action()
-        action(): void {
-        }
+        action(): void {}
 
         @rpc.action().group('a')
-        second(): void {
-        }
+        second(): void {}
     }
 
     {
@@ -42,8 +42,7 @@ test('decorator', async () => {
 });
 
 test('inheritance', async () => {
-    class User {
-    }
+    class User {}
 
     @rpc.controller('name')
     class Controller {
@@ -66,8 +65,7 @@ test('inheritance', async () => {
         }
 
         @rpc.action().group('b')
-        third(): void {
-        }
+        third(): void {}
     }
 
     {
@@ -110,13 +108,11 @@ test('inheritance', async () => {
 test('basics', async () => {
     @entity.name('model/basics')
     class MyModel {
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     @entity.name('MyError')
-    class MyError extends Error {
-    }
+    class MyError extends Error {}
 
     @entity.name('MyError2')
     class MyError2 extends Error {
@@ -138,7 +134,7 @@ test('basics', async () => {
         }
 
         @rpc.action()
-        union(): (string | number) {
+        union(): string | number {
             return 213;
         }
 
@@ -225,8 +221,7 @@ test('parameters', async () => {
 test('promise', async () => {
     @entity.name('model/promise')
     class MyModel {
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     class Controller {
@@ -287,8 +282,7 @@ test('promise', async () => {
 test('wrong arguments', async () => {
     @entity.name('model/promise2')
     class MyModel {
-        constructor(public id: number) {
-        }
+        constructor(public id: number) {}
     }
 
     class Controller {
@@ -307,7 +301,9 @@ test('wrong arguments', async () => {
     await controller.getProduct(1);
 
     {
-        await expect(controller.getProduct(undefined as any)).rejects.toThrow('args.id(type): Cannot convert undefined to number');
+        await expect(controller.getProduct(undefined as any)).rejects.toThrow(
+            'args.id(type): Cannot convert undefined to number',
+        );
     }
 
     {
@@ -325,8 +321,10 @@ test('wrong arguments', async () => {
 
 test('di', async () => {
     class Controller {
-        constructor(protected connection: RpcKernelConnection, protected sessionState: SessionState) {
-        }
+        constructor(
+            protected connection: RpcKernelConnection,
+            protected sessionState: SessionState,
+        ) {}
 
         @rpc.action()
         hasSession(): boolean {
@@ -351,12 +349,10 @@ test('di', async () => {
 
 test('connect disconnect', async () => {
     class Controller {
-        constructor(protected connection: RpcKernelConnection) {
-        }
+        constructor(protected connection: RpcKernelConnection) {}
 
         @rpc.action()
-        test(): void {
-        }
+        test(): void {}
 
         @rpc.action()
         bye(): void {
@@ -396,17 +392,14 @@ test('connect disconnect', async () => {
     expect(client.transporter.isConnected()).toBe(true);
 });
 
-
 test('types', async () => {
     @entity.name('types/model')
-    class Model {
-
-    }
+    class Model {}
 
     class Controller {
         @rpc.action()
-        test(): { total: number, items: Model[] } {
-            return { total: 5, items: [new Model] };
+        test(): { total: number; items: Model[] } {
+            return { total: 5, items: [new Model()] };
         }
     }
 
@@ -431,8 +424,7 @@ test('disable type reuse', async () => {
     class Model {
         child?: Model;
 
-        constructor(public title: string) {
-        }
+        constructor(public title: string) {}
     }
 
     class Controller {
@@ -442,7 +434,7 @@ test('disable type reuse', async () => {
         }
 
         @rpc.action()
-        testDeep(): { total: number, items: Model[] } {
+        testDeep(): { total: number; items: Model[] } {
             return { total: 5, items: [new Model('123')] };
         }
     }

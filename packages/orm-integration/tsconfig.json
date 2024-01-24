@@ -15,25 +15,22 @@
     "outDir": "./dist",
     "declaration": true,
     "composite": true,
-    "types": []
+    "types": [],
   },
   "reflection": true,
-  "include": [
-    "src",
-    "index.ts"
-  ],
+  "include": ["src", "index.ts"],
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
+      "path": "../type/tsconfig.json",
     },
     {
-      "path": "../orm/tsconfig.json"
+      "path": "../orm/tsconfig.json",
     },
     {
-      "path": "../sql/tsconfig.json"
-    }
-  ]
+      "path": "../sql/tsconfig.json",
+    },
+  ],
 }

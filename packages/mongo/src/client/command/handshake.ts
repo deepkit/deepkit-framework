@@ -7,16 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { ClassType } from '@deepkit/core';
 
+import { MongoClientConfig } from '../config.js';
+import { MongoError } from '../error.js';
+import { Host, HostType } from '../host.js';
+import { MongoAuth } from './auth/auth.js';
+import { Sha1ScramAuth, Sha256ScramAuth } from './auth/scram.js';
+import { X509Auth } from './auth/x509.js';
 import { Command } from './command.js';
 import { IsMasterResponse } from './ismaster.js';
-import { MongoClientConfig } from '../config.js';
-import { Host, HostType } from '../host.js';
-import { Sha1ScramAuth, Sha256ScramAuth } from './auth/scram.js';
-import { ClassType } from '@deepkit/core';
-import { MongoError } from '../error.js';
-import { MongoAuth } from './auth/auth.js';
-import { X509Auth } from './auth/x509.js';
 
 interface IsMasterSchema {
     isMaster: number;
@@ -29,10 +29,10 @@ interface IsMasterSchema {
         driver: {
             name: string;
             version: string;
-        },
+        };
         os: {
             type: string;
-        }
+        };
     };
 }
 
@@ -43,7 +43,7 @@ const enum AuthMechanism {
     MONGODB_PLAIN = 'plain', //enterprise shizzle
     MONGODB_GSSAPI = 'gssapi', //enterprise shizzle
     MONGODB_SCRAM_SHA1 = 'scram-sha-1', //default
-    MONGODB_SCRAM_SHA256 = 'scram-sha-256'
+    MONGODB_SCRAM_SHA256 = 'scram-sha-256',
 }
 
 class NotImplemented {
@@ -90,12 +90,12 @@ export class HandshakeCommand extends Command {
                 // },
                 driver: {
                     name: 'deepkit/mongo',
-                    version: '1.0.0'
+                    version: '1.0.0',
                 },
                 os: {
-                    type: 'Darwin'
-                }
-            }
+                    type: 'Darwin',
+                },
+            },
         };
 
         if (!config.options.authMechanism && config.authUser) {
@@ -121,7 +121,7 @@ export class HandshakeCommand extends Command {
     protected async doAuth(config: MongoClientConfig, response: IsMasterResponse) {
         const authType = config.options.authMechanism || detectedAuthMechanismFromResponse(response);
         const authClassType = authClassTypes[authType];
-        const auth = new authClassType as MongoAuth;
+        const auth = new authClassType() as MongoAuth;
 
         await auth.auth(this, config);
     }

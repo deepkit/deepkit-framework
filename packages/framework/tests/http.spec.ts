@@ -1,13 +1,15 @@
-import { App } from '@deepkit/app';
-import { FrameworkModule } from '../src/module.js';
 import { expect, test } from '@jest/globals';
+
+import { App } from '@deepkit/app';
 import { HttpBody, HttpKernel, HttpRequest, HttpRouterRegistry } from '@deepkit/http';
 import { Logger } from '@deepkit/logger';
+
+import { FrameworkModule } from '../src/module.js';
 import { createTestingApp } from '../src/testing.js';
 
 test('functional http app', async () => {
     const test = createTestingApp({
-        imports: [new FrameworkModule()]
+        imports: [new FrameworkModule()],
     });
 
     const router = test.app.get(HttpRouterRegistry);
@@ -24,16 +26,18 @@ test('functional http app', async () => {
 
 test('http parse config', async () => {
     const test = createTestingApp({
-        imports: [new FrameworkModule({
-            httpParse: {
-                maxFields: 1
-            }
-        })]
+        imports: [
+            new FrameworkModule({
+                httpParse: {
+                    maxFields: 1,
+                },
+            }),
+        ],
     });
 
     const router = test.app.get(HttpRouterRegistry);
 
-    router.post('/add', (data: HttpBody<{ field1: string, field2: number }>) => {
+    router.post('/add', (data: HttpBody<{ field1: string; field2: number }>) => {
         return data;
     });
 

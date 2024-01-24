@@ -1,5 +1,6 @@
-import { AutoIncrement, entity, PrimaryKey, Reference } from '@deepkit/type';
 import { ActiveRecord } from '@deepkit/orm';
+import { AutoIncrement, PrimaryKey, Reference, entity } from '@deepkit/type';
+
 import { Book } from './book.js';
 import { Tag } from './tag.js';
 
@@ -11,6 +12,6 @@ export class BookTag extends ActiveRecord {
         public book: Book & Reference,
         public tag: Tag & Reference,
     ) {
-        super()
+        super();
     }
 }

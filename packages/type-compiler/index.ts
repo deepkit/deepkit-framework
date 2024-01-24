@@ -7,9 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import type { Program } from 'typescript';
 
 import { declarationTransformer, transformer } from './src/compiler.js';
-import type { Program } from 'typescript';
 
 export * from './src/compiler.js';
 export * from './src/loader.js';

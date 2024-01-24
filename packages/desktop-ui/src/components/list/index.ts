@@ -7,25 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { NgModule } from '@angular/core';
+
 import { ListComponent, ListItemComponent, ListTitleComponent } from './list.component';
 
 export * from './list.component';
 
 @NgModule({
     imports: [],
-    exports: [
-        ListComponent,
-        ListItemComponent,
-        ListTitleComponent,
-    ],
-    declarations: [
-        ListComponent,
-        ListItemComponent,
-        ListTitleComponent,
-    ],
+    exports: [ListComponent, ListItemComponent, ListTitleComponent],
+    declarations: [ListComponent, ListItemComponent, ListTitleComponent],
     providers: [],
 })
-export class DuiListModule {
-}
+export class DuiListModule {}

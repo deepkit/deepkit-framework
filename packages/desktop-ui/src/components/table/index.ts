@@ -7,23 +7,23 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { CommonModule } from '@angular/common';
 import { NgModule } from '@angular/core';
+
+import { DuiButtonModule } from '../button';
+import { DuiIconModule } from '../icon';
+import { DuiSplitterModule } from '../splitter';
 import {
     TableCellDirective,
     TableColumnDirective,
     TableComponent,
     TableCustomHeaderContextMenuDirective,
     TableCustomRowContextMenuDirective,
-    TableHeaderDirective
+    TableHeaderDirective,
 } from './table.component';
-import { CommonModule } from '@angular/common';
-import { DuiIconModule } from '../icon';
-import { DuiSplitterModule } from '../splitter';
-import { ScrollingModule } from '@angular/cdk/scrolling';
-import { DuiButtonModule } from '../button';
 
-export * from "./table.component";
+export * from './table.component';
 
 @NgModule({
     exports: [
@@ -43,13 +43,6 @@ export * from "./table.component";
         TableCustomHeaderContextMenuDirective,
     ],
     providers: [],
-    imports: [
-        CommonModule,
-        DuiIconModule,
-        DuiSplitterModule,
-        ScrollingModule,
-        DuiButtonModule,
-    ],
+    imports: [CommonModule, DuiIconModule, DuiSplitterModule, ScrollingModule, DuiButtonModule],
 })
-export class DuiTableModule {
-}
+export class DuiTableModule {}

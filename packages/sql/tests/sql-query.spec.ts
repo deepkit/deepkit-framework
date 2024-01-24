@@ -1,20 +1,21 @@
 import { expect, test } from '@jest/globals';
-import { DatabaseField, entity, PrimaryKey, ReflectionClass, ReflectionKind, serializer } from '@deepkit/type';
-import { SQLFilterBuilder } from '../src/sql-filter-builder.js';
 import { escape } from 'sqlstring';
-import { splitDotPath, sql, SQLQueryModel } from '../src/sql-adapter.js';
+
+import { DatabaseField, PrimaryKey, ReflectionClass, ReflectionKind, entity, serializer } from '@deepkit/type';
+
 import { DefaultPlatform, SqlPlaceholderStrategy } from '../src/platform/default-platform.js';
 import { SchemaParser } from '../src/reverse/schema-parser.js';
 import { DatabaseModel } from '../src/schema/table.js';
+import { SQLQueryModel, splitDotPath, sql } from '../src/sql-adapter.js';
 import { SqlBuilder } from '../src/sql-builder.js';
+import { SQLFilterBuilder } from '../src/sql-filter-builder.js';
 
 function quoteId(value: string): string {
     return value;
 }
 
 class MySchemaParser extends SchemaParser {
-    async parse(database: DatabaseModel, limitTableNames?: string[]) {
-    }
+    async parse(database: DatabaseModel, limitTableNames?: string[]) {}
 }
 
 class MyPlatform extends DefaultPlatform {
@@ -33,8 +34,7 @@ test('splitDotPath', () => {
 
 test('sql query', () => {
     @entity.name('user')
-    class User {
-    }
+    class User {}
 
     const id = 0;
     const query = sql`SELECT * FROM ${User} WHERE id > ${id}`;
@@ -43,7 +43,6 @@ test('sql query', () => {
     expect(generated.sql).toBe('SELECT * FROM "user" WHERE id > ?');
     expect(generated.params).toEqual([0]);
 });
-
 
 test('select', () => {
     @entity.name('user-select')
@@ -93,15 +92,21 @@ test('QueryToSql', () => {
         created!: Date;
     }
 
-    const queryToSql = new SQLFilterBuilder(ReflectionClass.from(User), quoteId('user'), serializer, new SqlPlaceholderStrategy(), new class extends DefaultPlatform {
-        schemaParserType = MySchemaParser;
-        quoteIdentifier(id: string): string {
-            return quoteId(id);
-        }
-        quoteValue(value: any): string {
-            return escape(value);
-        }
-    });
+    const queryToSql = new SQLFilterBuilder(
+        ReflectionClass.from(User),
+        quoteId('user'),
+        serializer,
+        new SqlPlaceholderStrategy(),
+        new (class extends DefaultPlatform {
+            schemaParserType = MySchemaParser;
+            quoteIdentifier(id: string): string {
+                return quoteId(id);
+            }
+            quoteValue(value: any): string {
+                return escape(value);
+            }
+        })(),
+    );
 
     expect(queryToSql.convert({ id: 123 })).toBe(`user.id = ?`);
     expect(queryToSql.convert({ id: '$id' })).toBe(`user.id = user.id`);
@@ -110,7 +115,9 @@ test('QueryToSql', () => {
     expect(queryToSql.convert({ id: 44, username: 'Peter' })).toBe(`(user.id = ? AND user.username = ?)`);
 
     expect(queryToSql.convert({ $or: [{ id: 44 }, { username: 'Peter' }] })).toBe(`(user.id = ? OR user.username = ?)`);
-    expect(queryToSql.convert({ $and: [{ id: 44 }, { username: 'Peter' }] })).toBe(`(user.id = ? AND user.username = ?)`);
+    expect(queryToSql.convert({ $and: [{ id: 44 }, { username: 'Peter' }] })).toBe(
+        `(user.id = ? AND user.username = ?)`,
+    );
 
     expect(queryToSql.convert({ id: { $ne: 44 } })).toBe(`user.id != ?`);
     expect(queryToSql.convert({ id: { $eq: 44 } })).toBe(`user.id = ?`);
@@ -123,7 +130,9 @@ test('QueryToSql', () => {
     expect(queryToSql.convert({ id: { $eq: null } })).toBe(`user.id IS NULL`);
     expect(queryToSql.convert({ id: { $ne: null } })).toBe(`user.id IS NOT NULL`);
 
-    expect(() => queryToSql.convert({ invalidField: { $nin: [44, 55] } })).toThrowError('No type found for path invalidField');
+    expect(() => queryToSql.convert({ invalidField: { $nin: [44, 55] } })).toThrowError(
+        'No type found for path invalidField',
+    );
 
     expect(queryToSql.convert({ id: { $nin: [44, 55] } })).toBe(`user.id NOT IN (?, ?)`);
 

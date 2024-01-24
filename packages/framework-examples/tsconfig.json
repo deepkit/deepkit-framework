@@ -9,47 +9,42 @@
     "target": "es2018",
     "module": "CommonJS",
     "esModuleInterop": true,
-    "lib": [
-      "es6",
-      "dom"
-    ],
+    "lib": ["es6", "dom"],
     "baseUrl": ".",
     "outDir": "./dist",
     "jsx": "react-jsx",
     "jsxImportSource": "@deepkit/framework",
-    "types": []
+    "types": [],
   },
   "reflection": true,
-  "include": [
-    "./src/**/*.ts"
-  ],
+  "include": ["./src/**/*.ts"],
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../core-rxjs/tsconfig.json"
+      "path": "../core-rxjs/tsconfig.json",
     },
     {
-      "path": "../framework/tsconfig.json"
+      "path": "../framework/tsconfig.json",
     },
     {
-      "path": "../rpc/tsconfig.json"
+      "path": "../rpc/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
+      "path": "../type/tsconfig.json",
     },
     {
-      "path": "../mongo/tsconfig.json"
+      "path": "../mongo/tsconfig.json",
     },
     {
-      "path": "../orm/tsconfig.json"
+      "path": "../orm/tsconfig.json",
     },
     {
-      "path": "../sql/tsconfig.json"
+      "path": "../sql/tsconfig.json",
     },
     {
-      "path": "../sqlite/tsconfig.json"
-    }
-  ]
+      "path": "../sqlite/tsconfig.json",
+    },
+  ],
 }

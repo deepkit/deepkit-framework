@@ -7,10 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { InjectorContext } from '@deepkit/injector';
 
 import { RpcKernel } from '../server/kernel.js';
 import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client.js';
-import { InjectorContext } from '@deepkit/injector';
 
 export class DirectClient extends RpcClient {
     constructor(rpcKernel: RpcKernel, injector?: InjectorContext) {
@@ -19,16 +19,21 @@ export class DirectClient extends RpcClient {
 }
 
 export class RpcDirectClientAdapter implements ClientTransportAdapter {
-    constructor(public rpcKernel: RpcKernel, protected injector?: InjectorContext) {
-    }
+    constructor(
+        public rpcKernel: RpcKernel,
+        protected injector?: InjectorContext,
+    ) {}
 
     public async connect(connection: TransportConnectionHooks) {
-        const kernelConnection = this.rpcKernel.createConnection({
-            write: (buffer) => connection.onData(buffer),
-            close: () => {
-                connection.onClose();
+        const kernelConnection = this.rpcKernel.createConnection(
+            {
+                write: buffer => connection.onData(buffer),
+                close: () => {
+                    connection.onClose();
+                },
             },
-        }, this.injector);
+            this.injector,
+        );
 
         connection.onConnected({
             clientAddress: () => {
@@ -42,7 +47,7 @@ export class RpcDirectClientAdapter implements ClientTransportAdapter {
             },
             send(buffer) {
                 kernelConnection.feed(buffer);
-            }
+            },
         });
     }
 }
@@ -58,20 +63,25 @@ export class AsyncDirectClient extends RpcClient {
 }
 
 export class RpcAsyncDirectClientAdapter implements ClientTransportAdapter {
-    constructor(public rpcKernel: RpcKernel, protected injector?: InjectorContext) {
-    }
+    constructor(
+        public rpcKernel: RpcKernel,
+        protected injector?: InjectorContext,
+    ) {}
 
     public async connect(connection: TransportConnectionHooks) {
-        const kernelConnection = this.rpcKernel.createConnection({
-            write: (buffer) => {
-                setTimeout(() => {
-                    connection.onData(buffer);
-                });
+        const kernelConnection = this.rpcKernel.createConnection(
+            {
+                write: buffer => {
+                    setTimeout(() => {
+                        connection.onData(buffer);
+                    });
+                },
+                close: () => {
+                    connection.onClose();
+                },
             },
-            close: () => {
-                connection.onClose();
-            },
-        }, this.injector);
+            this.injector,
+        );
 
         connection.onConnected({
             clientAddress: () => {
@@ -87,7 +97,7 @@ export class RpcAsyncDirectClientAdapter implements ClientTransportAdapter {
                 setTimeout(() => {
                     kernelConnection.feed(buffer);
                 });
-            }
+            },
         });
     }
 }

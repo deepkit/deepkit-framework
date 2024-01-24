@@ -7,44 +7,44 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { ClassType, EmitterEvent, empty, EventEmitter } from '@deepkit/core';
+import { ClassType, EmitterEvent, EventEmitter, empty } from '@deepkit/core';
+import { EventToken } from '@deepkit/event';
+import { FrameCategory } from '@deepkit/stopwatch';
 import {
-    assertType,
     Changes,
     ChangesInterface,
     DeepPartial,
-    getSimplePrimaryKeyHashGenerator,
     PrimaryKeyFields,
     PrimaryKeyType,
     ReferenceFields,
     ReflectionClass,
     ReflectionKind,
     ReflectionProperty,
-    resolveForeignReflectionClass
+    assertType,
+    getSimplePrimaryKeyHashGenerator,
+    resolveForeignReflectionClass,
 } from '@deepkit/type';
+
 import { DatabaseAdapter } from './database-adapter.js';
 import { DatabaseSession } from './database-session.js';
 import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event.js';
 import { DeleteResult, OrmEntity, PatchResult } from './type.js';
 import { FieldName, FlattenIfArray, Replace, Resolve } from './utils.js';
-import { FrameCategory } from '@deepkit/stopwatch';
-import { EventToken } from '@deepkit/event';
 
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends OrmEntity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
 
 export interface DatabaseJoinModel<T extends OrmEntity, PARENT extends BaseQuery<any>> {
     //this is the parent classSchema, the foreign classSchema is stored in `query`
-    classSchema: ReflectionClass<T>,
-    propertySchema: ReflectionProperty,
-    type: 'left' | 'inner' | string,
-    populate: boolean,
+    classSchema: ReflectionClass<T>;
+    propertySchema: ReflectionProperty;
+    type: 'left' | 'inner' | string;
+    populate: boolean;
     //defines the field name under which the database engine populated the results.
     //necessary for the formatter to pick it up, convert and set correctly the real field name
-    as?: string,
-    query: JoinDatabaseQuery<T, PARENT>,
-    foreignPrimaryKey: ReflectionProperty,
+    as?: string;
+    query: JoinDatabaseQuery<T, PARENT>;
+    foreignPrimaryKey: ReflectionProperty;
 }
 
 export type QuerySelector<T> = {
@@ -59,8 +59,8 @@ export type QuerySelector<T> = {
     $nin?: T[];
     $like?: T;
     // Logical
-    $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
-    $regex?: T extends string ? (RegExp | string) : never;
+    $not?: T extends string ? QuerySelector<T> | RegExp : QuerySelector<T>;
+    $regex?: T extends string ? RegExp | string : never;
 
     //special deepkit/type type
     $parameter?: string;
@@ -75,23 +75,26 @@ export type RootQuerySelector<T> = {
     [deepPath: string]: any;
 };
 
-type RegExpForString<T> = T extends string ? (RegExp | T) : T;
-type MongoAltQuery<T> = T extends Array<infer U> ? (T | RegExpForString<U>) : RegExpForString<T>;
+type RegExpForString<T> = T extends string ? RegExp | T : T;
+type MongoAltQuery<T> = T extends Array<infer U> ? T | RegExpForString<U> : RegExpForString<T>;
 export type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
 
 export type FilterQuery<T> = {
     [P in keyof T & string]?: Condition<T[P]>;
-} &
-    RootQuerySelector<T>;
+} & RootQuerySelector<T>;
 
-export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<T> = FilterQuery<T>, SORT extends Sort<T> = Sort<T>> {
+export class DatabaseQueryModel<
+    T extends OrmEntity,
+    FILTER extends FilterQuery<T> = FilterQuery<T>,
+    SORT extends Sort<T> = Sort<T>,
+> {
     public withIdentityMap: boolean = true;
     public withChangeDetection: boolean = true;
     public filter?: FILTER;
     public having?: FILTER;
     public groupBy: Set<string> = new Set<string>();
     public for?: 'update' | 'share';
-    public aggregate = new Map<string, { property: ReflectionProperty, func: string }>();
+    public aggregate = new Map<string, { property: ReflectionProperty; func: string }>();
     public select: Set<string> = new Set<string>();
     public lazyLoad: Set<string> = new Set<string>();
     public joins: DatabaseJoinModel<any, any>[] = [];
@@ -114,7 +117,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
     }
 
     changed(): void {
-        this.change.emit(new EmitterEvent);
+        this.change.emit(new EmitterEvent());
     }
 
     hasSort(): boolean {
@@ -149,7 +152,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
         m.aggregate = new Map(this.aggregate);
         m.parameters = { ...this.parameters };
 
-        m.joins = this.joins.map((v) => {
+        m.joins = this.joins.map(v => {
             return {
                 classSchema: v.classSchema,
                 propertySchema: v.propertySchema,
@@ -204,10 +207,9 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
     }
 }
 
-export class ItemNotFound extends Error {
-}
+export class ItemNotFound extends Error {}
 
-type FindEntity<T> = FlattenIfArray<NonNullable<T>> extends infer V ? V extends OrmEntity ? V : OrmEntity : OrmEntity;
+type FindEntity<T> = FlattenIfArray<NonNullable<T>> extends infer V ? (V extends OrmEntity ? V : OrmEntity) : OrmEntity;
 
 export interface QueryClassType<T> {
     create(query: BaseQuery<any>): QueryClassType<T>;
@@ -225,7 +227,7 @@ export class BaseQuery<T extends OrmEntity> {
 
     constructor(
         public readonly classSchema: ReflectionClass<any>,
-        model?: DatabaseQueryModel<T>
+        model?: DatabaseQueryModel<T>,
     ) {
         this.model = model || this.createModel<T>();
     }
@@ -249,7 +251,10 @@ export class BaseQuery<T extends OrmEntity> {
      * ```
      * @reflection never
      */
-    use<Q, R, A extends any[]>(modifier: (query: Q, ...args: A) => R, ...args: A): this extends JoinDatabaseQuery<any, any> ? this : Exclude<R, JoinDatabaseQuery<any, any>> {
+    use<Q, R, A extends any[]>(
+        modifier: (query: Q, ...args: A) => R,
+        ...args: A
+    ): this extends JoinDatabaseQuery<any, any> ? this : Exclude<R, JoinDatabaseQuery<any, any>> {
         return modifier(this as any, ...args) as any;
     }
 
@@ -289,38 +294,60 @@ export class BaseQuery<T extends OrmEntity> {
 
     groupBy<K extends FieldName<T>[]>(...field: K): this {
         const c = this.clone();
-        c.model.groupBy = new Set([...field as string[]]);
+        c.model.groupBy = new Set([...(field as string[])]);
         return c as any;
     }
 
-    withSum<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withSum<K extends FieldName<T>, AS extends string>(
+        field: K,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'sum', as) as any;
     }
 
-    withGroupConcat<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [C in [AS] as `${AS}`]: T[K][] }> {
+    withGroupConcat<K extends FieldName<T>, AS extends string>(
+        field: K,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [C in [AS] as `${AS}`]: T[K][] }> {
         return this.aggregateField(field, 'group_concat', as) as any;
     }
 
-    withCount<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withCount<K extends FieldName<T>, AS extends string>(
+        field: K,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'count', as) as any;
     }
 
-    withMax<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withMax<K extends FieldName<T>, AS extends string>(
+        field: K,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'max', as) as any;
     }
 
-    withMin<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withMin<K extends FieldName<T>, AS extends string>(
+        field: K,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'min', as) as any;
     }
 
-    withAverage<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withAverage<K extends FieldName<T>, AS extends string>(
+        field: K,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'avg', as) as any;
     }
 
-    aggregateField<K extends FieldName<T>, AS extends string>(field: K, func: string, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    aggregateField<K extends FieldName<T>, AS extends string>(
+        field: K,
+        func: string,
+        as?: AS,
+    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         const c = this.clone();
         (as as any) ||= field;
-        c.model.aggregate.set((as as any), { property: this.classSchema.getProperty(field), func });
+        c.model.aggregate.set(as as any, { property: this.classSchema.getProperty(field), func });
         return c as any;
     }
 
@@ -351,7 +378,7 @@ export class BaseQuery<T extends OrmEntity> {
         for (const field of select) {
             if (!this.classSchema.hasProperty(field)) throw new Error(`Field ${String(field)} unknown`);
         }
-        c.model.select = new Set([...select as string[]]);
+        c.model.select = new Set([...(select as string[])]);
         return c as any;
     }
 
@@ -382,7 +409,7 @@ export class BaseQuery<T extends OrmEntity> {
      */
     page(page: number): this {
         const c = this.clone();
-        const skip = (page * c.model.itemsPerPage) - c.model.itemsPerPage;
+        const skip = page * c.model.itemsPerPage - c.model.itemsPerPage;
         c.model.skip = skip;
         c.model.limit = c.model.itemsPerPage;
         return c;
@@ -494,7 +521,11 @@ export class BaseQuery<T extends OrmEntity> {
         return c;
     }
 
-    protected applyOrderBy<K extends FieldName<T>>(model: this['model'], field: K, direction: 'asc' | 'desc' = 'asc'): void {
+    protected applyOrderBy<K extends FieldName<T>>(
+        model: this['model'],
+        field: K,
+        direction: 'asc' | 'desc' = 'asc',
+    ): void {
         if (!model.sort) model.sort = {};
         if (field.includes('.')) {
             const [relation, fieldName] = field.split(/\.(.*)/s);
@@ -510,7 +541,9 @@ export class BaseQuery<T extends OrmEntity> {
                     }
                 }
                 if (!found) {
-                    throw new Error(`Cannot order by ${field} because the relation '${relation}' is not joined. Use join('${relation}'), useJoin('${relation}'), or joinWith('${relation}') etc first.`);
+                    throw new Error(
+                        `Cannot order by ${field} because the relation '${relation}' is not joined. Use join('${relation}'), useJoin('${relation}'), or joinWith('${relation}') etc first.`,
+                    );
                 }
             } else {
                 model.sort[field] = direction;
@@ -536,7 +569,11 @@ export class BaseQuery<T extends OrmEntity> {
      * Adds a left join in the filter. Does NOT populate the reference with values.
      * Accessing `field` in the entity (if not optional field) results in an error.
      */
-    join<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
+    join<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(
+        field: K,
+        type: 'left' | 'inner' = 'left',
+        populate: boolean = false,
+    ): this {
         const propertySchema = this.classSchema.getProperty(field as string);
         if (!propertySchema.isReference() && !propertySchema.isBackReference()) {
             throw new Error(`Field ${String(field)} is not marked as reference. Use Reference type`);
@@ -548,7 +585,10 @@ export class BaseQuery<T extends OrmEntity> {
         query.model.parameters = c.model.parameters;
 
         c.model.joins.push({
-            propertySchema, query, populate, type,
+            propertySchema,
+            query,
+            populate,
+            type,
             foreignPrimaryKey: foreignReflectionClass.getPrimary(),
             classSchema: this.classSchema,
         });
@@ -560,7 +600,9 @@ export class BaseQuery<T extends OrmEntity> {
      * Accessing `field` in the entity (if not optional field) results in an error.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(
+        field: K,
+    ): JoinDatabaseQuery<ENTITY, this> {
         const c = this.join(field, 'left');
         return c.model.joins[c.model.joins.length - 1].query;
     }
@@ -576,12 +618,16 @@ export class BaseQuery<T extends OrmEntity> {
      * Adds a left join in the filter and populates the result set WITH reference field accordingly.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useJoinWith<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useJoinWith<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(
+        field: K,
+    ): JoinDatabaseQuery<ENTITY, this> {
         const c = this.join(field, 'left', true);
         return c.model.joins[c.model.joins.length - 1].query;
     }
 
-    getJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    getJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(
+        field: K,
+    ): JoinDatabaseQuery<ENTITY, this> {
         for (const join of this.model.joins) {
             if (join.propertySchema.name === field) return join.query;
         }
@@ -599,7 +645,9 @@ export class BaseQuery<T extends OrmEntity> {
      * Adds a inner join in the filter and populates the result set WITH reference field accordingly.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useInnerJoinWith<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useInnerJoinWith<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(
+        field: K,
+    ): JoinDatabaseQuery<ENTITY, this> {
         const c = this.join(field, 'inner', true);
         return c.model.joins[c.model.joins.length - 1].query;
     }
@@ -617,18 +665,23 @@ export class BaseQuery<T extends OrmEntity> {
      * Accessing `field` in the entity (if not optional field) results in an error.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
-    useInnerJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    useInnerJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(
+        field: K,
+    ): JoinDatabaseQuery<ENTITY, this> {
         const c = this.join(field, 'inner');
         return c.model.joins[c.model.joins.length - 1].query;
     }
 }
 
-export abstract class GenericQueryResolver<T extends object, ADAPTER extends DatabaseAdapter = DatabaseAdapter, MODEL extends DatabaseQueryModel<T> = DatabaseQueryModel<T>> {
+export abstract class GenericQueryResolver<
+    T extends object,
+    ADAPTER extends DatabaseAdapter = DatabaseAdapter,
+    MODEL extends DatabaseQueryModel<T> = DatabaseQueryModel<T>,
+> {
     constructor(
         protected classSchema: ReflectionClass<T>,
         protected session: DatabaseSession<ADAPTER>,
-    ) {
-    }
+    ) {}
 
     abstract count(model: MODEL): Promise<number>;
 
@@ -649,7 +702,9 @@ export interface FindQuery<T> {
     find(): Promise<T[]>;
 }
 
-export type Methods<T> = { [K in keyof T]: K extends keyof Query<any> ? never : T[K] extends ((...args: any[]) => any) ? K : never }[keyof T];
+export type Methods<T> = {
+    [K in keyof T]: K extends keyof Query<any> ? never : T[K] extends (...args: any[]) => any ? K : never;
+}[keyof T];
 
 /**
  * This a generic query abstraction which should supports most basics database interactions.
@@ -662,11 +717,17 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
 
     public static readonly onFetch: EventToken<QueryDatabaseEvent<any>> = new EventToken('orm.query.fetch');
 
-    public static readonly onDeletePre: EventToken<QueryDatabaseDeleteEvent<any>> = new EventToken('orm.query.delete.pre');
-    public static readonly onDeletePost: EventToken<QueryDatabaseDeleteEvent<any>> = new EventToken('orm.query.delete.post');
+    public static readonly onDeletePre: EventToken<QueryDatabaseDeleteEvent<any>> = new EventToken(
+        'orm.query.delete.pre',
+    );
+    public static readonly onDeletePost: EventToken<QueryDatabaseDeleteEvent<any>> = new EventToken(
+        'orm.query.delete.post',
+    );
 
     public static readonly onPatchPre: EventToken<QueryDatabasePatchEvent<any>> = new EventToken('orm.query.patch.pre');
-    public static readonly onPatchPost: EventToken<QueryDatabasePatchEvent<any>> = new EventToken('orm.query.patch.post');
+    public static readonly onPatchPost: EventToken<QueryDatabasePatchEvent<any>> = new EventToken(
+        'orm.query.patch.post',
+    );
 
     static is<T extends ClassType<Query<any>>>(v: Query<any>, type: T): v is InstanceType<T> {
         return v.lifts.includes(type) || v instanceof type;
@@ -675,27 +736,32 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     constructor(
         classSchema: ReflectionClass<T>,
         protected session: DatabaseSession<any>,
-        protected resolver: GenericQueryResolver<T>
+        protected resolver: GenericQueryResolver<T>,
     ) {
         super(classSchema);
         this.model.withIdentityMap = session.withIdentityMap;
     }
 
-    static from<Q extends Query<any> & {
-        _: () => T
-    }, T extends ReturnType<InstanceType<B>['_']>, B extends ClassType<Query<any>>>(this: B, query: Q): Replace<InstanceType<B>, Resolve<Q>> {
-        const result = (new this(query.classSchema, query.session, query.resolver));
+    static from<
+        Q extends Query<any> & {
+            _: () => T;
+        },
+        T extends ReturnType<InstanceType<B>['_']>,
+        B extends ClassType<Query<any>>,
+    >(this: B, query: Q): Replace<InstanceType<B>, Resolve<Q>> {
+        const result = new this(query.classSchema, query.session, query.resolver);
         result.model = query.model.clone(result);
         return result as any;
     }
 
-    public lift<B extends ClassType<Query<any>>, T extends ReturnType<InstanceType<B>['_']>, THIS extends Query<any> & { _: () => T }>(
-        this: THIS, query: B
-    ): Replace<InstanceType<B>, Resolve<this>> & Pick<this, Methods<this>> {
+    public lift<
+        B extends ClassType<Query<any>>,
+        T extends ReturnType<InstanceType<B>['_']>,
+        THIS extends Query<any> & { _: () => T },
+    >(this: THIS, query: B): Replace<InstanceType<B>, Resolve<this>> & Pick<this, Methods<this>> {
         const base = this['constructor'] as ClassType;
         //we create a custom class to have our own prototype
-        const clazz = class extends base {
-        };
+        const clazz = class extends base {};
 
         let obj: any = query;
         const wasSet: { [name: string]: true } = {};
@@ -714,16 +780,16 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
                 });
                 wasSet[i] = true;
             }
-        } while (obj = Object.getPrototypeOf(obj));
+        } while ((obj = Object.getPrototypeOf(obj)));
 
         const cloned = new clazz(this.classSchema, this.session, this.resolver);
 
         const lift = new query(this.classSchema, this.session, this.resolver, this.model);
         for (const i in this) {
-            (cloned)[i] = (this as any)[i];
+            cloned[i] = (this as any)[i];
         }
         for (const i in lift) {
-            (cloned)[i] = (lift as any)[i];
+            cloned[i] = (lift as any)[i];
         }
         cloned.model = this.model.clone(cloned as BaseQuery<any>);
         cloned.lifts = this.lifts;
@@ -764,9 +830,15 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
             return await query.resolver.count(query.model);
         }
 
-        const frame = this.session.stopwatch.start((fromHas ? 'Has:' : 'Count:') + this.classSchema.getClassName(), FrameCategory.database);
+        const frame = this.session.stopwatch.start(
+            (fromHas ? 'Has:' : 'Count:') + this.classSchema.getClassName(),
+            FrameCategory.database,
+        );
         try {
-            frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
+            frame.data({
+                collection: this.classSchema.getCollectionName(),
+                className: this.classSchema.getClassName(),
+            });
             const eventFrame = this.session.stopwatch.start('Events');
             const query = this.onQueryResolve(await this.callOnFetchEvent(this));
             eventFrame.end();
@@ -779,16 +851,19 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     public async find(): Promise<Resolve<this>[]> {
         if (!this.session.stopwatch) {
             const query = this.onQueryResolve(await this.callOnFetchEvent(this));
-            return await query.resolver.find(query.model) as Resolve<this>[];
+            return (await query.resolver.find(query.model)) as Resolve<this>[];
         }
 
         const frame = this.session.stopwatch.start('Find:' + this.classSchema.getClassName(), FrameCategory.database);
         try {
-            frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
+            frame.data({
+                collection: this.classSchema.getCollectionName(),
+                className: this.classSchema.getClassName(),
+            });
             const eventFrame = this.session.stopwatch.start('Events');
             const query = this.onQueryResolve(await this.callOnFetchEvent(this));
             eventFrame.end();
-            return await query.resolver.find(query.model) as Resolve<this>[];
+            return (await query.resolver.find(query.model)) as Resolve<this>[];
         } finally {
             frame.end();
         }
@@ -797,16 +872,22 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     public async findOneOrUndefined(): Promise<Resolve<this> | undefined> {
         if (!this.session.stopwatch) {
             const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
-            return await query.resolver.findOneOrUndefined(query.model) as Resolve<this>;
+            return (await query.resolver.findOneOrUndefined(query.model)) as Resolve<this>;
         }
 
-        const frame = this.session.stopwatch.start('FindOne:' + this.classSchema.getClassName(), FrameCategory.database);
+        const frame = this.session.stopwatch.start(
+            'FindOne:' + this.classSchema.getClassName(),
+            FrameCategory.database,
+        );
         try {
-            frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
+            frame.data({
+                collection: this.classSchema.getCollectionName(),
+                className: this.classSchema.getClassName(),
+            });
             const eventFrame = this.session.stopwatch.start('Events');
             const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
             eventFrame.end();
-            return await query.resolver.findOneOrUndefined(query.model) as Resolve<this>;
+            return (await query.resolver.findOneOrUndefined(query.model)) as Resolve<this>;
         } finally {
             frame.end();
         }
@@ -819,7 +900,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     }
 
     public async deleteMany(): Promise<DeleteResult<T>> {
-        return await this.delete(this) as any;
+        return (await this.delete(this)) as any;
     }
 
     public async deleteOne(): Promise<DeleteResult<T>> {
@@ -827,15 +908,23 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     }
 
     protected async delete(query: Query<any>): Promise<DeleteResult<T>> {
-        const hasEvents = this.session.eventDispatcher.hasListeners(Query.onDeletePre) || this.session.eventDispatcher.hasListeners(Query.onDeletePost);
+        const hasEvents =
+            this.session.eventDispatcher.hasListeners(Query.onDeletePre) ||
+            this.session.eventDispatcher.hasListeners(Query.onDeletePost);
 
         const deleteResult: DeleteResult<T> = {
             modified: 0,
-            primaryKeys: []
+            primaryKeys: [],
         };
 
-        const frame = this.session.stopwatch ? this.session.stopwatch.start('Delete:' + this.classSchema.getClassName(), FrameCategory.database) : undefined;
-        if (frame) frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
+        const frame = this.session.stopwatch
+            ? this.session.stopwatch.start('Delete:' + this.classSchema.getClassName(), FrameCategory.database)
+            : undefined;
+        if (frame)
+            frame.data({
+                collection: this.classSchema.getCollectionName(),
+                className: this.classSchema.getClassName(),
+            });
 
         try {
             if (!hasEvents) {
@@ -881,15 +970,24 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     }
 
     protected async patch(query: Query<any>, patch: DeepPartial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
-        const frame = this.session.stopwatch ? this.session.stopwatch.start('Patch:' + this.classSchema.getClassName(), FrameCategory.database) : undefined;
-        if (frame) frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
+        const frame = this.session.stopwatch
+            ? this.session.stopwatch.start('Patch:' + this.classSchema.getClassName(), FrameCategory.database)
+            : undefined;
+        if (frame)
+            frame.data({
+                collection: this.classSchema.getCollectionName(),
+                className: this.classSchema.getClassName(),
+            });
 
         try {
-            const changes: Changes<T> = patch instanceof Changes ? patch as Changes<T> : new Changes<T>({
-                $set: patch.$set || {},
-                $inc: patch.$inc || {},
-                $unset: patch.$unset || {},
-            });
+            const changes: Changes<T> =
+                patch instanceof Changes
+                    ? (patch as Changes<T>)
+                    : new Changes<T>({
+                          $set: patch.$set || {},
+                          $inc: patch.$inc || {},
+                          $unset: patch.$unset || {},
+                      });
 
             for (const i in patch) {
                 if (i.startsWith('$')) continue;
@@ -899,12 +997,14 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
             const patchResult: PatchResult<T> = {
                 modified: 0,
                 returning: {},
-                primaryKeys: []
+                primaryKeys: [],
             };
 
             if (changes.empty) return patchResult;
 
-            const hasEvents = this.session.eventDispatcher.hasListeners(Query.onPatchPre) || this.session.eventDispatcher.hasListeners(Query.onPatchPost);
+            const hasEvents =
+                this.session.eventDispatcher.hasListeners(Query.onPatchPre) ||
+                this.session.eventDispatcher.hasListeners(Query.onPatchPost);
             if (!hasEvents) {
                 query = this.onQueryResolve(query);
                 await this.resolver.patch(query.model, changes, patchResult);
@@ -930,12 +1030,16 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
             if (query.model.withIdentityMap) {
                 const pkHashGenerator = getSimplePrimaryKeyHashGenerator(this.classSchema);
                 for (let i = 0; i < patchResult.primaryKeys.length; i++) {
-                    const item = this.session.identityMap.getByHash(this.classSchema, pkHashGenerator(patchResult.primaryKeys[i]));
+                    const item = this.session.identityMap.getByHash(
+                        this.classSchema,
+                        pkHashGenerator(patchResult.primaryKeys[i]),
+                    );
                     if (!item) continue;
 
-                    if (changes.$set) for (const name in changes.$set) {
-                        (item as any)[name] = (changes.$set as any)[name];
-                    }
+                    if (changes.$set)
+                        for (const name in changes.$set) {
+                            (item as any)[name] = (changes.$set as any)[name];
+                        }
 
                     for (const name in patchResult.returning) {
                         (item as any)[name] = (patchResult.returning as any)[name][i];
@@ -957,7 +1061,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     }
 
     public async has(): Promise<boolean> {
-        return await this.count(true) > 0;
+        return (await this.count(true)) > 0;
     }
 
     public async ids(singleKey?: false): Promise<PrimaryKeyFields<T>[]>;
@@ -968,7 +1072,9 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
             throw new Error(`Entity ${this.classSchema.getClassName()} has more than one primary key`);
         }
 
-        const data = await this.clone().select(...pks).find() as Resolve<this>[];
+        const data = (await this.clone()
+            .select(...pks)
+            .find()) as Resolve<this>[];
         if (singleKey) {
             const pkName = pks[0] as keyof Resolve<this>;
             return data.map(v => v[pkName]) as any;
@@ -978,12 +1084,12 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     }
 
     public async findField<K extends FieldName<T>>(name: K): Promise<T[K][]> {
-        const items = await this.select(name as keyof Resolve<this>).find() as T[];
+        const items = (await this.select(name as keyof Resolve<this>).find()) as T[];
         return items.map(v => v[name]);
     }
 
     public async findOneField<K extends FieldName<T>>(name: K): Promise<T[K]> {
-        const item = await this.select(name as keyof Resolve<this>).findOne() as T;
+        const item = (await this.select(name as keyof Resolve<this>).findOne()) as T;
         return item[name];
     }
 

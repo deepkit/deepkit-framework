@@ -7,15 +7,28 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, Inject, Input, OnChanges, OnDestroy, Optional, SimpleChanges, SkipSelf, ViewContainerRef } from '@angular/core';
-import { WindowContentComponent } from './window-content.component';
-import { WindowRegistry, WindowState } from './window-state';
 import { DOCUMENT } from '@angular/common';
-import { WindowMenuState } from './window-menu';
-import { WindowHeaderComponent } from './window-header.component';
-import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token';
+import {
+    ChangeDetectionStrategy,
+    ChangeDetectorRef,
+    Component,
+    ContentChild,
+    Inject,
+    Input,
+    OnChanges,
+    OnDestroy,
+    Optional,
+    SimpleChanges,
+    SkipSelf,
+    ViewContainerRef,
+} from '@angular/core';
+
 import { DuiApp } from '../app';
+import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token';
+import { WindowContentComponent } from './window-content.component';
+import { WindowHeaderComponent } from './window-header.component';
+import { WindowMenuState } from './window-menu';
+import { WindowRegistry, WindowState } from './window-state';
 
 /**
  * This is only for documentation purposes.
@@ -25,8 +38,8 @@ import { DuiApp } from '../app';
     template: '<ng-content></ng-content>',
     styleUrls: ['./window-frame.component.scss'],
     host: {
-        '[style.height]': `height ? height + 'px' : 'auto'`
-    }
+        '[style.height]': `height ? height + 'px' : 'auto'`,
+    },
 })
 export class WindowFrameComponent {
     @Input() height: number = 350;
@@ -34,7 +47,8 @@ export class WindowFrameComponent {
 
 @Component({
     selector: 'dui-window',
-    template: '<ng-content></ng-content><div *ngIf="windowState.disableInputs|async" (mousedown)="$event.preventDefault();" class="disable-inputs"></div>',
+    template:
+        '<ng-content></ng-content><div *ngIf="windowState.disableInputs|async" (mousedown)="$event.preventDefault();" class="disable-inputs"></div>',
     styleUrls: ['./window.component.scss'],
     host: {
         '[class.in-dialog]': 'isInDialog()',
@@ -42,16 +56,15 @@ export class WindowFrameComponent {
         '[class.dui-body]': 'true',
     },
     changeDetection: ChangeDetectionStrategy.OnPush,
-    providers: [
-        WindowState,
-        WindowMenuState,
-    ]
+    providers: [WindowState, WindowMenuState],
 })
 export class WindowComponent implements OnChanges, OnDestroy {
     public id = 0;
 
-    @ContentChild(WindowContentComponent, { static: false }) public content?: WindowContentComponent;
-    @ContentChild(WindowHeaderComponent, { static: false }) public header?: WindowHeaderComponent;
+    @ContentChild(WindowContentComponent, { static: false })
+    public content?: WindowContentComponent;
+    @ContentChild(WindowHeaderComponent, { static: false })
+    public header?: WindowHeaderComponent;
 
     @Input() closable = true;
     @Input() maximizable = true;
@@ -75,7 +88,7 @@ export class WindowComponent implements OnChanges, OnDestroy {
         public viewContainerRef: ViewContainerRef,
         @Inject(IN_DIALOG) protected inDialog: boolean,
         @SkipSelf() @Optional() protected parentWindow?: WindowComponent,
-        @Inject(ELECTRON_WINDOW) public electronWindow?: any
+        @Inject(ELECTRON_WINDOW) public electronWindow?: any,
     ) {
         registry.register(this, cd, windowState, windowMenuState, viewContainerRef);
 

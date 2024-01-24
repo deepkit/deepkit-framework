@@ -1,5 +1,6 @@
-import { deepkitType } from './src/plugin.js';
 import { readFileSync } from 'fs';
+
+import { deepkitType } from './src/plugin.js';
 
 interface Arguments {
     file: string;
@@ -25,8 +26,6 @@ function parseArguments(args: string[]): Arguments {
 }
 
 const args = parseArguments(process.argv.slice(2));
-
-
 
 const transformer = deepkitType({
     tsConfig: args.config,

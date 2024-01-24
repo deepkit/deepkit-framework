@@ -7,10 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { Injectable } from '@angular/core';
-import { Collection, RpcWebSocketClient } from '@deepkit/rpc';
+
 import { DebugControllerInterface, DebugMediaInterface, DebugRequest, Workflow } from '@deepkit/framework-debug-api';
+import { Collection, RpcWebSocketClient } from '@deepkit/rpc';
 
 @Injectable()
 export class ControllerClient {
@@ -32,7 +32,9 @@ export class ControllerClient {
     }
 
     getUrl(path: string): string {
-        return location.protocol + '//' + (location.port === '4200' ? location.hostname + ':8080' : location.host) + path;
+        return (
+            location.protocol + '//' + (location.port === '4200' ? location.hostname + ':8080' : location.host) + path
+        );
     }
 
     tryToConnect() {
@@ -45,7 +47,7 @@ export class ControllerClient {
 
     public getWorkflow(name: string): Promise<Workflow> {
         if (this.workflows[name] != undefined) return this.workflows[name];
-        return this.workflows[name] = this.debug.getWorkflow(name);
+        return (this.workflows[name] = this.debug.getWorkflow(name));
     }
 
     // public getHttpRequests(): Promise<Collection<DebugRequest>> {

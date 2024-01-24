@@ -1,5 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { skip } from 'rxjs/operators';
+
 import { DirectClient } from '../src/client/client-direct.js';
 import { rpc } from '../src/decorators.js';
 import { RpcKernel } from '../src/server/kernel.js';
@@ -39,7 +40,7 @@ test('chunks', async () => {
         const progress = ClientProgress.track();
 
         const stats: number[] = [];
-        progress.download.pipe(skip(1)).subscribe((p) => {
+        progress.download.pipe(skip(1)).subscribe(p => {
             expect(progress.download.total).toBeGreaterThan(0);
             expect(progress.download.current).toBeLessThanOrEqual(progress.download.total);
             expect(progress.download.progress).toBeLessThanOrEqual(1);
@@ -49,15 +50,7 @@ test('chunks', async () => {
         expect(file.length).toBe(650_000);
         expect(progress.download.done).toBe(true);
         expect(progress.download.total).toBe(650025);
-        expect(stats).toEqual([
-            100_000,
-            200_000,
-            300_000,
-            400_000,
-            500_000,
-            600_000,
-            650_025,
-        ]);
+        expect(stats).toEqual([100_000, 200_000, 300_000, 400_000, 500_000, 600_000, 650_025]);
         expect(progress.download.progress).toBe(1);
     }
 
@@ -74,7 +67,7 @@ test('chunks', async () => {
         const uploadFile = Buffer.alloc(550_000);
         const progress = ClientProgress.track();
         const stats: number[] = [];
-        progress.upload.pipe(skip(1)).subscribe((p) => {
+        progress.upload.pipe(skip(1)).subscribe(p => {
             expect(progress.upload.total).toBeGreaterThan(0);
             expect(progress.upload.current).toBeLessThanOrEqual(progress.upload.total);
             expect(progress.upload.progress).toBeLessThanOrEqual(1);
@@ -82,14 +75,7 @@ test('chunks', async () => {
         });
         const size = await controller.uploadBig(uploadFile);
         expect(size).toBe(550_000);
-        expect(stats).toEqual([
-            100_000,
-            200_000,
-            300_000,
-            400_000,
-            500_000,
-            550_079,
-        ]);
+        expect(stats).toEqual([100_000, 200_000, 300_000, 400_000, 500_000, 550_079]);
         expect(progress.upload.done).toBe(true);
         expect(progress.upload.progress).toBe(1);
     }

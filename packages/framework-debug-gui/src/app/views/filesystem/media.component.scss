@@ -1,55 +1,54 @@
 :host {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
 }
 
 dui-button-groups {
-    padding-left: 0;
-    padding-right: 0;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 dui-button.tight {
-    padding: 0 5px;
+  padding: 0 5px;
 }
 
 .content {
-    border-top: 1px solid var(--line-color-light);
-    margin-top: 15px;
-    flex: 1;
+  border-top: 1px solid var(--line-color-light);
+  margin-top: 15px;
+  flex: 1;
 
-    &.file {
-        overflow: hidden;
+  &.file {
+    overflow: hidden;
+  }
+
+  dui-table {
+    height: 100%;
+  }
+
+  &.folder {
+    display: grid;
+    gap: 15px;
+    padding: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(50px, 110px));
+    grid-auto-rows: max-content;
+
+    &.list {
+      display: block;
+      padding: 0;
+      border-top: 0;
     }
+  }
 
-    dui-table {
-        height: 100%;
-    }
+  &.file-drop-hover {
+    background-color: rgba(112, 112, 112, 0.14);
+  }
 
-    &.folder {
-        display: grid;
-        gap: 15px;
-        padding: 15px;
-        grid-template-columns: repeat(auto-fill, minmax(50px, 110px));
-        grid-auto-rows: max-content;
-
-        &.list {
-            display: block;
-            padding: 0;
-            border-top: 0;
-        }
-    }
-
-    &.file-drop-hover {
-        background-color: rgba(112, 112, 112, 0.14);
-    }
-
-    .error {
-        color: red;
-        text-align: center;
-        opacity: 0.5;
-        grid-column: 1/-1;
-    }
+  .error {
+    color: red;
+    text-align: center;
+    opacity: 0.5;
+    grid-column: 1/-1;
+  }
 }
-

@@ -7,11 +7,17 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { ReflectionKind, SerializationError, Type, nodeBufferToArrayBuffer } from '@deepkit/type';
 
-import { BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils.js';
-import { buildStringDecoder, decodeUTF8 } from './strings.js';
-import { nodeBufferToArrayBuffer, ReflectionKind, SerializationError, Type } from '@deepkit/type';
 import { hexTable } from './model.js';
+import { buildStringDecoder, decodeUTF8 } from './strings.js';
+import {
+    BSONType,
+    BSON_BINARY_SUBTYPE_BYTE_ARRAY,
+    BSON_BINARY_SUBTYPE_UUID,
+    TWO_PWR_32_DBL_N,
+    digitByteSize,
+} from './utils.js';
 
 declare var Buffer: any;
 
@@ -33,7 +39,10 @@ export class BaseParser {
     public size: number;
     public dataView: DataView;
 
-    constructor(public buffer: Uint8Array, public offset: number = 0) {
+    constructor(
+        public buffer: Uint8Array,
+        public offset: number = 0,
+    ) {
         this.size = buffer.byteLength;
         this.dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     }
@@ -105,7 +114,7 @@ export class BaseParser {
         const lowBits = this.eatInt32();
         const highBits = this.eatInt32();
 
-        return BigInt(highBits) * BigInt(TWO_PWR_32_DBL_N) + (BigInt(lowBits >>> 0));
+        return BigInt(highBits) * BigInt(TWO_PWR_32_DBL_N) + BigInt(lowBits >>> 0);
     }
 
     parseString() {
@@ -205,21 +214,21 @@ export class BaseParser {
     }
 
     parseOid(): string {
-        const offset = this.offset, b = this.buffer;
-        let o = hexTable[b[offset]]
-            + hexTable[b[offset + 1]]
-            + hexTable[b[offset + 2]]
-            + hexTable[b[offset + 3]]
-            + hexTable[b[offset + 4]]
-            + hexTable[b[offset + 5]]
-            + hexTable[b[offset + 6]]
-            + hexTable[b[offset + 7]]
-            + hexTable[b[offset + 8]]
-            + hexTable[b[offset + 9]]
-            + hexTable[b[offset + 10]]
-            + hexTable[b[offset + 11]]
-        ;
-
+        const offset = this.offset,
+            b = this.buffer;
+        let o =
+            hexTable[b[offset]] +
+            hexTable[b[offset + 1]] +
+            hexTable[b[offset + 2]] +
+            hexTable[b[offset + 3]] +
+            hexTable[b[offset + 4]] +
+            hexTable[b[offset + 5]] +
+            hexTable[b[offset + 6]] +
+            hexTable[b[offset + 7]] +
+            hexTable[b[offset + 8]] +
+            hexTable[b[offset + 9]] +
+            hexTable[b[offset + 10]] +
+            hexTable[b[offset + 11]];
         this.seek(12);
         return o;
     }
@@ -227,29 +236,29 @@ export class BaseParser {
     parseUUID(): string {
         //e.g. bef8de96-41fe-442f-b70c-c3a150f8c96c
         //         4      2    2    2       6
-        const offset = this.offset, b = this.buffer;
-        let o = hexTable[b[offset]]
-            + hexTable[b[offset + 1]]
-            + hexTable[b[offset + 2]]
-            + hexTable[b[offset + 3]]
-            + '-'
-            + hexTable[b[offset + 4]]
-            + hexTable[b[offset + 5]]
-            + '-'
-            + hexTable[b[offset + 6]]
-            + hexTable[b[offset + 7]]
-            + '-'
-            + hexTable[b[offset + 8]]
-            + hexTable[b[offset + 9]]
-            + '-'
-            + hexTable[b[offset + 10]]
-            + hexTable[b[offset + 11]]
-            + hexTable[b[offset + 12]]
-            + hexTable[b[offset + 13]]
-            + hexTable[b[offset + 14]]
-            + hexTable[b[offset + 15]]
-        ;
-
+        const offset = this.offset,
+            b = this.buffer;
+        let o =
+            hexTable[b[offset]] +
+            hexTable[b[offset + 1]] +
+            hexTable[b[offset + 2]] +
+            hexTable[b[offset + 3]] +
+            '-' +
+            hexTable[b[offset + 4]] +
+            hexTable[b[offset + 5]] +
+            '-' +
+            hexTable[b[offset + 6]] +
+            hexTable[b[offset + 7]] +
+            '-' +
+            hexTable[b[offset + 8]] +
+            hexTable[b[offset + 9]] +
+            '-' +
+            hexTable[b[offset + 10]] +
+            hexTable[b[offset + 11]] +
+            hexTable[b[offset + 12]] +
+            hexTable[b[offset + 13]] +
+            hexTable[b[offset + 14]] +
+            hexTable[b[offset + 15]];
         this.seek(16);
         return o;
     }
@@ -326,7 +335,6 @@ const stringParser = buildStringDecoder(32);
  * This is way faster than BaseParser when property names are mainly ascii (which is usually the case).
  */
 export class ParserV2 extends BaseParser {
-
     eatObjectPropertyName() {
         let end = this.offset;
         let simple = true;
@@ -433,4 +441,3 @@ export function parseArray(parser: BaseParser): any[] {
 export function deserializeBSONWithoutOptimiser(buffer: Uint8Array, offset = 0) {
     return parseObject(new ParserV2(buffer, offset));
 }
-

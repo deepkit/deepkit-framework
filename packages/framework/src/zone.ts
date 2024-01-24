@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { AsyncLocalStorage } from 'async_hooks';
 
 export type SimpleStore = { [name: string]: any };

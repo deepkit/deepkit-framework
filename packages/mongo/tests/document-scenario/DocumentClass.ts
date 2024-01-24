@@ -1,7 +1,8 @@
-import {PageCollection} from './PageCollection.js';
-import {PageClass} from './PageClass.js';
-import {t, ParentReference} from '@deepkit/type';
-import {Forward} from '@deepkit/core';
+import { Forward } from '@deepkit/core';
+import { ParentReference, t } from '@deepkit/type';
+
+import { PageClass } from './PageClass.js';
+import { PageCollection } from './PageCollection.js';
 
 export class DocumentClass {
     @t.primary.mongoId
@@ -11,7 +12,7 @@ export class DocumentClass {
     name?: string;
 
     @t.type(PageCollection)
-    pages: PageCollection = new PageCollection;
+    pages: PageCollection = new PageCollection();
 
     @t.type(() => PageClass)
     page?: Forward<PageClass>;

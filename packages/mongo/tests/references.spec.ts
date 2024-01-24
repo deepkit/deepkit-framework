@@ -1,8 +1,10 @@
 import { expect, test } from '@jest/globals';
-import { BackReference, entity, PrimaryKey, Reference, ReflectionClass, serializer } from '@deepkit/type';
-import { createDatabase } from './utils.js';
-import { DatabaseQueryModel, Formatter, getInstanceStateFromItem } from '@deepkit/orm';
+
 import { deserializeBSON, serializeBSON } from '@deepkit/bson';
+import { DatabaseQueryModel, Formatter, getInstanceStateFromItem } from '@deepkit/orm';
+import { BackReference, PrimaryKey, Reference, ReflectionClass, entity, serializer } from '@deepkit/type';
+
+import { createDatabase } from './utils.js';
 
 @entity.name('image')
 class Image {
@@ -13,8 +15,7 @@ class Image {
     constructor(
         public id: number & PrimaryKey,
         public path: string,
-    ) {
-    }
+    ) {}
 }
 
 @entity.name('user')
@@ -26,8 +27,7 @@ class User {
     constructor(
         public id: number & PrimaryKey,
         public username: string,
-    ) {
-    }
+    ) {}
 }
 
 @entity.name('userImage')
@@ -37,8 +37,7 @@ class UserPicture {
     constructor(
         public user: User & Reference,
         public image: Image & Reference,
-    ) {
-    }
+    ) {}
 }
 
 test('test back reference', async () => {
@@ -133,8 +132,7 @@ test('unhydrated backreference is serializeable', async () => {
     class UserSettings {
         id: number & PrimaryKey = 0;
 
-        constructor(public user: User & Reference) {
-        }
+        constructor(public user: User & Reference) {}
     }
 
     const formatter = new Formatter(ReflectionClass.from(User), serializer);

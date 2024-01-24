@@ -7,8 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { CommonModule } from '@angular/common';
 import { NgModule } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+
+import { DuiIconModule } from '../icon';
 import {
     ButtonComponent,
     ButtonGroupComponent,
@@ -17,10 +20,8 @@ import {
     FileChooserDirective,
     FileDropDirective,
     FilePickerDirective,
-    HotkeyDirective
+    HotkeyDirective,
 } from './button.component';
-import { CommonModule } from '@angular/common';
-import { DuiIconModule } from '../icon';
 import {
     ContextDropdownDirective,
     DropdownComponent,
@@ -30,12 +31,11 @@ import {
     OpenDropdownDirective,
     OpenDropdownHoverDirective,
 } from './dropdown.component';
-import { FormsModule } from '@angular/forms';
 import { TabButtonComponent } from './tab-button.component';
 
-export * from "./dropdown.component";
-export * from './button.component'
-export * from './tab-button.component'
+export * from './dropdown.component';
+export * from './button.component';
+export * from './tab-button.component';
 
 @NgModule({
     declarations: [
@@ -74,12 +74,6 @@ export * from './tab-button.component'
         HotkeyDirective,
         ButtonHotkeyComponent,
     ],
-    imports: [
-        CommonModule,
-        FormsModule,
-        DuiIconModule,
-    ]
+    imports: [CommonModule, FormsModule, DuiIconModule],
 })
-export class DuiButtonModule {
-
-}
+export class DuiButtonModule {}

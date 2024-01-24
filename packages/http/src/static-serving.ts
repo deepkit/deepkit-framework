@@ -7,18 +7,19 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { readFileSync, stat } from 'fs';
+import { join } from 'path';
+import send from 'send';
+
+import { AppModule } from '@deepkit/app';
+import { ClassType, urlJoin } from '@deepkit/core';
+import { eventDispatcher } from '@deepkit/event';
 
 import { http } from './decorator.js';
-import { join } from 'path';
-import { readFileSync, stat } from 'fs';
 import { HtmlResponse, httpWorkflow } from './http.js';
-import { AppModule } from '@deepkit/app';
-import { normalizeDirectory } from './utils.js';
-import { ClassType, urlJoin } from '@deepkit/core';
 import { HttpRequest, HttpResponse } from './model.js';
-import send from 'send';
-import { eventDispatcher } from '@deepkit/event';
-import { RouteConfig, HttpRouter } from './router.js';
+import { HttpRouter, RouteConfig } from './router.js';
+import { normalizeDirectory } from './utils.js';
 
 export function serveStaticListener(module: AppModule<any>, path: string, localPath: string = path): ClassType {
     class HttpRequestStaticServingListener {
@@ -48,9 +49,9 @@ export function serveStaticListener(module: AppModule<any>, path: string, localP
                                 type: 'controller',
                                 controller: HttpRequestStaticServingListener,
                                 module,
-                                methodName: 'serve'
+                                methodName: 'serve',
                             }),
-                            () => ({arguments: [relativePath, event.request, event.response], parameters: {}})
+                            () => ({ arguments: [relativePath, event.request, event.response], parameters: {} }),
                         );
                     }
                     resolve(undefined);
@@ -132,7 +133,7 @@ export function registerStaticHttpController(module: AppModule<any>, options: St
         type: 'controller',
         controller: StaticController,
         module,
-        methodName: 'serveIndex'
+        methodName: 'serveIndex',
     });
     route1.groups = groups;
     module.setupGlobalProvider<HttpRouter>().addRoute(route1);
@@ -142,7 +143,7 @@ export function registerStaticHttpController(module: AppModule<any>, options: St
             type: 'controller',
             controller: StaticController,
             module,
-            methodName: 'serveIndex'
+            methodName: 'serveIndex',
         });
         route2.groups = groups;
         module.setupGlobalProvider<HttpRouter>().addRoute(route2);

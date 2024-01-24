@@ -1,15 +1,24 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
+
 import { arrayMoveItem } from '@deepkit/core';
-import { trackByIndex } from '../../utils';
-import { DataStructure } from '../../store';
 import { TypeArray } from '@deepkit/type';
+
+import { DataStructure } from '../../store';
+import { trackByIndex } from '../../utils';
 
 @Component({
     template: `
         <ng-container *ngIf="model && type.type as subType">
-            <div class="item" *ngFor="let item of model.children; trackBy: trackByIndex; let i = index; let last = last">
-                <api-console-input [type]="subType" [model]="item.getProperty('value')"
-                                   (modelChange)="emit()" (keyDown)="keyDown.emit($event)"></api-console-input>
+            <div
+                class="item"
+                *ngFor="let item of model.children; trackBy: trackByIndex; let i = index; let last = last"
+            >
+                <api-console-input
+                    [type]="subType"
+                    [model]="item.getProperty('value')"
+                    (modelChange)="emit()"
+                    (keyDown)="keyDown.emit($event)"
+                ></api-console-input>
                 <dui-icon clickable name="arrow_up" [disabled]="i === 0" (click)="up(item)"></dui-icon>
                 <dui-icon clickable name="arrow_down" [disabled]="last" (click)="down(item)"></dui-icon>
                 <dui-icon clickable name="garbage" (click)="remove(i)"></dui-icon>
@@ -19,24 +28,26 @@ import { TypeArray } from '@deepkit/type';
             <dui-button small square icon="add" (click)="add()"></dui-button>
         </div>
     `,
-    styles: [`
-        .actions {
-            margin-top: 6px;
-        }
-        .item {
-            padding: 2px 0;
-            display: flex;
-        }
+    styles: [
+        `
+            .actions {
+                margin-top: 6px;
+            }
+            .item {
+                padding: 2px 0;
+                display: flex;
+            }
 
-        .item api-console-input {
-            flex: 1;
-        }
+            .item api-console-input {
+                flex: 1;
+            }
 
-        .item dui-button {
-            flex: 0;
-            margin-left: 3px;
-        }
-    `]
+            .item dui-button {
+                flex: 0;
+                margin-left: 3px;
+            }
+        `,
+    ],
 })
 export class ArrayInputComponent implements OnInit, OnChanges {
     trackByIndex = trackByIndex;
@@ -49,11 +60,9 @@ export class ArrayInputComponent implements OnInit, OnChanges {
         this.modelChange.emit(this.model);
     }
 
-    ngOnChanges(): void {
-    }
+    ngOnChanges(): void {}
 
-    ngOnInit(): void {
-    }
+    ngOnInit(): void {}
 
     up(i: DataStructure) {
         arrayMoveItem(this.model.children, i, -1);

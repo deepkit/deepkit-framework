@@ -1,21 +1,20 @@
-import { cast, entity, ReflectionClass } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { EntitySubject, rpcEntityPatch, RpcTypes } from '../src/model.js';
+
+import { InjectorContext } from '@deepkit/injector';
+import { ReflectionClass, cast, entity } from '@deepkit/type';
+
 import { DirectClient } from '../src/client/client-direct.js';
 import { EntitySubjectStore } from '../src/client/entity-state.js';
 import { rpc } from '../src/decorators.js';
+import { EntitySubject, RpcTypes, rpcEntityPatch } from '../src/model.js';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
-import { InjectorContext } from '@deepkit/injector';
 import { RpcKernelSecurity } from '../src/server/security.js';
 
 test('EntitySubjectStore multi', () => {
     class MyModel {
         version: number = 0;
 
-        constructor(
-            public id: number = 0
-        ) {
-        }
+        constructor(public id: number = 0) {}
     }
 
     const store = new EntitySubjectStore(MyModel);
@@ -60,18 +59,13 @@ test('controller', async () => {
     class MyModel {
         version: number = 0;
         title: string = 'foo';
-        config: Config = new Config;
+        config: Config = new Config();
 
-        constructor(
-            public id: number
-        ) {
-        }
+        constructor(public id: number) {}
     }
 
     class Controller {
-        constructor(protected connection: RpcKernelConnection) {
-
-        }
+        constructor(protected connection: RpcKernelConnection) {}
 
         @rpc.action()
         async getModel(id: number): Promise<EntitySubject<MyModel>> {
@@ -87,25 +81,29 @@ test('controller', async () => {
             const subject = new EntitySubject(model);
 
             setTimeout(() => {
-                this.connection.createMessageBuilder()
+                this.connection
+                    .createMessageBuilder()
                     .composite(RpcTypes.Entity)
                     .add<rpcEntityPatch>(RpcTypes.EntityPatch, {
                         entityName: ReflectionClass.from(MyModel).getName(),
                         id: model.id,
                         version: model.version + 1,
-                        patch: { $set: { title: 'bar', config: cast<Config>({ timeout: 44, logs: false }) } }
-                    }).send();
+                        patch: { $set: { title: 'bar', config: cast<Config>({ timeout: 44, logs: false }) } },
+                    })
+                    .send();
             }, 10);
 
             return subject;
         }
     }
 
-    const kernel = new RpcKernel(InjectorContext.forProviders([
-        { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
-        { provide: RpcKernelSecurity, scope: 'rpc' },
-        { provide: Controller, scope: 'rpc' },
-    ]));
+    const kernel = new RpcKernel(
+        InjectorContext.forProviders([
+            { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
+            { provide: RpcKernelSecurity, scope: 'rpc' },
+            { provide: Controller, scope: 'rpc' },
+        ]),
+    );
     kernel.registerController(Controller, 'myController');
 
     const client = new DirectClient(kernel);

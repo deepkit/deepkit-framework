@@ -7,13 +7,21 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { Pool } from 'mariadb';
-import { mySqlSerializer } from './mysql-serializer.js';
-import { isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, TypeNumberBrand } from '@deepkit/type';
+
 import { Column, DefaultPlatform, IndexModel, isSet } from '@deepkit/sql';
-import { MysqlSchemaParser } from './mysql-schema-parser.js';
+import {
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    Serializer,
+    TypeNumberBrand,
+    isUUIDType,
+} from '@deepkit/type';
+
 import { MySQLSQLFilterBuilder } from './filter-builder.js';
+import { MysqlSchemaParser } from './mysql-schema-parser.js';
+import { mySqlSerializer } from './mysql-serializer.js';
 
 export class MySQLPlatform extends DefaultPlatform {
     protected override defaultSqlType = 'longtext';
@@ -45,11 +53,29 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addType(ReflectionKind.bigint, 'bigint');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.integer, 'int');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.int8, 'tinyint');
-        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint8, 'tinyint', undefined, undefined, true);
+        this.addType(
+            type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint8,
+            'tinyint',
+            undefined,
+            undefined,
+            true,
+        );
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.int16, 'smallint');
-        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint16, 'smallint', undefined, undefined, true);
+        this.addType(
+            type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint16,
+            'smallint',
+            undefined,
+            undefined,
+            true,
+        );
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.int32, 'int');
-        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint32, 'int', undefined, undefined, true);
+        this.addType(
+            type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint32,
+            'int',
+            undefined,
+            undefined,
+            true,
+        );
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float32, 'float');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float64, 'double');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float, 'double');
@@ -62,7 +88,7 @@ export class MySQLPlatform extends DefaultPlatform {
     }
 
     override createSqlFilterBuilder(schema: ReflectionClass<any>, tableName: string): MySQLSQLFilterBuilder {
-        return new MySQLSQLFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this);
+        return new MySQLSQLFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy(), this);
     }
 
     supportsSelectFor(): boolean {

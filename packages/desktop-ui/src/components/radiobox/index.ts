@@ -7,20 +7,14 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { NgModule } from '@angular/core';
+
 import { RadioboxComponent } from './radiobox.component';
 
 export * from './radiobox.component';
 
 @NgModule({
-    declarations: [
-        RadioboxComponent
-    ],
-    exports: [
-        RadioboxComponent
-    ]
+    declarations: [RadioboxComponent],
+    exports: [RadioboxComponent],
 })
-export class DuiRadioboxModule {
-
-}
+export class DuiRadioboxModule {}

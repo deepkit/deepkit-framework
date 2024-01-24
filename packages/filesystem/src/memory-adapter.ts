@@ -1,17 +1,23 @@
 import { pathDirectory } from '@deepkit/core';
-import { FilesystemAdapter, FilesystemFile, FilesystemFileNotFound, FileVisibility, pathDirectories, Reporter } from './filesystem.js';
 
-export interface FilesystemMemoryAdapterOptions {
-}
+import {
+    FileVisibility,
+    FilesystemAdapter,
+    FilesystemFile,
+    FilesystemFileNotFound,
+    Reporter,
+    pathDirectories,
+} from './filesystem.js';
+
+export interface FilesystemMemoryAdapterOptions {}
 
 /**
  * In-memory filesystem adapter for testing purposes.
  */
 export class FilesystemMemoryAdapter implements FilesystemAdapter {
-    protected memory: { file: FilesystemFile, contents: Uint8Array }[] = [];
+    protected memory: { file: FilesystemFile; contents: Uint8Array }[] = [];
 
-    protected options: FilesystemMemoryAdapterOptions = {
-    };
+    protected options: FilesystemMemoryAdapterOptions = {};
 
     constructor(options: Partial<FilesystemMemoryAdapterOptions> = {}) {
         Object.assign(this.options, options);
@@ -26,8 +32,7 @@ export class FilesystemMemoryAdapter implements FilesystemAdapter {
     }
 
     async files(path: string): Promise<FilesystemFile[]> {
-        return this.memory.filter(file => file.file.directory === path)
-            .map(v => v.file);
+        return this.memory.filter(file => file.file.directory === path).map(v => v.file);
     }
 
     async makeDirectory(path: string, visibility: FileVisibility): Promise<void> {
@@ -39,23 +44,24 @@ export class FilesystemMemoryAdapter implements FilesystemAdapter {
             const file = new FilesystemFile(dir);
             file.type = 'directory';
             file.visibility = visibility;
-            this.memory.push({ file, contents: new Uint8Array });
+            this.memory.push({ file, contents: new Uint8Array() });
         }
     }
 
     async allFiles(path: string): Promise<FilesystemFile[]> {
-        return this.memory.filter(file => file.file.inDirectory(path))
-            .map(v => v.file);
+        return this.memory.filter(file => file.file.inDirectory(path)).map(v => v.file);
     }
 
     async directories(path: string): Promise<FilesystemFile[]> {
-        return this.memory.filter(file => file.file.directory === path)
+        return this.memory
+            .filter(file => file.file.directory === path)
             .filter(file => file.file.isDirectory())
             .map(v => v.file);
     }
 
     async allDirectories(path: string): Promise<FilesystemFile[]> {
-        return this.memory.filter(file => file.file.inDirectory(path))
+        return this.memory
+            .filter(file => file.file.inDirectory(path))
             .filter(file => file.file.isDirectory())
             .map(v => v.file);
     }
@@ -111,7 +117,10 @@ export class FilesystemMemoryAdapter implements FilesystemAdapter {
         let i = 0;
         for (const file of files) {
             const newPath = destination + file.file.path.slice(source.length);
-            this.memory.push({ file: new FilesystemFile(newPath), contents: file.contents });
+            this.memory.push({
+                file: new FilesystemFile(newPath),
+                contents: file.contents,
+            });
             reporter.progress(++i, files.length);
         }
     }

@@ -1,4 +1,5 @@
-import { jest, expect, test, beforeAll } from '@jest/globals';
+import { beforeAll, expect, jest, test } from '@jest/globals';
+
 import { Mutex, ProcessLock, ProcessLocker } from '../src/process-locker.js';
 
 jest.setTimeout(20000);
@@ -9,37 +10,36 @@ beforeAll(async () => {
     locker = new ProcessLocker();
 });
 
-
 test('test lock competing', async () => {
-    const started = +new Date;
+    const started = +new Date();
     const lock1 = await locker.acquireLock('test-lock1', 2);
 
     const lock2 = await locker.acquireLock('test-lock1', 1);
-    expect(+new Date - started).toBeGreaterThanOrEqual(2000);
+    expect(+new Date() - started).toBeGreaterThanOrEqual(2000);
 });
 
 test('test lock early release', async () => {
-    const started = +new Date;
+    const started = +new Date();
     const lock1 = await locker.acquireLock('test-early-lock1', 2);
     setTimeout(async () => {
         await lock1.unlock();
     }, 500);
 
     const lock2 = await locker.acquireLock('test-early-lock1', 1);
-    expect(+new Date - started).toBeLessThan(1000);
-    expect(+new Date - started).toBeGreaterThan(498);
+    expect(+new Date() - started).toBeLessThan(1000);
+    expect(+new Date() - started).toBeGreaterThan(498);
 });
 
 test('test lock timeout', async () => {
-    const started = +new Date;
+    const started = +new Date();
     const lock1 = await locker.acquireLock('test-early-lock2', 2);
     setTimeout(async () => {
         await lock1.unlock();
     }, 500);
 
     const lock2 = await locker.acquireLock('test-early-lock2', 1);
-    expect(+new Date - started).toBeLessThan(1000);
-    expect(+new Date - started).toBeGreaterThan(498);
+    expect(+new Date() - started).toBeLessThan(1000);
+    expect(+new Date() - started).toBeGreaterThan(498);
 });
 
 test('test lock timeout accum', async () => {
@@ -48,11 +48,11 @@ test('test lock timeout accum', async () => {
     // console.log('took', (Date.now() - start));
 
     const lock2 = await locker.acquireLock('test-timeout-lock1', 1);
-    console.log('took', (Date.now() - start));
+    console.log('took', Date.now() - start);
     expect((Date.now() - start) / 1000).toBeGreaterThan(0.9);
 
     const lock3 = await locker.acquireLock('test-timeout-lock1', 1);
-    console.log('took', (Date.now() - start));
+    console.log('took', Date.now() - start);
     expect((Date.now() - start) / 1000).toBeGreaterThan(1.9);
 });
 
@@ -78,7 +78,7 @@ test('test tryLock', async () => {
     expect(lock2).toBeUndefined();
     expect(await locker.isLocked('trylock')).toBe(true);
 
-    await new Promise((resolve) => {
+    await new Promise(resolve => {
         setTimeout(async () => {
             expect(await locker.isLocked('trylock')).toBe(false);
             const lock3 = await locker.tryLock('trylock', 1);
@@ -105,29 +105,35 @@ test('test tryLock', async () => {
 });
 
 test('mutex 1', async () => {
-    const mutex1 = new Mutex;
+    const mutex1 = new Mutex();
 
     let i = 0;
 
     const promises: Promise<void>[] = [];
 
-    promises.push(mutex1.lock().then(() => {
-        expect(i).toBe(0);
-        i++;
-        mutex1.unlock();
-    }));
+    promises.push(
+        mutex1.lock().then(() => {
+            expect(i).toBe(0);
+            i++;
+            mutex1.unlock();
+        }),
+    );
 
-    promises.push(mutex1.lock().then(() => {
-        expect(i).toBe(1);
-        i++;
-        mutex1.unlock();
-    }));
+    promises.push(
+        mutex1.lock().then(() => {
+            expect(i).toBe(1);
+            i++;
+            mutex1.unlock();
+        }),
+    );
 
-    promises.push(mutex1.lock().then(() => {
-        expect(i).toBe(2);
-        i++;
-        mutex1.unlock();
-    }));
+    promises.push(
+        mutex1.lock().then(() => {
+            expect(i).toBe(2);
+            i++;
+            mutex1.unlock();
+        }),
+    );
 
     await Promise.all(promises);
     expect(i).toBe(3);

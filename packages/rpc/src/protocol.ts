@@ -7,12 +7,18 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
+import {
+    Writer,
+    deserializeBSONWithoutOptimiser,
+    getBSONDeserializer,
+    getBSONSerializer,
+    getBSONSizer,
+} from '@deepkit/bson';
 import { ClassType } from '@deepkit/core';
-import { rpcChunk, rpcError, RpcTypes } from './model.js';
+import { ReceiveType, ReflectionClass, Type, deserialize, serialize, typeSettings } from '@deepkit/type';
+
+import { RpcTypes, rpcChunk, rpcError } from './model.js';
 import type { SingleProgress } from './writer.js';
-import { deserialize, ReceiveType, ReflectionClass, serialize, Type, typeSettings } from '@deepkit/type';
 
 export const enum RpcMessageRouteType {
     client = 0,
@@ -85,21 +91,25 @@ export class RpcMessage {
         public bodyOffset: number,
         public bodySize: number,
         public buffer?: Uint8Array,
-    ) {
-    }
+    ) {}
 
     debug() {
         return {
             type: this.type,
             id: this.id,
-            date: new Date,
+            date: new Date(),
             composite: this.composite,
             body: this.bodySize ? this.parseGenericBody() : undefined,
-            messages: this.composite ? this.getBodies().map(message => {
-                return {
-                    id: message.id, type: message.type, date: new Date, body: message.bodySize ? message.parseGenericBody() : undefined,
-                };
-            }) : [],
+            messages: this.composite
+                ? this.getBodies().map(message => {
+                      return {
+                          id: message.id,
+                          type: message.type,
+                          date: new Date(),
+                          body: message.bodySize ? message.parseGenericBody() : undefined,
+                      };
+                  })
+                : [],
         };
     }
 
@@ -110,7 +120,8 @@ export class RpcMessage {
 
     getPeerId(): string {
         if (!this.buffer) throw new Error('No buffer');
-        if (this.routeType !== RpcMessageRouteType.peer) throw new Error(`Message is not routed via peer, but ${this.routeType}`);
+        if (this.routeType !== RpcMessageRouteType.peer)
+            throw new Error(`Message is not routed via peer, but ${this.routeType}`);
         if (this.peerId) return this.peerId;
         this.peerId = '';
         for (let offset = 10 + 16, c: number = this.buffer[offset]; c !== 0; offset++, c = this.buffer[offset]) {
@@ -122,13 +133,15 @@ export class RpcMessage {
 
     getSource(): Uint8Array {
         if (!this.buffer) throw new Error('No buffer');
-        if (this.routeType !== RpcMessageRouteType.sourceDest && this.routeType !== RpcMessageRouteType.peer) throw new Error(`Message is not routed via sourceDest, but ${this.routeType}`);
+        if (this.routeType !== RpcMessageRouteType.sourceDest && this.routeType !== RpcMessageRouteType.peer)
+            throw new Error(`Message is not routed via sourceDest, but ${this.routeType}`);
         return this.buffer.slice(4 + 1 + 4 + 1, 4 + 1 + 4 + 1 + 16);
     }
 
     getDestination(): Uint8Array {
         if (!this.buffer) throw new Error('No buffer');
-        if (this.routeType !== RpcMessageRouteType.sourceDest) throw new Error(`Message is not routed via sourceDest, but ${this.routeType}`);
+        if (this.routeType !== RpcMessageRouteType.sourceDest)
+            throw new Error(`Message is not routed via sourceDest, but ${this.routeType}`);
         return this.buffer.slice(4 + 1 + 4 + 1 + 16, 4 + 1 + 4 + 1 + 16 + 16);
     }
 
@@ -198,7 +211,8 @@ export class ErroredRpcMessage extends RpcMessage {
 export function readRpcMessage(buffer: Uint8Array): RpcMessage {
     const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     const size = view.getUint32(0, true);
-    if (size !== buffer.byteLength) throw new Error(`Message buffer size wrong. Message size=${size}, buffer size=${buffer.byteLength}`);
+    if (size !== buffer.byteLength)
+        throw new Error(`Message buffer size wrong. Message size=${size}, buffer size=${buffer.byteLength}`);
 
     const id = view.getUint32(5, true);
 
@@ -207,7 +221,7 @@ export function readRpcMessage(buffer: Uint8Array): RpcMessage {
 
     if (routeType === RpcMessageRouteType.peer) {
         offset += 16; //<source>
-        while (buffer[offset++] !== 0) ; //feed until \0 byte
+        while (buffer[offset++] !== 0); //feed until \0 byte
     } else if (routeType === RpcMessageRouteType.sourceDest) {
         offset += 16 + 16; //uuid is each 16 bytes
     }
@@ -218,7 +232,10 @@ export function readRpcMessage(buffer: Uint8Array): RpcMessage {
     return new RpcMessage(id, composite, type, routeType, offset, size - offset, buffer);
 }
 
-export const createBuffer: (size: number) => Uint8Array = 'undefined' !== typeof Buffer && 'function' === typeof Buffer.allocUnsafe ? Buffer.allocUnsafe : (size) => new Uint8Array(size);
+export const createBuffer: (size: number) => Uint8Array =
+    'undefined' !== typeof Buffer && 'function' === typeof Buffer.allocUnsafe
+        ? Buffer.allocUnsafe
+        : size => new Uint8Array(size);
 
 export interface RpcCreateMessageDef<T> {
     type: number;
@@ -234,7 +251,8 @@ export function createRpcCompositeMessage<T>(
 ): Uint8Array {
     let bodySize = 0;
     for (const message of messages) {
-        bodySize += 4 + 1 + (message.schema && message.body ? getBSONSizer(undefined, message.schema)(message.body) : 0);
+        bodySize +=
+            4 + 1 + (message.schema && message.body ? getBSONSizer(undefined, message.schema)(message.body) : 0);
     }
 
     //<size> <version> <messageId> <routeType>[routeData] <isComposite> <type> <body...>
@@ -271,7 +289,8 @@ export function createRpcCompositeMessageSourceDest<T>(
 ): Uint8Array {
     let bodySize = 0;
     for (const message of messages) {
-        bodySize += 4 + 1 + (message.schema && message.body ? getBSONSizer(undefined, message.schema)(message.body) : 0);
+        bodySize +=
+            4 + 1 + (message.schema && message.body ? getBSONSizer(undefined, message.schema)(message.body) : 0);
     }
 
     //<size> <version> <messageId> <routeType>[routeData] <composite> <type> <body...>
@@ -304,7 +323,8 @@ export function createRpcCompositeMessageSourceDest<T>(
 }
 
 export function createRpcMessage<T>(
-    id: number, type: number,
+    id: number,
+    type: number,
     body?: T,
     routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client,
     schema?: ReceiveType<T>,
@@ -332,7 +352,8 @@ export function createRpcMessage<T>(
 }
 
 export function createRpcMessageForBody<T>(
-    id: number, type: number,
+    id: number,
+    type: number,
     body: Uint8Array,
     routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client,
 ): Uint8Array {
@@ -355,7 +376,8 @@ export function createRpcMessageForBody<T>(
 }
 
 export function createRpcMessagePeer<T>(
-    id: number, type: number,
+    id: number,
+    type: number,
     source: Uint8Array,
     peerId: string,
     body?: T,
@@ -385,7 +407,8 @@ export function createRpcMessagePeer<T>(
 }
 
 export function createRpcMessageSourceDest<T>(
-    id: number, type: number,
+    id: number,
+    type: number,
     source: Uint8Array,
     destination: Uint8Array,
     body?: T,
@@ -415,7 +438,8 @@ export function createRpcMessageSourceDest<T>(
 }
 
 export function createRpcMessageSourceDestForBody<T>(
-    id: number, type: number,
+    id: number,
+    type: number,
     source: Uint8Array,
     destination: Uint8Array,
     body: Uint8Array,
@@ -443,7 +467,7 @@ export function createRpcMessageSourceDestForBody<T>(
 }
 
 export class RpcMessageReader {
-    protected chunks = new Map<number, { loaded: number, buffers: Uint8Array[] }>();
+    protected chunks = new Map<number, { loaded: number; buffers: Uint8Array[] }>();
     protected progress = new Map<number, SingleProgress>();
     protected chunkAcks = new Map<number, Function>();
     protected bufferReader = new RpcBufferReader(this.gotMessage.bind(this));
@@ -451,8 +475,7 @@ export class RpcMessageReader {
     constructor(
         protected readonly onMessage: (response: RpcMessage) => void,
         protected readonly onChunk?: (id: number) => void,
-    ) {
-    }
+    ) {}
 
     public onChunkAck(id: number, callback: Function) {
         this.chunkAcks.set(id, callback);
@@ -512,17 +535,14 @@ export class RpcMessageReader {
 }
 
 export function readUint32LE(buffer: Uint8Array, offset: number = 0): number {
-    return buffer[offset] + (buffer[offset + 1] * 2 ** 8) + (buffer[offset + 2] * 2 ** 16) + (buffer[offset + 3] * 2 ** 24);
+    return buffer[offset] + buffer[offset + 1] * 2 ** 8 + buffer[offset + 2] * 2 ** 16 + buffer[offset + 3] * 2 ** 24;
 }
 
 export class RpcBufferReader {
     protected currentMessage?: Uint8Array;
     protected currentMessageSize: number = 0;
 
-    constructor(
-        protected readonly onMessage: (response: Uint8Array) => void,
-    ) {
-    }
+    constructor(protected readonly onMessage: (response: Uint8Array) => void) {}
 
     public emptyBuffer(): boolean {
         return this.currentMessage === undefined;
@@ -540,7 +560,10 @@ export class RpcBufferReader {
             this.currentMessage = data.byteLength === bytes ? data : data.slice(0, bytes);
             this.currentMessageSize = readUint32LE(data);
         } else {
-            this.currentMessage = Buffer.concat([this.currentMessage, data.byteLength === bytes ? data : data.slice(0, bytes)]);
+            this.currentMessage = Buffer.concat([
+                this.currentMessage,
+                data.byteLength === bytes ? data : data.slice(0, bytes),
+            ]);
             if (!this.currentMessageSize) {
                 if (this.currentMessage.byteLength < 4) {
                     //not enough data to read the header. Wait for next onData
@@ -626,8 +649,10 @@ export function rpcDecodeError(error: EncodedError): Error {
     if (error.classType) {
         const entity = typeSettings.registeredEntities[error.classType];
         if (!entity) {
-            throw new Error(`Could not find an entity named ${error.classType} for an error thrown. ` +
-                `Make sure the class is loaded and correctly defined using @entity.name(${JSON.stringify(error.classType)})`);
+            throw new Error(
+                `Could not find an entity named ${error.classType} for an error thrown. ` +
+                    `Make sure the class is loaded and correctly defined using @entity.name(${JSON.stringify(error.classType)})`,
+            );
         }
         const schema = ReflectionClass.from(entity);
         if (error.properties) {

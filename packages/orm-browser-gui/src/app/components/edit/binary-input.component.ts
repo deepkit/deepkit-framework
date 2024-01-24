@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
-import { FilePickerItem } from '@deepkit/desktop-ui';
+
 import { isArray } from '@deepkit/core';
+import { FilePickerItem } from '@deepkit/desktop-ui';
 import { ReflectionKind, Type } from '@deepkit/type';
 
 @Component({
@@ -8,7 +9,7 @@ import { ReflectionKind, Type } from '@deepkit/type';
         <dui-button duiFilePicker [duiFileAutoOpen]="true" (duiFilePickerChange)="chosen($event)">
             Choose file
         </dui-button>
-    `
+    `,
 })
 export class BinaryInputComponent implements OnInit, OnChanges {
     @Input() model: any;
@@ -24,16 +25,16 @@ export class BinaryInputComponent implements OnInit, OnChanges {
         const file = event[0];
         if (!file) return;
 
-        this.model = this.type.kind === ReflectionKind.class && this.type.classType === ArrayBuffer ? file.data.buffer : file.data;
+        this.model =
+            this.type.kind === ReflectionKind.class && this.type.classType === ArrayBuffer
+                ? file.data.buffer
+                : file.data;
         this.modelChange.emit(this.model);
 
         this.done.emit();
     }
 
-    ngOnChanges(): void {
-    }
+    ngOnChanges(): void {}
 
-    ngOnInit(): void {
-    }
-
+    ngOnInit(): void {}
 }

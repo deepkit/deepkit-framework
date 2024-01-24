@@ -1,15 +1,27 @@
-import { AfterViewInit, Directive, DoCheck, ElementRef, Inject, Input, OnChanges, OnInit, PLATFORM_ID, Renderer2 } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import {
+    AfterViewInit,
+    Directive,
+    DoCheck,
+    ElementRef,
+    Inject,
+    Input,
+    OnChanges,
+    OnInit,
+    PLATFORM_ID,
+    Renderer2,
+} from '@angular/core';
 //@ts-ignore
 import { highlight, languages } from 'prismjs';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-sql';
 import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-json';
-import { isPlatformBrowser } from '@angular/common';
+import 'prismjs/components/prism-sql';
+import 'prismjs/components/prism-typescript';
+
 import { removeIndent } from '../utils';
 
 @Directive({
-    selector: '[codeHighlight]'
+    selector: '[codeHighlight]',
 })
 export class CodeHighlightComponent implements OnInit, OnChanges, AfterViewInit, DoCheck {
     @Input() codeHighlight: string = 'typescript';
@@ -24,8 +36,7 @@ export class CodeHighlightComponent implements OnInit, OnChanges, AfterViewInit,
         protected elementRef: ElementRef<HTMLTextAreaElement | HTMLDivElement>,
         protected renderer: Renderer2,
         @Inject(PLATFORM_ID) protected platformId: any,
-    ) {
-    }
+    ) {}
 
     ngOnChanges(): void {
         this.render();
@@ -67,7 +78,11 @@ export class CodeHighlightComponent implements OnInit, OnChanges, AfterViewInit,
             this.renderer.addClass(this.pre, 'language-' + this.codeHighlight);
             this.renderer.setAttribute(this.pre, 'title', this.title || '');
 
-            this.renderer.insertBefore(this.elementRef.nativeElement.parentNode, this.pre, this.elementRef.nativeElement);
+            this.renderer.insertBefore(
+                this.elementRef.nativeElement.parentNode,
+                this.pre,
+                this.elementRef.nativeElement,
+            );
             const text = this.renderer.createText(this.code);
             this.renderer.appendChild(this.pre, text);
             this.renderer.removeChild(this.elementRef.nativeElement.parentNode, this.elementRef.nativeElement);
@@ -86,7 +101,11 @@ export class CodeHighlightComponent implements OnInit, OnChanges, AfterViewInit,
             this.renderer.setAttribute(this.pre, 'title', this.title || '');
             if (this.elementRef.nativeElement instanceof HTMLTextAreaElement) {
                 //the textarea is replaced with the pre element
-                this.renderer.insertBefore(this.elementRef.nativeElement.parentNode, this.pre, this.elementRef.nativeElement);
+                this.renderer.insertBefore(
+                    this.elementRef.nativeElement.parentNode,
+                    this.pre,
+                    this.elementRef.nativeElement,
+                );
                 this.renderer.removeChild(this.elementRef.nativeElement.parentNode, this.elementRef.nativeElement);
             } else {
                 this.renderer.appendChild(this.elementRef.nativeElement, this.pre);

@@ -1,34 +1,34 @@
 :host {
-    vertical-align: middle;
-    position: relative;
-    height: 17px;
-    line-height: 17px;
-    padding: 4px 7px;
-    font-weight: 500; //medium
-    color: #808080;
+  vertical-align: middle;
+  position: relative;
+  height: 17px;
+  line-height: 17px;
+  padding: 4px 7px;
+  font-weight: 500; //medium
+  color: #808080;
 
-    font-size: 11px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-align: center;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
 
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    cursor: default;
-    user-select: none;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  cursor: default;
+  user-select: none;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 
-    border-radius: 2px;
+  border-radius: 2px;
 }
 
 :host:hover {
-    color: white;
-    background-color: var(--dui-selection-hover);
+  color: white;
+  background-color: var(--dui-selection-hover);
 }
 
 :host.active {
-    color: white;
-    background-color: var(--dui-selection);
+  color: white;
+  background-color: var(--dui-selection);
 }

@@ -1,8 +1,7 @@
 /// <reference path="./src/elements.d.ts" />
-
-import { Attributes, createElement, Element, html } from './src/template.js';
-import { escape, escapeAttribute, safe, safeString } from './src/utils.js';
 import './src/optimize-tsx';
+import { Attributes, Element, createElement, html } from './src/template.js';
+import { escape, escapeAttribute, safe, safeString } from './src/utils.js';
 
 export { createElement, html } from './src/template.js';
 export { escape, escapeAttribute, safeString, safe } from './src/utils.js';

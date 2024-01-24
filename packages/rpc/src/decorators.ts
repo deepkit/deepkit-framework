@@ -7,16 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType } from '@deepkit/core';
 import {
     ClassDecoratorResult,
+    PropertyDecoratorResult,
     createClassDecoratorContext,
     createPropertyDecoratorContext,
     mergeDecorator,
-    PropertyDecoratorResult,
-    reflect
+    reflect,
 } from '@deepkit/type';
+
 import { ControllerDefinition } from './model.js';
 
 export class RpcController {
@@ -47,7 +47,7 @@ export class RpcAction {
 }
 
 class RpcClass {
-    t = new RpcController;
+    t = new RpcController();
 
     controller(nameOrDefinition?: string | ControllerDefinition<any>) {
         if ('string' === typeof nameOrDefinition) {
@@ -69,7 +69,7 @@ class RpcClass {
 export const rpcClass: ClassDecoratorResult<typeof RpcClass> = createClassDecoratorContext(RpcClass);
 
 class RpcProperty {
-    t = new RpcAction;
+    t = new RpcAction();
 
     onDecorator(classType: ClassType, property: string | undefined) {
         if (!property) return;
@@ -78,8 +78,7 @@ class RpcProperty {
         rpcClass.addAction(property!, this.t)(classType);
     }
 
-    action() {
-    }
+    action() {}
 
     category(name: string) {
         this.t.category = name;

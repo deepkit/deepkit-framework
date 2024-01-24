@@ -1,8 +1,9 @@
 import { expect, test } from '@jest/globals';
 import { Buffer } from 'buffer';
-import { ReflectionClass } from '../src/reflection/reflection.js';
-import { assertType, binaryTypes, ReflectionKind } from '../src/reflection/type.js';
+
 import { base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer } from '../src/core.js';
+import { ReflectionClass } from '../src/reflection/reflection.js';
+import { ReflectionKind, assertType, binaryTypes } from '../src/reflection/type.js';
 import { deserialize, serialize } from '../src/serializer-facade.js';
 
 test('mapping', async () => {
@@ -19,7 +20,7 @@ test('mapping', async () => {
     }
 
     const classSchema = ReflectionClass.from(Clazz);
-    const clazz = new Clazz;
+    const clazz = new Clazz();
     const json = serialize<Clazz>(clazz);
     const back = deserialize<Clazz>(json);
 
@@ -41,7 +42,10 @@ test('Int8Array', async () => {
     clazz.ints[0] = 'a'.charCodeAt(0);
     clazz.ints[1] = 'm'.charCodeAt(0);
 
-    expect(ReflectionClass.from(Clazz).getProperty('ints').type).toMatchObject({ kind: ReflectionKind.class, classType: Int8Array });
+    expect(ReflectionClass.from(Clazz).getProperty('ints').type).toMatchObject({
+        kind: ReflectionKind.class,
+        classType: Int8Array,
+    });
 
     const plain = serialize<Clazz>(clazz);
     expect(typeof plain.ints).toBe('string');
@@ -69,7 +73,10 @@ test('Float32Array', async () => {
     // expect(Buffer.from(clazz.floats).byteLength).toBe(Float32Array.BYTES_PER_ELEMENT * 2);
     expect(Buffer.from(clazz.floats.buffer).byteLength).toBe(Float32Array.BYTES_PER_ELEMENT * 2);
 
-    expect(ReflectionClass.from(Clazz).getProperty('floats').type).toMatchObject({ kind: ReflectionKind.class, classType: Float32Array });
+    expect(ReflectionClass.from(Clazz).getProperty('floats').type).toMatchObject({
+        kind: ReflectionKind.class,
+        classType: Float32Array,
+    });
 
     expect(typedArrayToBase64(clazz.floats)).toBe('AACAQ+Tqs0Y=');
     expect(base64ToArrayBuffer('AACAQ+Tqs0Y=').byteLength).toBe(8);
@@ -79,7 +86,6 @@ test('Float32Array', async () => {
     const plain = serialize<Clazz>(clazz);
     expect(typeof plain.floats).toBe('string');
     expect(plain.floats).toBe('AACAQ+Tqs0Y=');
-
 
     //this errors since Buffer.buffer is corrupt
     // expect(Buffer.from('ab').buffer.byteLength).toBe(2);
@@ -123,7 +129,10 @@ test('arrayBuffer', async () => {
     (clazz.ints as Int8Array)[0] = 1;
     (clazz.ints as Int8Array)[1] = 64;
 
-    expect(ReflectionClass.from(Clazz).getProperty('ints').type).toMatchObject({ kind: ReflectionKind.class, classType: ArrayBuffer });
+    expect(ReflectionClass.from(Clazz).getProperty('ints').type).toMatchObject({
+        kind: ReflectionKind.class,
+        classType: ArrayBuffer,
+    });
     expect(new Int8Array(clazz.ints!)[0]).toBe(1);
     expect(new Int8Array(clazz.ints!)[1]).toBe(64);
 

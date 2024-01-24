@@ -7,9 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { ReflectionClass } from '@deepkit/type';
 
 import { BaseResponse, Command } from './command.js';
-import { ReflectionClass } from '@deepkit/type';
 
 interface RequestSchema {
     dropIndexes: string;
@@ -20,7 +20,7 @@ interface RequestSchema {
 export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command {
     constructor(
         public schema: T,
-        public names: string[]
+        public names: string[],
     ) {
         super();
     }
@@ -29,7 +29,7 @@ export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command 
         const cmd: any = {
             dropIndexes: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
-            index: this.names
+            index: this.names,
         };
 
         // if (transaction) transaction.applyTransaction(cmd);

@@ -1,194 +1,195 @@
 :host {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
 }
 
 [hidden] {
-    display: none !important;
+  display: none !important;
 }
 
 .actions {
-    position: relative;
-    display: flex;
-    margin-bottom: 12px;
-    padding: 12px;
-    padding-bottom: 0;
+  position: relative;
+  display: flex;
+  margin-bottom: 12px;
+  padding: 12px;
+  padding-bottom: 0;
 }
 
 dui-table ::ng-deep .table-row.new > div {
-    background-color: rgba(255, 255, 0, 0.212);
+  background-color: rgba(255, 255, 0, 0.212);
 }
 
 .hidden {
-    display: none;
+  display: none;
 }
 
 .raw-table,
 .table {
-    border-top: 1px solid var(--line-color-light) !important;
+  border-top: 1px solid var(--line-color-light) !important;
 }
 
 .table {
-    position: relative;
-    flex: 1;
+  position: relative;
+  flex: 1;
 }
 
 dui-table {
-    height: 100%;
+  height: 100%;
 }
 
 .executing-progress {
-    position: absolute;
-    right: 5px;
-    top: calc(50% - 7px / 2);
-    opacity: 0;
-    transition: opacity 0.5s ease-in;
+  position: absolute;
+  right: 5px;
+  top: calc(50% - 7px / 2);
+  opacity: 0;
+  transition: opacity 0.5s ease-in;
 
-    &.visible {
-        opacity: 1;
-    }
+  &.visible {
+    opacity: 1;
+  }
 }
 
 .query {
-    .executing-progress {
-        top: 33px;
-        right: 14px;
-    }
+  .executing-progress {
+    top: 33px;
+    right: 14px;
+  }
 }
 
 .info {
-    display: flex;
-    height: 100%;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-grey);
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-grey);
 }
 
 .error {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--dui-window-content-bg-trans);
-    display: flex;
-    justify-content: center;
-    text-align: center;
-    padding-top: 30px;
-    overflow: auto;
-    z-index: 100;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--dui-window-content-bg-trans);
+  display: flex;
+  justify-content: center;
+  text-align: center;
+  padding-top: 30px;
+  overflow: auto;
+  z-index: 100;
 
-    .box {
-        margin: auto;
-        text-align: left;
-    }
+  .box {
+    margin: auto;
+    text-align: left;
+  }
 
-    h3 {
-        margin-bottom: 30px;
-    }
+  h3 {
+    margin-bottom: 30px;
+  }
 }
 
 .error-message {
-    color: var(--color-red);
-    white-space: pre;
+  color: var(--color-red);
+  white-space: pre;
 }
 
 .results-header-actions {
-    position: absolute;
-    right: 8px;
-    top: 8px;
-    height: 20px;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  height: 20px;
 }
 
 .query {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+
+  .result {
+    position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow: hidden;
+  }
 
-    .result {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        height: 100%;
+  .query-failed {
+    padding: 5px 15px;
+  }
+
+  .log {
+    flex: 1;
+    overflow: auto;
+    white-space: pre-wrap;
+
+    .log-entry {
+      padding: 2px 15px;
+
+      &:first-child {
+        border-top: 1px solid var(--line-color-light);
+      }
+
+      border-bottom: 1px solid var(--line-color-light);
     }
+  }
 
-    .query-failed {
-        padding: 5px 15px;
-    }
+  .results-header {
+    padding: 5px 15px;
+    font-size: 12px;
+    color: var(--text-grey);
+  }
 
-    .log {
-        flex: 1;
-        overflow: auto;
-        white-space: pre-wrap;
+  .result-tabs {
+    padding: 0 15px;
+    margin-bottom: 15px;
+  }
 
-        .log-entry {
-            padding: 2px 15px;
+  .input {
+    position: relative;
+    width: 100%;
+    min-height: 40px;
+    border-bottom: 1px solid var(--line-sidebar-light);
 
-            &:first-child {
-                border-top: 1px solid var(--line-color-light);
-            }
+    dui-input {
+      width: 100%;
+      padding: 4px;
+      height: 100%;
+      border: 0;
 
-            border-bottom: 1px solid var(--line-color-light);
-        }
-    }
-
-    .results-header {
-        padding: 5px 15px;
+      ::ng-deep textarea {
+        font-family: ui-monospace, Menlo, Monaco, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', 'Oxygen Mono',
+          'Ubuntu Monospace', 'Source Code Pro', 'Fira Mono', 'Droid Sans Mono', 'Courier New', monospace;
         font-size: 12px;
-        color: var(--text-grey);
+      }
     }
-
-    .result-tabs {
-        padding: 0 15px;
-        margin-bottom: 15px;
-    }
-
-    .input {
-        position: relative;
-        width: 100%;
-        min-height: 40px;
-        border-bottom: 1px solid var(--line-sidebar-light);
-
-        dui-input {
-            width: 100%;
-            padding: 4px;
-            height: 100%;
-            border: 0;
-
-            ::ng-deep textarea {
-                font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;
-                font-size: 12px;
-            }
-        }
-    }
+  }
 }
 
 .cell-body {
-    border: 1px solid transparent;
-    padding: 3px 5px;
-    height: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  border: 1px solid transparent;
+  padding: 3px 5px;
+  height: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .plain-result {
-    padding: 0 15px;
-    overflow: auto;
+  padding: 0 15px;
+  overflow: auto;
 }
 
 dui-table ::ng-deep .table-row > div:hover dui-icon.active {
-    display: inline-block;
+  display: inline-block;
 }
 
 dui-table ::ng-deep .table-row > div {
-    padding: 0 !important;
+  padding: 0 !important;
 }
 
 .search {
-    flex: 0;
-    max-height: 40%;
-    padding: 12px;
+  flex: 0;
+  max-height: 40%;
+  padding: 12px;
 }

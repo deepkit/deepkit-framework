@@ -14,7 +14,7 @@ export class CircularDependencyException<T> extends Error {
     }
 
     public getStart(): T {
-        return this.nodes[0]
+        return this.nodes[0];
     }
 
     public getEnd(): T {
@@ -23,7 +23,10 @@ export class CircularDependencyException<T> extends Error {
 }
 
 export class ElementNotFoundException<T> extends Error {
-    constructor(public readonly element: T, public readonly dependency: T) {
+    constructor(
+        public readonly element: T,
+        public readonly dependency: T,
+    ) {
         super('Element dependency not found');
     }
 }
@@ -31,8 +34,7 @@ export class ElementNotFoundException<T> extends Error {
 export abstract class BaseImplementation<T> {
     public circularInterceptor?: (items: T[]) => void;
 
-    constructor(public throwCircularDependency: boolean = true) {
-    }
+    constructor(public throwCircularDependency: boolean = true) {}
 
     protected throwCircularExceptionIfNeeded(element: T, parents: Set<T>) {
         if (!this.throwCircularDependency) return;

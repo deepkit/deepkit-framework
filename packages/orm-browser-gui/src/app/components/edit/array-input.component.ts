@@ -1,6 +1,8 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
-import { defaultValue, Type, TypeArray } from '@deepkit/type';
+
 import { isArray } from '@deepkit/core';
+import { Type, TypeArray, defaultValue } from '@deepkit/type';
+
 import { trackByIndex } from '../../utils';
 
 @Component({
@@ -8,8 +10,11 @@ import { trackByIndex } from '../../utils';
         <dui-dialog *ngIf="subType" [visible]="true" (closed)="done.emit()" [backDropCloses]="true">
             <ng-container *ngIf="model">
                 <div class="item" *ngFor="let item of model; trackBy: trackByIndex; let i = index">
-                    <orm-browser-property-editing [type]="subType" [(model)]="model[i]"
-                                                  (modelChange)="modelChange.emit(this.model)"></orm-browser-property-editing>
+                    <orm-browser-property-editing
+                        [type]="subType"
+                        [(model)]="model[i]"
+                        (modelChange)="modelChange.emit(this.model)"
+                    ></orm-browser-property-editing>
                     <dui-button icon="garbage" tight (click)="remove(i)"></dui-button>
                 </div>
             </ng-container>
@@ -18,20 +23,22 @@ import { trackByIndex } from '../../utils';
             </div>
         </dui-dialog>
     `,
-    styles: [`
-        .actions {
-            margin-top: 6px;
-        }
-        .item {
-            padding: 2px 0;
-            display: flex;
-        }
+    styles: [
+        `
+            .actions {
+                margin-top: 6px;
+            }
+            .item {
+                padding: 2px 0;
+                display: flex;
+            }
 
-        .item dui-button {
-            flex: 0;
-            margin-left: 3px;
-        }
-    `]
+            .item dui-button {
+                flex: 0;
+                margin-left: 3px;
+            }
+        `,
+    ],
 })
 export class ArrayInputComponent implements OnInit, OnChanges {
     trackByIndex = trackByIndex;

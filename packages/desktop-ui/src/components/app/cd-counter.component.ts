@@ -7,12 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { Component, Input } from '@angular/core';
 
 @Component({
     selector: 'dui-cd-counter',
-    template: `{{counter}}`
+    template: `{{ counter }}`,
 })
 export class CdCounterComponent {
     private i = 0;

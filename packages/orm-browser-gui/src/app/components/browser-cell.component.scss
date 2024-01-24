@@ -1,57 +1,57 @@
 .undefined,
 .null {
-    color: var(--text-light);
+  color: var(--text-light);
 }
 
 .cell-actions {
-    position: absolute;
-    right: 2px;
-    top: 2px;
+  position: absolute;
+  right: 2px;
+  top: 2px;
 
-    dui-icon {
-        background-color: var(--dui-window-content-bg);
-        border-radius: 20px;
-        display: none;
+  dui-icon {
+    background-color: var(--dui-window-content-bg);
+    border-radius: 20px;
+    display: none;
 
-        &:hover {
-            opacity: 1;
-        }
+    &:hover {
+      opacity: 1;
     }
+  }
 }
 
 .cell-body {
-    border: 1px solid transparent;
-    padding: 3px 5px;
-    height: 100%;
+  border: 1px solid transparent;
+  padding: 3px 5px;
+  height: 100%;
 
-    &.changed {
-        border-radius: 24px;
-        background-color: rgba(60, 255, 0, 0.212);
+  &.changed {
+    border-radius: 24px;
+    background-color: rgba(60, 255, 0, 0.212);
+  }
+
+  &.invalid {
+    border-radius: 24px;
+    border: 1px solid var(--color-red);
+  }
+
+  &.editing {
+    padding: 0;
+    padding-right: 5px;
+
+    overflow: hidden;
+    text-overflow: clip;
+
+    ::ng-deep {
+      > ng-component {
+        display: block;
+      }
+
+      > ng-component > *,
+      > * {
+        margin-right: 3px;
+        width: 100%;
+        height: 100%;
+      }
     }
-
-    &.invalid {
-        border-radius: 24px;
-        border: 1px solid var(--color-red);
-    }
-
-    &.editing {
-        padding: 0;
-        padding-right: 5px;
-
-        overflow: hidden;
-        text-overflow: clip;
-
-        ::ng-deep {
-            > ng-component {
-                display: block;
-            }
-
-            > ng-component > *,
-            > * {
-                margin-right: 3px;
-                width: 100%;
-                height: 100%;
-            }
-        }
-    }
+  }
 }

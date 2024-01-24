@@ -15,39 +15,29 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": [
-      "better-sqlite3"
-    ]
+    "types": ["better-sqlite3"],
   },
-  "reflection": [
-    "tests/**/*.ts"
-  ],
-  "include": [
-    "benchmarks",
-    "src",
-    "index.ts"
-  ],
-  "exclude": [
-    "tests"
-  ],
+  "reflection": ["tests/**/*.ts"],
+  "include": ["benchmarks", "src", "index.ts"],
+  "exclude": ["tests"],
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../orm/tsconfig.json"
+      "path": "../orm/tsconfig.json",
     },
     {
-      "path": "../orm-integration/tsconfig.json"
+      "path": "../orm-integration/tsconfig.json",
     },
     {
-      "path": "../sql/tsconfig.json"
+      "path": "../sql/tsconfig.json",
     },
     {
-      "path": "../stopwatch/tsconfig.json"
+      "path": "../stopwatch/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

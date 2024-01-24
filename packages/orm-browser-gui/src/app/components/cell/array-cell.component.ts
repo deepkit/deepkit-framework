@@ -1,17 +1,29 @@
-import { Component, ComponentFactoryResolver, ComponentRef, Input, OnChanges, OnInit, ViewContainerRef } from '@angular/core';
+import {
+    Component,
+    ComponentFactoryResolver,
+    ComponentRef,
+    Input,
+    OnChanges,
+    OnInit,
+    ViewContainerRef,
+} from '@angular/core';
+
 import { isArray } from '@deepkit/core';
 import { TypeArray } from '@deepkit/type';
+
 import { inputRegistry } from '../../registry';
 
 @Component({
     template: ``,
-    styles: [`
-        :host ::ng-deep ~ ng-component:not(:last-of-type)::after {
-            content: ',';
-        }
-    `]
+    styles: [
+        `
+            :host ::ng-deep ~ ng-component:not(:last-of-type)::after {
+                content: ',';
+            }
+        `,
+    ],
 })
-export class ArrayCellComponent implements OnChanges, OnInit  {
+export class ArrayCellComponent implements OnChanges, OnInit {
     @Input() model: any;
     @Input() type!: TypeArray;
 
@@ -19,9 +31,8 @@ export class ArrayCellComponent implements OnChanges, OnInit  {
 
     constructor(
         private containerRef: ViewContainerRef,
-        private resolver: ComponentFactoryResolver
-    ) {
-    }
+        private resolver: ComponentFactoryResolver,
+    ) {}
 
     ngOnChanges() {
         this.setLabel();

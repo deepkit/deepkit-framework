@@ -1,166 +1,166 @@
 :host {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
 }
 
 .main {
-    display: flex;
-    height: 100%;
-    overflow: hidden;
+  display: flex;
+  height: 100%;
+  overflow: hidden;
 }
 
 .clients {
-    .container {
-        padding: 5px 12px;
-    }
+  .container {
+    padding: 5px 12px;
+  }
 }
 
 .form {
-    flex: 0 0 50%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+  flex: 0 0 50%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 
-    .container {
-        flex: 1;
-        padding: 0 12px;
-    }
-
-    .method-container {
-        margin: 12px;
-        margin-bottom: 5px;
-    }
-
-    .method {
-        width: 100%;
-        overflow: hidden;
-
-        .name  {
-            height: 21px;
-            line-height: 21px;
-            display: flex;
-            align-items: center;
-            flex: 1;
-            max-width: 100%;
-            overflow: hidden;
-            padding: 0 5px;
-            border-left: 1px solid var(--line-color-light);
-            border-top: 1px solid var(--line-color-light);
-            border-bottom: 1px solid var(--line-color-light);
-
-            > div {
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-        }
-    }
-}
-
-.executions {
-    display: flex;
-    flex-direction: column;
-    border-left: 1px solid var(--line-color-light);
+  .container {
     flex: 1;
+    padding: 0 12px;
+  }
+
+  .method-container {
+    margin: 12px;
+    margin-bottom: 5px;
+  }
+
+  .method {
     width: 100%;
     overflow: hidden;
 
-    .list {
-        flex: 1;
-        padding: 0 10px;
-    }
+    .name {
+      height: 21px;
+      line-height: 21px;
+      display: flex;
+      align-items: center;
+      flex: 1;
+      max-width: 100%;
+      overflow: hidden;
+      padding: 0 5px;
+      border-left: 1px solid var(--line-color-light);
+      border-top: 1px solid var(--line-color-light);
+      border-bottom: 1px solid var(--line-color-light);
 
-    .execution {
-        margin-top: 6px;
-    }
-
-    .title-line {
-        display: flex;
-        align-items: center;
-        width: 100%;
+      > div {
         overflow: hidden;
-        border: 1px solid var(--line-color-light);
-        border-radius: 3px;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+}
 
-        dui-icon {
-            margin-left: 3px;
-        }
+.executions {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line-color-light);
+  flex: 1;
+  width: 100%;
+  overflow: hidden;
 
-        > dui-icon {
-            margin-right: 5px;
-        }
+  .list {
+    flex: 1;
+    padding: 0 10px;
+  }
 
-        .method {
-            padding: 3px 5px;
-            flex: 1;
-            max-height: 41px;
-            text-overflow: ellipsis;
-            overflow: hidden;
-            font-size: 12px;
-        }
+  .execution {
+    margin-top: 6px;
+  }
 
-        .status {
-            padding: 0 3px;
-            font-size: 11px;
-        }
+  .title-line {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--line-color-light);
+    border-radius: 3px;
 
-        .status-box {
-            border: 1px solid var(--color-green);
-            color: var(--color-green);
-            border-radius: 3px;
-            padding: 0px 5px;
-
-            &.red {
-                color: var(--color-red);
-                border: 1px solid var(--color-red);
-            }
-
-            &.orange {
-                color: var(--color-orange);
-                border: 1px solid var(--color-orange);
-            }
-        }
+    dui-icon {
+      margin-left: 3px;
     }
 
-    .result {
-        word-break: break-all;
-        overflow: hidden;
-        max-height: 80%;
-        padding: 5px;
-        background-color: var(--dui-window-header-bg);
-
-        .info {
-            font-size: 12px;
-            margin-bottom: 5px;
-            color: var(--text-light);
-        }
+    > dui-icon {
+      margin-right: 5px;
     }
+
+    .method {
+      padding: 3px 5px;
+      flex: 1;
+      max-height: 41px;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      font-size: 12px;
+    }
+
+    .status {
+      padding: 0 3px;
+      font-size: 11px;
+    }
+
+    .status-box {
+      border: 1px solid var(--color-green);
+      color: var(--color-green);
+      border-radius: 3px;
+      padding: 0px 5px;
+
+      &.red {
+        color: var(--color-red);
+        border: 1px solid var(--color-red);
+      }
+
+      &.orange {
+        color: var(--color-orange);
+        border: 1px solid var(--color-orange);
+      }
+    }
+  }
+
+  .result {
+    word-break: break-all;
+    overflow: hidden;
+    max-height: 80%;
+    padding: 5px;
+    background-color: var(--dui-window-header-bg);
+
+    .info {
+      font-size: 12px;
+      margin-bottom: 5px;
+      color: var(--text-light);
+    }
+  }
 }
 
 .subscription {
-    border: 1px solid var(--line-color-light);
-    border-radius: 3px;
-    margin: 5px 0;
-    padding: 3px;
+  border: 1px solid var(--line-color-light);
+  border-radius: 3px;
+  margin: 5px 0;
+  padding: 3px;
 
-    .header {
-        font-size: 12px;
-        color: var(--text-light);
-    }
+  .header {
+    font-size: 12px;
+    color: var(--text-light);
+  }
 }
 
 .ts .code {
-    font-size: 12px;
+  font-size: 12px;
 }
 
 .connection-status {
-    position: relative;
-    top: 1px;
-    font-size: 11px;
-    color: var(--text-light);
+  position: relative;
+  top: 1px;
+  font-size: 11px;
+  color: var(--text-light);
 }
 
 .signature {
-    opacity: 0.5;
+  opacity: 0.5;
 }

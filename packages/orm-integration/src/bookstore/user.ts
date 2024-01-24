@@ -1,11 +1,12 @@
-import { AutoIncrement, BackReference, entity, PrimaryKey, Reference } from '@deepkit/type';
-import { UserCredentials } from './user-credentials.js';
+import { AutoIncrement, BackReference, PrimaryKey, Reference, entity } from '@deepkit/type';
+
 import { Group } from './group.js';
+import { UserCredentials } from './user-credentials.js';
 
 @entity.name('user')
 export class User {
     public id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+    created: Date = new Date();
 
     firstName: string = '';
     lastName: string = '';
@@ -18,10 +19,9 @@ export class User {
 
     credentials?: UserCredentials & BackReference;
 
-    groups: Group[] & BackReference<{via: typeof UserGroup}> = [];
+    groups: Group[] & BackReference<{ via: typeof UserGroup }> = [];
 
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
 
 @entity.name('user-group')
@@ -31,6 +31,5 @@ export class UserGroup {
     constructor(
         public user: User & Reference,
         public group: Group & Reference,
-    ) {
-    }
+    ) {}
 }

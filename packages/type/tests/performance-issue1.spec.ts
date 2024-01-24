@@ -8,14 +8,26 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { test } from '@jest/globals';
-import { AbstractClassType, arrayRemoveItem, ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction, urlJoin } from '@deepkit/core';
+import { IncomingMessage, ServerResponse } from 'http';
+import querystring from 'querystring';
+import { Writable } from 'stream';
+
+import {
+    AbstractClassType,
+    ClassType,
+    CompilerContext,
+    CustomError,
+    arrayRemoveItem,
+    getClassName,
+    isClass,
+    isFunction,
+    urlJoin,
+} from '@deepkit/core';
+
+import { entity } from '../src/decorator.js';
 import { isExtendable } from '../src/reflection/extends.js';
 import { ReceiveType, reflect, resolveReceiveType } from '../src/reflection/reflection.js';
-import { isType, metaAnnotation, ReflectionKind, Type } from '../src/reflection/type.js';
-import { IncomingMessage, ServerResponse } from 'http';
-import { Writable } from 'stream';
-import querystring from 'querystring';
-import { entity } from '../src/decorator.js';
+import { ReflectionKind, Type, isType, metaAnnotation } from '../src/reflection/type.js';
 import { SerializationOptions, Serializer } from '../src/serializer.js';
 
 export interface ProviderBase {
@@ -26,7 +38,16 @@ export interface ProviderBase {
     transient?: true;
 }
 
-export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | InjectorToken<T> | AbstractClassType<T> | Type;
+export type Token<T = any> =
+    | symbol
+    | number
+    | bigint
+    | RegExp
+    | boolean
+    | string
+    | InjectorToken<T>
+    | AbstractClassType<T>
+    | Type;
 
 export function provide<T>(provider: Omit<ProviderProvide, 'provide'> | ClassType, type?: ReceiveType<T>): Provider {
     if (isClass(provider)) return { provide: resolveReceiveType(type), useClass: provider };
@@ -90,7 +111,13 @@ export interface FactoryProvider<T> extends ProviderBase {
     deps?: any[];
 }
 
-export type Provider<T = any> = ClassType | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T> | TagProvider<T>;
+export type Provider<T = any> =
+    | ClassType
+    | ValueProvider<T>
+    | ClassProvider<T>
+    | ExistingProvider<T>
+    | FactoryProvider<T>
+    | TagProvider<T>;
 
 export type ProviderProvide<T = any> = ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>;
 
@@ -100,10 +127,7 @@ interface TagRegistryEntry<T> {
 }
 
 export class TagRegistry {
-    constructor(
-        public tags: TagRegistryEntry<any>[] = []
-    ) {
-    }
+    constructor(public tags: TagRegistryEntry<any>[] = []) {}
 
     register(tagProvider: TagProvider<any>, module: InjectorModule) {
         return this.tags.push({ tagProvider, module });
@@ -118,28 +142,26 @@ export class TagProvider<T> {
     constructor(
         public provider: NormalizedProvider<T>,
         public tag: Tag<T>,
-    ) {
-    }
+    ) {}
 }
 
 export class Tag<T, TP extends TagProvider<T> = TagProvider<T>> {
     _!: () => T;
     _2!: () => TP;
 
-    constructor(
-        public readonly services: T[] = []
-    ) {
-    }
+    constructor(public readonly services: T[] = []) {}
 
     protected createTagProvider(provider: NormalizedProvider<any>): TP {
         return new TagProvider(provider, this) as TP;
     }
 
-    static provide<P extends ClassType<T> | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>,
+    static provide<
+        P extends ClassType<T> | ValueProvider<T> | ClassProvider<T> | ExistingProvider<T> | FactoryProvider<T>,
         T extends ReturnType<InstanceType<B>['_']>,
         TP extends ReturnType<InstanceType<B>['_2']>,
-        B extends ClassType<Tag<any>>>(this: B, provider: P): TP {
-        const t = new this;
+        B extends ClassType<Tag<any>>,
+    >(this: B, provider: P): TP {
+        const t = new this();
 
         if (isClass(provider)) {
             return t.createTagProvider({ provide: provider }) as TP;
@@ -187,10 +209,7 @@ export function isTransient(provider: ProviderWithScope): boolean {
     return provider.transient === true;
 }
 
-export function getProviders(
-    providers: ProviderWithScope[],
-    requestScope: 'module' | 'session' | 'request' | string,
-) {
+export function getProviders(providers: ProviderWithScope[], requestScope: 'module' | 'session' | 'request' | string) {
     const result: Provider<any>[] = [];
 
     function normalize(provider: ProviderWithScope<any>): Provider<any> {
@@ -221,26 +240,34 @@ export function getProviders(
     return result;
 }
 
-
-export type ConfigureProvider<T> = { [name in keyof T]: T[name] extends (...args: infer A) => any ? (...args: A) => ConfigureProvider<T> : T[name] };
+export type ConfigureProvider<T> = {
+    [name in keyof T]: T[name] extends (...args: infer A) => any ? (...args: A) => ConfigureProvider<T> : T[name];
+};
 
 /**
  * Returns a configuration object that reflects the API of the given ClassType or token. Each call
  * is scheduled and executed once the provider has been created by the dependency injection container.
  */
-export function setupProvider<T extends ClassType<T> | any>(classTypeOrToken: Token<T>, registry: SetupProviderRegistry, order: number): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
-    const proxy = new Proxy({}, {
-        get(target, prop) {
-            return (...args: any[]) => {
-                registry.add(classTypeOrToken, { type: 'call', methodName: prop, args: args, order });
-                return proxy;
-            };
+export function setupProvider<T extends ClassType<T> | any>(
+    classTypeOrToken: Token<T>,
+    registry: SetupProviderRegistry,
+    order: number,
+): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
+    const proxy = new Proxy(
+        {},
+        {
+            get(target, prop) {
+                return (...args: any[]) => {
+                    registry.add(classTypeOrToken, { type: 'call', methodName: prop, args: args, order });
+                    return proxy;
+                };
+            },
+            set(target, prop, value) {
+                registry.add(classTypeOrToken, { type: 'property', property: prop, value: value, order });
+                return true;
+            },
         },
-        set(target, prop, value) {
-            registry.add(classTypeOrToken, { type: 'property', property: prop, value: value, order });
-            return true;
-        }
-    });
+    );
 
     return proxy as any;
 }
@@ -274,7 +301,12 @@ export interface PreparedProvider {
     resolveFrom?: InjectorModule;
 }
 
-function registerPreparedProvider(map: Map<Token<any>, PreparedProvider>, modules: InjectorModule[], providers: NormalizedProvider[], replaceExistingScope: boolean = true) {
+function registerPreparedProvider(
+    map: Map<Token<any>, PreparedProvider>,
+    modules: InjectorModule[],
+    providers: NormalizedProvider[],
+    replaceExistingScope: boolean = true,
+) {
     const token = providers[0].provide;
     const preparedProvider = map.get(token);
     if (preparedProvider) {
@@ -312,7 +344,10 @@ export function findModuleForConfig(config: ClassType, modules: InjectorModule[]
 export type ExportType = Token | InjectorModule;
 
 export function isProvided(providers: ProviderWithScope[], token: any): boolean {
-    return providers.find(v => !(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false) !== undefined;
+    return (
+        providers.find(v => (!(v instanceof TagProvider) ? token === (isClass(v) ? v : v.provide) : false)) !==
+        undefined
+    );
 }
 
 export function getScope(provider: ProviderWithScope): string {
@@ -332,8 +367,8 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
      */
     injector?: Injector;
 
-    public setupProviderRegistry: SetupProviderRegistry = new SetupProviderRegistry;
-    public globalSetupProviderRegistry: SetupProviderRegistry = new SetupProviderRegistry;
+    public setupProviderRegistry: SetupProviderRegistry = new SetupProviderRegistry();
+    public globalSetupProviderRegistry: SetupProviderRegistry = new SetupProviderRegistry();
 
     imports: InjectorModule[] = [];
 
@@ -351,7 +386,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         public providers: ProviderWithScope[] = [],
         public parent?: InjectorModule,
         public config: C = {} as C,
-        public exports: ExportType[] = []
+        public exports: ExportType[] = [],
     ) {
         if (this.parent) this.parent.registerAsChildren(this);
     }
@@ -397,7 +432,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
 
     setConfigDefinition(config: ClassType): this {
         this.configDefinition = config;
-        const configDefaults = new config;
+        const configDefaults = new config();
         this.config = Object.assign(configDefaults, this.config);
         return this;
     }
@@ -417,7 +452,9 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
 
     protected assertInjectorNotBuilt(): void {
         if (!this.injector) return;
-        throw new Error(`Injector already built for ${getClassName(this)}. Can not modify its provider or tree structure.`);
+        throw new Error(
+            `Injector already built for ${getClassName(this)}. Can not modify its provider or tree structure.`,
+        );
     }
 
     addExport(...controller: ClassType[]): this {
@@ -472,7 +509,9 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
     getImportedModule<T extends InjectorModule>(module: T): T {
         const v = this.getImports().find(v => v.id === module.id);
         if (!v) {
-            throw new Error(`No module ${getClassName(module)}#${module.id} in ${getClassName(this)}#${this.id} imported.`);
+            throw new Error(
+                `No module ${getClassName(module)}#${module.id} in ${getClassName(this)}#${this.id} imported.`,
+            );
         }
         return v as T;
     }
@@ -520,7 +559,10 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
      * Returns a object that reflects the API of the given ClassType or token. Each call
      * is scheduled and executed once the provider is created by the dependency injection container.
      */
-    setupProvider<T extends ClassType<T> | any>(classTypeOrToken: Token<T>, order: number = 0): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
+    setupProvider<T extends ClassType<T> | any>(
+        classTypeOrToken: Token<T>,
+        order: number = 0,
+    ): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
         return setupProvider(classTypeOrToken, this.setupProviderRegistry, order);
     }
 
@@ -531,7 +573,10 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
      * Returns a object that reflects the API of the given ClassType or token. Each call
      * is scheduled and executed once the provider is created by the dependency injection container.
      */
-    setupGlobalProvider<T extends ClassType<T> | any>(classTypeOrToken: Token<T>, order: number = 0): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
+    setupGlobalProvider<T extends ClassType<T> | any>(
+        classTypeOrToken: Token<T>,
+        order: number = 0,
+    ): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
         return setupProvider(classTypeOrToken, this.globalSetupProviderRegistry, order);
     }
 
@@ -556,11 +601,11 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
 
     protected preparedProviders?: Map<Token, PreparedProvider>;
 
-    getPreparedProvider(token: Token): { token: Token, provider: PreparedProvider } | undefined {
+    getPreparedProvider(token: Token): { token: Token; provider: PreparedProvider } | undefined {
         if (!this.preparedProviders) return;
 
         if (isType(token)) {
-            let last = undefined as { token: Token, provider: PreparedProvider } | undefined;
+            let last = undefined as { token: Token; provider: PreparedProvider } | undefined;
             for (const [key, value] of this.preparedProviders.entries()) {
                 if (isType(key) && isExtendable(key, token)) last = { token: key, provider: value };
             }
@@ -623,8 +668,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
 
     protected exported: boolean = false;
 
-    protected handleExports(buildContext: BuildContext) {
-    }
+    protected handleExports(buildContext: BuildContext) {}
 
     findRoot(): InjectorModule {
         if (this.parent) return this.parent.findRoot();
@@ -632,25 +676,22 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
     }
 }
 
+export class CircularDependencyError extends CustomError {}
 
-export class CircularDependencyError extends CustomError {
-}
+export class TokenNotFoundError extends CustomError {}
 
-export class TokenNotFoundError extends CustomError {
-}
-
-export class DependenciesUnmetError extends CustomError {
-}
+export class DependenciesUnmetError extends CustomError {}
 
 export class InjectorReference {
-    constructor(public readonly to: any, public module?: InjectorModule) {
-    }
+    constructor(
+        public readonly to: any,
+        public module?: InjectorModule,
+    ) {}
 }
 
 export function injectorReference<T>(classTypeOrToken: T, module?: InjectorModule): any {
     return new InjectorReference(classTypeOrToken, module);
 }
-
 
 /**
  * An injector token for tokens that have no unique class or interface.
@@ -675,8 +716,7 @@ export function injectorReference<T>(classTypeOrToken: T, module?: InjectorModul
 export class InjectorToken<T> {
     type!: T;
 
-    constructor(public readonly name: string) {
-    }
+    constructor(public readonly name: string) {}
 
     toString() {
         return 'InjectToken=' + this.name;
@@ -699,13 +739,13 @@ function constructorParameterNotFound(ofName: string, name: string, position: nu
     argsCheck.push('?');
 
     throw new DependenciesUnmetError(
-        `Unknown constructor argument '${name}: ${tokenLabel(token)}' of ${ofName}(${argsCheck.join(', ')}). Make sure '${tokenLabel(token)}' is provided.`
+        `Unknown constructor argument '${name}: ${tokenLabel(token)}' of ${ofName}(${argsCheck.join(', ')}). Make sure '${tokenLabel(token)}' is provided.`,
     );
 }
 
 function tokenNotfoundError(token: any, moduleName: string) {
     throw new TokenNotFoundError(
-        `Token '${tokenLabel(token)}' in ${moduleName} not found. Make sure '${tokenLabel(token)}' is provided.`
+        `Token '${tokenLabel(token)}' in ${moduleName} not found. Make sure '${tokenLabel(token)}' is provided.`,
     );
 }
 
@@ -716,17 +756,16 @@ function factoryDependencyNotFound(ofName: string, name: string, position: numbe
 
     for (const reset of CircularDetectorResets) reset();
     throw new DependenciesUnmetError(
-        `Unknown factory dependency argument '${tokenLabel(token)}' of ${ofName}(${argsCheck.join(', ')}). Make sure '${tokenLabel(token)}' is provided.`
+        `Unknown factory dependency argument '${tokenLabel(token)}' of ${ofName}(${argsCheck.join(', ')}). Make sure '${tokenLabel(token)}' is provided.`,
     );
 }
 
 function propertyParameterNotFound(ofName: string, name: string, position: number, token: any) {
     for (const reset of CircularDetectorResets) reset();
     throw new DependenciesUnmetError(
-        `Unknown property parameter ${name} of ${ofName}. Make sure '${tokenLabel(token)}' is provided.`
+        `Unknown property parameter ${name} of ${ofName}. Make sure '${tokenLabel(token)}' is provided.`,
     );
 }
-
 
 let CircularDetector: any[] = [];
 let CircularDetectorResets: (() => void)[] = [];
@@ -738,12 +777,15 @@ function throwCircularDependency() {
     throw new CircularDependencyError(`Circular dependency found ${path}`);
 }
 
-export type SetupProviderCalls = {
-        type: 'call', methodName: string | symbol | number, args: any[], order: number
-    }
-    | { type: 'property', property: string | symbol | number, value: any, order: number }
-    | { type: 'stop', order: number }
-    ;
+export type SetupProviderCalls =
+    | {
+          type: 'call';
+          methodName: string | symbol | number;
+          args: any[];
+          order: number;
+      }
+    | { type: 'property'; property: string | symbol | number; value: any; order: number }
+    | { type: 'stop'; order: number };
 
 export class SetupProviderRegistry {
     public calls = new Map<Token, SetupProviderCalls[]>();
@@ -824,11 +866,11 @@ export class Injector implements InjectorInterface {
     }
 
     static from(providers: ProviderWithScope[], parent?: Injector): Injector {
-        return new Injector(new InjectorModule(providers, parent?.module), new BuildContext);
+        return new Injector(new InjectorModule(providers, parent?.module), new BuildContext());
     }
 
     static fromModule(module: InjectorModule, parent?: Injector): Injector {
-        return new Injector(module, new BuildContext);
+        return new Injector(module, new BuildContext());
     }
 
     get<T>(token: T, scope?: Scope): ResolveToken<T> {
@@ -850,8 +892,7 @@ export class Injector implements InjectorInterface {
         this.instances = {};
     }
 
-    protected build(buildContext: BuildContext): void {
-    }
+    protected build(buildContext: BuildContext): void {}
 
     protected buildProvider(
         buildContext: BuildContext,
@@ -870,22 +911,22 @@ export class Injector implements InjectorInterface {
         resolvedName: string,
         compiler: CompilerContext,
         classType: ClassType,
-        resolveDependenciesFrom: InjectorModule[]
-    ): { code: string, dependencies: number } {
+        resolveDependenciesFrom: InjectorModule[],
+    ): { code: string; dependencies: number } {
         return {
             code: ``,
-            dependencies: 0
+            dependencies: 0,
         };
     }
 
     protected createFactoryProperty(
-        options: { name: string, type: Type, optional: boolean },
+        options: { name: string; type: Type; optional: boolean },
         fromProvider: NormalizedProvider,
         compiler: CompilerContext,
         resolveDependenciesFrom: InjectorModule[],
         ofName: string,
         argPosition: number,
-        notFoundFunction: string
+        notFoundFunction: string,
     ): string {
         return '';
     }
@@ -902,14 +943,14 @@ class BuildProviderIndex {
 export class BuildContext {
     static ids: number = 0;
     public id: number = BuildContext.ids++;
-    tagRegistry: TagRegistry = new TagRegistry;
-    providerIndex: BuildProviderIndex = new BuildProviderIndex;
+    tagRegistry: TagRegistry = new TagRegistry();
+    providerIndex: BuildProviderIndex = new BuildProviderIndex();
 
     /**
      * In the process of preparing providers, each module redirects their
      * global setup calls in this registry.
      */
-    globalSetupProviderRegistry: SetupProviderRegistry = new SetupProviderRegistry;
+    globalSetupProviderRegistry: SetupProviderRegistry = new SetupProviderRegistry();
 }
 
 /**
@@ -921,16 +962,18 @@ export class InjectorContext {
     constructor(
         public rootModule: InjectorModule,
         public readonly scope?: Scope,
-        protected buildContext: BuildContext = new BuildContext,
-    ) {
-    }
+        protected buildContext: BuildContext = new BuildContext(),
+    ) {}
 
     get<T>(token: T | Token, module?: InjectorModule): ResolveToken<T> {
         return this.getInjector(module || this.rootModule).get(token, this.scope) as ResolveToken<T>;
     }
 
     instantiationCount(token: Token, module?: InjectorModule, scope?: string): number {
-        return this.getInjector(module || this.rootModule).instantiationCount(token, this.scope ? this.scope.name : scope);
+        return this.getInjector(module || this.rootModule).instantiationCount(
+            token,
+            this.scope ? this.scope.name : scope,
+        );
     }
 
     set<T>(token: T, value: any, module?: InjectorModule): void {
@@ -1002,8 +1045,8 @@ export type HttpRequestQuery = { [name: string]: string };
 export type HttpRequestResolvedParameters = { [name: string]: any };
 
 export type HttpBody<T> = T & { __meta?: never & ['httpBody'] };
-export type HttpQuery<T, Options extends {name?: string} = {}> = T & { __meta?: never & ['httpQuery', Options] };
-export type HttpQueries<T, Options extends {name?: string} = {}> = T & { __meta?: never & ['httpQueries', Options] };
+export type HttpQuery<T, Options extends { name?: string } = {}> = T & { __meta?: never & ['httpQuery', Options] };
+export type HttpQueries<T, Options extends { name?: string } = {}> = T & { __meta?: never & ['httpQueries', Options] };
 
 export class RequestBuilder {
     protected contentBuffer: Buffer = Buffer.alloc(0);
@@ -1013,8 +1056,7 @@ export class RequestBuilder {
     constructor(
         protected path: string,
         protected method: string = 'GET',
-    ) {
-    }
+    ) {}
 
     getUrl() {
         if (this.queryPath) {
@@ -1031,12 +1073,11 @@ export class RequestBuilder {
 
         const writable = new Writable({
             write(chunk, encoding, callback) {
-                -
-                    callback();
+                -callback();
             },
             writev(chunks, callback) {
                 callback();
-            }
+            },
         });
         const request = new (class extends HttpRequest {
             url = url;
@@ -1146,7 +1187,7 @@ export class HttpRequest extends IncomingMessage {
     }
 }
 
-export type RouteParameterResolverForInjector = ((injector: InjectorContext) => any[] | Promise<any[]>);
+export type RouteParameterResolverForInjector = (injector: InjectorContext) => any[] | Promise<any[]>;
 
 export interface RouteControllerAction {
     //if not set, the root module is used
@@ -1217,7 +1258,7 @@ export class RouteConfig {
     public baseUrl: string = '';
     public parameterRegularExpressions: { [name: string]: any } = {};
 
-    public responses: { statusCode: number, description: string, type?: Type }[] = [];
+    public responses: { statusCode: number; description: string; type?: Type }[] = [];
 
     public description: string = '';
     public groups: string[] = [];
@@ -1238,7 +1279,7 @@ export class RouteConfig {
 
     resolverForToken: Map<any, ClassType> = new Map();
 
-    middlewares: { config: HttpMiddlewareConfig, module: InjectorModule<any> }[] = [];
+    middlewares: { config: HttpMiddlewareConfig; module: InjectorModule<any> }[] = [];
 
     resolverForParameterName: Map<string, ClassType> = new Map();
 
@@ -1248,7 +1289,7 @@ export class RouteConfig {
     data = new Map<any, any>();
 
     public parameters: {
-        [name: string]: RouteParameterConfig
+        [name: string]: RouteParameterConfig;
     } = {};
 
     constructor(
@@ -1257,8 +1298,7 @@ export class RouteConfig {
         public readonly path: string,
         public readonly action: RouteControllerAction,
         public internal: boolean = false,
-    ) {
-    }
+    ) {}
 
     getSchemaForResponse(statusCode: number): Type | undefined {
         if (!this.responses.length) return;
@@ -1279,15 +1319,14 @@ interface ResolvedController {
     parameters: RouteParameterResolverForInjector;
     routeConfig: RouteConfig;
     uploadedFiles: { [name: string]: UploadedFile };
-    middlewares?: (injector: InjectorContext) => { fn: HttpMiddlewareFn, timeout: number }[];
+    middlewares?: (injector: InjectorContext) => { fn: HttpMiddlewareFn; timeout: number }[];
 }
 
 export class HttpControllers {
-    constructor(public readonly controllers: {controller: ClassType, module: InjectorModule<any>}[] = []) {
-    }
+    constructor(public readonly controllers: { controller: ClassType; module: InjectorModule<any> }[] = []) {}
 
     public add(controller: ClassType, module: InjectorModule<any>) {
-        this.controllers.push({controller, module});
+        this.controllers.push({ controller, module });
     }
 }
 
@@ -1295,7 +1334,7 @@ export interface MiddlewareConfig {
     getClassTypes(): ClassType[];
 }
 
-export type MiddlewareRegistryEntry = { config: MiddlewareConfig, module: InjectorModule<any> };
+export type MiddlewareRegistryEntry = { config: MiddlewareConfig; module: InjectorModule<any> };
 
 export class MiddlewareRegistry {
     public readonly configs: MiddlewareRegistryEntry[] = [];
@@ -1311,9 +1350,8 @@ export class Router {
         controllers: HttpControllers,
         // private logger: Logger,
         tagRegistry: TagRegistry,
-        private middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry,
-    ) {
-    }
+        private middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry(),
+    ) {}
 
     getRoutes(): RouteConfig[] {
         return this.routes;
@@ -1327,14 +1365,11 @@ export class Router {
         return '';
     }
 
-    public addRoute(routeConfig: RouteConfig) {
-    }
+    public addRoute(routeConfig: RouteConfig) {}
 
-    public addRouteForController(controller: ClassType, module: InjectorModule<any>) {
-    }
+    public addRouteForController(controller: ClassType, module: InjectorModule<any>) {}
 
-    protected buildUrlResolver(): any {
-    }
+    protected buildUrlResolver(): any {}
 
     public resolveUrl(routeName: string, parameters: { [name: string]: any } = {}): string {
         return '';

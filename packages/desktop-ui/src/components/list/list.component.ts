@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import {
     ChangeDetectorRef,
     Component,
@@ -23,30 +22,28 @@ import {
     Optional,
     Output,
     SimpleChanges,
-    SkipSelf
+    SkipSelf,
 } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, UrlTree } from '@angular/router';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { Subscription } from 'rxjs';
+
 import { arrayRemoveItem } from '@deepkit/core';
+
+import { ValueAccessorBase, ngValueAccessor } from '../../core/form';
 import { isRouteActive } from '../../core/utils';
 
 @Component({
     selector: 'dui-list-title',
-    template: `
-        <ng-content></ng-content>`,
-    styleUrls: ['./list-title.component.scss']
+    template: ` <ng-content></ng-content>`,
+    styleUrls: ['./list-title.component.scss'],
 })
 export class ListTitleComponent {
-    constructor() {
-    }
+    constructor() {}
 }
 
 @Component({
     selector: 'dui-list',
-    template: `
-        <ng-content></ng-content>
-    `,
+    template: ` <ng-content></ng-content> `,
     styleUrls: ['./list.component.scss'],
     host: {
         '[class.white]': 'white !== false',
@@ -54,7 +51,7 @@ export class ListTitleComponent {
         '[class.focusable]': 'focusable',
         '[class.delimiter-line]': 'delimiterLine !== false',
     },
-    providers: [ngValueAccessor(ListComponent)]
+    providers: [ngValueAccessor(ListComponent)],
 })
 @Injectable()
 export class ListComponent extends ValueAccessorBase<any> {
@@ -114,7 +111,7 @@ export class ListComponent extends ValueAccessorBase<any> {
 
         if (event.key === 'ArrowUp') {
             event.preventDefault();
-            const selectedItem = this.getSelectedItem()
+            const selectedItem = this.getSelectedItem();
             if (selectedItem) {
                 const items = this.getSortedList();
                 const position = items.indexOf(selectedItem);
@@ -139,15 +136,13 @@ export class ListComponent extends ValueAccessorBase<any> {
 
 @Component({
     selector: 'dui-list-item',
-    template: `
-        <ng-content></ng-content>
-    `,
+    template: ` <ng-content></ng-content> `,
     host: {
         '[class.selected]': 'isSelected()',
         '[attr.list-id]': 'list.id',
         '[attr.list-item-id]': 'id',
     },
-    styleUrls: ['./list-item.component.scss']
+    styleUrls: ['./list-item.component.scss'],
 })
 export class ListItemComponent implements OnChanges, OnDestroy {
     static ids: number = 0;
@@ -173,7 +168,7 @@ export class ListItemComponent implements OnChanges, OnDestroy {
         public element: ElementRef,
         @SkipSelf() public cd: ChangeDetectorRef,
         @Optional() public router?: Router,
-        @Optional() activatedRoute?: ActivatedRoute
+        @Optional() activatedRoute?: ActivatedRoute,
     ) {
         this.element.nativeElement.removeAttribute('tabindex');
         list.register(this);
@@ -181,7 +176,7 @@ export class ListItemComponent implements OnChanges, OnDestroy {
             this.cd.detectChanges();
         });
         if (this.router) {
-            this.routerSub = this.router.events.subscribe((event) => {
+            this.routerSub = this.router.events.subscribe(event => {
                 if (event instanceof NavigationEnd) {
                     this.cd.detectChanges();
                 }

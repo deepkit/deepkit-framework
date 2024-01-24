@@ -1,11 +1,12 @@
 import { expect, test } from '@jest/globals';
-import { GroupArraySort } from '../src/group-array-sort.js';
-import { CircularDependencyException, ElementNotFoundException } from '../src/base.js';
-import { bench } from './utils.js';
 import { fail } from 'assert';
 
+import { CircularDependencyException, ElementNotFoundException } from '../src/base.js';
+import { GroupArraySort } from '../src/group-array-sort.js';
+import { bench } from './utils.js';
+
 function getElementsGroup(count: number) {
-    const elements = new Map<{ item: any, type: string }, any[]>();
+    const elements = new Map<{ item: any; type: string }, any[]>();
     for (let i = 0; i < count / 3; i++) {
         elements.set({ item: 'car' + i, type: 'car' }, ['brand' + i]);
         elements.set({ item: 'owner' + i, type: 'owner' }, ['brand' + i, 'car' + i]);
@@ -93,7 +94,6 @@ test('dependency in same with activated sameTypeGrouping', () => {
         { type: 'car', items: ['car2'] },
     ]);
 });
-
 
 test('dependency in same with activated sameTypeGrouping more complex', () => {
     const sorter = new GroupArraySort();

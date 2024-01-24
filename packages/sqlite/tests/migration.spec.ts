@@ -1,8 +1,10 @@
 import { expect, test } from '@jest/globals';
-import { schemaMigrationRoundTrip } from '@deepkit/sql';
-import { AutoIncrement, Entity, integer, PrimaryKey, Reference, SQLite, typeOf, Unique } from '@deepkit/type';
-import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter.js';
+
 import { DatabaseEntityRegistry } from '@deepkit/orm';
+import { schemaMigrationRoundTrip } from '@deepkit/sql';
+import { AutoIncrement, Entity, PrimaryKey, Reference, SQLite, Unique, integer, typeOf } from '@deepkit/type';
+
+import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter.js';
 
 test('custom type', async () => {
     interface Post extends Entity<{ name: 'post' }> {
@@ -29,12 +31,12 @@ test('custom type', async () => {
 test('default expression', async () => {
     class post {
         id: number & AutoIncrement & PrimaryKey = 0;
-        str: string & SQLite<{ type: 'VARCHAR(255)', default: 'abc' }> = '';
+        str: string & SQLite<{ type: 'VARCHAR(255)'; default: 'abc' }> = '';
         no: number & SQLite<{ default: 34.5 }> = 3;
-        json: any & SQLite<{ default: {a: true} }> = {};
-        jsonAuto: any = {a: true};
-        created: Date & SQLite<{ defaultExpr: `(datetime('now','localtime'))` }> = new Date;
-        createdAuto: Date = new Date; //this is detected as datetime('now')
+        json: any & SQLite<{ default: { a: true } }> = {};
+        jsonAuto: any = { a: true };
+        created: Date & SQLite<{ defaultExpr: `(datetime('now','localtime'))` }> = new Date();
+        createdAuto: Date = new Date(); //this is detected as datetime('now')
         opt?: boolean;
     }
 
@@ -43,8 +45,8 @@ test('default expression', async () => {
 
     expect(postTable.getColumn('str').defaultValue).toBe('abc');
     expect(postTable.getColumn('no').defaultValue).toBe(34.5);
-    expect(postTable.getColumn('json').defaultValue).toEqual({a: true});
-    expect(postTable.getColumn('jsonAuto').defaultValue).toEqual({a: true});
+    expect(postTable.getColumn('json').defaultValue).toEqual({ a: true });
+    expect(postTable.getColumn('jsonAuto').defaultValue).toEqual({ a: true });
     expect(postTable.getColumn('created').defaultExpression).toBe(`(datetime('now','localtime'))`);
     expect(postTable.getColumn('createdAuto').defaultExpression).toBe(`(datetime('now'))`);
 
@@ -61,11 +63,11 @@ interface User extends Entity<{ name: 'user' }> {
 
 interface Post extends Entity<{ name: 'post' }> {
     id: number & AutoIncrement & PrimaryKey;
-    user: User & Reference,
-    created: Date,
-    slag: string & Unique,
-    title: string,
-    content: string,
+    user: User & Reference;
+    created: Date;
+    slag: string & Unique;
+    title: string;
+    content: string;
 }
 
 test('sqlite', async () => {

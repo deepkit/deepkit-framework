@@ -7,33 +7,50 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
-import { WindowSidebarComponent } from './window-sidebar.component';
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    EventEmitter,
+    Input,
+    OnChanges,
+    Output,
+    SimpleChanges,
+    ViewChild,
+} from '@angular/core';
 import { Subject } from 'rxjs';
-import { WindowState } from './window-state';
+
 import { triggerResize } from '../../core/utils';
+import { WindowSidebarComponent } from './window-sidebar.component';
+import { WindowState } from './window-state';
 
 @Component({
     selector: 'dui-window-content',
     template: `
         <div class="top-line"></div>
 
-        <div class="content {{class}}" #content>
+        <div class="content {{ class }}" #content>
             <ng-content></ng-content>
         </div>
 
-        <div class="sidebar"
-             (transitionend)="transitionEnded()"
-             #sidebar *ngIf="toolbar" [class.hidden]="!sidebarVisible " [class.with-animation]="withAnimation"
-             [style.width.px]="getSidebarWidth()">
+        <div
+            class="sidebar"
+            (transitionend)="transitionEnded()"
+            #sidebar
+            *ngIf="toolbar"
+            [class.hidden]="!sidebarVisible"
+            [class.with-animation]="withAnimation"
+            [style.width.px]="getSidebarWidth()"
+        >
             <div class="hider">
-                <div class="sidebar-container overlay-scrollbar-small"
-                     [style.width.px]="getSidebarWidth()"
-                     [style.maxWidth.px]="getSidebarWidth()"
-                     #sidebarContainer>
-                    <ng-container [ngTemplateOutlet]="toolbar!.template"
-                                  [ngTemplateOutletContext]="{}"></ng-container>
+                <div
+                    class="sidebar-container overlay-scrollbar-small"
+                    [style.width.px]="getSidebarWidth()"
+                    [style.maxWidth.px]="getSidebarWidth()"
+                    #sidebarContainer
+                >
+                    <ng-container [ngTemplateOutlet]="toolbar!.template" [ngTemplateOutletContext]="{}"></ng-container>
                 </div>
             </div>
             <dui-splitter position="right" (modelChange)="sidebarWidth = $event; sidebarMoved()"></dui-splitter>
@@ -59,9 +76,12 @@ export class WindowContentComponent implements OnChanges, AfterViewInit {
 
     toolbar?: WindowSidebarComponent;
 
-    @ViewChild('sidebar', { static: false }) public sidebar?: ElementRef<HTMLElement>;
-    @ViewChild('sidebarContainer', { static: false }) public sidebarContainer?: ElementRef<HTMLElement>;
-    @ViewChild('content', { static: true }) public content?: ElementRef<HTMLElement>;
+    @ViewChild('sidebar', { static: false })
+    public sidebar?: ElementRef<HTMLElement>;
+    @ViewChild('sidebarContainer', { static: false })
+    public sidebarContainer?: ElementRef<HTMLElement>;
+    @ViewChild('content', { static: true })
+    public content?: ElementRef<HTMLElement>;
 
     withAnimation: boolean = false;
     public readonly sidebarVisibleChanged = new Subject();
@@ -69,8 +89,7 @@ export class WindowContentComponent implements OnChanges, AfterViewInit {
     constructor(
         private windowState: WindowState,
         public cd: ChangeDetectorRef,
-    ) {
-    }
+    ) {}
 
     getSidebarWidth(): number {
         return Math.min(this.sidebarMaxWidth, Math.max(this.sidebarMinWidth, this.sidebarWidth));

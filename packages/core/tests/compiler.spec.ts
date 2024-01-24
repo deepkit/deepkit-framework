@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+
 import { CompilerContext } from '../src/compiler.js';
 
 test('compiler', () => {
@@ -18,7 +19,6 @@ test('compiler', () => {
     expect(compiler.reserveVariable('a', 'bar')).toBe('a_11');
     expect(compiler.reserveVariable('a', 'bar')).toBe('a_12');
     expect(compiler.reserveVariable('a', 'bar')).toBe('a_13');
-
 
     expect(compiler.reserveVariable('a')).toBe('_context.a_14');
 });

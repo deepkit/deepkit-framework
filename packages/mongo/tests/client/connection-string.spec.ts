@@ -1,23 +1,24 @@
-import {expect, test} from '@jest/globals';
-import {MongoClientConfig} from '../../src/client/config.js';
+import { expect, test } from '@jest/globals';
+
+import { MongoClientConfig } from '../../src/client/config.js';
 
 test('connection string basic', async () => {
     {
         const config = new MongoClientConfig('mongodb://localhost');
         expect(config.defaultDb).toBe('');
-        expect(await config.getHosts()).toMatchObject([{hostname: 'localhost', port: 27017}]);
+        expect(await config.getHosts()).toMatchObject([{ hostname: 'localhost', port: 27017 }]);
     }
 
     {
         const config = new MongoClientConfig('mongodb://localhost/defaultDb');
         expect(config.defaultDb).toBe('defaultDb');
-        expect(await config.getHosts()).toMatchObject([{hostname: 'localhost', port: 27017}]);
+        expect(await config.getHosts()).toMatchObject([{ hostname: 'localhost', port: 27017 }]);
     }
 
     {
         const config = new MongoClientConfig('mongodb://localhost/defaultDb?connectTimeoutMS=1233');
         expect(config.defaultDb).toBe('defaultDb');
-        expect(await config.getHosts()).toMatchObject([{hostname: 'localhost', port: 27017}]);
+        expect(await config.getHosts()).toMatchObject([{ hostname: 'localhost', port: 27017 }]);
     }
 });
 
@@ -29,7 +30,6 @@ test('connection string password', async () => {
         expect(config.authPassword).toBe('D1fficultP@ssw0rd');
     }
 });
-
 
 test('connection string options', async () => {
     {
@@ -50,18 +50,18 @@ test('connection string basic, replica set', async () => {
         const config = new MongoClientConfig('mongodb://localhost,127.0.0.1,mongo.com:26655');
         expect(config.defaultDb).toBe('');
         expect(await config.getHosts()).toMatchObject([
-            {hostname: 'localhost', port: 27017},
-            {hostname: '127.0.0.1', port: 27017},
-            {hostname: 'mongo.com', port: 26655},
+            { hostname: 'localhost', port: 27017 },
+            { hostname: '127.0.0.1', port: 27017 },
+            { hostname: 'mongo.com', port: 26655 },
         ]);
     }
     {
         const config = new MongoClientConfig('mongodb://localhost:26622,127.0.0.1,mongo.com:26655/defaultDb');
         expect(config.defaultDb).toBe('defaultDb');
         expect(await config.getHosts()).toMatchObject([
-            {hostname: 'localhost', port: 26622},
-            {hostname: '127.0.0.1', port: 27017},
-            {hostname: 'mongo.com', port: 26655},
+            { hostname: 'localhost', port: 26622 },
+            { hostname: '127.0.0.1', port: 27017 },
+            { hostname: 'mongo.com', port: 26655 },
         ]);
     }
 });

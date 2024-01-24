@@ -7,24 +7,24 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { toFastProperties } from '@deepkit/core';
-import { BaseResponse, Command } from './command.js';
-import { getTypeJitContainer, InlineRuntimeType, isType, ReflectionClass, Type, typeOf, UUID } from '@deepkit/type';
+import { InlineRuntimeType, ReflectionClass, Type, UUID, getTypeJitContainer, isType, typeOf } from '@deepkit/type';
+
 import { MongoError } from '../error.js';
+import { BaseResponse, Command } from './command.js';
 import { GetMoreMessage } from './getMore.js';
 
 interface AggregateMessage {
     aggregate: string;
     $db: string;
-    pipeline: any[],
+    pipeline: any[];
     cursor: {
-        batchSize: number,
-    },
-    lsid?: { id: UUID },
-    txnNumber?: number,
-    startTransaction?: boolean,
-    autocommit?: boolean,
+        batchSize: number;
+    };
+    lsid?: { id: UUID };
+    txnNumber?: number;
+    startTransaction?: boolean;
+    autocommit?: boolean;
 }
 
 export class AggregateCommand<T, R = BaseResponse> extends Command {
@@ -45,8 +45,8 @@ export class AggregateCommand<T, R = BaseResponse> extends Command {
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             pipeline: this.pipeline,
             cursor: {
-                batchSize: this.batchSize
-            }
+                batchSize: this.batchSize,
+            },
         };
 
         if (transaction) transaction.applyTransaction(cmd);
@@ -66,7 +66,7 @@ export class AggregateCommand<T, R = BaseResponse> extends Command {
                         id: number;
                         firstBatch?: Array<Partial<resultSchema>>;
                         nextBatch?: Array<Partial<resultSchema>>;
-                    },
+                    };
                 }
 
                 jit.mdbAggregatePartial = specialisedResponse = typeOf<SpecialisedResponse>();
@@ -76,7 +76,7 @@ export class AggregateCommand<T, R = BaseResponse> extends Command {
                         id: number;
                         firstBatch?: Array<resultSchema>;
                         nextBatch?: Array<resultSchema>;
-                    },
+                    };
                 }
 
                 jit.mdbAggregate = specialisedResponse = typeOf<SpecialisedResponse>();
@@ -85,7 +85,7 @@ export class AggregateCommand<T, R = BaseResponse> extends Command {
         }
 
         interface Response extends BaseResponse {
-            cursor: { id: bigint, firstBatch?: any[], nextBatch?: any[] };
+            cursor: { id: bigint; firstBatch?: any[]; nextBatch?: any[] };
         }
 
         const res = await this.sendAndWait<AggregateMessage, Response>(cmd, undefined, specialisedResponse);

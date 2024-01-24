@@ -7,24 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { Pool, PoolConfig, PoolConnection, UpsertResult, createPool } from 'mariadb';
 
-import { createPool, Pool, PoolConfig, PoolConnection, UpsertResult } from 'mariadb';
-import {
-    asAliasName,
-    DefaultPlatform,
-    prepareBatchUpdate,
-    splitDotPath,
-    SqlBuilder,
-    SQLConnection,
-    SQLConnectionPool,
-    SQLDatabaseAdapter,
-    SQLDatabaseQuery,
-    SQLDatabaseQueryFactory,
-    SQLPersistence,
-    SQLQueryModel,
-    SQLQueryResolver,
-    SQLStatement
-} from '@deepkit/sql';
+import { AbstractClassType, ClassType, asyncOperation, empty, isArray } from '@deepkit/core';
 import {
     DatabaseLogger,
     DatabasePersistenceChangeSet,
@@ -33,13 +18,36 @@ import {
     DeleteResult,
     OrmEntity,
     PatchResult,
+    UniqueConstraintFailure,
     primaryKeyObjectConverter,
-    UniqueConstraintFailure
 } from '@deepkit/orm';
-import { MySQLPlatform } from './mysql-platform.js';
-import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
-import { AbstractClassType, asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
+import {
+    DefaultPlatform,
+    SQLConnection,
+    SQLConnectionPool,
+    SQLDatabaseAdapter,
+    SQLDatabaseQuery,
+    SQLDatabaseQueryFactory,
+    SQLPersistence,
+    SQLQueryModel,
+    SQLQueryResolver,
+    SQLStatement,
+    SqlBuilder,
+    asAliasName,
+    prepareBatchUpdate,
+    splitDotPath,
+} from '@deepkit/sql';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import {
+    Changes,
+    ReceiveType,
+    ReflectionClass,
+    getPatchSerializeFunction,
+    getSerializeFunction,
+    resolvePath,
+} from '@deepkit/type';
+
+import { MySQLPlatform } from './mysql-platform.js';
 
 function handleError(error: Error | string): void {
     const message = 'string' === typeof error ? error : error.message;
@@ -50,7 +58,12 @@ function handleError(error: Error | string): void {
 }
 
 export class MySQLStatement extends SQLStatement {
-    constructor(protected logger: DatabaseLogger, protected sql: string, protected connection: PoolConnection, protected stopwatch?: Stopwatch) {
+    constructor(
+        protected logger: DatabaseLogger,
+        protected sql: string,
+        protected connection: PoolConnection,
+        protected stopwatch?: Stopwatch,
+    ) {
         super();
     }
 
@@ -94,8 +107,7 @@ export class MySQLStatement extends SQLStatement {
         }
     }
 
-    release() {
-    }
+    release() {}
 }
 
 export class MySQLConnection extends SQLConnection {
@@ -199,7 +211,11 @@ export class MySQLConnectionPool extends SQLConnectionPool {
         super();
     }
 
-    async getConnection(logger?: DatabaseLogger, transaction?: MySQLDatabaseTransaction, stopwatch?: Stopwatch): Promise<MySQLConnection> {
+    async getConnection(
+        logger?: DatabaseLogger,
+        transaction?: MySQLDatabaseTransaction,
+        stopwatch?: Stopwatch,
+    ): Promise<MySQLConnection> {
         //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
         //and only release the connection when the transaction is commit/rollback is executed.
 
@@ -231,11 +247,18 @@ export class MySQLConnectionPool extends SQLConnectionPool {
 }
 
 export class MySQLPersistence extends SQLPersistence {
-    constructor(protected platform: DefaultPlatform, public connectionPool: MySQLConnectionPool, session: DatabaseSession<any>) {
+    constructor(
+        protected platform: DefaultPlatform,
+        public connectionPool: MySQLConnectionPool,
+        session: DatabaseSession<any>,
+    ) {
         super(platform, connectionPool, session);
     }
 
-    async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+    async batchUpdate<T extends OrmEntity>(
+        classSchema: ReflectionClass<T>,
+        changeSets: DatabasePersistenceChangeSet<T>[],
+    ): Promise<void> {
         const prepared = prepareBatchUpdate(this.platform, classSchema, changeSets, { setNamesWithTableName: true });
         if (!prepared) return;
 
@@ -254,10 +277,18 @@ export class MySQLPersistence extends SQLPersistence {
         for (let i = 0; i < changeSets.length; i++) {
             params.push(prepared.primaryKeys[i]);
             let pkValue = placeholderStrategy.getPlaceholder();
-            valuesValues.push('ROW(' + pkValue + ',' + prepared.changedFields.map(name => {
-                params.push(prepared.values[name][i]);
-                return placeholderStrategy.getPlaceholder();
-            }).join(',') + ')');
+            valuesValues.push(
+                'ROW(' +
+                    pkValue +
+                    ',' +
+                    prepared.changedFields
+                        .map(name => {
+                            params.push(prepared.values[name][i]);
+                            return placeholderStrategy.getPlaceholder();
+                        })
+                        .join(',') +
+                    ')',
+            );
         }
 
         for (let i = 0; i < changeSets.length; i++) {
@@ -347,7 +378,8 @@ export class MySQLPersistence extends SQLPersistence {
         if (!autoIncrement) return;
         const connection = await this.getConnection(); //will automatically be released in SQLPersistence
 
-        if (!connection.lastExecResult || !connection.lastExecResult.length) throw new Error('No lastBatchResult found');
+        if (!connection.lastExecResult || !connection.lastExecResult.length)
+            throw new Error('No lastBatchResult found');
 
         //MySQL returns the _first_ auto-incremented value for a batch insert.
         //It's guaranteed to increment always by one (expect if the user provides a manual auto-increment value in between, which should be forbidden).
@@ -365,13 +397,20 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         const primaryKey = this.classSchema.getPrimary();
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
-        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(
+            this.classSchema,
+            this.platform.serializer.deserializeRegistry,
+        );
 
         const sqlBuilder = new SqlBuilder(this.platform);
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const select = sqlBuilder.select(this.classSchema, model, { select: [`${tableName}.${pkField}`] });
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(
+            this.session.logger,
+            this.session.assignedTransaction,
+            this.session.stopwatch,
+        );
         try {
             const sql = `
                 WITH _ AS (${select.sql})
@@ -396,47 +435,72 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
         const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimary();
-        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(
+            this.classSchema,
+            this.platform.serializer.deserializeRegistry,
+        );
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
-        const patchSerialize = getPatchSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
-        const $set = changes.$set ? patchSerialize(changes.$set, undefined, {normalizeArrayIndex: true}) : undefined;
+        const patchSerialize = getPatchSerializeFunction(
+            this.classSchema.type,
+            this.platform.serializer.serializeRegistry,
+        );
+        const $set = changes.$set ? patchSerialize(changes.$set, undefined, { normalizeArrayIndex: true }) : undefined;
 
-        if ($set) for (const i in $set) {
-            if (!$set.hasOwnProperty(i)) continue;
-            fieldsSet[i] = 1;
-            select.push(`? as ${this.platform.quoteIdentifier(asAliasName(i))}`);
-            selectParams.push($set[i]);
-        }
+        if ($set)
+            for (const i in $set) {
+                if (!$set.hasOwnProperty(i)) continue;
+                fieldsSet[i] = 1;
+                select.push(`? as ${this.platform.quoteIdentifier(asAliasName(i))}`);
+                selectParams.push($set[i]);
+            }
 
-        if (changes.$unset) for (const i in changes.$unset) {
-            if (!changes.$unset.hasOwnProperty(i)) continue;
-            fieldsSet[i] = 1;
-            select.push(`NULL as ${this.platform.quoteIdentifier(asAliasName(i))}`);
-        }
+        if (changes.$unset)
+            for (const i in changes.$unset) {
+                if (!changes.$unset.hasOwnProperty(i)) continue;
+                fieldsSet[i] = 1;
+                select.push(`NULL as ${this.platform.quoteIdentifier(asAliasName(i))}`);
+            }
 
         for (const i of model.returning) {
-            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.deserializeRegistry) };
+            aggregateFields[i] = {
+                converted: getSerializeFunction(
+                    resolvePath(i, this.classSchema.type),
+                    this.platform.serializer.deserializeRegistry,
+                ),
+            };
             select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(asAliasName(i))}`);
         }
 
-        if (changes.$inc) for (const i in changes.$inc) {
-            if (!changes.$inc.hasOwnProperty(i)) continue;
-            fieldsSet[i] = 1;
-            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
-            select.push(`(${this.platform.getColumnAccessor('', i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`);
-        }
+        if (changes.$inc)
+            for (const i in changes.$inc) {
+                if (!changes.$inc.hasOwnProperty(i)) continue;
+                fieldsSet[i] = 1;
+                aggregateFields[i] = {
+                    converted: getSerializeFunction(
+                        resolvePath(i, this.classSchema.type),
+                        this.platform.serializer.serializeRegistry,
+                    ),
+                };
+                select.push(
+                    `(${this.platform.getColumnAccessor('', i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`,
+                );
+            }
 
         const set: string[] = [];
         for (const i in fieldsSet) {
             if (i.includes('.')) {
                 let [firstPart, secondPart] = splitDotPath(i);
                 if (!secondPart.startsWith('[')) secondPart = '.' + secondPart;
-                set.push(`_target.${this.platform.quoteIdentifier(firstPart)} = json_set(${this.platform.quoteIdentifier(firstPart)}, '$${secondPart}', b.${this.platform.quoteIdentifier(asAliasName(i))})`);
+                set.push(
+                    `_target.${this.platform.quoteIdentifier(firstPart)} = json_set(${this.platform.quoteIdentifier(firstPart)}, '$${secondPart}', b.${this.platform.quoteIdentifier(asAliasName(i))})`,
+                );
             } else {
-                set.push(`_target.${this.platform.quoteIdentifier(i)} = b.${this.platform.quoteIdentifier(asAliasName(i))}`);
+                set.push(
+                    `_target.${this.platform.quoteIdentifier(i)} = b.${this.platform.quoteIdentifier(asAliasName(i))}`,
+                );
             }
         }
 
@@ -479,7 +543,11 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
             ${selectVarsSQL}
         `;
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(
+            this.session.logger,
+            this.session.assignedTransaction,
+            this.session.stopwatch,
+        );
         try {
             const result = await connection.execAndReturnAll(sql, params);
             const packet = result[0];
@@ -490,22 +558,31 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
             }
 
             for (const i in aggregateFields) {
-                patchResult.returning[i] = (JSON.parse(returning['@_f_' + asAliasName(i)]) as any[]).map(aggregateFields[i].converted);
+                patchResult.returning[i] = (JSON.parse(returning['@_f_' + asAliasName(i)]) as any[]).map(
+                    aggregateFields[i].converted,
+                );
             }
-
         } finally {
             connection.release();
         }
     }
 }
 
-export class MySQLDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T> {
-}
+export class MySQLDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T> {}
 
 export class MySQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
-    createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): MySQLDatabaseQuery<T> {
-        return new MySQLDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
-            new MySQLQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession)
+    createQuery<T extends OrmEntity>(
+        type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>,
+    ): MySQLDatabaseQuery<T> {
+        return new MySQLDatabaseQuery<T>(
+            ReflectionClass.from(type),
+            this.databaseSession,
+            new MySQLQueryResolver<T>(
+                this.connectionPool,
+                this.platform,
+                ReflectionClass.from(type),
+                this.databaseSession,
+            ),
         );
     }
 }
@@ -515,9 +592,7 @@ export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
     public connectionPool = new MySQLConnectionPool(this.pool);
     public platform = new MySQLPlatform(this.pool);
 
-    constructor(
-        protected options: PoolConfig = {}
-    ) {
+    constructor(protected options: PoolConfig = {}) {
         super();
     }
 

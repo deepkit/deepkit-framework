@@ -16,66 +16,55 @@
     "target": "ES2022",
     "module": "ES2022",
     "useDefineForClassFields": false,
-    "lib": [
-      "ES2022",
-      "dom"
-    ],
-    "types": [
-      "dagre",
-      "file-saver",
-      "jasmine",
-      "marked"
-    ]
+    "lib": ["ES2022", "dom"],
+    "types": ["dagre", "file-saver", "jasmine", "marked"],
   },
-  "reflection": [
-    "./src/app/state.ts",
-    "../../node_modules/@deepkit/api-console-gui/src/app/store.ts"
-  ],
+  "reflection": ["./src/app/state.ts", "../../node_modules/@deepkit/api-console-gui/src/app/store.ts"],
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
-    "strictTemplates": true
+    "strictTemplates": true,
   },
   "references": [
     {
-      "path": "../bson/tsconfig.json"
+      "path": "../bson/tsconfig.json",
     },
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../core-rxjs/tsconfig.json"
+      "path": "../core-rxjs/tsconfig.json",
     },
     {
-      "path": "../api-console-api/tsconfig.json"
+      "path": "../api-console-api/tsconfig.json",
     },
     {
-      "path": "../framework-debug-api/tsconfig.json"
+      "path": "../framework-debug-api/tsconfig.json",
     },
     {
-      "path": "../injector/tsconfig.json"
+      "path": "../injector/tsconfig.json",
     },
     {
-      "path": "../logger/tsconfig.json"
+      "path": "../logger/tsconfig.json",
     },
     {
-      "path": "../orm/tsconfig.json"
+      "path": "../orm/tsconfig.json",
     },
     {
-      "path": "../orm-browser-api/tsconfig.json"
+      "path": "../orm-browser-api/tsconfig.json",
     },
     {
-      "path": "../rpc/tsconfig.json"
+      "path": "../rpc/tsconfig.json",
     },
     {
-      "path": "../stopwatch/tsconfig.json"
+      "path": "../stopwatch/tsconfig.json",
     },
     {
-      "path": "../topsort/tsconfig.json"
+      "path": "../topsort/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

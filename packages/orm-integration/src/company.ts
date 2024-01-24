@@ -1,5 +1,7 @@
-import { AutoIncrement, cast, entity, PrimaryKey, Reference, t } from '@deepkit/type';
 import { expect } from '@jest/globals';
+
+import { AutoIncrement, PrimaryKey, Reference, cast, entity, t } from '@deepkit/type';
+
 import { DatabaseFactory } from './test.js';
 
 @entity.collection('persons')
@@ -30,9 +32,8 @@ class Project {
 
     constructor(
         public owner: Person & Reference,
-        public title: string
-    ) {
-    }
+        public title: string,
+    ) {}
 }
 
 const entities = [Employee, Freelancer, Project, Person];
@@ -87,13 +88,13 @@ export const companyTests = {
         const database = await databaseFactory(entities);
 
         const peter = cast<Freelancer>({ firstName: 'Peter' });
-        expect(peter.firstName).toBe('Peter')
+        expect(peter.firstName).toBe('Peter');
 
         const marie = cast<Freelancer>({ firstName: 'Marie' });
-        expect(marie.firstName).toBe('Marie')
+        expect(marie.firstName).toBe('Marie');
 
         const marc = cast<Employee>({ firstName: 'Marc' });
-        expect(marc.firstName).toBe('Marc')
+        expect(marc.firstName).toBe('Marc');
 
         await database.persist(peter, marie, marc, cast<Employee>({ firstName: 'Lui' }));
 

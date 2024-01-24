@@ -7,13 +7,13 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { CompilerContext, empty, toFastProperties } from '@deepkit/core';
-import { Changes, changeSetSymbol, ItemChanges } from './changes.js';
-import { getConverterForSnapshot } from './snapshot.js';
+
+import { Changes, ItemChanges, changeSetSymbol } from './changes.js';
 import { ReflectionClass } from './reflection/reflection.js';
-import { ContainerAccessor, getIndexCheck, sortSignatures, TemplateRegistry, TemplateState } from './serializer.js';
-import { referenceAnnotation, ReflectionKind, Type, TypeIndexSignature } from './reflection/type.js';
+import { ReflectionKind, Type, TypeIndexSignature, referenceAnnotation } from './reflection/type.js';
+import { ContainerAccessor, TemplateRegistry, TemplateState, getIndexCheck, sortSignatures } from './serializer.js';
+import { getConverterForSnapshot } from './snapshot.js';
 
 function genericEqualArray(a: any[], b: any[]): boolean {
     if (a.length !== b.length) return false;
@@ -59,11 +59,22 @@ export function genericEqual(a: any, b: any): boolean {
     return a === b;
 }
 
-function createJITChangeDetectorForSnapshot(schema: ReflectionClass<any>, stateIn?: TemplateState): (lastSnapshot: any, currentSnapshot: any) => ItemChanges<any> {
+function createJITChangeDetectorForSnapshot(
+    schema: ReflectionClass<any>,
+    stateIn?: TemplateState,
+): (lastSnapshot: any, currentSnapshot: any) => ItemChanges<any> {
     const compiler = new CompilerContext();
-    const state = new TemplateState('', '', compiler, stateIn ? stateIn.registry : new TemplateRegistry(), undefined, stateIn ? stateIn.jitStack : undefined);
+    const state = new TemplateState(
+        '',
+        '',
+        compiler,
+        stateIn ? stateIn.registry : new TemplateRegistry(),
+        undefined,
+        stateIn ? stateIn.jitStack : undefined,
+    );
     state.setContext({
-        genericEqual, empty
+        genericEqual,
+        empty,
     });
     const lines: string[] = [];
 
@@ -71,7 +82,15 @@ function createJITChangeDetectorForSnapshot(schema: ReflectionClass<any>, stateI
         return `(changeSet.$inc && ${accessor} in changeSet.$inc) || (changeSet.$unset && ${accessor} in changeSet.$unset)`;
     }
 
-    function getComparator(type: Type, last: ContainerAccessor, current: ContainerAccessor, accessor: ContainerAccessor, changedName: string, onChanged: string, state: TemplateState): string {
+    function getComparator(
+        type: Type,
+        last: ContainerAccessor,
+        current: ContainerAccessor,
+        accessor: ContainerAccessor,
+        changedName: string,
+        onChanged: string,
+        state: TemplateState,
+    ): string {
         if (type.kind === ReflectionKind.array) {
             const l = compiler.reserveName('l');
 
@@ -120,7 +139,10 @@ function createJITChangeDetectorForSnapshot(schema: ReflectionClass<any>, stateI
             //         }
             //         }
             //     `;
-        } else if ((type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) && type.types.length) {
+        } else if (
+            (type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) &&
+            type.types.length
+        ) {
             const classSchema = ReflectionClass.from(type);
 
             if (referenceAnnotation.getFirst(type) !== undefined) {
@@ -150,9 +172,12 @@ function createJITChangeDetectorForSnapshot(schema: ReflectionClass<any>, stateI
                 `;
             }
 
-            const jitChangeDetectorThis = compiler.reserveVariable('jitChangeDetector', state.jitStack.getOrCreate(state.registry, type, () => {
-                return createJITChangeDetectorForSnapshot(classSchema, state);
-            }));
+            const jitChangeDetectorThis = compiler.reserveVariable(
+                'jitChangeDetector',
+                state.jitStack.getOrCreate(state.registry, type, () => {
+                    return createJITChangeDetectorForSnapshot(classSchema, state);
+                }),
+            );
 
             return `
                 if (!${has(changedName)}) {
@@ -170,7 +195,11 @@ function createJITChangeDetectorForSnapshot(schema: ReflectionClass<any>, stateI
                     }
                 }
             `;
-        } else if (type.kind === ReflectionKind.any || type.kind === ReflectionKind.never || type.kind === ReflectionKind.union) {
+        } else if (
+            type.kind === ReflectionKind.any ||
+            type.kind === ReflectionKind.never ||
+            type.kind === ReflectionKind.union
+        ) {
             return `
                 if (!${has(changedName)}) {
                     if (!genericEqual(${last}, ${current})) {
@@ -203,14 +232,25 @@ function createJITChangeDetectorForSnapshot(schema: ReflectionClass<any>, stateI
         const lastAccessor = new ContainerAccessor('last', name);
         const currentAccessor = new ContainerAccessor('current', name);
         const itemAccessor = new ContainerAccessor('item', name);
-        lines.push(getComparator(property.type, lastAccessor, currentAccessor, itemAccessor, JSON.stringify(property.getNameAsString()), '', state));
+        lines.push(
+            getComparator(
+                property.type,
+                lastAccessor,
+                currentAccessor,
+                itemAccessor,
+                JSON.stringify(property.getNameAsString()),
+                '',
+                state,
+            ),
+        );
     }
 
     for (const t of schema.type.types) {
-
     }
 
-    const signatures = (schema.type.types as Type[]).filter(v => v.kind === ReflectionKind.indexSignature) as TypeIndexSignature[];
+    const signatures = (schema.type.types as Type[]).filter(
+        v => v.kind === ReflectionKind.indexSignature,
+    ) as TypeIndexSignature[];
     if (signatures.length) {
         const i = compiler.reserveName('i');
         const existingCheck = existing.map(v => `${i} === ${v}`).join(' || ') || 'false';
@@ -271,7 +311,9 @@ function createJITChangeDetectorForSnapshot(schema: ReflectionClass<any>, stateI
 
 const changeDetectorSymbol = Symbol('changeDetector');
 
-export function getChangeDetector<T extends object>(classSchema: ReflectionClass<T>): (last: any, current: any, item: T) => ItemChanges<T> | undefined {
+export function getChangeDetector<T extends object>(
+    classSchema: ReflectionClass<T>,
+): (last: any, current: any, item: T) => ItemChanges<T> | undefined {
     const jit = classSchema.getJitContainer();
     if (jit[changeDetectorSymbol]) return jit[changeDetectorSymbol];
 
@@ -281,8 +323,12 @@ export function getChangeDetector<T extends object>(classSchema: ReflectionClass
     return jit[changeDetectorSymbol];
 }
 
-export function buildChanges<T extends object>(classSchema: ReflectionClass<T>, lastSnapshot: any, item: T): Changes<T> {
+export function buildChanges<T extends object>(
+    classSchema: ReflectionClass<T>,
+    lastSnapshot: any,
+    item: T,
+): Changes<T> {
     const currentSnapshot = getConverterForSnapshot(classSchema)(item);
     const detector = getChangeDetector(classSchema);
-    return detector(lastSnapshot, currentSnapshot, item) as Changes<T> || new Changes<T>();
+    return (detector(lastSnapshot, currentSnapshot, item) as Changes<T>) || new Changes<T>();
 }

@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { ParseConfigHost, ScriptTarget } from 'typescript';
-import { defaultExcluded, getResolver, Resolver, TsConfigJson } from '../src/config.js';
+
+import { Resolver, TsConfigJson, defaultExcluded, getResolver } from '../src/config.js';
 import { patternMatch } from '../src/resolver.js';
 
 process.env.DEBUG = 'deepkit';
@@ -14,9 +15,17 @@ function buildHost(files: { [fileName: string]: TsConfigJson }): ParseConfigHost
         readFile: (fileName: string) => {
             return JSON.stringify(files[fileName]);
         },
-        readDirectory: (path: string, extensions?: readonly string[], exclude?: readonly string[], include?: readonly string[], depth?: number) => {
+        readDirectory: (
+            path: string,
+            extensions?: readonly string[],
+            exclude?: readonly string[],
+            include?: readonly string[],
+            depth?: number,
+        ) => {
             path = path.endsWith('/') ? path : path + '/';
-            const res = Object.entries(files).filter(([fileName]) => fileName.startsWith(path)).map(([fileName]) => fileName);
+            const res = Object.entries(files)
+                .filter(([fileName]) => fileName.startsWith(path))
+                .map(([fileName]) => fileName);
             if (extensions) return res.filter(fileName => extensions.includes(fileName.split('.').pop()!));
             return res;
         },
@@ -132,7 +141,7 @@ test('disable parent', () => {
 
     expect(resolver.match('test.ts')).toEqual({ tsConfigPath: 'tsconfig.json', mode: 'never' });
     expectDefaultExcluded(resolver);
-})
+});
 
 test('replace strategy does not replace default excludes', () => {
     const host = buildHost({
@@ -317,9 +326,7 @@ test('negative match 1', () => {
     const host = buildHost({
         '/app/tsconfig.json': {
             deepkitCompilerOptions: {
-                reflection: [
-                    'model/**/*.ts',
-                ],
+                reflection: ['model/**/*.ts'],
             },
         },
     });
@@ -327,9 +334,7 @@ test('negative match 1', () => {
     expect(resolver.config).toEqual({
         path: '/app/tsconfig.json',
         compilerOptions: {},
-        reflection: [
-            '/app/model/**/*.ts',
-        ],
+        reflection: ['/app/model/**/*.ts'],
         mergeStrategy: 'merge',
         exclude: defaultExcluded,
     });

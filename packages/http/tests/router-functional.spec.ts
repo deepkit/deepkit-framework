@@ -1,9 +1,10 @@
 import { expect, test } from '@jest/globals';
-import { createHttpApp, createHttpKernel } from './utils.js';
-import { HttpRouter, HttpRouterRegistry } from '../src/router.js';
-import { HttpBody, HttpRequest } from '../src/model.js';
-import { http, HttpDecorator } from '../src/decorator.js';
+
+import { HttpDecorator, http } from '../src/decorator.js';
 import { HttpKernel } from '../src/kernel.js';
+import { HttpBody, HttpRequest } from '../src/model.js';
+import { HttpRouter, HttpRouterRegistry } from '../src/router.js';
+import { createHttpApp, createHttpKernel } from './utils.js';
 
 test('router basics', async () => {
     const httpKernel = createHttpKernel((registry: HttpRouterRegistry) => {
@@ -47,12 +48,9 @@ test('router options', async () => {
     const app = createHttpApp();
     const registry = app.get(HttpRouterRegistry);
 
-    registry.get(
-        { path: '/user/:id', name: 'user_details' },
-        (id: number) => {
-            return id;
-        }
-    );
+    registry.get({ path: '/user/:id', name: 'user_details' }, (id: number) => {
+        return id;
+    });
 
     const router = app.get(HttpRouter);
     expect(router.resolveUrl('user_details', { id: 12 })).toBe('/user/12');
@@ -70,13 +68,9 @@ test('router decorator options', async () => {
         return http.response<any>(400, 'on error');
     }
 
-    registry.add(
-        withError(http.GET('/user/:id')
-            .name('user_details')),
-        (id: number) => {
-            return id;
-        }
-    );
+    registry.add(withError(http.GET('/user/:id').name('user_details')), (id: number) => {
+        return id;
+    });
 
     const router = app.get(HttpRouter);
     expect(router.resolveUrl('user_details', { id: 12 })).toBe('/user/12');

@@ -1,14 +1,16 @@
-import { FrameCategory, FrameEnd, FrameStart, FrameType } from '@deepkit/stopwatch';
 import { arrayRemoveItem } from '@deepkit/core';
+import { FrameCategory, FrameEnd, FrameStart, FrameType } from '@deepkit/stopwatch';
 
-export const defaultColors = { border: 0x73AB77, bg: 0x497A4C };
+export const defaultColors = { border: 0x73ab77, bg: 0x497a4c };
 
-export const frameColors: { [type in FrameCategory]?: { border: number, bg: number } } = {
-    [FrameCategory.database]: { border: 0x737DAB, bg: 0x49497A },
-    [FrameCategory.http]: { border: 0x7392AB, bg: 0x496C7A },
-    [FrameCategory.template]: { border: 0xAF9C42, bg: 0x8D7522 },
-    [FrameCategory.rpc]: { border: 0xAB79DD, bg: 0x6706B2 },
-    [FrameCategory.cli]: { border: 0x79D7DD, bg: 0x069EB2 },
+export const frameColors: {
+    [type in FrameCategory]?: { border: number; bg: number };
+} = {
+    [FrameCategory.database]: { border: 0x737dab, bg: 0x49497a },
+    [FrameCategory.http]: { border: 0x7392ab, bg: 0x496c7a },
+    [FrameCategory.template]: { border: 0xaf9c42, bg: 0x8d7522 },
+    [FrameCategory.rpc]: { border: 0xab79dd, bg: 0x6706b2 },
+    [FrameCategory.cli]: { border: 0x79d7dd, bg: 0x069eb2 },
 };
 
 export function formatTime(microseconds: number, fixed: number = 1): string {
@@ -30,20 +32,20 @@ export class ViewState {
 }
 
 export function getCrunchX(crunch: Crunch, viewState: ViewState): number {
-    return crunch.x + ((((crunch.context?.allCrunches || 0) - 1) * 80) * viewState.zoom);
+    return crunch.x + ((crunch.context?.allCrunches || 0) - 1) * 80 * viewState.zoom;
 }
 
 export function getCrunchXCanvas(crunch: Crunch, viewState: ViewState): number {
-    const x = ((crunch.x - viewState.scrollX) / viewState.zoom);
-    return (((crunch.context?.allCrunches || 0) - 1) * 80) + x;
+    const x = (crunch.x - viewState.scrollX) / viewState.zoom;
+    return ((crunch.context?.allCrunches || 0) - 1) * 80 + x;
 }
 
 export function getFrameX(frame: FrameItem, viewState: ViewState): number {
-    return frame.x + (((frame.context.allCrunches || 0) * 80) * viewState.zoom);
+    return frame.x + (frame.context.allCrunches || 0) * 80 * viewState.zoom;
 }
 
 export function getFrameWidth(frame: FrameItem, viewState: ViewState): number {
-    const width = (frame.took) / viewState.zoom;
+    const width = frame.took / viewState.zoom;
     // const width = (frame.took - frame.crunch) / viewState.zoom;
     // if (frame.root) return width + ((frame.context?.allCrunches || 0) * 80);
     return width;
@@ -51,7 +53,7 @@ export function getFrameWidth(frame: FrameItem, viewState: ViewState): number {
 
 export function getFrameXCanvas(frame: FrameItem, viewState: ViewState): number {
     const x = (frame.x - viewState.scrollX) / viewState.zoom;
-    return x + ((frame.context.allCrunches || 0) * 80);
+    return x + (frame.context.allCrunches || 0) * 80;
 }
 
 export interface Crunch {
@@ -64,8 +66,8 @@ export interface Crunch {
 }
 
 function getWindow(viewState: ViewState) {
-    const start = (viewState.scrollX) - viewState.windowPadding;
-    const end = start + ((viewState.width) * viewState.zoom) + viewState.windowPadding;
+    const start = viewState.scrollX - viewState.windowPadding;
+    const end = start + viewState.width * viewState.zoom + viewState.windowPadding;
     return { start, end };
 }
 
@@ -123,8 +125,7 @@ class FrameSubscription {
     constructor(
         public callback: FrameCallback,
         public viewState: ViewState,
-    ) {
-    }
+    ) {}
 
     addCrunch(crunch: Crunch) {
         if (!this.crunchesChanged.create) this.crunchesChanged.create = [];
@@ -212,7 +213,7 @@ export class FrameParser {
             unregister: () => {
                 const index = this.rootCallbacks.findIndex(v => v === callback);
                 this.rootCallbacks.splice(index, 1);
-            }
+            },
         };
     }
 
@@ -224,21 +225,26 @@ export class FrameParser {
             unregister: () => {
                 const index = this.subscriptions.findIndex(v => v.callback === callback);
                 this.subscriptions.splice(index, 1);
-            }
+            },
         };
     }
 
-    inWindow(item: FrameItem, viewState: ViewState, window: { start: number, end: number }): boolean {
+    inWindow(item: FrameItem, viewState: ViewState, window: { start: number; end: number }): boolean {
         const start = getFrameX(item, viewState);
         const end = start + item.took;
-        return (item.took === 0 && start <= window.end) || (item.took > 0 && end >= window.start && start <= window.end);
+        return (
+            (item.took === 0 && start <= window.end) || (item.took > 0 && end >= window.start && start <= window.end)
+        );
     }
 
     /**
      * Window changed, so check which frames to add or remove.
      */
     checkWindow(callback: FrameCallback, viewState: ViewState) {
-        const buildChange = <T extends { issued: boolean }>(items: T[], inWindow: (item: T) => boolean): ChangeFeed<T> => {
+        const buildChange = <T extends { issued: boolean }>(
+            items: T[],
+            inWindow: (item: T) => boolean,
+        ): ChangeFeed<T> => {
             const change: ChangeFeed<T> = {};
 
             for (const item of items) {
@@ -258,7 +264,6 @@ export class FrameParser {
                 }
             }
             return change;
-
         };
         const window = getWindow(viewState);
         const framesChanged = buildChange(this.items, item => this.inWindow(item, viewState, window));
@@ -314,7 +319,17 @@ export class FrameParser {
                 let context = this.getContext(frame.context);
                 const root = !context;
 
-                const item: FrameItem = { frame, took: 0, y: 0, x: 0, crunch: 0, root, issued: false, frames: 0, context: { } as any };
+                const item: FrameItem = {
+                    frame,
+                    took: 0,
+                    y: 0,
+                    x: 0,
+                    crunch: 0,
+                    root,
+                    issued: false,
+                    frames: 0,
+                    context: {} as any,
+                };
 
                 if (context) {
                     item.context = context;
@@ -336,7 +351,7 @@ export class FrameParser {
                         // y: this.openContexts.length ? this.openContexts[this.openContexts.length - 1].y : 0,
                         // dependsOn: this.openContexts.length ? this.openContexts.slice(0) : [],
                         root: item,
-                        items: []
+                        items: [],
                     };
                     item.context = context;
 
@@ -356,10 +371,12 @@ export class FrameParser {
                             const lastFrame = parentContext.lastFrame;
                             context.allCrunches = lastFrame.context.allCrunches;
                             const diff = frame.timestamp - (lastFrame.frame.timestamp + lastFrame.took);
-                            item.x = (lastFrame.x + lastFrame.took) + diff;
+                            item.x = lastFrame.x + lastFrame.took + diff;
                             const crunch = item.x - (lastFrame.x + lastFrame.took);
                             if (crunch > 1000) {
-                                context.crunches.push(this.addCrunch(lastFrame.x + lastFrame.took, context.y, crunch, context));
+                                context.crunches.push(
+                                    this.addCrunch(lastFrame.x + lastFrame.took, context.y, crunch, context),
+                                );
                                 context.allCrunches++;
                                 item.x = lastFrame.x + lastFrame.took;
                             }
@@ -379,10 +396,12 @@ export class FrameParser {
                         const lastFrame = this.lastFrame;
                         context.allCrunches = lastFrame.context.allCrunches;
                         const diff = frame.timestamp - (lastFrame.frame.timestamp + lastFrame.took);
-                        item.x = (lastFrame.x + lastFrame.took) + diff;
+                        item.x = lastFrame.x + lastFrame.took + diff;
                         const crunch = item.x - (lastFrame.x + lastFrame.took);
                         if (crunch > 1000) {
-                            context.crunches.push(this.addCrunch(lastFrame.x + lastFrame.took, context.y, crunch, context));
+                            context.crunches.push(
+                                this.addCrunch(lastFrame.x + lastFrame.took, context.y, crunch, context),
+                            );
                             context.allCrunches++;
                             item.x = lastFrame.x + lastFrame.took;
                         }
@@ -443,7 +462,8 @@ export class FrameParser {
                     context.y--;
                     if (f.root) {
                         if (context.lastFrame) {
-                            const restCrunch = f.x + f.took - context.lastFrame.x - context.lastFrame.took - context.root.crunch;
+                            const restCrunch =
+                                f.x + f.took - context.lastFrame.x - context.lastFrame.took - context.root.crunch;
                             // f.crunch += restCrunch;
                         }
                         //close context

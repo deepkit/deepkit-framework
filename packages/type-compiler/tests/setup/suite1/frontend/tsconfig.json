@@ -1,7 +1,5 @@
 {
   "extends": "../tsconfig.json",
   "reflection": false,
-  "files": [
-    "file2.ts"
-  ]
+  "files": ["file2.ts"],
 }

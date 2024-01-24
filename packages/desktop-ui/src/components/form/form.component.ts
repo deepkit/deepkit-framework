@@ -7,28 +7,41 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { ChangeDetectorRef, Component, ContentChild, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, SkipSelf } from '@angular/core';
+import {
+    ChangeDetectorRef,
+    Component,
+    ContentChild,
+    EventEmitter,
+    HostListener,
+    Input,
+    OnChanges,
+    Output,
+    SimpleChanges,
+    SkipSelf,
+} from '@angular/core';
 import { FormGroup, NgControl } from '@angular/forms';
+
 import { detectChangesNextFrame } from '../app';
 
 @Component({
     selector: 'dui-form-row',
-    template: `
-        <div class="label" [style.width.px]="labelWidth">{{label}}<div class="description" *ngIf="description">{{description}}</div></div>
+    template: ` <div class="label" [style.width.px]="labelWidth">
+            {{ label }}
+            <div class="description" *ngIf="description">{{ description }}</div>
+        </div>
         <div class="field">
             <ng-content></ng-content>
 
             <div class="error" *ngIf="ngControl && ngControl.errors && ngControl.touched">
-                <div *ngFor="let kv of ngControl.errors|keyvalue">
-                    {{isString(kv.value) ? '' : kv.key}}{{isString(kv.value) ? kv.value : ''}}
+                <div *ngFor="let kv of ngControl.errors | keyvalue">
+                    {{ isString(kv.value) ? '' : kv.key }}{{ isString(kv.value) ? kv.value : '' }}
                 </div>
             </div>
         </div>`,
     host: {
-        '[class.left-aligned]': 'left !== false'
+        '[class.left-aligned]': 'left !== false',
     },
-    styleUrls: ['./form-row.component.scss']
+    styleUrls: ['./form-row.component.scss'],
 })
 export class FormRowComponent {
     @Input() label: string = '';
@@ -37,7 +50,7 @@ export class FormRowComponent {
     @Input() labelWidth?: number;
     @Input() left: boolean | '' = false;
 
-    @ContentChild(NgControl, {static: false}) ngControl?: NgControl;
+    @ContentChild(NgControl, { static: false }) ngControl?: NgControl;
 
     isString(v: any) {
         return 'string' === typeof v;
@@ -47,12 +60,12 @@ export class FormRowComponent {
 @Component({
     selector: 'dui-form',
     template: `
-        <form [formGroup]="formGroup" (submit)="$event.preventDefault();submitForm()">
+        <form [formGroup]="formGroup" (submit)="$event.preventDefault(); submitForm()">
             <ng-content></ng-content>
-            <div *ngIf="errorText" class="error">{{errorText}}</div>
+            <div *ngIf="errorText" class="error">{{ errorText }}</div>
         </form>
     `,
-    styleUrls: ['./form.component.scss']
+    styleUrls: ['./form.component.scss'],
 })
 export class FormComponent implements OnChanges {
     @Input() formGroup: FormGroup = new FormGroup({});
@@ -72,13 +85,16 @@ export class FormComponent implements OnChanges {
     constructor(
         protected cd: ChangeDetectorRef,
         @SkipSelf() protected cdParent: ChangeDetectorRef,
-    ) {
-    }
+    ) {}
 
     @HostListener('keyup', ['$event'])
     onEnter(event: KeyboardEvent) {
-        if (this.submit && event.key.toLowerCase() === 'enter'
-            && event.target && (event.target as HTMLElement).tagName.toLowerCase() === 'input') {
+        if (
+            this.submit &&
+            event.key.toLowerCase() === 'enter' &&
+            event.target &&
+            (event.target as HTMLElement).tagName.toLowerCase() === 'input'
+        ) {
             this.submitForm();
         }
     }

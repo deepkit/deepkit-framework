@@ -15,43 +15,32 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": [
-      "sqlstring"
-    ]
+    "types": ["sqlstring"],
   },
   "reflection": true,
-  "include": [
-    "benchmarks",
-    "src",
-    "main.ts",
-    "browser.ts",
-    "commands.ts",
-    "index.ts"
-  ],
-  "exclude": [
-    "tests"
-  ],
+  "include": ["benchmarks", "src", "main.ts", "browser.ts", "commands.ts", "index.ts"],
+  "exclude": ["tests"],
   "references": [
     {
-      "path": "../app/tsconfig.json"
+      "path": "../app/tsconfig.json",
     },
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../injector/tsconfig.json"
+      "path": "../injector/tsconfig.json",
     },
     {
-      "path": "../logger/tsconfig.json"
+      "path": "../logger/tsconfig.json",
     },
     {
-      "path": "../orm/tsconfig.json"
+      "path": "../orm/tsconfig.json",
     },
     {
-      "path": "../stopwatch/tsconfig.json"
+      "path": "../stopwatch/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

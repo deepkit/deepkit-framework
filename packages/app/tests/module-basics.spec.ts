@@ -1,7 +1,8 @@
 import { expect, test } from '@jest/globals';
+import { IsExact, assert } from 'conditional-type-checks';
+
 import { createModule } from '../src/module.js';
 import { ServiceContainer } from '../src/service-container.js';
-import { assert, IsExact } from 'conditional-type-checks';
 
 test('strict types config', () => {
     class Config {
@@ -9,7 +10,7 @@ test('strict types config', () => {
     }
 
     class MyModule extends createModule({
-        config: Config
+        config: Config,
     }) {
         process() {
             //at this point the validation happened and it can be assumed the config has the right types
@@ -25,7 +26,7 @@ test('strict types config with defaults', () => {
     }
 
     class MyModule extends createModule({
-        config: Config
+        config: Config,
     }) {
         process() {
             //at this point the validation happened and it can be assumed the config has the right types
@@ -40,19 +41,19 @@ test('nested options are optional as well for constructor, but strict in process
         host: string = '0.0.0.0';
         secret!: string;
         nested?: {
-            enabled: boolean,
-            type: string
+            enabled: boolean;
+            type: string;
         };
     }
 
     class MyModule extends createModule({
-        config: Config
+        config: Config,
     }) {
         process() {
             const config = this.config;
             if (config.nested) {
                 const nested = config.nested;
-                assert<IsExact<string, typeof nested['type']>>(true);
+                assert<IsExact<string, (typeof nested)['type']>>(true);
             }
         }
     }
@@ -65,19 +66,19 @@ test('partial nested options are optional as well for constructor, but strict in
         host: string = '0.0.0.0';
         secret!: string;
         nested?: {
-            enabled: boolean,
-            type: string
+            enabled: boolean;
+            type: string;
         };
     }
 
     class MyModule extends createModule({
-        config: Config
+        config: Config,
     }) {
         process() {
             const config = this.config;
             if (config.nested) {
                 const nested = config.nested;
-                assert<IsExact<string, typeof nested['type']>>(true);
+                assert<IsExact<string, (typeof nested)['type']>>(true);
             }
         }
     }
@@ -86,22 +87,26 @@ test('partial nested options are optional as well for constructor, but strict in
 });
 
 test('no config reference leak', () => {
-    class ModuleA extends createModule({
-        config: class {
-            param1?: string;
-        }
-    }, 'myModule') {
-    }
+    class ModuleA extends createModule(
+        {
+            config: class {
+                param1?: string;
+            },
+        },
+        'myModule',
+    ) {}
 
     class RootApp extends createModule({
         config: class {
             value!: string;
-        }
+        },
     }) {
-        override imports = [new ModuleA];
+        override imports = [new ModuleA()];
 
         override process() {
-            this.getImportedModuleByClass(ModuleA).configure({ param1: this.config.value });
+            this.getImportedModuleByClass(ModuleA).configure({
+                param1: this.config.value,
+            });
         }
     }
 
@@ -124,7 +129,7 @@ test('nested config', () => {
     class ModuleAConfig {
         param1!: string;
         nested!: {
-            param2: string
+            param2: string;
         };
     }
 
@@ -132,18 +137,18 @@ test('nested config', () => {
         constructor(
             public settings: ModuleAConfig['nested'],
             public param1: ModuleAConfig['param1'],
-        ) {
-        }
+        ) {}
     }
 
     let moduleAProcessCalled = 0;
 
-    class ModuleA extends createModule({
-        config: ModuleAConfig,
-        providers: [
-            Service
-        ]
-    }, 'moduleA') {
+    class ModuleA extends createModule(
+        {
+            config: ModuleAConfig,
+            providers: [Service],
+        },
+        'moduleA',
+    ) {
         process() {
             moduleAProcessCalled++;
         }
@@ -159,7 +164,8 @@ test('nested config', () => {
     serviceContainer.process();
     expect(moduleAProcessCalled).toBe(1);
     expect(serviceContainer.getModule(ModuleA).getConfig()).toEqual({
-        param1: 'a', nested: { param2: 'b' }
+        param1: 'a',
+        nested: { param2: 'b' },
     });
     expect(serviceContainer.getInjector(ModuleA).get(Service).param1).toEqual('a');
 

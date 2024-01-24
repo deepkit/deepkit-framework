@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import {
     AfterViewInit,
     ApplicationRef,
@@ -16,7 +15,7 @@ import {
     Directive,
     Input,
     OnDestroy,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
 
 @Directive({
@@ -32,8 +31,7 @@ export class RenderComponentDirective implements AfterViewInit, OnDestroy {
         protected app: ApplicationRef,
         protected resolver: ComponentFactoryResolver,
         protected viewContainerRef: ViewContainerRef,
-    ) {
-    }
+    ) {}
 
     ngAfterViewInit(): void {
         const factoryMain = this.resolver.resolveComponentFactory(this.renderComponent);

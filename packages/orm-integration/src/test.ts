@@ -1,8 +1,11 @@
-import { Database, DatabaseAdapter, DatabasePlugin } from '@deepkit/orm';
 import { AbstractClassType } from '@deepkit/core';
+import { Database, DatabaseAdapter, DatabasePlugin } from '@deepkit/orm';
 import { ReflectionClass, Type } from '@deepkit/type';
 
-export type DatabaseFactory<T extends DatabaseAdapter = DatabaseAdapter> = (entities?: (Type | ReflectionClass<any> | AbstractClassType)[], plugins?: DatabasePlugin[]) => Promise<Database<T>>;
+export type DatabaseFactory<T extends DatabaseAdapter = DatabaseAdapter> = (
+    entities?: (Type | ReflectionClass<any> | AbstractClassType)[],
+    plugins?: DatabasePlugin[],
+) => Promise<Database<T>>;
 
 export function executeTest(test: (factory: DatabaseFactory) => any, factory: DatabaseFactory): () => Promise<void> {
     let databases: Database<any>[] = [];

@@ -1,5 +1,3 @@
-import { FilesystemAdapter, FilesystemError, FilesystemFile, FileVisibility, Reporter } from '@deepkit/filesystem';
-import { pathDirectory } from '@deepkit/core';
 import {
     CopyObjectCommand,
     DeleteObjectsCommand,
@@ -7,13 +5,16 @@ import {
     GetObjectCommand,
     HeadObjectCommand,
     ListObjectsCommand,
+    ObjectCannedACL,
     PutObjectAclCommand,
     PutObjectCommand,
     S3Client,
     S3ClientConfigType,
-    ObjectCannedACL
 } from '@aws-sdk/client-s3';
 import { normalizePath } from 'typedoc';
+
+import { pathDirectory } from '@deepkit/core';
+import { FileVisibility, FilesystemAdapter, FilesystemError, FilesystemFile, Reporter } from '@deepkit/filesystem';
 
 export interface FilesystemAwsS3Options extends S3ClientConfigType {
     bucket: string;
@@ -55,7 +56,7 @@ export class FilesystemAwsS3Adapter implements FilesystemAdapter {
 
     protected getRemotePath(path: string) {
         path = normalizePath(path);
-        const base = this.options.path ? (normalizePath(this.options.path).slice(0) + '/') : '';
+        const base = this.options.path ? normalizePath(this.options.path).slice(0) + '/' : '';
         if (path === '/') return base;
         let remotePath = this.options.path ? base : '';
         remotePath += path === '/' ? '' : path.slice(1);
@@ -69,7 +70,7 @@ export class FilesystemAwsS3Adapter implements FilesystemAdapter {
 
     protected pathMapToVirtual(path: string): string {
         //remove this.options.path from path
-        const base = this.options.path ? (normalizePath(this.options.path).slice(0) + '/') : '';
+        const base = this.options.path ? normalizePath(this.options.path).slice(0) + '/' : '';
         return path.slice(base.length);
     }
 
@@ -84,7 +85,10 @@ export class FilesystemAwsS3Adapter implements FilesystemAdapter {
 
     protected aclToVisibility(grants: any[]): FileVisibility {
         for (const grant of grants) {
-            if (grant.Permission === 'READ' && grant.Grantee.URI === 'http://acs.amazonaws.com/groups/global/AllUsers') {
+            if (
+                grant.Permission === 'READ' &&
+                grant.Grantee.URI === 'http://acs.amazonaws.com/groups/global/AllUsers'
+            ) {
                 return 'public';
             }
         }
@@ -206,7 +210,7 @@ export class FilesystemAwsS3Adapter implements FilesystemAdapter {
             Bucket: this.options.bucket,
             Delete: {
                 Objects: paths.map(v => ({ Key: this.getRemotePath(v) })) || [],
-            }
+            },
         });
 
         try {
@@ -217,10 +221,12 @@ export class FilesystemAwsS3Adapter implements FilesystemAdapter {
     }
 
     async deleteDirectory(path: string, reporter: Reporter): Promise<void> {
-        const files = await this.client.send(new ListObjectsCommand({
-            Bucket: this.options.bucket,
-            Prefix: this.getRemoteDirectory(path),
-        }));
+        const files = await this.client.send(
+            new ListObjectsCommand({
+                Bucket: this.options.bucket,
+                Prefix: this.getRemoteDirectory(path),
+            }),
+        );
 
         if (!files.Contents) return;
 
@@ -228,7 +234,7 @@ export class FilesystemAwsS3Adapter implements FilesystemAdapter {
             Bucket: this.options.bucket,
             Delete: {
                 Objects: files.Contents.map(v => ({ Key: v.Key })) || [],
-            }
+            },
         });
 
         try {
@@ -240,7 +246,7 @@ export class FilesystemAwsS3Adapter implements FilesystemAdapter {
 
     async exists(paths: string[]): Promise<boolean> {
         for (const path of paths) {
-            if (!await this.existsSingle(path)) return false;
+            if (!(await this.existsSingle(path))) return false;
         }
         return true;
     }

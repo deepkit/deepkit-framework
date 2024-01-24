@@ -7,29 +7,30 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { OverlayModule } from '@angular/cdk/overlay';
+import { CommonModule } from '@angular/common';
 import { NgModule } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+
+import { DuiButtonModule } from '../button';
+import { DuiCoreModule } from '../core';
+import { DuiInputModule } from '../input';
 import { DuiWindowModule } from '../window';
+import { DuiDialog, DuiDialogAlert, DuiDialogConfirm, DuiDialogConfirmDirective, DuiDialogPrompt } from './dialog';
 import {
     CloseDialogDirective,
     DialogActionsComponent,
     DialogComponent,
     DialogDirective,
     DialogErrorComponent,
-    DialogWrapperComponent, OpenDialogDirective,
+    DialogWrapperComponent,
+    OpenDialogDirective,
 } from './dialog.component';
-import { OverlayModule } from '@angular/cdk/overlay';
-import { CommonModule } from '@angular/common';
-import { DuiDialog, DuiDialogAlert, DuiDialogConfirm, DuiDialogConfirmDirective, DuiDialogPrompt } from './dialog';
-import { DuiButtonModule } from '../button';
-import { DuiCoreModule } from '../core';
-import { DuiInputModule } from '../input';
-import { FormsModule } from '@angular/forms';
 import { DuiDialogProgress } from './progress-dialog.component';
 
-export * from "./dialog.component";
-export * from "./dialog";
-export * from "./progress-dialog.component";
+export * from './dialog.component';
+export * from './dialog';
+export * from './progress-dialog.component';
 
 @NgModule({
     declarations: [
@@ -59,9 +60,7 @@ export * from "./progress-dialog.component";
         DialogErrorComponent,
         OpenDialogDirective,
     ],
-    providers: [
-        DuiDialog,
-    ],
+    providers: [DuiDialog],
     imports: [
         FormsModule,
         CommonModule,
@@ -70,8 +69,6 @@ export * from "./progress-dialog.component";
         DuiButtonModule,
         DuiCoreModule,
         DuiInputModule,
-    ]
+    ],
 })
-export class DuiDialogModule {
-
-}
+export class DuiDialogModule {}

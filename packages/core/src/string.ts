@@ -10,10 +10,10 @@
 
 export function indent(indentation: number, prefix: string = '') {
     return (str: string = '') => {
-        return ' '.repeat(indentation) + str.replace(/\n/g, '\n' + (' '.repeat(indentation)) + prefix);
+        return ' '.repeat(indentation) + str.replace(/\n/g, '\n' + ' '.repeat(indentation) + prefix);
     };
 }
 
 export function capitalize(string: string): string {
-    return string.charAt(0).toUpperCase() + string.slice(1)
+    return string.charAt(0).toUpperCase() + string.slice(1);
 }

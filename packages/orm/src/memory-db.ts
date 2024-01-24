@@ -7,18 +7,33 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { DatabaseSession, DatabaseTransaction } from './database-session.js';
-import { DatabaseQueryModel, GenericQueryResolver, Query } from './query.js';
-import { Changes, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath, serialize, Serializer } from '@deepkit/type';
 import { AbstractClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabasePersistence, DatabasePersistenceChangeSet, MigrateOptions } from './database-adapter.js';
+import {
+    Changes,
+    ReceiveType,
+    ReflectionClass,
+    Serializer,
+    getSerializeFunction,
+    resolvePath,
+    serialize,
+} from '@deepkit/type';
+
+import {
+    DatabaseAdapter,
+    DatabaseAdapterQueryFactory,
+    DatabaseEntityRegistry,
+    DatabasePersistence,
+    DatabasePersistenceChangeSet,
+    MigrateOptions,
+} from './database-adapter.js';
+import { DatabaseSession, DatabaseTransaction } from './database-session.js';
+import { Formatter } from './formatter.js';
+import { convertQueryFilter } from './query-filter.js';
+import { DatabaseQueryModel, GenericQueryResolver, Query } from './query.js';
 import { DeleteResult, OrmEntity, PatchResult } from './type.js';
 import { findQueryList } from './utils.js';
-import { convertQueryFilter } from './query-filter.js';
-import { Formatter } from './formatter.js';
 
-type SimpleStore<T> = { items: Map<any, T>, autoIncrement: number };
+type SimpleStore<T> = { items: Map<any, T>; autoIncrement: number };
 
 class MemorySerializer extends Serializer {
     name = 'memory';
@@ -76,29 +91,41 @@ export class MemoryQuery<T extends OrmEntity> extends Query<T> {
     }
 }
 
-const find = <T extends OrmEntity>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<any>, model: DatabaseQueryModel<T>): T[] => {
+const find = <T extends OrmEntity>(
+    adapter: MemoryDatabaseAdapter,
+    classSchema: ReflectionClass<any>,
+    model: DatabaseQueryModel<T>,
+): T[] => {
     const rawItems = [...adapter.getStore(classSchema).items.values()];
     const serializer = getSerializeFunction(classSchema.type, memorySerializer.deserializeRegistry);
     const items = rawItems.map(v => serializer(v));
 
     if (model.filter) {
-        model.filter = convertQueryFilter(classSchema, model.filter, (convertClassType: ReflectionClass<any>, path: string, value: any) => {
-            //this is important to convert relations to its foreignKey value
-            return serialize(value, undefined, memorySerializer, undefined, resolvePath(path, classSchema.type));
-        }, {}, {
-            $parameter: (name, value) => {
-                if (undefined === model.parameters[value]) {
-                    throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
-                }
-                return model.parameters[value];
-            }
-        });
+        model.filter = convertQueryFilter(
+            classSchema,
+            model.filter,
+            (convertClassType: ReflectionClass<any>, path: string, value: any) => {
+                //this is important to convert relations to its foreignKey value
+                return serialize(value, undefined, memorySerializer, undefined, resolvePath(path, classSchema.type));
+            },
+            {},
+            {
+                $parameter: (name, value) => {
+                    if (undefined === model.parameters[value]) {
+                        throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
+                    }
+                    return model.parameters[value];
+                },
+            },
+        );
     }
 
     let filtered = model.filter ? findQueryList<T>(items, model.filter) : items;
 
     if (model.hasJoins()) {
-        console.log('MemoryDatabaseAdapter does not support joins. Please use another lightweight adapter like SQLite.');
+        console.log(
+            'MemoryDatabaseAdapter does not support joins. Please use another lightweight adapter like SQLite.',
+        );
     }
 
     if (model.sort) {
@@ -127,22 +154,26 @@ const remove = <T>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<
 };
 
 export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
-    constructor(protected adapter: MemoryDatabaseAdapter, protected databaseSession: DatabaseSession<any>) {
+    constructor(
+        protected adapter: MemoryDatabaseAdapter,
+        protected databaseSession: DatabaseSession<any>,
+    ) {
         super();
     }
 
-    createQuery<T extends OrmEntity>(classType?: ReceiveType<T> | AbstractClassType<T> | ReflectionClass<T>): MemoryQuery<T> {
+    createQuery<T extends OrmEntity>(
+        classType?: ReceiveType<T> | AbstractClassType<T> | ReflectionClass<T>,
+    ): MemoryQuery<T> {
         const schema = ReflectionClass.from(classType);
         const adapter = this.adapter;
 
         class Resolver extends GenericQueryResolver<T> {
-
             protected createFormatter(withIdentityMap: boolean = false) {
                 return new Formatter(
                     this.classSchema,
                     memorySerializer,
                     this.session.getHydrator(),
-                    withIdentityMap ? this.session.identityMap : undefined
+                    withIdentityMap ? this.session.identityMap : undefined,
                 );
             }
 
@@ -194,7 +225,6 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
 
                 patchResult.modified = items.length;
                 for (const item of items) {
-
                     if (changes.$inc) {
                         for (const [path, v] of Object.entries(changes.$inc)) {
                             setPathValue(item, path, getPathValue(item, path) + v);
@@ -227,27 +257,26 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
             }
         }
 
-
-        return new MemoryQuery(ReflectionClass.from(classType), this.databaseSession, new Resolver(ReflectionClass.from(classType), this.databaseSession));
+        return new MemoryQuery(
+            ReflectionClass.from(classType),
+            this.databaseSession,
+            new Resolver(ReflectionClass.from(classType), this.databaseSession),
+        );
     }
 }
 
 export class MemoryDatabaseTransaction extends DatabaseTransaction {
-    async begin(): Promise<void> {
-    }
+    async begin(): Promise<void> {}
 
-    async commit(): Promise<void> {
-    }
+    async commit(): Promise<void> {}
 
-    async rollback(): Promise<void> {
-    }
+    async rollback(): Promise<void> {}
 }
 
 export class MemoryDatabaseAdapter extends DatabaseAdapter {
     protected store = new Map<ReflectionClass<any>, SimpleStore<any>>();
 
-    async migrate(options: MigrateOptions, entityRegistry: DatabaseEntityRegistry) {
-    }
+    async migrate(options: MigrateOptions, entityRegistry: DatabaseEntityRegistry) {}
 
     isNativeForeignKeyConstraintSupported(): boolean {
         return false;
@@ -260,7 +289,7 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
     getStore<T>(classSchema: ReflectionClass<T>): SimpleStore<T> {
         let store = this.store.get(classSchema);
         if (!store) {
-            store = { items: new Map, autoIncrement: 0 };
+            store = { items: new Map(), autoIncrement: 0 };
             this.store.set(classSchema, store);
         }
         return store;
@@ -294,7 +323,10 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
                 }
             }
 
-            async update<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+            async update<T extends OrmEntity>(
+                classSchema: ReflectionClass<T>,
+                changeSets: DatabasePersistenceChangeSet<T>[],
+            ): Promise<void> {
                 const store = adapter.getStore(classSchema);
                 const serializer = getSerializeFunction(classSchema.type, memorySerializer.serializeRegistry);
                 const primaryKey = classSchema.getPrimary().name as keyof T;
@@ -304,16 +336,13 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
                 }
             }
 
-            async release() {
-
-            }
+            async release() {}
         }
 
-        return new Persistence;
+        return new Persistence();
     }
 
-    disconnect(force?: boolean): void {
-    }
+    disconnect(force?: boolean): void {}
 
     getName(): string {
         return 'memory';

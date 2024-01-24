@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { typeOf } from '../src/reflection/reflection.js';
+
 import { defaultValue } from '../src/default.js';
+import { typeOf } from '../src/reflection/reflection.js';
 
 test('default basic', () => {
     expect(defaultValue(typeOf<undefined>())).toBe(undefined);
@@ -24,9 +25,9 @@ test('default tuple', () => {
 
 test('default enum', () => {
     enum Enum {
-        a= 1,
+        a = 1,
         b,
-        c = 4
+        c = 4,
     }
 
     expect(defaultValue(typeOf<Enum>())).toEqual(1);
@@ -43,10 +44,9 @@ test('default interface', () => {
         created?: Date;
     }
 
-    expect(defaultValue(typeOf<Base>())).toEqual({id: 0});
-    expect(defaultValue(typeOf<User>())).toEqual({id: 0, username: ''});
+    expect(defaultValue(typeOf<Base>())).toEqual({ id: 0 });
+    expect(defaultValue(typeOf<User>())).toEqual({ id: 0, username: '' });
 });
-
 
 test('default class', () => {
     class Base {
@@ -58,6 +58,6 @@ test('default class', () => {
         created?: Date;
     }
 
-    expect(defaultValue(typeOf<Base>())).toEqual({id: 0});
-    expect(defaultValue(typeOf<User>())).toEqual({id: 0, username: ''});
+    expect(defaultValue(typeOf<Base>())).toEqual({ id: 0 });
+    expect(defaultValue(typeOf<User>())).toEqual({ id: 0, username: '' });
 });

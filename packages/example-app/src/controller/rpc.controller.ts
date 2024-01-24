@@ -1,15 +1,15 @@
-import { rpc } from '@deepkit/rpc';
 import { Observable, Subject } from 'rxjs';
+
+import { rpc } from '@deepkit/rpc';
 
 @rpc.controller('test-rpc')
 export class RpcController {
-
     @rpc.action()
     timesSubject(): Subject<Date> {
         const subject = new Subject<Date>();
 
         const interval = setInterval(() => {
-            subject.next(new Date);
+            subject.next(new Date());
         }, 1000);
 
         setTimeout(() => {
@@ -25,9 +25,9 @@ export class RpcController {
 
     @rpc.action()
     timesObservable(): Observable<Date> {
-        return new Observable((observer) => {
+        return new Observable(observer => {
             const interval = setInterval(() => {
-                observer.next(new Date);
+                observer.next(new Date());
             }, 1000);
 
             setTimeout(() => {
@@ -38,9 +38,8 @@ export class RpcController {
             return {
                 unsubscribe() {
                     clearTimeout(interval);
-                }
+                },
             };
         });
     }
-
 }

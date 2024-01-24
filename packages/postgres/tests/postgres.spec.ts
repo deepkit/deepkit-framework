@@ -1,6 +1,8 @@
-import { AutoIncrement, cast, entity, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import pg from 'pg';
+
+import { AutoIncrement, PrimaryKey, cast, entity } from '@deepkit/type';
+
 import { databaseFactory } from './factory.js';
 
 test('count', async () => {
@@ -41,7 +43,7 @@ test('bool and json', async () => {
     const database = await databaseFactory([Model]);
 
     {
-        const m = new Model;
+        const m = new Model();
         m.flag = true;
         m.doc.flag = true;
         await database.persist(m);
@@ -57,8 +59,7 @@ test('change different fields of multiple entities', async () => {
         firstName: string = '';
         lastName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -95,8 +96,7 @@ test('change pk', async () => {
     class Model {
         firstName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -136,8 +136,7 @@ test('for update/share', async () => {
     class Model {
         firstName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);

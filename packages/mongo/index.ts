@@ -7,7 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
- 
+
 export * from './src/mapping.js';
 export * from './src/adapter.js';
 export * from './src/persistence.js';
@@ -17,5 +17,5 @@ export * from './src/query.js';
 export * from './src/client/client.js';
 
 export { UpdateCommand } from './src/client/command/update.js';
-export { AggregateCommand }  from './src/client/command/aggregate.js';
-export { FindAndModifyCommand }  from './src/client/command/findAndModify.js';
+export { AggregateCommand } from './src/client/command/aggregate.js';
+export { FindAndModifyCommand } from './src/client/command/findAndModify.js';

@@ -7,7 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { Overlay, OverlayConfig, OverlayRef, PositionStrategy } from '@angular/cdk/overlay';
+import { TemplatePortal } from '@angular/cdk/portal';
 import {
     AfterViewInit,
     ChangeDetectorRef,
@@ -26,17 +27,16 @@ import {
     SkipSelf,
     TemplateRef,
     ViewChild,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
-import { TemplatePortal } from '@angular/cdk/portal';
-import { Overlay, OverlayConfig, OverlayRef, PositionStrategy } from '@angular/cdk/overlay';
 import { Subscription } from 'rxjs';
-import { WindowRegistry } from '../window/window-state';
-import { focusWatcher } from '../../core/utils';
-import { isArray } from '@deepkit/core';
-import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app';
-import { ButtonComponent } from './button.component';
 
+import { isArray } from '@deepkit/core';
+
+import { focusWatcher } from '../../core/utils';
+import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app';
+import { WindowRegistry } from '../window/window-state';
+import { ButtonComponent } from './button.component';
 
 @Component({
     selector: 'dui-dropdown',
@@ -56,7 +56,7 @@ import { ButtonComponent } from './button.component';
     host: {
         '[class.overlay]': 'overlay !== false',
     },
-    styleUrls: ['./dropdown.component.scss']
+    styleUrls: ['./dropdown.component.scss'],
 })
 export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     public isOpen = false;
@@ -105,9 +105,11 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
     @ViewChild('dropdownTemplate', {
         static: false,
-        read: TemplateRef
-    }) dropdownTemplate!: TemplateRef<any>;
-    @ViewChild('dropdown', { static: false, read: ElementRef }) dropdown!: ElementRef<HTMLElement>;
+        read: TemplateRef,
+    })
+    dropdownTemplate!: TemplateRef<any>;
+    @ViewChild('dropdown', { static: false, read: ElementRef })
+    dropdown!: ElementRef<HTMLElement>;
 
     container?: TemplateRef<any> | undefined;
 
@@ -123,8 +125,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         protected cd: ChangeDetectorRef,
         @SkipSelf() protected cdParent: ChangeDetectorRef,
         @Optional() protected registry?: WindowRegistry,
-    ) {
-    }
+    ) {}
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes.show && this.dropdownTemplate) {
@@ -144,7 +145,13 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
     @HostListener('window:keyup', ['$event'])
     public key(event: KeyboardEvent) {
-        if (!this.keepOpen && this.isOpen && event.key.toLowerCase() === 'escape' && this.lastOverlayStackItem && this.lastOverlayStackItem.isLast()) {
+        if (
+            !this.keepOpen &&
+            this.isOpen &&
+            event.key.toLowerCase() === 'escape' &&
+            this.lastOverlayStackItem &&
+            this.lastOverlayStackItem.isLast()
+        ) {
             this.close();
         }
     }
@@ -161,7 +168,10 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         this.container = container;
     }
 
-    public open(target?: HTMLElement | ElementRef | MouseEvent | 'center', initiator?: HTMLElement | ElementRef | { x: number, y: number, width: number, height: number }) {
+    public open(
+        target?: HTMLElement | ElementRef | MouseEvent | 'center',
+        initiator?: HTMLElement | ElementRef | { x: number; y: number; width: number; height: number },
+    ) {
         if (this.lastFocusWatcher) {
             this.lastFocusWatcher.unsubscribe();
         }
@@ -215,14 +225,10 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                         originY: 'bottom',
                         overlayX: 'end',
                         overlayY: 'top',
-                    }
+                    },
                 ]);
-            ;
         } else if (target === 'center') {
-
-            position = overlay
-                .position()
-                .global().centerHorizontally().centerVertically();
+            position = overlay.position().global().centerHorizontally().centerVertically();
         } else {
             position = overlay
                 .position()
@@ -249,7 +255,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                         originY: 'bottom',
                         overlayX: 'end',
                         overlayY: 'top',
-                    }
+                    },
                 ]);
         }
 
@@ -264,7 +270,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 maxHeight: '90%',
                 hasBackdrop: false,
                 scrollStrategy: overlay.scrollStrategies.reposition(),
-                positionStrategy: position
+                positionStrategy: position,
             };
 
             if (this.width) options.width = this.width;
@@ -312,25 +318,35 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             this.lastOverlayStackItem = this.overlayStack.register(this.overlayRef.hostElement);
         }
 
-        const normalizedAllowedFocus = isArray(this.allowedFocus) ? this.allowedFocus : (this.allowedFocus ? [this.allowedFocus] : []);
-        const allowedFocus = normalizedAllowedFocus.map(v => v instanceof ElementRef ? v.nativeElement : v) as HTMLElement[];
+        const normalizedAllowedFocus = isArray(this.allowedFocus)
+            ? this.allowedFocus
+            : this.allowedFocus
+              ? [this.allowedFocus]
+              : [];
+        const allowedFocus = normalizedAllowedFocus.map(v =>
+            v instanceof ElementRef ? v.nativeElement : v,
+        ) as HTMLElement[];
         allowedFocus.push(this.overlayRef.hostElement);
 
         if (this.show === undefined) {
             this.overlayRef.hostElement.focus();
 
-            this.lastFocusWatcher = focusWatcher(this.dropdown.nativeElement, [...allowedFocus, target as any], (element) => {
-                //if the element is a dialog as well, we don't close
+            this.lastFocusWatcher = focusWatcher(
+                this.dropdown.nativeElement,
+                [...allowedFocus, target as any],
+                element => {
+                    //if the element is a dialog as well, we don't close
 
-                if (!element) return false;
+                    if (!element) return false;
 
-                if (this.lastOverlayStackItem) {
-                    //when there's a overlay above ours we keep it open
-                    if (!this.lastOverlayStackItem.isLast()) return true;
-                }
+                    if (this.lastOverlayStackItem) {
+                        //when there's a overlay above ours we keep it open
+                        if (!this.lastOverlayStackItem.isLast()) return true;
+                    }
 
-                return false;
-            }).subscribe(() => {
+                    return false;
+                },
+            ).subscribe(() => {
                 if (!this.keepOpen) {
                     this.close();
                     ReactiveChangeDetectionModule.tick();
@@ -339,7 +355,9 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         }
     }
 
-    public setInitiator(initiator?: HTMLElement | ElementRef | { x: number, y: number, width: number, height: number }) {
+    public setInitiator(
+        initiator?: HTMLElement | ElementRef | { x: number; y: number; width: number; height: number },
+    ) {
         if (!this.overlayRef) return;
 
         initiator = initiator instanceof ElementRef ? initiator.nativeElement : initiator;
@@ -356,7 +374,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             x: initiator.x - overlayRect.x,
             y: initiator.y - overlayRect.y,
             width: initiator.width / overlayRect.width,
-            height: initiator.height / overlayRect.height
+            height: initiator.height / overlayRect.height,
         };
     }
 
@@ -369,7 +387,6 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         if (!this.isOpen) return;
         if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
         this.isOpen = false;
-
 
         if (this.relativeToInitiator && this.overlayRef) {
             const overlayElement = this.overlayRef.overlayElement;
@@ -387,7 +404,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 this.hidden.emit();
                 this.showChange.emit(false);
                 overlayElement.removeEventListener('transitionend', transitionEnd);
-            }
+            };
 
             overlayElement.addEventListener('transitionend', transitionEnd);
         } else {
@@ -406,7 +423,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
  * A directive to open the given dropdown on regular left click.
  */
 @Directive({
-    'selector': '[openDropdown]',
+    selector: '[openDropdown]',
 })
 export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
     @Input() openDropdown?: DropdownComponent;
@@ -420,11 +437,9 @@ export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
     constructor(
         protected elementRef: ElementRef,
         @Optional() protected button?: ButtonComponent,
-    ) {
-    }
+    ) {}
 
-    ngOnDestroy() {
-    }
+    ngOnDestroy() {}
 
     ngAfterViewInit() {
         if (this.button && this.openDropdown) {
@@ -450,7 +465,7 @@ export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
  * Dropdown keeps open when mouse enters the dropdown
  */
 @Directive({
-    'selector': '[openDropdownHover]',
+    selector: '[openDropdownHover]',
 })
 export class OpenDropdownHoverDirective implements OnDestroy {
     @Input() openDropdownHover?: DropdownComponent;
@@ -468,13 +483,9 @@ export class OpenDropdownHoverDirective implements OnDestroy {
 
     lastHide?: any;
 
-    constructor(
-        protected elementRef: ElementRef,
-    ) {
-    }
+    constructor(protected elementRef: ElementRef) {}
 
-    ngOnDestroy() {
-    }
+    ngOnDestroy() {}
 
     @HostListener('mouseenter')
     onHover() {
@@ -506,7 +517,7 @@ export class OpenDropdownHoverDirective implements OnDestroy {
  * A directive to open the given dropdown upon right click / context menu.
  */
 @Directive({
-    'selector': '[contextDropdown]',
+    selector: '[contextDropdown]',
 })
 export class ContextDropdownDirective {
     @Input() contextDropdown?: DropdownComponent;
@@ -524,22 +535,21 @@ export class ContextDropdownDirective {
 
 @Component({
     selector: 'dui-dropdown-splitter,dui-dropdown-separator',
-    template: `
-        <div></div>
-    `,
-    styles: [`
-        :host {
-            display: block;
-            padding: 4px 0;
-        }
+    template: ` <div></div> `,
+    styles: [
+        `
+            :host {
+                display: block;
+                padding: 4px 0;
+            }
 
-        div {
-            border-top: 1px solid var(--line-color-light);
-        }
-    `]
+            div {
+                border-top: 1px solid var(--line-color-light);
+            }
+        `,
+    ],
 })
-export class DropdownSplitterComponent {
-}
+export class DropdownSplitterComponent {}
 
 /**
  * This directive is necessary if you want to load and render the dialog content
@@ -556,10 +566,13 @@ export class DropdownSplitterComponent {
  * ```
  */
 @Directive({
-    'selector': '[dropdownContainer]',
+    selector: '[dropdownContainer]',
 })
 export class DropdownContainerDirective {
-    constructor(protected dropdown: DropdownComponent, public template: TemplateRef<any>) {
+    constructor(
+        protected dropdown: DropdownComponent,
+        public template: TemplateRef<any>,
+    ) {
         this.dropdown.setContainer(this.template);
     }
 }
@@ -574,7 +587,7 @@ export class DropdownContainerDirective {
         '[class.selected]': 'selected !== false',
         '[class.disabled]': 'disabled !== false',
     },
-    styleUrls: ['./dropdown-item.component.scss']
+    styleUrls: ['./dropdown-item.component.scss'],
 })
 export class DropdownItemComponent {
     @Input() selected = false;
@@ -583,8 +596,7 @@ export class DropdownItemComponent {
 
     @Input() closeOnClick: boolean = true;
 
-    constructor(protected dropdown: DropdownComponent) {
-    }
+    constructor(protected dropdown: DropdownComponent) {}
 
     @HostListener('click')
     onClick() {

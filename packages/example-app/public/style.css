@@ -1,90 +1,91 @@
 body {
-    font-family: arial,x-locale-body,sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    font-size: 100%;
-    line-height: 1.75;
+  font-family: arial, x-locale-body, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 100%;
+  line-height: 1.75;
 
-    display: flex;
-    justify-content: center;
+  display: flex;
+  justify-content: center;
 }
 
 .image {
-    text-align: center;
+  text-align: center;
 }
 
 .image img {
-    width: 60px;
+  width: 60px;
 }
 
 .frame {
-    max-width: 800px;
-    border: 1px solid silver;
-    border-radius: 3px;
-    padding: 15px;
+  max-width: 800px;
+  border: 1px solid silver;
+  border-radius: 3px;
+  padding: 15px;
 }
 
 table.pretty {
-    width: 100%;
-    table-layout: fixed;
-    border-collapse: collapse;
-    margin: 15px 0;
-    font-size: 13px;
-    border: 1px solid silver;
-    border-radius: 6px;
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: 15px 0;
+  font-size: 13px;
+  border: 1px solid silver;
+  border-radius: 6px;
 }
 
-table.pretty td, table.pretty th {
-    padding: 4px 3px;
-    text-align: left;
-    vertical-align: top;
+table.pretty td,
+table.pretty th {
+  padding: 4px 3px;
+  text-align: left;
+  vertical-align: top;
 }
 
 table.pretty tr:nth-child(even) td {
-    background-color: #f8f8f8;
+  background-color: #f8f8f8;
 }
 
 table.prettytr:hover td {
-    background-color: #f1f1f1;
+  background-color: #f1f1f1;
 }
 
 table.prettyth {
-    font-weight: bold;
-    font-size: 12px;
-    border-bottom: 1px solid #e5e5e5;
+  font-weight: bold;
+  font-size: 12px;
+  border-bottom: 1px solid #e5e5e5;
 }
 
 form {
-    max-width: 300px;
-    margin: 15px auto;
-    text-align: center;
-    border: 1px solid silver;
-    border-radius: 3px;
-    padding: 12px;
+  max-width: 300px;
+  margin: 15px auto;
+  text-align: center;
+  border: 1px solid silver;
+  border-radius: 3px;
+  padding: 12px;
 }
 
 .user-image {
-    max-width: 100%;
-    max-height: 50px;
+  max-width: 100%;
+  max-height: 50px;
 }
 
 .form-row {
-    display: flex;
-    margin: 10px 0;
-    align-items: center;
+  display: flex;
+  margin: 10px 0;
+  align-items: center;
 }
 
 .form-row label {
-    flex: 0 0 30%;
-    text-align: right;
-    padding-right: 5px;
+  flex: 0 0 30%;
+  text-align: right;
+  padding-right: 5px;
 }
 
 .form-row input {
-    margin: 0;
-    width: 100%;
+  margin: 0;
+  width: 100%;
 }
 
 h4 {
-    margin: 0;
+  margin: 0;
 }

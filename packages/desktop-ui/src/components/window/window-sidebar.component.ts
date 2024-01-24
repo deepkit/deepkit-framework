@@ -7,8 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { Component, TemplateRef, ViewChild } from '@angular/core';
+
 import { WindowContentComponent } from './window-content.component';
 
 @Component({
@@ -21,7 +21,8 @@ import { WindowContentComponent } from './window-content.component';
     styleUrls: ['./window-sidebar.component.scss'],
 })
 export class WindowSidebarComponent {
-    @ViewChild('templateRef', { static: true }) public template!: TemplateRef<any>;
+    @ViewChild('templateRef', { static: true })
+    public template!: TemplateRef<any>;
 
     constructor(private content: WindowContentComponent) {
         content.registerSidebar(this);

@@ -7,10 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { ControllerClient } from '../../client';
+
 import { Event } from '@deepkit/framework-debug-api';
+
+import { ControllerClient } from '../../client';
 import { Lifecycle } from '../../utils';
 
 @Component({
@@ -19,31 +20,31 @@ import { Lifecycle } from '../../utils';
             <h4>Events</h4>
             <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="filterQuery"></dui-input>
         </div>
-        <dui-table
-            style="flex: 1 1"
-            [items]="filter(events, filterQuery)" selectable defaultSort="path" noFocusOutline>
+        <dui-table style="flex: 1 1" [items]="filter(events, filterQuery)" selectable defaultSort="path" noFocusOutline>
             <dui-table-column [width]="220" name="event"></dui-table-column>
             <dui-table-column [width]="250" name="controller"></dui-table-column>
             <dui-table-column [width]="220" name="methodName"></dui-table-column>
             <dui-table-column [width]="100" name="priority"></dui-table-column>
         </dui-table>
     `,
-    styles: [`
-        :host {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
+    styles: [
+        `
+            :host {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+            }
 
-        .header {
-            display: flex;
-            margin-bottom: 15px;
-        }
+            .header {
+                display: flex;
+                margin-bottom: 15px;
+            }
 
-        .header dui-input {
-            margin-left: auto;
-        }
-    `]
+            .header dui-input {
+                margin-left: auto;
+            }
+        `,
+    ],
 })
 export class EventsComponent implements OnInit, OnDestroy {
     public events: Event[] = [];
@@ -64,7 +65,7 @@ export class EventsComponent implements OnInit, OnDestroy {
     filter(items: Event[], filter: string): any[] {
         if (!filter) return items;
 
-        return items.filter(v => (v.controller.includes(filter) || v.methodName.includes(filter)));
+        return items.filter(v => v.controller.includes(filter) || v.methodName.includes(filter));
     }
 
     async load() {
@@ -75,5 +76,4 @@ export class EventsComponent implements OnInit, OnDestroy {
     async ngOnInit(): Promise<void> {
         await this.load();
     }
-
 }

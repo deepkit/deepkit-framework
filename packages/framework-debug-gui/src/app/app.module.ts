@@ -7,11 +7,12 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BrowserModule } from '@angular/platform-browser';
+import { OverlayModule } from '@angular/cdk/overlay';
 import { NgModule } from '@angular/core';
-import { AppRoutingModule } from './app-routing.module';
-import { AppComponent } from './app.component';
+import { FormsModule } from '@angular/forms';
+import { BrowserModule } from '@angular/platform-browser';
+
+import { ApiConsoleModule } from '@deepkit/api-console-gui';
 import {
     DuiAppModule,
     DuiButtonModule,
@@ -27,28 +28,35 @@ import {
     DuiWindowModule,
     provideState,
 } from '@deepkit/desktop-ui';
-import { ConfigurationComponent } from './views/configuration/configuration.component';
-import { HttpComponent } from './views/http/http.component';
-import { ControllerClient } from './client';
-import { FormsModule } from '@angular/forms';
-import { RpcComponent } from './views/rpc/rpc.component';
-import { WorkflowCardComponent, WorkflowComponent } from './components/workflow.component';
-import { EventsComponent } from './views/events/events.component';
-import { OverlayModule } from '@angular/cdk/overlay';
-import { HttpRequestComponent } from './views/http/request/http-request.component';
 import { OrmBrowserModule } from '@deepkit/orm-browser-gui';
-import { ApiConsoleModule } from '@deepkit/api-console-gui';
+import { RpcWebSocketClient } from '@deepkit/rpc';
+import { DeepkitUIModule } from '@deepkit/ui-library';
+
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+import { ControllerClient } from './client';
+import { FileUploaderComponent } from './components/file-uploader.component';
+import { WorkflowCardComponent, WorkflowComponent } from './components/workflow.component';
+import { State } from './state';
+import { ConfigurationComponent } from './views/configuration/configuration.component';
+import { EventsComponent } from './views/events/events.component';
+import { FilesystemComponent } from './views/filesystem/filesystem.component';
+import {
+    MediaComponent,
+    MediaFileCache,
+    MediaFileDetail,
+    MediaFileQuickLookCache,
+    MediaFileThumbnail,
+    MediaQuickLook,
+} from './views/filesystem/media.component';
+import { HttpRequestsComponent } from './views/http/http-requests.component';
+import { HttpComponent } from './views/http/http.component';
+import { HttpRequestComponent } from './views/http/request/http-request.component';
+import { ModuleDetailComponent, ModuleDetailServiceComponent } from './views/modules/module-detail.component';
+import { ModulesComponent } from './views/modules/modules.component';
 import { ProfileComponent } from './views/profile/profile.component';
 import { ProfileTimelineComponent } from './views/profile/timeline.component';
-import { ModulesComponent } from './views/modules/modules.component';
-import { ModuleDetailComponent, ModuleDetailServiceComponent } from './views/modules/module-detail.component';
-import { DeepkitUIModule } from '@deepkit/ui-library';
-import { FilesystemComponent } from './views/filesystem/filesystem.component';
-import { RpcWebSocketClient } from '@deepkit/rpc';
-import { State } from './state';
-import { MediaComponent, MediaFileCache, MediaFileDetail, MediaFileQuickLookCache, MediaFileThumbnail, MediaQuickLook } from './views/filesystem/media.component';
-import { FileUploaderComponent } from './components/file-uploader.component';
-import { HttpRequestsComponent } from './views/http/http-requests.component';
+import { RpcComponent } from './views/rpc/rpc.component';
 
 @NgModule({
     declarations: [
@@ -98,13 +106,15 @@ import { HttpRequestsComponent } from './views/http/http-requests.component';
         DuiIndicatorModule,
     ],
     providers: [
-        { provide: RpcWebSocketClient, useFactory: () => new RpcWebSocketClient(ControllerClient.getServerHost()) },
+        {
+            provide: RpcWebSocketClient,
+            useFactory: () => new RpcWebSocketClient(ControllerClient.getServerHost()),
+        },
         ControllerClient,
         provideState(State),
         MediaFileCache,
         MediaFileQuickLookCache,
     ],
-    bootstrap: [AppComponent]
+    bootstrap: [AppComponent],
 })
-export class AppModule {
-}
+export class AppModule {}

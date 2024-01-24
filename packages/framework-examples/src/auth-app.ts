@@ -16,29 +16,25 @@ $ curl -H "Authorization: bar" http://localhost:8080
 $ curl http://localhost:8080
 
 */
-
-import { http, HttpAction, httpWorkflow, JSONResponse, RouteParameterResolverContext } from '@deepkit/http';
-import { eventDispatcher } from '@deepkit/event';
-import { Logger } from '@deepkit/logger';
 import { App } from '@deepkit/app';
+import { eventDispatcher } from '@deepkit/event';
 import { FrameworkModule } from '@deepkit/framework';
+import { HttpAction, JSONResponse, RouteParameterResolverContext, http, httpWorkflow } from '@deepkit/http';
+import { Logger } from '@deepkit/logger';
 
 class User {
     constructor(
         public username: string,
         public apiKey: string = '',
-    ) { }
+    ) {}
 }
 
-const users: User[] = [
-    new User('Foo', 'foo'),
-    new User('Bar', 'bar'),
-];
+const users: User[] = [new User('Foo', 'foo'), new User('Bar', 'bar')];
 
 function authGroup(group: 'api' | 'frontend') {
     return (action: HttpAction) => {
         action.data.set('authGroup', group);
-    }
+    };
 }
 
 class MyRouteParameterResolver {
@@ -80,13 +76,7 @@ class AuthListener {
 
 new App({
     controllers: [ApiController],
-    providers: [
-        MyRouteParameterResolver,
-    ],
-    listeners: [
-        AuthListener
-    ],
-    imports: [
-        new FrameworkModule(),
-    ],
+    providers: [MyRouteParameterResolver],
+    listeners: [AuthListener],
+    imports: [new FrameworkModule()],
 }).run();

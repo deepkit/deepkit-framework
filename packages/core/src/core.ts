@@ -7,8 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import dotProp from 'dot-prop';
+
 import { eachPair } from './iterators.js';
 
 /**
@@ -37,7 +37,7 @@ export class CustomError extends Error {
  * @public
  */
 export interface ClassType<T = any> {
-    new(...args: any[]): T;
+    new (...args: any[]): T;
 }
 
 /**
@@ -65,7 +65,9 @@ export type ExtractClassType<T> = T extends AbstractClassType<infer K> ? K : nev
  */
 export function getClassName<T>(classTypeOrInstance: ClassType<T> | Object): string {
     if (!classTypeOrInstance) return 'undefined';
-    const proto = (classTypeOrInstance as any)['prototype'] ? (classTypeOrInstance as any)['prototype'] : classTypeOrInstance;
+    const proto = (classTypeOrInstance as any)['prototype']
+        ? (classTypeOrInstance as any)['prototype']
+        : classTypeOrInstance;
     return proto.constructor.name || 'anonymous class';
 }
 
@@ -96,7 +98,7 @@ export function applyDefaults<T>(classType: ClassType<T>, target: { [k: string]:
  * Tries to identify the object by normalised result of Object.toString(obj).
  */
 export function identifyType(obj: any) {
-    return ((({}).toString.call(obj).match(/\s([a-zA-Z]+)/) || [])[1] || '').toLowerCase();
+    return (({}.toString.call(obj).match(/\s([a-zA-Z]+)/) || [])[1] || '').toLowerCase();
 }
 
 /**
@@ -126,11 +128,14 @@ export function getClassTypeFromInstance<T>(target: T): ClassType<T> {
  * Returns true when target is a class instance.
  */
 export function isClassInstance(target: any): boolean {
-    return target !== undefined && target !== null
-        && target['constructor']
-        && Object.getPrototypeOf(target) === (target as any)['constructor'].prototype
-        && !isPlainObject(target)
-        && isObject(target);
+    return (
+        target !== undefined &&
+        target !== null &&
+        target['constructor'] &&
+        Object.getPrototypeOf(target) === (target as any)['constructor'].prototype &&
+        !isPlainObject(target) &&
+        isObject(target)
+    );
 }
 
 /**
@@ -144,7 +149,8 @@ export function stringifyValueWithType(value: any, depth: number = 0): string {
     if (isPlainObject(value)) return `object ${depth < 2 ? prettyPrintObject(value, depth) : ''}`;
     if (isArray(value)) return `Array`;
     if (isClass(value)) return `${getClassName(value)}`;
-    if (isObject(value)) return `${getClassName(getClassTypeFromInstance(value))} ${depth < 2 ? prettyPrintObject(value, depth) : ''}`;
+    if (isObject(value))
+        return `${getClassName(getClassTypeFromInstance(value))} ${depth < 2 ? prettyPrintObject(value, depth) : ''}`;
     if ('function' === typeof value) return `function ${value.name}`;
     if (null === value) return `null`;
     return 'undefined';
@@ -194,8 +200,7 @@ export function isFunction(obj: any): obj is Function {
     return false;
 }
 
-const AsyncFunction = (async () => {
-}).constructor;
+const AsyncFunction = (async () => {}).constructor;
 
 /**
  * Returns true if given obj is a async function.
@@ -215,8 +220,13 @@ export function isAsyncFunction(obj: any): obj is (...args: any[]) => Promise<an
  * @public
  */
 export function isPromise<T>(obj: any | Promise<T>): obj is Promise<T> {
-    return obj !== null && typeof obj === 'object' && typeof obj.then === 'function'
-        && typeof obj.catch === 'function' && typeof obj.finally === 'function';
+    return (
+        obj !== null &&
+        typeof obj === 'object' &&
+        typeof obj.then === 'function' &&
+        typeof obj.catch === 'function' &&
+        typeof obj.finally === 'function'
+    );
 }
 
 /**
@@ -241,7 +251,7 @@ export function isObject(obj: any): obj is { [key: string]: any } {
     if (obj === null) {
         return false;
     }
-    return (typeof obj === 'object' && !isArray(obj));
+    return typeof obj === 'object' && !isArray(obj);
 }
 
 /**
@@ -308,9 +318,11 @@ export function isNumeric(s: string | number): boolean {
     return true;
 }
 
-export const isInteger: (obj: any) => obj is number = Number.isInteger as any || function (obj: any) {
-    return (obj % 1) === 0;
-};
+export const isInteger: (obj: any) => obj is number =
+    (Number.isInteger as any) ||
+    function (obj: any) {
+        return obj % 1 === 0;
+    };
 
 /**
  * @public
@@ -499,7 +511,9 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
  *
  * @public
  */
-export async function asyncOperation<T>(executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>): Promise<T> {
+export async function asyncOperation<T>(
+    executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>,
+): Promise<T> {
     try {
         return await new Promise<T>(async (resolve, reject) => {
             try {
@@ -533,10 +547,12 @@ export function fixAsyncOperation<T>(promise: Promise<T>): Promise<T> {
  */
 export function mergePromiseStack<T>(promise: Promise<T>, stack?: string): Promise<T> {
     stack = stack || createStack();
-    promise.then(() => {
-    }, (error) => {
-        mergeStack(error, stack || '');
-    });
+    promise.then(
+        () => {},
+        error => {
+            mergeStack(error, stack || '');
+        },
+    );
     return promise;
 }
 
@@ -663,7 +679,7 @@ export function getObjectKeysSize(obj: object): number {
 
 export function isConstructable(fn: any): boolean {
     try {
-        new new Proxy(fn, { construct: () => ({}) });
+        new new Proxy(fn, { construct: () => ({}) })();
         return true;
     } catch (err) {
         return false;
@@ -714,7 +730,7 @@ export function isIterable(value: any): boolean {
  * Returns __filename, works in both cjs and esm.
  */
 export function getCurrentFileName(): string {
-    const e = new Error;
+    const e = new Error();
     const initiator = e.stack!.split('\n').slice(2, 3)[0];
     let path = /(?<path>[^(\s]+):[0-9]+:[0-9]+/.exec(initiator)!.groups!.path;
     if (path.indexOf('file') >= 0) {
@@ -770,9 +786,9 @@ export function rangeArray(startOrLength: number, stop: number = 0, step: number
 export function zip<T extends (readonly unknown[])[]>(
     ...args: T
 ): { [K in keyof T]: T[K] extends (infer V)[] ? V : never }[] {
-    const minLength = Math.min(...args.map((arr) => arr.length));
+    const minLength = Math.min(...args.map(arr => arr.length));
     //@ts-ignore
-    return Array.from({ length: minLength }).map((_, i) => args.map((arr) => arr[i]));
+    return Array.from({ length: minLength }).map((_, i) => args.map(arr => arr[i]));
 }
 
 /**

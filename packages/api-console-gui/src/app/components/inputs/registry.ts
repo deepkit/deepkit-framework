@@ -1,13 +1,14 @@
-import { isMapType, isMongoIdType, isSetType, isUUIDType, ReflectionKind, TypeRegistry } from '@deepkit/type';
 import { ClassType, getClassName } from '@deepkit/core';
-import { StringInputComponent } from './string-input.component';
+import { ReflectionKind, TypeRegistry, isMapType, isMongoIdType, isSetType, isUUIDType } from '@deepkit/type';
+
 import { ArrayInputComponent } from './array-input.component';
-import { EnumInputComponent } from './enum-input.component';
-import { DateInputComponent } from './date-input.component';
-import { JsonInputComponent } from './json-input.component';
 import { BinaryInputComponent } from './binary-input.component';
 import { ClassInputComponent } from './class-input.component';
+import { DateInputComponent } from './date-input.component';
+import { EnumInputComponent } from './enum-input.component';
+import { JsonInputComponent } from './json-input.component';
 import { MapInputComponent } from './map-input.component';
+import { StringInputComponent } from './string-input.component';
 import { UnionInputComponent } from './union-input.component';
 
 export const inputRegistry = new TypeRegistry<ClassType>();
@@ -34,7 +35,12 @@ inputRegistry.set([ReflectionKind.class, ReflectionKind.objectLiteral], ClassInp
 inputRegistry.set(isUUIDType, StringInputComponent);
 inputRegistry.set(isMongoIdType, StringInputComponent);
 inputRegistry.set(type => {
-    if (type.kind === ReflectionKind.objectLiteral && type.types.length && type.types.every(v => v.kind === ReflectionKind.indexSignature)) return true;
+    if (
+        type.kind === ReflectionKind.objectLiteral &&
+        type.types.length &&
+        type.types.every(v => v.kind === ReflectionKind.indexSignature)
+    )
+        return true;
     return isMapType(type);
 }, MapInputComponent);
 inputRegistry.set(type => {

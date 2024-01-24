@@ -1,121 +1,123 @@
-@import "./view-styles";
+@import './view-styles';
 
-.error, .loading {
-    padding: 50px;
-    text-align: center;
+.error,
+.loading {
+  padding: 50px;
+  text-align: center;
 }
 
 .error {
-    color: var(--color-red);
+  color: var(--color-red);
 }
 
 .wrapper {
-    border-radius: 4px;
-    border: 1px solid var(--line-color-light);
-    margin: 30px auto;
-    max-width: 800px;
-    padding: 25px;
-
+  border-radius: 4px;
+  border: 1px solid var(--line-color-light);
+  margin: 30px auto;
+  max-width: 800px;
+  padding: 25px;
 }
 
 .responses-title {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    text-align: center;
-    margin-top: 15px;
-    padding-top: 15px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  text-align: center;
+  margin-top: 15px;
+  padding-top: 15px;
 }
 
 .routes {
-    margin-top: 25px;
+  margin-top: 25px;
 
-    > .title {
-        font-size: 12px;
-        line-height: 16px;
-        font-weight: 600;
-        margin-top: 15px;
+  > .title {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 600;
+    margin-top: 15px;
+  }
+
+  .route-details {
+    padding: 10px 25px;
+    background-color: var(--dui-window-header-bg);
+  }
+
+  .route {
+    margin-top: 12px;
+    padding: 8px;
+    border-radius: 3px;
+    background-color: var(--dui-window-header-bg);
+    border: 1px solid var(--line-color-light);
+    cursor: pointer !important;
+
+    &:hover {
+      border: 1px solid var(--line-color);
     }
 
-    .route-details {
-        padding: 10px 25px;
-        background-color: var(--dui-window-header-bg);
+    .description {
+      font-size: 12px;
+      color: var(--text-light);
     }
 
-    .route {
-        margin-top: 12px;
-        padding: 8px;
+    .title {
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+
+      .path {
+        flex: 1;
+        overflow: hidden;
+        word-break: keep-all;
+        text-overflow: ellipsis;
+      }
+
+      .method {
+        text-align: right;
+        font-size: 11px;
+        font-weight: bold;
+        padding: 0px 5px;
+
+        border: 1px solid var(--line-color);
         border-radius: 3px;
-        background-color: var(--dui-window-header-bg);
-        border: 1px solid var(--line-color-light);
-        cursor: pointer !important;
 
-        &:hover {
-            border: 1px solid var(--line-color);
+        &.GET {
+          border: 1px solid var(--color-green);
+          color: var(--color-green);
+        }
+        &.DELETE {
+          border: 1px solid var(--color-red);
+          color: var(--color-red);
         }
 
-        .description {
-            font-size: 12px;
-            color: var(--text-light);
+        &.PATCH,
+        &.PUT,
+        &.POST {
+          border: 1px solid var(--color-orange);
+          color: var(--color-orange);
         }
-
-        .title {
-            display: flex;
-            align-items: center;
-            overflow: hidden;
-
-            .path {
-                flex: 1;
-                overflow: hidden;
-                word-break: keep-all;
-                text-overflow: ellipsis;
-            }
-
-            .method {
-                text-align: right;
-                font-size: 11px;
-                font-weight: bold;
-                padding: 0px 5px;
-
-                border: 1px solid var(--line-color);
-                border-radius: 3px;
-
-                &.GET {
-                    border: 1px solid var(--color-green);
-                    color: var(--color-green);
-                }
-                &.DELETE {
-                    border: 1px solid var(--color-red);
-                    color: var(--color-red);
-                }
-
-                &.PATCH, &.PUT, &.POST {
-                    border: 1px solid var(--color-orange);
-                    color: var(--color-orange);
-                }
-            }
-        }
+      }
     }
+  }
 }
 
 .description ::ng-deep {
-    h1 {
-        font-size: 32px;
-        line-height: 36px;
-    }
+  h1 {
+    font-size: 32px;
+    line-height: 36px;
+  }
 
-    h2 {
-        font-size: 26px;
-        line-height: 30px;
-    }
+  h2 {
+    font-size: 26px;
+    line-height: 30px;
+  }
 
-    h3 {
-        font-size: 22px;
-        line-height: 26px;
-    }
+  h3 {
+    font-size: 22px;
+    line-height: 26px;
+  }
 
-    h4 {
-        font-size: 18px;
-        line-height: 22px;
-    }
+  h4 {
+    font-size: 18px;
+    line-height: 22px;
+  }
 }

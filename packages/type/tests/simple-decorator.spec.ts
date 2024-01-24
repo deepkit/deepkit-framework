@@ -7,8 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { expect, test } from '@jest/globals';
+
 import { typeOf } from '../src/reflection/reflection.js';
 import { PrimaryKey, primaryKeyAnnotation } from '../src/reflection/type.js';
 

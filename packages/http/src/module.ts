@@ -1,22 +1,28 @@
-import { HttpListener, HttpResultFormatter, httpWorkflow } from './http.js';
-import { HttpConfig } from './module.config.js';
 import { AddedListener, AppModule, ControllerConfig, createModule, stringifyListener } from '@deepkit/app';
-import { HttpRouter, HttpRouterRegistry, RouteConfig } from './router.js';
-import { HttpKernel } from './kernel.js';
-import { HttpRouterFilterResolver } from './filter.js';
-import { HttpControllers } from './controllers.js';
-import { ConsoleTransport, Logger } from '@deepkit/logger';
-import { HttpRequest, HttpResponse } from './model.js';
-import '@deepkit/type';
-import { httpClass } from './decorator.js';
 import { EventToken } from '@deepkit/event';
-import { metaAnnotation, ReflectionKind, ReflectionParameter, Type } from '@deepkit/type';
-import { buildRequestParser } from './request-parser.js';
 import { InjectorContext } from '@deepkit/injector';
+import { ConsoleTransport, Logger } from '@deepkit/logger';
+import '@deepkit/type';
+import { ReflectionKind, ReflectionParameter, Type, metaAnnotation } from '@deepkit/type';
+
+import { HttpControllers } from './controllers.js';
+import { httpClass } from './decorator.js';
+import { HttpRouterFilterResolver } from './filter.js';
+import { HttpListener, HttpResultFormatter, httpWorkflow } from './http.js';
+import { HttpKernel } from './kernel.js';
+import { HttpRequest, HttpResponse } from './model.js';
+import { HttpConfig } from './module.config.js';
+import { buildRequestParser } from './request-parser.js';
+import { HttpRouter, HttpRouterRegistry, RouteConfig } from './router.js';
 
 function parameterRequiresRequest(parameter: ReflectionParameter): boolean {
-    return Boolean(metaAnnotation.getForName(parameter.type, 'httpQueries') || metaAnnotation.getForName(parameter.type, 'httpQuery')
-        || metaAnnotation.getForName(parameter.type, 'httpBody') || metaAnnotation.getForName(parameter.type, 'httpPath') || metaAnnotation.getForName(parameter.type, 'httpHeader'));
+    return Boolean(
+        metaAnnotation.getForName(parameter.type, 'httpQueries') ||
+            metaAnnotation.getForName(parameter.type, 'httpQuery') ||
+            metaAnnotation.getForName(parameter.type, 'httpBody') ||
+            metaAnnotation.getForName(parameter.type, 'httpPath') ||
+            metaAnnotation.getForName(parameter.type, 'httpHeader'),
+    );
 }
 
 export class HttpModule extends createModule({
@@ -32,12 +38,8 @@ export class HttpModule extends createModule({
         { provide: RouteConfig, useValue: undefined, scope: 'http' },
         { provide: Logger, useValue: new Logger([new ConsoleTransport()]) },
     ],
-    listeners: [
-        HttpListener,
-    ],
-    workflows: [
-        httpWorkflow
-    ],
+    listeners: [HttpListener],
+    workflows: [httpWorkflow],
     exports: [
         HttpRouter,
         HttpRouterRegistry,
@@ -49,15 +51,19 @@ export class HttpModule extends createModule({
         HttpControllers,
         RouteConfig,
         Logger,
-    ]
+    ],
 }) {
-    protected httpControllers = new HttpControllers;
+    protected httpControllers = new HttpControllers();
 
     process() {
         this.addProvider({ provide: HttpControllers, useValue: this.httpControllers });
     }
 
-    protected patchEventsForHttpRequestAccess: EventToken<any>[] = [httpWorkflow.onRequest, httpWorkflow.onAuth, httpWorkflow.onController];
+    protected patchEventsForHttpRequestAccess: EventToken<any>[] = [
+        httpWorkflow.onRequest,
+        httpWorkflow.onAuth,
+        httpWorkflow.onController,
+    ];
 
     processListener(module: AppModule<any>, listener: AddedListener) {
         if (!this.patchEventsForHttpRequestAccess.includes(listener.eventToken)) return;
@@ -73,7 +79,9 @@ export class HttpModule extends createModule({
 
         if (needsAsync) {
             //not yet supported since we have to patch the listener to be async and redirect the call (as the DI container is sync).
-            throw new Error(`Listener ${stringifyListener(listener)} requires async HttpBody. This is not yet supported. You have to parse the request manually by injecting HttpRequest.`);
+            throw new Error(
+                `Listener ${stringifyListener(listener)} requires async HttpBody. This is not yet supported. You have to parse the request manually by injecting HttpRequest.`,
+            );
         }
 
         for (let index = 0; index < params.length; index++) {
@@ -88,7 +96,13 @@ export class HttpModule extends createModule({
             let i = index;
 
             this.addProvider({
-                provide: uniqueType, useFactory: (httpConfig: HttpConfig, request: HttpRequest, injector: InjectorContext, config?: RouteConfig) => {
+                provide: uniqueType,
+                useFactory: (
+                    httpConfig: HttpConfig,
+                    request: HttpRequest,
+                    injector: InjectorContext,
+                    config?: RouteConfig,
+                ) => {
                     if (!build) {
                         const params = listener.reflection.getParameters().slice(1);
                         build = buildRequestParser(httpConfig.parser, params, config?.getFullPath());
@@ -97,7 +111,8 @@ export class HttpModule extends createModule({
                     const parser = build(request);
                     const params = parser(injector);
                     return params.arguments[i];
-                }, scope: 'http'
+                },
+                scope: 'http',
             });
             this.addExport(uniqueType);
         }

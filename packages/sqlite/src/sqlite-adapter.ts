@@ -7,8 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import sqlite3 from 'better-sqlite3';
 
-import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';
+import { AbstractClassType, ClassType, asyncOperation, empty } from '@deepkit/core';
 import {
     DatabaseAdapter,
     DatabaseError,
@@ -19,15 +20,11 @@ import {
     DeleteResult,
     OrmEntity,
     PatchResult,
+    UniqueConstraintFailure,
     primaryKeyObjectConverter,
-    UniqueConstraintFailure
 } from '@deepkit/orm';
 import {
-    asAliasName,
     DefaultPlatform,
-    prepareBatchUpdate,
-    splitDotPath,
-    SqlBuilder,
     SQLConnection,
     SQLConnectionPool,
     SQLDatabaseAdapter,
@@ -36,15 +33,31 @@ import {
     SQLPersistence,
     SQLQueryModel,
     SQLQueryResolver,
-    SQLStatement
+    SQLStatement,
+    SqlBuilder,
+    asAliasName,
+    prepareBatchUpdate,
+    splitDotPath,
 } from '@deepkit/sql';
-import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
-import sqlite3 from 'better-sqlite3';
-import { SQLitePlatform } from './sqlite-platform.js';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import {
+    Changes,
+    ReceiveType,
+    ReflectionClass,
+    getPatchSerializeFunction,
+    getSerializeFunction,
+    resolvePath,
+} from '@deepkit/type';
+
+import { SQLitePlatform } from './sqlite-platform.js';
 
 export class SQLiteStatement extends SQLStatement {
-    constructor(protected logger: DatabaseLogger, protected sql: string, protected stmt: sqlite3.Statement, protected stopwatch?: Stopwatch) {
+    constructor(
+        protected logger: DatabaseLogger,
+        protected sql: string,
+        protected stmt: sqlite3.Statement,
+        protected stopwatch?: Stopwatch,
+    ) {
         super();
     }
 
@@ -78,8 +91,7 @@ export class SQLiteStatement extends SQLStatement {
         }
     }
 
-    release() {
-    }
+    release() {}
 }
 
 export class SQLiteDatabaseTransaction extends DatabaseTransaction {
@@ -202,11 +214,19 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
         if (this.firstConnection) this.firstConnection.db.close();
     }
 
-    protected createConnection(logger?: DatabaseLogger, transaction?: SQLiteDatabaseTransaction, stopwatch?: Stopwatch): SQLiteConnection {
+    protected createConnection(
+        logger?: DatabaseLogger,
+        transaction?: SQLiteDatabaseTransaction,
+        stopwatch?: Stopwatch,
+    ): SQLiteConnection {
         return new SQLiteConnection(this, this.dbPath, logger, transaction, stopwatch);
     }
 
-    async getConnection(logger?: DatabaseLogger, transaction?: SQLiteDatabaseTransaction, stopwatch?: Stopwatch): Promise<SQLiteConnection> {
+    async getConnection(
+        logger?: DatabaseLogger,
+        transaction?: SQLiteDatabaseTransaction,
+        stopwatch?: Stopwatch,
+    ): Promise<SQLiteConnection> {
         //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
         //and only release the connection when the transaction is commit/rollback is executed.
 
@@ -215,13 +235,15 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
             return transaction.connection;
         }
 
-        const connection = this.firstConnection && this.firstConnection.released ? this.firstConnection :
-            this.activeConnections >= this.maxConnections
-                //we wait for the next query to be released and reuse it
-                ? await asyncOperation<SQLiteConnection>((resolve) => {
-                    this.queue.push(resolve);
-                })
-                : this.createConnection(logger, transaction, stopwatch);
+        const connection =
+            this.firstConnection && this.firstConnection.released
+                ? this.firstConnection
+                : this.activeConnections >= this.maxConnections
+                  ? //we wait for the next query to be released and reuse it
+                    await asyncOperation<SQLiteConnection>(resolve => {
+                        this.queue.push(resolve);
+                    })
+                  : this.createConnection(logger, transaction, stopwatch);
 
         if (!this.firstConnection) this.firstConnection = connection;
         connection.released = false;
@@ -280,7 +302,10 @@ export class SQLitePersistence extends SQLPersistence {
         return super.getInsertSQL(classSchema, fields, values);
     }
 
-    async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+    async batchUpdate<T extends OrmEntity>(
+        classSchema: ReflectionClass<T>,
+        changeSets: DatabasePersistenceChangeSet<T>[],
+    ): Promise<void> {
         const prepared = prepareBatchUpdate(this.platform, classSchema, changeSets);
         if (!prepared) return;
 
@@ -309,10 +334,18 @@ export class SQLitePersistence extends SQLPersistence {
         for (let i = 0; i < changeSets.length; i++) {
             params.push(prepared.primaryKeys[i]);
             let pkValue = placeholderStrategy.getPlaceholder();
-            valuesValues.push('(' + pkValue + ',' + valuesNames.map(name => {
-                params.push(prepared.values[name][i]);
-                return placeholderStrategy.getPlaceholder();
-            }).join(',') + ')');
+            valuesValues.push(
+                '(' +
+                    pkValue +
+                    ',' +
+                    valuesNames
+                        .map(name => {
+                            params.push(prepared.values[name][i]);
+                            return placeholderStrategy.getPlaceholder();
+                        })
+                        .join(',') +
+                    ')',
+            );
         }
 
         for (let i = 0; i < changeSets.length; i++) {
@@ -399,7 +432,8 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         protected connectionPool: SQLiteConnectionPool,
         protected platform: DefaultPlatform,
         classSchema: ReflectionClass<T>,
-        session: DatabaseSession<DatabaseAdapter>) {
+        session: DatabaseSession<DatabaseAdapter>,
+    ) {
         super(connectionPool, platform, classSchema, session);
     }
 
@@ -412,11 +446,20 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         const sqlBuilder = new SqlBuilder(this.platform);
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
-        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(
+            this.classSchema,
+            this.platform.serializer.deserializeRegistry,
+        );
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
-        const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connectionFrame = this.session.stopwatch
+            ? this.session.stopwatch.start('Connection acquisition')
+            : undefined;
+        const connection = await this.connectionPool.getConnection(
+            this.session.logger,
+            this.session.assignedTransaction,
+            this.session.stopwatch,
+        );
         if (connectionFrame) connectionFrame.end();
 
         try {
@@ -442,46 +485,69 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimary();
-        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(
+            this.classSchema,
+            this.platform.serializer.deserializeRegistry,
+        );
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
-        const patchSerialize = getPatchSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
+        const patchSerialize = getPatchSerializeFunction(
+            this.classSchema.type,
+            this.platform.serializer.serializeRegistry,
+        );
         const $set = changes.$set ? patchSerialize(changes.$set, undefined, { normalizeArrayIndex: true }) : undefined;
 
-        if ($set) for (const i in $set) {
-            if (!$set.hasOwnProperty(i)) continue;
-            fieldsSet[i] = 1;
-            select.push(` ? as ${this.platform.quoteIdentifier(asAliasName(i))}`);
-            selectParams.push($set[i]);
-        }
+        if ($set)
+            for (const i in $set) {
+                if (!$set.hasOwnProperty(i)) continue;
+                fieldsSet[i] = 1;
+                select.push(` ? as ${this.platform.quoteIdentifier(asAliasName(i))}`);
+                selectParams.push($set[i]);
+            }
 
-        if (changes.$unset) for (const i in changes.$unset) {
-            if (!changes.$unset.hasOwnProperty(i)) continue;
-            fieldsSet[i] = 1;
-            select.push(`NULL as ${this.platform.quoteIdentifier(i)}`);
-        }
+        if (changes.$unset)
+            for (const i in changes.$unset) {
+                if (!changes.$unset.hasOwnProperty(i)) continue;
+                fieldsSet[i] = 1;
+                select.push(`NULL as ${this.platform.quoteIdentifier(i)}`);
+            }
 
         for (const i of model.returning) {
-            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.deserializeRegistry) };
+            aggregateFields[i] = {
+                converted: getSerializeFunction(
+                    resolvePath(i, this.classSchema.type),
+                    this.platform.serializer.deserializeRegistry,
+                ),
+            };
             select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
         }
 
-        if (changes.$inc) for (const i in changes.$inc) {
-            if (!changes.$inc.hasOwnProperty(i)) continue;
-            fieldsSet[i] = 1;
-            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
+        if (changes.$inc)
+            for (const i in changes.$inc) {
+                if (!changes.$inc.hasOwnProperty(i)) continue;
+                fieldsSet[i] = 1;
+                aggregateFields[i] = {
+                    converted: getSerializeFunction(
+                        resolvePath(i, this.classSchema.type),
+                        this.platform.serializer.serializeRegistry,
+                    ),
+                };
 
-            select.push(`(${this.platform.getColumnAccessor('', i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`);
-        }
+                select.push(
+                    `(${this.platform.getColumnAccessor('', i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`,
+                );
+            }
 
         const set: string[] = [];
         for (const i in fieldsSet) {
             if (i.includes('.')) {
                 let [firstPart, secondPart] = splitDotPath(i);
                 if (!secondPart.startsWith('[')) secondPart = '.' + secondPart;
-                set.push(`${this.platform.quoteIdentifier(firstPart)} = json_set(${this.platform.quoteIdentifier(firstPart)}, '$${secondPart}', _b.${this.platform.quoteIdentifier(asAliasName(i))})`);
+                set.push(
+                    `${this.platform.quoteIdentifier(firstPart)} = json_set(${this.platform.quoteIdentifier(firstPart)}, '$${secondPart}', _b.${this.platform.quoteIdentifier(asAliasName(i))})`,
+                );
             } else {
                 set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
             }
@@ -512,7 +578,11 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         `;
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(
+            this.session.logger,
+            this.session.assignedTransaction,
+            this.session.stopwatch,
+        );
         try {
             await connection.exec(`DROP TABLE IF EXISTS _b;`);
 
@@ -539,17 +609,29 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
     }
 }
 
-export class SQLiteDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T> {
-}
+export class SQLiteDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T> {}
 
 export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
-    constructor(protected connectionPool: SQLiteConnectionPool, platform: DefaultPlatform, databaseSession: DatabaseSession<any>) {
+    constructor(
+        protected connectionPool: SQLiteConnectionPool,
+        platform: DefaultPlatform,
+        databaseSession: DatabaseSession<any>,
+    ) {
         super(connectionPool, platform, databaseSession);
     }
 
-    createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): SQLiteDatabaseQuery<T> {
-        return new SQLiteDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
-            new SQLiteQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession)
+    createQuery<T extends OrmEntity>(
+        type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>,
+    ): SQLiteDatabaseQuery<T> {
+        return new SQLiteDatabaseQuery<T>(
+            ReflectionClass.from(type),
+            this.databaseSession,
+            new SQLiteQueryResolver<T>(
+                this.connectionPool,
+                this.platform,
+                ReflectionClass.from(type),
+                this.databaseSession,
+            ),
         );
     }
 }

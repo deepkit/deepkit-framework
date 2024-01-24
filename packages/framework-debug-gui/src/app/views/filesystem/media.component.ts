@@ -13,19 +13,21 @@ import {
     QueryList,
     SimpleChanges,
     ViewChild,
-    ViewChildren
+    ViewChildren,
 } from '@angular/core';
-import { ControllerClient } from '../../client';
 import { ActivatedRoute, Router } from '@angular/router';
-import { EventDispatcher } from '@deepkit/event';
-import { fileAddedEvent, fileQueuedEvent, fileUploadedEvent, State } from '../../state';
-import { DropdownComponent, DuiDialog, FilePickerItem } from '@deepkit/desktop-ui';
-import { ClientProgress, Progress } from '@deepkit/rpc';
+
 import { asyncOperation } from '@deepkit/core';
+import { DropdownComponent, DuiDialog, FilePickerItem } from '@deepkit/desktop-ui';
+import { EventDispatcher } from '@deepkit/event';
 import { MediaFile } from '@deepkit/framework-debug-api';
+import { ClientProgress, Progress } from '@deepkit/rpc';
+
+import { ControllerClient } from '../../client';
+import { State, fileAddedEvent, fileQueuedEvent, fileUploadedEvent } from '../../state';
 import { Lifecycle, trackByIndex } from '../../utils';
 
-function imageSize(data: Uint8Array): Promise<{ width: number, height: number } | undefined> {
+function imageSize(data: Uint8Array): Promise<{ width: number; height: number } | undefined> {
     const blob = new Blob([data]);
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -117,8 +119,12 @@ function mimeTypeToLabel(mimeType?: string) {
 
 @Injectable()
 export class MediaFileCache {
-    file: { [id: string]: { file: MediaFile, data: Uint8Array, loaded: Date } | false } = {};
-    loadingState: { [id: string]: Promise<{ file: MediaFile, data: Uint8Array } | false> } = {};
+    file: {
+        [id: string]: { file: MediaFile; data: Uint8Array; loaded: Date } | false;
+    } = {};
+    loadingState: {
+        [id: string]: Promise<{ file: MediaFile; data: Uint8Array } | false>;
+    } = {};
 
     //5 minutes
     maxAge = 5 * 60 * 1000;
@@ -131,7 +137,7 @@ export class MediaFileCache {
 
     clean() {
         //remove files older than maxAge
-        const now = new Date;
+        const now = new Date();
         for (const id in this.file) {
             const file = this.file[id];
             if (file && now.getTime() - file.loaded.getTime() > this.maxAge) {
@@ -149,23 +155,23 @@ export class MediaFileCache {
         return this.file[id];
     }
 
-    load(filesystem: number, id?: string): Promise<{ file: MediaFile, data: Uint8Array } | false> {
+    load(filesystem: number, id?: string): Promise<{ file: MediaFile; data: Uint8Array } | false> {
         if (!id) return Promise.resolve(false);
         if (this.loadingState[id] !== undefined) return this.loadingState[id];
 
-        return this.loadingState[id] = asyncOperation(async (resolve) => {
+        return (this.loadingState[id] = asyncOperation(async resolve => {
             try {
                 const preview = await this.getData(filesystem, id);
-                this.file[id] = preview ? { ...preview, loaded: new Date } : preview;
+                this.file[id] = preview ? { ...preview, loaded: new Date() } : preview;
                 resolve(preview);
             } catch (error: any) {
                 console.log('error', error);
                 resolve(false);
             }
-        });
+        }));
     }
 
-    async getData(fs: number, id: string): Promise<{ file: MediaFile, data: Uint8Array } | false> {
+    async getData(fs: number, id: string): Promise<{ file: MediaFile; data: Uint8Array } | false> {
         throw new Error('Not implemented');
     }
 }
@@ -182,25 +188,27 @@ export class MediaFileQuickLookCache extends MediaFileCache {
     styleUrls: ['./media-detail.component.scss'],
     template: `
         <div class="loading" [class.visible]="data === undefined">
-            <dui-indicator *ngIf="progress && progress.download|asyncRender as download" [step]="download.progress"></dui-indicator>
+            <dui-indicator
+                *ngIf="progress && progress.download | asyncRender as download"
+                [step]="download.progress"
+            ></dui-indicator>
         </div>
         <ng-container [ngSwitch]="type" *ngIf="data">
             <div class="image overlay-scrollbar-small" [class.fit]="true" *ngSwitchCase="'image'">
-                <img [src]="data|objectURL:file.mimeType" *ngIf="data" alt="Image"/>
+                <img [src]="data | objectURL: file.mimeType" *ngIf="data" alt="Image" />
             </div>
             <!--            <div class="pdf" *ngSwitchCase="'pdf'">-->
             <!--                <iframe [src]="data|objectURL:'application/pdf'" frameborder="0" height="100%" width="100%">-->
             <!--                </iframe>-->
             <!--            </div>-->
             <div class="default" *ngSwitchDefault>
-                <iframe [src]="data|objectURL:file.mimeType" frameborder="0" height="100%" width="100%">
-                </iframe>
+                <iframe [src]="data | objectURL: file.mimeType" frameborder="0" height="100%" width="100%"> </iframe>
             </div>
         </ng-container>
-    `
+    `,
 })
 export class MediaFileDetail implements OnChanges, OnInit {
-    @Input() file!: { filesystem: number, id: string, mimeType?: string };
+    @Input() file!: { filesystem: number; id: string; mimeType?: string };
     @Input() data?: Uint8Array | false;
 
     progress?: Progress;
@@ -222,9 +230,7 @@ export class MediaFileDetail implements OnChanges, OnInit {
         return 'unknown';
     }
 
-    constructor(private client: ControllerClient) {
-
-    }
+    constructor(private client: ControllerClient) {}
 
     async ngOnInit() {
         await this.load();
@@ -248,32 +254,68 @@ export class MediaFileDetail implements OnChanges, OnInit {
     selector: 'app-media-file-thumbnail',
     styleUrls: ['./media-file-thumbnail.component.scss'],
     template: `
-        <img *ngIf="file.type === 'directory'" (contextmenu)="onContextMenu()" (click)="selectFile($event)" alt="Folder icon"
-             src="assets/images/icons/folder-icon-dark.png"/>
-        <img [src]="url" (load)="loaded()" (error)="loaded(true)" [class.image-hidden]="loading || noPreview"
-             *ngIf="file.type !== 'directory' && url" loading="lazy"
-             (contextmenu)="onContextMenu()"
-             (click)="selectFile($event)" alt="File preview"/>
-        <img class="no-preview" *ngIf="file.type !== 'directory' && noPreview"
-             (contextmenu)="onContextMenu()"
-             (click)="selectFile($event)"
-             src="assets/images/icons/file-icon-unknown.png"/>
-        <app-loading-spinner *ngIf="loading && file.type !== 'directory'" (contextmenu)="onContextMenu()"
-                             (click)="selectFile($event)"></app-loading-spinner>
+        <img
+            *ngIf="file.type === 'directory'"
+            (contextmenu)="onContextMenu()"
+            (click)="selectFile($event)"
+            alt="Folder icon"
+            src="assets/images/icons/folder-icon-dark.png"
+        />
+        <img
+            [src]="url"
+            (load)="loaded()"
+            (error)="loaded(true)"
+            [class.image-hidden]="loading || noPreview"
+            *ngIf="file.type !== 'directory' && url"
+            loading="lazy"
+            (contextmenu)="onContextMenu()"
+            (click)="selectFile($event)"
+            alt="File preview"
+        />
+        <img
+            class="no-preview"
+            *ngIf="file.type !== 'directory' && noPreview"
+            (contextmenu)="onContextMenu()"
+            (click)="selectFile($event)"
+            src="assets/images/icons/file-icon-unknown.png"
+        />
+        <app-loading-spinner
+            *ngIf="loading && file.type !== 'directory'"
+            (contextmenu)="onContextMenu()"
+            (click)="selectFile($event)"
+        ></app-loading-spinner>
         <div class="title" *ngIf="withTitle">
-            <textarea *ngIf="rename && view === 'icons'" #input type="text" [(ngModel)]="newName" [ngModelOptions]="{standalone: true}"
-                      (blur)="doRename(undefined)" (keydown.escape)="doRename(undefined)" (keydown.enter)="doRename(newName)"></textarea>
+            <textarea
+                *ngIf="rename && view === 'icons'"
+                #input
+                type="text"
+                [(ngModel)]="newName"
+                [ngModelOptions]="{ standalone: true }"
+                (blur)="doRename(undefined)"
+                (keydown.escape)="doRename(undefined)"
+                (keydown.enter)="doRename(newName)"
+            ></textarea>
 
-            <input *ngIf="rename && view === 'list'" #input type="text" [(ngModel)]="newName" [ngModelOptions]="{standalone: true}"
-                   (blur)="doRename(undefined)" (keydown.escape)="doRename(undefined)" (keydown.enter)="doRename(newName)"/>
+            <input
+                *ngIf="rename && view === 'list'"
+                #input
+                type="text"
+                [(ngModel)]="newName"
+                [ngModelOptions]="{ standalone: true }"
+                (blur)="doRename(undefined)"
+                (keydown.escape)="doRename(undefined)"
+                (keydown.enter)="doRename(newName)"
+            />
 
-            <span *ngIf="!rename" (contextmenu)="onContextMenu()" (click)="selectFile($event)">{{truncateFileName(file.name)}}</span>
+            <span *ngIf="!rename" (contextmenu)="onContextMenu()" (click)="selectFile($event)">{{
+                truncateFileName(file.name)
+            }}</span>
         </div>
     `,
     host: {
         '[class.selected]': 'selected',
         '[class.list]': `view === 'list'`,
-    }
+    },
 })
 export class MediaFileThumbnail implements OnInit, OnDestroy, OnChanges {
     loadedUrl = '';
@@ -300,8 +342,11 @@ export class MediaFileThumbnail implements OnInit, OnDestroy, OnChanges {
         }
     }
 
-    constructor(private client: ControllerClient, public elementRef: ElementRef, private cd: ChangeDetectorRef) {
-    }
+    constructor(
+        private client: ControllerClient,
+        public elementRef: ElementRef,
+        private cd: ChangeDetectorRef,
+    ) {}
 
     loaded(error: boolean = false) {
         this.loading = false;
@@ -334,11 +379,12 @@ export class MediaFileThumbnail implements OnInit, OnDestroy, OnChanges {
     get url() {
         if (!this.file.mimeType.startsWith('image/')) return '';
 
-        return this.client.getUrl('/_debug/api/media/' + this.file.filesystem + '/preview?path=' + encodeURIComponent(this.file.path));
+        return this.client.getUrl(
+            '/_debug/api/media/' + this.file.filesystem + '/preview?path=' + encodeURIComponent(this.file.path),
+        );
     }
 
-    ngOnDestroy() {
-    }
+    ngOnDestroy() {}
 
     ngOnChanges(changes: SimpleChanges) {
         this.newName = this.file.name;
@@ -381,7 +427,7 @@ export class MediaFileThumbnail implements OnInit, OnDestroy, OnChanges {
                 <dui-icon name="arrow_left" *ngIf="files.length > 1" (click)="prev()" clickable></dui-icon>
                 <dui-icon name="arrow_right" *ngIf="files.length > 1" (click)="next()" clickable></dui-icon>
                 <div *ngIf="file">
-                    {{file.name}}
+                    {{ file.name }}
                 </div>
             </dui-button-group>
             <dui-button-group float="right">
@@ -390,24 +436,37 @@ export class MediaFileThumbnail implements OnInit, OnDestroy, OnChanges {
         </dui-button-groups>
         <div class="overlay-scrollbar-small quick-look-content">
             <ng-container *ngIf="file">
-                <img *ngIf="file.type === 'directory'" alt="Folder icon" src="assets/images/icons/folder-icon-dark.png"/>
-                <img [src]="preview.data|objectURL:file.mimeType" *ngIf="file.type !== 'directory' && mediaFileCache.getPreview(file.id) as preview" alt="File preview"/>
-                <img class="no-preview" *ngIf="file.type !== 'directory' && mediaFileCache.getPreview(file.id) === false"
-                     src="assets/images/icons/file-icon-unknown.png"/>
-                <app-loading-spinner *ngIf="file.type !== 'directory' && mediaFileCache.isLoading(file.id)"></app-loading-spinner>
+                <img
+                    *ngIf="file.type === 'directory'"
+                    alt="Folder icon"
+                    src="assets/images/icons/folder-icon-dark.png"
+                />
+                <img
+                    [src]="preview.data | objectURL: file.mimeType"
+                    *ngIf="file.type !== 'directory' && mediaFileCache.getPreview(file.id) as preview"
+                    alt="File preview"
+                />
+                <img
+                    class="no-preview"
+                    *ngIf="file.type !== 'directory' && mediaFileCache.getPreview(file.id) === false"
+                    src="assets/images/icons/file-icon-unknown.png"
+                />
+                <app-loading-spinner
+                    *ngIf="file.type !== 'directory' && mediaFileCache.isLoading(file.id)"
+                ></app-loading-spinner>
             </ng-container>
         </div>
         <div class="stats text-selection" *ngIf="file">
             <div class="stat">
                 <div class="label">Size</div>
                 <div class="value">
-                    <div>{{file.size | fileSize}}</div>
-                    <div *ngIf="dim">{{dim.width}}x{{dim.height}}</div>
+                    <div>{{ file.size | fileSize }}</div>
+                    <div *ngIf="dim">{{ dim.width }}x{{ dim.height }}</div>
                 </div>
             </div>
             <div class="stat">
                 <div class="label">Type</div>
-                <div class="value">{{mimeTypeToLabel(file.mimeType)}}</div>
+                <div class="value">{{ mimeTypeToLabel(file.mimeType) }}</div>
             </div>
             <!--            <div class="stat">-->
             <!--                <div class="label">Created</div>-->
@@ -415,13 +474,15 @@ export class MediaFileThumbnail implements OnInit, OnDestroy, OnChanges {
             <!--            </div>-->
             <div class="stat">
                 <div class="label">Modified</div>
-                <div class="value">{{file.lastModified | date:'medium'}}</div>
+                <div class="value">
+                    {{ file.lastModified | date: 'medium' }}
+                </div>
             </div>
         </div>
     `,
     host: {
         '[attr.tabindex]': '0',
-    }
+    },
 })
 export class MediaQuickLook implements OnInit, OnDestroy, OnChanges {
     mimeTypeToLabel = mimeTypeToLabel;
@@ -432,7 +493,7 @@ export class MediaQuickLook implements OnInit, OnDestroy, OnChanges {
 
     @Output() close = new EventEmitter<void>();
 
-    dim?: { width: number, height: number };
+    dim?: { width: number; height: number };
 
     file?: MediaFile;
 
@@ -440,8 +501,7 @@ export class MediaQuickLook implements OnInit, OnDestroy, OnChanges {
         public mediaFileCache: MediaFileQuickLookCache,
         private client: ControllerClient,
         private cd: ChangeDetectorRef,
-    ) {
-    }
+    ) {}
 
     next() {
         const index = this.files.indexOf(this.file!);
@@ -469,8 +529,7 @@ export class MediaQuickLook implements OnInit, OnDestroy, OnChanges {
         }
     }
 
-    ngOnDestroy() {
-    }
+    ngOnDestroy() {}
 
     ngOnChanges(changes: SimpleChanges) {
         this.load();
@@ -545,20 +604,34 @@ function sortByType(a: MediaFile, b: MediaFile) {
 
         <dui-dropdown #sortDropdown>
             <dui-dropdown-item [selected]="sort.by === 'name'" (click)="sortBy('name')">Name</dui-dropdown-item>
-            <dui-dropdown-item [selected]="sort.by === 'created'" (click)="sortBy('created')">Created</dui-dropdown-item>
-            <dui-dropdown-item [selected]="sort.by === 'modified'" (click)="sortBy('modified')">Modified</dui-dropdown-item>
+            <dui-dropdown-item [selected]="sort.by === 'created'" (click)="sortBy('created')"
+                >Created</dui-dropdown-item
+            >
+            <dui-dropdown-item [selected]="sort.by === 'modified'" (click)="sortBy('modified')"
+                >Modified</dui-dropdown-item
+            >
             <dui-dropdown-item [selected]="sort.by === 'type'" (click)="sortBy('type')">Type</dui-dropdown-item>
             <dui-dropdown-item [selected]="sort.by === 'size'" (click)="sortBy('size')">Size</dui-dropdown-item>
             <dui-dropdown-splitter></dui-dropdown-splitter>
-            <dui-dropdown-item [selected]="sort.direction === 'asc'" (click)="sortDirection('asc')">Ascending</dui-dropdown-item>
-            <dui-dropdown-item [selected]="sort.direction === 'desc'" (click)="sortDirection('desc')">Descending</dui-dropdown-item>
+            <dui-dropdown-item [selected]="sort.direction === 'asc'" (click)="sortDirection('asc')"
+                >Ascending</dui-dropdown-item
+            >
+            <dui-dropdown-item [selected]="sort.direction === 'desc'" (click)="sortDirection('desc')"
+                >Descending</dui-dropdown-item
+            >
             <dui-dropdown-splitter></dui-dropdown-splitter>
-            <dui-dropdown-item [selected]="sort.folderFirst" (click)="toggleFolderFirst()">Folder first</dui-dropdown-item>
+            <dui-dropdown-item [selected]="sort.folderFirst" (click)="toggleFolderFirst()"
+                >Folder first</dui-dropdown-item
+            >
         </dui-dropdown>
 
         <dui-dropdown #viewDropdown>
-            <dui-dropdown-item [selected]="state.media.view === 'icons'" (click)="state.media.view = 'icons'">Icons</dui-dropdown-item>
-            <dui-dropdown-item [selected]="state.media.view === 'list'" (click)="state.media.view = 'list'">List</dui-dropdown-item>
+            <dui-dropdown-item [selected]="state.media.view === 'icons'" (click)="state.media.view = 'icons'"
+                >Icons</dui-dropdown-item
+            >
+            <dui-dropdown-item [selected]="state.media.view === 'list'" (click)="state.media.view = 'list'"
+                >List</dui-dropdown-item
+            >
         </dui-dropdown>
 
         <dui-button-groups>
@@ -586,14 +659,22 @@ function sortByType(a: MediaFile, b: MediaFile) {
         </dui-button-groups>
 
         <dui-dropdown #contextMenu>
-            <dui-dropdown-item [disabled]="!selected.length" (click)="open(getSelectedFiles()[0]!.path)">Open</dui-dropdown-item>
-            <dui-dropdown-item [disabled]="!selected.length" (click)="openPublic(getSelectedFiles()[0]!.path)">Open Public URL</dui-dropdown-item>
-            <dui-dropdown-item [disabled]="!selected.length" (click)="openPrivate(getSelectedFiles()[0]!.path)">Open Private URL</dui-dropdown-item>
+            <dui-dropdown-item [disabled]="!selected.length" (click)="open(getSelectedFiles()[0]!.path)"
+                >Open</dui-dropdown-item
+            >
+            <dui-dropdown-item [disabled]="!selected.length" (click)="openPublic(getSelectedFiles()[0]!.path)"
+                >Open Public URL</dui-dropdown-item
+            >
+            <dui-dropdown-item [disabled]="!selected.length" (click)="openPrivate(getSelectedFiles()[0]!.path)"
+                >Open Private URL</dui-dropdown-item
+            >
             <dui-dropdown-splitter></dui-dropdown-splitter>
             <dui-dropdown-item [disabled]="!selected.length" (click)="deleteSelected()">Delete</dui-dropdown-item>
             <dui-dropdown-splitter></dui-dropdown-splitter>
-            <dui-dropdown-item [disabled]="!selected.length" (click)="renameFile = selected[0]">Rename</dui-dropdown-item>
-<!--            <dui-dropdown-item [disabled]="!selected.length">Duplicate</dui-dropdown-item>-->
+            <dui-dropdown-item [disabled]="!selected.length" (click)="renameFile = selected[0]"
+                >Rename</dui-dropdown-item
+            >
+            <!--            <dui-dropdown-item [disabled]="!selected.length">Duplicate</dui-dropdown-item>-->
             <dui-dropdown-item [disabled]="!selected.length" (click)="openQuickLook()">Quick Look</dui-dropdown-item>
             <!--            <dui-dropdown-splitter></dui-dropdown-splitter>-->
             <!--            <dui-dropdown-item [disabled]="!selected.length">Copy</dui-dropdown-item>-->
@@ -603,48 +684,67 @@ function sortByType(a: MediaFile, b: MediaFile) {
 
         <dui-dropdown #quickLook [keepOpen]="true">
             <ng-container *ngIf="getSelectedFiles() as files">
-                <app-media-file-quick-look *ngIf="files.length" (close)="closeQuickLook()" [files]="files"></app-media-file-quick-look>
+                <app-media-file-quick-look
+                    *ngIf="files.length"
+                    (close)="closeQuickLook()"
+                    [files]="files"
+                ></app-media-file-quick-look>
             </ng-container>
         </dui-dropdown>
 
-        <div class="content"
-             [class.list]="state.media.view=== 'list'"
-             [class.file]="media && media.type === 'file'"
-             [class.overlay-scrollbar-small]="media && media.type === 'directory'"
-             [class.folder]="media && media.type === 'directory'"
-             (click)="selectBackground($event)" duiFileDrop duiFileDropMultiple (duiFileDropChange)="upload($event)"
-             [contextDropdown]="contextMenu">
+        <div
+            class="content"
+            [class.list]="state.media.view === 'list'"
+            [class.file]="media && media.type === 'file'"
+            [class.overlay-scrollbar-small]="media && media.type === 'directory'"
+            [class.folder]="media && media.type === 'directory'"
+            (click)="selectBackground($event)"
+            duiFileDrop
+            duiFileDropMultiple
+            (duiFileDropChange)="upload($event)"
+            [contextDropdown]="contextMenu"
+        >
             <ng-container *ngIf="media === false">
                 <div class="error">
                     <dui-icon icon="error"></dui-icon>
-                    <div class="message">Path {{path}} not found</div>
+                    <div class="message">Path {{ path }} not found</div>
                 </div>
             </ng-container>
             <ng-container *ngIf="media">
                 <app-media-detail *ngIf="media.type === 'file'" [file]="media"></app-media-detail>
                 <ng-container *ngIf="media.type === 'directory'">
-                    <dui-table *ngIf="state.media.view === 'list'" selectable (selectedChange)="tableSelect($event)" [items]="files" noFocusOutline>
+                    <dui-table
+                        *ngIf="state.media.view === 'list'"
+                        selectable
+                        (selectedChange)="tableSelect($event)"
+                        [items]="files"
+                        noFocusOutline
+                    >
                         <dui-table-column name="name">
                             <ng-container *duiTableCell="let item">
-                                <app-media-file-thumbnail [file]="item"
-                                                          [view]="state.media.view"
-                                                          (fileChange)="select(item)" (renamed)="fileRenamed($event)" [rename]="item.id === renameFile"
-                                                          [selected]="selected.includes(item.id)"></app-media-file-thumbnail>
+                                <app-media-file-thumbnail
+                                    [file]="item"
+                                    [view]="state.media.view"
+                                    (fileChange)="select(item)"
+                                    (renamed)="fileRenamed($event)"
+                                    [rename]="item.id === renameFile"
+                                    [selected]="selected.includes(item.id)"
+                                ></app-media-file-thumbnail>
                             </ng-container>
                         </dui-table-column>
                         <dui-table-column name="modified">
                             <ng-container *duiTableCell="let item">
-                                {{item.modified | date:'medium'}}
+                                {{ item.modified | date: 'medium' }}
                             </ng-container>
                         </dui-table-column>
                         <dui-table-column name="size">
                             <ng-container *duiTableCell="let item">
-                                {{item.size | fileSize}}
+                                {{ item.size | fileSize }}
                             </ng-container>
                         </dui-table-column>
                         <dui-table-column name="Kind">
                             <ng-container *duiTableCell="let item">
-                                {{item.type === 'directory' ? 'Folder' : mimeTypeToLabel(item.mimeType)}}
+                                {{ item.type === 'directory' ? 'Folder' : mimeTypeToLabel(item.mimeType) }}
                             </ng-container>
                         </dui-table-column>
                         <!--                        <dui-table-column name="created">-->
@@ -654,9 +754,14 @@ function sortByType(a: MediaFile, b: MediaFile) {
                         <!--                        </dui-table-column>-->
                     </dui-table>
                     <ng-container *ngIf="state.media.view === 'icons'">
-                        <app-media-file-thumbnail [file]="file" (fileChange)="select(file)" (renamed)="fileRenamed($event)" [rename]="file.id === renameFile"
-                                                  [selected]="selected.includes(file.id)"
-                                                  *ngFor="let file of files; trackBy: trackByIndex"></app-media-file-thumbnail>
+                        <app-media-file-thumbnail
+                            [file]="file"
+                            (fileChange)="select(file)"
+                            (renamed)="fileRenamed($event)"
+                            [rename]="file.id === renameFile"
+                            [selected]="selected.includes(file.id)"
+                            *ngFor="let file of files; trackBy: trackByIndex"
+                        ></app-media-file-thumbnail>
                     </ng-container>
                 </ng-container>
             </ng-container>
@@ -664,7 +769,7 @@ function sortByType(a: MediaFile, b: MediaFile) {
     `,
     host: {
         '[attr.tabindex]': '0',
-    }
+    },
 })
 export class MediaComponent implements OnInit, OnDestroy {
     trackByIndex = trackByIndex;
@@ -685,9 +790,11 @@ export class MediaComponent implements OnInit, OnDestroy {
     @Output() filesSelected = new EventEmitter<MediaFile[]>();
     @Output() activeFile = new EventEmitter<MediaFile>();
 
-    @ViewChild('quickLook', { read: DropdownComponent }) quickLook?: DropdownComponent;
+    @ViewChild('quickLook', { read: DropdownComponent })
+    quickLook?: DropdownComponent;
 
-    @ViewChildren(MediaFileThumbnail, { read: MediaFileThumbnail }) thumbnails?: QueryList<MediaFileThumbnail>;
+    @ViewChildren(MediaFileThumbnail, { read: MediaFileThumbnail })
+    thumbnails?: QueryList<MediaFileThumbnail>;
 
     selected: string[] = [];
     renameFile?: string;
@@ -866,7 +973,10 @@ export class MediaComponent implements OnInit, OnDestroy {
     }
 
     openPrivate(path: string) {
-        open(this.client.getUrl('/_debug/api/media/' + this.filesystem + '?path=' + encodeURIComponent(path)), '_blank');
+        open(
+            this.client.getUrl('/_debug/api/media/' + this.filesystem + '?path=' + encodeURIComponent(path)),
+            '_blank',
+        );
     }
 
     async openPublic(path: string) {
@@ -874,14 +984,16 @@ export class MediaComponent implements OnInit, OnDestroy {
         open(url, '_blank');
     }
 
-
     open(path: string, andSelect = false) {
         //in dialog mode we just change path
         if (this.dialogMode) {
             this.path = path;
             this.load(andSelect);
         } else {
-            this.router.navigate([], { queryParams: { path }, queryParamsHandling: 'merge' });
+            this.router.navigate([], {
+                queryParams: { path },
+                queryParamsHandling: 'merge',
+            });
         }
     }
 
@@ -985,7 +1097,10 @@ export class MediaComponent implements OnInit, OnDestroy {
         try {
             const path = this.getFolder();
             if (!this.dialogMode) {
-                this.router.navigate([], { queryParams: { path }, queryParamsHandling: 'merge' });
+                this.router.navigate([], {
+                    queryParams: { path },
+                    queryParamsHandling: 'merge',
+                });
             }
             this.media = await this.client.media.getFile(this.filesystem, path);
             console.log('this.media', this.media);

@@ -7,8 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { Directive, ElementRef, HostListener, Input, OnInit } from '@angular/core';
+
 import { nextTick } from '@deepkit/core';
 
 @Directive({
@@ -20,9 +20,7 @@ export class DuiResponsiveDirective implements OnInit {
 
     @Input() duiClassMin: { [className: string]: number } = {};
 
-    constructor(
-        private element: ElementRef,
-    ) { }
+    constructor(private element: ElementRef) {}
 
     ngOnInit() {
         this.onResize();

@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+
 import { HttpRequest } from '../src/model.js';
 
 test('request model json', async () => {
@@ -14,7 +15,7 @@ test('request model json', async () => {
 });
 
 test('request model body', async () => {
-    const request = HttpRequest.POST('/').body("hello").build();
+    const request = HttpRequest.POST('/').body('hello').build();
     const buffers = [];
 
     for await (const chunk of request) {

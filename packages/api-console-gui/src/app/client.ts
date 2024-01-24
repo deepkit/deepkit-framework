@@ -7,19 +7,19 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { Injectable } from '@angular/core';
-import { DeepkitClient } from '@deepkit/rpc';
+
 import { ApiConsoleApi, ApiDocument, ApiEntryPoints } from '@deepkit/api-console-api';
+import { DeepkitClient } from '@deepkit/rpc';
 import { LiveSubject } from '@deepkit/ui-library';
 
 @Injectable()
 export class ControllerClient {
-    public entryPoints = new LiveSubject<ApiEntryPoints>((subject) => {
+    public entryPoints = new LiveSubject<ApiEntryPoints>(subject => {
         this.api.getEntryPoints().then(v => subject.next(v));
     });
 
-    public document = new LiveSubject<ApiDocument>((subject) => {
+    public document = new LiveSubject<ApiDocument>(subject => {
         this.api.getDocument().then(v => subject.next(v));
     });
 

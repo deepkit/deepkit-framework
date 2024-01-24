@@ -1,7 +1,15 @@
 //@ts-ignore
 import objectInspect from 'object-inspect';
+
 import { getClassName } from '@deepkit/core';
-import { getTypeJitContainer, isBackReferenceType, isReferenceType, ReflectionKind, stringifyType, Type } from '@deepkit/type';
+import {
+    ReflectionKind,
+    Type,
+    getTypeJitContainer,
+    isBackReferenceType,
+    isReferenceType,
+    stringifyType,
+} from '@deepkit/type';
 
 export function trackByIndex(index: number) {
     return index;
@@ -23,7 +31,13 @@ export function typeToTSJSONInterface(type: Type, options: { defaultIsOptional?:
     const id = options.defaultIsOptional ? 'typeToTSJSONInterfaceDefaultOptional' : 'typeToTSJSONInterface';
     const jit = getTypeJitContainer(type);
     if (jit[id]) return jit[id];
-    return jit[id] = stringifyType(type, { ...options, showDescription: true, showNames: false, showFullDefinition: true, stringify: manualTypeStringify });
+    return (jit[id] = stringifyType(type, {
+        ...options,
+        showDescription: true,
+        showNames: false,
+        showFullDefinition: true,
+        stringify: manualTypeStringify,
+    }));
 }
 
 export interface TypeDecoration {
@@ -60,9 +74,7 @@ export function inspect(obj: any) {
     });
 }
 
-export const methods: string[] = [
-    'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'
-];
+export const methods: string[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
 
 export const headerStatusCodes: { [name: string]: string } = {
     '100': 'Continue',
@@ -101,7 +113,7 @@ export const headerStatusCodes: { [name: string]: string } = {
     '415': 'Unsupported Media Type',
     '416': 'Requested Range Not Satisfiable',
     '417': 'Expectation Failed',
-    '418': 'I\'m a teapot',
+    '418': "I'm a teapot",
     '422': 'Unprocessable Entity',
     '423': 'Locked',
     '424': 'Failed Dependency',
@@ -120,5 +132,5 @@ export const headerStatusCodes: { [name: string]: string } = {
     '507': 'Insufficient Storage',
     '509': 'Bandwidth Limit Exceeded',
     '510': 'Not Extended',
-    '511': 'Network Authentication Required'
+    '511': 'Network Authentication Required',
 };

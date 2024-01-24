@@ -7,6 +7,7 @@ bun init
 ```
 
 `bunfig.toml`:
+
 ```toml
 preload = ["@deepkit/bun"]
 
@@ -19,8 +20,9 @@ bun install @deepkit/type @deepkit/type-compiler @deepkit/core @deepkit/bun type
 ```
 
 `tsconfig.json`:
+
 ```json
 {
-    "reflection": true
+  "reflection": true
 }
 ```

@@ -7,29 +7,39 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, IndexModel, Table, TableDiff } from '../schema/table.js';
 import sqlstring from 'sqlstring';
+
 import { ClassType, isArray, isObject } from '@deepkit/core';
-import { sqlSerializer } from '../serializer/sql-serializer.js';
-import { parseType, SchemaParser } from '../reverse/schema-parser.js';
-import { SQLFilterBuilder } from '../sql-filter-builder.js';
-import { Sql } from '../sql-builder.js';
+import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
 import {
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    Serializer,
+    Type,
     binaryTypes,
     databaseAnnotation,
     getTypeJitContainer,
     isReferenceType,
-    ReflectionClass,
-    ReflectionKind,
-    ReflectionProperty,
     resolvePath,
     resolveProperty,
-    Serializer,
-    Type
 } from '@deepkit/type';
-import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
+
+import { SchemaParser, parseType } from '../reverse/schema-parser.js';
+import {
+    Column,
+    ColumnDiff,
+    DatabaseDiff,
+    DatabaseModel,
+    ForeignKey,
+    IndexModel,
+    Table,
+    TableDiff,
+} from '../schema/table.js';
+import { sqlSerializer } from '../serializer/sql-serializer.js';
 import { splitDotPath } from '../sql-adapter.js';
+import { Sql } from '../sql-builder.js';
+import { SQLFilterBuilder } from '../sql-filter-builder.js';
 
 export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
@@ -52,8 +62,7 @@ export class DefaultNamingStrategy implements NamingStrategy {
 }
 
 export class SqlPlaceholderStrategy {
-    constructor(public offset: number = 0) {
-    }
+    constructor(public offset: number = 0) {}
 
     getPlaceholder(): string {
         return '?';
@@ -101,9 +110,9 @@ export abstract class DefaultPlatform {
         if (cache.dbTypeCast) return cache.dbTypeCast;
 
         const dbType = this.getTypeMapping(type);
-        if (!dbType) return cache.dbTypeCast = '';
+        if (!dbType) return (cache.dbTypeCast = '');
 
-        return cache.dbTypeCast = '::' + dbType.sqlType;
+        return (cache.dbTypeCast = '::' + dbType.sqlType);
     }
 
     applyLimitAndOffset(sql: Sql, limit?: number, offset?: number): void {
@@ -112,7 +121,7 @@ export abstract class DefaultPlatform {
     }
 
     createSqlFilterBuilder(reflectionClass: ReflectionClass<any>, tableName: string): SQLFilterBuilder {
-        return new SQLFilterBuilder(reflectionClass, tableName, this.serializer, new this.placeholderStrategy, this);
+        return new SQLFilterBuilder(reflectionClass, tableName, this.serializer, new this.placeholderStrategy(), this);
     }
 
     getMigrationTableName() {
@@ -120,7 +129,8 @@ export abstract class DefaultPlatform {
     }
 
     quoteValue(value: any): string {
-        if (!(value instanceof Date) && (isObject(value) || isArray(value))) return sqlstring.escape(JSON.stringify(value));
+        if (!(value instanceof Date) && (isObject(value) || isArray(value)))
+            return sqlstring.escape(JSON.stringify(value));
         return sqlstring.escape(value);
     }
 
@@ -129,15 +139,26 @@ export abstract class DefaultPlatform {
     }
 
     addBinaryType(sqlType: string, size?: number, scale?: number) {
-        this.addType((type: Type) => {
-            return type.kind === ReflectionKind.class && binaryTypes.includes(type.classType);
-        }, sqlType, size, scale);
+        this.addType(
+            (type: Type) => {
+                return type.kind === ReflectionKind.class && binaryTypes.includes(type.classType);
+            },
+            sqlType,
+            size,
+            scale,
+        );
     }
 
     /**
      * Last matching check wins.
      */
-    addType(kind: ReflectionKind | TypeMappingChecker, sqlType: string, size?: number, scale?: number, unsigned?: boolean) {
+    addType(
+        kind: ReflectionKind | TypeMappingChecker,
+        sqlType: string,
+        size?: number,
+        scale?: number,
+        unsigned?: boolean,
+    ) {
         this.typeMapping.set(kind, { sqlType, size, scale, unsigned });
     }
 
@@ -176,9 +197,7 @@ export abstract class DefaultPlatform {
         return `PRIMARY KEY (${this.getColumnListDDL(table.getPrimaryKeys())})`;
     }
 
-    normalizeTables(tables: Table[]) {
-
-    }
+    normalizeTables(tables: Table[]) {}
 
     getEntityFields(schema: ReflectionClass<any>): ReflectionProperty[] {
         const fields: ReflectionProperty[] = [];
@@ -216,7 +235,12 @@ export abstract class DefaultPlatform {
             }
         }
 
-        if (!column.defaultExpression && this.defaultNowExpression && typeProperty.type.kind === ReflectionKind.class && typeProperty.type.classType === Date) {
+        if (
+            !column.defaultExpression &&
+            this.defaultNowExpression &&
+            typeProperty.type.kind === ReflectionKind.class &&
+            typeProperty.type.classType === Date
+        ) {
             const initializer = typeProperty.getDefaultValueFunction();
             if (initializer && initializer.toString().includes('new Date')) {
                 //infer as NOW()
@@ -296,7 +320,10 @@ export abstract class DefaultPlatform {
             //will be in one big table.
             if (schema.singleTableInheritance) {
                 const superClass = schema.getSuperReflectionClass();
-                if (!superClass) throw new Error(`Class ${schema.getClassName()} has singleTableInheritance enabled but has no super class.`);
+                if (!superClass)
+                    throw new Error(
+                        `Class ${schema.getClassName()} has singleTableInheritance enabled but has no super class.`,
+                    );
 
                 if (mergedToSingleTable.has(superClass)) continue;
                 mergedToSingleTable.add(superClass);
@@ -349,7 +376,9 @@ export abstract class DefaultPlatform {
                     column.isNotNull = true;
                 }
 
-                const typeProperty = property.isReference() ? property.getResolvedReflectionClass().getPrimary() : property;
+                const typeProperty = property.isReference()
+                    ? property.getResolvedReflectionClass().getPrimary()
+                    : property;
                 this.setColumnType(column, typeProperty);
             }
         }
@@ -363,7 +392,9 @@ export abstract class DefaultPlatform {
                 const foreignSchema = entityRegistry.get(property.type);
                 const foreignTable = database.schemaMap.get(refs.get(foreignSchema) || foreignSchema);
                 if (!foreignTable) {
-                    throw new Error(`Referenced entity ${foreignSchema.getClassName()} from ${schema.getClassName()}.${property.getNameAsString()} is not available`);
+                    throw new Error(
+                        `Referenced entity ${foreignSchema.getClassName()} from ${schema.getClassName()}.${property.getNameAsString()} is not available`,
+                    );
                 }
                 const foreignKey = table.addForeignKey('', foreignTable);
                 foreignKey.localColumns = [table.getColumn(property.getNameAsString())];
@@ -425,7 +456,8 @@ export abstract class DefaultPlatform {
     getTableIdentifier(schema: ReflectionClass<any>): string {
         const collectionName = this.namingStrategy.getTableName(schema);
 
-        if (schema.databaseSchemaName) return this.quoteIdentifier(schema.databaseSchemaName + this.getSchemaDelimiter() + collectionName);
+        if (schema.databaseSchemaName)
+            return this.quoteIdentifier(schema.databaseSchemaName + this.getSchemaDelimiter() + collectionName);
         return this.quoteIdentifier(collectionName);
     }
 
@@ -545,7 +577,8 @@ export abstract class DefaultPlatform {
         // alter entity structure
         if (diff.hasModifiedPk()) add(this.getDropPrimaryKeyDDL(diff.from));
         for (const [from, to] of diff.renamedColumns.values()) add(this.getRenameColumnDDL(from, to));
-        if (diff.modifiedColumns.length) for (const columnDiff of diff.modifiedColumns) add(this.getModifyColumnDDL(columnDiff));
+        if (diff.modifiedColumns.length)
+            for (const columnDiff of diff.modifiedColumns) add(this.getModifyColumnDDL(columnDiff));
         if (diff.addedColumns.length) for (const column of diff.addedColumns) add(this.getAddColumnDDL(column));
         for (const column of diff.removedColumns.values()) add(this.getRemoveColumnDDL(column));
 
@@ -586,7 +619,8 @@ export abstract class DefaultPlatform {
         for (const column of table.columns) lines.push(this.getColumnDDL(column));
         if (this.supportsInlinePrimaryKey() && table.hasPrimaryKey()) lines.push(this.getPrimaryKeyDDL(table));
         if (withForeignKey) {
-            if (this.supportsInlineForeignKey()) for (const foreignKey of table.foreignKeys) lines.push(this.getForeignKeyDDL(foreignKey));
+            if (this.supportsInlineForeignKey())
+                for (const foreignKey of table.foreignKeys) lines.push(this.getForeignKeyDDL(foreignKey));
         }
 
         return `CREATE TABLE ${this.getIdentifier(table)} (\n    ${lines.join(',\n    ')}\n)`;
@@ -607,11 +641,13 @@ export abstract class DefaultPlatform {
     getForeignKeyDDL(foreignKey: ForeignKey): string {
         const ddl: string[] = [];
 
-        ddl.push(`
+        ddl.push(
+            `
         CONSTRAINT ${this.getIdentifier(foreignKey)}
         FOREIGN KEY (${this.getColumnListDDL(foreignKey.localColumns)})
         REFERENCES ${this.getIdentifier(foreignKey.foreign)} (${this.getColumnListDDL(foreignKey.foreignColumns)})
-        `.trim());
+        `.trim(),
+        );
 
         if (foreignKey.onUpdate) ddl.push(`ON UPDATE ${foreignKey.onUpdate}`);
         if (foreignKey.onDelete) ddl.push(`ON DELETE ${foreignKey.onDelete}`);
@@ -722,4 +758,3 @@ export abstract class DefaultPlatform {
         return 'NULL';
     }
 }
-

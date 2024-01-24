@@ -1,5 +1,14 @@
-import { asyncOperation, Inject, isFunction, pathBasename, pathExtension, pathJoin, pathNormalize } from '@deepkit/core';
 import { readFile } from 'fs/promises';
+
+import {
+    Inject,
+    asyncOperation,
+    isFunction,
+    pathBasename,
+    pathExtension,
+    pathJoin,
+    pathNormalize,
+} from '@deepkit/core';
 
 export type FileType = 'file' | 'directory';
 
@@ -242,22 +251,23 @@ export interface FilesystemAdapter {
 /**
  * Generic FilesystemError. Base of all errors thrown by the Filesystem system.
  */
-export class FilesystemError extends Error {
-}
+export class FilesystemError extends Error {}
 
 /**
  * Thrown when a file or directory does not exist.
  */
-export class FilesystemFileNotFound extends FilesystemError {
-}
+export class FilesystemFileNotFound extends FilesystemError {}
 
 /**
  * Thrown when an operation is aborted.
  */
-export class FilesystemOperationAborted extends FilesystemError {
-}
+export class FilesystemOperationAborted extends FilesystemError {}
 
-export type Reporter = { progress: (loaded: number, total: number) => void, onAbort: () => Promise<void>, aborted: boolean };
+export type Reporter = {
+    progress: (loaded: number, total: number) => void;
+    onAbort: () => Promise<void>;
+    aborted: boolean;
+};
 
 export function createProgress<T>(callback: (reporter: Reporter) => Promise<T>): Operation<T> {
     const callbacks: ((loaded: number, total: number) => void)[] = [];
@@ -297,10 +307,13 @@ export type FilesystemPath = string | FilesystemFile | string[];
 export function resolveFilesystemPath(path: FilesystemPath): string {
     if (typeof path === 'string') return pathNormalize(path);
     if (Array.isArray(path)) {
-        return '/' + path
-            .map(v => pathNormalize(v).slice(1))
-            .filter(v => !!v)
-            .join('/');
+        return (
+            '/' +
+            path
+                .map(v => pathNormalize(v).slice(1))
+                .filter(v => !!v)
+                .join('/')
+        );
     }
     return path.path;
 }
@@ -340,12 +353,12 @@ export class Filesystem {
         urlBuilder: (path: string) => {
             if (this.options.baseUrl) return this.options.baseUrl + path;
             return path;
-        }
+        },
     };
 
     constructor(
         public adapter: FilesystemAdapter,
-        options: Partial<FilesystemOptions> = {}
+        options: Partial<FilesystemOptions> = {},
     ) {
         Object.assign(this.options, options);
         if (this.options.baseUrl?.endsWith('/')) this.options.baseUrl = this.options.baseUrl.slice(0, -1);
@@ -374,7 +387,7 @@ export class Filesystem {
      */
     files(path: FilesystemPath): Operation<FilesystemFile[]> {
         path = resolveFilesystemPath(path);
-        return createProgress<FilesystemFile[]>(async (reporter) => {
+        return createProgress<FilesystemFile[]>(async reporter => {
             const files = await this.adapter.files(path as string, reporter);
             files.sort(compareFileSorting);
             return files;
@@ -388,7 +401,7 @@ export class Filesystem {
      */
     fileNames(path: FilesystemPath): Operation<string[]> {
         path = resolveFilesystemPath(path);
-        return createProgress<string[]>(async (reporter) => {
+        return createProgress<string[]>(async reporter => {
             //todo: some adapters might be able to do this more efficiently
             const files = await this.adapter.files(path as string, reporter);
             files.sort(compareFileSorting);
@@ -403,7 +416,7 @@ export class Filesystem {
      */
     allFiles(path: FilesystemPath): Operation<FilesystemFile[]> {
         path = resolveFilesystemPath(path);
-        return createProgress<FilesystemFile[]>(async (reporter) => {
+        return createProgress<FilesystemFile[]>(async reporter => {
             if (this.adapter.allFiles) {
                 const files = await this.adapter.allFiles(path as string, reporter);
                 files.sort(compareFileSorting);
@@ -435,7 +448,7 @@ export class Filesystem {
      */
     allFileNames(path: FilesystemPath): Operation<string[]> {
         path = resolveFilesystemPath(path);
-        return createProgress<string[]>(async (reporter) => {
+        return createProgress<string[]>(async reporter => {
             const files = await this.allFiles(path as string);
             files.sort(compareFileSorting);
             return files.map(v => v.path);
@@ -449,7 +462,7 @@ export class Filesystem {
      */
     directories(path: FilesystemPath): Operation<FilesystemFile[]> {
         path = resolveFilesystemPath(path);
-        return createProgress<FilesystemFile[]>(async (reporter) => {
+        return createProgress<FilesystemFile[]>(async reporter => {
             if (this.adapter.directories) {
                 return await this.adapter.directories(path as string, reporter);
             } else {
@@ -466,7 +479,7 @@ export class Filesystem {
      */
     allDirectories(path: FilesystemPath): Operation<FilesystemFile[]> {
         path = resolveFilesystemPath(path);
-        return createProgress<FilesystemFile[]>(async (reporter) => {
+        return createProgress<FilesystemFile[]>(async reporter => {
             if (this.adapter.allDirectories) {
                 return await this.adapter.allDirectories(path as string, reporter);
             } else {
@@ -487,7 +500,7 @@ export class Filesystem {
         visibility = visibility || this.options.visibility;
         path = resolveFilesystemPath(path);
         const buffer = typeof content === 'string' ? new TextEncoder().encode(content) : content;
-        return createProgress<void>(async (reporter) => {
+        return createProgress<void>(async reporter => {
             return await this.adapter.write(path as string, buffer, visibility!, reporter);
         });
     }
@@ -505,14 +518,16 @@ export class Filesystem {
      * filesystem.writeFile('uploads', uploadedFile, {name: user.id});
      * ```
      */
-    async writeFile(directory: string, file: { path: string }, options: { name?: string, visibility?: string } = {}): Promise<string> {
-        const path = (options.name ? options.name : pathBasename(file.path));
+    async writeFile(
+        directory: string,
+        file: { path: string },
+        options: { name?: string; visibility?: string } = {},
+    ): Promise<string> {
+        const path = options.name ? options.name : pathBasename(file.path);
         const content = await this.readLocalFile(file.path);
         const extension = pathExtension(path);
         if (!extension) {
-
         }
-
 
         if (!content) throw new FilesystemError(`Can not write file, since ${file.path} not found`);
         const targetPath = resolveFilesystemPath([directory, path]);
@@ -528,12 +543,17 @@ export class Filesystem {
     append(path: FilesystemPath, content: Uint8Array | string): Operation<void> {
         path = resolveFilesystemPath(path);
         const buffer = typeof content === 'string' ? new TextEncoder().encode(content) : content;
-        return createProgress<void>(async (reporter) => {
+        return createProgress<void>(async reporter => {
             if (this.adapter.append) return await this.adapter.append(path as string, buffer, reporter);
 
             const file = await this.get(path);
             const existing = await this.read(path);
-            return await this.adapter.write(path as string, Buffer.concat([existing, buffer]), file.visibility, reporter);
+            return await this.adapter.write(
+                path as string,
+                Buffer.concat([existing, buffer]),
+                file.visibility,
+                reporter,
+            );
         });
     }
 
@@ -545,12 +565,17 @@ export class Filesystem {
     prepend(path: FilesystemPath, content: Uint8Array | string): Operation<void> {
         path = resolveFilesystemPath(path);
         const buffer = typeof content === 'string' ? new TextEncoder().encode(content) : content;
-        return createProgress<void>(async (reporter) => {
+        return createProgress<void>(async reporter => {
             if (this.adapter.prepend) return await this.adapter.prepend(path as string, buffer, reporter);
 
             const file = await this.get(path);
             const existing = await this.read(path);
-            return await this.adapter.write(path as string, Buffer.concat([buffer, existing]), file.visibility, reporter);
+            return await this.adapter.write(
+                path as string,
+                Buffer.concat([buffer, existing]),
+                file.visibility,
+                reporter,
+            );
         });
     }
 
@@ -563,7 +588,7 @@ export class Filesystem {
      */
     read(path: FilesystemPath): Operation<Uint8Array> {
         path = resolveFilesystemPath(path);
-        return createProgress<Uint8Array>(async (reporter) => {
+        return createProgress<Uint8Array>(async reporter => {
             return await this.adapter.read(path as string, reporter);
         });
     }
@@ -577,7 +602,7 @@ export class Filesystem {
      */
     readAsText(path: FilesystemPath): Operation<string> {
         path = resolveFilesystemPath(path);
-        return createProgress<string>(async (reporter) => {
+        return createProgress<string>(async reporter => {
             const contents = await this.adapter.read(path as string, reporter);
             return new TextDecoder().decode(contents);
         });
@@ -627,7 +652,7 @@ export class Filesystem {
      */
     deleteDirectory(path: FilesystemPath): Operation<void> {
         path = resolveFilesystemPath(path);
-        return createProgress<void>(async (reporter) => {
+        return createProgress<void>(async reporter => {
             return this.adapter.deleteDirectory(path as string, reporter);
         });
     }
@@ -638,23 +663,31 @@ export class Filesystem {
     copy(source: FilesystemPath, destination: FilesystemPath): Operation<void> {
         source = resolveFilesystemPath(source);
         destination = resolveFilesystemPath(destination);
-        return createProgress<void>(async (reporter) => {
+        return createProgress<void>(async reporter => {
             if (this.adapter.copy) {
                 return this.adapter.copy(source as string, destination as string, reporter);
             } else {
                 const file = await this.get(source);
-                const queue: { file: FilesystemFile, targetPath: string }[] = [
-                    { file, targetPath: destination as string }
+                const queue: { file: FilesystemFile; targetPath: string }[] = [
+                    { file, targetPath: destination as string },
                 ];
                 while (queue.length) {
                     const entry = queue.shift()!;
                     if (entry.file.isDirectory()) {
                         const files = await this.files(entry.file.path);
                         for (const file of files) {
-                            queue.push({ file, targetPath: pathJoin(entry.targetPath, file.name) });
+                            queue.push({
+                                file,
+                                targetPath: pathJoin(entry.targetPath, file.name),
+                            });
                         }
                     } else {
-                        await this.adapter.write(entry.targetPath, await this.adapter.read(entry.file.path, reporter), entry.file.visibility, reporter);
+                        await this.adapter.write(
+                            entry.targetPath,
+                            await this.adapter.read(entry.file.path, reporter),
+                            entry.file.visibility,
+                            reporter,
+                        );
                     }
                 }
             }
@@ -672,20 +705,23 @@ export class Filesystem {
     move(source: FilesystemPath, destination: FilesystemPath): Operation<void> {
         source = resolveFilesystemPath(source);
         destination = resolveFilesystemPath(destination);
-        return createProgress<void>(async (reporter) => {
+        return createProgress<void>(async reporter => {
             if (this.adapter.move) {
                 return this.adapter.move(source as string, destination as string, reporter);
             } else if (this.adapter.moveFile) {
                 const file = await this.get(source);
-                const queue: { file: FilesystemFile, targetPath: string }[] = [
-                    { file, targetPath: destination as string }
+                const queue: { file: FilesystemFile; targetPath: string }[] = [
+                    { file, targetPath: destination as string },
                 ];
                 while (queue.length) {
                     const entry = queue.shift()!;
                     if (entry.file.isDirectory()) {
                         const files = await this.files(entry.file.path);
                         for (const file of files) {
-                            queue.push({ file, targetPath: pathJoin(entry.targetPath, file.name) });
+                            queue.push({
+                                file,
+                                targetPath: pathJoin(entry.targetPath, file.name),
+                            });
                         }
                     } else {
                         await this.adapter.moveFile(entry.file.path, entry.targetPath);
@@ -735,7 +771,7 @@ export function compareFileSorting(a: FilesystemFile, b: FilesystemFile): number
     return a.path.localeCompare(b.path);
 }
 
-export function pathDirectories(path: string): string [] {
+export function pathDirectories(path: string): string[] {
     path = pathNormalize(path);
     if (path === '/') return [];
     const directories: string[] = [];
@@ -768,7 +804,11 @@ export type NamedFilesystem<Name extends string> = Filesystem & Inject<`app.file
  * }).command('test', (filesystem: NamedFilesystem<'local2'>) => {});
  * ```
  */
-export function provideNamedFilesystem(name: string, adapter: FilesystemAdapter | (() => FilesystemAdapter), options: Partial<FilesystemOptions> = {}) {
+export function provideNamedFilesystem(
+    name: string,
+    adapter: FilesystemAdapter | (() => FilesystemAdapter),
+    options: Partial<FilesystemOptions> = {},
+) {
     const filesystemId = 'app.filesystem.' + name;
     const adapterId = `${filesystemId}.adapter`;
 
@@ -783,7 +823,7 @@ export function provideNamedFilesystem(name: string, adapter: FilesystemAdapter 
         provide: token,
         useFactory: (adapter: FilesystemAdapter & Inject<typeof adapterId>) => {
             return new Filesystem(adapter, options);
-        }
+        },
     };
 
     return [adapterProvider, filesystemProvider];
@@ -805,6 +845,9 @@ export function provideNamedFilesystem(name: string, adapter: FilesystemAdapter 
  *
  * @see provideNamedFilesystem
  */
-export function provideFilesystem(adapter: FilesystemAdapter | (() => FilesystemAdapter), options: Partial<FilesystemOptions> = {}) {
+export function provideFilesystem(
+    adapter: FilesystemAdapter | (() => FilesystemAdapter),
+    options: Partial<FilesystemOptions> = {},
+) {
     return provideNamedFilesystem('default', adapter, options);
 }

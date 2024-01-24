@@ -1,5 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
-import { isType, ReflectionKind, stringifyType, Type, TypeUnion } from '@deepkit/type';
+
+import { ReflectionKind, Type, TypeUnion, isType, stringifyType } from '@deepkit/type';
+
 import { DataStructure } from '../../store';
 import { trackByIndex } from '../../utils';
 
@@ -11,26 +13,29 @@ interface Entry {
 
 @Component({
     template: `
-        <dui-select style="width: 100%" textured
-                    [ngModel]="subProperty || model.value"
-                    (ngModelChange)="set($event)"
-        >
+        <dui-select style="width: 100%" textured [ngModel]="subProperty || model.value" (ngModelChange)="set($event)">
             <ng-container *ngFor="let item of items; trackBy: trackByIndex">
-                <dui-option *ngIf="!item.type" [value]="item.value">{{item.label}}</dui-option>
-                <dui-option *ngIf="item.type" [value]="item.type">{{item.label}}</dui-option>
+                <dui-option *ngIf="!item.type" [value]="item.value">{{ item.label }}</dui-option>
+                <dui-option *ngIf="item.type" [value]="item.type">{{ item.label }}</dui-option>
             </ng-container>
         </dui-select>
         <div class="sub" *ngIf="subProperty">
-            <api-console-input [model]="model.getProperty(model.typeIndex)" [type]="subProperty"
-                               (modelChange)="modelChange.emit(model)" (keyDown)="keyDown.emit($event)"></api-console-input>
+            <api-console-input
+                [model]="model.getProperty(model.typeIndex)"
+                [type]="subProperty"
+                (modelChange)="modelChange.emit(model)"
+                (keyDown)="keyDown.emit($event)"
+            ></api-console-input>
         </div>
     `,
-    styles: [`
-        .sub {
-            margin-top: 3px;
-            margin-left: 1px;
-        }
-    `]
+    styles: [
+        `
+            .sub {
+                margin-top: 3px;
+                margin-left: 1px;
+            }
+        `,
+    ],
 })
 export class UnionInputComponent implements OnInit, OnChanges {
     trackByIndex = trackByIndex;
@@ -92,5 +97,4 @@ export class UnionInputComponent implements OnInit, OnChanges {
             // });
         }
     }
-
 }

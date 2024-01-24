@@ -8,19 +8,19 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { ClassType, getClassName, isArray, isClass } from '@deepkit/core';
-import './optimize-tsx';
-import { injectedFunction, Injector, Resolver } from '@deepkit/injector';
+import { Injector, Resolver, injectedFunction } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import { ReflectionClass, ReflectionKind, Type, reflect } from '@deepkit/type';
+
+import './optimize-tsx';
 import { escapeAttribute, escapeHtml, safeString } from './utils.js';
-import { reflect, ReflectionClass, ReflectionKind, Type } from '@deepkit/type';
 
 export type Attributes<T = any> = {
     [P in keyof T]: T[P];
 } & { children?: (ElementStruct | string)[] | ElementStruct | string };
 
 export abstract class ElementClass {
-    constructor(protected attributes: Attributes) {
-    }
+    constructor(protected attributes: Attributes) {}
 
     abstract render(): Element;
 }
@@ -71,7 +71,12 @@ export const voidElements: { [name: string]: true } = {
 
 type ElementStructChildren = HtmlString | ElementStruct | string | SafeString;
 
-export type ElementStruct = { render: string | ElementFn, attributes: Attributes | null | string, children: ElementStructChildren | ElementStructChildren[], childrenEscaped?: ElementStructChildren[] | string };
+export type ElementStruct = {
+    render: string | ElementFn;
+    attributes: Attributes | null | string;
+    children: ElementStructChildren | ElementStructChildren[];
+    childrenEscaped?: ElementStructChildren[] | string;
+};
 
 export type SafeString = { [safeString]: string };
 
@@ -83,7 +88,12 @@ export function isSafeString(v: any): v is SafeString {
     return 'object' === typeof v && v.hasOwnProperty(safeString);
 }
 
-async function renderChildren(injector: Injector, contents: ElementStructChildren[], stopwatch?: Stopwatch, autoEscape: boolean = true): Promise<string> {
+async function renderChildren(
+    injector: Injector,
+    contents: ElementStructChildren[],
+    stopwatch?: Stopwatch,
+    autoEscape: boolean = true,
+): Promise<string> {
     let children = '';
     //this is 3x faster than contents.join('')
     // for (const content of struct.contents) {
@@ -100,7 +110,7 @@ async function renderChildren(injector: Injector, contents: ElementStructChildre
                 if ((item as any).htmlString) {
                     children += (item as any).htmlString;
                 } else {
-                    children += autoEscape ? escapeHtml(item as string) : item as string;
+                    children += autoEscape ? escapeHtml(item as string) : (item as string);
                 }
             }
         }
@@ -113,7 +123,11 @@ interface TemplateCacheCall {
     templateCall?(attributes: any, ...args: any[]): any;
 }
 
-export async function render(injector: Injector, struct: ElementStruct | string | (ElementStruct | string)[], stopwatch?: Stopwatch): Promise<any> {
+export async function render(
+    injector: Injector,
+    struct: ElementStruct | string | (ElementStruct | string)[],
+    stopwatch?: Stopwatch,
+): Promise<any> {
     if ('string' === typeof struct) {
         return struct;
     } else if ((struct as any).htmlString) {
@@ -181,7 +195,7 @@ export async function render(injector: Injector, struct: ElementStruct | string 
             }
 
             element.templateCall = (attributes: any, children: any) => {
-                return new element(attributes, children, ...(args.map(v => v())));
+                return new element(attributes, children, ...args.map(v => v()));
             };
         }
         const instance = element.templateCall(struct.attributes || {}, html(children));
@@ -189,7 +203,11 @@ export async function render(injector: Injector, struct: ElementStruct | string 
         if (stopwatch) {
             const frame = stopwatch.start(getClassName(struct.render), FrameCategory.template);
             try {
-                return await render(injector, await instance.render(struct.attributes || {}, html(children)), stopwatch);
+                return await render(
+                    injector,
+                    await instance.render(struct.attributes || {}, html(children)),
+                    stopwatch,
+                );
             } finally {
                 frame.end();
             }
@@ -205,7 +223,7 @@ export async function render(injector: Injector, struct: ElementStruct | string 
         }
 
         try {
-            const res = await element.templateCall!(undefined, struct.attributes as any || {}, html(children));
+            const res = await element.templateCall!(undefined, (struct.attributes as any) || {}, html(children));
             if (isElementStruct(res)) {
                 return await render(injector, res, stopwatch);
             } else {
@@ -219,6 +237,10 @@ export async function render(injector: Injector, struct: ElementStruct | string 
     return '';
 }
 
-export function createElement(element: Element, attributes?: Attributes | null, ...children: (string | ElementStruct | HtmlString)[]) {
+export function createElement(
+    element: Element,
+    attributes?: Attributes | null,
+    ...children: (string | ElementStruct | HtmlString)[]
+) {
     return { render: element, attributes, children };
 }

@@ -1,13 +1,23 @@
 import { expect, test } from '@jest/globals';
-import { AutoIncrement, DatabaseField, entity, Index, PrimaryKey, Reference, ReflectionClass, ReflectionKind, Unique } from '@deepkit/type';
-import { DatabaseComparator, DatabaseModel, IndexModel, TableComparator } from '../src/schema/table.js';
+
+import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
+import {
+    AutoIncrement,
+    DatabaseField,
+    Index,
+    PrimaryKey,
+    Reference,
+    ReflectionClass,
+    ReflectionKind,
+    Unique,
+    entity,
+} from '@deepkit/type';
+
 import { DefaultPlatform } from '../src/platform/default-platform.js';
 import { SchemaParser } from '../src/reverse/schema-parser.js';
-import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
+import { DatabaseComparator, DatabaseModel, IndexModel, TableComparator } from '../src/schema/table.js';
 
-@entity.name('user')
-    .index(['deleted'], {unique: true})
-    .index(['deleted', 'created'])
+@entity.name('user').index(['deleted'], { unique: true }).index(['deleted', 'created'])
 class User {
     id!: number & PrimaryKey & AutoIncrement;
     username!: string & Unique;
@@ -27,8 +37,7 @@ class Post {
 }
 
 class MySchemaParser extends SchemaParser {
-    async parse(database: DatabaseModel, limitTableNames?: string[]) {
-    }
+    async parse(database: DatabaseModel, limitTableNames?: string[]) {}
 }
 
 class MyPlatform extends DefaultPlatform {
@@ -51,7 +60,7 @@ test('migration basic', async () => {
     const [tableUser, tablePost] = new MyPlatform().createTables(DatabaseEntityRegistry.from([User, Post]));
 
     const userReflection = ReflectionClass.from(User);
-    expect(userReflection.getProperty('username').getIndex()).toEqual({unique: true});
+    expect(userReflection.getProperty('username').getIndex()).toEqual({ unique: true });
 
     expect(tableUser.hasColumn('id')).toBe(true);
     expect(tableUser.getColumn('id').isPrimaryKey).toBe(true);
@@ -106,7 +115,7 @@ test('skip index', async () => {
     @entity.name('leagues')
     class Leagues1 {
         id!: number & PrimaryKey;
-        dayOfWeek!: number & Index<{name: 'dayindex'}>;
+        dayOfWeek!: number & Index<{ name: 'dayindex' }>;
     }
 
     const db = new DatabaseModel();
@@ -116,22 +125,27 @@ test('skip index', async () => {
     {
         const options = new MigrateOptions();
         const sql = platform.getModifyDatabaseDDL(diff!, options);
-        expect(sql).toEqual([`CREATE TABLE "leagues" (
+        expect(sql).toEqual([
+            `CREATE TABLE "leagues" (
     "id" integer NOT NULL,
     "dayOfWeek" integer NOT NULL,
     PRIMARY KEY ("id")
-)`, `CREATE INDEX "dayindex" ON "leagues" ("dayOfWeek")`]);
+)`,
+            `CREATE INDEX "dayindex" ON "leagues" ("dayOfWeek")`,
+        ]);
     }
 
     {
         const options = new MigrateOptions();
         options.skipIndex = true;
         const sql = platform.getModifyDatabaseDDL(diff!, options);
-        expect(sql).toEqual([`CREATE TABLE "leagues" (
+        expect(sql).toEqual([
+            `CREATE TABLE "leagues" (
     "id" integer NOT NULL,
     "dayOfWeek" integer NOT NULL,
     PRIMARY KEY ("id")
-)`]);
+)`,
+        ]);
     }
 });
 
@@ -141,7 +155,7 @@ test('no drop per default', () => {
     @entity.name('leagues')
     class Leagues1 {
         id!: number & PrimaryKey;
-        dayOfWeek!: number & Index<{name: 'dayindex'}>;
+        dayOfWeek!: number & Index<{ name: 'dayindex' }>;
     }
 
     const db = new DatabaseModel();
@@ -176,7 +190,5 @@ test('skip property', () => {
     expect(tables.length).toBe(1);
     const table = tables[0];
 
-    expect(table.columns.map(v => v.name)).toEqual([
-        'id', 'firstName'
-    ]);
+    expect(table.columns.map(v => v.name)).toEqual(['id', 'firstName']);
 });

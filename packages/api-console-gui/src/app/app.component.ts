@@ -1,5 +1,7 @@
 import { Component, ElementRef } from '@angular/core';
+
 import { DuiApp } from '@deepkit/desktop-ui';
+
 import { ControllerClient } from './client';
 
 @Component({
@@ -24,7 +26,7 @@ import { ControllerClient } from './client';
             </dui-window-content>
         </dui-window>
     `,
-    styleUrls: ['./app.component.scss']
+    styleUrls: ['./app.component.scss'],
 })
 export class AppComponent {
     sidebarVisible: boolean = true;

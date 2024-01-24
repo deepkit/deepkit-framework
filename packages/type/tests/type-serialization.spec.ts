@@ -1,23 +1,25 @@
-import { getClassName } from '@deepkit/core';
 import { expect, test } from '@jest/globals';
-import { ReceiveType, reflect, ReflectionClass, resolveReceiveType, typeOf } from '../src/reflection/reflection.js';
+
+import { getClassName } from '@deepkit/core';
+
+import { entity } from '../src/decorator.js';
+import { ReceiveType, ReflectionClass, reflect, resolveReceiveType, typeOf } from '../src/reflection/reflection.js';
 import {
-    assertType,
     Entity,
-    entityAnnotation,
-    findMember,
-    isSameType,
     PrimaryKey,
-    primaryKeyAnnotation,
     Reference,
     ReflectionKind,
     Type,
     TypeClass,
-    TypeProperty
+    TypeProperty,
+    assertType,
+    entityAnnotation,
+    findMember,
+    isSameType,
+    primaryKeyAnnotation,
 } from '../src/reflection/type.js';
-import { deserializeType, serializeType } from '../src/type-serialization.js';
-import { entity } from '../src/decorator.js';
 import { deserialize } from '../src/serializer-facade.js';
+import { deserializeType, serializeType } from '../src/type-serialization.js';
 
 test('serialize basics', () => {
     expect(serializeType(typeOf<string>())).toEqual([{ kind: ReflectionKind.string }]);
@@ -31,11 +33,17 @@ test('serialize basics', () => {
     expect(serializeType(typeOf<'a'>())).toEqual([{ kind: ReflectionKind.literal, literal: 'a' }]);
     expect(serializeType(typeOf<2>())).toEqual([{ kind: ReflectionKind.literal, literal: 2 }]);
     expect(serializeType(typeOf<true>())).toEqual([{ kind: ReflectionKind.literal, literal: true }]);
-    expect(serializeType(typeOf<12n>())).toEqual([{ kind: ReflectionKind.literal, literal: { type: 'bigint', value: '12' } }]);
+    expect(serializeType(typeOf<12n>())).toEqual([
+        { kind: ReflectionKind.literal, literal: { type: 'bigint', value: '12' } },
+    ]);
     const s = Symbol('abc');
-    expect(serializeType(typeOf<typeof s>())).toEqual([{ kind: ReflectionKind.literal, literal: { type: 'symbol', name: 'abc' } }]);
+    expect(serializeType(typeOf<typeof s>())).toEqual([
+        { kind: ReflectionKind.literal, literal: { type: 'symbol', name: 'abc' } },
+    ]);
     const r = /abc/g;
-    expect(serializeType(typeOf<typeof r>())).toEqual([{ kind: ReflectionKind.literal, literal: { type: 'regex', regex: '/abc/g' } }]);
+    expect(serializeType(typeOf<typeof r>())).toEqual([
+        { kind: ReflectionKind.literal, literal: { type: 'regex', regex: '/abc/g' } },
+    ]);
 });
 
 test('serialize type annotations', () => {
@@ -44,80 +52,138 @@ test('serialize type annotations', () => {
         { kind: ReflectionKind.string, typeName: 't', decorators: [1] },
         { kind: ReflectionKind.objectLiteral, typeName: 'PrimaryKey', types: [2] },
         { kind: ReflectionKind.propertySignature, name: '__meta', optional: true, type: 3 },
-        { kind: ReflectionKind.tuple, types: [{ kind: ReflectionKind.tupleMember, type: 4 }, { kind: ReflectionKind.tupleMember, type: 5 }] },
+        {
+            kind: ReflectionKind.tuple,
+            types: [
+                { kind: ReflectionKind.tupleMember, type: 4 },
+                { kind: ReflectionKind.tupleMember, type: 5 },
+            ],
+        },
         { kind: ReflectionKind.literal, literal: 'primaryKey' },
-        { kind: ReflectionKind.never }
+        { kind: ReflectionKind.never },
     ]);
 });
 
 test('serialize container', () => {
-    expect(serializeType(typeOf<string[]>())).toEqual([{ kind: ReflectionKind.array, type: 1 }, { kind: ReflectionKind.string }]);
-    expect(serializeType(typeOf<string[][]>())).toEqual([{ kind: ReflectionKind.array, type: 1 }, { kind: ReflectionKind.array, type: 2 }, { kind: ReflectionKind.string }]);
+    expect(serializeType(typeOf<string[]>())).toEqual([
+        { kind: ReflectionKind.array, type: 1 },
+        { kind: ReflectionKind.string },
+    ]);
+    expect(serializeType(typeOf<string[][]>())).toEqual([
+        { kind: ReflectionKind.array, type: 1 },
+        { kind: ReflectionKind.array, type: 2 },
+        { kind: ReflectionKind.string },
+    ]);
 
-    expect(serializeType(typeOf<[string, number]>())).toEqual([{
-        kind: ReflectionKind.tuple,
-        types: [{ kind: ReflectionKind.tupleMember, type: 1 }, { kind: ReflectionKind.tupleMember, type: 2 }]
-    }, { kind: ReflectionKind.string }, { kind: ReflectionKind.number }]);
+    expect(serializeType(typeOf<[string, number]>())).toEqual([
+        {
+            kind: ReflectionKind.tuple,
+            types: [
+                { kind: ReflectionKind.tupleMember, type: 1 },
+                { kind: ReflectionKind.tupleMember, type: 2 },
+            ],
+        },
+        { kind: ReflectionKind.string },
+        { kind: ReflectionKind.number },
+    ]);
 
-    expect(serializeType(typeOf<Record<string, number>>())).toEqual([{
-        kind: ReflectionKind.objectLiteral,
-        typeName: 'Record',
-        typeArguments: [1, 2],
-        types: [3]
-    }, { kind: ReflectionKind.string }, { kind: ReflectionKind.number }, { kind: ReflectionKind.indexSignature, type: 2, index: 1 }]);
+    expect(serializeType(typeOf<Record<string, number>>())).toEqual([
+        {
+            kind: ReflectionKind.objectLiteral,
+            typeName: 'Record',
+            typeArguments: [1, 2],
+            types: [3],
+        },
+        { kind: ReflectionKind.string },
+        { kind: ReflectionKind.number },
+        { kind: ReflectionKind.indexSignature, type: 2, index: 1 },
+    ]);
 
-    expect(serializeType(typeOf<{ [name: string]: number }>())).toEqual([{
-        kind: ReflectionKind.objectLiteral,
-        types: [1]
-    }, { kind: ReflectionKind.indexSignature, type: 3, index: 2 }, { kind: ReflectionKind.string }, { kind: ReflectionKind.number }]);
+    expect(serializeType(typeOf<{ [name: string]: number }>())).toEqual([
+        {
+            kind: ReflectionKind.objectLiteral,
+            types: [1],
+        },
+        { kind: ReflectionKind.indexSignature, type: 3, index: 2 },
+        { kind: ReflectionKind.string },
+        { kind: ReflectionKind.number },
+    ]);
 
-    expect(serializeType(typeOf<{ a: number, b: string }>())).toEqual([{
-        kind: ReflectionKind.objectLiteral,
-        types: [1, 3]
-    }, { kind: ReflectionKind.propertySignature, name: 'a', type: 2 }, { kind: ReflectionKind.number },
-        { kind: ReflectionKind.propertySignature, name: 'b', type: 4 }, { kind: ReflectionKind.string }]);
+    expect(serializeType(typeOf<{ a: number; b: string }>())).toEqual([
+        {
+            kind: ReflectionKind.objectLiteral,
+            types: [1, 3],
+        },
+        { kind: ReflectionKind.propertySignature, name: 'a', type: 2 },
+        { kind: ReflectionKind.number },
+        { kind: ReflectionKind.propertySignature, name: 'b', type: 4 },
+        { kind: ReflectionKind.string },
+    ]);
 
     class MyClass {
         a: number = 2;
         b?: string;
     }
 
-    expect(serializeType(typeOf<MyClass>())).toEqual([{
-        kind: ReflectionKind.class,
-        typeName: 'MyClass',
-        classType: 'MyClass',
-        types: [1, 3]
-    }, { kind: ReflectionKind.property, visibility: 0, name: 'a', type: 2, default: true }, { kind: ReflectionKind.number },
-        { kind: ReflectionKind.property, visibility: 0, name: 'b', optional: true, type: 4 }, { kind: ReflectionKind.string }]);
+    expect(serializeType(typeOf<MyClass>())).toEqual([
+        {
+            kind: ReflectionKind.class,
+            typeName: 'MyClass',
+            classType: 'MyClass',
+            types: [1, 3],
+        },
+        { kind: ReflectionKind.property, visibility: 0, name: 'a', type: 2, default: true },
+        { kind: ReflectionKind.number },
+        { kind: ReflectionKind.property, visibility: 0, name: 'b', optional: true, type: 4 },
+        { kind: ReflectionKind.string },
+    ]);
 });
 
 test('serialize functions', () => {
-    expect(serializeType(typeOf<(a: string, b?: number) => any>())).toEqual([{
-        kind: ReflectionKind.function,
-        parameters: [{ kind: ReflectionKind.parameter, name: 'a', type: 1 }, { kind: ReflectionKind.parameter, optional: true, name: 'b', type: 2 }],
-        return: 3
-    }, { kind: ReflectionKind.string }, { kind: ReflectionKind.number }, { kind: ReflectionKind.any }]);
+    expect(serializeType(typeOf<(a: string, b?: number) => any>())).toEqual([
+        {
+            kind: ReflectionKind.function,
+            parameters: [
+                { kind: ReflectionKind.parameter, name: 'a', type: 1 },
+                { kind: ReflectionKind.parameter, optional: true, name: 'b', type: 2 },
+            ],
+            return: 3,
+        },
+        { kind: ReflectionKind.string },
+        { kind: ReflectionKind.number },
+        { kind: ReflectionKind.any },
+    ]);
 
-    expect(serializeType(typeOf<(...a: string[]) => any>())).toEqual([{
-        kind: ReflectionKind.function,
-        parameters: [{ kind: ReflectionKind.parameter, name: 'a', type: 1 }],
-        return: 3
-    }, { kind: ReflectionKind.rest, type: 2 }, { kind: ReflectionKind.string }, { kind: ReflectionKind.any }]);
+    expect(serializeType(typeOf<(...a: string[]) => any>())).toEqual([
+        {
+            kind: ReflectionKind.function,
+            parameters: [{ kind: ReflectionKind.parameter, name: 'a', type: 1 }],
+            return: 3,
+        },
+        { kind: ReflectionKind.rest, type: 2 },
+        { kind: ReflectionKind.string },
+        { kind: ReflectionKind.any },
+    ]);
 });
 
 test('serialize enum', () => {
     enum MyEnum {
         a = 3,
-        b = 'abc'
+        b = 'abc',
     }
 
-    expect(serializeType(typeOf<MyEnum>())).toEqual([{
-        kind: ReflectionKind.enum,
-        typeName: 'MyEnum',
-        enum: { a: 3, b: 'abc' },
-        values: [3, 'abc'],
-        indexType: 1
-    }, { kind: ReflectionKind.union, types: [2, 3] }, { kind: ReflectionKind.string }, { kind: ReflectionKind.number }]);
+    expect(serializeType(typeOf<MyEnum>())).toEqual([
+        {
+            kind: ReflectionKind.enum,
+            typeName: 'MyEnum',
+            enum: { a: 3, b: 'abc' },
+            values: [3, 'abc'],
+            indexType: 1,
+        },
+        { kind: ReflectionKind.union, types: [2, 3] },
+        { kind: ReflectionKind.string },
+        { kind: ReflectionKind.number },
+    ]);
 });
 
 function roundTrip<T>(type?: ReceiveType<T>): Type {
@@ -253,12 +319,10 @@ test('type annotations', () => {
 });
 
 test('BehaviorSubject', () => {
-    class MyModel {
-    }
+    class MyModel {}
 
     /** @reflection never */
-    class BehaviorSubject<T> {
-    }
+    class BehaviorSubject<T> {}
 
     const type = serializeType(typeOf<Promise<BehaviorSubject<MyModel>>>());
     console.log('type', type);
@@ -316,8 +380,10 @@ test('Type excluded', () => {
     const type = typeOf<Type>();
 
     class Validation {
-        constructor(public message: string, public type?: Type) {
-        }
+        constructor(
+            public message: string,
+            public type?: Type,
+        ) {}
     }
 
     const member = findMember('type', (reflect(Validation) as TypeClass).types) as TypeProperty;
@@ -363,7 +429,13 @@ test('entity classes', () => {
 });
 
 test('entity interface', () => {
-    interface User extends Entity<{ name: 'user', collection: 'users', database: 'db', indexes: [{ names: ['id'], options: { name: 'primary' } }] }> {
+    interface User
+        extends Entity<{
+            name: 'user';
+            collection: 'users';
+            database: 'db';
+            indexes: [{ names: ['id']; options: { name: 'primary' } }];
+        }> {
         id: number;
     }
 
@@ -385,15 +457,17 @@ test('class constructor back serialized', () => {
     class User {
         id: number = 0;
 
-        constructor(unused: string, public username: string) {
-        }
+        constructor(
+            unused: string,
+            public username: string,
+        ) {}
     }
 
     const json = serializeType(typeOf<User>());
     const back = deserializeType(json, { disableReuse: true });
 
-    const instance = deserialize({id: 2, username: 'Peter'}, undefined, undefined, undefined, back);
-    expect(instance).toEqual({id: 2, username: 'Peter'});
+    const instance = deserialize({ id: 2, username: 'Peter' }, undefined, undefined, undefined, back);
+    expect(instance).toEqual({ id: 2, username: 'Peter' });
 });
 
 test('class reference with entity options', () => {
@@ -408,7 +482,7 @@ test('class reference with entity options', () => {
     }
 
     const json = serializeType(typeOf<Book>());
-    const back = deserializeType(json, {disableReuse: true});
+    const back = deserializeType(json, { disableReuse: true });
     assertType(back, ReflectionKind.class);
     const author = findMember('author', back.types);
     assertType(author, ReflectionKind.property);

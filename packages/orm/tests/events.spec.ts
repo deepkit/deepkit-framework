@@ -1,8 +1,10 @@
 import { expect, test } from '@jest/globals';
+
+import { AutoIncrement, PrimaryKey, ReflectionClass, t } from '@deepkit/type';
+
+import { DatabaseSession } from '../src/database-session.js';
 import { Database } from '../src/database.js';
 import { MemoryDatabaseAdapter } from '../src/memory-db.js';
-import { AutoIncrement, PrimaryKey, ReflectionClass, t } from '@deepkit/type';
-import { DatabaseSession } from '../src/database-session.js';
 
 test('onUpdate plugin', async () => {
     function onUpdate() {
@@ -15,7 +17,7 @@ test('onUpdate plugin', async () => {
                 for (const property of event.classSchema.getProperties()) {
                     if (!property.data['timestamp/onUpdate']) continue;
                     for (const item of event.changeSets) {
-                        item.changes.set(property.name, new Date);
+                        item.changes.set(property.name, new Date());
                     }
                 }
             });
@@ -25,15 +27,14 @@ test('onUpdate plugin', async () => {
     class User {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        createdAt: Date = new Date;
+        createdAt: Date = new Date();
 
         logins: number = 0;
 
         @onUpdate()
-        updatedAt: Date = new Date;
+        updatedAt: Date = new Date();
 
-        constructor(public username: string) {
-        }
+        constructor(public username: string) {}
     }
 
     const database = new Database(new MemoryDatabaseAdapter(), [User]);
@@ -56,8 +57,6 @@ test('onUpdate plugin', async () => {
         expect(user3.updatedAt).not.toEqual(date1);
     }
 
-
     const schema = ReflectionClass.from(User);
     expect(schema.getProperty('updatedAt').data['timestamp/onUpdate']).toBe(true);
-
 });

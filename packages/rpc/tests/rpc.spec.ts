@@ -1,8 +1,16 @@
 import { expect, test } from '@jest/globals';
-import { Progress, RpcMessageWriter, RpcMessageWriterOptions } from '../src/writer.js';
+
+import { Writer } from '@deepkit/bson';
+import { typeOf } from '@deepkit/type';
+
 import { DirectClient } from '../src/client/client-direct.js';
 import { rpc } from '../src/decorators.js';
+import { RpcTypes } from '../src/model.js';
 import {
+    RpcBufferReader,
+    RpcMessage,
+    RpcMessageReader,
+    RpcMessageRouteType,
     createRpcCompositeMessage,
     createRpcCompositeMessageSourceDest,
     createRpcMessage,
@@ -10,15 +18,9 @@ import {
     createRpcMessageSourceDest,
     readRpcMessage,
     readUint32LE,
-    RpcBufferReader,
-    RpcMessage,
-    RpcMessageReader,
-    RpcMessageRouteType
 } from '../src/protocol.js';
 import { RpcKernel } from '../src/server/kernel.js';
-import { RpcTypes } from '../src/model.js';
-import { Writer } from '@deepkit/bson';
-import { typeOf } from '@deepkit/type';
+import { Progress, RpcMessageWriter, RpcMessageWriterOptions } from '../src/writer.js';
 
 test('readUint32LE', () => {
     {
@@ -40,7 +42,7 @@ test('readUint32LE', () => {
 
 test('protocol basics', () => {
     interface schema {
-        name: string
+        name: string;
     }
 
     {
@@ -111,7 +113,9 @@ test('protocol composite', () => {
     }
 
     {
-        const message = createRpcCompositeMessage(1024, 33, [{ type: 4, schema: typeOf<schema>(), body: { name: 'foo' } }]);
+        const message = createRpcCompositeMessage(1024, 33, [
+            { type: 4, schema: typeOf<schema>(), body: { name: 'foo' } },
+        ]);
 
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);
@@ -127,9 +131,11 @@ test('protocol composite', () => {
         expect(messages[0].parseBody<schema>().name).toBe('foo');
     }
 
-
     {
-        const message = createRpcCompositeMessage(1024, 5, [{ type: 4 }, { type: 5, schema: typeOf<schema>(), body: { name: 'foo' } }]);
+        const message = createRpcCompositeMessage(1024, 5, [
+            { type: 4 },
+            { type: 5, schema: typeOf<schema>(), body: { name: 'foo' } },
+        ]);
 
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);
@@ -150,11 +156,14 @@ test('protocol composite', () => {
     }
 
     {
-        const message = createRpcCompositeMessage(1024, 6, [{ type: 4, schema: typeOf<schema>(), body: { name: 'foo' } }, {
-            type: 12,
-            schema: typeOf<schema>(),
-            body: { name: 'bar' }
-        }]);
+        const message = createRpcCompositeMessage(1024, 6, [
+            { type: 4, schema: typeOf<schema>(), body: { name: 'foo' } },
+            {
+                type: 12,
+                schema: typeOf<schema>(),
+                body: { name: 'bar' },
+            },
+        ]);
 
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);
@@ -176,11 +185,14 @@ test('protocol composite', () => {
         source[0] = 16;
         const destination = Buffer.alloc(16);
         destination[0] = 20;
-        const message = createRpcCompositeMessageSourceDest(1024, source, destination, 55, [{
-            type: 4,
-            schema: typeOf<schema>(),
-            body: { name: 'foo' }
-        }, { type: 12, schema: typeOf<schema>(), body: { name: 'bar' } }]);
+        const message = createRpcCompositeMessageSourceDest(1024, source, destination, 55, [
+            {
+                type: 4,
+                schema: typeOf<schema>(),
+                body: { name: 'foo' },
+            },
+            { type: 12, schema: typeOf<schema>(), body: { name: 'bar' } },
+        ]);
 
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);
@@ -388,14 +400,18 @@ test('message chunks', async () => {
     const bigString = 'x'.repeat(1_000_000); //1mb
 
     const buffers: Uint8Array[] = [];
-    const writer = new RpcMessageWriter({
-        write(b) {
-            buffers.push(b);
-            reader.feed(createRpcMessage(2, RpcTypes.ChunkAck)); //confirm chunk, this is done automatically in the kernel
-            reader.feed(b); //echo back
+    const writer = new RpcMessageWriter(
+        {
+            write(b) {
+                buffers.push(b);
+                reader.feed(createRpcMessage(2, RpcTypes.ChunkAck)); //confirm chunk, this is done automatically in the kernel
+                reader.feed(b); //echo back
+            },
+            close() {},
         },
-        close() {}
-    }, reader, new RpcMessageWriterOptions);
+        reader,
+        new RpcMessageWriterOptions(),
+    );
 
     const message = createRpcMessage<schema>(2, RpcTypes.ResponseActionSimple, { v: bigString });
     await writer.writeFull(message);
@@ -424,14 +440,17 @@ test('message progress', async () => {
     }
     const bigString = 'x'.repeat(1_000_000); //1mb
 
-    const writer = new RpcMessageWriter({
-        write(b) {
-            reader.feed(createRpcMessage(2, RpcTypes.ChunkAck)); //confirm chunk, this is done automatically in the kernel
-            reader.feed(b); //echo
+    const writer = new RpcMessageWriter(
+        {
+            write(b) {
+                reader.feed(createRpcMessage(2, RpcTypes.ChunkAck)); //confirm chunk, this is done automatically in the kernel
+                reader.feed(b); //echo
+            },
+            close() {},
         },
-        close() {
-        }
-    }, reader, new RpcMessageWriterOptions);
+        reader,
+        new RpcMessageWriterOptions(),
+    );
 
     const message = createRpcMessage<schema>(2, RpcTypes.ResponseActionSimple, { v: bigString });
     const progress = new Progress();

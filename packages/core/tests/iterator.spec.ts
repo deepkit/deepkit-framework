@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+
 import { each, eachKey, eachPair } from '../src/iterators.js';
 
 test('test array', () => {
@@ -27,10 +28,8 @@ test('test array', () => {
     }
 });
 
-
-
 test('test object1', () => {
-    const object: { [index: string]: number } = { 'a': 1, 'b': 2, 'c': 3 };
+    const object: { [index: string]: number } = { a: 1, b: 2, c: 3 };
 
     for (const v of each(object)) {
         expect(typeof v).toBe('number');
@@ -41,7 +40,6 @@ test('test object1', () => {
     }
 });
 
-
 test('test object2', () => {
     class Mowla {
         z: string;
@@ -51,7 +49,11 @@ test('test object2', () => {
         }
     }
 
-    const object2: { [index: string]: Mowla } = { 'a': new Mowla('hallo'), 'b': new Mowla('hallo'), 'c': new Mowla('hallo') };
+    const object2: { [index: string]: Mowla } = {
+        a: new Mowla('hallo'),
+        b: new Mowla('hallo'),
+        c: new Mowla('hallo'),
+    };
 
     for (const v of eachKey(object2)) {
         expect(typeof v).toBe('string');
@@ -69,8 +71,8 @@ test('test object2', () => {
 
 test('test object3', () => {
     const object3 = {
-        'asd': true,
-        'bla': false
+        asd: true,
+        bla: false,
     };
 
     for (const v of eachKey(object3)) {

@@ -1,22 +1,31 @@
 import { EventEmitter, Injectable } from '@angular/core';
+
 import { arrayRemoveItem, empty, isObject } from '@deepkit/core';
-import { DatabaseCommit, DatabaseInfo, EntityPropertySeed, EntitySeed, FakerTypes, findFaker } from '@deepkit/orm-browser-api';
+import { getInstanceStateFromItem } from '@deepkit/orm';
+import {
+    DatabaseCommit,
+    DatabaseInfo,
+    EntityPropertySeed,
+    EntitySeed,
+    FakerTypes,
+    findFaker,
+} from '@deepkit/orm-browser-api';
+import { Progress } from '@deepkit/rpc';
 import {
     Changes,
+    ReflectionClass,
+    TypeProperty,
+    TypePropertySignature,
+    ValidatorError,
     changeSetSymbol,
     getChangeDetector,
     getConverterForSnapshot,
     isBackReferenceType,
-    ReflectionClass,
-    TypeProperty,
-    TypePropertySignature,
-    ValidatorError
 } from '@deepkit/type';
-import { ControllerClient } from './client';
-import { Progress } from '@deepkit/rpc';
-import { getInstanceStateFromItem } from '@deepkit/orm';
 
-export type ChangesStore = { [pkHash: string]: { pk: { [name: string]: any }, changes: Changes<any> } };
+import { ControllerClient } from './client';
+
+export type ChangesStore = { [pkHash: string]: { pk: { [name: string]: any }; changes: Changes<any> } };
 export type ValidationErrors = { [fieldName: string]: ValidatorError };
 export type ValidationErrorStore = Map<any, ValidationErrors>;
 
@@ -24,7 +33,7 @@ export type IdWrapper = { $___newId: any };
 
 const storeKeySeparator = '\0t\0';
 
-export type FilterItem = { name: string, comparator: string, value: any };
+export type FilterItem = { name: string; comparator: string; value: any };
 
 export class BrowserQuery {
     id: number = 0;
@@ -106,8 +115,7 @@ export class BrowserEntityState {
     validationStore?: ValidationErrorStore;
     deletions: { [pkHash: string]: any } = {};
 
-    constructor(public schema: ReflectionClass<any>) {
-    }
+    constructor(public schema: ReflectionClass<any>) {}
 
     addQuery() {
         const query = new BrowserQuery();
@@ -145,7 +153,7 @@ export class BrowserState {
     changes: { [storeKey: string]: ChangesStore } = {};
     validationErrors: { [storeKey: string]: ValidationErrorStore } = {};
 
-    connectedNewItems = new Map<any, { row: any, property: TypeProperty | TypePropertySignature }[]>();
+    connectedNewItems = new Map<any, { row: any; property: TypeProperty | TypePropertySignature }[]>();
 
     onDataChange = new EventEmitter();
 
@@ -158,14 +166,16 @@ export class BrowserState {
         let settings = this.seedSettings[key];
         if (!settings) {
             const storage = localStorage.getItem('orm-browser/seed-properties/' + db + '/' + entity);
-            const predefined: { [name: string]: { fake: boolean, faker: string } } = storage ? JSON.parse(storage) : { properties: {} };
+            const predefined: { [name: string]: { fake: boolean; faker: string } } = storage
+                ? JSON.parse(storage)
+                : { properties: {} };
 
             const properties: EntitySeed['properties'] = {};
             for (const property of this.getEntity(db, entity).getProperties()) {
                 if (isBackReferenceType(property.type)) continue;
 
                 const propertyPredefined = predefined[property.name];
-                const seed = properties[property.name] = new EntityPropertySeed(property.name);
+                const seed = (properties[property.name] = new EntityPropertySeed(property.name));
                 seed.fake = propertyPredefined?.fake || false;
                 seed.faker = propertyPredefined?.faker || findFaker(fakerTypes, property.name, property.type);
             }
@@ -180,7 +190,7 @@ export class BrowserState {
         const seedSettings = this.seedSettings[key];
         if (!seedSettings) return;
 
-        const properties: { [name: string]: { fake: boolean, faker: string } } = {};
+        const properties: { [name: string]: { fake: boolean; faker: string } } = {};
         for (const [name, seed] of Object.entries(seedSettings.properties)) {
             properties[name] = { fake: seed.fake, faker: seed.faker };
         }
@@ -200,12 +210,12 @@ export class BrowserState {
 
     getBrowserEntityState(dbName: string, entityName: string) {
         const storeKey = this.getStoreKey(dbName, entityName);
-        return this.browserEntityState[storeKey] ||= new BrowserEntityState(this.getEntity(dbName, entityName));
+        return (this.browserEntityState[storeKey] ||= new BrowserEntityState(this.getEntity(dbName, entityName)));
     }
 
     getDeletions(dbName: string, entityName: string) {
         const storeKey = this.getStoreKey(dbName, entityName);
-        return this.deletions[storeKey] ||= {};
+        return (this.deletions[storeKey] ||= {});
     }
 
     getDatabase(name: string): DatabaseInfo {
@@ -222,7 +232,7 @@ export class BrowserState {
 
     unscheduleForDeletion(dbName: string, entityName: string, item: any) {
         const storeKey = this.getStoreKey(dbName, entityName);
-        const deletions = this.deletions[storeKey] ||= {};
+        const deletions = (this.deletions[storeKey] ||= {});
 
         const state = getInstanceStateFromItem(item);
         delete deletions[state.getLastKnownPKHash()];
@@ -269,7 +279,7 @@ export class BrowserState {
             if (!this.changes.hasOwnProperty(storeKey)) continue;
             const [dbName, entityName] = storeKey.split(storeKeySeparator) as [string, string];
             const database = commit[dbName];
-            const changed = database.changed[entityName] ||= [];
+            const changed = (database.changed[entityName] ||= []);
 
             for (const changes of Object.values(this.changes[storeKey])) {
                 changed.push({
@@ -368,7 +378,7 @@ export class BrowserState {
     }
 
     getChangeStore(dbName: string, entityName: string): ChangesStore {
-        return this.changes[this.getStoreKey(dbName, entityName)] ||= {};
+        return (this.changes[this.getStoreKey(dbName, entityName)] ||= {});
     }
 
     getValidationStore(dbName: string, entityName: string): ValidationErrorStore {

@@ -1,7 +1,9 @@
-import { AutoIncrement, deserialize, entity, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { getInstanceStateFromItem } from '../src/identity-map.js';
+
+import { AutoIncrement, PrimaryKey, deserialize, entity } from '@deepkit/type';
+
 import { Database } from '../src/database.js';
+import { getInstanceStateFromItem } from '../src/identity-map.js';
 import { MemoryDatabaseAdapter } from '../src/memory-db.js';
 import { SoftDeletePlugin, SoftDeleteQuery, SoftDeleteSession } from '../src/plugin/soft-delete-plugin.js';
 import { Query } from '../src/query.js';
@@ -10,8 +12,7 @@ test('soft-delete query', async () => {
     class User {
         id!: number & PrimaryKey & AutoIncrement;
 
-        constructor(public username: string) {
-        }
+        constructor(public username: string) {}
 
         deletedAt?: Date;
         deletedBy?: string;
@@ -19,7 +20,7 @@ test('soft-delete query', async () => {
 
     const memory = new MemoryDatabaseAdapter();
     const database = new Database(memory, [User]);
-    database.registerPlugin(new SoftDeletePlugin);
+    database.registerPlugin(new SoftDeletePlugin());
 
     await database.persist(deserialize<User>({ id: 1, username: 'Peter' }));
     await database.persist(deserialize<User>({ id: 2, username: 'Joe' }));
@@ -69,22 +70,18 @@ test('soft-delete query', async () => {
 });
 
 test('soft-delete session', async () => {
-
     @entity.name('softDeleteUser')
     class User {
         id: number & PrimaryKey & AutoIncrement = 0;
         deletedAt?: Date;
         deletedBy?: string;
 
-        constructor(
-            public username: string,
-        ) {
-        }
+        constructor(public username: string) {}
     }
 
     const memory = new MemoryDatabaseAdapter();
     const database = new Database(memory, [User]);
-    database.registerPlugin(new SoftDeletePlugin);
+    database.registerPlugin(new SoftDeletePlugin());
 
     const session = database.createSession();
     const peter = new User('peter');
@@ -118,7 +115,12 @@ test('soft-delete session', async () => {
         session.remove(peterDB);
         await session.commit();
         expect(await database.query(User).count()).toBe(2);
-        const deletedPeter = await session.query(User).lift(SoftDeleteQuery).withSoftDeleted().filter(peterDB).findOne();
+        const deletedPeter = await session
+            .query(User)
+            .lift(SoftDeleteQuery)
+            .withSoftDeleted()
+            .filter(peterDB)
+            .findOne();
         expect(deletedPeter.deletedAt).toBeInstanceOf(Date);
         expect(deletedPeter.deletedBy).toBe('me');
 

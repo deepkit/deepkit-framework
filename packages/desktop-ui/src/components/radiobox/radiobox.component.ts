@@ -7,9 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ChangeDetectorRef, Component, HostBinding, HostListener, Injector, Input, SkipSelf } from '@angular/core';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+
+import { ValueAccessorBase, ngValueAccessor } from '../../core/form';
 
 @Component({
     selector: 'dui-radiobox',
@@ -18,7 +18,7 @@ import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
         <ng-content></ng-content>
     `,
     styleUrls: ['./radiobox.component.scss'],
-    providers: [ngValueAccessor(RadioboxComponent)]
+    providers: [ngValueAccessor(RadioboxComponent)],
 })
 export class RadioboxComponent<T> extends ValueAccessorBase<T> {
     @Input() value?: T;

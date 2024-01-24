@@ -7,17 +7,26 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BehaviorSubject, isObservable, Observable, Observer, Subject, Subscriber, Subscription, TeardownLogic } from 'rxjs';
-import { arrayRemoveItem, asyncOperation, createStack, isFunction, mergePromiseStack, mergeStack } from '@deepkit/core';
+import {
+    BehaviorSubject,
+    Observable,
+    Observer,
+    Subject,
+    Subscriber,
+    Subscription,
+    TeardownLogic,
+    isObservable,
+} from 'rxjs';
 import { first, skip } from 'rxjs/operators';
+
+import { arrayRemoveItem, asyncOperation, createStack, isFunction, mergePromiseStack, mergeStack } from '@deepkit/core';
+
 import { ProgressTracker } from './progress.js';
 
 export class AsyncSubscription {
     protected unsubscribed = false;
 
-    constructor(private cb: () => Promise<void>) {
-    }
+    constructor(private cb: () => Promise<void>) {}
 
     async unsubscribe(): Promise<void> {
         if (this.unsubscribed) return;
@@ -32,7 +41,7 @@ export function watchClosed(observer: Observer<any>): { closed: boolean } {
     const obj = { closed: false };
     const oriError = observer.error;
     const oriComplete = observer.complete;
-    observer.error = (err) => {
+    observer.error = err => {
         obj.closed = true;
         oriError.call(observer, err);
     };
@@ -69,8 +78,7 @@ export function isBehaviorSubject(v: any): v is BehaviorSubject<any> {
 export class Subscriptions {
     public readonly list: Subscription[] = [];
 
-    constructor(protected teardown?: () => void | Promise<void>) {
-    }
+    constructor(protected teardown?: () => void | Promise<void>) {}
 
     public set add(v: Subscription) {
         this.list.push(v);
@@ -95,7 +103,7 @@ export class Subscriptions {
 }
 
 export function subscriptionToPromise<T>(subscription: Subscription): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
         subscription.add(() => {
             resolve();
         });
@@ -103,7 +111,8 @@ export function subscriptionToPromise<T>(subscription: Subscription): Promise<vo
 }
 
 export function nextValue<T>(o: Observable<T>): Promise<T> {
-    if (isFunction((o as any).getValue)) { //BehaviorSubject
+    if (isFunction((o as any).getValue)) {
+        //BehaviorSubject
         return o.pipe(skip(1)).pipe(first()).toPromise() as Promise<T>;
     }
 
@@ -114,17 +123,21 @@ export function observableToPromise<T>(o: Observable<T>, next?: (data: T) => voi
     const stack = createStack();
     return new Promise((resolve, reject) => {
         let last: T;
-        o.subscribe((data: any) => {
-            if (next) {
-                next(data);
-            }
-            last = data;
-        }, (error: any) => {
-            mergeStack(error, stack);
-            reject(error);
-        }, () => {
-            resolve(last);
-        });
+        o.subscribe(
+            (data: any) => {
+                if (next) {
+                    next(data);
+                }
+                last = data;
+            },
+            (error: any) => {
+                mergeStack(error, stack);
+                reject(error);
+            },
+            () => {
+                resolve(last);
+            },
+        );
     });
 }
 
@@ -132,16 +145,18 @@ export function promiseToObservable<T>(o: () => Promise<T>): Observable<T> {
     const stack = createStack();
     return new Observable((observer: Subscriber<T>) => {
         try {
-            mergePromiseStack(o(), stack).then((data) => {
-                observer.next(data);
-                observer.complete();
-            }, (error) => {
-                observer.error(error);
-            });
+            mergePromiseStack(o(), stack).then(
+                data => {
+                    observer.next(data);
+                    observer.complete();
+                },
+                error => {
+                    observer.error(error);
+                },
+            );
         } catch (error) {
             observer.error(error);
         }
-
     });
 }
 
@@ -161,10 +176,14 @@ export async function tearDown(teardown: TeardownLogic) {
  * `maxWait` in milliseconds, this makes sure every `maxWait` ms the handler is called with the current messages if there are any.
  * `batchSize` this is the maximum amount of messages that are passed to the handler.
  */
-export async function throttleMessages<T, R>(observable: Observable<T>, handler: (messages: T[]) => Promise<R>, options: Partial<{
-    maxWait: number,
-    batchSize: number
-}> = {}): Promise<R[]> {
+export async function throttleMessages<T, R>(
+    observable: Observable<T>,
+    handler: (messages: T[]) => Promise<R>,
+    options: Partial<{
+        maxWait: number;
+        batchSize: number;
+    }> = {},
+): Promise<R[]> {
     return asyncOperation(async (resolve, reject) => {
         const maxWait = options.maxWait || 100;
         const batchSize = options.batchSize || 100;
@@ -187,31 +206,38 @@ export async function throttleMessages<T, R>(observable: Observable<T>, handler:
             handlerDone = false;
             const messagesToSend = messages.slice(0);
             messages = [];
-            handler(messagesToSend).then((result) => {
-                results.push(result);
-                handlerDone = true;
-                if (andFinish) {
-                    resolve(results);
-                } else if (finished) {
-                    flush(true);
-                }
-            }, (error) => {
-                sub.unsubscribe();
-                reject(error);
-            });
+            handler(messagesToSend).then(
+                result => {
+                    results.push(result);
+                    handlerDone = true;
+                    if (andFinish) {
+                        resolve(results);
+                    } else if (finished) {
+                        flush(true);
+                    }
+                },
+                error => {
+                    sub.unsubscribe();
+                    reject(error);
+                },
+            );
         }
 
-        const sub = observable.subscribe((message) => {
-            messages.push(message);
-            const diffTime = Date.now() - lastFlush;
-            if (diffTime > maxWait || messages.length >= batchSize) {
-                flush();
-            }
-        }, (error) => {
-            reject(error);
-        }, () => {
-            flush(true);
-        });
+        const sub = observable.subscribe(
+            message => {
+                messages.push(message);
+                const diffTime = Date.now() - lastFlush;
+                if (diffTime > maxWait || messages.length >= batchSize) {
+                    flush();
+                }
+            },
+            error => {
+                reject(error);
+            },
+            () => {
+                flush(true);
+            },
+        );
     });
 }
 

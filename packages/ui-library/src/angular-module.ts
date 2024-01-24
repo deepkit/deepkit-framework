@@ -1,12 +1,14 @@
-import { DeepkitBoxComponent } from './components/box/box.component';
-import { ModuleWithProviders, NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CodeHighlightComponent } from './components/code-highlight.component';
+import { ModuleWithProviders, NgModule } from '@angular/core';
+
 import { DuiAppModule, DuiButtonModule, DuiIconModule, DuiSplitterModule } from '@deepkit/desktop-ui';
-import { HeaderStatusBarComponent } from './components/header-status-bar.component';
+
+import { DeepkitBoxComponent } from './components/box/box.component';
+import { CodeHighlightComponent } from './components/code-highlight.component';
 import { HeaderLogoComponent } from './components/header-logo.component';
-import { ToggleBoxComponent } from './components/toggle-box.component';
+import { HeaderStatusBarComponent } from './components/header-status-bar.component';
 import { LoadingSpinnerComponent } from './components/loading-spinner.component';
+import { ToggleBoxComponent } from './components/toggle-box.component';
 
 @NgModule({
     declarations: [
@@ -25,19 +27,13 @@ import { LoadingSpinnerComponent } from './components/loading-spinner.component'
         ToggleBoxComponent,
         LoadingSpinnerComponent,
     ],
-    imports: [
-        CommonModule,
-        DuiIconModule,
-        DuiButtonModule,
-        DuiSplitterModule,
-        DuiAppModule,
-    ]
+    imports: [CommonModule, DuiIconModule, DuiButtonModule, DuiSplitterModule, DuiAppModule],
 })
 export class DeepkitUIModule {
     static forRoot(): ModuleWithProviders<DeepkitUIModule> {
         return {
             ngModule: DuiAppModule,
-            providers: []
+            providers: [],
         };
     }
 }

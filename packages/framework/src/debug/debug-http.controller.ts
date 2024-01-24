@@ -1,9 +1,11 @@
-import { http, HttpQuery, HttpResponse } from '@deepkit/http';
-import { FilesystemRegistry } from '../filesystem.js';
-import { Filesystem } from '@deepkit/filesystem';
-import mime from 'mime-types';
-import jimp from 'jimp';
 import { imageSize } from 'image-size';
+import jimp from 'jimp';
+import mime from 'mime-types';
+
+import { Filesystem } from '@deepkit/filesystem';
+import { HttpQuery, HttpResponse, http } from '@deepkit/http';
+
+import { FilesystemRegistry } from '../filesystem.js';
 
 function send(response: HttpResponse, data: Uint8Array, name: string, mimeType?: string, lastModified?: Date) {
     response.setHeader('Cache-Control', 'max-age=31536000');
@@ -20,17 +22,13 @@ function send(response: HttpResponse, data: Uint8Array, name: string, mimeType?:
 }
 
 export class DebugHttpController {
-    constructor(
-        protected filesystemRegistry: FilesystemRegistry,
-    ) {
-    }
+    constructor(protected filesystemRegistry: FilesystemRegistry) {}
 
     protected getFilesystem(id: number): Filesystem {
         const fs = this.filesystemRegistry.getFilesystems()[id];
         if (!fs) throw new Error(`No filesystem with id ${id} found`);
         return fs;
     }
-
 
     @http.GET('api/media/:fs')
     async media(fs: number, path: HttpQuery<string>, response: HttpResponse) {
@@ -41,7 +39,6 @@ export class DebugHttpController {
         const data = await filesystem.read(path);
         send(response, data, file.name, mimeType, file.lastModified);
     }
-
 
     @http.GET('api/media/:fs/preview')
     async mediaPreview(fs: number, path: HttpQuery<string>, response: HttpResponse) {

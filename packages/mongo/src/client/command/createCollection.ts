@@ -7,9 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { ReflectionClass } from '@deepkit/type';
 
 import { BaseResponse, Command } from './command.js';
-import { ReflectionClass } from '@deepkit/type';
 
 interface RequestSchema {
     create: string;
@@ -17,9 +17,7 @@ interface RequestSchema {
 }
 
 export class CreateCollectionCommand<T extends ReflectionClass<any>> extends Command {
-    constructor(
-        public schema: T,
-    ) {
+    constructor(public schema: T) {
         super();
     }
 

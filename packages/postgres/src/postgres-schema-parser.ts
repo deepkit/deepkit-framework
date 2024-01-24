@@ -7,19 +7,18 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { isNumeric } from '@deepkit/core';
-import { Column, DatabaseModel, ForeignKey, parseType, SchemaParser, Table } from '@deepkit/sql';
+import { Column, DatabaseModel, ForeignKey, SchemaParser, Table, parseType } from '@deepkit/sql';
 
 export class PostgresSchemaParser extends SchemaParser {
     protected defaultPrecisions = {
-        'char': 1,
-        'character': 1,
-        'integer': 32,
-        'real': 24,
-        'bigint': 64,
-        'smallint': 16,
-        'double precision': 53
+        char: 1,
+        character: 1,
+        integer: 32,
+        real: 24,
+        bigint: 64,
+        smallint: 16,
+        'double precision': 53,
     };
 
     protected numberTypes: string[] = [
@@ -34,7 +33,6 @@ export class PostgresSchemaParser extends SchemaParser {
         'serial',
         'bigserial',
     ];
-
 
     async parse(database: DatabaseModel, limitTableNames?: string[]) {
         await this.parseTables(database, limitTableNames);
@@ -180,8 +178,7 @@ export class PostgresSchemaParser extends SchemaParser {
                 //don't judge me
                 column.defaultValue = eval(dbDefault);
                 column.defaultValue = JSON.parse(column.defaultValue);
-            } catch (error: any) {
-            }
+            } catch (error: any) {}
         }
 
         if (dbDefault.includes('(')) {
@@ -189,7 +186,6 @@ export class PostgresSchemaParser extends SchemaParser {
             return;
         }
     }
-
 
     protected async parseTables(database: DatabaseModel, limitTableNames?: string[]) {
         const rows = await this.connection.execAndReturnAll(`

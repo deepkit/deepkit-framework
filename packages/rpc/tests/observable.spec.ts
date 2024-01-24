@@ -1,8 +1,10 @@
-import { sleep } from '@deepkit/core';
-import { entity } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
 import { first, take } from 'rxjs/operators';
+
+import { sleep } from '@deepkit/core';
+import { entity } from '@deepkit/type';
+
 import { DirectClient } from '../src/client/client-direct.js';
 import { rpc } from '../src/decorators.js';
 import { RpcKernel } from '../src/server/kernel.js';
@@ -10,14 +12,13 @@ import { RpcKernel } from '../src/server/kernel.js';
 test('observable basics', async () => {
     @entity.name('model')
     class MyModel {
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     class Controller {
         @rpc.action()
         strings(): Observable<string> {
-            return new Observable<string>((observer) => {
+            return new Observable<string>(observer => {
                 observer.next('first');
                 observer.next('second');
                 observer.next('third');
@@ -27,14 +28,14 @@ test('observable basics', async () => {
 
         @rpc.action()
         errors(): Observable<string> {
-            return new Observable<string>((observer) => {
+            return new Observable<string>(observer => {
                 observer.error(new Error('Jupp'));
             });
         }
 
         @rpc.action()
         myModel(): Observable<MyModel> {
-            return new Observable<MyModel>((observer) => {
+            return new Observable<MyModel>(observer => {
                 observer.next(new MyModel('Peter'));
                 observer.complete();
             });
@@ -214,7 +215,7 @@ test('subject redirect of global subject', async () => {
             const sub = globalSubject.subscribe(subject);
             subject.subscribe().add(() => {
                 completes++;
-                sub.unsubscribe()
+                sub.unsubscribe();
             });
             return subject;
         }
@@ -275,11 +276,11 @@ test('observable unsubscribes automatically when connection closes', async () =>
     class Controller {
         @rpc.action()
         strings(): Observable<string> {
-            return new Observable((observer) => {
+            return new Observable(observer => {
                 return {
                     unsubscribe() {
                         unsubscribed = true;
-                    }
+                    },
                 };
             });
         }
@@ -292,8 +293,7 @@ test('observable unsubscribes automatically when connection closes', async () =>
     const controller = client.controller<Controller>('myController');
 
     {
-        const o = (await controller.strings()).subscribe(() => {
-        });
+        const o = (await controller.strings()).subscribe(() => {});
         expect(o).toBeInstanceOf(Subscription);
         expect(unsubscribed).toBe(false);
         o.unsubscribe();
@@ -303,8 +303,7 @@ test('observable unsubscribes automatically when connection closes', async () =>
 
     {
         unsubscribed = false;
-        const o = (await controller.strings()).subscribe(() => {
-        });
+        const o = (await controller.strings()).subscribe(() => {});
         expect(o).toBeInstanceOf(Subscription);
         expect(unsubscribed).toBe(false);
         client.disconnect();
@@ -335,7 +334,7 @@ test('observable different next type', async () => {
 
         @rpc.action()
         triggerCorrect(): void {
-            this.subject.next(Object.assign(new MyModel, { id: 2 }));
+            this.subject.next(Object.assign(new MyModel(), { id: 2 }));
         }
 
         @rpc.action()
@@ -448,7 +447,7 @@ test('observable complete', async () => {
     class Controller {
         @rpc.action()
         numberGenerator(max: number): Observable<number> {
-            return new Observable<number>((observer) => {
+            return new Observable<number>(observer => {
                 let done = false;
                 let i = 0;
                 active = true;
@@ -465,7 +464,7 @@ test('observable complete', async () => {
                     unsubscribe() {
                         done = true;
                         active = false;
-                    }
+                    },
                 };
             });
         }
@@ -480,14 +479,14 @@ test('observable complete', async () => {
     {
         //make sure the assumption that unsubscribe() is even called when the observer calls complete() himself.
         let unsubscribedCalled = false;
-        const o = new Observable<number>((observer) => {
+        const o = new Observable<number>(observer => {
             unsubscribedCalled = false;
             observer.next(1);
             observer.complete();
             return {
                 unsubscribe() {
                     unsubscribedCalled = true;
-                }
+                },
             };
         });
         {
@@ -497,14 +496,17 @@ test('observable complete', async () => {
         }
 
         {
-            const lastValue = await new Promise((resolve) => {
+            const lastValue = await new Promise(resolve => {
                 let l: any = undefined;
-                o.subscribe((value) => {
-                    l = value;
-                }, () => {
-                }, () => {
-                    resolve(l);
-                });
+                o.subscribe(
+                    value => {
+                        l = value;
+                    },
+                    () => {},
+                    () => {
+                        resolve(l);
+                    },
+                );
             });
             expect(lastValue).toBe(1);
             expect(unsubscribedCalled).toBe(true);
@@ -536,4 +538,3 @@ test('observable complete', async () => {
         expect(complete.value).toBeLessThan(10000);
     }
 });
-

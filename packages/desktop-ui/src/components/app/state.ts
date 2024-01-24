@@ -1,9 +1,22 @@
-import { deserialize, Excluded, metaAnnotation, ReflectionClass, ReflectionKind, resolveTypeMembers, serialize, Serializer, Type, TypeAnnotation, TypeClass } from '@deepkit/type';
-import { ClassType, getClassTypeFromInstance, getPathValue, setPathValue, throttleTime } from '@deepkit/core';
-import { EventToken } from '@deepkit/event';
 import { ApplicationRef, Injector } from '@angular/core';
 import { NavigationEnd, ResolveEnd, Router } from '@angular/router';
 import onChange from 'on-change';
+
+import { ClassType, getClassTypeFromInstance, getPathValue, setPathValue, throttleTime } from '@deepkit/core';
+import { EventToken } from '@deepkit/event';
+import {
+    Excluded,
+    ReflectionClass,
+    ReflectionKind,
+    Serializer,
+    Type,
+    TypeAnnotation,
+    TypeClass,
+    deserialize,
+    metaAnnotation,
+    resolveTypeMembers,
+    serialize,
+} from '@deepkit/type';
 
 /**
  * If this type decorator is used then the property is not persisted in localStorage,
@@ -18,7 +31,11 @@ import onChange from 'on-change';
  */
 export type PartOfUrl = TypeAnnotation<'partOfUrl'>;
 
-export type FilterActions<T> = { [name in keyof T]: T[name] extends (a: infer A extends [...a: any[]], ...args: any[]) => infer R ? (...args: A) => R : never };
+export type FilterActions<T> = {
+    [name in keyof T]: T[name] extends (a: infer A extends [...a: any[]], ...args: any[]) => infer R
+        ? (...args: A) => R
+        : never;
+};
 
 /**
  * EfficientState is a base class for all states that are used in the frontend.
@@ -62,7 +79,11 @@ export class EfficientState {
 
         for (const method of ReflectionClass.from(this.constructor as any).getMethods()) {
             if (method.name === 'constructor') continue;
-            const params = method.getParameters().slice(1).map(v => v.type).filter(v => v.kind === ReflectionKind.class) as TypeClass[];
+            const params = method
+                .getParameters()
+                .slice(1)
+                .map(v => v.type)
+                .filter(v => v.kind === ReflectionKind.class) as TypeClass[];
             (this.call as any)[method.name] = (...args: any[]) => {
                 const deps: any = params.map(v => injector.get(v.classType));
                 const res = (this as any)[method.name](args, ...deps);
@@ -97,9 +118,15 @@ export function findPartsOfUrlForType(type: Type, paths: string[] = [], prefix: 
     state.push(type);
     if (type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) {
         for (const property of resolveTypeMembers(type)) {
-            if (property.kind !== ReflectionKind.property && property.kind !== ReflectionKind.propertySignature) continue;
+            if (property.kind !== ReflectionKind.property && property.kind !== ReflectionKind.propertySignature)
+                continue;
             if (property.type.kind === ReflectionKind.class || property.type.kind === ReflectionKind.objectLiteral) {
-                findPartsOfUrlForType(property.type, paths, (prefix ? prefix + '.' : '') + String(property.name), state);
+                findPartsOfUrlForType(
+                    property.type,
+                    paths,
+                    (prefix ? prefix + '.' : '') + String(property.name),
+                    state,
+                );
             } else {
                 const meta = metaAnnotation.getForName(property.type, 'partOfUrl');
                 if (meta) {
@@ -110,7 +137,7 @@ export function findPartsOfUrlForType(type: Type, paths: string[] = [], prefix: 
     }
 }
 
-const stateSerializer: Serializer = new class extends Serializer {
+const stateSerializer: Serializer = new (class extends Serializer {
     protected registerSerializers() {
         super.registerSerializers();
 
@@ -122,7 +149,7 @@ const stateSerializer: Serializer = new class extends Serializer {
             state.template = ''; //don't serialize EventToken
         });
     }
-};
+})();
 
 /**
  * Angular provider factory for the state class.
@@ -152,16 +179,23 @@ export function provideState(stateClass: ClassType, localStorageKey: string = 'a
     const stateType = ReflectionClass.from(stateClass).type;
 
     return {
-        provide: stateClass, deps: [Router, Injector], useFactory: (router: Router, injector: Injector) => {
+        provide: stateClass,
+        deps: [Router, Injector],
+        useFactory: (router: Router, injector: Injector) => {
             let state = new stateClass(injector);
             try {
-                const nextState: any = deserialize(JSON.parse(localStorage.getItem(localStorageKey) || ''), undefined, stateSerializer, undefined, stateType);
+                const nextState: any = deserialize(
+                    JSON.parse(localStorage.getItem(localStorageKey) || ''),
+                    undefined,
+                    stateSerializer,
+                    undefined,
+                    stateType,
+                );
                 if (nextState) {
                     delete nextState.call;
                     Object.assign(state, nextState);
                 }
-            } catch (error) {
-            }
+            } catch (error) {}
 
             function loadFromRoute(query: object) {
                 // console.log('loadFromRoute', query);
@@ -182,16 +216,23 @@ export function provideState(stateClass: ClassType, localStorageKey: string = 'a
                     }
                 }
                 if (different) {
-                    router.navigate([], { queryParams: queryParams, queryParamsHandling: 'merge', replaceUrl: true });
+                    router.navigate([], {
+                        queryParams: queryParams,
+                        queryParamsHandling: 'merge',
+                        replaceUrl: true,
+                    });
                 }
             }
 
             const updateStorage = throttleTime(() => {
-                localStorage.setItem(localStorageKey, JSON.stringify(serialize(state, undefined, stateSerializer, undefined, stateType)));
+                localStorage.setItem(
+                    localStorageKey,
+                    JSON.stringify(serialize(state, undefined, stateSerializer, undefined, stateType)),
+                );
                 updateQueries();
             });
 
-            router.events.subscribe((event) => {
+            router.events.subscribe(event => {
                 // console.log('event', event);
                 if (event instanceof ResolveEnd) {
                     loadFromRoute(event.state.root.queryParams);
@@ -201,13 +242,17 @@ export function provideState(stateClass: ClassType, localStorageKey: string = 'a
                 }
             });
 
-            return onChange(state, (path: any, value: any, previousValue: any) => {
-                // console.log('State changed', path, value, previousValue);
-                if (value === previousValue) return;
-                updateStorage();
-            }, {
-                ignoreKeys: ['call', 'volatile']
-            });
-        }
+            return onChange(
+                state,
+                (path: any, value: any, previousValue: any) => {
+                    // console.log('State changed', path, value, previousValue);
+                    if (value === previousValue) return;
+                    updateStorage();
+                },
+                {
+                    ignoreKeys: ['call', 'volatile'],
+                },
+            );
+        },
     };
 }

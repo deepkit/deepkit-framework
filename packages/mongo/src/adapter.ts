@@ -7,7 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { AbstractClassType, ClassType, isArray } from '@deepkit/core';
 import {
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
@@ -17,21 +17,21 @@ import {
     ItemNotFound,
     MigrateOptions,
     OrmEntity,
-    RawFactory
+    RawFactory,
 } from '@deepkit/orm';
-import { AbstractClassType, ClassType, isArray } from '@deepkit/core';
-import { MongoDatabaseQuery } from './query.js';
-import { MongoPersistence } from './persistence.js';
+import { ReceiveType, ReflectionClass, entity, resolveReceiveType } from '@deepkit/type';
+
 import { MongoClient } from './client/client.js';
-import { DeleteCommand } from './client/command/delete.js';
-import { MongoQueryResolver } from './query.resolver.js';
-import { MongoDatabaseTransaction } from './client/connection.js';
-import { CreateIndex, CreateIndexesCommand } from './client/command/createIndexes.js';
-import { DropIndexesCommand } from './client/command/dropIndexes.js';
-import { CreateCollectionCommand } from './client/command/createCollection.js';
-import { entity, ReceiveType, ReflectionClass, resolveReceiveType } from '@deepkit/type';
-import { Command } from './client/command/command.js';
 import { AggregateCommand } from './client/command/aggregate.js';
+import { Command } from './client/command/command.js';
+import { CreateCollectionCommand } from './client/command/createCollection.js';
+import { CreateIndex, CreateIndexesCommand } from './client/command/createIndexes.js';
+import { DeleteCommand } from './client/command/delete.js';
+import { DropIndexesCommand } from './client/command/dropIndexes.js';
+import { MongoDatabaseTransaction } from './client/connection.js';
+import { MongoPersistence } from './persistence.js';
+import { MongoDatabaseQuery } from './query.js';
+import { MongoQueryResolver } from './query.resolver.js';
 
 export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     constructor(
@@ -41,9 +41,15 @@ export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
         super();
     }
 
-    createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): MongoDatabaseQuery<T> {
+    createQuery<T extends OrmEntity>(
+        type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>,
+    ): MongoDatabaseQuery<T> {
         const schema = ReflectionClass.from(type);
-        return new MongoDatabaseQuery(schema, this.databaseSession, new MongoQueryResolver(schema, this.databaseSession, this.client));
+        return new MongoDatabaseQuery(
+            schema,
+            this.databaseSession,
+            new MongoQueryResolver(schema, this.databaseSession, this.client),
+        );
     }
 }
 
@@ -52,8 +58,7 @@ class MongoRawCommandQuery<T> implements FindQuery<T> {
         protected session: DatabaseSession<MongoDatabaseAdapter>,
         protected client: MongoClient,
         protected command: Command,
-    ) {
-    }
+    ) {}
 
     async find(): Promise<T[]> {
         const res = await this.client.execute(this.command);
@@ -77,8 +82,7 @@ export class MongoRawFactory implements RawFactory<[Command]> {
     constructor(
         protected session: DatabaseSession<MongoDatabaseAdapter>,
         protected client: MongoClient,
-    ) {
-    }
+    ) {}
 
     create<Entity = any, ResultSchema = Entity>(
         commandOrPipeline: Command | any[],
@@ -88,7 +92,9 @@ export class MongoRawFactory implements RawFactory<[Command]> {
         type = resolveReceiveType(type);
         const resultSchema = resultType ? resolveReceiveType(resultType) : undefined;
 
-        const command = isArray(commandOrPipeline) ? new AggregateCommand(ReflectionClass.from(type), commandOrPipeline, resultSchema) : commandOrPipeline;
+        const command = isArray(commandOrPipeline)
+            ? new AggregateCommand(ReflectionClass.from(type), commandOrPipeline, resultSchema)
+            : commandOrPipeline;
         return new MongoRawCommandQuery<ResultSchema>(this.session, this.client, command);
     }
 }
@@ -98,9 +104,7 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
 
     protected ormSequences: ReflectionClass<any>;
 
-    constructor(
-        connectionString: string
-    ) {
+    constructor(connectionString: string) {
         super();
         this.client = new MongoClient(connectionString);
 
@@ -130,7 +134,7 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
     }
 
     createTransaction(session: DatabaseSession<this>): MongoDatabaseTransaction {
-        return new MongoDatabaseTransaction;
+        return new MongoDatabaseTransaction();
     }
 
     isNativeForeignKeyConstraintSupported() {
@@ -166,7 +170,7 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
         if (withOrmSequences) {
             await this.migrateClassSchema(options, this.ormSequences);
         }
-    };
+    }
 
     async migrateClassSchema(options: MigrateOptions, schema: ReflectionClass<any>) {
         try {
@@ -204,8 +208,7 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
                 //can resolve that. If the second create also fails, then it throws.
                 try {
                     await this.client.execute(new DropIndexesCommand(schema, [indexName]));
-                } catch (error) {
-                }
+                } catch (error) {}
 
                 await this.client.execute(new CreateIndexesCommand(schema, [createIndex]));
             }

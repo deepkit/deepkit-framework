@@ -1,6 +1,7 @@
+import { connect } from 'net';
+
 import { parseHost } from '@deepkit/core';
 import { ClientTransportAdapter, TransportConnectionHooks } from '@deepkit/rpc';
-import { connect } from 'net';
 
 /*
  * Uses the node `net` module to connect. Supports unix sockets.
@@ -8,18 +9,18 @@ import { connect } from 'net';
 export class RpcTcpClientAdapter implements ClientTransportAdapter {
     protected host;
 
-    constructor(
-        host: string
-    ) {
+    constructor(host: string) {
         this.host = parseHost(host);
     }
 
     public async connect(connection: TransportConnectionHooks) {
         const port = this.host.port || 8811;
-        const socket = this.host.isUnixSocket ? connect({ path: this.host.unixSocket }) : connect({
-            port: port,
-            host: this.host.host
-        });
+        const socket = this.host.isUnixSocket
+            ? connect({ path: this.host.unixSocket })
+            : connect({
+                  port: port,
+                  host: this.host.host,
+              });
 
         socket.on('data', (data: Uint8Array) => {
             connection.onData(data);
@@ -47,7 +48,7 @@ export class RpcTcpClientAdapter implements ClientTransportAdapter {
                 },
                 send(message) {
                     socket.write(message);
-                }
+                },
             });
         });
     }

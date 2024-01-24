@@ -1,204 +1,206 @@
-@import "../../scss/mixins";
+@import '../../scss/mixins';
 
 :host {
-    display: block;
-    border: 1px solid #c5c5c5;
-    background-color: white;
-    height: 100px;
+  display: block;
+  border: 1px solid #c5c5c5;
+  background-color: white;
+  height: 100px;
 
-    --background-header: #f0f0f0;
-    --border-header: #cecece;
+  --background-header: #f0f0f0;
+  --border-header: #cecece;
 
-    --background-row: #fefefe;
-    --text-row-selected: unset;
-    --background-row-odd: #f5f5f5;
-    --background-row-selected: #dcdcdc;
+  --background-row: #fefefe;
+  --text-row-selected: unset;
+  --background-row-odd: #f5f5f5;
+  --background-row-selected: #dcdcdc;
 
-    --border-right-row-freeze: rgba(197, 197, 197, 0.5);
-    --background-row-hover: #e0e0e0;
+  --border-right-row-freeze: rgba(197, 197, 197, 0.5);
+  --background-row-hover: #e0e0e0;
 
-    .frame {
-        height: 100%;
-    }
+  .frame {
+    height: 100%;
+  }
 }
 
 :host-context(.dui-theme-dark) {
-    --background-header: #2d2d2d;
-    --border-header: #474747;
+  --background-header: #2d2d2d;
+  --border-header: #474747;
 
-    --background-row: #1e1e1e;
-    --background-row-odd: #232323;
-    --background-row-selected: #444444;
-    --border-right-row-freeze: rgba(86, 86, 86, 0.5);
-    --background-row-hover: #333333;
+  --background-row: #1e1e1e;
+  --background-row-odd: #232323;
+  --background-row-selected: #444444;
+  --border-right-row-freeze: rgba(86, 86, 86, 0.5);
+  --background-row-hover: #333333;
 }
 
 .cdk-virtual-scroll-viewport {
-    height: 100%;
+  height: 100%;
 }
 
 %header-background {
-    background: var(--background-header);
-    border-bottom: 1px solid var(--border-header);
+  background: var(--background-header);
+  border-bottom: 1px solid var(--border-header);
 }
 
 .header {
-    white-space: nowrap;
+  white-space: nowrap;
+  height: 23px;
+  overflow: hidden;
+  padding-right: 13px;
+  @extend %header-background;
+
+  > div {
+    position: relative;
+    display: inline-block;
     height: 23px;
+    padding: 3px 6px;
+    line-height: 17px;
+    text-align: left;
+    color: #303030;
+    font-size: 11px;
+    font-weight: 500;
+    z-index: 1;
+    left: 0;
+
     overflow: hidden;
-    padding-right: 13px;
-    @extend %header-background;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 
-    > div {
-        position: relative;
-        display: inline-block;
-        height: 23px;
-        padding: 3px 6px;
-        line-height: 17px;
-        text-align: left;
-        color: #303030;
-        font-size: 11px;
-        font-weight: 500;
-        z-index: 1;
-        left: 0;
-
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-
-        &.freeze {
-            position: sticky;
-            z-index: 2;
-            @extend %header-background;
-        }
-
-        dui-icon {
-            float: right;
-            margin-top: 2px;
-            margin-right: 2px;
-        }
-
-        dui-splitter {
-            top: 3px;
-            right: -2px;
-            bottom: 3px;
-        }
-
-        &:active {
-            background-color: #e3e3e3;
-            font-weight: 500;
-        }
-
-        &.other-cell {
-            transition: left 0.1s ease-out;
-        }
+    &.freeze {
+      position: sticky;
+      z-index: 2;
+      @extend %header-background;
     }
+
+    dui-icon {
+      float: right;
+      margin-top: 2px;
+      margin-right: 2px;
+    }
+
+    dui-splitter {
+      top: 3px;
+      right: -2px;
+      bottom: 3px;
+    }
+
+    &:active {
+      background-color: #e3e3e3;
+      font-weight: 500;
+    }
+
+    &.other-cell {
+      transition: left 0.1s ease-out;
+    }
+  }
 }
 
 .body {
-    height: 100%;
+  height: 100%;
 
-    &.with-header {
-        height: calc(100% - 23px);
-    }
+  &.with-header {
+    height: calc(100% - 23px);
+  }
 }
 
 .cdk-virtual-scroll-viewport {
-    overflow: auto !important;
+  overflow: auto !important;
 }
 
 .table-row {
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(192, 192, 192, 0.05);
+  background-color: var(--background-row);
+
+  > div {
+    position: relative;
+    display: inline-block;
+    padding: 3px 6px;
+    line-height: 16px;
+    min-height: 22px;
+    height: 100%;
+    vertical-align: middle;
+    overflow: hidden;
     white-space: nowrap;
-    border-bottom: 1px solid rgba(192, 192, 192, 0.05);
+    text-overflow: ellipsis;
+    left: 0;
+
+    &.freeze {
+      position: sticky;
+      z-index: 2;
+    }
+
+    &.active-drop {
+      opacity: 0.8;
+      border-left: 1px solid var(--line-color-light);
+      border-right: 1px solid var(--line-color-light);
+    }
+
+    &.other-cell {
+      transition: left 0.1s ease-out;
+    }
+  }
+
+  > div.freeze {
     background-color: var(--background-row);
+  }
 
-    > div {
-        position: relative;
-        display: inline-block;
-        padding: 3px 6px;
-        line-height: 16px;
-        min-height: 22px;
-        height: 100%;
-        vertical-align: middle;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        left: 0;
+  > div.freeze-last {
+    border-right: 1px solid var(--border-right-row-freeze);
+  }
 
-        &.freeze {
-            position: sticky;
-            z-index: 2;
-        }
+  &.odd,
+  &.odd > div.freeze {
+    background-color: var(--background-row-odd);
+  }
 
-        &.active-drop {
-            opacity: 0.8;
-            border-left: 1px solid var(--line-color-light);
-            border-right: 1px solid var(--line-color-light);
-        }
-
-        &.other-cell {
-            transition: left 0.1s ease-out;
-        }
-    }
-
-    > div.freeze {
-        background-color: var(--background-row);
-    }
-
-    > div.freeze-last {
-        border-right: 1px solid var(--border-right-row-freeze);
-    }
-
-    &.odd, &.odd > div.freeze {
-        background-color: var(--background-row-odd);
-    }
-
-    &.selected, &.selected > div.freeze {
-        color: var(--text-row-selected);
-        background-color: var(--background-row-selected);
-    }
+  &.selected,
+  &.selected > div.freeze {
+    color: var(--text-row-selected);
+    background-color: var(--background-row-selected);
+  }
 }
 
 :host:focus {
-    outline: 0;
+  outline: 0;
 }
 
 :host:focus:not(.no-focus-outline) {
-    @include focus-border;
+  @include focus-border;
 }
 
 :host-context(.dui-theme-dark) {
-    background-color: #1e1e1e;
-    border: 1px solid #565656;
+  background-color: #1e1e1e;
+  border: 1px solid #565656;
 
-    .th {
-        color: white;
+  .th {
+    color: white;
 
-        &:active {
-            background-color: #474747;
-        }
+    &:active {
+      background-color: #474747;
     }
+  }
 
-    &:focus:not(.no-focus-outline) {
-        @include focus-border-dark;
-    }
+  &:focus:not(.no-focus-outline) {
+    @include focus-border-dark;
+  }
 }
 
 :host.borderless {
-    border: 0;
+  border: 0;
 }
 
 :host:focus {
-    --background-row-selected: var(--dui-selection);
-    --text-row-selected: white;
+  --background-row-selected: var(--dui-selection);
+  --text-row-selected: white;
 }
 
 :host.with-hover {
-    .table-row:not(.selected):hover {
-        background-color: var(--background-row-hover);
+  .table-row:not(.selected):hover {
+    background-color: var(--background-row-hover);
 
-        > div.freeze {
-            background-color: var(--background-row-hover);
-        }
+    > div.freeze {
+      background-color: var(--background-row-hover);
     }
+  }
 }

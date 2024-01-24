@@ -11,7 +11,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
     host: {
         '[class.active]': 'active',
     },
-    styleUrls: ['./tab.component.scss']
+    styleUrls: ['./tab.component.scss'],
 })
 export class TabComponent {
     @Input() active: boolean = false;
@@ -19,8 +19,7 @@ export class TabComponent {
 
     @Output() close = new EventEmitter();
 
-    constructor() {
-    }
+    constructor() {}
 
     onClose() {
         this.close.emit();

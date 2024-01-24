@@ -1,6 +1,10 @@
-import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
 import { OverlayModule } from '@angular/cdk/overlay';
+import { NgModule } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { BrowserModule } from '@angular/platform-browser';
+import { RouterModule } from '@angular/router';
+import { MarkdownModule } from 'ngx-markdown';
+
 import {
     DuiAppModule,
     DuiButtonModule,
@@ -15,31 +19,29 @@ import {
     DuiSplitterModule,
     DuiTableModule,
     DuiTabsModule,
-    DuiWindowModule
+    DuiWindowModule,
 } from '@deepkit/desktop-ui';
-import { FormsModule } from '@angular/forms';
-import { ConsoleComponent } from './views/console.component';
 import { DeepkitClient } from '@deepkit/rpc';
+import { DeepkitUIModule } from '@deepkit/ui-library';
+
 import { ControllerClient } from './client';
-import { Store } from './store';
-import { StringInputComponent } from './components/inputs/string-input.component';
-import { InputComponent } from './components/inputs/input.component';
+import { EnvironmentDialogComponent } from './components/environment-dialog.component';
+import { HeadersComponent } from './components/headers.component';
 import { ArrayInputComponent } from './components/inputs/array-input.component';
 import { BinaryInputComponent } from './components/inputs/binary-input.component';
+import { ClassInputComponent } from './components/inputs/class-input.component';
 import { DateInputComponent } from './components/inputs/date-input.component';
 import { EnumInputComponent } from './components/inputs/enum-input.component';
+import { InputComponent } from './components/inputs/input.component';
 import { JsonInputComponent } from './components/inputs/json-input.component';
-import { ClassInputComponent } from './components/inputs/class-input.component';
-import { HeadersComponent } from './components/headers.component';
 import { MapInputComponent } from './components/inputs/map-input.component';
+import { StringInputComponent } from './components/inputs/string-input.component';
 import { UnionInputComponent } from './components/inputs/union-input.component';
-import { EnvironmentDialogComponent } from './components/environment-dialog.component';
-import { RouterModule } from '@angular/router';
-import { OverviewComponent } from './views/overview.component';
-import { MarkdownModule } from 'ngx-markdown';
-import { DeepkitUIModule } from '@deepkit/ui-library';
-import { HttpRouteDetailComponent } from './views/http/route-detail.component';
+import { Store } from './store';
+import { ConsoleComponent } from './views/console.component';
 import { HttpRequestsComponent } from './views/http/results.component';
+import { HttpRouteDetailComponent } from './views/http/route-detail.component';
+import { OverviewComponent } from './views/overview.component';
 import { RpcDetailComponent } from './views/rpc/rpc-detail.component';
 import { RpcInspectMessageComponent } from './views/rpc/rpc-inspect-message.component';
 
@@ -91,10 +93,12 @@ import { RpcInspectMessageComponent } from './views/rpc/rpc-inspect-message.comp
         MarkdownModule.forRoot(),
     ],
     providers: [
-        { provide: DeepkitClient, useFactory: () => new DeepkitClient(ControllerClient.getServerHost()) },
+        {
+            provide: DeepkitClient,
+            useFactory: () => new DeepkitClient(ControllerClient.getServerHost()),
+        },
         Store,
         ControllerClient,
     ],
 })
-export class ApiConsoleModule {
-}
+export class ApiConsoleModule {}

@@ -7,10 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { cli, Flag } from '@deepkit/app';
+import { Flag, cli } from '@deepkit/app';
 import { empty } from '@deepkit/core';
 import { LoggerInterface } from '@deepkit/logger';
+
 import { MigrationProvider } from '../migration/migration-provider.js';
 import { SqlMigrationHandler } from '../sql-adapter.js';
 import { BaseCommand } from './base-command.js';
@@ -51,11 +51,13 @@ export class MigrationPendingCommand extends BaseCommand {
                 this.logger.log(`Database <green>${database.name}</green>: Pending migrations`);
                 let i = 1;
                 for (const migration of migrationsToApply) {
-                    this.logger.log(` <yellow>${i++}. ${migration.name}</yellow> version=${migration.version} <yellow>${migration.up().length} UP</yellow> statements`);
+                    this.logger.log(
+                        ` <yellow>${i++}. ${migration.name}</yellow> version=${migration.version} <yellow>${migration.up().length} UP</yellow> statements`,
+                    );
                     if (verbose) {
                         let i = 1;
                         for (const sql of migration.up()) {
-                            this.logger.log('   ' + i++ + '.' + (' '.repeat(8)) + sql);
+                            this.logger.log('   ' + i++ + '.' + ' '.repeat(8) + sql);
                         }
                     }
                 }

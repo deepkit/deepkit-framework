@@ -16,4 +16,3 @@ export * from './src/schema/table.js';
 export * from './src/reverse/schema-parser.js';
 export * from './src/platform/default-platform.js';
 export * from './src/serializer/sql-serializer.js';
-

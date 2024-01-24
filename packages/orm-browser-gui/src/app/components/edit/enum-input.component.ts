@@ -1,15 +1,31 @@
-import { AfterViewInit, Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
-import { SelectboxComponent, unsubscribe } from '@deepkit/desktop-ui';
+import {
+    AfterViewInit,
+    Component,
+    EventEmitter,
+    Input,
+    OnChanges,
+    OnDestroy,
+    OnInit,
+    Output,
+    ViewChild,
+} from '@angular/core';
 import { Subscription } from 'rxjs';
+
+import { SelectboxComponent, unsubscribe } from '@deepkit/desktop-ui';
 import { TypeEnum } from '@deepkit/type';
 
 @Component({
     template: `
-        <dui-select #select [(ngModel)]="model" (ngModelChange)="modelChange.emit(this.model); done.emit()"
-                    textured style="width: 100%">
-            <dui-option [value]="kv.value" *ngFor="let kv of keyValues">{{kv.label}}</dui-option>
+        <dui-select
+            #select
+            [(ngModel)]="model"
+            (ngModelChange)="modelChange.emit(this.model); done.emit()"
+            textured
+            style="width: 100%"
+        >
+            <dui-option [value]="kv.value" *ngFor="let kv of keyValues">{{ kv.label }}</dui-option>
         </dui-select>
-    `
+    `,
 })
 export class EnumInputComponent implements OnChanges, OnInit, AfterViewInit, OnDestroy {
     @Input() model: any;
@@ -17,7 +33,7 @@ export class EnumInputComponent implements OnChanges, OnInit, AfterViewInit, OnD
 
     @Input() type!: TypeEnum;
 
-    keyValues: { value: any, label: string }[] = [];
+    keyValues: { value: any; label: string }[] = [];
 
     @Output() done = new EventEmitter<void>();
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
@@ -27,8 +43,7 @@ export class EnumInputComponent implements OnChanges, OnInit, AfterViewInit, OnD
     @unsubscribe()
     protected dropdownSub?: Subscription;
 
-    ngOnDestroy() {
-    }
+    ngOnDestroy() {}
 
     ngOnInit() {
         this.load();

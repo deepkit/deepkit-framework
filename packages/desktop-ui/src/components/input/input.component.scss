@@ -1,118 +1,123 @@
-@import "../../scss/mixins";
+@import '../../scss/mixins';
 
 :host {
-    display: inline-block;
-    position: relative;
-    height: 21px;
-    line-height: 21px;
-    color: var(--dui-input-text);
-    width: 150px;
-    vertical-align: middle;
+  display: inline-block;
+  position: relative;
+  height: 21px;
+  line-height: 21px;
+  color: var(--dui-input-text);
+  width: 150px;
+  vertical-align: middle;
 
-    background: white;
-    border: 1px solid #bdbdbd;
+  background: white;
+  border: 1px solid #bdbdbd;
 
-    &.semi-transparent {
-        border: 1px solid rgba(151, 151, 151, 0.28);
-        background: rgba(121, 121, 121, 0.08);
+  &.semi-transparent {
+    border: 1px solid rgba(151, 151, 151, 0.28);
+    background: rgba(121, 121, 121, 0.08);
+  }
+
+  //box-shadow: 0 0.5px 0 0.5px rgba(0, 0, 0, 0.05);
+
+  &:not(.light-focus).focused {
+    @include focus-border;
+  }
+
+  &.light-focus.focused {
+    border: 1px solid #949494;
+  }
+
+  &.round {
+    border-radius: 4px;
+  }
+
+  &.disabled {
+    color: #c5c5c5;
+    pointer-events: none;
+    border: 1px solid #d4d4d4;
+
+    > * {
+      opacity: 0.6;
     }
 
-    //box-shadow: 0 0.5px 0 0.5px rgba(0, 0, 0, 0.05);
-
-    &:not(.light-focus).focused {
-        @include focus-border;
+    .clearer {
+      opacity: 0;
     }
-
-    &.light-focus.focused {
-        border: 1px solid #949494;
-    }
-
-    &.round {
-        border-radius: 4px;
-    }
-
-    &.disabled {
-        color: #c5c5c5;
-        pointer-events: none;
-        border: 1px solid #d4d4d4;
-
-        > * {
-            opacity: 0.6;
-        }
-
-        .clearer {
-            opacity: 0;
-        }
-    }
+  }
 }
 
 :host.no-controls {
-    input::-webkit-outer-spin-button,
-    input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
 
-    input {
-        -moz-appearance: textfield;
-    }
+  input {
+    -moz-appearance: textfield;
+  }
 }
 
 :host:not(.is-textarea) {
-    display: inline-flex;
-    align-items: center;
+  display: inline-flex;
+  align-items: center;
 }
 
 :host.is-textarea {
-    height: 60px;
+  height: 60px;
 }
 
-textarea, input {
-    border: 0;
-    min-width: 20px;
-    color: var(--dui-input-text);
-    font: normal 13px system-ui, sans-serif;
-    background-color: transparent;
-    height: 100%;
-    line-height: 17px;
-    padding: 0 4px;
-    vertical-align: top;
-    resize: none;
-    width: 100%;
+textarea,
+input {
+  border: 0;
+  min-width: 20px;
+  color: var(--dui-input-text);
+  font:
+    normal 13px system-ui,
+    sans-serif;
+  background-color: transparent;
+  height: 100%;
+  line-height: 17px;
+  padding: 0 4px;
+  vertical-align: top;
+  resize: none;
+  width: 100%;
 
-    &::placeholder {
-        color: #b6b6b6;
-    }
+  &::placeholder {
+    color: #b6b6b6;
+  }
 
-    &:focus {
-        outline: 0;
-    }
+  &:focus {
+    outline: 0;
+  }
 }
 
 :host-context(.dui-theme-dark) {
-    textarea, input {
-        &::placeholder {
-            color: rgba(197, 197, 197, 0.4);
-        }
+  textarea,
+  input {
+    &::placeholder {
+      color: rgba(197, 197, 197, 0.4);
     }
+  }
 }
 
 textarea {
-    height: 100%;
+  height: 100%;
 }
 
 :host.has-icon {
-    padding-left: 1px;
-    //margin-right: 2px;
+  padding-left: 1px;
+  //margin-right: 2px;
 
-    textarea, input {
-        padding-left: 3px;
-    }
+  textarea,
+  input {
+    padding-left: 3px;
+  }
 }
 
 textarea {
-    padding-top: 2px;
-    line-height: 17px;
+  padding-top: 2px;
+  line-height: 17px;
 }
 
 //dui-icon {
@@ -122,22 +127,21 @@ textarea {
 //}
 
 :host.semi-transparent {
-    dui-icon {
-        opacity: 0.7;
-    }
+  dui-icon {
+    opacity: 0.7;
+  }
 }
 
-
 :host dui-icon.clearer {
-    //right: 5px;
-    //left: auto;
-    //top: 3px;
-    margin-right: 2px;
-    opacity: 0;
-    transition: opacity 0.2s ease-in;
-    cursor: pointer;
-    color: #b8babc;
-    pointer-events: none;
+  //right: 5px;
+  //left: auto;
+  //top: 3px;
+  margin-right: 2px;
+  opacity: 0;
+  transition: opacity 0.2s ease-in;
+  cursor: pointer;
+  color: #b8babc;
+  pointer-events: none;
 }
 
 //:host.has-icon {
@@ -153,50 +157,51 @@ textarea {
 //}
 
 :host.filled .clearer {
-    opacity: 1;
-    pointer-events: all;
+  opacity: 1;
+  pointer-events: all;
 }
 
 :host.textured {
-    @include box-textured;
+  @include box-textured;
 
-    &:not(.light-focus).focused {
-        border: 1px solid #4991bc;
-    }
+  &:not(.light-focus).focused {
+    border: 1px solid #4991bc;
+  }
 }
 
 :host-context(.dui-theme-dark) {
+  color: white;
+  background-image: linear-gradient(-180deg, #3d3d3d 0%, #414141 10%, #414141 100%);
+
+  &.semi-transparent {
+    border: 1px solid rgba(151, 151, 151, 0.28);
+    background: rgba(121, 121, 121, 0.08);
+  }
+
+  border-top: 1px solid #565656;
+  border-bottom: 1px solid #565656;
+  border-left: 1px solid #484848;
+  border-right: 1px solid #484848;
+
+  &:not(.light-focus).focused {
+    @include focus-border-dark;
+  }
+
+  &.textured:not(.light-focus).focused {
+    @include focus-border-dark;
+    border: 1px solid #4991bc;
+  }
+
+  &.light-focus.focused {
+    border: 1px solid #5d666e;
+  }
+
+  input,
+  textarea {
     color: white;
-    background-image: linear-gradient(-180deg, #3D3D3D 0%, #414141 10%, #414141 100%);
-
-    &.semi-transparent {
-        border: 1px solid rgba(151, 151, 151, 0.28);
-        background: rgba(121, 121, 121, 0.08);
-    }
-
-    border-top: 1px solid #565656;
-    border-bottom: 1px solid #565656;
-    border-left: 1px solid #484848 ;
-    border-right: 1px solid #484848;
-
-    &:not(.light-focus).focused {
-        @include focus-border-dark;
-    }
-
-    &.textured:not(.light-focus).focused {
-        @include focus-border-dark;
-        border: 1px solid #4991bc;
-    }
-
-    &.light-focus.focused {
-        border: 1px solid #5d666e;
-    }
-
-    input, textarea {
-        color: white;
-    }
+  }
 }
 
 :host-context(.dui-theme-dark).textured {
-    @include box-textured-dark-toolbar;
+  @include box-textured-dark-toolbar;
 }

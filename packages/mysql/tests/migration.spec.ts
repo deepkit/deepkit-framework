@@ -1,8 +1,27 @@
 import { expect, test } from '@jest/globals';
-import { AutoIncrement, Entity, float32, int16, int32, int8, integer, MySQL, PrimaryKey, Reference, typeOf, uint16, uint32, uint8, Unique, UUID } from '@deepkit/type';
-import { schemaMigrationRoundTrip } from '@deepkit/sql';
-import { MySQLDatabaseAdapter } from '../src/mysql-adapter.js';
+
 import { DatabaseEntityRegistry } from '@deepkit/orm';
+import { schemaMigrationRoundTrip } from '@deepkit/sql';
+import {
+    AutoIncrement,
+    Entity,
+    MySQL,
+    PrimaryKey,
+    Reference,
+    UUID,
+    Unique,
+    float32,
+    int8,
+    int16,
+    int32,
+    integer,
+    typeOf,
+    uint8,
+    uint16,
+    uint32,
+} from '@deepkit/type';
+
+import { MySQLDatabaseAdapter } from '../src/mysql-adapter.js';
 
 test('mysql custom type', async () => {
     class post {
@@ -11,7 +30,12 @@ test('mysql custom type', async () => {
         content: string = '';
     }
 
-    const adapter = new MySQLDatabaseAdapter({ host: '127.0.0.1', user: 'root', database: 'default', password: process.env.MYSQL_PW });
+    const adapter = new MySQLDatabaseAdapter({
+        host: '127.0.0.1',
+        user: 'root',
+        database: 'default',
+        password: process.env.MYSQL_PW,
+    });
     const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
 
     expect(postTable.getColumn('id').isNotNull).toBe(true);
@@ -28,7 +52,12 @@ test('uuid required', async () => {
         id: UUID & PrimaryKey = '';
     }
 
-    const adapter = new MySQLDatabaseAdapter({ host: '127.0.0.1', user: 'root', database: 'default', password: process.env.MYSQL_PW });
+    const adapter = new MySQLDatabaseAdapter({
+        host: '127.0.0.1',
+        user: 'root',
+        database: 'default',
+        password: process.env.MYSQL_PW,
+    });
     const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
 
     expect(postTable.getColumn('id').isNotNull).toBe(true);
@@ -39,16 +68,21 @@ test('uuid required', async () => {
 test('default expression', async () => {
     class post {
         id: number & AutoIncrement & PrimaryKey = 0;
-        str: string & MySQL<{ type: 'VARCHAR(255)', default: 'abc' }> = '';
+        str: string & MySQL<{ type: 'VARCHAR(255)'; default: 'abc' }> = '';
         no: number & MySQL<{ default: 34.5 }> = 3;
-        json: any & MySQL<{ default: {a: true} }> = {};
-        jsonAuto: any = {a: true};
-        created: Date & MySQL<{ defaultExpr: `now()` }> = new Date;
-        createdAuto: Date = new Date; //this is detected as now()
+        json: any & MySQL<{ default: { a: true } }> = {};
+        jsonAuto: any = { a: true };
+        created: Date & MySQL<{ defaultExpr: `now()` }> = new Date();
+        createdAuto: Date = new Date(); //this is detected as now()
         opt?: boolean;
     }
 
-    const adapter = new MySQLDatabaseAdapter({ host: '127.0.0.1', user: 'root', database: 'default', password: process.env.MYSQL_PW });
+    const adapter = new MySQLDatabaseAdapter({
+        host: '127.0.0.1',
+        user: 'root',
+        database: 'default',
+        password: process.env.MYSQL_PW,
+    });
     const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
 
     expect(postTable.getColumn('str').defaultValue).toBe('abc');
@@ -75,7 +109,12 @@ test('mysql numbers', async () => {
         default: number = 0;
     }
 
-    const adapter = new MySQLDatabaseAdapter({ host: '127.0.0.1', user: 'root', database: 'default', password: process.env.MYSQL_PW });
+    const adapter = new MySQLDatabaseAdapter({
+        host: '127.0.0.1',
+        user: 'root',
+        database: 'default',
+        password: process.env.MYSQL_PW,
+    });
     const [postTable] = adapter.platform.createTables(DatabaseEntityRegistry.from([post]));
 
     const DDL = await schemaMigrationRoundTrip([post], adapter);
@@ -93,7 +132,6 @@ CREATE TABLE \`post\` (
     \`default\` double DEFAULT 0 NOT NULL,
     PRIMARY KEY (\`id\`)
 )`);
-
 });
 
 interface User extends Entity<{ name: 'user' }> {
@@ -106,18 +144,21 @@ interface User extends Entity<{ name: 'user' }> {
 
 interface Post extends Entity<{ name: 'post' }> {
     id: number & AutoIncrement & PrimaryKey;
-    user: User & Reference,
-    created: Date,
-    slag: string & Unique,
-    title: string,
-    content: string,
+    user: User & Reference;
+    created: Date;
+    slag: string & Unique;
+    title: string;
+    content: string;
 }
 
 test('mysql', async () => {
-    await schemaMigrationRoundTrip([typeOf<User>(), typeOf<Post>()], new MySQLDatabaseAdapter({
-        host: '127.0.0.1',
-        user: 'root',
-        database: 'default',
-        password: process.env.MYSQL_PW
-    }));
+    await schemaMigrationRoundTrip(
+        [typeOf<User>(), typeOf<Post>()],
+        new MySQLDatabaseAdapter({
+            host: '127.0.0.1',
+            user: 'root',
+            database: 'default',
+            password: process.env.MYSQL_PW,
+        }),
+    );
 });

@@ -7,10 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { ControllerClient } from '../../client';
+
 import { ConfigOption } from '@deepkit/framework-debug-api';
+
+import { ControllerClient } from '../../client';
 import { Lifecycle } from '../../utils';
 
 @Component({
@@ -18,11 +19,15 @@ import { Lifecycle } from '../../utils';
         <div class="section">
             <div class="header">
                 <h4>Application configuration</h4>
-                <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="applicationConfigFilter"></dui-input>
+                <dui-input
+                    placeholder="Filter"
+                    round
+                    semiTransparent
+                    lightFocus
+                    [(ngModel)]="applicationConfigFilter"
+                ></dui-input>
             </div>
-            <p>
-                Application config values from your root application module.
-            </p>
+            <p>Application config values from your root application module.</p>
             <dui-table [items]="filter(applicationConfig, applicationConfigFilter)" defaultSort="name" noFocusOutline>
                 <dui-table-column class="text-selection" name="name"></dui-table-column>
                 <dui-table-column class="text-selection" name="value"></dui-table-column>
@@ -37,9 +42,7 @@ import { Lifecycle } from '../../utils';
                 <h4>Module configuration</h4>
                 <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="configFilter"></dui-input>
             </div>
-            <p>
-                Config values from core modules and your imported modules.
-            </p>
+            <p>Config values from core modules and your imported modules.</p>
             <dui-table [items]="filter(config, configFilter)" defaultSort="name" noFocusOutline>
                 <dui-table-column class="text-selection" [width]="220" name="name"></dui-table-column>
                 <dui-table-column class="text-selection" name="value"></dui-table-column>
@@ -49,38 +52,40 @@ import { Lifecycle } from '../../utils';
             </dui-table>
         </div>
     `,
-    styles: [`
-        :host {
-            display: flex;
-            height: 100%;
-            max-width: 100%;
-        }
+    styles: [
+        `
+            :host {
+                display: flex;
+                height: 100%;
+                max-width: 100%;
+            }
 
-        .section {
-            flex: 1 1 auto;
-            height: 100%;
-            display: flex;
-            margin: 5px;
-            flex-direction: column;
-            overflow: hidden;
-        }
+            .section {
+                flex: 1 1 auto;
+                height: 100%;
+                display: flex;
+                margin: 5px;
+                flex-direction: column;
+                overflow: hidden;
+            }
 
-        .header {
-            display: flex;
-        }
+            .header {
+                display: flex;
+            }
 
-        .header dui-input {
-            margin-left: auto;
-        }
+            .header dui-input {
+                margin-left: auto;
+            }
 
-        .section h4 {
-            margin-bottom: 10px;
-        }
+            .section h4 {
+                margin-bottom: 10px;
+            }
 
-        dui-table {
-            flex: 1;
-        }
-    `]
+            dui-table {
+                flex: 1;
+            }
+        `,
+    ],
 })
 export class ConfigurationComponent implements OnInit, OnDestroy {
     public applicationConfigFilter: string = '';

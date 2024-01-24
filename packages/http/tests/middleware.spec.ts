@@ -1,10 +1,12 @@
 import { expect, test } from '@jest/globals';
-import { http } from '../src/decorator.js';
-import { createHttpKernel } from './utils.js';
-import { HttpMiddleware, httpMiddleware } from '../src/middleware.js';
-import { HttpRequest, HttpResponse } from '../src/model.js';
+
 import { AppModule } from '@deepkit/app';
 import { sleep } from '@deepkit/core';
+
+import { http } from '../src/decorator.js';
+import { HttpMiddleware, httpMiddleware } from '../src/middleware.js';
+import { HttpRequest, HttpResponse } from '../src/model.js';
+import { createHttpKernel } from './utils.js';
 
 class Controller {
     @http.GET('user/:name')
@@ -14,9 +16,18 @@ class Controller {
 }
 
 test('middleware empty', async () => {
-    const httpKernel = createHttpKernel([Controller], [], [], [httpMiddleware.for((req, res, next) => {
-        next();
-    }).timeout(100)]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [],
+        [
+            httpMiddleware
+                .for((req, res, next) => {
+                    next();
+                })
+                .timeout(100),
+        ],
+    );
 
     const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
     expect(response.statusCode).toEqual(200);
@@ -25,10 +36,17 @@ test('middleware empty', async () => {
 });
 
 test('middleware async success', async () => {
-    const httpKernel = createHttpKernel([Controller], [], [], [httpMiddleware.for(async (req, res, next) => {
-        await sleep(0.1);
-        res.end('nope');
-    })]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [],
+        [
+            httpMiddleware.for(async (req, res, next) => {
+                await sleep(0.1);
+                res.end('nope');
+            }),
+        ],
+    );
 
     const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
     expect(response.statusCode).toEqual(200);
@@ -36,10 +54,17 @@ test('middleware async success', async () => {
 });
 
 test('middleware async failed', async () => {
-    const httpKernel = createHttpKernel([Controller], [], [], [httpMiddleware.for(async (req, res, next) => {
-        await sleep(0.1);
-        throw new Error('nope');
-    })]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [],
+        [
+            httpMiddleware.for(async (req, res, next) => {
+                await sleep(0.1);
+                throw new Error('nope');
+            }),
+        ],
+    );
 
     const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
     expect(response.statusCode).toEqual(404);
@@ -77,9 +102,16 @@ test('middleware class async failed', async () => {
 });
 
 test('middleware direct response', async () => {
-    const httpKernel = createHttpKernel([Controller], [], [], [httpMiddleware.for((req, res, next) => {
-        res.end('nope');
-    })]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [],
+        [
+            httpMiddleware.for((req, res, next) => {
+                res.end('nope');
+            }),
+        ],
+    );
 
     const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
     expect(response.statusCode).toEqual(200);
@@ -94,10 +126,19 @@ test('middleware for controller', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller, MyController], [], [], [httpMiddleware.for((req, res, next) => {
-        res.setHeader('middleware', '1');
-        next();
-    }).forControllers(MyController)]);
+    const httpKernel = createHttpKernel(
+        [Controller, MyController],
+        [],
+        [],
+        [
+            httpMiddleware
+                .for((req, res, next) => {
+                    res.setHeader('middleware', '1');
+                    next();
+                })
+                .forControllers(MyController),
+        ],
+    );
 
     {
         const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
@@ -119,10 +160,19 @@ test('middleware excludeControllers', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller, MyController], [], [], [httpMiddleware.for((req, res, next) => {
-        res.setHeader('middleware', '1');
-        next();
-    }).excludeControllers(Controller)]);
+    const httpKernel = createHttpKernel(
+        [Controller, MyController],
+        [],
+        [],
+        [
+            httpMiddleware
+                .for((req, res, next) => {
+                    res.setHeader('middleware', '1');
+                    next();
+                })
+                .excludeControllers(Controller),
+        ],
+    );
 
     {
         const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
@@ -154,10 +204,20 @@ test('middleware for names', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([MyController], [], [], [httpMiddleware.for((req, res, next) => {
-        res.setHeader('middleware', '1');
-        next();
-    }).forRouteNames('api_*').excludeRouteNames('api_group')]);
+    const httpKernel = createHttpKernel(
+        [MyController],
+        [],
+        [],
+        [
+            httpMiddleware
+                .for((req, res, next) => {
+                    res.setHeader('middleware', '1');
+                    next();
+                })
+                .forRouteNames('api_*')
+                .excludeRouteNames('api_group'),
+        ],
+    );
 
     {
         const response = await httpKernel.request(HttpRequest.GET('/api/user/name1'));
@@ -194,28 +254,43 @@ test('middleware for routes', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([MyController], [], [], [
-        httpMiddleware.for((req, res, next) => {
-            res.setHeader('middleware_get', '1');
-            next();
-        }).forRoutes({ httpMethod: 'GET' }),
-        httpMiddleware.for((req, res, next) => {
-            res.setHeader('middleware_api_group', '1');
-            next();
-        }).forRoutes({ group: 'api' }),
-        httpMiddleware.for((req, res, next) => {
-            res.setHeader('middleware_api_path', '1');
-            next();
-        }).forRoutes({ path: '/api/*' }),
-        httpMiddleware.for((req, res, next) => {
-            res.setHeader('middleware_api_user', '1');
-            next();
-        }).forRoutes({ path: '/api/user/*' }),
-        httpMiddleware.for((req, res, next) => {
-            res.setHeader('middleware_another', '1');
-            next();
-        }).forRoutes({ group: 'another' })
-    ]);
+    const httpKernel = createHttpKernel(
+        [MyController],
+        [],
+        [],
+        [
+            httpMiddleware
+                .for((req, res, next) => {
+                    res.setHeader('middleware_get', '1');
+                    next();
+                })
+                .forRoutes({ httpMethod: 'GET' }),
+            httpMiddleware
+                .for((req, res, next) => {
+                    res.setHeader('middleware_api_group', '1');
+                    next();
+                })
+                .forRoutes({ group: 'api' }),
+            httpMiddleware
+                .for((req, res, next) => {
+                    res.setHeader('middleware_api_path', '1');
+                    next();
+                })
+                .forRoutes({ path: '/api/*' }),
+            httpMiddleware
+                .for((req, res, next) => {
+                    res.setHeader('middleware_api_user', '1');
+                    next();
+                })
+                .forRoutes({ path: '/api/user/*' }),
+            httpMiddleware
+                .for((req, res, next) => {
+                    res.setHeader('middleware_another', '1');
+                    next();
+                })
+                .forRoutes({ group: 'another' }),
+        ],
+    );
 
     {
         const response = await httpKernel.request(HttpRequest.GET('/another/name1'));
@@ -247,9 +322,18 @@ test('middleware for routes', async () => {
 });
 
 test('middleware timeout', async () => {
-    const httpKernel = createHttpKernel([Controller], [], [], [httpMiddleware.for((req, res, next) => {
-        //do nothing
-    }).timeout(1000)]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [],
+        [
+            httpMiddleware
+                .for((req, res, next) => {
+                    //do nothing
+                })
+                .timeout(1000),
+        ],
+    );
 
     const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
     expect(response.statusCode).toEqual(200);
@@ -257,10 +341,17 @@ test('middleware timeout', async () => {
 });
 
 test('middleware keep content type', async () => {
-    const httpKernel = createHttpKernel([Controller], [], [], [httpMiddleware.for((req, res, next) => {
-        res.setHeader('Content-Type', 'text/plain');
-        next();
-    })]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [],
+        [
+            httpMiddleware.for((req, res, next) => {
+                res.setHeader('Content-Type', 'text/plain');
+                next();
+            }),
+        ],
+    );
 
     const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
     expect(response.statusCode).toEqual(200);
@@ -270,20 +361,25 @@ test('middleware keep content type', async () => {
 
 test('middleware order natural', async () => {
     const order: number[] = [];
-    const httpKernel = createHttpKernel([Controller], [], [], [
-        httpMiddleware.for((req, res, next) => {
-            order.push(1);
-            next();
-        }),
-        httpMiddleware.for((req, res, next) => {
-            order.push(2);
-            next();
-        }),
-        httpMiddleware.for((req, res, next) => {
-            order.push(3);
-            next();
-        })
-    ]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [],
+        [
+            httpMiddleware.for((req, res, next) => {
+                order.push(1);
+                next();
+            }),
+            httpMiddleware.for((req, res, next) => {
+                order.push(2);
+                next();
+            }),
+            httpMiddleware.for((req, res, next) => {
+                order.push(3);
+                next();
+            }),
+        ],
+    );
 
     const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
     expect(response.statusCode).toEqual(200);
@@ -293,20 +389,27 @@ test('middleware order natural', async () => {
 
 test('middleware order changed', async () => {
     const order: number[] = [];
-    const httpKernel = createHttpKernel([Controller], [], [], [
-        httpMiddleware.for((req, res, next) => {
-            order.push(1);
-            next();
-        }),
-        httpMiddleware.for((req, res, next) => {
-            order.push(2);
-            next();
-        }),
-        httpMiddleware.for((req, res, next) => {
-            order.push(3);
-            next();
-        }).order(-1)
-    ]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [],
+        [
+            httpMiddleware.for((req, res, next) => {
+                order.push(1);
+                next();
+            }),
+            httpMiddleware.for((req, res, next) => {
+                order.push(2);
+                next();
+            }),
+            httpMiddleware
+                .for((req, res, next) => {
+                    order.push(3);
+                    next();
+                })
+                .order(-1),
+        ],
+    );
 
     const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
     expect(response.statusCode).toEqual(200);
@@ -314,9 +417,7 @@ test('middleware order changed', async () => {
     expect(order).toEqual([3, 1, 2]);
 });
 
-
 test('middleware for module', async () => {
-
     class MyControllerA {
         @http.GET('/a/:name')
         hello(name: string) {
@@ -330,16 +431,23 @@ test('middleware for module', async () => {
             return name;
         }
     }
-    const moduleA = new AppModule({controllers: [MyControllerA], providers: [MyControllerA]}, 'a');
-    const moduleB = new AppModule({controllers: [MyControllerB], providers: [MyControllerB]}, 'b');
+    const moduleA = new AppModule({ controllers: [MyControllerA], providers: [MyControllerA] }, 'a');
+    const moduleB = new AppModule({ controllers: [MyControllerB], providers: [MyControllerB] }, 'b');
 
-    const httpKernel = createHttpKernel([
-    ], [], [], [
-        httpMiddleware.for((req, res, next) => {
-            res.setHeader('middleware', '1');
-            next();
-        }).forModules(moduleB),
-    ], [moduleA, moduleB]);
+    const httpKernel = createHttpKernel(
+        [],
+        [],
+        [],
+        [
+            httpMiddleware
+                .for((req, res, next) => {
+                    res.setHeader('middleware', '1');
+                    next();
+                })
+                .forModules(moduleB),
+        ],
+        [moduleA, moduleB],
+    );
 
     {
         const response = await httpKernel.request(HttpRequest.GET('/a/name1'));
@@ -354,7 +462,6 @@ test('middleware for module', async () => {
     }
 });
 
-
 test('middleware self module', async () => {
     class MyControllerA {
         @http.GET('/a/:name')
@@ -362,12 +469,22 @@ test('middleware self module', async () => {
             return name;
         }
     }
-    const moduleA = new AppModule({controllers: [MyControllerA]});
+    const moduleA = new AppModule({ controllers: [MyControllerA] });
 
-    const httpKernel = createHttpKernel([Controller], [], [], [httpMiddleware.for((req, res, next) => {
-        res.setHeader('middleware', '1');
-        next();
-    }).forSelfModules()], [moduleA]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [],
+        [
+            httpMiddleware
+                .for((req, res, next) => {
+                    res.setHeader('middleware', '1');
+                    next();
+                })
+                .forSelfModules(),
+        ],
+        [moduleA],
+    );
 
     {
         const response = await httpKernel.request(HttpRequest.GET('/user/name1'));
@@ -396,7 +513,6 @@ test('middleware class type', async () => {
     expect(response.statusCode).toEqual(200);
     expect(response.getHeader('middleware')).toEqual('1');
 });
-
 
 test('middleware on http controller', async () => {
     class MyMiddleware {

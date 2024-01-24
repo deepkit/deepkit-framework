@@ -1,17 +1,20 @@
-import { ClassType, isArray, isClass, isFunction } from '@deepkit/core';
-import { ProviderWithScope } from '@deepkit/injector';
-import { HttpKernel } from '../src/kernel.js';
 import { App, AppModule, MiddlewareFactory } from '@deepkit/app';
+import { ClassType, isArray, isClass, isFunction } from '@deepkit/core';
 import { EventListener } from '@deepkit/event';
+import { ProviderWithScope } from '@deepkit/injector';
+
+import { HttpKernel } from '../src/kernel.js';
 import { HttpModule } from '../src/module.js';
 import { HttpRouterRegistry } from '../src/router.js';
 
 export function createHttpKernel(
-    controllers: (ClassType | { module: AppModule<any>, controller: ClassType })[] | ((registry: HttpRouterRegistry) => void) = [],
+    controllers:
+        | (ClassType | { module: AppModule<any>; controller: ClassType })[]
+        | ((registry: HttpRouterRegistry) => void) = [],
     providers: ProviderWithScope[] = [],
     listeners: (EventListener<any> | ClassType)[] = [],
     middlewares: MiddlewareFactory[] = [],
-    modules: AppModule<any>[] = []
+    modules: AppModule<any>[] = [],
 ) {
     const app = createHttpApp(controllers, providers, listeners, middlewares, modules);
 
@@ -19,11 +22,13 @@ export function createHttpKernel(
 }
 
 export function createHttpApp(
-    controllers: (ClassType | { module: AppModule<any>, controller: ClassType })[] | ((registry: HttpRouterRegistry) => void) = [],
+    controllers:
+        | (ClassType | { module: AppModule<any>; controller: ClassType })[]
+        | ((registry: HttpRouterRegistry) => void) = [],
     providers: ProviderWithScope[] = [],
     listeners: (EventListener<any> | ClassType)[] = [],
     middlewares: MiddlewareFactory[] = [],
-    modules: AppModule<any>[] = []
+    modules: AppModule<any>[] = [],
 ) {
     const imports: AppModule<any>[] = modules.slice(0);
     imports.push(new HttpModule());
@@ -37,7 +42,7 @@ export function createHttpApp(
     }
 
     const module = new AppModule({
-        controllers: isArray(controllers) ? controllers.map(v => isClass(v) ? v : v.controller) : [],
+        controllers: isArray(controllers) ? controllers.map(v => (isClass(v) ? v : v.controller)) : [],
         imports,
         providers,
         listeners,

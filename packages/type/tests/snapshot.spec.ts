@@ -1,13 +1,13 @@
 import { expect, test } from '@jest/globals';
-import { getConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator } from '../src/snapshot.js';
-import { PrimaryKey, Reference } from '../src/reflection/type.js';
+
 import { ReflectionClass } from '../src/reflection/reflection.js';
+import { PrimaryKey, Reference } from '../src/reflection/type.js';
+import { getConverterForSnapshot, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator } from '../src/snapshot.js';
 
 class Image {
     title: string = '';
 
-    constructor(public id: number & PrimaryKey = 0) {
-    }
+    constructor(public id: number & PrimaryKey = 0) {}
 }
 
 class User {
@@ -15,13 +15,10 @@ class User {
 
     title: string = '';
 
-    constructor(public id: number & PrimaryKey = 0) {
-
-    }
+    constructor(public id: number & PrimaryKey = 0) {}
 }
 
-test('benchmark', () => {
-});
+test('benchmark', () => {});
 
 test('getJITConverterForSnapshot', () => {
     const converter = getConverterForSnapshot(ReflectionClass.from(User));
@@ -38,7 +35,6 @@ test('getJITConverterForSnapshot', () => {
         expect(converted).toEqual({ id: 22, title: 'Peter', image: { id: 3 } });
     }
 });
-
 
 test('getPrimaryKeyExtractor', () => {
     const converter = getPrimaryKeyExtractor(ReflectionClass.from(User));
@@ -74,15 +70,14 @@ test('getPrimaryKeyHashGenerator', () => {
 
 test('bigint and binary', () => {
     class Node {
-        created: Date = new Date;
+        created: Date = new Date();
 
         stake: bigint = 0n;
 
         constructor(
             public publicKey: Uint8Array & PrimaryKey,
             public address: Uint8Array,
-        ) {
-        }
+        ) {}
     }
 
     const schema = ReflectionClass.from(Node);
@@ -120,10 +115,7 @@ test('bigint and binary', () => {
 
 test('bigint primary key', () => {
     class Node {
-        constructor(
-            public stake: bigint & PrimaryKey,
-        ) {
-        }
+        constructor(public stake: bigint & PrimaryKey) {}
     }
 
     const schema = ReflectionClass.from(Node);

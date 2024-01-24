@@ -1,12 +1,17 @@
 import { expect, test } from '@jest/globals';
+
 import { App } from '@deepkit/app';
-import { Filesystem, FilesystemMemoryAdapter, NamedFilesystem, provideFilesystem, provideNamedFilesystem } from '@deepkit/filesystem';
+import {
+    Filesystem,
+    FilesystemMemoryAdapter,
+    NamedFilesystem,
+    provideFilesystem,
+    provideNamedFilesystem,
+} from '@deepkit/filesystem';
 
 test('default provider', async () => {
     const app = new App({
-        providers: [
-            provideFilesystem(new FilesystemMemoryAdapter())
-        ]
+        providers: [provideFilesystem(new FilesystemMemoryAdapter())],
     });
 
     const fs = app.get(Filesystem);
@@ -22,7 +27,7 @@ test('multiple providers', async () => {
         providers: [
             provideNamedFilesystem('fs1', new FilesystemMemoryAdapter()),
             provideNamedFilesystem('fs2', new FilesystemMemoryAdapter()),
-        ]
+        ],
     });
 
     type Filesystem2 = NamedFilesystem<'fs2'>;

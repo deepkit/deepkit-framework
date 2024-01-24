@@ -1,13 +1,14 @@
-import { bookstoreTests } from './src/bookstore.js';
 import { test } from '@jest/globals';
-import { variousTests } from './src/various.js';
-import { companyTests } from './src/company.js';
-import { usersTests } from './src/users.js';
+
 import { activeRecordTests } from './src/active-record.js';
-import { softDeletePluginTests } from './src/soft-delete-plugin.js';
 import { aggregateTest } from './src/aggregate.js';
-import { DatabaseFactory } from './src/test.js';
+import { bookstoreTests } from './src/bookstore.js';
+import { companyTests } from './src/company.js';
 import { logPluginTests } from './src/log-plugin.js';
+import { softDeletePluginTests } from './src/soft-delete-plugin.js';
+import { DatabaseFactory } from './src/test.js';
+import { usersTests } from './src/users.js';
+import { variousTests } from './src/various.js';
 
 export * from './src/bookstore.js';
 export * from './src/active-record.js';

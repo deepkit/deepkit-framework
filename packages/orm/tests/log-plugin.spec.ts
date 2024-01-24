@@ -1,5 +1,7 @@
-import { AutoIncrement, deserialize, entity, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
+
+import { AutoIncrement, PrimaryKey, deserialize, entity } from '@deepkit/type';
+
 import { Database } from '../src/database.js';
 import { MemoryDatabaseAdapter } from '../src/memory-db.js';
 import { LogPlugin, LogQuery, LogSession, LogType } from '../src/plugin/log-plugin.js';
@@ -9,13 +11,12 @@ test('log query', async () => {
     class User {
         id!: number & PrimaryKey & AutoIncrement;
 
-        constructor(public username: string) {
-        }
+        constructor(public username: string) {}
     }
 
     const memory = new MemoryDatabaseAdapter();
     const database = new Database(memory, [User]);
-    database.registerPlugin(new LogPlugin);
+    database.registerPlugin(new LogPlugin());
 
     const plugin = database.pluginRegistry.getPlugin(LogPlugin);
     const userLogEntity = plugin.getLogEntity(User);
@@ -88,13 +89,12 @@ test('log session', async () => {
     class User {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public username: string) {
-        }
+        constructor(public username: string) {}
     }
 
     const memory = new MemoryDatabaseAdapter();
     const database = new Database(memory, [User]);
-    database.registerPlugin(new LogPlugin);
+    database.registerPlugin(new LogPlugin());
 
     const session = database.createSession();
     const peter = new User('peter');

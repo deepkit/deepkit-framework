@@ -1,94 +1,94 @@
 :host {
-    flex: 1 1 50%;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+  flex: 1 1 50%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .requests {
-    flex: 1;
-    padding: 0 10px;
+  flex: 1;
+  padding: 0 10px;
 
-    .no-requests {
-        padding: 25px;
-        color: var(--text-light);
-        text-align: center;
+  .no-requests {
+    padding: 25px;
+    color: var(--text-light);
+    text-align: center;
 
-        > div {
-            margin: 5px;
-        }
+    > div {
+      margin: 5px;
     }
+  }
 }
 
 .request {
-    display: block;
-    margin-top: 6px;
+  display: block;
+  margin-top: 6px;
 
-    .line {
-        display: flex;
-        align-items: center;
-        width: 100%;
-        overflow: hidden;
-        border: 1px solid var(--line-color-light);
-        border-radius: 3px;
+  .line {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--line-color-light);
+    border-radius: 3px;
 
-        dui-icon {
-            margin-left: 3px;
-        }
-
-        .method {
-            font-size: 11px;
-            font-weight: bold;
-            padding: 3px 5px;
-        }
-
-        .url {
-            padding: 3px 5px;
-            flex: 1;
-            max-height: 41px;
-            text-overflow: ellipsis;
-            overflow: hidden;
-            font-size: 12px;
-        }
-
-        .status {
-            padding: 0 3px;
-            font-size: 11px;
-        }
-
-        > dui-icon {
-            margin-right: 5px;
-        }
-
-        .status-box {
-            border: 1px solid var(--color-green);
-            color: var(--color-green);
-            border-radius: 3px;
-            padding: 0px 5px;
-
-            &.red {
-                color: var(--color-red);
-                border: 1px solid var(--color-red);
-            }
-
-            &.orange {
-                color: var(--color-orange);
-                border: 1px solid var(--color-orange);
-            }
-        }
+    dui-icon {
+      margin-left: 3px;
     }
 
-    .results {
-        word-break: break-all;
-        overflow: hidden;
-        max-height: 80%;
-        padding: 5px;
-        background-color: var(--dui-window-header-bg);
-
-        .request-info {
-            font-size: 12px;
-            margin-bottom: 5px;
-            color: var(--text-light);
-        }
+    .method {
+      font-size: 11px;
+      font-weight: bold;
+      padding: 3px 5px;
     }
+
+    .url {
+      padding: 3px 5px;
+      flex: 1;
+      max-height: 41px;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      font-size: 12px;
+    }
+
+    .status {
+      padding: 0 3px;
+      font-size: 11px;
+    }
+
+    > dui-icon {
+      margin-right: 5px;
+    }
+
+    .status-box {
+      border: 1px solid var(--color-green);
+      color: var(--color-green);
+      border-radius: 3px;
+      padding: 0px 5px;
+
+      &.red {
+        color: var(--color-red);
+        border: 1px solid var(--color-red);
+      }
+
+      &.orange {
+        color: var(--color-orange);
+        border: 1px solid var(--color-orange);
+      }
+    }
+  }
+
+  .results {
+    word-break: break-all;
+    overflow: hidden;
+    max-height: 80%;
+    padding: 5px;
+    background-color: var(--dui-window-header-bg);
+
+    .request-info {
+      font-size: 12px;
+      margin-bottom: 5px;
+      color: var(--text-light);
+    }
+  }
 }

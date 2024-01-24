@@ -14,46 +14,38 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": [
-      "node",
-      "send"
-    ]
+    "types": ["node", "send"],
   },
   "reflection": true,
-  "include": [
-    "src",
-    "index.ts"
-  ],
-  "exclude": [
-    "tests"
-  ],
+  "include": ["src", "index.ts"],
+  "exclude": ["tests"],
   "references": [
     {
-      "path": "../app/tsconfig.json"
+      "path": "../app/tsconfig.json",
     },
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../event/tsconfig.json"
+      "path": "../event/tsconfig.json",
     },
     {
-      "path": "../injector/tsconfig.json"
+      "path": "../injector/tsconfig.json",
     },
     {
-      "path": "../logger/tsconfig.json"
+      "path": "../logger/tsconfig.json",
     },
     {
-      "path": "../stopwatch/tsconfig.json"
+      "path": "../stopwatch/tsconfig.json",
     },
     {
-      "path": "../template/tsconfig.json"
+      "path": "../template/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
+      "path": "../type/tsconfig.json",
     },
     {
-      "path": "../workflow/tsconfig.json"
-    }
-  ]
+      "path": "../workflow/tsconfig.json",
+    },
+  ],
 }

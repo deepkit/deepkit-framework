@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+
 import { removeTypeName, typeOf } from '../src/reflection/reflection.js';
 import { ReflectionKind } from '../src/reflection/type.js';
 import { expectEqualType } from './utils.js';
@@ -12,7 +13,7 @@ test('distributed conditional type', () => {
     type OnlyStrings3<T, E> = T extends infer K ? boolean | (K extends string ? K : E) : never;
     type OnlyStrings4<T, T2, E> = T2 extends string ? T2[] : T;
     expect(removeTypeName(typeOf<OnlyStrings<string>>())).toEqual(typeOf<string>());
-    expect(removeTypeName(typeOf<OnlyStrings1<string>>())).toMatchObject({kind: ReflectionKind.string});
+    expect(removeTypeName(typeOf<OnlyStrings1<string>>())).toMatchObject({ kind: ReflectionKind.string });
 
     type r1 = OnlyStrings<'a' | 'b' | number>; //'a' | 'b'
     type r12 = OnlyStrings2<'a' | 'b' | number, 'nope'>; //boolean | 'a' | 'b' | 'nope'
@@ -33,16 +34,16 @@ test('deep distribution in mapped type', () => {
     type Filter<O, V> = { [K in keyof O]: V extends O[K] ? O[K] : never }[keyof O];
     type FilterNoDistribution<O, V> = { [K in keyof O]: [V] extends [O[K]] ? O[K] : never }[keyof O];
 
-    type r1 = Filter<{ a: string, b: number }, string>; // string
-    type r2 = Filter<{ a: string, b: number }, number>; // number
-    type r3 = Filter<{ a: string, b: number }, string | number>; // string|number
+    type r1 = Filter<{ a: string; b: number }, string>; // string
+    type r2 = Filter<{ a: string; b: number }, number>; // number
+    type r3 = Filter<{ a: string; b: number }, string | number>; // string|number
     expectEqualType(removeTypeName(typeOf<r1>()), typeOf<string>());
     expectEqualType(removeTypeName(typeOf<r2>()), typeOf<number>());
     expectEqualType(removeTypeName(typeOf<r3>()), typeOf<string | number>());
 
-    type r4 = FilterNoDistribution<{ a: string, b: number }, string>; // string
-    type r5 = FilterNoDistribution<{ a: string, b: number }, number>; // number
-    type r6 = FilterNoDistribution<{ a: string, b: number }, string | number>; // never
+    type r4 = FilterNoDistribution<{ a: string; b: number }, string>; // string
+    type r5 = FilterNoDistribution<{ a: string; b: number }, number>; // number
+    type r6 = FilterNoDistribution<{ a: string; b: number }, string | number>; // never
     expectEqualType(removeTypeName(typeOf<r4>()), typeOf<string>());
     expectEqualType(removeTypeName(typeOf<r5>()), typeOf<number>());
     expectEqualType(removeTypeName(typeOf<r6>()), typeOf<never>());

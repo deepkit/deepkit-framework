@@ -10,11 +10,13 @@ import {
     Output,
     SimpleChanges,
     ViewChild,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
-import { unsubscribe } from '@deepkit/desktop-ui';
-import { hasDefaultValue, isOptional, ReflectionKind, Type } from '@deepkit/type';
 import { Subscription } from 'rxjs';
+
+import { unsubscribe } from '@deepkit/desktop-ui';
+import { ReflectionKind, Type, hasDefaultValue, isOptional } from '@deepkit/type';
+
 import { DataStructure } from '../../store';
 import { TypeDecoration, typeToTSJSONInterface } from '../../utils';
 import { inputRegistry } from './registry';
@@ -24,20 +26,23 @@ import { inputRegistry } from './registry';
     template: `
         <div class="decoration" *ngIf="decoration">
             <div class="title">
-                <dui-checkbox [ngModel]="enabled"
-                              (ngModelChange)="setEnabled($event)"
-                              *ngIf="!isValueRequired"
-                >{{decoration.name}}</dui-checkbox>
-                <div *ngIf="isValueRequired">{{decoration.name}}</div>
+                <dui-checkbox [ngModel]="enabled" (ngModelChange)="setEnabled($event)" *ngIf="!isValueRequired">{{
+                    decoration.name
+                }}</dui-checkbox>
+                <div *ngIf="isValueRequired">{{ decoration.name }}</div>
                 <dui-icon class="help-icon" clickable [openDropdown]="helpDropdown" name="help"></dui-icon>
             </div>
-            <div class="description" *ngIf="decoration.description">{{decoration.description}}</div>
+            <div class="description" *ngIf="decoration.description">
+                {{ decoration.description }}
+            </div>
             <ng-container #container></ng-container>
         </div>
         <div *ngIf="!decoration" class="non-decoration">
-            <dui-checkbox *ngIf="!isValueRequired"
-                          [ngModel]="enabled"
-                          (ngModelChange)="setEnabled($event)"></dui-checkbox>
+            <dui-checkbox
+                *ngIf="!isValueRequired"
+                [ngModel]="enabled"
+                (ngModelChange)="setEnabled($event)"
+            ></dui-checkbox>
             <ng-container #container></ng-container>
 
             <dui-icon class="help-icon" style="flex: 0;" clickable [openDropdown]="helpDropdown" name="help"></dui-icon>
@@ -50,7 +55,7 @@ import { inputRegistry } from './registry';
             </ng-container>
         </dui-dropdown>
     `,
-    styleUrls: ['./input.component.scss']
+    styleUrls: ['./input.component.scss'],
 })
 export class InputComponent implements OnDestroy, OnChanges, AfterViewInit {
     typeToTSJSONInterface = typeToTSJSONInterface;
@@ -75,12 +80,10 @@ export class InputComponent implements OnDestroy, OnChanges, AfterViewInit {
     @unsubscribe()
     protected subChange?: Subscription;
 
-    @ViewChild('container', { read: ViewContainerRef }) container?: ViewContainerRef;
+    @ViewChild('container', { read: ViewContainerRef })
+    container?: ViewContainerRef;
 
-    constructor(
-        private resolver: ComponentFactoryResolver,
-    ) {
-    }
+    constructor(private resolver: ComponentFactoryResolver) {}
 
     get isValueRequired(): boolean {
         return !isOptional(this.type) && !hasDefaultValue(this.type);
@@ -127,7 +130,10 @@ export class InputComponent implements OnDestroy, OnChanges, AfterViewInit {
         if (!this.enabled) return;
         if (!this.container) return;
 
-        const type = this.type.kind === ReflectionKind.propertySignature || this.type.kind === ReflectionKind.property ? this.type.type : this.type;
+        const type =
+            this.type.kind === ReflectionKind.propertySignature || this.type.kind === ReflectionKind.property
+                ? this.type.type
+                : this.type;
         const component = inputRegistry.get(type);
         if (!component) {
             console.log('no component for', type);

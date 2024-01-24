@@ -1,14 +1,15 @@
-import {afterEach, expect, test} from '@jest/globals';
-import {uuid} from '@deepkit/type';
-import {ChildProcess, spawn, spawnSync} from 'child_process';
-import {existsSync, mkdirSync, rmdirSync} from 'fs';
-import {sleep} from '@deepkit/core';
-import {createConnection} from 'net';
+import { afterEach, expect, test } from '@jest/globals';
+import { ChildProcess, spawn, spawnSync } from 'child_process';
+import { existsSync, mkdirSync, rmdirSync } from 'fs';
+import { createConnection } from 'net';
+
+import { sleep } from '@deepkit/core';
+import { uuid } from '@deepkit/type';
 
 interface MongoInstance {
     unixPath: string;
     closeRequested: boolean;
-    process: ChildProcess
+    process: ChildProcess;
 }
 
 const createdEnvs: MongoEnv[] = [];
@@ -25,7 +26,7 @@ export class MongoEnv {
     protected tempFolder = `/tmp/mongo-env/` + uuid();
 
     constructor() {
-        mkdirSync(this.tempFolder, {recursive: true});
+        mkdirSync(this.tempFolder, { recursive: true });
         createdEnvs.push(this);
     }
 
@@ -35,7 +36,7 @@ export class MongoEnv {
         }
 
         if (existsSync(this.tempFolder)) {
-            rmdirSync(this.tempFolder, {recursive: true});
+            rmdirSync(this.tempFolder, { recursive: true });
         }
     }
 
@@ -47,7 +48,7 @@ export class MongoEnv {
 
     public async addReplicaSet(host: string, member: string, priority: number, votes: number): Promise<any> {
         const unixPath = this.getInstance(member).unixPath;
-        const line = {host: unixPath, priority: priority, votes: votes};
+        const line = { host: unixPath, priority: priority, votes: votes };
         await this.execute(host, `rs.add(${JSON.stringify(line)})`);
     }
 
@@ -80,15 +81,12 @@ export class MongoEnv {
     public async execute(name: string, cmd: string) {
         const instance = this.getInstance(name);
 
-        const args: string[] = [
-            '--quiet',
-            '--host', instance.unixPath
-        ];
+        const args: string[] = ['--quiet', '--host', instance.unixPath];
 
         console.log('execute', name, cmd);
         const res = spawnSync('mongo', args, {
             input: cmd,
-            encoding: 'utf8'
+            encoding: 'utf8',
         });
         if (res.status !== 0) {
             console.error('command stderr:', res.stderr);
@@ -102,11 +100,7 @@ export class MongoEnv {
         const dbPath = `${this.tempFolder}/${name}.db`;
         mkdirSync(dbPath);
 
-        const args: string[] = [
-            '--dbpath', dbPath,
-            '--bind_ip', unixPath,
-            '--port', '0',
-        ];
+        const args: string[] = ['--dbpath', dbPath, '--bind_ip', unixPath, '--port', '0'];
 
         if (replSet) args.push('--replSet', replSet);
 
@@ -118,14 +112,14 @@ export class MongoEnv {
         const instance = {
             unixPath: unixPath,
             closeRequested: false,
-            process: p
+            process: p,
         };
 
         this.instances.set(name, instance);
 
         //wait for up
         for (let i = 0; i < 10; i++) {
-            const connected = await new Promise<boolean>((resolve) => {
+            const connected = await new Promise<boolean>(resolve => {
                 const connection = createConnection(unixPath);
                 connection.on('error', () => {
                     connection.end();
@@ -146,5 +140,4 @@ export class MongoEnv {
         this.instances.delete(name);
         throw new Error(`Could not boot ${name} at ${unixPath} (db=${dbPath})`);
     }
-
 }

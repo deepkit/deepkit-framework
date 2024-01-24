@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { SQLFilterBuilder } from '@deepkit/sql';
 
 export class SQLiteFilterBuilder extends SQLFilterBuilder {
@@ -17,7 +16,7 @@ export class SQLiteFilterBuilder extends SQLFilterBuilder {
     }
 
     regexpComparator(lvalue: string, value: RegExp): string {
-        let regex =  value.flags + '::' + value.source; //will be decoded in sqlite-adapter
+        let regex = value.flags + '::' + value.source; //will be decoded in sqlite-adapter
         return `${lvalue} REGEXP ${this.bindParam(regex)}`;
     }
 }

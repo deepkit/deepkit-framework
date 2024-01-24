@@ -7,11 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { expect, test } from '@jest/globals';
+
 import { typeInfer } from '../src/reflection/processor.js';
 import { removeTypeName, typeOf } from '../src/reflection/reflection.js';
-import { assertType, ReflectionKind, ReflectionVisibility, Type, Widen } from '../src/reflection/type.js';
+import { ReflectionKind, ReflectionVisibility, Type, Widen, assertType } from '../src/reflection/type.js';
 import { expectEqualType } from './utils.js';
 
 test('infer T from function primitive', () => {
@@ -69,8 +69,12 @@ test('infer T from function union primitive object', () => {
     expectEqualType(fn({ a: 'abc' }), {
         kind: ReflectionKind.objectLiteral,
         types: [
-            { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string, origin: { kind: ReflectionKind.literal, literal: 'abc' } } }
-        ]
+            {
+                kind: ReflectionKind.propertySignature,
+                name: 'a',
+                type: { kind: ReflectionKind.string, origin: { kind: ReflectionKind.literal, literal: 'abc' } },
+            },
+        ],
     } as Type);
 });
 
@@ -130,14 +134,24 @@ test('infer T from class', () => {
     }
 
     const clazz = bla('abc');
-    const o = new clazz;
+    const o = new clazz();
     o.type = 'another-value';
 
     const type = typeInfer(clazz);
     assertType(type, ReflectionKind.class);
     expect(type.types).toMatchObject([
-        { kind: ReflectionKind.property, name: 'typeNarrow', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.literal, literal: 'abc' }, } as Type,
-        { kind: ReflectionKind.property, name: 'type', visibility: ReflectionVisibility.public, type: { kind: ReflectionKind.string }, } as Type,
+        {
+            kind: ReflectionKind.property,
+            name: 'typeNarrow',
+            visibility: ReflectionVisibility.public,
+            type: { kind: ReflectionKind.literal, literal: 'abc' },
+        } as Type,
+        {
+            kind: ReflectionKind.property,
+            name: 'type',
+            visibility: ReflectionVisibility.public,
+            type: { kind: ReflectionKind.string },
+        } as Type,
     ] as any);
 });
 
@@ -168,5 +182,4 @@ test('asd', () => {
     }
 
     a(1);
-
 });

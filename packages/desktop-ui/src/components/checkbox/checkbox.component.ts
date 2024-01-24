@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import {
     ChangeDetectionStrategy,
     ChangeDetectorRef,
@@ -15,9 +14,10 @@ import {
     HostBinding,
     HostListener,
     Injector,
-    SkipSelf
+    SkipSelf,
 } from '@angular/core';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+
+import { ValueAccessorBase, ngValueAccessor } from '../../core/form';
 
 @Component({
     selector: 'dui-checkbox',
@@ -31,7 +31,7 @@ import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
     providers: [ngValueAccessor(CheckboxComponent)],
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CheckboxComponent extends ValueAccessorBase<any>  {
+export class CheckboxComponent extends ValueAccessorBase<any> {
     @HostBinding('tabindex')
     get tabIndex() {
         return 1;
@@ -57,5 +57,4 @@ export class CheckboxComponent extends ValueAccessorBase<any>  {
     ) {
         super(injector, cd, cdParent);
     }
-
 }

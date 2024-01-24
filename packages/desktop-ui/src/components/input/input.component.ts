@@ -7,11 +7,23 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostBinding, Injector, Input, Output, SkipSelf, ViewChild } from '@angular/core';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
-import { detectChangesNextFrame } from '../app';
 import { DatePipe } from '@angular/common';
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    EventEmitter,
+    HostBinding,
+    Injector,
+    Input,
+    Output,
+    SkipSelf,
+    ViewChild,
+} from '@angular/core';
+
+import { ValueAccessorBase, ngValueAccessor } from '../../core/form';
+import { detectChangesNextFrame } from '../app';
 
 const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
 
@@ -20,28 +32,37 @@ const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
     template: `
         <dui-icon *ngIf="icon" class="icon" [size]="iconSize" [name]="icon"></dui-icon>
         <input
-                *ngIf="type !== 'textarea'"
-                #input
-                [step]="step"
-                [readOnly]="readonly !== false"
-                [attr.min]="min"
-                [attr.max]="max"
-                [attr.minLength]="minLength"
-                [attr.maxLength]="maxLength"
-                [type]="type" (focus)="onFocus()" (blur)="onBlur()"
-                (change)="handleFileInput($event)"
-                [placeholder]="placeholder" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
-                [disabled]="isDisabled"
-                [ngModel]="type === 'file' ? undefined : innerValue"
-                (ngModelChange)="setInnerValue($event)"
+            *ngIf="type !== 'textarea'"
+            #input
+            [step]="step"
+            [readOnly]="readonly !== false"
+            [attr.min]="min"
+            [attr.max]="max"
+            [attr.minLength]="minLength"
+            [attr.maxLength]="maxLength"
+            [type]="type"
+            (focus)="onFocus()"
+            (blur)="onBlur()"
+            (change)="handleFileInput($event)"
+            [placeholder]="placeholder"
+            (keyup)="onKeyUp($event)"
+            (keydown)="onKeyDown($event)"
+            [disabled]="isDisabled"
+            [ngModel]="type === 'file' ? undefined : innerValue"
+            (ngModelChange)="setInnerValue($event)"
         />
         <textarea
-                #input
-                [readOnly]="readonly !== false"
-                *ngIf="type === 'textarea'" (focus)="onFocus()" (blur)="onBlur()"
-                [placeholder]="placeholder" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
-                [disabled]="isDisabled"
-                [(ngModel)]="innerValue"></textarea>
+            #input
+            [readOnly]="readonly !== false"
+            *ngIf="type === 'textarea'"
+            (focus)="onFocus()"
+            (blur)="onBlur()"
+            [placeholder]="placeholder"
+            (keyup)="onKeyUp($event)"
+            (keydown)="onKeyDown($event)"
+            [disabled]="isDisabled"
+            [(ngModel)]="innerValue"
+        ></textarea>
         <dui-icon *ngIf="hasClearer" class="clearer" name="clear" (click)="clear()"></dui-icon>
     `,
     styleUrls: ['./input.component.scss'],
@@ -51,7 +72,7 @@ const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
         '[class.semi-transparent]': 'semiTransparent !== false',
         '[class.no-controls]': 'noControls !== false',
     },
-    providers: [ngValueAccessor(InputComponent)]
+    providers: [ngValueAccessor(InputComponent)],
 })
 export class InputComponent extends ValueAccessorBase<any> implements AfterViewInit {
     @Input() type: string = 'text';
@@ -141,7 +162,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         protected injector: Injector,
         public readonly cd: ChangeDetectorRef,
         @SkipSelf() public readonly cdParent: ChangeDetectorRef,
-        private datePipe : DatePipe,
+        private datePipe: DatePipe,
     ) {
         super(injector, cd, cdParent);
     }
@@ -171,7 +192,6 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
     get innerValue(): any {
         if (this.type === 'text') {
-
         } else if (this.type === 'number') {
         } else if (dateTimeTypes.includes(this.type)) {
             if (super.innerValue instanceof Date) {
@@ -187,7 +207,6 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
     set innerValue(value: any | undefined) {
         if (this.type === 'text') {
-
         } else if (this.type === 'number') {
             if (value && 'number' !== typeof value) {
                 value = parseFloat(value);
@@ -257,7 +276,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
                         }
                     }
                 };
-                reader.onerror = (error) => {
+                reader.onerror = error => {
                     console.log('Error: ', error);
                     reject();
                 };

@@ -1,12 +1,9 @@
 import { expect, test } from '@jest/globals';
-import {
-    entity,
-    MongoId,
-    PrimaryKey,
-    ReflectionClass,
-} from '@deepkit/type';
-import { createDatabase } from './utils';
+
+import { MongoId, PrimaryKey, ReflectionClass, entity } from '@deepkit/type';
+
 import { FindAndModifyCommand } from '../src/client/command/findAndModify';
+import { createDatabase } from './utils';
 
 Error.stackTraceLimit = 100;
 
@@ -17,8 +14,7 @@ export class Model {
     a: string = '';
     b: string = '';
 
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
 
 @entity.name('ModelC').collection('test_modify')
@@ -28,8 +24,7 @@ export class ModelC {
     a: string = '';
     c: string = '';
 
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
 
 // This is a use case for FindAndModifyCommand to make a $rename query possible,
@@ -51,13 +46,9 @@ test('raw $rename FindAndModifyCommand', async () => {
     await db.persist(item2);
 
     const schema = ReflectionClass.from(Model);
-    const command = new FindAndModifyCommand(
-        schema,
-        {name: 'foo'},
-        {$rename: {'b': 'c'}}
-    );
+    const command = new FindAndModifyCommand(schema, { name: 'foo' }, { $rename: { b: 'c' } });
     await db.adapter.client.execute(command);
 
-    expect(await db.query(Model).filter({b: 'BB'}).has()).toBe(false);
-    expect(await db.query(ModelC).filter({c: 'BB'}).has()).toBe(true);
+    expect(await db.query(Model).filter({ b: 'BB' }).has()).toBe(false);
+    expect(await db.query(ModelC).filter({ c: 'BB' }).has()).toBe(true);
 });

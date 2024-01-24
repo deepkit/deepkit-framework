@@ -7,23 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { NgModule } from '@angular/core';
+
 import { RenderComponentDirective } from './render-component.directive';
 
-export * from './render-component.directive'
+export * from './render-component.directive';
 
 @NgModule({
-    declarations: [
-        RenderComponentDirective,
-    ],
-    exports: [
-        RenderComponentDirective,
-    ],
+    declarations: [RenderComponentDirective],
+    exports: [RenderComponentDirective],
     providers: [],
-    imports: [
-    ]
+    imports: [],
 })
-export class DuiCoreModule {
-
-}
+export class DuiCoreModule {}

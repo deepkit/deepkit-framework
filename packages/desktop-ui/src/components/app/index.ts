@@ -7,22 +7,42 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { ApplicationRef, Component, Directive, HostBinding, Inject, Injectable, Input, ModuleWithProviders, NgModule, Optional, Renderer2, RendererFactory2 } from '@angular/core';
-import { MenuCheckboxDirective, MenuDirective, MenuItemDirective, MenuRadioDirective, MenuSeparatorDirective } from './menu.component';
-import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from './utils';
-import { ViewDirective } from './dui-view.directive';
-import { CdCounterComponent } from './cd-counter.component';
-import { DuiResponsiveDirective } from './dui-responsive.directive';
 import { CommonModule, DOCUMENT } from '@angular/common';
-import { Electron } from '../../core/utils';
-import { ActivationEnd, Event as RouterEvent, NavigationEnd, Router } from '@angular/router';
-import { WindowRegistry } from '../window/window-state';
-import { ELECTRON_WINDOW, IN_DIALOG } from './token';
-import { AsyncRenderPipe, HumanFileSizePipe, ObjectURLPipe } from './pipes';
-import { ReactiveChangeDetectionModule } from './reactivate-change-detection';
+import {
+    ApplicationRef,
+    Component,
+    Directive,
+    HostBinding,
+    Inject,
+    Injectable,
+    Input,
+    ModuleWithProviders,
+    NgModule,
+    Optional,
+    Renderer2,
+    RendererFactory2,
+} from '@angular/core';
+import { ActivationEnd, NavigationEnd, Router, Event as RouterEvent } from '@angular/router';
+
 import { arrayRemoveItem } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
+
+import { Electron } from '../../core/utils';
+import { WindowRegistry } from '../window/window-state';
+import { CdCounterComponent } from './cd-counter.component';
+import { DuiResponsiveDirective } from './dui-responsive.directive';
+import { ViewDirective } from './dui-view.directive';
+import {
+    MenuCheckboxDirective,
+    MenuDirective,
+    MenuItemDirective,
+    MenuRadioDirective,
+    MenuSeparatorDirective,
+} from './menu.component';
+import { AsyncRenderPipe, HumanFileSizePipe, ObjectURLPipe } from './pipes';
+import { ReactiveChangeDetectionModule } from './reactivate-change-detection';
+import { ELECTRON_WINDOW, IN_DIALOG } from './token';
+import { OpenExternalDirective, ZonelessChangeDetector, detectChangesNextFrame } from './utils';
 
 export * from './reactivate-change-detection';
 export * from './cd-counter.component';
@@ -49,29 +69,32 @@ export class BaseComponent {
 
 @Component({
     selector: 'ui-component',
-    template: `
-        {{name}} disabled={{isDisabled}}
-    `,
-    styles: [`
-        :host {
-            display: inline-block;
-        }
+    template: ` {{ name }} disabled={{ isDisabled }} `,
+    styles: [
+        `
+            :host {
+                display: inline-block;
+            }
 
-        :host.disabled {
-            border: 1px solid red;
-        }
-    `],
+            :host.disabled {
+                border: 1px solid red;
+            }
+        `,
+    ],
     host: {
         '[class.is-textarea]': 'name === "textarea"',
-    }
+    },
 })
 export class UiComponentComponent extends BaseComponent {
     @Input() name: string = '';
 }
 
 export class OverlayStackItem {
-    constructor(public host: HTMLElement, protected stack: OverlayStackItem[], public release: () => void) {
-    }
+    constructor(
+        public host: HTMLElement,
+        protected stack: OverlayStackItem[],
+        public release: () => void,
+    ) {}
 
     getAllAfter(): OverlayStackItem[] {
         const result: OverlayStackItem[] = [];
@@ -149,7 +172,7 @@ export class DuiApp {
         rendererFactory: RendererFactory2,
         protected storage: Storage,
         @Optional() protected windowRegistry?: WindowRegistry,
-        @Optional() protected router?: Router
+        @Optional() protected router?: Router,
     ) {
         this.render = rendererFactory.createRenderer(null, null);
         ZonelessChangeDetector.app = app;
@@ -207,11 +230,14 @@ export class DuiApp {
 
         //necessary to render all router-outlet once the router changes
         if (this.router) {
-            this.router.events.subscribe((event: RouterEvent) => {
-                if (event instanceof NavigationEnd || event instanceof ActivationEnd) {
-                    detectChangesNextFrame();
-                }
-            }, () => undefined);
+            this.router.events.subscribe(
+                (event: RouterEvent) => {
+                    if (event instanceof NavigationEnd || event instanceof ActivationEnd) {
+                        detectChangesNextFrame();
+                    }
+                },
+                () => undefined,
+            );
         }
     }
 
@@ -233,9 +259,8 @@ export class DuiApp {
         if (this.platform !== 'web') {
             this.render.addClass(this.document.body, 'platform-native'); //todo: deprecate
             this.render.addClass(this.document.body, 'dui-platform-native');
-
         }
-        this.render.addClass(this.document.body, 'platform-' + platform);//todo: deprecate
+        this.render.addClass(this.document.body, 'platform-' + platform); //todo: deprecate
         this.render.addClass(this.document.body, 'dui-platform-' + platform);
     }
 
@@ -350,13 +375,8 @@ export class DuiApp {
         ObjectURLPipe,
         HumanFileSizePipe,
     ],
-    providers: [
-        OverlayStack,
-    ],
-    imports: [
-        CommonModule,
-        ReactiveChangeDetectionModule,
-    ]
+    providers: [OverlayStack],
+    imports: [CommonModule, ReactiveChangeDetectionModule],
 })
 export class DuiAppModule {
     constructor(app: DuiApp, @Inject(DOCUMENT) @Optional() document: Document) {
@@ -381,13 +401,18 @@ export class DuiAppModule {
             providers: [
                 DuiApp,
                 Storage,
-                { provide: EventDispatcher, useValue: new EventDispatcher().fork() },
+                {
+                    provide: EventDispatcher,
+                    useValue: new EventDispatcher().fork(),
+                },
                 { provide: IN_DIALOG, useValue: false },
                 {
                     provide: ELECTRON_WINDOW,
-                    useValue: Electron.isAvailable() ? Electron.getRemote().BrowserWindow.getAllWindows()[0] : undefined
+                    useValue: Electron.isAvailable()
+                        ? Electron.getRemote().BrowserWindow.getAllWindows()[0]
+                        : undefined,
                 },
-            ]
+            ],
         };
     }
 }

@@ -1,4 +1,5 @@
 import { BehaviorSubject } from 'rxjs';
+
 import { throttleTime } from '@deepkit/core';
 
 export interface ProgressTrackerState {
@@ -14,11 +15,9 @@ export class ProgressTrackerGroup {
 
     stopCallbacks: (() => void)[] = [];
 
-    constructor(public state: ProgressTrackerState) {
-    }
+    constructor(public state: ProgressTrackerState) {}
 
-    changed() {
-    }
+    changed() {}
 
     /**
      * Registers a callback that is called when the progress is stopped.
@@ -54,7 +53,7 @@ export class ProgressTrackerGroup {
         const timeDiff = now - this.lastUpdate;
         this.lastUpdate = now;
         const diff = done - this.state.done;
-        this.state.speed = diff / timeDiff * 1000;
+        this.state.speed = (diff / timeDiff) * 1000;
 
         this.state.done = done;
         this.changed();
@@ -175,7 +174,13 @@ export class ProgressTracker extends BehaviorSubject<ProgressTrackerState[]> {
     }
 
     track(message: string = '', total: number, current: number = 0): ProgressTrackerGroup {
-        const group = new ProgressTrackerGroup({ total, done: current, message, speed: 0, stopped: false });
+        const group = new ProgressTrackerGroup({
+            total,
+            done: current,
+            message,
+            speed: 0,
+            stopped: false,
+        });
         group.changed = () => {
             this.changed();
         };
@@ -232,17 +237,20 @@ export class ProgressTracker extends BehaviorSubject<ProgressTrackerState[]> {
     }
 }
 
-export class ProgressTrackerWatcher<T extends ProgressTracker = ProgressTracker> extends BehaviorSubject<T> {
-}
+export class ProgressTrackerWatcher<T extends ProgressTracker = ProgressTracker> extends BehaviorSubject<T> {}
 
 /**
  * Turns a ProgressTracker into a BehaviorSubject<ProgressTracker> aka ProgressTrackerWatcher.
  */
 export function watchProgressTracker<T extends ProgressTracker>(tracker: T): ProgressTrackerWatcher<T> {
     const subject = new BehaviorSubject<T>(tracker);
-    const sub = tracker.subscribe(() => {
-        subject.next(tracker);
-    }, (error) => subject.error(error), () => subject.complete());
+    const sub = tracker.subscribe(
+        () => {
+            subject.next(tracker);
+        },
+        error => subject.error(error),
+        () => subject.complete(),
+    );
     subject.subscribe().add(() => sub.unsubscribe());
     return subject;
 }

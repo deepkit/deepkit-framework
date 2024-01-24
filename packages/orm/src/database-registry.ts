@@ -7,11 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType, getClassName } from '@deepkit/core';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
-import { Database } from './database.js';
 import { ReflectionClass } from '@deepkit/type';
+
+import { Database } from './database.js';
 
 /**
  * Class to register a new database and resolve a schema/type to a database.
@@ -25,7 +25,7 @@ export class DatabaseRegistry {
 
     constructor(
         protected injectorContext: InjectorContext,
-        protected readonly databaseTypes: { module: InjectorModule<any>, classType: ClassType<Database<any>> }[] = [],
+        protected readonly databaseTypes: { module: InjectorModule<any>; classType: ClassType<Database<any>> }[] = [],
         protected migrateOnStartup: boolean = false,
     ) {
         if (!injectorContext) throw new Error('no scopedContext');
@@ -91,7 +91,7 @@ export class DatabaseRegistry {
             if (this.databaseNameMap.has(database.name)) {
                 throw new Error(
                     `Database class ${getClassName(database)} has a name '${database.name}' that is already registered. ` +
-                    `Choose a different name via class ${getClassName(database)} {\n  name = 'anotherName';\n}`
+                        `Choose a different name via class ${getClassName(database)} {\n  name = 'anotherName';\n}`,
                 );
             }
 

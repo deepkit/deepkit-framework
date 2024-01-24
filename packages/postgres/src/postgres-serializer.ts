@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { SqlSerializer } from '@deepkit/sql';
 
 class PostgresSerializer extends SqlSerializer {

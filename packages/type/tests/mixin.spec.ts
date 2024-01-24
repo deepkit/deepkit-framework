@@ -1,14 +1,15 @@
 import { expect, test } from '@jest/globals';
+
 import { mixin } from '../src/mixin.js';
-import { assertType, AutoIncrement, PrimaryKey, ReflectionKind, resolveTypeMembers } from '../src/reflection/type.js';
-import { MinLength } from '../src/validator.js';
-import { reflect, ReflectionClass } from '../src/reflection/reflection.js';
+import { ReflectionClass, reflect } from '../src/reflection/reflection.js';
+import { AutoIncrement, PrimaryKey, ReflectionKind, assertType, resolveTypeMembers } from '../src/reflection/type.js';
 import { deserialize } from '../src/serializer-facade.js';
+import { MinLength } from '../src/validator.js';
 
 test('mixin base', () => {
     class Timestampable {
-        createdAt: Date = new Date;
-        updatedAt: Date = new Date;
+        createdAt: Date = new Date();
+        updatedAt: Date = new Date();
     }
 
     class SoftDeleted {
@@ -19,9 +20,7 @@ test('mixin base', () => {
     class User extends mixin(Timestampable, SoftDeleted) {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(
-            public username: string & MinLength<3>
-        ) {
+        constructor(public username: string & MinLength<3>) {
             super();
         }
     }

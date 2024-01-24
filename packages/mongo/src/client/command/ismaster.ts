@@ -7,12 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 //see https://docs.mongodb.com/manual/reference/command/isMaster/
 //we add only fields we really need to increase parsing time.
-import { BaseResponse, Command } from './command.js';
 import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
+import { BaseResponse, Command } from './command.js';
 
 export interface IsMasterResponse extends BaseResponse {
     ismaster: boolean;

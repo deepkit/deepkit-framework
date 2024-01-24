@@ -1,12 +1,9 @@
 {
   "extends": "./tsconfig.lib.json",
   "compilerOptions": {
-    "declarationMap": false,
+    "declarationMap": false
   },
-  "include": [
-    "src/**/*.ts",
-    "src/*.ts",
-  ],
+  "include": ["src/**/*.ts", "src/*.ts"],
   "angularCompilerOptions": {
     "compilationMode": "partial"
   }

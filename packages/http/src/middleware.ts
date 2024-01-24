@@ -1,8 +1,9 @@
-import { ClassType, isClass } from '@deepkit/core';
 import { AppModule } from '@deepkit/app';
-import { createFreeDecoratorContext } from '@deepkit/type';
-import { HttpRequest, HttpResponse } from './model.js';
+import { ClassType, isClass } from '@deepkit/core';
 import { InjectorModule } from '@deepkit/injector';
+import { createFreeDecoratorContext } from '@deepkit/type';
+
+import { HttpRequest, HttpResponse } from './model.js';
 
 export type HttpMiddlewareFn = (req: HttpRequest, res: HttpResponse, next: (err?: any) => void) => void | Promise<void>;
 
@@ -52,7 +53,7 @@ export class HttpMiddlewareConfig {
 }
 
 export class HttpMiddlewareApi {
-    t = new HttpMiddlewareConfig;
+    t = new HttpMiddlewareConfig();
 
     name(name: string) {
         this.t.name = name;

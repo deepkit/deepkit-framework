@@ -7,12 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { isAbsolute, join } from 'path';
 import { existsSync, readFileSync } from 'fs';
+import { isAbsolute, join } from 'path';
 
-class ConfigOptionNotFound extends Error {
-}
+class ConfigOptionNotFound extends Error {}
 
 export function resolveEnvFilePath(path: string): string | undefined {
     const resolvedPath = isAbsolute(path) ? path : findFileUntilPackageRoot(path);
@@ -57,7 +55,7 @@ export class EnvConfiguration {
             const end = value.length - 1;
 
             const isDoubleQuoted = value[0] === '"' && value[end] === '"';
-            const isSingleQuoted = value[0] === '\'' && value[end] === '\'';
+            const isSingleQuoted = value[0] === "'" && value[end] === "'";
 
             // if single or double quoted, remove quotes
             if (isSingleQuoted) {

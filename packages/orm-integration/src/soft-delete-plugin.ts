@@ -1,7 +1,9 @@
-import { SoftDeletePlugin, SoftDeleteQuery, SoftDeleteSession } from '@deepkit/orm';
-import { AutoIncrement, cast, entity, PrimaryKey } from '@deepkit/type';
-import { DatabaseFactory } from './test.js';
 import { expect } from '@jest/globals';
+
+import { SoftDeletePlugin, SoftDeleteQuery, SoftDeleteSession } from '@deepkit/orm';
+import { AutoIncrement, PrimaryKey, cast, entity } from '@deepkit/type';
+
+import { DatabaseFactory } from './test.js';
 
 export const softDeletePluginTests = {
     async query(databaseFactory: DatabaseFactory) {
@@ -14,7 +16,7 @@ export const softDeletePluginTests = {
         }
 
         const database = await databaseFactory([s]);
-        database.registerPlugin(new SoftDeletePlugin);
+        database.registerPlugin(new SoftDeletePlugin());
 
         await database.persist(cast<s>({ id: 1, username: 'Peter' }));
         await database.persist(cast<s>({ id: 2, username: 'Joe' }));
@@ -29,7 +31,12 @@ export const softDeletePluginTests = {
         await database.query(s).lift(SoftDeleteQuery).filter({ id: 2 }).deletedBy('me').deleteOne();
         expect(await database.query(s).count()).toBe(1);
         {
-            const deleted2 = await database.query(s).lift(SoftDeleteQuery).withSoftDeleted().filter({ id: 2 }).findOne();
+            const deleted2 = await database
+                .query(s)
+                .lift(SoftDeleteQuery)
+                .withSoftDeleted()
+                .filter({ id: 2 })
+                .findOne();
             expect(deleted2.id).toBe(2);
             expect(deleted2.deletedAt).not.toBe(undefined);
             expect(deleted2.deletedBy).toBe('me');
@@ -67,14 +74,11 @@ export const softDeletePluginTests = {
             deletedAt?: Date;
             deletedBy?: string;
 
-            constructor(
-                public username: string,
-            ) {
-            }
+            constructor(public username: string) {}
         }
 
         const database = await databaseFactory([User]);
-        database.registerPlugin(new SoftDeletePlugin);
+        database.registerPlugin(new SoftDeletePlugin());
 
         const session = database.createSession();
         const peter = new User('peter');
@@ -105,7 +109,10 @@ export const softDeletePluginTests = {
             session.remove(peter);
             await session.commit();
             expect(await database.query(User).count()).toBe(2);
-            const deletedPeter = await SoftDeleteQuery.from(session.query(User)).withSoftDeleted().filter(peter).findOne();
+            const deletedPeter = await SoftDeleteQuery.from(session.query(User))
+                .withSoftDeleted()
+                .filter(peter)
+                .findOne();
             expect(deletedPeter.deletedAt).toBeInstanceOf(Date);
             expect(deletedPeter.deletedBy).toBe('me');
 

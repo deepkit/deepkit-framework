@@ -1,12 +1,24 @@
-import { BrowserText } from '@deepkit/desktop-ui';
 import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
-import { Crunch, defaultColors, formatTime, frameColors, FrameItem, getCrunchXCanvas, getFrameWidth, getFrameXCanvas, ViewState } from './frame';
+
+import { BrowserText } from '@deepkit/desktop-ui';
+
+import {
+    Crunch,
+    FrameItem,
+    ViewState,
+    defaultColors,
+    formatTime,
+    frameColors,
+    getCrunchXCanvas,
+    getFrameWidth,
+    getFrameXCanvas,
+} from './frame';
 
 export class TextCalc {
     static browserText?: BrowserText;
 
     static get(): BrowserText {
-        if (!TextCalc.browserText) TextCalc.browserText = new BrowserText;
+        if (!TextCalc.browserText) TextCalc.browserText = new BrowserText();
         return TextCalc.browserText;
     }
 }
@@ -15,7 +27,7 @@ export class CrunchContainer extends Container {
     public rectangle: Graphics;
     protected textStyle = {
         fontSize: 12,
-        fill: 0xffffff
+        fill: 0xffffff,
     };
     public title: Text;
     protected itemHeight: number = 20;
@@ -44,7 +56,7 @@ export class CrunchContainer extends Container {
             .lineStyle(1, 0x444444)
             .moveTo(0, 1500)
             .lineTo(0, -1500)
-            .lineStyle(1, 0x49497A)
+            .lineStyle(1, 0x49497a)
             .moveTo(10 + padding, 0)
             .lineTo(0 + padding, 10)
             .lineTo(10 + padding, 20)
@@ -52,21 +64,20 @@ export class CrunchContainer extends Container {
             .lineTo(Math.max(0, this.frameWidth - padding), 10)
             .lineTo(Math.max(0, this.frameWidth - 10 - padding), 0)
             .moveTo(Math.max(0, this.frameWidth - padding), 10)
-            .lineTo(Math.max(0, this.frameWidth - 10 - padding), 20)
-        ;
+            .lineTo(Math.max(0, this.frameWidth - 10 - padding), 20);
 
         // this.rectangle.lineStyle(1, 0x49497A);
         // this.rectangle.drawRect(0, 0, this.frameWidth - 2, this.itemHeight);
         this.rectangle.endFill();
 
         this.x = getCrunchXCanvas(this.item, this.viewState) + 0.5;
-        this.y = (this.item.y * 25) + 0.5;
+        this.y = this.item.y * 25 + 0.5;
 
-        this.title.x = Math.max(0, (this.frameWidth / 2) - (this.title.width / 2) + 0.5);
+        this.title.x = Math.max(0, this.frameWidth / 2 - this.title.width / 2 + 0.5);
     }
 
     get frameWidth(): number {
-        return Math.ceil((80)) - 0.5;
+        return Math.ceil(80) - 0.5;
     }
 }
 
@@ -80,7 +91,7 @@ export class FrameContainer extends Container {
 
     protected textStyle = {
         fontSize: 12,
-        fill: 0xffffff
+        fill: 0xffffff,
     };
 
     protected itemHeight: number = 20;
@@ -126,7 +137,7 @@ export class FrameContainer extends Container {
 
     protected updatePosition() {
         this.x = getFrameXCanvas(this.item, this.viewState) + 0.5;
-        this.y = (this.item.y * 25) + 0.5;
+        this.y = this.item.y * 25 + 0.5;
     }
 
     protected drawBg() {

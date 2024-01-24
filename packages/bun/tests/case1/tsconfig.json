@@ -4,8 +4,8 @@
     "target": "esnext",
     "outDir": "dist/tsc",
     "moduleResolution": "nodenext",
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
   },
   "include": ["./mod.ts"],
-  "reflection": true
+  "reflection": true,
 }

@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { NgModule } from '@angular/core';
 
 import { SplitterComponent } from './splitter.component';
@@ -20,5 +19,4 @@ export * from './splitter.component';
     declarations: [SplitterComponent],
     providers: [],
 })
-export class DuiSplitterModule {
-}
+export class DuiSplitterModule {}

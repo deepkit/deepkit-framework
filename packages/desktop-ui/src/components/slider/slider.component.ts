@@ -7,10 +7,20 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    Injector,
+    Input,
+    SkipSelf,
+    ViewChild,
+} from '@angular/core';
 
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Injector, Input, SkipSelf, ViewChild } from '@angular/core';
 import { nextTick } from '@deepkit/core';
-import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+
+import { ValueAccessorBase, ngValueAccessor } from '../../core/form';
 import { getHammer } from '../../core/utils';
 
 @Component({
@@ -23,10 +33,10 @@ import { getHammer } from '../../core/utils';
         </div>
     `,
     host: {
-        '[class.mini]': 'mini !== false'
+        '[class.mini]': 'mini !== false',
     },
     styleUrls: ['./slider.component.scss'],
-    providers: [ngValueAccessor(SliderComponent)]
+    providers: [ngValueAccessor(SliderComponent)],
 })
 export class SliderComponent extends ValueAccessorBase<number> implements AfterViewInit {
     @ViewChild('knob', { static: true }) knob?: ElementRef;
@@ -62,29 +72,39 @@ export class SliderComponent extends ValueAccessorBase<number> implements AfterV
         if (!Hammer) return;
 
         const mc = new Hammer(this.knob!.nativeElement);
-        mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_HORIZONTAL, threshold: 1 }));
+        mc.add(
+            new Hammer.Pan({
+                direction: Hammer.DIRECTION_HORIZONTAL,
+                threshold: 1,
+            }),
+        );
 
         const mcTab = new Hammer(this.element.nativeElement);
         mcTab.add(new Hammer.Tap({}));
-        mcTab.add(new Hammer.Pan({ direction: Hammer.DIRECTION_HORIZONTAL, threshold: 0 }));
+        mcTab.add(
+            new Hammer.Pan({
+                direction: Hammer.DIRECTION_HORIZONTAL,
+                threshold: 0,
+            }),
+        );
         mcTab.add(new Hammer.Press({ threshold: 1 }));
 
         let startXInPixels = 0;
         let knobSize = this.knob!.nativeElement.offsetWidth;
-        let width = (this.element!.nativeElement.offsetWidth - knobSize);
+        let width = this.element!.nativeElement.offsetWidth - knobSize;
         let lastRequest: any;
 
         mc.on('panstart', (event: HammerInput) => {
             startXInPixels = this.getWidth() * width;
             knobSize = this.knob!.nativeElement.offsetWidth;
-            width = (this.element!.nativeElement.offsetWidth - knobSize);
+            width = this.element!.nativeElement.offsetWidth - knobSize;
         });
 
         mcTab.on('panstart', (event: HammerInput) => {
             const rect = (this.element!.nativeElement as HTMLElement).getBoundingClientRect();
-            startXInPixels = event.center.x - (knobSize / 2) - rect.x;
+            startXInPixels = event.center.x - knobSize / 2 - rect.x;
             knobSize = this.knob!.nativeElement.offsetWidth;
-            width = (this.element!.nativeElement.offsetWidth - knobSize);
+            width = this.element!.nativeElement.offsetWidth - knobSize;
         });
 
         const handleNewLeft = (newLeft: number) => {
@@ -93,14 +113,14 @@ export class SliderComponent extends ValueAccessorBase<number> implements AfterV
                 return;
             }
 
-            let newPotentialValue = this.min + (newLeft * ((this.max - this.min)));
-            const shift = (newPotentialValue % this.steps);
+            let newPotentialValue = this.min + newLeft * (this.max - this.min);
+            const shift = newPotentialValue % this.steps;
             this.innerValue = Math.max(this.min, newPotentialValue - shift);
         };
 
         const setOnMousePos = (event: HammerInput) => {
             const rect = (this.element!.nativeElement as HTMLElement).getBoundingClientRect();
-            const x = event.center.x - (knobSize / 2) - rect.x;
+            const x = event.center.x - knobSize / 2 - rect.x;
             const newLeft = Math.min(width, Math.max(0, x)) / width;
             handleNewLeft(newLeft);
         };
@@ -113,7 +133,7 @@ export class SliderComponent extends ValueAccessorBase<number> implements AfterV
             }
 
             lastRequest = nextTick(() => {
-                const newLeft = Math.min(width, Math.max(0, (startXInPixels + event.deltaX))) / width;
+                const newLeft = Math.min(width, Math.max(0, startXInPixels + event.deltaX)) / width;
                 handleNewLeft(newLeft);
             });
         }

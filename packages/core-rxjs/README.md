@@ -9,28 +9,26 @@
 npm install @deepkit/core-rxjs
 ```
 
-
 ### Usage example
 
 ```typescript
-import {Subscriptions} from "@deepkit/core-rxjs";
+import { Subscriptions } from '@deepkit/core-rxjs';
 
 class MyComponent implements OnDestroy, OnInit {
-    private subs = new Subscriptions;
+  private subs = new Subscriptions();
 
-    public onInit() {
-        this.subs.add = this.observable.subscribe(() => {
-            //do something
-        });
+  public onInit() {
+    this.subs.add = this.observable.subscribe(() => {
+      //do something
+    });
 
-        this.subs.add = this.anotherOne.subscribe(() => {
-            //do something
-        });
-    }
-    
-    public OnDestroy() {
-        this.subs.unsubscribe();
-    }
+    this.subs.add = this.anotherOne.subscribe(() => {
+      //do something
+    });
+  }
+
+  public OnDestroy() {
+    this.subs.unsubscribe();
+  }
 }
-
 ```

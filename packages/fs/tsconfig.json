@@ -15,27 +15,21 @@
     "outDir": "./dist",
     "declaration": true,
     "composite": true,
-    "types": [
-      "node",
-      "fs-extra"
-    ]
+    "types": ["node", "fs-extra"],
   },
-  "include": [
-    "src",
-    "index.ts"
-  ],
+  "include": ["src", "index.ts"],
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../framework/tsconfig.json"
+      "path": "../framework/tsconfig.json",
     },
     {
-      "path": "../orm/tsconfig.json"
+      "path": "../orm/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

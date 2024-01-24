@@ -7,15 +7,15 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { Flag, cli } from '@deepkit/app';
 import { indent } from '@deepkit/core';
-import { cli, Flag } from '@deepkit/app';
 import { LoggerInterface } from '@deepkit/logger';
+import { Database } from '@deepkit/orm';
+
 import { MigrationProvider } from '../migration/migration-provider.js';
+import { Migration } from '../migration/migration.js';
 import { SQLDatabaseAdapter, SqlMigrationHandler } from '../sql-adapter.js';
 import { BaseCommand } from './base-command.js';
-import { Migration } from '../migration/migration.js';
-import { Database } from '@deepkit/orm';
 
 /**
  * @description Executes pending migration files. Use migration:pending to see which are pending.
@@ -69,7 +69,9 @@ export class MigrationUpCommand extends BaseCommand {
                 }
 
                 if (migrationToApply.length) {
-                    this.logger.log(`<yellow>${migrationToApply.length} migration/s left. Run migration:up again to execute the next migration.</yellow>`);
+                    this.logger.log(
+                        `<yellow>${migrationToApply.length} migration/s left. Run migration:up again to execute the next migration.</yellow>`,
+                    );
                 } else {
                     this.logger.log('<green>All migrations executed</green>');
                 }
@@ -77,7 +79,12 @@ export class MigrationUpCommand extends BaseCommand {
         }
     }
 
-    async executeNextMigration(database: Database<SQLDatabaseAdapter>, migrationHandler: SqlMigrationHandler, fake: boolean, migrationToApply: Migration[]) {
+    async executeNextMigration(
+        database: Database<SQLDatabaseAdapter>,
+        migrationHandler: SqlMigrationHandler,
+        fake: boolean,
+        migrationToApply: Migration[],
+    ) {
         try {
             const migration = migrationToApply.shift();
             if (!migration) return;

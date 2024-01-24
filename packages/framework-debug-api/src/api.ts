@@ -7,11 +7,12 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { Subject } from 'rxjs';
 
 import { ControllerSymbol } from '@deepkit/rpc';
+import { Excluded, Type, deserializeType, entity } from '@deepkit/type';
+
 import { DebugRequest, MediaFile } from './model.js';
-import { Subject } from 'rxjs';
-import { deserializeType, entity, Excluded, Type } from '@deepkit/type';
 
 export class ConfigOption {
     name!: string;
@@ -24,7 +25,7 @@ export class ConfigOption {
 @entity.name('.deepkit/debugger/workflow')
 export class Workflow {
     places!: string[];
-    transitions!: { from: string, to: string, label?: string; }[];
+    transitions!: { from: string; to: string; label?: string }[];
 }
 
 @entity.name('.deepkit/debugger/database/entity')
@@ -71,8 +72,7 @@ export class Route {
         public groups: string[],
         public category: string,
         public bodyType?: any,
-    ) {
-    }
+    ) {}
 }
 
 @entity.name('.deepkit/debugger/rpc/action/parameter')
@@ -80,8 +80,7 @@ export class RpcActionParameter {
     constructor(
         public name: string,
         public type: string,
-    ) {
-    }
+    ) {}
 }
 
 @entity.name('.deepkit/debugger/rpc/action')
@@ -124,7 +123,6 @@ export class Event {
 //     }
 // }
 
-
 @entity.name('.deepkit/debugger/module/service')
 export class ModuleService {
     instantiations: number = 0;
@@ -136,8 +134,7 @@ export class ModuleService {
     constructor(
         public id: number,
         public token: string,
-    ) {
-    }
+    ) {}
 }
 
 @entity.name('.deepkit/debugger/module/importedService')
@@ -146,8 +143,7 @@ export class ModuleImportedService {
         public id: number,
         public token: string,
         public fromModule: string,
-    ) {
-    }
+    ) {}
 }
 
 @entity.name('.deepkit/debugger/module')
@@ -169,8 +165,7 @@ export class ModuleApi {
         public name: string,
         public id: number,
         public className: string,
-    ) {
-    }
+    ) {}
 
     /** @reflection never */
     getConfigSchema(): Type | undefined {
@@ -195,7 +190,7 @@ export interface DebugMediaInterface {
 
     // getMediaPreview(fs: number, path: string): Promise<{ file: MediaFile, data: Uint8Array } | false>;
 
-    getMediaQuickLook(fs: number, path: string): Promise<{ file: MediaFile, data: Uint8Array } | false>;
+    getMediaQuickLook(fs: number, path: string): Promise<{ file: MediaFile; data: Uint8Array } | false>;
 
     getMediaData(fs: number, path: string): Promise<Uint8Array | false>;
 
@@ -206,7 +201,15 @@ export interface DebugMediaInterface {
     remove(fs: number, paths: string[]): Promise<void>;
 }
 
-export const DebugControllerInterface = ControllerSymbol<DebugControllerInterface>('.deepkit/debug/controller', [Config, Database, Route, RpcAction, Workflow, Event, DebugRequest]);
+export const DebugControllerInterface = ControllerSymbol<DebugControllerInterface>('.deepkit/debug/controller', [
+    Config,
+    Database,
+    Route,
+    RpcAction,
+    Workflow,
+    Event,
+    DebugRequest,
+]);
 
 export interface DebugControllerInterface {
     configuration(): Config;

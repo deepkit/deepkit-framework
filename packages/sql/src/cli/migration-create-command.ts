@@ -7,18 +7,19 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { indent } from '@deepkit/core';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
-import { cli, Command, Flag } from '@deepkit/app';
+
+import { Command, Flag, cli } from '@deepkit/app';
+import { indent } from '@deepkit/core';
 import { LoggerInterface } from '@deepkit/logger';
-import { MigrationStateEntity, SQLDatabaseAdapter } from '../sql-adapter.js';
-import { DatabaseComparator, DatabaseModel } from '../schema/table.js';
-import { MigrationProvider } from '../migration/migration-provider.js';
-import { BaseCommand } from './base-command.js';
-import { ReflectionClass } from '@deepkit/type';
 import { MigrateOptions } from '@deepkit/orm';
+import { ReflectionClass } from '@deepkit/type';
+
+import { MigrationProvider } from '../migration/migration-provider.js';
+import { DatabaseComparator, DatabaseModel } from '../schema/table.js';
+import { MigrationStateEntity, SQLDatabaseAdapter } from '../sql-adapter.js';
+import { BaseCommand } from './base-command.js';
 
 function serializeSQLLine(sql: string): string {
     return '`' + sql.replace(/`/g, '\\`') + '`';
@@ -98,12 +99,14 @@ export class MigrationCreateController extends BaseCommand implements Command {
                     }
 
                     const reverseDatabaseDiff = DatabaseComparator.computeDiff(databaseModel, parsedDatabaseModel);
-                    downSql = reverseDatabaseDiff ? db.adapter.platform.getModifyDatabaseDDL(reverseDatabaseDiff, options) : [];
+                    downSql = reverseDatabaseDiff
+                        ? db.adapter.platform.getModifyDatabaseDDL(reverseDatabaseDiff, options)
+                        : [];
                 }
             }
 
             let migrationName = '';
-            const date = new Date;
+            const date = new Date();
 
             const { format } = require('date-fns');
             for (let i = 1; i < 100; i++) {
@@ -170,7 +173,9 @@ ${downSql.map(serializeSQLLine).map(indent(12)).join(',\n')}
             console.log(migrationFile);
             mkdirSync(dirname(migrationFile), { recursive: true });
             writeFileSync(migrationFile, code.trim());
-            this.logger.log(`Migration file for database <green>${db.name}</green> written to <yellow>${migrationFile}</yellow>`);
+            this.logger.log(
+                `Migration file for database <green>${db.name}</green> written to <yellow>${migrationFile}</yellow>`,
+            );
         }
         console.log('done');
     }

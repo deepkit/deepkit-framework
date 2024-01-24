@@ -7,9 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, NgZone, Output } from '@angular/core';
+
 import { clearTick, nextTick } from '@deepkit/core';
+
 import { getHammer } from '../../core/utils';
 
 @Component({
@@ -22,7 +23,7 @@ import { getHammer } from '../../core/utils';
         '[class.splitter-top]': 'position === "top"',
         '[class.splitter-bottom]': 'position === "bottom"',
         '[class.splitter-with-indicator]': 'indicator !== false',
-    }
+    },
 })
 export class SplitterComponent implements AfterViewInit {
     @Output() modelChange = new EventEmitter<number>();
@@ -36,8 +37,7 @@ export class SplitterComponent implements AfterViewInit {
     constructor(
         private host: ElementRef,
         private zone: NgZone,
-    ) {
-    }
+    ) {}
 
     onMousedown(event: MouseEvent) {
         event.stopPropagation();
@@ -54,7 +54,12 @@ export class SplitterComponent implements AfterViewInit {
 
         this.zone.runOutsideAngular(() => {
             const mc = new Hammer(this.host.nativeElement);
-            mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 0 }));
+            mc.add(
+                new Hammer.Pan({
+                    direction: Hammer.DIRECTION_ALL,
+                    threshold: 0,
+                }),
+            );
 
             let start: number = 0;
 
@@ -70,9 +75,13 @@ export class SplitterComponent implements AfterViewInit {
 
             mc.on('panstart', (event: HammerInput) => {
                 if (this.position === 'right' || this.position === 'left') {
-                    start = (this.element ? this.element.clientWidth : this.host.nativeElement!.parentElement.clientWidth);
+                    start = this.element
+                        ? this.element.clientWidth
+                        : this.host.nativeElement!.parentElement.clientWidth;
                 } else {
-                    start = (this.element ? this.element.clientHeight : this.host.nativeElement!.parentElement.clientHeight);
+                    start = this.element
+                        ? this.element.clientHeight
+                        : this.host.nativeElement!.parentElement.clientHeight;
                 }
             });
 
@@ -82,7 +91,7 @@ export class SplitterComponent implements AfterViewInit {
 
                 lastAnimationFrame = nextTick(() => {
                     if (this.element) {
-                        this.element.style.width = (start + event.deltaX) + 'px';
+                        this.element.style.width = start + event.deltaX + 'px';
                     }
 
                     if (this.position === 'right') {

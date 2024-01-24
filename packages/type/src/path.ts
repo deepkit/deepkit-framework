@@ -1,7 +1,8 @@
-import { getTypeJitContainer, ReflectionKind, Type } from './reflection/type.js';
 import { CompilerContext, toFastProperties } from '@deepkit/core';
+
 import { ReceiveType, resolveReceiveType } from './reflection/reflection.js';
-import { getIndexCheck, JitStack } from './serializer.js';
+import { ReflectionKind, Type, getTypeJitContainer } from './reflection/type.js';
+import { JitStack, getIndexCheck } from './serializer.js';
 
 export type Resolver = (path: string) => Type | undefined;
 
@@ -23,7 +24,10 @@ function pathResolverCode(type: Type, compilerContext: CompilerContext, jitStack
     } else if (type.kind === ReflectionKind.union) {
         //todo: which type will be picked? return union?
     } else if (type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) {
-        const jit = compilerContext.reserveVariable('jit', jitStack.getOrCreate(undefined, type, () => pathResolver(type, jitStack)));
+        const jit = compilerContext.reserveVariable(
+            'jit',
+            jitStack.getOrCreate(undefined, type, () => pathResolver(type, jitStack)),
+        );
         return `return ${jit}.fn(path);`;
     }
 

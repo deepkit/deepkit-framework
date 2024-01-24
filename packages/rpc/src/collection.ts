@@ -13,9 +13,11 @@
  * This collection "lives" in the sense that its items are automatically
  * updated, added and removed. When such a change happens, an event is triggered* you can listen on.
  */
+import { ReplaySubject, Subject, TeardownLogic } from 'rxjs';
+
 import { ClassType, getClassName, isArray } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
-import { ReplaySubject, Subject, TeardownLogic } from 'rxjs';
+
 import { EntitySubject, IdInterface } from './model.js';
 
 export type FilterParameters = { [name: string]: any | undefined };
@@ -31,8 +33,8 @@ export type QuerySelector<T> = {
     $ne?: T;
     $nin?: T[];
     // Logical
-    $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
-    $regex?: T extends string ? (RegExp | string) : never;
+    $not?: T extends string ? QuerySelector<T> | RegExp : QuerySelector<T>;
+    $regex?: T extends string ? RegExp | string : never;
 
     //special deepkit/type type
     $parameter?: string;
@@ -47,15 +49,14 @@ export type RootQuerySelector<T> = {
     [key: string]: any;
 };
 
-type RegExpForString<T> = T extends string ? (RegExp | T) : T;
-type MongoAltQuery<T> = T extends Array<infer U> ? (T | RegExpForString<U>) : RegExpForString<T>;
+type RegExpForString<T> = T extends string ? RegExp | T : T;
+type MongoAltQuery<T> = T extends Array<infer U> ? T | RegExpForString<U> : RegExpForString<T>;
 export type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
 
 //should be in sync with @deepkit/orm
 export type FilterQuery<T> = {
     [P in keyof T & string]?: Condition<T[P]>;
-} &
-    RootQuerySelector<T>;
+} & RootQuerySelector<T>;
 
 //should be in sync with @deepkit/orm
 export type SORT_ORDER = 'asc' | 'desc' | any;
@@ -91,7 +92,13 @@ export interface CollectionSetSort {
     ids: (string | number)[];
 }
 
-export type CollectionEvent<T> = CollectionEventAdd<T> | CollectionEventRemove | CollectionEventSet | CollectionEventState | CollectionEventUpdate | CollectionSetSort;
+export type CollectionEvent<T> =
+    | CollectionEventAdd<T>
+    | CollectionEventRemove
+    | CollectionEventSet
+    | CollectionEventState
+    | CollectionEventUpdate
+    | CollectionSetSort;
 
 export type CollectionSortDirection = 'asc' | 'desc';
 
@@ -172,7 +179,7 @@ export class CollectionState {
  * @reflection never
  */
 export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
-    public readonly event: Subject<CollectionEvent<T>> = new Subject;
+    public readonly event: Subject<CollectionEvent<T>> = new Subject();
 
     public readonly removed = new Subject<T>();
     public readonly added = new Subject<T>();
@@ -197,9 +204,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
     public readonly entitySubjects = new Map<string | number, EntitySubject<T>>();
 
-    constructor(
-        public readonly classType: ClassType<T>,
-    ) {
+    constructor(public readonly classType: ClassType<T>) {
         super(1);
     }
 
@@ -281,7 +286,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
      */
     get nextStateChange(): Promise<void> {
         if (!this.nextChange) {
-            this.nextChange = new Promise((resolve) => {
+            this.nextChange = new Promise(resolve => {
                 this.nextChangeResolver = resolve;
             });
         }

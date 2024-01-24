@@ -7,16 +7,28 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { asyncOperation, getClassName } from '@deepkit/core';
-import { handleErrorResponse, MongoError } from '../error.js';
-import { MongoClientConfig } from '../config.js';
-import { Host } from '../host.js';
-import type { MongoDatabaseTransaction } from '../connection.js';
-import { ReceiveType, ReflectionClass, resolveReceiveType, SerializationError, stringifyType, Type, typeOf, typeSettings, UnpopulatedCheck, ValidationError } from '@deepkit/type';
-import { BSONDeserializer, deserializeBSONWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
-import { mongoBinarySerializer } from '../../mongo-serializer.js';
 import { inspect } from 'util';
+
+import { BSONDeserializer, deserializeBSONWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
+import { asyncOperation, getClassName } from '@deepkit/core';
+import {
+    ReceiveType,
+    ReflectionClass,
+    SerializationError,
+    Type,
+    UnpopulatedCheck,
+    ValidationError,
+    resolveReceiveType,
+    stringifyType,
+    typeOf,
+    typeSettings,
+} from '@deepkit/type';
+
+import { mongoBinarySerializer } from '../../mongo-serializer.js';
+import { MongoClientConfig } from '../config.js';
+import type { MongoDatabaseTransaction } from '../connection.js';
+import { MongoError, handleErrorResponse } from '../error.js';
+import { Host } from '../host.js';
 
 export interface CommandMessageResponseCallbackResult<T> {
     /**
@@ -36,9 +48,8 @@ export class CommandMessage<T, R> {
         public readonly schema: ReflectionClass<T>,
         public readonly message: T,
         public readonly responseSchema: ReflectionClass<R>,
-        public readonly responseCallback: (response: R) => { result?: any, next?: CommandMessage<any, any> },
-    ) {
-    }
+        public readonly responseCallback: (response: R) => { result?: any; next?: CommandMessage<any, any> },
+    ) {}
 }
 
 export interface BaseResponse {
@@ -46,22 +57,28 @@ export interface BaseResponse {
     errmsg?: string;
     code?: number;
     codeName?: string;
-    writeErrors?: Array<{ index: number, code: number, errmsg: string }>;
+    writeErrors?: Array<{ index: number; code: number; errmsg: string }>;
 }
 
 export abstract class Command {
-    protected current?: { responseType?: Type, resolve: Function, reject: Function };
+    protected current?: { responseType?: Type; resolve: Function; reject: Function };
 
     public sender?: <T>(schema: Type, message: T) => void;
 
     public sendAndWait<T, R = BaseResponse>(
-        message: T, messageType?: ReceiveType<T>, responseType?: ReceiveType<R>
+        message: T,
+        messageType?: ReceiveType<T>,
+        responseType?: ReceiveType<R>,
     ): Promise<R> {
         if (!this.sender) throw new Error(`No sender set in command ${getClassName(this)}`);
         this.sender(resolveReceiveType(messageType), message);
 
         return asyncOperation((resolve, reject) => {
-            this.current = { resolve, reject, responseType: responseType ? resolveReceiveType(responseType) : typeOf<BaseResponse>() };
+            this.current = {
+                resolve,
+                reject,
+                responseType: responseType ? resolveReceiveType(responseType) : typeOf<BaseResponse>(),
+            };
         });
     }
 
@@ -71,7 +88,9 @@ export abstract class Command {
 
     handleResponse(response: Uint8Array): void {
         if (!this.current) throw new Error('Got handleResponse without active command');
-        const deserializer: BSONDeserializer<BaseResponse> = this.current.responseType ? getBSONDeserializer(mongoBinarySerializer, this.current.responseType) : deserializeBSONWithoutOptimiser;
+        const deserializer: BSONDeserializer<BaseResponse> = this.current.responseType
+            ? getBSONDeserializer(mongoBinarySerializer, this.current.responseType)
+            : deserializeBSONWithoutOptimiser;
 
         const oldCheck = typeSettings.unpopulatedCheck;
         try {
@@ -101,7 +120,11 @@ export abstract class Command {
                         }
                     }
 
-                    this.current.reject(new MongoError(`Could not deserialize type ${stringifyType(this.current.responseType)}: ${error}`));
+                    this.current.reject(
+                        new MongoError(
+                            `Could not deserialize type ${stringifyType(this.current.responseType)}: ${error}`,
+                        ),
+                    );
                     return;
                 }
             }

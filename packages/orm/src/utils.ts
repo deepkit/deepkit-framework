@@ -7,13 +7,14 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { Changes, getSerializeFunction, PrimaryKeyFields, ReflectionClass, TemplateRegistry } from '@deepkit/type';
-import { OrmEntity } from './type.js';
 import sift from 'sift';
-import { FilterQuery } from './query.js';
-import { getInstanceStateFromItem } from './identity-map.js';
+
 import { getClassTypeFromInstance } from '@deepkit/core';
+import { Changes, PrimaryKeyFields, ReflectionClass, TemplateRegistry, getSerializeFunction } from '@deepkit/type';
+
+import { getInstanceStateFromItem } from './identity-map.js';
+import { FilterQuery } from './query.js';
+import { OrmEntity } from './type.js';
 
 export type FlattenIfArray<T> = T extends Array<any> ? T[0] : T;
 export type FieldName<T> = keyof T & string;
@@ -34,7 +35,6 @@ export function getClassSchemaInstancePairs<T extends OrmEntity>(items: Iterable
     return map;
 }
 
-
 export function findQuerySatisfied<T extends { [index: string]: any }>(target: T, query: FilterQuery<T>): boolean {
     //get rid of "Excessive stack depth comparing types 'any' and 'SiftQuery<T[]>'."
     return (sift as any)(query as any, [target] as any[]).length > 0;
@@ -53,17 +53,20 @@ export function buildChangesFromInstance<T extends object>(item: T): Changes<T> 
     const state = getInstanceStateFromItem(item);
     const lastSnapshot = state.getSnapshot();
     const currentSnapshot = state.classState.snapshot(item);
-    return state.classState.changeDetector(lastSnapshot, currentSnapshot, item) || new Changes;
+    return state.classState.changeDetector(lastSnapshot, currentSnapshot, item) || new Changes();
 }
 
 /**
  * Converts a scala value to a primary key fields object.
  */
-export function primaryKeyObjectConverter(classSchema: ReflectionClass<any>, templateRegistry: TemplateRegistry): (data: any) => PrimaryKeyFields<any> {
+export function primaryKeyObjectConverter(
+    classSchema: ReflectionClass<any>,
+    templateRegistry: TemplateRegistry,
+): (data: any) => PrimaryKeyFields<any> {
     const primary = classSchema.getPrimary();
     const primaryKeyConverted = getSerializeFunction(primary.property, templateRegistry);
 
-    return (data) => {
+    return data => {
         return { [primary.name]: primaryKeyConverted(data) };
     };
 }

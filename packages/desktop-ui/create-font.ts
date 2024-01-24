@@ -1,11 +1,10 @@
-import {createReadStream, createWriteStream, lstatSync, readdirSync, readFileSync, writeFileSync} from 'fs';
-import {join} from 'path';
-import {ensureDirSync} from 'fs-extra';
+import { createReadStream, createWriteStream, lstatSync, readFileSync, readdirSync, writeFileSync } from 'fs';
+import { ensureDirSync } from 'fs-extra';
+import { join } from 'path';
 
 const svg2ttf = require('svg2ttf');
 const ttf2woff = require('ttf2woff');
 const SVGIcons2SVGFontStream = require('svgicons2svgfont');
-
 
 function readFolder(dir: string, files: { [path: string]: string }) {
     const read = readdirSync(dir);
@@ -43,12 +42,13 @@ ensureDirSync(out);
         fixedWidth: true,
     });
 
-    fontStream.pipe(createWriteStream(`${out}/${fontFileName}.svg`))
+    fontStream
+        .pipe(createWriteStream(`${out}/${fontFileName}.svg`))
         .on('finish', function () {
             console.log('SVG successfully created!');
 
             const ttfConverted = svg2ttf(readFileSync(`${out}/${fontFileName}.svg`, 'utf8'), {
-                description: 'Desktop UI Icons'
+                description: 'Desktop UI Icons',
             });
             writeFileSync(`${out}/${fontFileName}.ttf`, new Buffer(ttfConverted.buffer));
             console.log('TTF successfully created!');
@@ -58,14 +58,14 @@ ensureDirSync(out);
                 const ttf = new Uint8Array(ttfInput);
                 const woff = new Buffer(ttf2woff(ttf, {}).buffer);
                 writeFileSync(`${out}/${fontFileName}.woff`, woff);
-                console.log('WOFF successfully created!')
+                console.log('WOFF successfully created!');
             }
 
             if (projectOutput) {
                 console.log(`Done. Dont forget to add following code in your styles.scss.`);
                 console.log(
-                    readFileSync(__dirname + '/../src/scss/icon.scss', 'utf8').replace(/\.\.\/assets\/fonts/, out)
-                )
+                    readFileSync(__dirname + '/../src/scss/icon.scss', 'utf8').replace(/\.\.\/assets\/fonts/, out),
+                );
             }
         })
         .on('error', function (err: any) {
@@ -82,7 +82,7 @@ ensureDirSync(out);
 
         (glyph as any)['metadata'] = {
             unicode: [String.fromCharCode(unicode++), name],
-            name: name
+            name: name,
         };
 
         console.log('Glyph', name);

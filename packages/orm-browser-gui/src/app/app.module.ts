@@ -1,18 +1,17 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+import { RouterModule } from '@angular/router';
+
+import { DuiAppModule, DuiButtonModule, DuiIconModule, DuiListModule, DuiWindowModule } from '@deepkit/desktop-ui';
 
 import { AppComponent } from './app.component';
 import { OrmBrowserModule } from './orm-browser.module';
-import { RouterModule } from '@angular/router';
-import { DuiAppModule, DuiButtonModule, DuiIconModule, DuiListModule, DuiWindowModule } from '@deepkit/desktop-ui';
 
 @NgModule({
-    declarations: [
-        AppComponent,
-    ],
+    declarations: [AppComponent],
     imports: [
         BrowserModule,
-        RouterModule.forRoot([], {useHash: true}),
+        RouterModule.forRoot([], { useHash: true }),
         OrmBrowserModule.forRoot(),
         DuiAppModule.forRoot(),
         DuiWindowModule.forRoot(),
@@ -20,7 +19,6 @@ import { DuiAppModule, DuiButtonModule, DuiIconModule, DuiListModule, DuiWindowM
         DuiListModule,
         DuiIconModule,
     ],
-    bootstrap: [AppComponent]
+    bootstrap: [AppComponent],
 })
-export class AppModule {
-}
+export class AppModule {}

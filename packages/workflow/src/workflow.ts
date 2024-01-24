@@ -7,16 +7,30 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { capitalize, ClassType, CompilerContext, CustomError, ExtractClassType, getClassName, isArray, toFastProperties } from '@deepkit/core';
-import { BaseEvent, EventDispatcher, EventToken, isEventListenerContainerEntryCallback, isEventListenerContainerEntryService } from '@deepkit/event';
-import { injectedFunction, InjectorContext } from '@deepkit/injector';
+import {
+    ClassType,
+    CompilerContext,
+    CustomError,
+    ExtractClassType,
+    capitalize,
+    getClassName,
+    isArray,
+    toFastProperties,
+} from '@deepkit/core';
+import {
+    BaseEvent,
+    EventDispatcher,
+    EventToken,
+    isEventListenerContainerEntryCallback,
+    isEventListenerContainerEntryService,
+} from '@deepkit/event';
+import { InjectorContext, injectedFunction } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { ReflectionClass } from '@deepkit/type';
 
 interface WorkflowTransition<T> {
-    from: keyof T & string,
-    to: keyof T & string,
+    from: keyof T & string;
+    to: keyof T & string;
     label?: string;
 }
 
@@ -64,8 +78,10 @@ export interface WorkflowNextEvent<T extends WorkflowPlaces> {
 }
 
 export type WorkflowDefinitionEvents<T extends WorkflowPlaces> = {
-    [K in keyof T & string as `on${Capitalize<K>}`]: EventToken<BaseEvent & Omit<ExtractClassType<T[K]>, 'next' | 'nextState'> & WorkflowNextEvent<T>>
-}
+    [K in keyof T & string as `on${Capitalize<K>}`]: EventToken<
+        BaseEvent & Omit<ExtractClassType<T[K]>, 'next' | 'nextState'> & WorkflowNextEvent<T>
+    >;
+};
 
 export class WorkflowDefinition<T extends WorkflowPlaces> {
     public transitions: WorkflowTransition<T>[] = [];
@@ -77,7 +93,7 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
     constructor(
         public readonly name: string,
         public readonly places: T,
-        transitions: WorkflowTransitions<T> = {}
+        transitions: WorkflowTransitions<T> = {},
     ) {
         for (const placeName in this.places) {
             if (!this.places.hasOwnProperty(placeName)) continue;
@@ -108,8 +124,19 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
         this.next[from]!.push(to);
     }
 
-    public create(state: keyof T & string, eventDispatcher: EventDispatcher, injector?: InjectorContext, stopwatch?: Stopwatch): Workflow<T> {
-        return new Workflow(this, new WorkflowStateSubject(state), eventDispatcher, injector || eventDispatcher.injector, stopwatch);
+    public create(
+        state: keyof T & string,
+        eventDispatcher: EventDispatcher,
+        injector?: InjectorContext,
+        stopwatch?: Stopwatch,
+    ): Workflow<T> {
+        return new Workflow(
+            this,
+            new WorkflowStateSubject(state),
+            eventDispatcher,
+            injector || eventDispatcher.injector,
+            stopwatch,
+        );
     }
 
     getTransitionsFrom(state: keyof T & string): (keyof T & string)[] {
@@ -128,7 +155,9 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
             const stateString = JSON.stringify(place);
             const eventTypeVar = compiler.reserveVariable('eventType', eventType);
             const allowedFrom = this.transitions.filter(v => v.to === place);
-            const allowedFromCondition = allowedFrom.map(v => `currentState === ${JSON.stringify(v.from)}`).join(' || ');
+            const allowedFromCondition = allowedFrom
+                .map(v => `currentState === ${JSON.stringify(v.from)}`)
+                .join(' || ');
             const checkFrom = `if (!(${allowedFromCondition})) throw new WorkflowError(\`Can not apply state change from \${currentState}->\${nextState}. There's no transition between them or it was blocked.\`);`;
 
             const eventToken = this.tokens[place]!;
@@ -142,7 +171,9 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
             const listenerCode: string[] = [];
             for (const listener of listeners) {
                 if (isEventListenerContainerEntryCallback(listener)) {
-                    const injector = listener.module ? eventDispatcher.injector.getInjector(listener.module) : eventDispatcher.injector.getRootInjector();
+                    const injector = listener.module
+                        ? eventDispatcher.injector.getInjector(listener.module)
+                        : eventDispatcher.injector.getRootInjector();
                     const fn = injectedFunction(listener.fn, injector, 1);
                     const fnVar = compiler.reserveVariable('fn', fn);
                     listenerCode.push(`
@@ -151,7 +182,9 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                         }
                     `);
                 } else if (isEventListenerContainerEntryService(listener)) {
-                    const injector = listener.module ? eventDispatcher.injector.getInjector(listener.module) : eventDispatcher.injector.getRootInjector();
+                    const injector = listener.module
+                        ? eventDispatcher.injector.getInjector(listener.module)
+                        : eventDispatcher.injector.getRootInjector();
                     const classTypeVar = compiler.reserveVariable('classType', listener.classType);
                     const moduleVar = listener.module ? ', ' + compiler.reserveVariable('module', listener.module) : '';
 
@@ -160,9 +193,15 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                     let call = `${resolvedVar}.${listener.methodName}(event)`;
 
                     if (method.getParameters().length > 1) {
-                        const fn = injectedFunction((event, classInstance, ...args: any[]) => {
-                            return classInstance[listener.methodName](event, ...args);
-                        }, injector, 2, method.type, 1);
+                        const fn = injectedFunction(
+                            (event, classInstance, ...args: any[]) => {
+                                return classInstance[listener.methodName](event, ...args);
+                            },
+                            injector,
+                            2,
+                            method.type,
+                            1,
+                        );
                         call = `${compiler.reserveVariable('fn', fn)}(scopedContext.scope, event, ${resolvedVar})`;
                     }
 
@@ -195,7 +234,8 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
         `);
         }
 
-        return compiler.buildAsync(`
+        return compiler.buildAsync(
+            `
             while (true) {
                 const currentState = state.get();
                 switch (nextState) {
@@ -209,7 +249,13 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                 }
                 return;
             }
-        `, 'scopedContext', 'state', 'nextState', 'event', 'stopwatch');
+        `,
+            'scopedContext',
+            'state',
+            'nextState',
+            'event',
+            'stopwatch',
+        );
     }
 }
 
@@ -218,7 +264,7 @@ type WorkflowTransitions<T extends WorkflowPlaces> = { [name in keyof T]?: (keyo
 export function createWorkflow<T extends WorkflowPlaces>(
     name: string,
     definition: T,
-    transitions: WorkflowTransitions<T> = {}
+    transitions: WorkflowTransitions<T> = {},
 ): WorkflowDefinition<T> & WorkflowDefinitionEvents<T> {
     return new WorkflowDefinition(name, definition, transitions) as any;
 }
@@ -230,8 +276,7 @@ export interface WorkflowState<T> {
 }
 
 export class WorkflowStateSubject<T extends WorkflowPlaces> implements WorkflowState<T> {
-    constructor(public value: keyof T & string) {
-    }
+    constructor(public value: keyof T & string) {}
 
     get() {
         return this.value;
@@ -242,8 +287,7 @@ export class WorkflowStateSubject<T extends WorkflowPlaces> implements WorkflowS
     }
 }
 
-export class WorkflowError extends CustomError {
-}
+export class WorkflowError extends CustomError {}
 
 export class Workflow<T extends WorkflowPlaces> {
     protected events: { [name in keyof T]?: Function } = {};
@@ -253,9 +297,8 @@ export class Workflow<T extends WorkflowPlaces> {
         public state: WorkflowState<T>,
         private eventDispatcher: EventDispatcher,
         private injector: InjectorContext,
-        private stopwatch?: Stopwatch
-    ) {
-    }
+        private stopwatch?: Stopwatch,
+    ) {}
 
     can(nextState: keyof T & string): boolean {
         return this.definition.getTransitionsFrom(this.state.get()).includes(nextState);
@@ -264,16 +307,21 @@ export class Workflow<T extends WorkflowPlaces> {
     /**
      * @throws WorkflowError when next state is not possible to apply.
      */
-    apply<K extends keyof T>(
-        nextState: K,
-        event?: ExtractClassType<T[K]>,
-    ): Promise<void> {
+    apply<K extends keyof T>(nextState: K, event?: ExtractClassType<T[K]>): Promise<void> {
         let fn = (this.eventDispatcher as any)[this.definition.symbol];
         if (!fn) {
-            fn = (this.eventDispatcher as any)[this.definition.symbol] = this.definition.buildApplier(this.eventDispatcher);
+            fn = (this.eventDispatcher as any)[this.definition.symbol] = this.definition.buildApplier(
+                this.eventDispatcher,
+            );
         }
 
-        return fn(this.injector, this.state, nextState, event || new WorkflowEvent() as ExtractClassType<T[K]>, this.stopwatch);
+        return fn(
+            this.injector,
+            this.state,
+            nextState,
+            event || (new WorkflowEvent() as ExtractClassType<T[K]>),
+            this.stopwatch,
+        );
     }
 
     isDone(): boolean {

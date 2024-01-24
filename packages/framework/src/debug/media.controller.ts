@@ -7,12 +7,14 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import mime from 'mime-types';
+
+import { pathDirectory, pathJoin } from '@deepkit/core';
+import { Filesystem, FilesystemFile } from '@deepkit/filesystem';
 import { DebugMediaInterface, MediaFile } from '@deepkit/framework-debug-api';
 import { rpc } from '@deepkit/rpc';
+
 import { FilesystemRegistry } from '../filesystem.js';
-import { Filesystem, FilesystemFile } from '@deepkit/filesystem';
-import { pathDirectory, pathJoin } from '@deepkit/core';
-import mime from 'mime-types';
 
 function mapFile(filesystem: number, file: FilesystemFile): MediaFile {
     const mediaFile = new MediaFile(file.path, file.type);
@@ -26,10 +28,7 @@ function mapFile(filesystem: number, file: FilesystemFile): MediaFile {
 
 @rpc.controller(DebugMediaInterface)
 export class MediaController implements DebugMediaInterface {
-    constructor(
-        protected filesystemRegistry: FilesystemRegistry,
-    ) {
-    }
+    constructor(protected filesystemRegistry: FilesystemRegistry) {}
 
     protected getFilesystem(id: number): Filesystem {
         const fs = this.filesystemRegistry.getFilesystems()[id];

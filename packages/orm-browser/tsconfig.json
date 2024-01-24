@@ -14,40 +14,37 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": []
+    "types": [],
   },
   "reflection": true,
-  "include": [
-    "src",
-    "index.ts"
-  ],
+  "include": ["src", "index.ts"],
   "references": [
     {
-      "path": "../app/tsconfig.json"
+      "path": "../app/tsconfig.json",
     },
     {
-      "path": "../broker/tsconfig.json"
+      "path": "../broker/tsconfig.json",
     },
     {
-      "path": "../bson/tsconfig.json"
+      "path": "../bson/tsconfig.json",
     },
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../http/tsconfig.json"
+      "path": "../http/tsconfig.json",
     },
     {
-      "path": "../injector/tsconfig.json"
+      "path": "../injector/tsconfig.json",
     },
     {
-      "path": "../logger/tsconfig.json"
+      "path": "../logger/tsconfig.json",
     },
     {
-      "path": "../rpc/tsconfig.json"
+      "path": "../rpc/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

@@ -1,21 +1,19 @@
 import { expect, test } from '@jest/globals';
-import { wrapComponent } from '../src/jsx.js';
+
 import { InjectorContext } from '../src/injector.js';
+import { wrapComponent } from '../src/jsx.js';
 import { InjectorModule } from '../src/module.js';
 
 test('jsx basic', () => {
     class User {
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     function MyComponent(props: {}, user: User) {
         expect(user).toBeInstanceOf(User);
     }
 
-    const container = InjectorContext.forProviders([
-        { provide: User, useValue: new User('Peter') }
-    ]);
+    const container = InjectorContext.forProviders([{ provide: User, useValue: new User('Peter') }]);
     const wrapped = wrapComponent(MyComponent, container);
 
     wrapped({});
@@ -23,8 +21,7 @@ test('jsx basic', () => {
 
 test('jsx basic state', () => {
     class User {
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     class AppState {
@@ -35,9 +32,7 @@ test('jsx basic state', () => {
         expect(state).toBeInstanceOf(AppState);
     }
 
-    const module = new InjectorModule([
-        { provide: User, useValue: new User('Peter') }
-    ]);
+    const module = new InjectorModule([{ provide: User, useValue: new User('Peter') }]);
     module.setConfigDefinition(AppState);
     const container = new InjectorContext(module);
     const wrapped = wrapComponent(MyComponent, container);

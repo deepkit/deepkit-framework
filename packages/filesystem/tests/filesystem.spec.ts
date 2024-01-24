@@ -1,17 +1,20 @@
 import { expect, jest, test } from '@jest/globals';
+
 import { Filesystem, FilesystemAdapter } from '../src/filesystem.js';
 import { FilesystemMemoryAdapter } from '../src/memory-adapter.js';
 
 jest.setTimeout(30000);
 
-export let adapterFactory: () => Promise<FilesystemAdapter> = async () => new FilesystemMemoryAdapter;
+export let adapterFactory: () => Promise<FilesystemAdapter> = async () => new FilesystemMemoryAdapter();
 
 export function setAdapterFactory(factory: () => Promise<FilesystemAdapter>) {
     adapterFactory = factory;
 }
 
 test('url', async () => {
-    const filesystem = new Filesystem(await adapterFactory(), { baseUrl: 'http://localhost/assets/' });
+    const filesystem = new Filesystem(await adapterFactory(), {
+        baseUrl: 'http://localhost/assets/',
+    });
     if (filesystem.adapter.publicUrl) {
         //has custom tests
         await filesystem.close();
@@ -46,7 +49,11 @@ test('basic', async () => {
     expect(content).toBe('contents1');
 
     const file = await filesystem.get('/file1.txt');
-    expect(file).toMatchObject({ path: '/file1.txt', size: 9, lastModified: expect.any(Date) });
+    expect(file).toMatchObject({
+        path: '/file1.txt',
+        size: 9,
+        lastModified: expect.any(Date),
+    });
 
     await expect(() => filesystem.get('/file4.txt')).rejects.toThrowError('File not found');
     expect(await filesystem.getOrUndefined('/file4.txt')).toBe(undefined);
@@ -105,26 +112,48 @@ test('visibility', async () => {
     await filesystem.write('/file2.txt', 'contents2', 'private');
 
     const file1 = await filesystem.get('/file1.txt');
-    expect(file1).toMatchObject({ path: '/file1.txt', size: 9, lastModified: expect.any(Date), visibility: 'public' });
+    expect(file1).toMatchObject({
+        path: '/file1.txt',
+        size: 9,
+        lastModified: expect.any(Date),
+        visibility: 'public',
+    });
 
     const file2 = await filesystem.get('/file2.txt');
-    expect(file2).toMatchObject({ path: '/file2.txt', size: 9, lastModified: expect.any(Date), visibility: 'private' });
+    expect(file2).toMatchObject({
+        path: '/file2.txt',
+        size: 9,
+        lastModified: expect.any(Date),
+        visibility: 'private',
+    });
 
     if (adapter.supportsDirectory()) {
         await filesystem.makeDirectory('/folder1', 'public');
         await filesystem.makeDirectory('/folder2', 'private');
 
         const folder1 = await filesystem.get('/folder1');
-        expect(folder1).toMatchObject({ path: '/folder1', size: 0, visibility: 'public' });
+        expect(folder1).toMatchObject({
+            path: '/folder1',
+            size: 0,
+            visibility: 'public',
+        });
 
         const folder2 = await filesystem.get('/folder2');
-        expect(folder2).toMatchObject({ path: '/folder2', size: 0, visibility: 'private' });
-
+        expect(folder2).toMatchObject({
+            path: '/folder2',
+            size: 0,
+            visibility: 'private',
+        });
     }
 
     await filesystem.setVisibility('file2.txt', 'public');
     const file2b = await filesystem.get('/file2.txt');
-    expect(file2b).toMatchObject({ path: '/file2.txt', size: 9, lastModified: expect.any(Date), visibility: 'public' });
+    expect(file2b).toMatchObject({
+        path: '/file2.txt',
+        size: 9,
+        lastModified: expect.any(Date),
+        visibility: 'public',
+    });
 
     await filesystem.close();
 });
@@ -149,8 +178,16 @@ test('recursive', async () => {
     const files2 = await filesystem.files('/folder2');
     expect(files2).toMatchObject([
         { path: '/folder2/folder3', type: 'directory' },
-        { path: '/folder2/file2.txt', type: 'file', lastModified: expect.any(Date) },
-        { path: '/folder2/file3.txt', type: 'file', lastModified: expect.any(Date) },
+        {
+            path: '/folder2/file2.txt',
+            type: 'file',
+            lastModified: expect.any(Date),
+        },
+        {
+            path: '/folder2/file3.txt',
+            type: 'file',
+            lastModified: expect.any(Date),
+        },
     ]);
 
     const files3 = await filesystem.allFiles('/');
@@ -180,9 +217,7 @@ test('recursive', async () => {
     ]);
 
     const directories2 = await filesystem.directories('/folder2');
-    expect(directories2).toMatchObject([
-        { path: '/folder2/folder3', type: 'directory' },
-    ]);
+    expect(directories2).toMatchObject([{ path: '/folder2/folder3', type: 'directory' }]);
 
     if (filesystem.adapter.supportsDirectory()) {
         const directories3 = await filesystem.allDirectories('/');

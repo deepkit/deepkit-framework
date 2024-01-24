@@ -7,12 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import {
     ChangeDetectorRef,
     Directive,
     EventEmitter,
-    forwardRef,
     HostBinding,
     Inject,
     Injector,
@@ -20,9 +18,11 @@ import {
     OnDestroy,
     Output,
     SkipSelf,
-    Type
+    Type,
+    forwardRef,
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, NgControl } from '@angular/forms';
+
 import { detectChangesNextFrame } from '../components/app/utils';
 import { FormComponent } from '../components/form/form.component';
 
@@ -30,7 +30,7 @@ export function ngValueAccessor<T>(clazz: Type<T>) {
     return {
         provide: NG_VALUE_ACCESSOR,
         useExisting: forwardRef(() => clazz),
-        multi: true
+        multi: true,
     };
 }
 
@@ -111,21 +111,20 @@ export class ValueAccessorBase<T> implements ControlValueAccessor, OnDestroy {
     constructor(
         @Inject(Injector) protected readonly injector: Injector,
         @Inject(ChangeDetectorRef) public readonly cd: ChangeDetectorRef,
-        @Inject(ChangeDetectorRef) @SkipSelf() public readonly cdParent: ChangeDetectorRef,
+        @Inject(ChangeDetectorRef)
+        @SkipSelf()
+        public readonly cdParent: ChangeDetectorRef,
     ) {
         try {
             this.formComponent = injector.get(FormComponent, undefined);
-        } catch (e) {
-        }
-
+        } catch (e) {}
     }
 
     get ngControl(): NgControl | undefined {
         if (!this._ngControlFetched) {
             try {
                 this._ngControl = this.injector.get(NgControl);
-            } catch (e) {
-            }
+            } catch (e) {}
             this._ngControlFetched = true;
         }
 
@@ -142,8 +141,7 @@ export class ValueAccessorBase<T> implements ControlValueAccessor, OnDestroy {
     /**
      * @hidden
      */
-    ngOnDestroy(): void {
-    }
+    ngOnDestroy(): void {}
 
     /**
      * @hidden
@@ -190,9 +188,7 @@ export class ValueAccessorBase<T> implements ControlValueAccessor, OnDestroy {
      *
      * @hidden
      */
-    async onInnerValueChange() {
-
-    }
+    async onInnerValueChange() {}
 
     /**
      * Call this method to signal Angular's form or other users that this widget has been touched.

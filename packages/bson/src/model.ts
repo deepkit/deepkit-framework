@@ -7,14 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { CustomError } from '@deepkit/core';
-
 
 let PROCESS_UNIQUE: Uint8Array | undefined = undefined;
 
-export class BSONError extends CustomError {
-}
+export class BSONError extends CustomError {}
 
 function getUnique(): Uint8Array {
     if (PROCESS_UNIQUE) return PROCESS_UNIQUE;
@@ -36,25 +33,24 @@ export class ObjectId {
 
     static generate(time?: number): string {
         if (!time) time = Math.ceil(Date.now() / 1000);
-        const inc = (++ObjectId.index) % 0xffffff;
+        const inc = ++ObjectId.index % 0xffffff;
 
         const processUnique = getUnique();
 
-        return ''
-            + hexTable[(time >> 24) & 0xff]
-            + hexTable[(time >> 16) & 0xff]
-            + hexTable[(time >> 8) & 0xff]
-            + hexTable[time & 0xff]
-
-            + hexTable[processUnique[0]]
-            + hexTable[processUnique[1]]
-            + hexTable[processUnique[2]]
-            + hexTable[processUnique[3]]
-            + hexTable[processUnique[4]]
-
-            + hexTable[(inc >> 16) & 0xff]
-            + hexTable[(inc >> 8) & 0xff]
-            + hexTable[inc & 0xff]
-            ;
+        return (
+            '' +
+            hexTable[(time >> 24) & 0xff] +
+            hexTable[(time >> 16) & 0xff] +
+            hexTable[(time >> 8) & 0xff] +
+            hexTable[time & 0xff] +
+            hexTable[processUnique[0]] +
+            hexTable[processUnique[1]] +
+            hexTable[processUnique[2]] +
+            hexTable[processUnique[3]] +
+            hexTable[processUnique[4]] +
+            hexTable[(inc >> 16) & 0xff] +
+            hexTable[(inc >> 8) & 0xff] +
+            hexTable[inc & 0xff]
+        );
     }
 }

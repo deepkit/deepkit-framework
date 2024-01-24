@@ -7,31 +7,40 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { asyncOperation, ClassType, CustomError, getClassName, getClassTypeFromInstance, isArray, isClassInstance } from '@deepkit/core';
 import { OutgoingHttpHeaders, ServerResponse } from 'http';
+import stream from 'stream';
+
+import {
+    ClassType,
+    CustomError,
+    asyncOperation,
+    getClassName,
+    getClassTypeFromInstance,
+    isArray,
+    isClassInstance,
+} from '@deepkit/core';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpRequest, HttpRequestPositionedParameters, HttpResponse } from './model.js';
 import { InjectorContext } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
-import { HttpRouter, RouteConfig, RouteParameterResolverForInjector } from './router.js';
-import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
-import type { ElementStruct, render } from '@deepkit/template';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import type { ElementStruct, render } from '@deepkit/template';
 import {
+    ReflectionKind,
+    SerializationError,
+    Type,
+    UnpopulatedCheck,
+    ValidationError,
     getSerializeFunction,
     hasTypeInformation,
-    ReflectionKind,
     resolveReceiveType,
-    SerializationError,
     serialize,
     serializer,
-    Type,
     typeSettings,
-    UnpopulatedCheck,
-    ValidationError
 } from '@deepkit/type';
-import stream from 'stream';
+import { WorkflowEvent, createWorkflow } from '@deepkit/workflow';
+
+import { HttpRequest, HttpRequestPositionedParameters, HttpResponse } from './model.js';
+import { HttpRouter, RouteConfig, RouteParameterResolverForInjector } from './router.js';
 
 export function isElementStruct(v: any): v is ElementStruct {
     return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
@@ -53,10 +62,7 @@ export class Redirect {
     public routeParameters?: { [name: string]: any };
     public url?: string;
 
-    constructor(
-        public statusCode: number = 302,
-    ) {
-    }
+    constructor(public statusCode: number = 302) {}
 
     static toRoute(routeName: string, parameters: { [name: string]: any } = {}, statusCode: number = 302): Redirect {
         const redirect = new Redirect(statusCode);
@@ -73,7 +79,10 @@ export class Redirect {
 }
 
 export class HttpError<T extends number> extends CustomError {
-    constructor(public message: string, public httpCode: T) {
+    constructor(
+        public message: string,
+        public httpCode: T,
+    ) {
         super(message);
     }
 }
@@ -86,41 +95,29 @@ export function createHttpError<T extends number>(code: T, defaultMessage: strin
     } as any;
 }
 
-export class HttpBadRequestError extends createHttpError(400, 'Bad request') {
-}
+export class HttpBadRequestError extends createHttpError(400, 'Bad request') {}
 
-export class HttpUnauthorizedError extends createHttpError(401, 'Unauthorized') {
-}
+export class HttpUnauthorizedError extends createHttpError(401, 'Unauthorized') {}
 
-export class HttpAccessDeniedError extends createHttpError(403, 'Access denied') {
-}
+export class HttpAccessDeniedError extends createHttpError(403, 'Access denied') {}
 
-export class HttpNotFoundError extends createHttpError(404, 'Not found') {
-}
+export class HttpNotFoundError extends createHttpError(404, 'Not found') {}
 
-export class HttpMethodNotAllowedError extends createHttpError(405, 'Method not allowed') {
-}
+export class HttpMethodNotAllowedError extends createHttpError(405, 'Method not allowed') {}
 
-export class HttpNotAcceptableError extends createHttpError(406, 'Not acceptable') {
-}
+export class HttpNotAcceptableError extends createHttpError(406, 'Not acceptable') {}
 
-export class HttpTimeoutError extends createHttpError(408, 'Request timeout') {
-}
+export class HttpTimeoutError extends createHttpError(408, 'Request timeout') {}
 
-export class HttpConflictError extends createHttpError(409, 'Conflict') {
-}
+export class HttpConflictError extends createHttpError(409, 'Conflict') {}
 
-export class HttpGoneError extends createHttpError(410, 'Gone') {
-}
+export class HttpGoneError extends createHttpError(410, 'Gone') {}
 
-export class HttpTooManyRequestsError extends createHttpError(429, 'Too many requests') {
-}
+export class HttpTooManyRequestsError extends createHttpError(429, 'Too many requests') {}
 
-export class HttpInternalServerError extends createHttpError(500, 'Internal server error') {
-}
+export class HttpInternalServerError extends createHttpError(500, 'Internal server error') {}
 
-export class HttpNotImplementedError extends createHttpError(501, 'Not implemented') {
-}
+export class HttpNotImplementedError extends createHttpError(501, 'Not implemented') {}
 
 export class HttpWorkflowEvent {
     propagationStopped = false;
@@ -160,8 +157,7 @@ export class HttpWorkflowEvent {
         public injectorContext: InjectorContext,
         public request: HttpRequest,
         public response: HttpResponse,
-    ) {
-    }
+    ) {}
 
     get url() {
         return this.request.url || '/';
@@ -193,11 +189,17 @@ export class HttpWorkflowEventWithRoute extends HttpWorkflowEvent {
     }
 
     send(response: any) {
-        this.next('response', new HttpResponseEvent(this.injectorContext, this.request, this.response, response, this.route));
+        this.next(
+            'response',
+            new HttpResponseEvent(this.injectorContext, this.request, this.response, response, this.route),
+        );
     }
 
     accessDenied(error?: Error) {
-        this.next('accessDenied', new HttpAccessDeniedEvent(this.injectorContext, this.request, this.response, this.route, error));
+        this.next(
+            'accessDenied',
+            new HttpAccessDeniedEvent(this.injectorContext, this.request, this.response, this.route, error),
+        );
     }
 }
 
@@ -214,7 +216,10 @@ export class HttpRouteEvent extends HttpWorkflowEvent {
 
     routeFound(route: RouteConfig, parameterResolver: RouteParameterResolverForInjector) {
         this.route = route;
-        this.next('auth', new HttpAuthEvent(this.injectorContext, this.request, this.response, this.route, parameterResolver));
+        this.next(
+            'auth',
+            new HttpAuthEvent(this.injectorContext, this.request, this.response, this.route, parameterResolver),
+        );
     }
 
     notFound() {
@@ -234,7 +239,16 @@ export class HttpAuthEvent extends HttpWorkflowEventWithRoute {
     }
 
     success() {
-        this.next('resolveParameters', new HttpResolveParametersEvent(this.injectorContext, this.request, this.response, this.parameterResolver, this.route));
+        this.next(
+            'resolveParameters',
+            new HttpResolveParametersEvent(
+                this.injectorContext,
+                this.request,
+                this.response,
+                this.parameterResolver,
+                this.route,
+            ),
+        );
     }
 }
 
@@ -264,7 +278,10 @@ export class HttpResolveParametersEvent extends HttpWorkflowEventWithRoute {
     }
 
     accessDenied() {
-        this.next('accessDenied', new HttpAccessDeniedEvent(this.injectorContext, this.request, this.response, this.route));
+        this.next(
+            'accessDenied',
+            new HttpAccessDeniedEvent(this.injectorContext, this.request, this.response, this.route),
+        );
     }
 }
 
@@ -314,36 +331,42 @@ export class HttpControllerErrorEvent extends HttpWorkflowEventWithRoute {
     }
 }
 
-export const httpWorkflow = createWorkflow('http', {
-    start: WorkflowEvent,
-    request: HttpRequestEvent,
-    route: HttpRouteEvent,
-    routeNotFound: HttpRouteNotFoundEvent,
-    auth: HttpAuthEvent,
-    resolveParameters: HttpResolveParametersEvent,
-    accessDenied: HttpAccessDeniedEvent,
-    controller: HttpControllerEvent,
-    controllerError: HttpControllerErrorEvent,
-    parametersFailed: HttpControllerErrorEvent,
-    response: HttpResponseEvent,
-}, {
-    start: 'request',
-    request: 'route',
-    route: ['auth', 'routeNotFound'],
-    auth: ['resolveParameters', 'accessDenied'],
-    resolveParameters: ['controller', 'parametersFailed'],
-    accessDenied: 'response',
-    controller: ['accessDenied', 'controllerError', 'response'],
-    controllerError: 'response',
-    parametersFailed: 'response',
-    routeNotFound: 'response',
-});
+export const httpWorkflow = createWorkflow(
+    'http',
+    {
+        start: WorkflowEvent,
+        request: HttpRequestEvent,
+        route: HttpRouteEvent,
+        routeNotFound: HttpRouteNotFoundEvent,
+        auth: HttpAuthEvent,
+        resolveParameters: HttpResolveParametersEvent,
+        accessDenied: HttpAccessDeniedEvent,
+        controller: HttpControllerEvent,
+        controllerError: HttpControllerErrorEvent,
+        parametersFailed: HttpControllerErrorEvent,
+        response: HttpResponseEvent,
+    },
+    {
+        start: 'request',
+        request: 'route',
+        route: ['auth', 'routeNotFound'],
+        auth: ['resolveParameters', 'accessDenied'],
+        resolveParameters: ['controller', 'parametersFailed'],
+        accessDenied: 'response',
+        controller: ['accessDenied', 'controllerError', 'response'],
+        controllerError: 'response',
+        parametersFailed: 'response',
+        routeNotFound: 'response',
+    },
+);
 
 export class BaseResponse {
     autoSerializing: boolean = true;
 
-    constructor(public _statusCode?: number, public _headers: OutgoingHttpHeaders = {}) {
-    }
+    constructor(
+        public _statusCode?: number,
+        public _headers: OutgoingHttpHeaders = {},
+    ) {}
 
     status(code: number): this {
         this._statusCode = code;
@@ -376,26 +399,36 @@ export class BaseResponse {
 }
 
 export class Response extends BaseResponse {
-    constructor(public content: string | Uint8Array, contentType: string, statusCode?: number) {
+    constructor(
+        public content: string | Uint8Array,
+        contentType: string,
+        statusCode?: number,
+    ) {
         super(statusCode);
         this.contentType(contentType);
     }
 }
 
 export class HtmlResponse extends BaseResponse {
-    constructor(public html: string, statusCode?: number) {
+    constructor(
+        public html: string,
+        statusCode?: number,
+    ) {
         super(statusCode);
     }
 }
 
 export class JSONResponse extends BaseResponse {
-    constructor(public json: any, statusCode?: number) {
+    constructor(
+        public json: any,
+        statusCode?: number,
+    ) {
         super(statusCode);
     }
 }
 
 export type SupportedHttpResult =
-    undefined
+    | undefined
     | null
     | number
     | string
@@ -419,8 +452,7 @@ export class HttpResultFormatter {
     protected jsonContentType: string = 'application/json; charset=utf-8';
     protected htmlContentType: string = 'text/html; charset=utf-8';
 
-    constructor(protected router: HttpRouter) {
-    }
+    constructor(protected router: HttpRouter) {}
 
     protected setContentTypeIfNotSetAlready(response: HttpResponse, contentType: string): void {
         if (response.hasHeader('Content-Type')) return;
@@ -428,9 +460,7 @@ export class HttpResultFormatter {
         response.setHeader('Content-Type', contentType);
     }
 
-    handleError(error: Error, context: HttpResultFormatterContext): void {
-
-    }
+    handleError(error: Error, context: HttpResultFormatterContext): void {}
 
     handleUndefined(result: undefined | null, context: HttpResultFormatterContext): void {
         context.response.end(result);
@@ -439,11 +469,11 @@ export class HttpResultFormatter {
     handleRedirect(result: Redirect, context: HttpResultFormatterContext): void {
         if (result.routeName) {
             context.response.writeHead(result.statusCode, {
-                Location: this.router.resolveUrl(result.routeName, result.routeParameters)
+                Location: this.router.resolveUrl(result.routeName, result.routeParameters),
             });
         } else {
             context.response.writeHead(result.statusCode, {
-                Location: result.url
+                Location: result.url,
             });
         }
         context.response.end();
@@ -477,14 +507,23 @@ export class HttpResultFormatter {
         context.response.end(JSON.stringify(result.json));
     }
 
-    handleTypeEntity<T>(classType: ClassType<T>, instance: T, context: HttpResultFormatterContext, route?: RouteConfig): void {
+    handleTypeEntity<T>(
+        classType: ClassType<T>,
+        instance: T,
+        context: HttpResultFormatterContext,
+        route?: RouteConfig,
+    ): void {
         this.handleType(resolveReceiveType(classType), instance, context, route);
     }
 
     handleType<T>(type: Type, instance: T, context: HttpResultFormatterContext, route?: RouteConfig): void {
         this.setContentTypeIfNotSetAlready(context.response, this.jsonContentType);
         const serializerToUse = route && route?.serializer ? route.serializer : serializer;
-        context.response.end(JSON.stringify(serialize(instance, route ? route.serializationOptions : undefined, serializerToUse, undefined, type)));
+        context.response.end(
+            JSON.stringify(
+                serialize(instance, route ? route.serializationOptions : undefined, serializerToUse, undefined, type),
+            ),
+        );
     }
 
     handleStream(stream: stream.Readable, context: HttpResultFormatterContext): void {
@@ -495,8 +534,7 @@ export class HttpResultFormatter {
         context.response.end(result);
     }
 
-    handleResponse(context: HttpResultFormatterContext) {
-    }
+    handleResponse(context: HttpResultFormatterContext) {}
 
     handle(result: SupportedHttpResult, context: HttpResultFormatterContext): void {
         if (result === null || result === undefined) {
@@ -534,7 +572,11 @@ export class HttpResultFormatter {
                     }
                 }
                 if (allSameType && hasTypeInformation(firstClassType)) {
-                    this.handleType({ kind: ReflectionKind.array, type: resolveReceiveType(firstClassType) }, result, context);
+                    this.handleType(
+                        { kind: ReflectionKind.array, type: resolveReceiveType(firstClassType) },
+                        result,
+                        context,
+                    );
                     return;
                 }
             }
@@ -550,15 +592,14 @@ export class HttpListener {
         protected logger: LoggerInterface,
         protected resultFormatter: HttpResultFormatter,
         protected stopwatch?: Stopwatch,
-    ) {
-    }
+    ) {}
 
     @eventDispatcher.listen(httpWorkflow.onRequest, 100)
     onRequest(event: typeof httpWorkflow.onRequest.event): void {
         if (event.sent) return;
         if (event.hasNext()) return;
 
-        event.next('route', new HttpRouteEvent(event.injectorContext, event.request, event.response,));
+        event.next('route', new HttpRouteEvent(event.injectorContext, event.request, event.response));
     }
 
     @eventDispatcher.listen(httpWorkflow.onRoute, 100)
@@ -601,7 +642,9 @@ export class HttpListener {
                                 const timeout = middlewares[i].timeout;
                                 if (timeout !== undefined && timeout > 0) {
                                     lastTimer = setTimeout(() => {
-                                        logger.warn(`Middleware timed out. Increase the timeout or fix the middleware. (${middlewares[i].fn})`);
+                                        logger.warn(
+                                            `Middleware timed out. Increase the timeout or fix the middleware. (${middlewares[i].fn})`,
+                                        );
                                         next();
                                     }, timeout);
                                 }
@@ -641,7 +684,10 @@ export class HttpListener {
         if (event.hasNext()) return;
 
         if (!event.route) {
-            event.next('routeNotFound', new HttpRouteNotFoundEvent(event.injectorContext, event.request, event.response));
+            event.next(
+                'routeNotFound',
+                new HttpRouteNotFoundEvent(event.injectorContext, event.request, event.response),
+            );
         }
     }
 
@@ -658,7 +704,16 @@ export class HttpListener {
         if (event.sent) return;
         if (event.hasNext()) return;
 
-        event.next('resolveParameters', new HttpResolveParametersEvent(event.injectorContext, event.request, event.response, event.parameterResolver, event.route));
+        event.next(
+            'resolveParameters',
+            new HttpResolveParametersEvent(
+                event.injectorContext,
+                event.request,
+                event.response,
+                event.parameterResolver,
+                event.route,
+            ),
+        );
     }
 
     @eventDispatcher.listen(httpWorkflow.onResolveParameters, 100)
@@ -668,9 +723,21 @@ export class HttpListener {
 
         try {
             event.parameters = await event.parameterResolver(event.injectorContext);
-            event.next('controller', new HttpControllerEvent(event.injectorContext, event.request, event.response, event.parameters, event.route));
+            event.next(
+                'controller',
+                new HttpControllerEvent(
+                    event.injectorContext,
+                    event.request,
+                    event.response,
+                    event.parameters,
+                    event.route,
+                ),
+            );
         } catch (error: any) {
-            event.next('parametersFailed', new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error));
+            event.next(
+                'parametersFailed',
+                new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error),
+            );
         }
     }
 
@@ -687,17 +754,20 @@ export class HttpListener {
         if (event.sent) return;
         if (event.hasNext()) return;
 
-
         const start = Date.now();
-        const stopWatchLabel = event.route.action.type === 'controller'
-            ? getClassName(event.route.action.controller) + '.' + event.route.action.methodName
-            : event.route.action.fn.name;
+        const stopWatchLabel =
+            event.route.action.type === 'controller'
+                ? getClassName(event.route.action.controller) + '.' + event.route.action.methodName
+                : event.route.action.fn.name;
 
         const frame = this.stopwatch ? this.stopwatch.start(stopWatchLabel, FrameCategory.httpController) : undefined;
         try {
             let result: any;
             if (event.route.action.type === 'controller') {
-                const controllerInstance = event.injectorContext.get(event.route.action.controller, event.route.action.module);
+                const controllerInstance = event.injectorContext.get(
+                    event.route.action.controller,
+                    event.route.action.module,
+                );
                 const method = controllerInstance[event.route.action.methodName];
                 result = await method.apply(controllerInstance, event.parameters.arguments);
             } else {
@@ -705,7 +775,11 @@ export class HttpListener {
             }
 
             if (isElementStruct(result)) {
-                const html = await getTemplateRender()(event.injectorContext.getRootInjector(), result, this.stopwatch ? this.stopwatch : undefined);
+                const html = await getTemplateRender()(
+                    event.injectorContext.getRootInjector(),
+                    result,
+                    this.stopwatch ? this.stopwatch : undefined,
+                );
                 result = new HtmlResponse(html, 200).header('Content-Type', 'text/html; charset=utf-8');
             }
             if (result instanceof stream.Readable) {
@@ -715,15 +789,30 @@ export class HttpListener {
                     stream.once('error', reject);
                 });
             }
-            const responseEvent = new HttpResponseEvent(event.injectorContext, event.request, event.response, result, event.route);
+            const responseEvent = new HttpResponseEvent(
+                event.injectorContext,
+                event.request,
+                event.response,
+                result,
+                event.route,
+            );
             responseEvent.controllerActionTime = Date.now() - start;
             event.next('response', responseEvent);
         } catch (error: any) {
             if (frame) frame.end();
             if (error instanceof HttpAccessDeniedError) {
-                event.next('accessDenied', new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.route, error));
+                event.next(
+                    'accessDenied',
+                    new HttpAccessDeniedEvent(event.injectorContext, event.request, event.response, event.route, error),
+                );
             } else {
-                const errorEvent = new HttpControllerErrorEvent(event.injectorContext, event.request, event.response, event.route, error);
+                const errorEvent = new HttpControllerErrorEvent(
+                    event.injectorContext,
+                    event.request,
+                    event.response,
+                    event.route,
+                    error,
+                );
                 errorEvent.controllerActionTime = Date.now() - start;
                 event.next('controllerError', errorEvent);
             }
@@ -738,23 +827,40 @@ export class HttpListener {
         if (event.sent) return;
 
         if (event.error instanceof SerializationError) {
-            event.send(new JSONResponse({
-                message: event.error.message,
-                errors: [{
-                    path: event.error.path,
-                    code: 'serialization',
-                    message: event.error.originalMessage,
-                }]
-            }, 400).disableAutoSerializing());
+            event.send(
+                new JSONResponse(
+                    {
+                        message: event.error.message,
+                        errors: [
+                            {
+                                path: event.error.path,
+                                code: 'serialization',
+                                message: event.error.originalMessage,
+                            },
+                        ],
+                    },
+                    400,
+                ).disableAutoSerializing(),
+            );
         } else if (event.error instanceof ValidationError) {
-            event.send(new JSONResponse({
-                message: event.error.message,
-                errors: event.error.errors
-            }, 400).disableAutoSerializing());
+            event.send(
+                new JSONResponse(
+                    {
+                        message: event.error.message,
+                        errors: event.error.errors,
+                    },
+                    400,
+                ).disableAutoSerializing(),
+            );
         } else if (event.error instanceof HttpError) {
-            event.send(new JSONResponse({
-                message: event.error.message
-            }, event.error.httpCode).disableAutoSerializing());
+            event.send(
+                new JSONResponse(
+                    {
+                        message: event.error.message,
+                    },
+                    event.error.httpCode,
+                ).disableAutoSerializing(),
+            );
             return;
         } else {
             this.logger.error('Controller parameter resolving error:', event.error);
@@ -769,15 +875,25 @@ export class HttpListener {
         if (event.sent) return;
 
         if (event.error instanceof ValidationError) {
-            event.send(new JSONResponse({
-                message: event.error.message,
-                errors: event.error.errors
-            }, 400).disableAutoSerializing());
+            event.send(
+                new JSONResponse(
+                    {
+                        message: event.error.message,
+                        errors: event.error.errors,
+                    },
+                    400,
+                ).disableAutoSerializing(),
+            );
             return;
         } else if (event.error instanceof HttpError) {
-            event.send(new JSONResponse({
-                message: event.error.message
-            }, event.error.httpCode).disableAutoSerializing());
+            event.send(
+                new JSONResponse(
+                    {
+                        message: event.error.message,
+                    },
+                    event.error.httpCode,
+                ).disableAutoSerializing(),
+            );
             return;
         }
 
@@ -795,10 +911,18 @@ export class HttpListener {
         if (event.response.headersSent) return;
         if (event.result === undefined || event.result === null) return;
 
-        if (event.result instanceof HtmlResponse || event.result instanceof Response || event.result instanceof ServerResponse || event.result instanceof Redirect || event.result instanceof stream.Readable) {
+        if (
+            event.result instanceof HtmlResponse ||
+            event.result instanceof Response ||
+            event.result instanceof ServerResponse ||
+            event.result instanceof Redirect ||
+            event.result instanceof stream.Readable
+        ) {
             // don't do anything
         } else if (event.result instanceof JSONResponse) {
-            const schema = (event.result._statusCode && event.route.getSchemaForResponse(event.result._statusCode)) || event.route.returnType;
+            const schema =
+                (event.result._statusCode && event.route.getSchemaForResponse(event.result._statusCode)) ||
+                event.route.returnType;
 
             if (!schema || !event.result.autoSerializing) return;
 

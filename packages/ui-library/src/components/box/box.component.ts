@@ -7,7 +7,7 @@ import { Component, Input } from '@angular/core';
             <div class="box-title" *ngIf="title" (click)="toggleOpen()">
                 <div>
                     <dui-icon *ngIf="toggleAble" clickable [name]="open ? 'arrow_down' : 'arrow_right'"></dui-icon>
-                    {{title}}
+                    {{ title }}
                 </div>
             </div>
 
@@ -16,7 +16,7 @@ import { Component, Input } from '@angular/core';
             </ng-container>
         </div>
     `,
-    styleUrls: ['./box.component.scss']
+    styleUrls: ['./box.component.scss'],
 })
 export class DeepkitBoxComponent {
     @Input() title: string = '';

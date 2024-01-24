@@ -1,9 +1,9 @@
 import { expect, test } from '@jest/globals';
-import {
-    entity, MongoId, PrimaryKey, ReflectionClass,
-} from '@deepkit/type';
-import { createDatabase } from './utils';
+
+import { MongoId, PrimaryKey, ReflectionClass, entity } from '@deepkit/type';
+
 import { AggregateCommand } from '../src/client/command/aggregate';
+import { createDatabase } from './utils';
 
 Error.stackTraceLimit = 100;
 
@@ -13,10 +13,8 @@ export class Model {
 
     prodId: string = '';
 
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
-
 
 test('raw AggregateCommand', async () => {
     const db = await createDatabase('testing');
@@ -56,15 +54,20 @@ test('raw AggregateCommand', async () => {
     }
 
     // this will find records with the same prodId and list their _id
-    const pipeline = [{
-        $group: {
-            _id: {prodId: '$prodId'}, uniqueIds: {$addToSet: '$_id'}, count: {$sum: 1},
+    const pipeline = [
+        {
+            $group: {
+                _id: { prodId: '$prodId' },
+                uniqueIds: { $addToSet: '$_id' },
+                count: { $sum: 1 },
+            },
         },
-    }, {
-        $match: {
-            count: {$gte: 2},
+        {
+            $match: {
+                count: { $gte: 2 },
+            },
         },
-    },];
+    ];
 
     const resultSchema = ReflectionClass.from(DoubleEntries);
     const schema = ReflectionClass.from(Model);
@@ -73,8 +76,11 @@ test('raw AggregateCommand', async () => {
 
     // console.log(res);
 
-    expect(res).toMatchObject([{
-        _id: {prodId: 'AA'}, uniqueIds: [expect.any(String), expect.any(String)], count: 2
-    }]);
-
+    expect(res).toMatchObject([
+        {
+            _id: { prodId: 'AA' },
+            uniqueIds: [expect.any(String), expect.any(String)],
+            count: 2,
+        },
+    ]);
 });

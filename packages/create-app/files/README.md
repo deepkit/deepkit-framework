@@ -4,7 +4,6 @@ Welcome to your new Deepkit app.
 
 ## Start server
 
-
 ```sh
 $ npm run app server:start
 
@@ -19,7 +18,7 @@ $ npm run app server:start
 
 You can now open http://localhost:8080/hello/Peter.
 
-Or open the Framework Debugger: http://localhost:8080/_debug/ (if debug is enabled in `new FrameworkModule({ debug: true })`)
+Or open the Framework Debugger: http://localhost:8080/\_debug/ (if debug is enabled in `new FrameworkModule({ debug: true })`)
 
 ### CLI
 
@@ -86,7 +85,7 @@ To deploy the app, you should build it via `npm run build`. It will compile TS t
 $ npm run build
 $ node dist/app.js hello world
 
-# or start server. 
+# or start server.
 $ APP_ENVIRONMENT=production node dist/app.js server:start
 ```
 

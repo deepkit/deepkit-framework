@@ -1,8 +1,8 @@
-import { reflect, ReflectionKind, Type } from '@deepkit/type';
 import { getParentClass } from '@deepkit/core';
+import { ReflectionKind, Type, reflect } from '@deepkit/type';
 
-export type InjectMeta<T = never> = { __meta?: never & ['inject', T] }
-export type Inject<Type, Token = never> = Type & InjectMeta<Token>
+export type InjectMeta<T = never> = { __meta?: never & ['inject', T] };
+export type Inject<Type, Token = never> = Type & InjectMeta<Token>;
 
 /**
  * Checks if given type is nominally compatible with the given interface.
@@ -32,7 +32,7 @@ export function nominalCompatibility(token: Type, provider: Type): number {
     //we want to check if the token is nominal the same with the provider.
     if (token === provider) return 1;
 
-    const stack: { spec: number, type: Type }[] = [{ spec: 1, type: provider }];
+    const stack: { spec: number; type: Type }[] = [{ spec: 1, type: provider }];
 
     while (stack.length) {
         const entry = stack.pop()!;
@@ -41,9 +41,26 @@ export function nominalCompatibility(token: Type, provider: Type): number {
 
         if (!current.id && !token.id) {
             //both have no nominal ID, so compare by value identity (literal, classType, function)
-            if (current.kind === ReflectionKind.function && token.kind === ReflectionKind.function && current.function && current.function === token.function) return entry.spec;
-            if (current.kind === ReflectionKind.class && token.kind === ReflectionKind.class && current.classType && current.classType === token.classType) return entry.spec;
-            if (current.kind === ReflectionKind.literal && token.kind === ReflectionKind.literal && current.literal === token.literal) return entry.spec;
+            if (
+                current.kind === ReflectionKind.function &&
+                token.kind === ReflectionKind.function &&
+                current.function &&
+                current.function === token.function
+            )
+                return entry.spec;
+            if (
+                current.kind === ReflectionKind.class &&
+                token.kind === ReflectionKind.class &&
+                current.classType &&
+                current.classType === token.classType
+            )
+                return entry.spec;
+            if (
+                current.kind === ReflectionKind.literal &&
+                token.kind === ReflectionKind.literal &&
+                current.literal === token.literal
+            )
+                return entry.spec;
         }
 
         if (current.kind === ReflectionKind.class) {
@@ -54,7 +71,10 @@ export function nominalCompatibility(token: Type, provider: Type): number {
             }
         }
 
-        if ((current.kind === ReflectionKind.class || current.kind === ReflectionKind.objectLiteral) && current.implements) {
+        if (
+            (current.kind === ReflectionKind.class || current.kind === ReflectionKind.objectLiteral) &&
+            current.implements
+        ) {
             for (const i of current.implements) {
                 stack.push({ spec: entry.spec + 1, type: i });
             }

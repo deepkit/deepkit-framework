@@ -11,39 +11,31 @@
     "useDefineForClassFields": false,
     "noImplicitAny": true,
     "esModuleInterop": true,
-    "types": [
-      "fs-extra",
-      "node"
-    ],
-    "lib": [
-      "es2018",
-      "dom"
-    ],
+    "types": ["fs-extra", "node"],
+    "lib": ["es2018", "dom"],
     "paths": {
-      "angular-desktop-ui": [
-        "dist/"
-      ]
-    }
+      "angular-desktop-ui": ["dist/"],
+    },
   },
   "reflection": true,
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
-    "strictTemplates": true
+    "strictTemplates": true,
   },
   "references": [
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../core-rxjs/tsconfig.json"
+      "path": "../core-rxjs/tsconfig.json",
     },
     {
-      "path": "../event/tsconfig.json"
+      "path": "../event/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

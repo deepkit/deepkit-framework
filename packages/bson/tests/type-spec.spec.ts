@@ -1,14 +1,10 @@
+import { expect, test } from '@jest/globals';
+
 import {
     AutoIncrement,
     BackReference,
     BinaryBigInt,
-    cast,
-    copyAndSetParent,
-    createReference,
     Embedded,
-    hasCircularReference,
-    hasEmbedded,
-    integer,
     MapName,
     MongoId,
     PrimaryKey,
@@ -16,14 +12,20 @@ import {
     Reference,
     ReflectionClass,
     ReflectionKind,
-    resolveReceiveType,
     SignedBinaryBigInt,
     Type,
-    typeOf,
     TypePropertySignature,
-    UUID
+    UUID,
+    cast,
+    copyAndSetParent,
+    createReference,
+    hasCircularReference,
+    hasEmbedded,
+    integer,
+    resolveReceiveType,
+    typeOf,
 } from '@deepkit/type';
-import { expect, test } from '@jest/globals';
+
 import { deserializeBSON } from '../src/bson-deserializer.js';
 import { deserializeBSONWithoutOptimiser } from '../src/bson-parser.js';
 import { serializeBSON, serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
@@ -38,7 +40,11 @@ Error.stackTraceLimit = 150;
  * @reflection never
  */
 function needsWrapper(type: Type): boolean {
-    return hasEmbedded(type) || (type.kind == ReflectionKind.class && type.types.length === 0) || (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral);
+    return (
+        hasEmbedded(type) ||
+        (type.kind == ReflectionKind.class && type.types.length === 0) ||
+        (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral)
+    );
 }
 
 /**
@@ -49,7 +55,13 @@ export function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
     if (needsWrapper(type)) {
         const t: Type = copyAndSetParent({
             kind: ReflectionKind.objectLiteral,
-            types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }]
+            types: [
+                {
+                    kind: ReflectionKind.propertySignature,
+                    name: 'v',
+                    type: { kind: ReflectionKind.never },
+                },
+            ],
         });
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
@@ -71,7 +83,13 @@ export function serializeToJson<T>(value: T | any, type?: ReceiveType<T>): T {
     if (needsWrapper(type)) {
         const t: Type = copyAndSetParent({
             kind: ReflectionKind.objectLiteral,
-            types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }]
+            types: [
+                {
+                    kind: ReflectionKind.propertySignature,
+                    name: 'v',
+                    type: { kind: ReflectionKind.never },
+                },
+            ],
         });
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
@@ -91,7 +109,13 @@ export function deserializeFromJson<T>(value: any, type?: ReceiveType<T>): T {
     if (needsWrapper(type)) {
         const t: Type = copyAndSetParent({
             kind: ReflectionKind.objectLiteral,
-            types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }]
+            types: [
+                {
+                    kind: ReflectionKind.propertySignature,
+                    name: 'v',
+                    type: { kind: ReflectionKind.never },
+                },
+            ],
         });
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
@@ -106,7 +130,9 @@ export function deserializeFromJson<T>(value: any, type?: ReceiveType<T>): T {
 }
 
 enum MyEnum {
-    a, b, c
+    a,
+    b,
+    c,
 }
 
 class Config {
@@ -126,12 +152,12 @@ test('basics with value', () => {
     expect(roundTrip<string>('asd')).toBe('asd');
     expect(roundTrip<number>(22)).toBe(22);
     expect(roundTrip<boolean>(false)).toBe(false);
-    expect(roundTrip<Date>(new Date)).toBeInstanceOf(Date);
+    expect(roundTrip<Date>(new Date())).toBeInstanceOf(Date);
 });
 
 test('model', () => {
     {
-        const item = new Model;
+        const item = new Model();
         item.id = 23;
         item.title = '2322';
         const back = roundTrip<Model>(item);
@@ -141,7 +167,7 @@ test('model', () => {
 });
 
 test('with implicit default value', () => {
-    const defaultDate = new Date;
+    const defaultDate = new Date();
 
     class Product {
         id: number = 0;
@@ -152,10 +178,19 @@ test('with implicit default value', () => {
     //having a default value doesn't mean we are optional;
     expect(ReflectionClass.from(Product).getProperty('created')!.isOptional()).toBe(false);
 
-    expect(roundTrip<Product>({ id: 23 } as any)).toEqual({ id: 23, created: defaultDate });
-    expect(deserializeFromJson<Product>({ id: 23, created: undefined } as any)).toEqual({ id: 23, created: defaultDate });
+    expect(roundTrip<Product>({ id: 23 } as any)).toEqual({
+        id: 23,
+        created: defaultDate,
+    });
+    expect(deserializeFromJson<Product>({ id: 23, created: undefined } as any)).toEqual({
+        id: 23,
+        created: defaultDate,
+    });
     expect(deserializeFromJson<Product>({ id: 23, created: null } as any)).toEqual({ id: 23, created: defaultDate });
-    expect(roundTrip<Product>({ id: 23, created: undefined } as any)).toEqual({ id: 23, created: defaultDate });
+    expect(roundTrip<Product>({ id: 23, created: undefined } as any)).toEqual({
+        id: 23,
+        created: defaultDate,
+    });
 
     expect(roundTrip<Partial<Product>>({ id: 23 } as any)).toEqual({ id: 23 });
     expect(roundTrip<Partial<Product>>({ id: 23, created: undefined } as any)).toEqual({ id: 23 });
@@ -165,15 +200,26 @@ test('with implicit default value', () => {
 
     //we need to keep undefined values otherwise there is no way to reset a value
     //for JSON/BSON on the transport layer is null used to communicate the fact that we set explicitly `created` to undefined
-    expect(deserializeFromJson<Partial<Product>>({ id: 23, created: null } as any)).toEqual({ id: 23, created: undefined });
-    expect('created' in serializeToJson<Partial<Product>>({ id: 23, created: undefined } as any)).toEqual(true);
+    expect(deserializeFromJson<Partial<Product>>({ id: 23, created: null } as any)).toEqual({
+        id: 23,
+        created: undefined,
+    });
+    expect(
+        'created' in
+            serializeToJson<Partial<Product>>({
+                id: 23,
+                created: undefined,
+            } as any),
+    ).toEqual(true);
     expect('created' in roundTrip<Partial<Product>>({ id: 23, created: undefined } as any)).toEqual(true);
 });
 
 test('partial keeps explicitely undefined fields', () => {
     expect(roundTrip<Partial<Model>>({})).toEqual({});
     expect('name' in roundTrip<Partial<Model>>({})).toBe(false);
-    expect(roundTrip<Partial<Model>>({ title: undefined })).toEqual({ title: undefined });
+    expect(roundTrip<Partial<Model>>({ title: undefined })).toEqual({
+        title: undefined,
+    });
 
     {
         const item = serializeToJson<Partial<Model>>({ title: undefined });
@@ -196,13 +242,17 @@ test('partial keeps explicitely undefined fields', () => {
         canceledAt?: Date;
     }
 
-    expect(roundTrip<Partial<Purchase>>({ sentAt: undefined })).toEqual({ sentAt: undefined });
+    expect(roundTrip<Partial<Purchase>>({ sentAt: undefined })).toEqual({
+        sentAt: undefined,
+    });
     expect('sentAt' in roundTrip<Partial<Purchase>>({ sentAt: undefined })).toEqual(true);
 });
 
 test('record removes undefined when not allowed', () => {
     expect(roundTrip<Record<string, string>>({})).toEqual({});
-    expect(roundTrip<Record<string, string>>({ foo: 'bar' })).toEqual({ foo: 'bar' });
+    expect(roundTrip<Record<string, string>>({ foo: 'bar' })).toEqual({
+        foo: 'bar',
+    });
     expect(deserializeFromJson<Record<string, string>>({ foo: undefined } as any)).toEqual({});
     expect(serializeToJson<Record<string, string>>({ foo: undefined } as any)).toEqual({});
     expect(roundTrip<Record<string, string>>({ foo: undefined } as any)).toEqual({});
@@ -212,14 +262,36 @@ test('record removes undefined when not allowed', () => {
 test('record allows undefined when allowed', () => {
     expect(serializeToJson<Record<string, string | undefined>>({})).toEqual({});
     expect(serializeToJson<Record<string, string | undefined>>({ foo: 'bar' })).toEqual({ foo: 'bar' });
-    expect(serializeToJson<Record<string, string | undefined>>({ foo: undefined } as any)).toEqual({ foo: null });
-    expect(deserializeFromJson<Record<string, string | undefined>>({ foo: null } as any)).toEqual({ foo: undefined });
-    expect('foo' in deserializeFromJson<Record<string, string | undefined>>({ foo: null } as any)).toEqual(true);
+    expect(
+        serializeToJson<Record<string, string | undefined>>({
+            foo: undefined,
+        } as any),
+    ).toEqual({ foo: null });
+    expect(
+        deserializeFromJson<Record<string, string | undefined>>({
+            foo: null,
+        } as any),
+    ).toEqual({ foo: undefined });
+    expect(
+        'foo' in
+            deserializeFromJson<Record<string, string | undefined>>({
+                foo: null,
+            } as any),
+    ).toEqual(true);
 
     expect(roundTrip<Record<string, string | undefined>>({})).toEqual({});
     expect(roundTrip<Record<string, string | undefined>>({ foo: 'bar' })).toEqual({ foo: 'bar' });
-    expect(roundTrip<Record<string, string | undefined>>({ foo: undefined } as any)).toEqual({ foo: undefined });
-    expect('foo' in roundTrip<Record<string, string | undefined>>({ foo: undefined } as any)).toEqual(true);
+    expect(
+        roundTrip<Record<string, string | undefined>>({
+            foo: undefined,
+        } as any),
+    ).toEqual({ foo: undefined });
+    expect(
+        'foo' in
+            roundTrip<Record<string, string | undefined>>({
+                foo: undefined,
+            } as any),
+    ).toEqual(true);
 });
 
 test('bigint', () => {
@@ -227,13 +299,19 @@ test('bigint', () => {
     expect(roundTrip<bigint>(5n)).toEqual(5n);
     expect(roundTrip<bigint>(12n)).toEqual(12n);
     expect(roundTrip<bigint>(9223372036854775807n)).toEqual(9223372036854775807n);
-    expect(roundTrip<BinaryBigInt>(12012020202020202020202020202020202020n)).toEqual(12012020202020202020202020202020202020n);
-    expect(roundTrip<BinaryBigInt>(16n ** 16n ** 2n)).toEqual(16n ** 16n ** 2n);
-    expect(roundTrip<BinaryBigInt>(16n ** 16n ** 3n)).toEqual(16n ** 16n ** 3n);
-    expect(roundTrip<SignedBinaryBigInt>(12012020202020202020202020202020202020n)).toEqual(12012020202020202020202020202020202020n);
-    expect(roundTrip<SignedBinaryBigInt>(-12012020202020202020202020202020202020n)).toEqual(-12012020202020202020202020202020202020n);
-    expect(roundTrip<SignedBinaryBigInt>(16n ** 16n ** 2n)).toEqual(16n ** 16n ** 2n);
-    expect(roundTrip<SignedBinaryBigInt>(16n ** 16n ** 3n)).toEqual(16n ** 16n ** 3n);
+    expect(roundTrip<BinaryBigInt>(12012020202020202020202020202020202020n)).toEqual(
+        12012020202020202020202020202020202020n,
+    );
+    expect(roundTrip<BinaryBigInt>(16n ** (16n ** 2n))).toEqual(16n ** (16n ** 2n));
+    expect(roundTrip<BinaryBigInt>(16n ** (16n ** 3n))).toEqual(16n ** (16n ** 3n));
+    expect(roundTrip<SignedBinaryBigInt>(12012020202020202020202020202020202020n)).toEqual(
+        12012020202020202020202020202020202020n,
+    );
+    expect(roundTrip<SignedBinaryBigInt>(-12012020202020202020202020202020202020n)).toEqual(
+        -12012020202020202020202020202020202020n,
+    );
+    expect(roundTrip<SignedBinaryBigInt>(16n ** (16n ** 2n))).toEqual(16n ** (16n ** 2n));
+    expect(roundTrip<SignedBinaryBigInt>(16n ** (16n ** 3n))).toEqual(16n ** (16n ** 3n));
 });
 
 test('union basics', () => {
@@ -246,9 +324,9 @@ test('union basics', () => {
     expect(roundTrip<bigint | number>(23)).toEqual(23n);
     expect(roundTrip<bigint | number>(23n)).toEqual(23n);
 
-    expect(roundTrip<string | Model>(new Model)).toBeInstanceOf(Model);
+    expect(roundTrip<string | Model>(new Model())).toBeInstanceOf(Model);
     {
-        const item = new Model;
+        const item = new Model();
         item.id = 23;
         item.title = '23';
         const back = roundTrip<string | Model>(item);
@@ -256,7 +334,7 @@ test('union basics', () => {
     }
 
     {
-        const item = new Model;
+        const item = new Model();
         item.id = 23;
         item.title = '23';
         const back = roundTrip<Model>(item);
@@ -282,7 +360,10 @@ test('union 2', () => {
 
     expect(deserializeFromJson<undefined | s>({ type: 'm', name: 'Peter' })).toEqual({ type: 'm', name: 'Peter' });
     expect(serializeToJson<undefined | s>({ type: 'm', name: 'Peter' })).toEqual({ type: 'm', name: 'Peter' });
-    expect(roundTrip<undefined | s>({ type: 'm', name: 'Peter' })).toEqual({ type: 'm', name: 'Peter' });
+    expect(roundTrip<undefined | s>({ type: 'm', name: 'Peter' })).toEqual({
+        type: 'm',
+        name: 'Peter',
+    });
 });
 
 test('union 3', () => {
@@ -319,7 +400,11 @@ test('model 1', () => {
     }
 
     {
-        const model = { filter: { $regex: /Peter/ }, itemsPerPage: 50, parameters: {} };
+        const model = {
+            filter: { $regex: /Peter/ },
+            itemsPerPage: 50,
+            parameters: {},
+        };
         expect(roundTrip<Model>(model as any)).toEqual(model);
     }
 
@@ -335,7 +420,7 @@ test('model 1', () => {
             filter: undefined,
             skip: undefined,
             limit: undefined,
-            sort: undefined
+            sort: undefined,
         };
         expect(roundTrip<Model>(model as any)).toEqual(model);
     }
@@ -346,8 +431,7 @@ class Team {
     version: number = 0;
     lead?: User & Reference;
 
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
 
 class User {
@@ -355,8 +439,7 @@ class User {
     version: number = 0;
     teams: Team[] & BackReference<{ via: typeof UserTeam }> = [];
 
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
 
 class UserTeam {
@@ -367,8 +450,7 @@ class UserTeam {
     constructor(
         public team: Team & Reference,
         public user: User & Reference,
-    ) {
-    }
+    ) {}
 }
 
 test('relation 1', () => {
@@ -408,7 +490,6 @@ test('relation 1', () => {
     }
 });
 
-
 test('relation 2', () => {
     // {
     //     const user = new User('foo');
@@ -441,7 +522,7 @@ test('relation 2', () => {
                 name: 'Marc 1',
                 id: 3,
                 version: 0,
-            })
+            }),
         ];
 
         expect(roundTrip<User[]>(items)).toEqual(items);
@@ -459,7 +540,7 @@ test('regex', () => {
 test('explicitly set undefined on optional triggers default value', () => {
     class Product {
         id: number = 0;
-        created?: Date = new Date;
+        created?: Date = new Date();
     }
 
     //no value means the default triggers
@@ -473,7 +554,7 @@ test('explicitly set undefined on optional triggers default value', () => {
 test('partial explicitly set undefined on optional is handled', () => {
     class Product {
         id: number = 0;
-        created?: Date = new Date;
+        created?: Date = new Date();
     }
 
     //no value means the default triggers
@@ -487,7 +568,7 @@ test('partial explicitly set undefined on optional is handled', () => {
 test('partial explicitly set undefined on required is not ignored', () => {
     class Product {
         id: number = 0;
-        created: Date = new Date;
+        created: Date = new Date();
     }
 
     //no value means the default triggers
@@ -502,7 +583,7 @@ test('partial explicitly set undefined on required is not ignored', () => {
 test('explicitely set undefined on required is ignored', () => {
     class Product {
         id: number = 0;
-        created: Date = new Date;
+        created: Date = new Date();
     }
 
     expect(roundTrip<Product>({ id: 23 } as any).created).toBeInstanceOf(Date);
@@ -515,12 +596,12 @@ test('partial does not return the model on root', () => {
 });
 
 test('partial returns the model at second level', () => {
-    const config = new Config;
+    const config = new Config();
     config.color = 'red';
 
     expect(roundTrip<Partial<Model>>({ id: 23, config: config } as any)).toEqual({
         id: 23,
-        config: { big: false, color: 'red' }
+        config: { big: false, color: 'red' },
     });
     expect(roundTrip<Partial<Model>>({ id: 23, config: config } as any).config).toBeInstanceOf(Config);
 });
@@ -595,10 +676,22 @@ test('nullable container', () => {
         tagPartial: Partial<{ name: string }> | null;
     }
 
-    expect(roundTrip<s>({ tags: null, tagMap: null, tagPartial: null })).toEqual({ tags: null, tagMap: null, tagPartial: null });
-    expect(roundTrip<s>({} as any)).toEqual({ tags: null, tagMap: null, tagPartial: null });
+    expect(roundTrip<s>({ tags: null, tagMap: null, tagPartial: null })).toEqual({
+        tags: null,
+        tagMap: null,
+        tagPartial: null,
+    });
+    expect(roundTrip<s>({} as any)).toEqual({
+        tags: null,
+        tagMap: null,
+        tagPartial: null,
+    });
 
-    expect(serializeToJson<s>({} as any)).toEqual({ tags: null, tagMap: null, tagPartial: null });
+    expect(serializeToJson<s>({} as any)).toEqual({
+        tags: null,
+        tagMap: null,
+        tagPartial: null,
+    });
 });
 
 test('nullable basics', () => {
@@ -649,19 +742,20 @@ test('constructor argument', () => {
     class Product {
         id: number = 0;
 
-        constructor(public title: string) {
-        }
+        constructor(public title: string) {}
     }
 
     class Purchase {
         id: number = 0;
 
-        constructor(public product: Product) {
-        }
+        constructor(public product: Product) {}
     }
 
     {
-        const item = roundTrip<Purchase>({ id: 4, product: new Product('asd') });
+        const item = roundTrip<Purchase>({
+            id: 4,
+            product: new Product('asd'),
+        });
         expect(item.product).toBeInstanceOf(Product);
     }
 });
@@ -670,10 +764,7 @@ test('omit circular reference 1', () => {
     class Model {
         another?: Model;
 
-        constructor(
-            public id: number = 0
-        ) {
-        }
+        constructor(public id: number = 0) {}
     }
 
     expect(ReflectionClass.from(Model).hasCircularReference()).toBe(true);
@@ -721,8 +812,7 @@ test('omit circular reference 1 interface', () => {
 
 test('omit circular reference 2', () => {
     class Config {
-        constructor(public model: Model) {
-        }
+        constructor(public model: Model) {}
     }
 
     class Model {
@@ -734,7 +824,7 @@ test('omit circular reference 2', () => {
     expect(ReflectionClass.from(Config).hasCircularReference()).toBe(true);
 
     {
-        const model = new Model;
+        const model = new Model();
         const config = new Config(model);
         model.config = config;
         const plain = serializeToJson<Model>(model);
@@ -743,8 +833,8 @@ test('omit circular reference 2', () => {
     }
 
     {
-        const model = new Model;
-        const model2 = new Model;
+        const model = new Model();
+        const model2 = new Model();
         const config = new Config(model2);
         model.config = config;
         const plain = serializeToJson<Model>(model);
@@ -759,8 +849,7 @@ test('omit circular reference 3', () => {
 
         public images: Image[] = [];
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     class Image {
@@ -812,16 +901,19 @@ test('promise', () => {
 
 test('embedded single', () => {
     class Price {
-        constructor(public amount: integer) {
-        }
+        constructor(public amount: integer) {}
     }
 
     class Product {
-        constructor(public title: string, public price: Embedded<Price>) {
-        }
+        constructor(
+            public title: string,
+            public price: Embedded<Price>,
+        ) {}
     }
 
-    expect(serializeToJson<Embedded<Price>>(new Price(34))).toEqual({ amount: 34 });
+    expect(serializeToJson<Embedded<Price>>(new Price(34))).toEqual({
+        amount: 34,
+    });
     // expect(serialize<Embedded<Price>>(new Price(34))).toEqual(34);
     // expect(serialize<Embedded<Price>[]>([new Price(34)])).toEqual([34]);
     // expect(serialize<Embedded<Price, { prefix: '' }>[]>([new Price(34)])).toEqual([34]);
@@ -861,8 +953,7 @@ test('embedded single', () => {
 
 test('embedded single optional', () => {
     class Price {
-        constructor(public amount: integer) {
-        }
+        constructor(public amount: integer) {}
     }
 
     //for the moment, bson does not support emebbed structures. it's serialized as is.
@@ -969,8 +1060,14 @@ test('class inheritance', () => {
     expect(deserializeFromJson<A>({ id: 2 })).toEqual({ id: 2 });
     expect(serializeToJson<A>({ id: 2 })).toEqual({ id: 2 });
 
-    expect(deserializeFromJson<B>({ id: 2, username: 'Peter' })).toEqual({ id: 2, username: 'Peter' });
-    expect(serializeToJson<B>({ id: 2, username: 'Peter' })).toEqual({ id: 2, username: 'Peter' });
+    expect(deserializeFromJson<B>({ id: 2, username: 'Peter' })).toEqual({
+        id: 2,
+        username: 'Peter',
+    });
+    expect(serializeToJson<B>({ id: 2, username: 'Peter' })).toEqual({
+        id: 2,
+        username: 'Peter',
+    });
 });
 
 test('mapName interface', () => {
@@ -978,11 +1075,15 @@ test('mapName interface', () => {
         type: string & MapName<'~type'>;
     }
 
-    expect(deserializeFromJson<A>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
-    expect(serializeToJson<A>({ 'type': 'abc' })).toEqual({ '~type': 'abc' });
+    expect(deserializeFromJson<A>({ '~type': 'abc' })).toEqual({ type: 'abc' });
+    expect(serializeToJson<A>({ type: 'abc' })).toEqual({ '~type': 'abc' });
 
-    expect(deserializeFromJson<A | string>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
-    expect(serializeToJson<A | string>({ 'type': 'abc' })).toEqual({ '~type': 'abc' });
+    expect(deserializeFromJson<A | string>({ '~type': 'abc' })).toEqual({
+        type: 'abc',
+    });
+    expect(serializeToJson<A | string>({ type: 'abc' })).toEqual({
+        '~type': 'abc',
+    });
     expect(serializeToJson<A | string>('abc')).toEqual('abc');
 });
 
@@ -990,15 +1091,23 @@ test('mapName class', () => {
     class A {
         id: string & MapName<'~id'> = '';
 
-        constructor(public type: string & MapName<'~type'>) {
-        }
+        constructor(public type: string & MapName<'~type'>) {}
     }
 
-    expect(deserializeFromJson<A>({ '~id': '1', '~type': 'abc' })).toEqual({ 'id': '1', 'type': 'abc' });
-    expect(serializeToJson<A>({ id: '1', 'type': 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
+    expect(deserializeFromJson<A>({ '~id': '1', '~type': 'abc' })).toEqual({
+        id: '1',
+        type: 'abc',
+    });
+    expect(serializeToJson<A>({ id: '1', type: 'abc' })).toEqual({
+        '~id': '1',
+        '~type': 'abc',
+    });
 
-    expect(deserializeFromJson<A | string>({ '~id': '', '~type': 'abc' })).toEqual({ id: '', 'type': 'abc' });
-    expect(serializeToJson<A | string>({ id: '1', 'type': 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
+    expect(deserializeFromJson<A | string>({ '~id': '', '~type': 'abc' })).toEqual({ id: '', type: 'abc' });
+    expect(serializeToJson<A | string>({ id: '1', type: 'abc' })).toEqual({
+        '~id': '1',
+        '~type': 'abc',
+    });
     expect(serializeToJson<A | string>('abc')).toEqual('abc');
 });
 
@@ -1011,10 +1120,10 @@ test('dynamic properties', () => {
         }
     }
 
-    const back1 = deserializeFromJson<A>({'~type': 'abc'});
+    const back1 = deserializeFromJson<A>({ '~type': 'abc' });
     expect(back1.getType()).toBe('abc');
 
-    const back2 = deserializeFromJson<A>({'type': 'abc'});
+    const back2 = deserializeFromJson<A>({ type: 'abc' });
     expect(back2.getType()).toBe('abc');
 });
 
@@ -1022,28 +1131,35 @@ test('class with statics', () => {
     class PilotId {
         public static readonly none: PilotId = new PilotId(0);
 
-        constructor(public readonly value: number) {
-        }
+        constructor(public readonly value: number) {}
 
         static from(value: number) {
             return new PilotId(value);
         }
     }
 
-    expect(deserializeFromJson<PilotId>({value: 34})).toEqual({value: 34});
-    expect(serializeToJson<PilotId>({value: 33})).toEqual({value: 33});
+    expect(deserializeFromJson<PilotId>({ value: 34 })).toEqual({ value: 34 });
+    expect(serializeToJson<PilotId>({ value: 33 })).toEqual({ value: 33 });
 });
 
 test('array with mongoid', () => {
     interface Model {
-        references: Array<{ cls: string, id: MongoId }>;
+        references: Array<{ cls: string; id: MongoId }>;
     }
 
-    expect(deserializeFromJson<Model>({ references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }] })).toEqual({
-        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }]
+    expect(
+        deserializeFromJson<Model>({
+            references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }],
+        }),
+    ).toEqual({
+        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }],
     });
 
-    expect(serializeToJson<Model>({ references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }] })).toEqual({
-        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }]
+    expect(
+        serializeToJson<Model>({
+            references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }],
+        }),
+    ).toEqual({
+        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }],
     });
 });

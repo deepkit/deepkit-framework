@@ -1,7 +1,9 @@
 import { expect, test } from '@jest/globals';
-import { JSONTransport, Logger, LoggerLevel, ScopedLogger, ScopeFormatter } from '../src/logger.js';
-import { MemoryLoggerTransport } from '../src/memory-logger.js';
+
 import { Injector, ServiceNotFoundError, TransientInjectionTarget } from '@deepkit/injector';
+
+import { JSONTransport, Logger, LoggerLevel, ScopeFormatter, ScopedLogger } from '../src/logger.js';
+import { MemoryLoggerTransport } from '../src/memory-logger.js';
 
 test('log level', () => {
     const logger = new Logger();
@@ -49,21 +51,20 @@ test('log data', () => {
     const memory = new MemoryLoggerTransport();
     const logger = new Logger([memory]);
 
-    class User {
-    }
+    class User {}
 
-    logger.log('Peter', { user: new User });
+    logger.log('Peter', { user: new User() });
 
     expect(memory.messages[0].message).toEqual('Peter { user: User {} }');
 
     memory.clear();
 
-    logger.data({ user: new User }).log('Peter');
+    logger.data({ user: new User() }).log('Peter');
     expect(memory.messages[0].message).toEqual('Peter');
     expect(memory.messages[0].data.user).toBeInstanceOf(User);
 
     memory.clear();
-    logger.log({ user: new User });
+    logger.log({ user: new User() });
 
     expect(memory.messages[0].message).toEqual('{ user: User {} }');
 });
@@ -73,7 +74,7 @@ test('colorless', () => {
     jsonLogger.out = {
         write: (message: string) => {
             expect(message).toContain(`This is a color test`);
-        }
+        },
     };
 
     const logger = new Logger([jsonLogger]);
@@ -83,8 +84,7 @@ test('colorless', () => {
 
 test('scoped logger', () => {
     class MyProvider {
-        constructor (public logger: ScopedLogger) {
-        }
+        constructor(public logger: ScopedLogger) {}
     }
 
     {
@@ -101,10 +101,7 @@ test('scoped logger', () => {
     }
 
     {
-        const injector = Injector.from([
-            MyProvider,
-            ScopedLogger,
-        ]);
+        const injector = Injector.from([MyProvider, ScopedLogger]);
         expect(() => injector.get(Logger)).toThrow(ServiceNotFoundError);
         const provider = injector.get(MyProvider);
         expect(provider.logger).toBeInstanceOf(Logger);
@@ -112,25 +109,21 @@ test('scoped logger', () => {
 
     {
         class A {
-            constructor (public b: B) {
-            }
+            constructor(public b: B) {}
         }
 
         class B {
-            constructor (public c: C, public target: TransientInjectionTarget) {
-            }
+            constructor(
+                public c: C,
+                public target: TransientInjectionTarget,
+            ) {}
         }
 
         class C {
-            constructor (public target: TransientInjectionTarget) {
-            }
+            constructor(public target: TransientInjectionTarget) {}
         }
 
-        const injector = Injector.from([
-            A,
-            { provide: B, transient: true },
-            { provide: C, transient: true },
-        ]);
+        const injector = Injector.from([A, { provide: B, transient: true }, { provide: C, transient: true }]);
         const a = injector.get(A);
         expect(a.b.c.target.token).toBe(B);
         expect(a.b.target.token).toBe(A);
@@ -138,18 +131,15 @@ test('scoped logger', () => {
 
     {
         class A {
-            constructor (public b: C) {
-            }
+            constructor(public b: C) {}
         }
 
         class B {
-            constructor (public target: TransientInjectionTarget) {
-            }
+            constructor(public target: TransientInjectionTarget) {}
         }
 
         class C {
-            constructor (public target: TransientInjectionTarget) {
-            }
+            constructor(public target: TransientInjectionTarget) {}
         }
 
         const injector = Injector.from([

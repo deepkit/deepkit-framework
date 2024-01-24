@@ -7,12 +7,12 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
+import { skip } from 'rxjs/operators';
 
 import { ClassType, isObject } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
 import { arrayBufferTo, entity } from '@deepkit/type';
-import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
-import { skip } from 'rxjs/operators';
 
 export type IdType = string | number;
 
@@ -25,9 +25,7 @@ export interface IdVersionInterface extends IdInterface {
 }
 
 export class ConnectionWriter {
-    write(buffer: Uint8Array) {
-
-    }
+    write(buffer: Uint8Array) {}
 }
 
 export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
@@ -39,10 +37,7 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
 
     protected teardowns: TeardownLogic[] = [];
 
-    constructor(
-        item: T,
-        teardown?: TeardownLogic,
-    ) {
+    constructor(item: T, teardown?: TeardownLogic) {
         super(item);
         if (teardown) {
             this.teardowns.push(teardown);
@@ -95,7 +90,9 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
     }
 
     toUTF8() {
-        const subject = new StreamBehaviorSubject(this.value instanceof Uint8Array ? arrayBufferTo(this.value, 'utf8') : '');
+        const subject = new StreamBehaviorSubject(
+            this.value instanceof Uint8Array ? arrayBufferTo(this.value, 'utf8') : '',
+        );
         const sub1 = this.pipe(skip(1)).subscribe(v => {
             subject.next(v instanceof Uint8Array ? arrayBufferTo(v, 'utf8') : '');
         });
@@ -132,7 +129,7 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
                     this.next(value as any);
                 }
             } else {
-                this.next((this.getValue() as any + value) as any as T);
+                this.next(((this.getValue() as any) + value) as any as T);
             }
         } else {
             if ('string' === typeof value) {
@@ -160,7 +157,6 @@ export function isEntitySubject(v: any): v is EntitySubject<any> {
     return !!v && isObject(v) && v.hasOwnProperty(IsEntitySubject);
 }
 
-
 export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<T> {
     /**
      * Patches are in class format.
@@ -177,7 +173,7 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
     }
 
     get onDeletion(): Observable<void> {
-        return new Observable((observer) => {
+        return new Observable(observer => {
             if (this.deleted) {
                 observer.next();
                 return;
@@ -191,7 +187,7 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
             return {
                 unsubscribe(): void {
                     sub.unsubscribe();
-                }
+                },
             };
         });
     }
@@ -211,9 +207,8 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
 export class ControllerDefinition<T> {
     constructor(
         public path: string,
-        public entities: ClassType[] = []
-    ) {
-    }
+        public entities: ClassType[] = [],
+    ) {}
 }
 
 export function ControllerSymbol<T>(path: string, entities: ClassType[] = []): ControllerDefinition<T> {
@@ -222,8 +217,7 @@ export function ControllerSymbol<T>(path: string, entities: ClassType[] = []): C
 
 @entity.name('@error:json')
 export class JSONError {
-    constructor(public readonly json: any) {
-    }
+    constructor(public readonly json: any) {}
 }
 
 export enum RpcTypes {
@@ -291,7 +285,7 @@ export enum RpcTypes {
 
     //Handles changes in ProgressTracker from client side to server (e.g. stop signal)
     //From server to client is handled normally via ObservableNext
-    ActionObservableProgressNext
+    ActionObservableProgressNext,
 }
 
 export interface rpcClientId {
@@ -389,9 +383,9 @@ export interface rpcEntityRemove {
 }
 
 export interface EntityPatch {
-    $set?: { [path: string]: any },
-    $unset?: { [path: string]: number }
-    $inc?: { [path: string]: number }
+    $set?: { [path: string]: any };
+    $unset?: { [path: string]: number };
+    $inc?: { [path: string]: number };
 }
 
 export interface rpcEntityPatch {
@@ -399,9 +393,9 @@ export interface rpcEntityPatch {
     id: string | number;
     version: number;
     patch: {
-        $set?: Record<string, any>,
-        $unset?: Record<string, number>,
-        $inc?: Record<string, number>,
+        $set?: Record<string, any>;
+        $unset?: Record<string, number>;
+        $inc?: Record<string, number>;
     };
 }
 

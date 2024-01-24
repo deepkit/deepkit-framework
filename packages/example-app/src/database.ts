@@ -1,24 +1,22 @@
-import { AutoIncrement, Email, entity, MaxLength, MinLength, PrimaryKey, Reference, Unique } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
+import { AutoIncrement, Email, MaxLength, MinLength, PrimaryKey, Reference, Unique, entity } from '@deepkit/type';
+
 import { Config } from './config.js';
 
 @entity.name('user').collection('users')
 export class User {
     id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+    created: Date = new Date();
     image?: Uint8Array;
 
-    constructor(
-        public username: string & MinLength<3> & Unique
-    ) {
-    }
+    constructor(public username: string & MinLength<3> & Unique) {}
 }
 
 @entity.name('author').collection('authors')
 export class Author {
     id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+    created: Date = new Date();
 
     email?: string & Email & MaxLength<100>;
 
@@ -27,10 +25,7 @@ export class Author {
 
     birthDate?: Date;
 
-    constructor(
-        public username: string & MinLength<3> & MaxLength<24> & Unique
-    ) {
-    }
+    constructor(public username: string & MinLength<3> & MaxLength<24> & Unique) {}
 }
 
 enum BookStatus {
@@ -42,7 +37,7 @@ enum BookStatus {
 @entity.name('book').collection('books')
 export class Book {
     id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+    created: Date = new Date();
 
     status: BookStatus = BookStatus.reserved;
 
@@ -54,8 +49,7 @@ export class Book {
     constructor(
         public author: Author & Reference,
         public title: string & MaxLength<128> & MinLength<3>,
-    ) {
-    }
+    ) {}
 }
 
 export class SQLiteDatabase extends Database {

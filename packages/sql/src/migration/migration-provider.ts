@@ -7,21 +7,19 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import glob from 'fast-glob';
+import { basename, join } from 'path';
 
 import { ClassType } from '@deepkit/core';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
-import glob from 'fast-glob';
-import { basename, join } from 'path';
+
 import { Migration } from './migration.js';
 
 export class MigrationProvider {
     protected databaseMap = new Map<string, Database<any>>();
     protected migrationDir: string = 'migrations/';
 
-    constructor(
-        public databases: DatabaseRegistry,
-    ) {
-    }
+    constructor(public databases: DatabaseRegistry) {}
 
     getMigrationDir(): string {
         return this.migrationDir;
@@ -68,12 +66,12 @@ export class MigrationProvider {
             const name = basename(file.replace('.ts', ''));
             const migration = require(path);
             if (migration && migration.SchemaMigration) {
-                const jo = new class extends (migration.SchemaMigration as ClassType<Migration>) {
+                const jo = new (class extends (migration.SchemaMigration as ClassType<Migration>) {
                     constructor() {
                         super();
                         if (!this.name) this.name = name;
                     }
-                };
+                })();
                 migrations.push(jo);
             }
         }

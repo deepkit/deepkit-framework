@@ -7,28 +7,28 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType, isClass, urlJoin } from '@deepkit/core';
 import {
     ClassDecoratorResult,
-    createClassDecoratorContext,
-    createPropertyDecoratorContext,
     DecoratorAndFetchSignature,
     DualDecorator,
     ExtractApiDataType,
     ExtractClass,
-    isDecoratorContext,
-    mergeDecorator,
     PropertyDecoratorFn,
     ReceiveType,
-    resolveReceiveType,
     SerializationOptions,
     Serializer,
     Type,
-    UnionToIntersection
+    UnionToIntersection,
+    createClassDecoratorContext,
+    createPropertyDecoratorContext,
+    isDecoratorContext,
+    mergeDecorator,
+    resolveReceiveType,
 } from '@deepkit/type';
+
+import { HttpMiddleware, HttpMiddlewareConfig, HttpMiddlewareFn, httpMiddleware } from './middleware.js';
 import { RouteParameterResolver } from './router.js';
-import { httpMiddleware, HttpMiddleware, HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware.js';
 
 type HttpActionMiddleware = (() => HttpMiddlewareConfig) | ClassType<HttpMiddleware> | HttpMiddlewareFn;
 
@@ -59,10 +59,7 @@ export class HttpController {
     getActions(): Set<HttpAction> {
         for (const action of this.actions) {
             if (!this.actionsProcessed.has(action)) {
-                action.groups = [
-                    ...this.groups,
-                    ...action.groups.filter((g) => !this.groups.includes(g)),
-                ];
+                action.groups = [...this.groups, ...action.groups.filter(g => !this.groups.includes(g))];
                 this.actionsProcessed.add(action);
             }
         }
@@ -115,11 +112,11 @@ export class HttpAction {
      */
     data = new Map<any, any>();
 
-    responses: { statusCode: number, description: string, type?: Type }[] = [];
+    responses: { statusCode: number; description: string; type?: Type }[] = [];
 }
 
 export class HttpControllerDecorator {
-    t = new HttpController;
+    t = new HttpController();
 
     controller(baseUrl: string = '') {
         this.t.baseUrl = baseUrl;
@@ -130,7 +127,7 @@ export class HttpControllerDecorator {
     }
 
     middleware(...middlewares: HttpActionMiddleware[]) {
-        this.t.middlewares.push(...middlewares.map(v => isMiddlewareClassTypeOrFn(v) ? httpMiddleware.for(v) : v));
+        this.t.middlewares.push(...middlewares.map(v => (isMiddlewareClassTypeOrFn(v) ? httpMiddleware.for(v) : v)));
     }
 
     /**
@@ -190,7 +187,8 @@ export class HttpControllerDecorator {
     }
 }
 
-export const httpClass: ClassDecoratorResult<typeof HttpControllerDecorator> = createClassDecoratorContext(HttpControllerDecorator);
+export const httpClass: ClassDecoratorResult<typeof HttpControllerDecorator> =
+    createClassDecoratorContext(HttpControllerDecorator);
 
 export function getActions(target: ClassType): HttpAction[] {
     const parent = Object.getPrototypeOf(target);
@@ -209,7 +207,7 @@ export function getActions(target: ClassType): HttpAction[] {
 }
 
 export class HttpActionDecorator {
-    t = new HttpAction;
+    t = new HttpAction();
 
     onDecorator(target: ClassType, property: string | undefined, parameterIndexOrDescriptor?: any) {
         if (!property) return;
@@ -235,7 +233,7 @@ export class HttpActionDecorator {
     }
 
     middleware(...middlewares: HttpActionMiddleware[]) {
-        this.t.middlewares.push(...middlewares.map(v => isMiddlewareClassTypeOrFn(v) ? httpMiddleware.for(v) : v));
+        this.t.middlewares.push(...middlewares.map(v => (isMiddlewareClassTypeOrFn(v) ? httpMiddleware.for(v) : v)));
     }
 
     /**
@@ -410,20 +408,35 @@ export class HttpActionDecorator {
 
 //this workaround is necessary since generic functions (necessary for response<T>) are lost during a mapped type and changed ReturnType
 type HttpActionFluidDecorator<T, D extends Function> = {
-    [name in keyof T]: name extends 'response' ? <T2>(statusCode: number, description?: string, type?: ReceiveType<T2>) => D & HttpActionFluidDecorator<T, D>
-        : T[name] extends (...args: infer K) => any ? (...args: K) => D & HttpActionFluidDecorator<T, D>
-            : D & HttpActionFluidDecorator<T, D> & { _data: ExtractApiDataType<T> };
+    [name in keyof T]: name extends 'response'
+        ? <T2>(statusCode: number, description?: string, type?: ReceiveType<T2>) => D & HttpActionFluidDecorator<T, D>
+        : T[name] extends (...args: infer K) => any
+          ? (...args: K) => D & HttpActionFluidDecorator<T, D>
+          : D & HttpActionFluidDecorator<T, D> & { _data: ExtractApiDataType<T> };
 };
-type HttpActionPropertyDecoratorResult =
-    HttpActionFluidDecorator<ExtractClass<typeof HttpActionDecorator>, PropertyDecoratorFn>
-    & DecoratorAndFetchSignature<typeof HttpActionDecorator, PropertyDecoratorFn>;
+type HttpActionPropertyDecoratorResult = HttpActionFluidDecorator<
+    ExtractClass<typeof HttpActionDecorator>,
+    PropertyDecoratorFn
+> &
+    DecoratorAndFetchSignature<typeof HttpActionDecorator, PropertyDecoratorFn>;
 
 export const httpAction: HttpActionPropertyDecoratorResult = createPropertyDecoratorContext(HttpActionDecorator);
 
 //this workaround is necessary since generic functions are lost during a mapped type and changed ReturnType
-type HttpMerge<U> = { [K in keyof U]: K extends 'response' ? <T2>(statusCode: number, description?: string, type?: ReceiveType<T2>) => PropertyDecoratorFn & U : U[K] extends ((...a: infer A) => infer R) ? R extends DualDecorator ? (...a: A) => PropertyDecoratorFn & R & U : (...a: A) => R : never };
-type MergedHttp<T extends any[]> = HttpMerge<Omit<UnionToIntersection<T[number]>, '_fetch' | 't'>>
+type HttpMerge<U> = {
+    [K in keyof U]: K extends 'response'
+        ? <T2>(statusCode: number, description?: string, type?: ReceiveType<T2>) => PropertyDecoratorFn & U
+        : U[K] extends (...a: infer A) => infer R
+          ? R extends DualDecorator
+              ? (...a: A) => PropertyDecoratorFn & R & U
+              : (...a: A) => R
+          : never;
+};
+type MergedHttp<T extends any[]> = HttpMerge<Omit<UnionToIntersection<T[number]>, '_fetch' | 't'>>;
 
 export type HttpDecorator = PropertyDecoratorFn & HttpActionFluidDecorator<HttpActionDecorator, PropertyDecoratorFn>;
 
-export const http: MergedHttp<[typeof httpClass, typeof httpAction]> = mergeDecorator(httpClass, httpAction) as any as MergedHttp<[typeof httpClass, typeof httpAction]>;
+export const http: MergedHttp<[typeof httpClass, typeof httpAction]> = mergeDecorator(
+    httpClass,
+    httpAction,
+) as any as MergedHttp<[typeof httpClass, typeof httpAction]>;

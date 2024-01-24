@@ -7,19 +7,29 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { FilterQuery, convertQueryFilter } from '@deepkit/orm';
+import { ReflectionClass, Serializer, resolvePath, serialize } from '@deepkit/type';
 
-import { convertQueryFilter, FilterQuery } from '@deepkit/orm';
-import { ReflectionClass, resolvePath, serialize, Serializer } from '@deepkit/type';
-
-export function getSqlFilter<T>(classSchema: ReflectionClass<any>, filter: FilterQuery<T>, parameters: { [name: string]: any } = {}, serializer: Serializer): any {
-    return convertQueryFilter(classSchema.getClassType(), (filter || {}), (convertClass: ReflectionClass<any>, path: string, value: any) => {
-        return serialize(value, undefined, serializer, undefined, resolvePath(path, classSchema.type));
-    }, {}, {
-        $parameter: (name, value) => {
-            if (undefined === parameters[value]) {
-                throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
-            }
-            return parameters[value];
-        }
-    });
+export function getSqlFilter<T>(
+    classSchema: ReflectionClass<any>,
+    filter: FilterQuery<T>,
+    parameters: { [name: string]: any } = {},
+    serializer: Serializer,
+): any {
+    return convertQueryFilter(
+        classSchema.getClassType(),
+        filter || {},
+        (convertClass: ReflectionClass<any>, path: string, value: any) => {
+            return serialize(value, undefined, serializer, undefined, resolvePath(path, classSchema.type));
+        },
+        {},
+        {
+            $parameter: (name, value) => {
+                if (undefined === parameters[value]) {
+                    throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
+                }
+                return parameters[value];
+            },
+        },
+    );
 }

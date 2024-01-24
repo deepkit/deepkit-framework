@@ -1,38 +1,37 @@
 :host ::ng-deep dui-window-content > .content {
-    padding: 0 !important;
+  padding: 0 !important;
 }
 
 .logo {
-    width: 16px;
-    vertical-align: text-bottom;
-    margin-left: 4px;
+  width: 16px;
+  vertical-align: text-bottom;
+  margin-left: 4px;
 }
 
 .app-label {
-    margin: 0 8px;
-    display: inline-block;
-    color: var(--text-grey);
+  margin: 0 8px;
+  display: inline-block;
+  color: var(--text-grey);
 }
 
 .top-right {
-    display: flex;
-    align-items: center;
-    position: absolute;
-    right: 15px;
-    top: 0;
+  display: flex;
+  align-items: center;
+  position: absolute;
+  right: 15px;
+  top: 0;
 
-    .connection-info {
-        margin-right: 3px;
-        font-size: 10px;
-        text-transform: uppercase;
+  .connection-info {
+    margin-right: 3px;
+    font-size: 10px;
+    text-transform: uppercase;
 
-        .connected {
-            color: var(--color-green);
-        }
-
-        .disconnected {
-            color: var(--color-red);
-        }
+    .connected {
+      color: var(--color-green);
     }
-}
 
+    .disconnected {
+      color: var(--color-red);
+    }
+  }
+}

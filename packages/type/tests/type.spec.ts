@@ -1,38 +1,49 @@
 import { describe, expect, test } from '@jest/globals';
-import { hasCircularReference, ReceiveType, reflect, ReflectionClass, reflectOrUndefined, resolveReceiveType, typeOf, visit } from '../src/reflection/reflection.js';
+
+import { ClassType } from '@deepkit/core';
+
+import { Partial } from '../src/changes.js';
+import { isExtendable } from '../src/reflection/extends.js';
 import {
-    assertType,
+    ReceiveType,
+    ReflectionClass,
+    hasCircularReference,
+    reflect,
+    reflectOrUndefined,
+    resolveReceiveType,
+    typeOf,
+    visit,
+} from '../src/reflection/reflection.js';
+import {
     Embedded,
     Excluded,
-    excludedAnnotation,
-    findMember,
     Group,
-    groupAnnotation,
-    indexAccess,
     InlineRuntimeType,
-    isSameType,
-    metaAnnotation,
     PrimaryKey,
-    primaryKeyAnnotation,
     ReflectionKind,
     ResetAnnotation,
-    resolveTypeMembers,
-    stringifyResolvedType,
-    stringifyType,
     Type,
     TypeAnnotation,
     TypeClass,
     TypeObjectLiteral,
     TypeProperty,
-    typeToObject,
     UUID,
-    validationAnnotation
+    assertType,
+    excludedAnnotation,
+    findMember,
+    groupAnnotation,
+    indexAccess,
+    isSameType,
+    metaAnnotation,
+    primaryKeyAnnotation,
+    resolveTypeMembers,
+    stringifyResolvedType,
+    stringifyType,
+    typeToObject,
+    validationAnnotation,
 } from '../src/reflection/type.js';
-import { isExtendable } from '../src/reflection/extends.js';
-import { expectEqualType } from './utils.js';
-import { ClassType } from '@deepkit/core';
-import { Partial } from '../src/changes.js';
 import { MaxLength, MinLength } from '../src/validator.js';
+import { expectEqualType } from './utils.js';
 
 //note: this needs to run in a strict TS mode to infer correctly in the IDE
 type Extends<A, B> = [A] extends [B] ? true : false;
@@ -71,9 +82,7 @@ test('type annotation with option', () => {
     type Username = string & MyAnnotation<string>;
     const type = typeOf<Username>();
     const data = metaAnnotation.getForName(type, 'myAnnotation');
-    expect(data).toMatchObject([
-        { kind: ReflectionKind.string }
-    ]);
+    expect(data).toMatchObject([{ kind: ReflectionKind.string }]);
 });
 
 test('type annotation TypeAnnotation', () => {
@@ -81,9 +90,7 @@ test('type annotation TypeAnnotation', () => {
     type Username = string & MyAnnotation<'yes'>;
     const type = typeOf<Username>();
     const data = metaAnnotation.getForName(type, 'myAnnotation');
-    expect(data).toMatchObject([
-        { kind: ReflectionKind.literal }
-    ]);
+    expect(data).toMatchObject([{ kind: ReflectionKind.literal }]);
     expect(typeToObject(data![0])).toBe('yes');
 });
 
@@ -263,7 +270,9 @@ test('stringify nested class', () => {
         config!: Config;
     }
 
-    expect(stringifyResolvedType(typeOf<User>())).toBe(`User {\n  id: number;\n  username?: string;\n  config: Config {color: number};\n}`);
+    expect(stringifyResolvedType(typeOf<User>())).toBe(
+        `User {\n  id: number;\n  username?: string;\n  config: Config {color: number};\n}`,
+    );
 });
 
 test('stringify nested interface', () => {
@@ -277,7 +286,9 @@ test('stringify nested interface', () => {
         config: Config;
     }
 
-    expect(stringifyResolvedType(typeOf<User>())).toBe(`User {\n  id: number;\n  username?: string;\n  config: Config {color: number};\n}`);
+    expect(stringifyResolvedType(typeOf<User>())).toBe(
+        `User {\n  id: number;\n  username?: string;\n  config: Config {color: number};\n}`,
+    );
 });
 
 function validExtend<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {
@@ -319,29 +330,25 @@ test('interface with method', () => {
     class MyConnection implements Connection {
         id: number = 0;
 
-        write(data: Uint16Array): void {
-        }
+        write(data: Uint16Array): void {}
 
-        additional(): void {
-
-        }
+        additional(): void {}
     }
 
-    validExtend<{ id: number, write(data: Uint16Array): void }, Connection>();
+    validExtend<{ id: number; write(data: Uint16Array): void }, Connection>();
     invalidExtend<{ id: number }, Connection>();
     validExtend<MyConnection, Connection>();
 
-    type t1 = { id: number, write(data: Uint32Array): void } extends Connection ? true : false;
-    type t2 = { id: number, write(): void } extends Connection ? true : false;
+    type t1 = { id: number; write(data: Uint32Array): void } extends Connection ? true : false;
+    type t2 = { id: number; write(): void } extends Connection ? true : false;
 
-    invalidExtend<{ id: number, write(data: Uint32Array): void }, Connection>();
-    validExtend<{ id: number, write(): void }, Connection>();
-    invalidExtend<Connection, { id: number, write(): void }>();
+    invalidExtend<{ id: number; write(data: Uint32Array): void }, Connection>();
+    validExtend<{ id: number; write(): void }, Connection>();
+    invalidExtend<Connection, { id: number; write(): void }>();
 
-    class SubUint16Array extends Uint16Array {
-    }
+    class SubUint16Array extends Uint16Array {}
 
-    validExtend<Connection, { id: number, write(data: SubUint16Array): void }>();
+    validExtend<Connection, { id: number; write(data: SubUint16Array): void }>();
 });
 
 test('extends Date', () => {
@@ -351,8 +358,10 @@ test('extends Date', () => {
 
 test('readonly constructor properties', () => {
     class Pilot {
-        constructor(readonly name: string, readonly age: number) {
-        }
+        constructor(
+            readonly name: string,
+            readonly age: number,
+        ) {}
     }
 
     const reflection = ReflectionClass.from(Pilot);
@@ -370,8 +379,7 @@ test('class with statics', () => {
     class PilotId {
         public static readonly none: PilotId = new PilotId(0);
 
-        constructor(public readonly value: number) {
-        }
+        constructor(public readonly value: number) {}
 
         static from(value: number) {
             return new PilotId(value);
@@ -387,13 +395,14 @@ test('extendability constructor', () => {
     type c = abstract new (...args: any) => any;
 
     class User {
-        constructor() {
-        }
+        constructor() {}
     }
 
     class Setting {
-        constructor(public key: string, public value: any) {
-        }
+        constructor(
+            public key: string,
+            public value: any,
+        ) {}
     }
 
     validExtend<any, c>();
@@ -421,11 +430,10 @@ test('extendability function', () => {
     validExtend<(a: string) => void, (a: string) => void>();
     validExtend<(a: string) => void, (...args: any[]) => void>();
 
-    type f1 = ((a: string) => void) extends ((a: string, b: string) => void) ? true : false;
+    type f1 = ((a: string) => void) extends (a: string, b: string) => void ? true : false;
     validExtend<(a: string) => void, (a: string, b: string) => void>();
 
-
-    type f2 = ((a: string, b: string) => void) extends ((a: string) => void) ? true : false;
+    type f2 = ((a: string, b: string) => void) extends (a: string) => void ? true : false;
     invalidExtend<(a: string, b: string) => void, (a: string) => void>();
 
     validExtend<() => void, (a: string) => void>();
@@ -851,24 +859,41 @@ test('template literal infer', () => {
     type a3 = 'abcd' extends `a${string}${infer T2}` ? T2 : never;
     expectEqualType(typeOf<a3>(), typeOf<'cd'>() as any, { noTypeNames: true });
 
-    type TN<T> = T extends `a${number}` ? T extends `a${infer T}` ? T : never : never;
+    type TN<T> = T extends `a${number}` ? (T extends `a${infer T}` ? T : never) : never;
     type e1 = TN<`a123.4`>;
     expectEqualType(typeOf<e1>(), typeOf<'123.4'>() as any, { noTypeNames: true });
 });
 
 test('tuple indexAccess', () => {
-    expect(indexAccess(typeOf<[string]>(), { kind: ReflectionKind.literal, literal: 0 })).toMatchObject({ kind: ReflectionKind.string });
-    expect(indexAccess(typeOf<[string]>(), { kind: ReflectionKind.literal, literal: 1 })).toMatchObject({ kind: ReflectionKind.undefined });
-    expect(indexAccess(typeOf<[string, string]>(), { kind: ReflectionKind.literal, literal: 1 })).toMatchObject({ kind: ReflectionKind.string });
-    expect(indexAccess(typeOf<[string, number]>(), { kind: ReflectionKind.literal, literal: 1 })).toMatchObject({ kind: ReflectionKind.number });
-    expectEqualType(indexAccess(typeOf<[string, ...number[], boolean]>(), { kind: ReflectionKind.literal, literal: 1 }), {
-        kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.boolean }]
+    expect(indexAccess(typeOf<[string]>(), { kind: ReflectionKind.literal, literal: 0 })).toMatchObject({
+        kind: ReflectionKind.string,
     });
-    expectEqualType(indexAccess(typeOf<[string, ...(number | undefined)[]]>(), { kind: ReflectionKind.literal, literal: 1 }), {
-        kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }]
+    expect(indexAccess(typeOf<[string]>(), { kind: ReflectionKind.literal, literal: 1 })).toMatchObject({
+        kind: ReflectionKind.undefined,
     });
+    expect(indexAccess(typeOf<[string, string]>(), { kind: ReflectionKind.literal, literal: 1 })).toMatchObject({
+        kind: ReflectionKind.string,
+    });
+    expect(indexAccess(typeOf<[string, number]>(), { kind: ReflectionKind.literal, literal: 1 })).toMatchObject({
+        kind: ReflectionKind.number,
+    });
+    expectEqualType(
+        indexAccess(typeOf<[string, ...number[], boolean]>(), { kind: ReflectionKind.literal, literal: 1 }),
+        {
+            kind: ReflectionKind.union,
+            types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.boolean }],
+        },
+    );
+    expectEqualType(
+        indexAccess(typeOf<[string, ...(number | undefined)[]]>(), { kind: ReflectionKind.literal, literal: 1 }),
+        {
+            kind: ReflectionKind.union,
+            types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
+        },
+    );
     expectEqualType(indexAccess(typeOf<[string, number?]>(), { kind: ReflectionKind.literal, literal: 1 }), {
-        kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }]
+        kind: ReflectionKind.union,
+        types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
     });
 });
 
@@ -945,11 +970,16 @@ test('parent embedded', () => {
 
 test('enum extends', () => {
     enum EnumA {
-        a, b, c
+        a,
+        b,
+        c,
     }
 
     enum EnumB {
-        a, b, c, d
+        a,
+        b,
+        c,
+        d,
     }
 
     validExtend<EnumA, EnumA>();
@@ -985,8 +1015,10 @@ test('extends complex type', () => {
     const type = typeOf<Type>();
 
     class Validation {
-        constructor(public message: string, public type?: Type) {
-        }
+        constructor(
+            public message: string,
+            public type?: Type,
+        ) {}
     }
 
     const member = findMember('type', (reflect(Validation) as TypeClass).types) as TypeProperty;
@@ -1039,7 +1071,7 @@ test('enum as literal type', () => {
     }
 
     interface MessageDelete {
-        type: MessageType.delete,
+        type: MessageType.delete;
         id: number;
     }
 
@@ -1048,10 +1080,15 @@ test('enum as literal type', () => {
     expect(type).toMatchObject({
         annotations: {},
         typeName: 'MessageDelete',
-        kind: ReflectionKind.objectLiteral, types: [
-            { kind: ReflectionKind.propertySignature, name: 'type', type: { kind: ReflectionKind.literal, literal: 1 } },
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            {
+                kind: ReflectionKind.propertySignature,
+                name: 'type',
+                type: { kind: ReflectionKind.literal, literal: 1 },
+            },
             { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
-        ]
+        ],
     } as TypeObjectLiteral as any);
 });
 
@@ -1061,8 +1098,7 @@ test('class extends interface', () => {
     }
 
     class Logger {
-        constructor(verbose: boolean) {
-        }
+        constructor(verbose: boolean) {}
 
         log(): boolean {
             return true;
@@ -1070,8 +1106,7 @@ test('class extends interface', () => {
     }
 
     class Logger2 {
-        constructor(nothing: string) {
-        }
+        constructor(nothing: string) {}
 
         log(): boolean {
             return true;
@@ -1169,11 +1204,11 @@ test('union and intersection filters', () => {
     expect(stringifyResolvedType(typeOf<(123 | 'asd') & string>())).toBe(`'asd'`);
     expect(stringifyResolvedType(typeOf<(1 | 123 | 'asd') & number>())).toBe(`1 | 123`);
     expect(stringifyResolvedType(typeOf<(true | 123 | 'asd') & (number | string)>())).toBe(`123 | 'asd'`);
-    expect(stringifyResolvedType(typeOf<(true | 123 | 'asd') & ('asd')>())).toBe(`'asd'`);
+    expect(stringifyResolvedType(typeOf<(true | 123 | 'asd') & 'asd'>())).toBe(`'asd'`);
     expect(stringifyResolvedType(typeOf<((true | 123) | 'asd') & (string | number)>())).toBe(`123 | 'asd'`);
     expect(stringifyResolvedType(typeOf<(true | 'asd' | number) & ('asd' & string)>())).toBe(`'asd'`);
     expect(stringifyResolvedType(typeOf<((true | 123) | 'asd') & any>())).toBe(`any`);
-    expect(stringifyResolvedType(typeOf<('a' | 'c' | 'b') & ('a' | 'b') | number>())).toBe(`'a' | 'b' | number`);
+    expect(stringifyResolvedType(typeOf<(('a' | 'c' | 'b') & ('a' | 'b')) | number>())).toBe(`'a' | 'b' | number`);
 
     expect(stringifyResolvedType(typeOf<{ a: string } & { b: number }>())).toBe(`{\n  a: string;\n  b: number;\n}`);
 });
@@ -1210,7 +1245,7 @@ test('index access on any', () => {
 
 test('keyof indexAccess on any', () => {
     type DeepPartial<T> = {
-        [P in keyof T]?: T[P]
+        [P in keyof T]?: T[P];
     };
 
     interface ChangesInterface<T> {
@@ -1219,7 +1254,7 @@ test('keyof indexAccess on any', () => {
     }
 
     const t2 = typeOf<string>();
-    const t3 = typeOf<Partial<{bla: string}>>();
+    const t3 = typeOf<Partial<{ bla: string }>>();
 
     const t = typeOf<ChangesInterface<any>>();
     assertType(t, ReflectionKind.objectLiteral);
@@ -1234,8 +1269,8 @@ test('keyof indexAccess on any', () => {
 
 test('weird keyof any', () => {
     type a = keyof any;
-    type b = { [K in keyof any]: string }
-    type c = { [K in a]: string }
+    type b = { [K in keyof any]: string };
+    type c = { [K in a]: string };
 
     expect(stringifyResolvedType(typeOf<a>())).toBe(`string | number | symbol`);
     expect(stringifyResolvedType(typeOf<b>())).toContain(`{
@@ -1251,9 +1286,9 @@ test('weird keyof any', () => {
 });
 
 test('any with partial', () => {
-    type NumberFields<T> = { [K in keyof T]: T[K] extends number | bigint ? K : never }[keyof T]
-    type Expression<T> = { [P in keyof T & string]?: string; }
-    type Partial<T> = { [P in keyof T & string]?: T[P] }
+    type NumberFields<T> = { [K in keyof T]: T[K] extends number | bigint ? K : never }[keyof T];
+    type Expression<T> = { [P in keyof T & string]?: string };
+    type Partial<T> = { [P in keyof T & string]?: T[P] };
 
     type t1 = NumberFields<any>;
     //ts says string, but that's probably not correct, see 'weird keyof any'
@@ -1351,11 +1386,20 @@ test('new type annotation on already decorated', () => {
     type EmptyTo<T> = {} & T & CustomB;
 
     expect(metaAnnotation.getAnnotations(typeOf<O>())).toEqual([{ name: 'CustomA', options: [] }]);
-    expect(metaAnnotation.getAnnotations(typeOf<T>())).toEqual([{ name: 'CustomA', options: [] }, { name: 'CustomB', options: [] }]);
+    expect(metaAnnotation.getAnnotations(typeOf<T>())).toEqual([
+        { name: 'CustomA', options: [] },
+        { name: 'CustomB', options: [] },
+    ]);
     expect(metaAnnotation.getAnnotations(typeOf<O>())).toEqual([{ name: 'CustomA', options: [] }]);
 
-    expect(metaAnnotation.getAnnotations(typeOf<Decorate<O>>())).toEqual([{ name: 'CustomA', options: [] }, { name: 'CustomB', options: [] }]);
-    expect(metaAnnotation.getAnnotations(typeOf<EmptyTo<O>>())).toEqual([{ name: 'CustomA', options: [] }, { name: 'CustomB', options: [] }]);
+    expect(metaAnnotation.getAnnotations(typeOf<Decorate<O>>())).toEqual([
+        { name: 'CustomA', options: [] },
+        { name: 'CustomB', options: [] },
+    ]);
+    expect(metaAnnotation.getAnnotations(typeOf<EmptyTo<O>>())).toEqual([
+        { name: 'CustomA', options: [] },
+        { name: 'CustomB', options: [] },
+    ]);
 });
 
 test('ignore constructor in mapped type', () => {
@@ -1364,8 +1408,7 @@ test('ignore constructor in mapped type', () => {
             return '';
         }
 
-        constructor(public id: number) {
-        }
+        constructor(public id: number) {}
     }
 
     type SORT_ORDER = 'asc' | 'desc' | any;
@@ -1376,7 +1419,7 @@ test('ignore constructor in mapped type', () => {
     const type = typeOf<t>();
     assertType(type, ReflectionKind.objectLiteral);
     const members = resolveTypeMembers(type);
-    expect(members.map(v => v.kind === ReflectionKind.propertySignature ? v.name : 'unknown')).toEqual(['foo', 'id']);
+    expect(members.map(v => (v.kind === ReflectionKind.propertySignature ? v.name : 'unknown'))).toEqual(['foo', 'id']);
 });
 
 test('ignore constructor in keyof', () => {
@@ -1385,23 +1428,21 @@ test('ignore constructor in keyof', () => {
             return '';
         }
 
-        constructor(public id: number) {
-        }
+        constructor(public id: number) {}
     }
 
     type t = keyof MyModel;
 
     const type = typeOf<t>();
     assertType(type, ReflectionKind.union);
-    expect(type.types.map(v => v.kind === ReflectionKind.literal ? v.literal : 'unknown')).toEqual(['foo', 'id']);
+    expect(type.types.map(v => (v.kind === ReflectionKind.literal ? v.literal : 'unknown'))).toEqual(['foo', 'id']);
 });
 
 test('function returns self reference', () => {
     type Option<T> = OptionType<T>;
 
     class OptionType<T> {
-        constructor(val: T, some: boolean) {
-        }
+        constructor(val: T, some: boolean) {}
     }
 
     function Option<T>(val: T): Option<T> {
@@ -1431,8 +1472,7 @@ test('arrow function returns self reference', () => {
     type Option<T> = OptionType<T>;
 
     class OptionType<T> {
-        constructor(val: T, some: boolean) {
-        }
+        constructor(val: T, some: boolean) {}
     }
 
     const Option = <T>(val: T): Option<T> => {
@@ -1452,8 +1492,7 @@ class User {
     a!: string;
 }
 
-class EmptyEntity {
-}
+class EmptyEntity {}
 
 class Setting {
     name!: string;
@@ -1484,7 +1523,7 @@ describe('types equality', () => {
         typeOf<User>(),
         typeOf<Setting>(),
         typeOf<{ a: string }>(),
-        typeOf<{ a: string, b: number }>(),
+        typeOf<{ a: string; b: number }>(),
         typeOf<{ b: number }>(),
         typeOf<{ [index: string]: string }>(),
         typeOf<{ [index: string]: number }>(),
@@ -1514,8 +1553,7 @@ describe('types equality', () => {
 });
 
 test('function extends empty object literal', () => {
-    interface ObjectLiteral {
-    }
+    interface ObjectLiteral {}
 
     type isFunction = Function extends ObjectLiteral ? true : false;
     expect(stringifyResolvedType(typeOf<isFunction>())).toBe('true');
@@ -1534,7 +1572,9 @@ test('call signature', () => {
     assertType(type.types[0].parameters[0].type, ReflectionKind.string);
     assertType(type.types[0].return, ReflectionKind.number);
 
-    expect(stringifyResolvedType(typeOf<ObjectLiteralWithCall>())).toBe(`ObjectLiteralWithCall {(b: string) => number}`);
+    expect(stringifyResolvedType(typeOf<ObjectLiteralWithCall>())).toBe(
+        `ObjectLiteralWithCall {(b: string) => number}`,
+    );
 });
 
 test('function extends non-empty object literal', () => {
@@ -1560,7 +1600,9 @@ test('issue-429: invalid function detection', () => {
         someFunction(): void;
     }
 
-    type ObjectKeysMatching<O extends {}, V> = { [K in keyof O]: O[K] extends V ? K : V extends O[K] ? K : never }[keyof O];
+    type ObjectKeysMatching<O extends {}, V> = {
+        [K in keyof O]: O[K] extends V ? K : V extends O[K] ? K : never;
+    }[keyof O];
     type keys = ObjectKeysMatching<IDTOOuter, Function>;
 
     type isFunction = Function extends IDTOInner ? true : false;
@@ -1574,14 +1616,11 @@ test('issue-430: referring to this', () => {
         fieldB!: number;
         fieldC!: boolean;
 
-        someFunctionA() {
-        }
+        someFunctionA() {}
 
-        someFunctionB(input: string) {
-        }
+        someFunctionB(input: string) {}
 
-        someFunctionC(input: keyof this /* behaves the same with keyof anything */) {
-        }
+        someFunctionC(input: keyof this /* behaves the same with keyof anything */) {}
     }
 
     type ArrowFunction = (...args: any) => any;
@@ -1631,7 +1670,7 @@ test('issue-495: extend Promise in union', () => {
 
 test('used type does not leak parent to original', () => {
     class User {
-        groups!: {via: typeof UserGroup};
+        groups!: { via: typeof UserGroup };
     }
 
     class UserGroup {

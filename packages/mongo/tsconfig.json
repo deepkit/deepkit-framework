@@ -16,34 +16,26 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": [
-      "mongodb",
-      "node"
-    ]
+    "types": ["mongodb", "node"],
   },
   "reflection": true,
-  "include": [
-    "src",
-    "index.ts"
-  ],
-  "exclude": [
-    "tests"
-  ],
+  "include": ["src", "index.ts"],
+  "exclude": ["tests"],
   "references": [
     {
-      "path": "../bson/tsconfig.json"
+      "path": "../bson/tsconfig.json",
     },
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../orm/tsconfig.json"
+      "path": "../orm/tsconfig.json",
     },
     {
-      "path": "../orm-integration/tsconfig.json"
+      "path": "../orm-integration/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

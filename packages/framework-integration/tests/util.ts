@@ -1,22 +1,30 @@
-import { arrayRemoveItem, ClassType, sleep } from '@deepkit/core';
-import { ApplicationServer, FrameworkModule } from '@deepkit/framework';
-import { App, AppModule, onAppShutdown } from '@deepkit/app';
-import { Observable } from 'rxjs';
 import { createServer } from 'http';
-import { DeepkitClient, RemoteController } from '@deepkit/rpc';
-import { Database } from '@deepkit/orm';
 import { performance } from 'perf_hooks';
+import { Observable } from 'rxjs';
+
+import { App, AppModule, onAppShutdown } from '@deepkit/app';
+import { ClassType, arrayRemoveItem, sleep } from '@deepkit/core';
+import { ApplicationServer, FrameworkModule } from '@deepkit/framework';
+import { Database } from '@deepkit/orm';
+import { DeepkitClient, RemoteController } from '@deepkit/rpc';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 
-export async function subscribeAndWait<T>(observable: Observable<T>, callback: (next: T) => Promise<void>, timeout: number = 5): Promise<void> {
+export async function subscribeAndWait<T>(
+    observable: Observable<T>,
+    callback: (next: T) => Promise<void>,
+    timeout: number = 5,
+): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-        const sub = observable.subscribe((next) => {
-            callback(next);
-            sub.unsubscribe();
-            resolve();
-        }, (error) => {
-            reject(error);
-        });
+        const sub = observable.subscribe(
+            next => {
+                callback(next);
+                sub.unsubscribe();
+                resolve();
+            },
+            error => {
+                reject(error);
+            },
+        );
         setTimeout(() => {
             sub.unsubscribe();
             reject('Subscribe timeout');
@@ -48,40 +56,40 @@ export function appModuleForControllers(controllers: ClassType[], entities: Clas
 
     return new AppModule({
         controllers: controllers,
-        providers: [
-            { provide: Database, useClass: MyDatabase },
-        ],
-        imports: [
-            new FrameworkModule
-        ]
+        providers: [{ provide: Database, useClass: MyDatabase }],
+        imports: [new FrameworkModule()],
     });
 }
 
 export async function createServerClientPair(
     name: string,
-    appModule: AppModule<any>
+    appModule: AppModule<any>,
 ): Promise<{
-    app: App<any>,
-    server: ApplicationServer,
-    client: DeepkitClient,
-    close: () => Promise<void>,
-    createClient: () => DeepkitClient,
-    createControllerClient: <T>(controllerName: string) => RemoteController<T>
+    app: App<any>;
+    server: ApplicationServer;
+    client: DeepkitClient;
+    close: () => Promise<void>;
+    createClient: () => DeepkitClient;
+    createControllerClient: <T>(controllerName: string) => RemoteController<T>;
 }> {
     const socketPath = '/tmp/ws_socket_' + performance.now() + '.' + Math.floor(Math.random() * 1000);
     const exchangeSocketPath = socketPath + '_exchange';
 
     const server = createServer();
-    await new Promise((resolve) => {
+    await new Promise(resolve => {
         server.listen(socketPath, function () {
             resolve(undefined);
         });
     });
 
-    appModule.setup((module) => {
+    appModule.setup(module => {
         module.getImportedModuleByClass(FrameworkModule).configure({
             server: server,
-            broker: { listen: exchangeSocketPath, host: exchangeSocketPath, startOnBootstrap: true },
+            broker: {
+                listen: exchangeSocketPath,
+                host: exchangeSocketPath,
+                startOnBootstrap: true,
+            },
         });
     });
 

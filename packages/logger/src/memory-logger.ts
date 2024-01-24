@@ -1,4 +1,4 @@
-import { LoggerTransport, LogMessage } from './logger.js';
+import { LogMessage, LoggerTransport } from './logger.js';
 
 export class MemoryLoggerTransport implements LoggerTransport {
     public messages: LogMessage[] = [];

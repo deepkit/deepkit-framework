@@ -1,25 +1,27 @@
 import { expect, test } from '@jest/globals';
+
+import { DatabaseEntityRegistry } from '@deepkit/orm';
 import { schemaMigrationRoundTrip } from '@deepkit/sql';
 import {
     AutoIncrement,
     Entity,
-    float32,
-    int16,
-    int32,
-    int8,
-    integer,
     Postgres,
     PrimaryKey,
     Reference,
     ReflectionClass,
+    Unique,
+    float32,
+    int8,
+    int16,
+    int32,
+    integer,
     typeOf,
+    uint8,
     uint16,
     uint32,
-    uint8,
-    Unique
 } from '@deepkit/type';
+
 import { PostgresDatabaseAdapter } from '../src/postgres-adapter.js';
-import { DatabaseEntityRegistry } from '@deepkit/orm';
 
 test('custom type', async () => {
     class post {
@@ -43,12 +45,12 @@ test('custom type', async () => {
 test('default expression', async () => {
     class post {
         id: number & AutoIncrement & PrimaryKey = 0;
-        str: string & Postgres<{ type: 'VARCHAR(255)', default: 'abc' }> = '';
+        str: string & Postgres<{ type: 'VARCHAR(255)'; default: 'abc' }> = '';
         no: number & Postgres<{ default: 34.5 }> = 3;
-        json: any & Postgres<{ default: {a: true} }> = {};
-        jsonAuto: any = {a: true};
-        created: Date & Postgres<{ defaultExpr: `now()` }> = new Date;
-        createdAuto: Date = new Date; //this is detected as datetime('now')
+        json: any & Postgres<{ default: { a: true } }> = {};
+        jsonAuto: any = { a: true };
+        created: Date & Postgres<{ defaultExpr: `now()` }> = new Date();
+        createdAuto: Date = new Date(); //this is detected as datetime('now')
         opt?: boolean;
     }
 
@@ -57,8 +59,8 @@ test('default expression', async () => {
 
     expect(postTable.getColumn('str').defaultValue).toBe('abc');
     expect(postTable.getColumn('no').defaultValue).toBe(34.5);
-    expect(postTable.getColumn('json').defaultValue).toEqual({a: true});
-    expect(postTable.getColumn('jsonAuto').defaultValue).toEqual({a: true});
+    expect(postTable.getColumn('json').defaultValue).toEqual({ a: true });
+    expect(postTable.getColumn('jsonAuto').defaultValue).toEqual({ a: true });
     expect(postTable.getColumn('created').defaultExpression).toBe(`now()`);
     expect(postTable.getColumn('createdAuto').defaultExpression).toBe(`now()`);
 
@@ -95,7 +97,6 @@ test('numbers', async () => {
     "default" double precision NOT NULL DEFAULT 0,
     PRIMARY KEY ("id")
 )`);
-
 });
 
 interface User extends Entity<{ name: 'user' }> {
@@ -108,13 +109,16 @@ interface User extends Entity<{ name: 'user' }> {
 
 interface Post extends Entity<{ name: 'post' }> {
     id: number & AutoIncrement & PrimaryKey;
-    user: User & Reference,
-    created: Date,
-    slag: string & Unique,
-    title: string,
-    content: string,
+    user: User & Reference;
+    created: Date;
+    slag: string & Unique;
+    title: string;
+    content: string;
 }
 
 test('postgres', async () => {
-    await schemaMigrationRoundTrip([typeOf<User>(), typeOf<Post>()], new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres', user: 'postgres' }));
+    await schemaMigrationRoundTrip(
+        [typeOf<User>(), typeOf<Post>()],
+        new PostgresDatabaseAdapter({ host: 'localhost', database: 'postgres', user: 'postgres' }),
+    );
 });

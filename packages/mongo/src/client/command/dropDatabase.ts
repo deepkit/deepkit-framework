@@ -7,9 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { ReflectionClass } from '@deepkit/type';
 
 import { Command } from './command.js';
-import { ReflectionClass } from '@deepkit/type';
 
 interface DropDatabase {
     dropDatabase: 1;
@@ -23,7 +23,8 @@ export class DropDatabaseCommand<T extends ReflectionClass<any>> extends Command
 
     async execute(config): Promise<void> {
         await this.sendAndWait<DropDatabase>({
-            dropDatabase: 1, $db: this.dbName
+            dropDatabase: 1,
+            $db: this.dbName,
         });
     }
 

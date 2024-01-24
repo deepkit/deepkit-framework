@@ -150,5 +150,5 @@ export class FrameworkConfig {
 
     migrationDir: string = 'migrations';
 
-    broker: BrokerConfig = new BrokerConfig;
+    broker: BrokerConfig = new BrokerConfig();
 }

@@ -1,5 +1,14 @@
 import { ControllerSymbol } from '@deepkit/rpc';
-import { deserializeType, entity, Excluded, ReflectionClass, ReflectionKind, Type, TypeMethod, TypeParameter } from '@deepkit/type';
+import {
+    Excluded,
+    ReflectionClass,
+    ReflectionKind,
+    Type,
+    TypeMethod,
+    TypeParameter,
+    deserializeType,
+    entity,
+} from '@deepkit/type';
 
 export class ApiRouteParameter {
     name!: string;
@@ -16,8 +25,7 @@ export class ApiRouteResponse {
         public statusCode: number,
         public description: string,
         public serializedType: any,
-    ) {
-    }
+    ) {}
 
     getType(): Type {
         if (!this.type) {
@@ -50,8 +58,7 @@ export class ApiAction {
         public description: string,
         public groups: string[],
         public category: string,
-    ) {
-    }
+    ) {}
 
     getMethodType(): TypeMethod {
         if (!this.deserializedMethodType) {
@@ -159,7 +166,11 @@ export class ApiEntryPoints {
     rpcActions: ApiAction[] = [];
 }
 
-export const ApiConsoleApi = ControllerSymbol<ApiConsoleApi>('.deepkit/api-console', [ApiRoute, ApiDocument, ApiAction]);
+export const ApiConsoleApi = ControllerSymbol<ApiConsoleApi>('.deepkit/api-console', [
+    ApiRoute,
+    ApiDocument,
+    ApiAction,
+]);
 
 export interface ApiConsoleApi {
     getEntryPoints(): ApiEntryPoints;

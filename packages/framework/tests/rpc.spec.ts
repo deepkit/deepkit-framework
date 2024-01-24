@@ -1,18 +1,22 @@
 import { expect, test } from '@jest/globals';
-import { ControllerSymbol, rpc, RpcKernelConnection, RpcKernelSecurity, Session, SessionState } from '@deepkit/rpc';
-import { createTestingApp } from '../src/testing.js';
+
 import { AppModule } from '@deepkit/app';
+import { ControllerSymbol, RpcKernelConnection, RpcKernelSecurity, Session, SessionState, rpc } from '@deepkit/rpc';
+
+import { createTestingApp } from '../src/testing.js';
 
 test('di', async () => {
-    class MyService {
-    }
+    class MyService {}
 
     const MyController = ControllerSymbol<Controller>('test');
 
     @rpc.controller(MyController)
     class Controller {
-        constructor(protected connection: RpcKernelConnection, protected service: MyService, protected sessionState: SessionState) {
-        }
+        constructor(
+            protected connection: RpcKernelConnection,
+            protected service: MyService,
+            protected sessionState: SessionState,
+        ) {}
 
         @rpc.action()
         hasService(): boolean {
@@ -30,7 +34,10 @@ test('di', async () => {
         }
     }
 
-    const testing = createTestingApp({ providers: [MyService], controllers: [Controller] });
+    const testing = createTestingApp({
+        providers: [MyService],
+        controllers: [Controller],
+    });
     await testing.startServer();
 
     const client = testing.createRpcClient();
@@ -42,15 +49,17 @@ test('di', async () => {
 });
 
 test('non-forRoot sub module lives in own injector scope for rpc controllers', async () => {
-    class MyService {
-    }
+    class MyService {}
 
     const MyController = ControllerSymbol<Controller>('test');
 
     @rpc.controller(MyController)
     class Controller {
-        constructor(protected connection: RpcKernelConnection, protected service: MyService, protected sessionState: SessionState) {
-        }
+        constructor(
+            protected connection: RpcKernelConnection,
+            protected service: MyService,
+            protected sessionState: SessionState,
+        ) {}
 
         @rpc.action()
         hasService(): boolean {
@@ -96,12 +105,19 @@ test('module provides RpcKernelSecurity', async () => {
         }
     }
 
-    const module = new AppModule({
-        controllers: [Controller],
-        providers: [{
-            provide: RpcKernelSecurity, useClass: MyRpcKernelSecurity, scope: 'rpc'
-        }]
-    }, 'module').forRoot();
+    const module = new AppModule(
+        {
+            controllers: [Controller],
+            providers: [
+                {
+                    provide: RpcKernelSecurity,
+                    useClass: MyRpcKernelSecurity,
+                    scope: 'rpc',
+                },
+            ],
+        },
+        'module',
+    ).forRoot();
     const testing = createTestingApp({ imports: [module] });
     await testing.startServer();
 
@@ -131,8 +147,7 @@ test('rpc controller access unscoped provider', async () => {
 
     @rpc.controller('main')
     class Controller {
-        constructor(private registry: ModelRegistryService) {
-        }
+        constructor(private registry: ModelRegistryService) {}
 
         @rpc.action()
         test(): string[] {
@@ -142,7 +157,7 @@ test('rpc controller access unscoped provider', async () => {
 
     const testing = createTestingApp({
         controllers: [Controller],
-        providers: [ModelRegistryService]
+        providers: [ModelRegistryService],
     });
 
     const client = testing.createRpcClient();

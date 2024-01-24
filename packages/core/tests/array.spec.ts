@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
+
 import { arrayMoveItem } from '../src/array.js';
 import { arrayClear, arrayHasItem, arrayRemoveItem } from '../src/array.js';
-
 
 test('clear', () => {
     const array = ['a', 'b', 'c'];
@@ -9,9 +9,7 @@ test('clear', () => {
     expect(array.length).toBe(0);
 });
 
-
 test('remove', () => {
-
     const array = ['a', 'b', 'c'];
     expect(arrayRemoveItem(array, 'c')).toBe(true);
     expect(array).toEqual(['a', 'b']);
@@ -45,13 +43,11 @@ test('move', () => {
     expect(arrayMoveItem(['a', 'b', 'c'], 'a', -2)).toEqual(['a', 'b', 'c']);
     expect(arrayMoveItem(['a', 'b', 'c'], 'a', -3)).toEqual(['a', 'b', 'c']);
 
-
     expect(arrayMoveItem(['a', 'b', 'c'], 'b', -2)).toEqual(['b', 'a', 'c']);
     expect(arrayMoveItem(['a', 'b', 'c'], 'b', -1)).toEqual(['b', 'a', 'c']);
     expect(arrayMoveItem(['a', 'b', 'c'], 'b', +1)).toEqual(['a', 'c', 'b']);
     expect(arrayMoveItem(['a', 'b', 'c'], 'b', +2)).toEqual(['a', 'c', 'b']);
     expect(arrayMoveItem(['a', 'b', 'c'], 'b', +3)).toEqual(['a', 'c', 'b']);
-
 
     expect(arrayMoveItem(['a', 'b', 'c'], 'c', -3)).toEqual(['c', 'a', 'b']);
     expect(arrayMoveItem(['a', 'b', 'c'], 'c', -2)).toEqual(['c', 'a', 'b']);

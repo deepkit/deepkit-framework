@@ -19,19 +19,18 @@
  * If you need more fields, you can create your own Session class. Make sure to
  * annotate all fields using `@t` of @deepkit/type, since the whole object is serialized
  * in a session storage (either memory, local file system, or external databases like redis/mysql/etc).
-*/
+ */
 export class Session {
     data: { [name: string]: any } = {};
 
-    createdAt: Date = new Date;
+    createdAt: Date = new Date();
 
     groups: string[] = [];
 
     constructor(
         public readonly id: string,
-        public readonly username?: string
-    ) {
-    }
+        public readonly username?: string,
+    ) {}
 
     public isAnonymous(): boolean {
         return undefined === this.username;

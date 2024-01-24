@@ -1,6 +1,8 @@
-import { BackReference, deserialize, Index, PrimaryKey, Reference, UUID, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { assert, IsExact } from 'conditional-type-checks';
+import { IsExact, assert } from 'conditional-type-checks';
+
+import { BackReference, Index, PrimaryKey, Reference, UUID, deserialize, uuid } from '@deepkit/type';
+
 import { Database } from '../src/database.js';
 import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db.js';
 import { AnyQuery, Query } from '../src/query.js';
@@ -14,11 +16,13 @@ test('types do not interfere with type check', () => {
     const database = new Database(new MemoryDatabaseAdapter());
 
     function get(bookId: UUID) {
-        return database
-            .query(Books)
-            // this should just compile and not error
-            .filter({ bookId })
-            .findOneOrUndefined();
+        return (
+            database
+                .query(Books)
+                // this should just compile and not error
+                .filter({ bookId })
+                .findOneOrUndefined()
+        );
     }
 });
 
@@ -36,14 +40,14 @@ test('query select', async () => {
         const item = await database.query(s).findOne();
         expect(item.username).toBe('Peter');
         assert<IsExact<InstanceType<typeof s>, typeof item>>(true);
-        assert<IsExact<{ id: number & PrimaryKey, username: string }, typeof item>>(true);
+        assert<IsExact<{ id: number & PrimaryKey; username: string }, typeof item>>(true);
     }
 
     {
         const item = await database.query(s).select('username').findOne();
         expect(item.username).toBe('Peter');
         assert<IsExact<InstanceType<typeof s>, typeof item>>(false);
-        assert<IsExact<{ id: number & PrimaryKey, username: string }, typeof item>>(false);
+        assert<IsExact<{ id: number & PrimaryKey; username: string }, typeof item>>(false);
         assert<IsExact<{ username: string }, typeof item>>(true);
     }
 });
@@ -60,29 +64,43 @@ test('query filter', async () => {
     await database.persist(deserialize<s>({ id: 3, score: 3 }));
 
     {
-        const results = await database.query(s).filter({ score: { $gt: 1 } }).find();
+        const results = await database
+            .query(s)
+            .filter({ score: { $gt: 1 } })
+            .find();
         expect(results).toHaveLength(2);
         expect(results).toMatchObject([{ id: 2 }, { id: 3 }]);
     }
 
     {
-        const results = await database.query(s).filter({ score: { $gt: 1 } }).filter({ score: { $lt: 3 } }).find();
+        const results = await database
+            .query(s)
+            .filter({ score: { $gt: 1 } })
+            .filter({ score: { $lt: 3 } })
+            .find();
         expect(results).toHaveLength(1);
         expect(results).toMatchObject([{ id: 2 }]);
     }
 
     {
-        const results = await database.query(s).filter({ score: { $gt: 1 } }).filterField('score', { $lt: 3 }).find();
+        const results = await database
+            .query(s)
+            .filter({ score: { $gt: 1 } })
+            .filterField('score', { $lt: 3 })
+            .find();
         expect(results).toHaveLength(1);
         expect(results).toMatchObject([{ id: 2 }]);
     }
 
     {
-        const results = await database.query(s).filter({ score: { $gt: 1 } }).clearFilter().find();
+        const results = await database
+            .query(s)
+            .filter({ score: { $gt: 1 } })
+            .clearFilter()
+            .find();
         expect(results).toHaveLength(3);
         expect(results).toMatchObject([{ id: 1 }, { id: 2 }, { id: 3 }]);
     }
-
 });
 
 test('query lift', async () => {
@@ -171,12 +189,22 @@ test('query lift', async () => {
 
     {
         const items = await q.lift(UserQuery).find();
-        assert<IsExact<{ username: string, openBillings: number, id: number & PrimaryKey, image?: UserImage & Reference }[], typeof items>>(true);
+        assert<
+            IsExact<
+                { username: string; openBillings: number; id: number & PrimaryKey; image?: UserImage & Reference }[],
+                typeof items
+            >
+        >(true);
     }
 
     {
         const items = await q.lift(UserQuery).find();
-        assert<IsExact<{ username: string, openBillings: number, id: number & PrimaryKey, image?: UserImage & Reference }[], typeof items>>(true);
+        assert<
+            IsExact<
+                { username: string; openBillings: number; id: number & PrimaryKey; image?: UserImage & Reference }[],
+                typeof items
+            >
+        >(true);
     }
 
     {
@@ -186,7 +214,12 @@ test('query lift', async () => {
 
     {
         const items = await UserQuery.from(q).find();
-        assert<IsExact<{ username: string, openBillings: number, id: number & PrimaryKey, image?: UserImage & Reference }[], typeof items>>(true);
+        assert<
+            IsExact<
+                { username: string; openBillings: number; id: number & PrimaryKey; image?: UserImage & Reference }[],
+                typeof items
+            >
+        >(true);
     }
 
     {
@@ -206,7 +239,7 @@ test('query lift', async () => {
 
     {
         const lifted = q.lift(UserQuery).lift(BilligQuery);
-        assert<IsExact<UserQuery<any>['findAllUserNames'], typeof lifted['findAllUserNames']>>(true);
+        assert<IsExact<UserQuery<any>['findAllUserNames'], (typeof lifted)['findAllUserNames']>>(true);
     }
 
     // {
@@ -263,7 +296,6 @@ test('query lift', async () => {
     }
 });
 
-
 // test('query aggregate', async () => {
 //     const product = t.schema({
 //         id: t.number.primary,
@@ -289,29 +321,23 @@ test('query lift', async () => {
 //     // await database.persist(deserialize<s>({ id: 0, username: 'Peter' }));
 // });
 
-
 test('optional join', () => {
     class User {
-        constructor(public id: number & PrimaryKey, public name: string) {
-        }
+        constructor(
+            public id: number & PrimaryKey,
+            public name: string,
+        ) {}
 
         userAuth?: UserAuth & BackReference;
     }
 
     class UserAuth {
-        constructor(
-            public id: number & PrimaryKey,
-        ) {
-        }
+        constructor(public id: number & PrimaryKey) {}
 
         type!: string;
     }
 
     const database = new Database(new MemoryDatabaseAdapter());
 
-    database
-        .query(User)
-        .useInnerJoinWith('userAuth')
-        .filter({ type: 'bar' })
-        .end();
+    database.query(User).useInnerJoinWith('userAuth').filter({ type: 'bar' }).end();
 });

@@ -1,11 +1,6 @@
 import { Component } from '@angular/core';
 
-
 @Component({
-    template: `
-
-    `
+    template: ``,
 })
-export class JsonEditDialogComponent {
-
-}
+export class JsonEditDialogComponent {}

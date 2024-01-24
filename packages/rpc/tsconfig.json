@@ -14,36 +14,29 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": [
-      "dot-prop",
-      "fs-extra",
-      "node"
-    ]
+    "types": ["dot-prop", "fs-extra", "node"],
   },
   "reflection": true,
-  "include": [
-    "src",
-    "index.ts"
-  ],
+  "include": ["src", "index.ts"],
   "exclude": ["tests"],
   "references": [
     {
-      "path": "../bson/tsconfig.json"
+      "path": "../bson/tsconfig.json",
     },
     {
-      "path": "../core/tsconfig.json"
+      "path": "../core/tsconfig.json",
     },
     {
-      "path": "../core-rxjs/tsconfig.json"
+      "path": "../core-rxjs/tsconfig.json",
     },
     {
-      "path": "../injector/tsconfig.json"
+      "path": "../injector/tsconfig.json",
     },
     {
-      "path": "../logger/tsconfig.json"
+      "path": "../logger/tsconfig.json",
     },
     {
-      "path": "../type/tsconfig.json"
-    }
-  ]
+      "path": "../type/tsconfig.json",
+    },
+  ],
 }

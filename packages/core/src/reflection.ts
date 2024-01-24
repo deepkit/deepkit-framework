@@ -7,18 +7,18 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { ClassType } from "./core.js";
+import { ClassType } from './core.js';
 
-const COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
-const DEFAULT_PARAMS = /=[^,]+/mg;
-const FAT_ARROWS = /=>.*$/mg;
+const COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/gm;
+const DEFAULT_PARAMS = /=[^,]+/gm;
+const FAT_ARROWS = /=>.*$/gm;
 
 export function extractParameters(fn: string | Function | ClassType): string[] {
     fn = typeof fn === 'string' ? fn : fn.toString();
     fn = removeStrings(fn);
 
     if (fn.startsWith('class')) {
-        const start = fn.match(new RegExp('[\t\ \n{]constructor\\('));
+        const start = fn.match(new RegExp('[\t \n{]constructor\\('));
         if (!start) return [];
 
         fn = fn.substr((start.index || 0) + start[0].length);
@@ -34,7 +34,7 @@ export function extractParameters(fn: string | Function | ClassType): string[] {
 export function extractMethodBody(classCode: string, name: string): string {
     let methodCode = '';
     classCode = removeStrings(classCode);
-    const start = classCode.match(new RegExp('[\t\ \n]' + name + '\\('));
+    const start = classCode.match(new RegExp('[\t \n]' + name + '\\('));
     if (!start) return '';
 
     classCode = classCode.substr((start.index || 0) + start[0].length);
@@ -60,7 +60,7 @@ export function extractMethodBody(classCode: string, name: string): string {
 
 export function removeStrings(code: string) {
     let result = '';
-    let inString: false | '"' | '\'' = false;
+    let inString: false | '"' | "'" = false;
     for (let i = 0; i < code.length; i++) {
         const char = code[i];
         if (inString && char === '\\') {
@@ -80,14 +80,14 @@ export function removeStrings(code: string) {
             }
         }
 
-        if (char === '\'') {
-            if (inString === '\'') {
+        if (char === "'") {
+            if (inString === "'") {
                 //end string
                 inString = false;
                 continue;
             }
             if (!inString) {
-                inString = '\'';
+                inString = "'";
                 continue;
             }
         }

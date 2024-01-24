@@ -6,10 +6,13 @@ import { ChangeDetectorRef, Component, EventEmitter, Input, Output, SkipSelf } f
         <dui-splitter *ngIf="visible" (modelChange)="changeHeight($event)" position="top"></dui-splitter>
 
         <div class="actions">
-            <dui-icon clickable (click)="toggleVisibility()"
-                      [name]="this.visible ? 'arrow_down' : 'arrow_right'"></dui-icon>
+            <dui-icon
+                clickable
+                (click)="toggleVisibility()"
+                [name]="this.visible ? 'arrow_down' : 'arrow_right'"
+            ></dui-icon>
             <div class="actions-title" (click)="toggleVisibility()">
-                {{title}}
+                {{ title }}
             </div>
 
             <ng-content select="[header]"></ng-content>
@@ -21,9 +24,9 @@ import { ChangeDetectorRef, Component, EventEmitter, Input, Output, SkipSelf } f
     `,
     host: {
         '[class.visible]': 'visible',
-        '[style.flexBasis.px]': 'height'
+        '[style.flexBasis.px]': 'height',
     },
-    styleUrls: ['./toggle-box.component.scss']
+    styleUrls: ['./toggle-box.component.scss'],
 })
 export class ToggleBoxComponent {
     @Input() visible: boolean = false;
@@ -34,8 +37,7 @@ export class ToggleBoxComponent {
 
     @Input() title: string = '';
 
-    constructor(@SkipSelf() private parentCd: ChangeDetectorRef) {
-    }
+    constructor(@SkipSelf() private parentCd: ChangeDetectorRef) {}
 
     changeHeight(height: number) {
         this.height = height;

@@ -1,13 +1,12 @@
-import { Filesystem, FilesystemLocalAdapter } from '@deepkit/filesystem';
 import { AppModule } from '@deepkit/app';
 import { ClassType } from '@deepkit/core';
+import { Filesystem, FilesystemLocalAdapter } from '@deepkit/filesystem';
 import { InjectorContext } from '@deepkit/injector';
 
 export class FilesystemRegistry {
-    protected filesystems: { classType: ClassType, module: AppModule<any> }[] = [];
+    protected filesystems: { classType: ClassType; module: AppModule<any> }[] = [];
 
-    constructor(protected injectorContext: InjectorContext) {
-    }
+    constructor(protected injectorContext: InjectorContext) {}
 
     addFilesystem(classType: ClassType, module: AppModule<any>) {
         this.filesystems.push({ classType, module });

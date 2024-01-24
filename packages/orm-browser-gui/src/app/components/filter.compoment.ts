@@ -1,17 +1,25 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
-import { trackByIndex } from '../utils';
+
 import { arrayRemoveItem } from '@deepkit/core';
+import {
+    ReflectionClass,
+    ReflectionKind,
+    Type,
+    TypeProperty,
+    TypePropertySignature,
+    isBackReferenceType,
+} from '@deepkit/type';
+
 import { FilterItem } from '../browser-state';
-import { isBackReferenceType, ReflectionClass, ReflectionKind, Type, TypeProperty, TypePropertySignature } from '@deepkit/type';
+import { trackByIndex } from '../utils';
 
 @Component({
     selector: 'orm-browser-filter-item',
     template: `
         <dui-select textured [(ngModel)]="property" (ngModelChange)="changed()">
-            <dui-option
-                *ngFor="let property of properties; trackBy: trackByIndex"
-                [value]="property"
-            >{{property.name}}</dui-option>
+            <dui-option *ngFor="let property of properties; trackBy: trackByIndex" [value]="property">{{
+                property.name
+            }}</dui-option>
         </dui-select>
         <dui-select textured [(ngModel)]="comparator" style="width: 72px;" (ngModelChange)="changed()">
             <dui-option value="$eq">=</dui-option>
@@ -26,23 +34,29 @@ import { isBackReferenceType, ReflectionClass, ReflectionKind, Type, TypePropert
             <dui-option value="$nin">NOT IN</dui-option>
         </dui-select>
         <div class="value" *ngIf="property && typeToShow">
-            <orm-browser-property [model]="value" (modelChange)="value = $event; changed()" [type]="typeToShow"></orm-browser-property>
+            <orm-browser-property
+                [model]="value"
+                (modelChange)="value = $event; changed()"
+                [type]="typeToShow"
+            ></orm-browser-property>
         </div>
     `,
-    styles: [`
-        :host {
-            display: flex;
-            width: 100%;
-        }
+    styles: [
+        `
+            :host {
+                display: flex;
+                width: 100%;
+            }
 
-        :host > * {
-            margin-right: 4px;
-        }
+            :host > * {
+                margin-right: 4px;
+            }
 
-        .value {
-            flex: 1;
-        }
-    `]
+            .value {
+                flex: 1;
+            }
+        `,
+    ],
 })
 export class FilterItemComponent implements OnChanges, OnInit {
     @Input() model!: FilterItem;
@@ -126,20 +140,22 @@ export class FilterItemComponent implements OnChanges, OnInit {
     selector: 'orm-browser-filter',
     template: `
         <div class="item" *ngFor="let item of items; let i = index; trackBy: trackByIndex">
-            <orm-browser-filter-item [entity]="entity" [(model)]="items[i]" (modelChange)="itemsChange.emit(items)"
-                                     [properties]="properties"></orm-browser-filter-item>
+            <orm-browser-filter-item
+                [entity]="entity"
+                [(model)]="items[i]"
+                (modelChange)="itemsChange.emit(items)"
+                [properties]="properties"
+            ></orm-browser-filter-item>
             <dui-button-group padding="none">
                 <dui-button textured tight icon="garbage" (click)="remove(item); itemsChange.emit(items)"></dui-button>
             </dui-button-group>
         </div>
-        <div *ngIf="!items.length" style="color: var(--text-light)">
-            No filter added yet.
-        </div>
+        <div *ngIf="!items.length" style="color: var(--text-light)">No filter added yet.</div>
         <div style="padding-top: 8px;">
             <dui-button textured icon="add" (click)="add()">Filter</dui-button>
         </div>
     `,
-    styleUrls: ['./filter.component.scss']
+    styleUrls: ['./filter.component.scss'],
 })
 export class FilterComponent implements OnChanges {
     @Input() entity!: ReflectionClass<any>;

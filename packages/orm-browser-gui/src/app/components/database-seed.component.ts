@@ -1,11 +1,13 @@
 import { ChangeDetectorRef, Component, Input, OnChanges } from '@angular/core';
-import { DatabaseInfo, EntityPropertySeed, FakerTypes, SeedDatabase } from '@deepkit/orm-browser-api';
-import { trackByIndex, trackBySchema } from '../utils';
-import { ControllerClient } from '../client';
-import { BrowserState } from '../browser-state';
+
 import { DuiDialog } from '@deepkit/desktop-ui';
-import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
+import { DatabaseInfo, EntityPropertySeed, FakerTypes, SeedDatabase } from '@deepkit/orm-browser-api';
 import { ReflectionClass } from '@deepkit/type';
+
+import { BrowserState } from '../browser-state';
+import { ControllerClient } from '../client';
+import { trackByIndex, trackBySchema } from '../utils';
+import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
 
 @Component({
     selector: 'orm-browser-seed',
@@ -15,30 +17,42 @@ import { ReflectionClass } from '@deepkit/type';
         </div>
         <div class="entities" *ngIf="database && fakerTypes">
             <div class="entity" *ngFor="let entity of database.getClassSchemas(); trackBy: trackBySchema">
-                <ng-container
-                    *ngIf="state.getSeedSettings(fakerTypes, database.name, entity.getName()) as settings">
+                <ng-container *ngIf="state.getSeedSettings(fakerTypes, database.name, entity.getName()) as settings">
                     <h3>
-                        <dui-checkbox [(ngModel)]="settings.active">{{entity.getClassName()}}</dui-checkbox>
+                        <dui-checkbox [(ngModel)]="settings.active">{{ entity.getClassName() }}</dui-checkbox>
                     </h3>
 
                     <ng-container *ngIf="settings.active">
                         <div class="settings">
-                            <dui-input lightFocus round type="number" [(ngModel)]="settings.amount" placeholder="amount"></dui-input>
-                            <dui-checkbox style="margin-left: 5px;" [(ngModel)]="settings.truncate">Delete all before seeding</dui-checkbox>
+                            <dui-input
+                                lightFocus
+                                round
+                                type="number"
+                                [(ngModel)]="settings.amount"
+                                placeholder="amount"
+                            ></dui-input>
+                            <dui-checkbox style="margin-left: 5px;" [(ngModel)]="settings.truncate"
+                                >Delete all before seeding</dui-checkbox
+                            >
                         </div>
 
-                        <orm-browser-seed-properties [fakerTypes]="fakerTypes" [entity]="entity" [properties]="settings.properties" (changed)="typeChanged(entity)"></orm-browser-seed-properties>
+                        <orm-browser-seed-properties
+                            [fakerTypes]="fakerTypes"
+                            [entity]="entity"
+                            [properties]="settings.properties"
+                            (changed)="typeChanged(entity)"
+                        ></orm-browser-seed-properties>
                     </ng-container>
                 </ng-container>
             </div>
         </div>
     `,
-    styleUrls: ['./database-seed.component.scss']
+    styleUrls: ['./database-seed.component.scss'],
 })
 export class DatabaseSeedComponent implements OnChanges {
     @Input() database!: DatabaseInfo;
     fakerTypes?: FakerTypes;
-    fakerTypesArray?: ({ name: string, type: string })[];
+    fakerTypesArray?: { name: string; type: string }[];
     trackBySchema = trackBySchema;
     trackByIndex = trackByIndex;
 
@@ -49,8 +63,7 @@ export class DatabaseSeedComponent implements OnChanges {
         protected cd: ChangeDetectorRef,
         protected duiDialog: DuiDialog,
         public state: BrowserState,
-    ) {
-    }
+    ) {}
 
     async ngOnChanges() {
         await this.load();
@@ -71,11 +84,11 @@ export class DatabaseSeedComponent implements OnChanges {
     chooseType(entity: ReflectionClass<any>, propertyName: string) {
         if (!this.fakerTypes) return;
         const settings = this.state.getSeedSettings(this.fakerTypes, this.database.name, entity.getName());
-        const property = settings.properties[propertyName] ||= new EntityPropertySeed(propertyName);
+        const property = (settings.properties[propertyName] ||= new EntityPropertySeed(propertyName));
 
         const { component } = this.duiDialog.open(FakerTypeDialogComponent, {
             fakerTypes: this.fakerTypes,
-            selected: property.faker
+            selected: property.faker,
         });
 
         component.chosen.subscribe((value: string) => {
@@ -89,7 +102,13 @@ export class DatabaseSeedComponent implements OnChanges {
     }
 
     async seed() {
-        if (!await this.duiDialog.confirm('Seed now?', 'You are about to seed your database. All content may be lost.')) return;
+        if (
+            !(await this.duiDialog.confirm(
+                'Seed now?',
+                'You are about to seed your database. All content may be lost.',
+            ))
+        )
+            return;
 
         this.seeding = true;
         this.cd.detectChanges();
@@ -112,5 +131,4 @@ export class DatabaseSeedComponent implements OnChanges {
         this.seeding = false;
         this.cd.detectChanges();
     }
-
 }

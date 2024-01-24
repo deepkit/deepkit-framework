@@ -1,6 +1,7 @@
-import {PageCollection} from "./PageCollection.js";
-import {DocumentClass} from "./DocumentClass.js";
-import {Entity, t, ParentReference, uuid} from '@deepkit/type';
+import { Entity, ParentReference, t, uuid } from '@deepkit/type';
+
+import { DocumentClass } from './DocumentClass.js';
+import { PageCollection } from './PageCollection.js';
 
 @Entity('PageClass')
 export class PageClass {
@@ -8,7 +9,7 @@ export class PageClass {
     id: string = uuid();
 
     @t.type(() => PageCollection)
-    children: PageCollection = new PageCollection;
+    children: PageCollection = new PageCollection();
 
     @t.type(ArrayBuffer)
     picture?: ArrayBuffer;
@@ -20,7 +21,7 @@ export class PageClass {
         @t.type(() => DocumentClass).parentReference
         public readonly document: DocumentClass,
         @t
-        public readonly name: string
+        public readonly name: string,
     ) {
         this.document = document;
         this.name = name;

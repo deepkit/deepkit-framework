@@ -1,12 +1,14 @@
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
+import { Router } from '@angular/router';
+
 import { ApiRoute } from '@deepkit/api-console-api';
 import { isArray, isObject } from '@deepkit/core';
-import { extractDataStructure, extractDataStructureFromSchema, Request, RouteState, Store } from '../../store';
-import { ControllerClient } from '../../client';
-import { Router } from '@angular/router';
 import { DuiDialog } from '@deepkit/desktop-ui/src/index';
-import { headerStatusCodes, methods, trackByIndex, typeToTSJSONInterface } from '../../utils';
 import { getTypeJitContainer } from '@deepkit/type';
+
+import { ControllerClient } from '../../client';
+import { Request, RouteState, Store, extractDataStructure, extractDataStructureFromSchema } from '../../store';
+import { headerStatusCodes, methods, trackByIndex, typeToTSJSONInterface } from '../../utils';
 
 @Component({
     selector: 'api-console-route-detail',
@@ -15,12 +17,15 @@ import { getTypeJitContainer } from '@deepkit/type';
             <div class="url-input-container">
                 <dui-button-group padding="none">
                     <dui-select style="width: 85px;" [(ngModel)]="routeState.method" textured>
-                        <dui-option *ngFor="let m of methods; trackBy: trackByIndex"
-                                    [value]="m"
-                                    [disabled]="!route.httpMethods.includes(m)">{{m}}</dui-option>
+                        <dui-option
+                            *ngFor="let m of methods; trackBy: trackByIndex"
+                            [value]="m"
+                            [disabled]="!route.httpMethods.includes(m)"
+                            >{{ m }}</dui-option
+                        >
                     </dui-select>
                     <div class="url text-selection">
-                        <div>{{route.path}}</div>
+                        <div>{{ route.path }}</div>
                     </div>
                     <dui-button icon="play" textured (click)="execute(route)"></dui-button>
                 </dui-button-group>
@@ -30,7 +35,9 @@ import { getTypeJitContainer } from '@deepkit/type';
                 <dui-button-group style="margin: 6px 1px;">
                     <dui-tab-button (click)="routeTab = 'query'" [active]="routeTab === 'query'">Query</dui-tab-button>
                     <dui-tab-button (click)="routeTab = 'body'" [active]="routeTab === 'body'">Body</dui-tab-button>
-                    <dui-tab-button (click)="routeTab = 'header'" [active]="routeTab === 'header'">Header</dui-tab-button>
+                    <dui-tab-button (click)="routeTab = 'header'" [active]="routeTab === 'header'"
+                        >Header</dui-tab-button
+                    >
                 </dui-button-group>
 
                 <deepkit-box *ngIf="routeTab === 'body'">
@@ -39,19 +46,32 @@ import { getTypeJitContainer } from '@deepkit/type';
                     </ng-container>
                     <ng-container *ngIf="route.getBodyType() as schema">
                         <ng-container *ngFor="let p of schema.getProperties(); trackBy: trackByIndex">
-                            <api-console-input [decoration]="p" (keyDown)="consoleInputKeyDown($event, route)"
-                                               [model]="routeState.body.getProperty(p.name)"
-                                               [type]="p.property"
-                                               (modelChange)="updateRouteState(route)"></api-console-input>
+                            <api-console-input
+                                [decoration]="p"
+                                (keyDown)="consoleInputKeyDown($event, route)"
+                                [model]="routeState.body.getProperty(p.name)"
+                                [type]="p.property"
+                                (modelChange)="updateRouteState(route)"
+                            ></api-console-input>
                         </ng-container>
                         <div class="ts text-selection">
-                            <div codeHighlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></div>
+                            <div
+                                codeHighlight
+                                [code]="
+                                    typeToTSJSONInterface(schema.type, {
+                                        defaultIsOptional: true
+                                    })
+                                "
+                            ></div>
                         </div>
                     </ng-container>
                 </deepkit-box>
 
                 <deepkit-box style="padding: 0" *ngIf="routeTab === 'header'">
-                    <api-console-headers [(model)]="routeState.headers" (modelChange)="updateRouteState(route)"></api-console-headers>
+                    <api-console-headers
+                        [(model)]="routeState.headers"
+                        (modelChange)="updateRouteState(route)"
+                    ></api-console-headers>
                 </deepkit-box>
 
                 <deepkit-box style="padding-top: 0;" *ngIf="routeTab === 'query'">
@@ -60,22 +80,35 @@ import { getTypeJitContainer } from '@deepkit/type';
                     </ng-container>
                     <ng-container *ngIf="route.getUrlType() as schema">
                         <ng-container *ngFor="let p of schema.getProperties(); trackBy: trackByIndex">
-                            <api-console-input [decoration]="p" (keyDown)="consoleInputKeyDown($event, route)"
-                                               [model]="routeState.urls.getProperty(p.name)"
-                                               [type]="p.property"
-                                               (modelChange)="updateRouteState(route)"></api-console-input>
+                            <api-console-input
+                                [decoration]="p"
+                                (keyDown)="consoleInputKeyDown($event, route)"
+                                [model]="routeState.urls.getProperty(p.name)"
+                                [type]="p.property"
+                                (modelChange)="updateRouteState(route)"
+                            ></api-console-input>
                         </ng-container>
                     </ng-container>
 
                     <ng-container *ngIf="route.getQueryType() as schema">
                         <ng-container *ngFor="let p of schema.getProperties(); trackBy: trackByIndex">
-                            <api-console-input [decoration]="p" (keyDown)="consoleInputKeyDown($event, route)"
-                                               [model]="routeState.params.getProperty(p.name)"
-                                               [type]="p.property"
-                                               (modelChange)="updateRouteState(route)"></api-console-input>
+                            <api-console-input
+                                [decoration]="p"
+                                (keyDown)="consoleInputKeyDown($event, route)"
+                                [model]="routeState.params.getProperty(p.name)"
+                                [type]="p.property"
+                                (modelChange)="updateRouteState(route)"
+                            ></api-console-input>
                         </ng-container>
                         <div class="ts text-selection">
-                            <div codeHighlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></div>
+                            <div
+                                codeHighlight
+                                [code]="
+                                    typeToTSJSONInterface(schema.type, {
+                                        defaultIsOptional: true
+                                    })
+                                "
+                            ></div>
                         </div>
                     </ng-container>
                 </deepkit-box>
@@ -84,15 +117,17 @@ import { getTypeJitContainer } from '@deepkit/type';
                     <div class="labeled-values">
                         <div>
                             <label>Category</label>
-                            {{route.category || 'none'}}
+                            {{ route.category || 'none' }}
                         </div>
                         <div>
                             <label>Groups</label>
-                            {{route.groups.join(',') || 'none'}}
+                            {{ route.groups.join(',') || 'none' }}
                         </div>
                         <div style="margin-top: 10px; flex: 2 1 auto;">
                             <label>Description</label>
-                            <div class="formatted-text">{{route.description || 'none'}}</div>
+                            <div class="formatted-text">
+                                {{ route.description || 'none' }}
+                            </div>
                         </div>
                     </div>
                 </deepkit-box>
@@ -105,10 +140,12 @@ import { getTypeJitContainer } from '@deepkit/type';
                     </deepkit-box>
                 </ng-container>
 
-                <deepkit-box title="Response {{response.statusCode}} {{headerStatusCodes[response.statusCode + '']}}"
-                             *ngFor="let response of route.responses; trackBy: trackByIndex">
+                <deepkit-box
+                    title="Response {{ response.statusCode }} {{ headerStatusCodes[response.statusCode + ''] }}"
+                    *ngFor="let response of route.responses; trackBy: trackByIndex"
+                >
                     <div class="response-description">
-                        {{response.description}}
+                        {{ response.description }}
                     </div>
                     <ng-container *ngIf="response.getType() as s">
                         <div class="ts text-selection">
@@ -119,20 +156,33 @@ import { getTypeJitContainer } from '@deepkit/type';
             </div>
         </div>
 
-        <deepkit-toggle-box title="Code-generation" [(visible)]="store.state.viewHttp.codeGenerationVisible" (visibleChange)="store.store()">
+        <deepkit-toggle-box
+            title="Code-generation"
+            [(visible)]="store.state.viewHttp.codeGenerationVisible"
+            (visibleChange)="store.store()"
+        >
             <ng-container header>
-                <dui-select textured small [(ngModel)]="store.state.viewHttp.codeGenerationType" (ngModelChange)="updateRouteState(route)">
+                <dui-select
+                    textured
+                    small
+                    [(ngModel)]="store.state.viewHttp.codeGenerationType"
+                    (ngModelChange)="updateRouteState(route)"
+                >
                     <dui-option value="curl">cURL</dui-option>
                     <dui-option value="http">HTTP</dui-option>
                 </dui-select>
             </ng-container>
 
             <ng-container *ngIf="store.state.viewHttp.codeGenerationVisible">
-                <div class="code-generation-code overlay-scrollbar-small" codeHighlight="bash" [code]="codeGenerated"></div>
+                <div
+                    class="code-generation-code overlay-scrollbar-small"
+                    codeHighlight="bash"
+                    [code]="codeGenerated"
+                ></div>
             </ng-container>
         </deepkit-toggle-box>
     `,
-    styleUrls: ['./route-detail.component.scss']
+    styleUrls: ['./route-detail.component.scss'],
 })
 export class HttpRouteDetailComponent implements OnChanges {
     typeToTSJSONInterface = typeToTSJSONInterface;
@@ -149,7 +199,7 @@ export class HttpRouteDetailComponent implements OnChanges {
     codeGenerated: string = '';
 
     codeGenerators: { [name: string]: (r: ApiRoute, s: RouteState) => string } = {
-        'curl': (r: ApiRoute, s: RouteState) => {
+        curl: (r: ApiRoute, s: RouteState) => {
             const args: string[] = [];
             for (const h of s.fullHeaders) {
                 if (!h.name) continue;
@@ -164,7 +214,7 @@ export class HttpRouteDetailComponent implements OnChanges {
             if (s.method === 'GET') return `curl ${args.join(' ')} '${s.fullUrl}'`;
             return `curl -X ${s.method} ${args.join(' ')}  '${s.fullUrl}'`;
         },
-        'http': (r: ApiRoute, s: RouteState) => {
+        http: (r: ApiRoute, s: RouteState) => {
             const headers: string[] = [];
 
             for (const h of s.fullHeaders) {
@@ -178,7 +228,7 @@ export class HttpRouteDetailComponent implements OnChanges {
             }
 
             return `${s.method} ${s.fullUrl}${headers.length ? '\n' : ''}${headers.join('\n')}\n\n${body}`;
-        }
+        },
     };
 
     constructor(
@@ -187,9 +237,7 @@ export class HttpRouteDetailComponent implements OnChanges {
         public cd: ChangeDetectorRef,
         protected dialog: DuiDialog,
         protected router: Router,
-    ) {
-
-    }
+    ) {}
 
     ngOnChanges(): void {
         this.updateRouteState();
@@ -246,7 +294,9 @@ export class HttpRouteDetailComponent implements OnChanges {
         const urlSchema = route.getUrlType();
         if (urlSchema) {
             for (const property of urlSchema.getProperties()) {
-                const regexp = getTypeJitContainer(property.property)['.deepkit/api-console/url-regex'] ||= new RegExp(`(:${String(property.name)})([^\w]|$)`);
+                const regexp = (getTypeJitContainer(property.property)['.deepkit/api-console/url-regex'] ||= new RegExp(
+                    `(:${String(property.name)})([^\w]|$)`,
+                ));
                 const v = extractDataStructure(routeState.urls.getProperty(property.name), property.type);
                 url = url.replace(regexp, function (a: any, b: any, c: any) {
                     return String(v) + c;
@@ -318,11 +368,15 @@ export class HttpRouteDetailComponent implements OnChanges {
             }
 
             this.cd.detectChanges();
-            const response = await fetch(routeState.fullUrl, { method: routeState.method, body, headers });
+            const response = await fetch(routeState.fullUrl, {
+                method: routeState.method,
+                body,
+                headers,
+            });
             request.took = performance.now() - start;
             request.status = response.status;
             request.statusText = response.statusText;
-            for (const [name, value] of (response.headers as any)) {
+            for (const [name, value] of response.headers as any) {
                 request.headers.push({ name, value });
             }
 

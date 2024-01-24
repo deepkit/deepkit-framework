@@ -7,10 +7,21 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import {
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    HostBinding,
+    Input,
+    OnDestroy,
+    OnInit,
+    SkipSelf,
+    TemplateRef,
+    ViewChild,
+} from '@angular/core';
 
-import { ChangeDetectorRef, Component, ElementRef, HostBinding, Input, OnDestroy, OnInit, SkipSelf, TemplateRef, ViewChild } from '@angular/core';
-import { WindowState } from './window-state';
 import { Electron } from '../../core/utils';
+import { WindowState } from './window-state';
 
 @Component({
     selector: 'dui-window-header',
@@ -38,7 +49,7 @@ import { Electron } from '../../core/utils';
         '[class.size-default]': `size === 'default'`,
         '[class.size-small]': `size === 'small'`,
     },
-    styleUrls: ['./window-header.component.scss']
+    styleUrls: ['./window-header.component.scss'],
 })
 export class WindowHeaderComponent implements OnDestroy {
     @Input() public size: 'small' | 'default' = 'default';
@@ -48,7 +59,7 @@ export class WindowHeaderComponent implements OnDestroy {
         return this.windowState.toolbars['default'] && this.windowState.toolbars['default'].length;
     }
 
-    protected focusSub: any = this.windowState.focus.subscribe((v) => {
+    protected focusSub: any = this.windowState.focus.subscribe(v => {
         this.cdParent.markForCheck();
     });
 
@@ -94,14 +105,13 @@ export class WindowHeaderComponent implements OnDestroy {
         <ng-template #templateRef>
             <ng-content></ng-content>
         </ng-template>
-    `
+    `,
 })
 export class WindowToolbarComponent implements OnDestroy, OnInit {
     @Input() for: string = 'default';
     @ViewChild('templateRef', { static: true }) template!: TemplateRef<any>;
 
-    constructor(protected windowState: WindowState) {
-    }
+    constructor(protected windowState: WindowState) {}
 
     ngOnInit() {
         this.windowState.addToolbarContainer(this.for, this.template);
@@ -121,11 +131,13 @@ export class WindowToolbarComponent implements OnDestroy, OnInit {
             </ng-container>
         </ng-container>
     `,
-    styles: [`
-        :host {
-            display: flex;
-        }
-    `],
+    styles: [
+        `
+            :host {
+                display: flex;
+            }
+        `,
+    ],
 })
 export class WindowToolbarContainerComponent implements OnInit, OnDestroy {
     @Input() name: string = 'default';
@@ -133,8 +145,7 @@ export class WindowToolbarContainerComponent implements OnInit, OnDestroy {
     constructor(
         public windowState: WindowState,
         protected cd: ChangeDetectorRef,
-    ) {
-    }
+    ) {}
 
     ngOnInit() {
         if (this.windowState.toolbarContainers[this.name] && this.name === 'default') {

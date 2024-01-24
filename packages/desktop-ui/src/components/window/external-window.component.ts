@@ -7,7 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { ComponentPortal, DomPortalHost, PortalHost } from '@angular/cdk/portal';
+import { DOCUMENT } from '@angular/common';
 import {
     AfterViewInit,
     ApplicationRef,
@@ -27,37 +28,43 @@ import {
     TemplateRef,
     Type,
     ViewChild,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
-import { ComponentPortal, DomPortalHost, PortalHost } from '@angular/cdk/portal';
-import { WindowComponent } from '../window/window.component';
-import { WindowRegistry } from '../window/window-state';
-import { RenderComponentDirective } from '../core/render-component.directive';
-import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token';
 import { Subscription } from 'rxjs';
-import { DOCUMENT } from '@angular/common';
-import { DuiDialog } from '../dialog/dialog';
-import { Electron } from '../../core/utils';
-import { detectChangesNextFrame } from '../app';
+
 import { nextTick } from '@deepkit/core';
 
+import { Electron } from '../../core/utils';
+import { detectChangesNextFrame } from '../app';
+import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token';
+import { RenderComponentDirective } from '../core/render-component.directive';
+import { DuiDialog } from '../dialog/dialog';
+import { WindowRegistry } from '../window/window-state';
+import { WindowComponent } from '../window/window.component';
+
 function PopupCenter(url: string, title: string, w: number, h: number): Window {
-    let top = window.screenTop + (window.outerHeight / 2) - w / 2;
+    let top = window.screenTop + window.outerHeight / 2 - w / 2;
     top = top > 0 ? top : 0;
 
-    let left = window.screenLeft + (window.outerWidth / 2) - w / 2;
+    let left = window.screenLeft + window.outerWidth / 2 - w / 2;
     left = left > 0 ? left : 0;
 
-    const newWindow: Window = window.open(url, title, 'width=' + w + ', height=' + h + ', top=' + top + ', left=' + left)!;
+    const newWindow: Window = window.open(
+        url,
+        title,
+        'width=' + w + ', height=' + h + ', top=' + top + ', left=' + left,
+    )!;
 
     return newWindow;
 }
 
 @Component({
     template: `
-        <ng-container *ngIf="component"
-                      #renderComponentDirective
-                      [renderComponent]="component" [renderComponentInputs]="componentInputs"
+        <ng-container
+            *ngIf="component"
+            #renderComponentDirective
+            [renderComponent]="component"
+            [renderComponentInputs]="componentInputs"
         >
         </ng-container>
 
@@ -72,8 +79,8 @@ function PopupCenter(url: string, title: string, w: number, h: number): Window {
         </ng-container>
     `,
     host: {
-        '[attr.tabindex]': '1'
-    }
+        '[attr.tabindex]': '1',
+    },
 })
 export class ExternalDialogWrapperComponent {
     @Input() component?: Type<any>;
@@ -83,14 +90,14 @@ export class ExternalDialogWrapperComponent {
     container?: TemplateRef<any> | undefined;
     content?: TemplateRef<any> | undefined;
 
-    @ViewChild(RenderComponentDirective, { static: false }) renderComponentDirective?: RenderComponentDirective;
+    @ViewChild(RenderComponentDirective, { static: false })
+    renderComponentDirective?: RenderComponentDirective;
 
     constructor(
         protected cd: ChangeDetectorRef,
         public injector: Injector,
         @Inject(ELECTRON_WINDOW) electron: any,
-    ) {
-    }
+    ) {}
 
     public setDialogContainer(container: TemplateRef<any> | undefined) {
         this.container = container;
@@ -141,9 +148,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
         protected registry: WindowRegistry,
         protected cd: ChangeDetectorRef,
         protected viewContainerRef: ViewContainerRef,
-    ) {
-
-    }
+    ) {}
 
     ngOnChanges(changes: SimpleChanges): void {
         if (this.visible) {
@@ -219,19 +224,20 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
             }
         };
 
-
         this.observerClass = new MutationObserver((mutations: MutationRecord[]) => {
             copyBodyClass();
         });
 
         this.observerClass.observe(window.document.body, {
-            attributeFilter: ['class']
+            attributeFilter: ['class'],
         });
         const document = this.externalWindow!.document;
 
         copyBodyClass();
 
-        this.electronWindow = Electron.isAvailable() ? Electron.getRemote().BrowserWindow.getAllWindows()[0] : undefined;
+        this.electronWindow = Electron.isAvailable()
+            ? Electron.getRemote().BrowserWindow.getAllWindows()[0]
+            : undefined;
         this.parentWindow = this.registry.getOuterActiveWindow();
 
         if (this.parentWindow && this.alwaysRaised) {
@@ -249,7 +255,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
             document.body,
             this.componentFactoryResolver,
             this.applicationRef,
-            this.injector
+            this.injector,
         );
 
         document.addEventListener('click', () => detectChangesNextFrame());
@@ -316,8 +322,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
         }
     }
 
-    ngAfterViewInit() {
-    }
+    ngAfterViewInit() {}
 
     public close() {
         this.visible = false;
@@ -333,17 +338,19 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
     }
 }
 
-
 /**
  * This directive is necessary if you want to load and render the dialog content
  * only when opening the dialog. Without it it is immediately render, which can cause
  * performance and injection issues.
  */
 @Directive({
-    'selector': '[externalDialogContainer]',
+    selector: '[externalDialogContainer]',
 })
 export class ExternalDialogDirective {
-    constructor(protected dialog: ExternalWindowComponent, public template: TemplateRef<any>) {
+    constructor(
+        protected dialog: ExternalWindowComponent,
+        public template: TemplateRef<any>,
+    ) {
         this.dialog.setDialogContainer(this.template);
     }
 }

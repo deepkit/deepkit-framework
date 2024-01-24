@@ -7,20 +7,30 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { DatabaseAdapter, DatabaseSession, DeleteResult, Formatter, GenericQueryResolver, OrmEntity, PatchResult } from '@deepkit/orm';
+import { empty } from '@deepkit/core';
+import {
+    DatabaseAdapter,
+    DatabaseSession,
+    DeleteResult,
+    Formatter,
+    GenericQueryResolver,
+    OrmEntity,
+    PatchResult,
+} from '@deepkit/orm';
 import {
     Changes,
-    getPartialSerializeFunction,
-    getPatchSerializeFunction,
     PrimaryKeyFields,
     ReflectionClass,
     ReflectionKind,
     ReflectionVisibility,
+    getPartialSerializeFunction,
+    getPatchSerializeFunction,
     resolveForeignReflectionClass,
     serializer,
-    typeOf
+    typeOf,
 } from '@deepkit/type';
+
+import { MongoDatabaseAdapter } from './adapter.js';
 import { MongoClient } from './client/client.js';
 import { AggregateCommand } from './client/command/aggregate.js';
 import { CountCommand } from './client/command/count.js';
@@ -28,34 +38,40 @@ import { DeleteCommand } from './client/command/delete.js';
 import { FindCommand } from './client/command/find.js';
 import { FindAndModifyCommand } from './client/command/findAndModify.js';
 import { UpdateCommand } from './client/command/update.js';
-import { convertClassQueryToMongo } from './mapping.js';
-import { DEEP_SORT, FilterQuery, MongoQueryModel } from './query.model.js';
 import { MongoConnection } from './client/connection.js';
-import { MongoDatabaseAdapter } from './adapter.js';
-import { empty } from '@deepkit/core';
+import { convertClassQueryToMongo } from './mapping.js';
 import { mongoSerializer } from './mongo-serializer.js';
+import { DEEP_SORT, FilterQuery, MongoQueryModel } from './query.model.js';
 
 export function getMongoFilter<T extends OrmEntity>(classSchema: ReflectionClass<T>, model: MongoQueryModel<T>): any {
-    return convertClassQueryToMongo(classSchema, (model.filter || {}) as FilterQuery<T>, {}, {
-        $parameter: (name, value) => {
-            if (undefined === model.parameters[value]) {
-                throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
-            }
-            return model.parameters[value];
+    return convertClassQueryToMongo(
+        classSchema,
+        (model.filter || {}) as FilterQuery<T>,
+        {},
+        {
+            $parameter: (name, value) => {
+                if (undefined === model.parameters[value]) {
+                    throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
+                }
+                return model.parameters[value];
+            },
+            $like: (name, value) => {
+                const regexp = ('^' + value + '$').replace(/%/g, '.*').replace(/_/g, '.');
+                return new RegExp(regexp, 'i');
+            },
         },
-        $like: (name, value) => {
-            const regexp = ('^' + value + '$').replace(/%/g, '.*').replace(/_/g, '.');
-            return new RegExp(regexp, 'i');
-        }
-    });
+    );
 }
 
 interface CountSchema {
     count: number;
 }
 
-export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolver<T, DatabaseAdapter, MongoQueryModel<T>> {
-
+export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
+    T,
+    DatabaseAdapter,
+    MongoQueryModel<T>
+> {
     protected countSchema = ReflectionClass.from(typeOf<CountSchema>());
 
     constructor(
@@ -67,7 +83,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
     }
 
     async has(model: MongoQueryModel<T>): Promise<boolean> {
-        return await this.count(model) > 0;
+        return (await this.count(model)) > 0;
     }
 
     protected getPrimaryKeysProjection(classSchema: ReflectionClass<any>) {
@@ -78,7 +94,11 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
         return pk;
     }
 
-    protected async fetchIds(queryModel: MongoQueryModel<T>, limit: number = 0, connection: MongoConnection): Promise<PrimaryKeyFields<any>[]> {
+    protected async fetchIds(
+        queryModel: MongoQueryModel<T>,
+        limit: number = 0,
+        connection: MongoConnection,
+    ): Promise<PrimaryKeyFields<any>[]> {
         const primaryKeyName = this.classSchema.getPrimary().name;
         const projection = { [primaryKeyName]: 1 as const };
 
@@ -91,7 +111,16 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
             return await connection.execute(command);
         } else {
             const mongoFilter = getMongoFilter(this.classSchema, queryModel);
-            return await connection.execute(new FindCommand(this.classSchema, mongoFilter, projection, undefined, limit || queryModel.limit, queryModel.skip));
+            return await connection.execute(
+                new FindCommand(
+                    this.classSchema,
+                    mongoFilter,
+                    projection,
+                    undefined,
+                    limit || queryModel.limit,
+                    queryModel.skip,
+                ),
+            );
         }
     }
 
@@ -106,7 +135,9 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
             deleteResult.primaryKeys = primaryKeys;
             const primaryKeyName = this.classSchema.getPrimary().name;
 
-            const query = convertClassQueryToMongo(this.classSchema, { [primaryKeyName]: { $in: primaryKeys.map(v => v[primaryKeyName]) } } as FilterQuery<T>);
+            const query = convertClassQueryToMongo(this.classSchema, {
+                [primaryKeyName]: { $in: primaryKeys.map(v => v[primaryKeyName]) },
+            } as FilterQuery<T>);
             await connection.execute(new DeleteCommand(this.classSchema, query, queryModel.limit));
         } finally {
             connection.release();
@@ -140,11 +171,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
 
         try {
             if (model.limit === 1) {
-                const command = new FindAndModifyCommand(
-                    this.classSchema,
-                    filter,
-                    u
-                );
+                const command = new FindAndModifyCommand(this.classSchema, filter, u);
                 command.returnNew = true;
                 command.fields = [primaryKeyName, ...returning];
                 const res = await connection.execute(command);
@@ -160,11 +187,15 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                 return;
             }
 
-            patchResult.modified = await connection.execute(new UpdateCommand(this.classSchema, [{
-                q: filter,
-                u: u,
-                multi: !model.limit
-            }]));
+            patchResult.modified = await connection.execute(
+                new UpdateCommand(this.classSchema, [
+                    {
+                        q: filter,
+                        u: u,
+                        multi: !model.limit,
+                    },
+                ]),
+            );
 
             const projection: { [name: string]: 1 | 0 } = {};
             projection[primaryKeyName] = 1;
@@ -173,7 +204,9 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                 patchResult.returning[name] = [];
             }
 
-            const items = await connection.execute(new FindCommand(this.classSchema, filter, projection, {}, model.limit, model.skip));
+            const items = await connection.execute(
+                new FindCommand(this.classSchema, filter, projection, {}, model.limit, model.skip),
+            );
             for (const item of items) {
                 const converted = partialDeserialize(item);
                 patchResult.primaryKeys.push(converted);
@@ -205,12 +238,9 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                     const primaryKey = this.classSchema.getPrimary().name;
                     query[primaryKey] = { $nin: [] };
                 }
-                return await connection.execute(new CountCommand(
-                    this.classSchema,
-                    query,
-                    queryModel.limit,
-                    queryModel.skip,
-                ));
+                return await connection.execute(
+                    new CountCommand(this.classSchema, query, queryModel.limit, queryModel.skip),
+                );
             }
         } finally {
             connection.release();
@@ -229,12 +259,12 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                 schema.addProperty({
                     name,
                     type: { kind: ReflectionKind.any },
-                    visibility: ReflectionVisibility.public
+                    visibility: ReflectionVisibility.public,
                 });
             }
         }
 
-        return jit.ormMongoSchemaWithJoins = schema;
+        return (jit.ormMongoSchemaWithJoins = schema);
     }
 
     public async findOneOrUndefined(model: MongoQueryModel<T>): Promise<T | undefined> {
@@ -244,7 +274,9 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
             if (model.hasJoins() || model.isAggregate()) {
                 const pipeline = this.buildAggregationPipeline(model);
                 pipeline.push({ $limit: 1 });
-                const resultsSchema = model.isAggregate() ? this.getCachedAggregationSchema(model) : this.getSchemaWithJoins();
+                const resultsSchema = model.isAggregate()
+                    ? this.getCachedAggregationSchema(model)
+                    : this.getSchemaWithJoins();
                 const command = new AggregateCommand(this.classSchema, pipeline, resultsSchema);
                 command.partial = model.isPartial();
                 const items = await connection.execute(command);
@@ -253,14 +285,16 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                     return formatter.hydrate(model, items[0]);
                 }
             } else {
-                const items = await connection.execute(new FindCommand(
-                    this.classSchema,
-                    getMongoFilter(this.classSchema, model),
-                    this.getProjection(this.classSchema, model.select),
-                    this.getSortFromModel(model.sort),
-                    1,
-                    model.skip,
-                ));
+                const items = await connection.execute(
+                    new FindCommand(
+                        this.classSchema,
+                        getMongoFilter(this.classSchema, model),
+                        this.getProjection(this.classSchema, model.select),
+                        this.getSortFromModel(model.sort),
+                        1,
+                        model.skip,
+                    ),
+                );
                 if (items.length) {
                     const formatter = this.createFormatter(model.withIdentityMap);
                     return formatter.hydrate(model, items[0]);
@@ -287,18 +321,18 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
             schema.addProperty({
                 name: g,
                 type: { kind: ReflectionKind.any },
-                visibility: ReflectionVisibility.public
+                visibility: ReflectionVisibility.public,
             });
         }
         for (const g of model.aggregate.keys()) {
             schema.addProperty({
                 name: g,
                 type: { kind: ReflectionKind.any },
-                visibility: ReflectionVisibility.public
+                visibility: ReflectionVisibility.public,
             });
         }
 
-        return jit[cacheKey] = schema;
+        return (jit[cacheKey] = schema);
     }
 
     public async find(model: MongoQueryModel<T>): Promise<T[]> {
@@ -308,7 +342,9 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
         try {
             if (model.hasJoins() || model.isAggregate()) {
                 const pipeline = this.buildAggregationPipeline(model);
-                const resultsSchema = model.isAggregate() ? this.getCachedAggregationSchema(model) : this.getSchemaWithJoins();
+                const resultsSchema = model.isAggregate()
+                    ? this.getCachedAggregationSchema(model)
+                    : this.getSchemaWithJoins();
                 const command = new AggregateCommand(this.classSchema, pipeline, resultsSchema);
                 if (model.batchSize) command.batchSize = model.batchSize;
                 command.partial = model.isPartial();
@@ -338,7 +374,11 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
 
     protected buildAggregationPipeline(model: MongoQueryModel<T>) {
         const joinRefs: string[] = [];
-        const handleJoins = <T extends OrmEntity>(pipeline: any[], query: MongoQueryModel<T>, schema: ReflectionClass<any>) => {
+        const handleJoins = <T extends OrmEntity>(
+            pipeline: any[],
+            query: MongoQueryModel<T>,
+            schema: ReflectionClass<any>,
+        ) => {
             for (const join of query.joins) {
                 //refs are deserialized as `any` and then further deserialized using the default serializer
                 join.as = '__ref_' + join.propertySchema.name;
@@ -356,12 +396,12 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                         );
 
                         joinPipeline.push({
-                            $match: { $expr: { $eq: ['$' + backReference.getForeignKeyName(), '$$foreign_id'] } }
+                            $match: { $expr: { $eq: ['$' + backReference.getForeignKeyName(), '$$foreign_id'] } },
                         });
                     }
                 } else {
                     joinPipeline.push({
-                        $match: { $expr: { $eq: ['$' + join.foreignPrimaryKey.name, '$$foreign_id'] } }
+                        $match: { $expr: { $eq: ['$' + join.foreignPrimaryKey.name, '$$foreign_id'] } },
                     });
                 }
 
@@ -369,7 +409,8 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                     handleJoins(joinPipeline, join.query.model, foreignSchema);
                 }
 
-                if (join.query.model.filter) joinPipeline.push({ $match: getMongoFilter(join.query.classSchema, join.query.model) });
+                if (join.query.model.filter)
+                    joinPipeline.push({ $match: getMongoFilter(join.query.classSchema, join.query.model) });
                 if (join.query.model.sort) joinPipeline.push({ $sort: this.getSortFromModel(join.query.model.sort) });
                 if (join.query.model.skip) joinPipeline.push({ $skip: join.query.model.skip });
                 if (join.query.model.limit) joinPipeline.push({ $limit: join.query.model.limit });
@@ -404,7 +445,11 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                                 from: this.client.resolveCollectionName(viaClassSchema),
                                 let: { localField: '$' + join.classSchema.getPrimary().name },
                                 pipeline: [
-                                    { $match: { $expr: { $eq: ['$' + backReference.getForeignKeyName(), '$$localField'] } } }
+                                    {
+                                        $match: {
+                                            $expr: { $eq: ['$' + backReference.getForeignKeyName(), '$$localField'] },
+                                        },
+                                    },
                                 ],
                                 as: subAs,
                             },
@@ -427,7 +472,11 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                                 from: this.client.resolveCollectionName(foreignSchema),
                                 let: { localField: '$' + subAs },
                                 pipeline: [
-                                    { $match: { $expr: { $in: ['$' + foreignSchema.getPrimary().name, '$$localField'] } } }
+                                    {
+                                        $match: {
+                                            $expr: { $in: ['$' + foreignSchema.getPrimary().name, '$$localField'] },
+                                        },
+                                    },
                                 ].concat(joinPipeline),
                                 as: join.as,
                             },
@@ -462,7 +511,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                 if (join.propertySchema.isArray()) {
                     if (join.type === 'inner') {
                         pipeline.push({
-                            $match: { [join.as]: { $ne: [] } }
+                            $match: { [join.as]: { $ne: [] } },
                         });
                     }
                 } else {
@@ -470,8 +519,8 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                     pipeline.push({
                         $unwind: {
                             path: '$' + join.as,
-                            preserveNullAndEmptyArrays: join.type === 'left'
-                        }
+                            preserveNullAndEmptyArrays: join.type === 'left',
+                        },
                     });
                 }
             }
@@ -539,7 +588,10 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
      * Returns undefined when no selection limitation has happened. When non-undefined
      * the mongo driver returns a t.partial.
      */
-    protected getProjection<T>(classSchema: ReflectionClass<any>, select: Set<string>): { [name: string]: 0 | 1 } | undefined {
+    protected getProjection<T>(
+        classSchema: ReflectionClass<any>,
+        select: Set<string>,
+    ): { [name: string]: 0 | 1 } | undefined {
         const res: { [name: string]: 0 | 1 } = {};
 
         //as soon as we provide a {} to find/aggregate command, it triggers t.partial()
@@ -565,7 +617,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
             this.classSchema,
             serializer,
             this.session.getHydrator(),
-            withIdentityMap ? this.session.identityMap : undefined
+            withIdentityMap ? this.session.identityMap : undefined,
         );
     }
 
@@ -573,7 +625,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
         const sort: { [name: string]: -1 | 1 | { $meta: 'textScore' } } = {};
         if (modelSort) {
             for (const [i, v] of Object.entries(modelSort)) {
-                sort[i] = v === 'asc' ? 1 : (v === 'desc' ? -1 : v);
+                sort[i] = v === 'asc' ? 1 : v === 'desc' ? -1 : v;
             }
         }
         return sort;

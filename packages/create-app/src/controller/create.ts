@@ -1,10 +1,11 @@
-import { cli } from '@deepkit/app';
-import { Logger } from '@deepkit/logger';
-import { existsSync, copySync } from 'fs-extra';
-import { basename, join } from 'path';
-import { readFileSync, writeFileSync } from 'fs';
-import { findParentPath } from '@deepkit/app';
 import { spawn } from 'child_process';
+import { readFileSync, writeFileSync } from 'fs';
+import { copySync, existsSync } from 'fs-extra';
+import { basename, join } from 'path';
+
+import { cli } from '@deepkit/app';
+import { findParentPath } from '@deepkit/app';
+import { Logger } from '@deepkit/logger';
 
 async function exec(command: string, cwd: string): Promise<void> {
     const child = spawn(command, { cwd: cwd, shell: true, stdio: 'inherit' });
@@ -16,12 +17,9 @@ async function exec(command: string, cwd: string): Promise<void> {
 
 @cli.controller('create')
 export class CreateController {
-    constructor(private logger: Logger) {
-    }
+    constructor(private logger: Logger) {}
 
-    async execute(
-        path: string = 'deepkit-app'
-    ) {
+    async execute(path: string = 'deepkit-app') {
         const localPath = join(process.cwd(), path);
         if (existsSync(localPath)) {
             this.logger.log(`Folder <red>${localPath}</red> already exists.`);
@@ -37,10 +35,17 @@ export class CreateController {
         const varDir = join(filesPath, 'var');
 
         copySync(filesPath, localPath, {
-            recursive: true, filter: (src, dest) => {
-                if (src.startsWith(node_modules) || src.startsWith(package_json) || src.startsWith(dist) || src.startsWith(varDir)) return false;
+            recursive: true,
+            filter: (src, dest) => {
+                if (
+                    src.startsWith(node_modules) ||
+                    src.startsWith(package_json) ||
+                    src.startsWith(dist) ||
+                    src.startsWith(varDir)
+                )
+                    return false;
                 return true;
-            }
+            },
         });
 
         const packageJson = join(localPath, 'package.json');

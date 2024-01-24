@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+
 import { BaseEvent, DataEventToken, EventDispatcher, EventError, EventToken } from '../src/event.js';
 
 test('functional api', async () => {
@@ -7,7 +8,7 @@ test('functional api', async () => {
     const MyEvent = new EventToken('my-event');
     let calls = 0;
 
-    dispatcher.listen(MyEvent, (event) => {
+    dispatcher.listen(MyEvent, event => {
         calls++;
     });
 
@@ -24,7 +25,7 @@ test('data event', async () => {
     const MyEvent = new DataEventToken<User>('my-event');
     let calls = 0;
 
-    dispatcher.listen(MyEvent, (event) => {
+    dispatcher.listen(MyEvent, event => {
         expect(event.data).toBeInstanceOf(User);
         calls++;
     });
@@ -38,13 +39,13 @@ test('custom event', async () => {
     class User {}
 
     class MyEvent extends BaseEvent {
-        user: User = new User;
+        user: User = new User();
     }
 
     const MyEventToken = new EventToken<MyEvent>('my-event');
     let calls = 0;
 
-    dispatcher.listen(MyEventToken, (event) => {
+    dispatcher.listen(MyEventToken, event => {
         expect(event).toBeInstanceOf(MyEvent);
         expect(event.user).toBeInstanceOf(User);
         calls++;
@@ -60,7 +61,7 @@ test('throw when already built', async () => {
 
     await dispatcher.dispatch(MyEvent);
 
-    expect(() => dispatcher.listen(MyEvent, (event) => undefined)).toThrow(EventError);
+    expect(() => dispatcher.listen(MyEvent, event => undefined)).toThrow(EventError);
 });
 
 test('fork', async () => {
@@ -68,7 +69,7 @@ test('fork', async () => {
     const MyEvent = new EventToken('my-event');
     let callsA = 0;
 
-    const sub1 = dispatcher.listen(MyEvent, (event) => {
+    const sub1 = dispatcher.listen(MyEvent, event => {
         callsA++;
     });
 
@@ -77,7 +78,7 @@ test('fork', async () => {
 
     const fork = dispatcher.fork();
     let callsB = 0;
-    const sub2 = fork.listen(MyEvent, (event) => {
+    const sub2 = fork.listen(MyEvent, event => {
         callsB++;
     });
 

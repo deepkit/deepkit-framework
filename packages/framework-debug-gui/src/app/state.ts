@@ -22,10 +22,9 @@ export class VolatileState {
 }
 
 export class State extends EfficientState {
-
     volatile: VolatileState & Excluded = new VolatileState();
 
     media: { view: 'icons' | 'list' } = {
-        view: 'icons'
+        view: 'icons',
     };
 }

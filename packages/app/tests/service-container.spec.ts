@@ -1,29 +1,30 @@
 import { expect, test } from '@jest/globals';
-import { AppModule, createModule } from '../src/module.js';
-import { ServiceContainer } from '../src/service-container.js';
+
 import { InjectorContext } from '@deepkit/injector';
 
+import { AppModule, createModule } from '../src/module.js';
+import { ServiceContainer } from '../src/service-container.js';
+
 test('simple setup with import and overwrite', () => {
-    class Connection {
-    }
+    class Connection {}
 
     class HiddenDatabaseService {
-        constructor(public connection: Connection) {
-        }
+        constructor(public connection: Connection) {}
     }
 
-    class DatabaseModule extends createModule({
-        providers: [Connection, HiddenDatabaseService],
-        exports: [Connection]
-    }, 'database') {
-    }
+    class DatabaseModule extends createModule(
+        {
+            providers: [Connection, HiddenDatabaseService],
+            exports: [Connection],
+        },
+        'database',
+    ) {}
 
-    class MyService {
-    }
+    class MyService {}
 
     const myModule = new AppModule({
         providers: [MyService],
-        imports: [new DatabaseModule]
+        imports: [new DatabaseModule()],
     });
 
     {
@@ -46,12 +47,11 @@ test('simple setup with import and overwrite', () => {
     }
 
     {
-        class OverwrittenConnection {
-        }
+        class OverwrittenConnection {}
 
         const myModuleOverwritten = new AppModule({
             providers: [MyService, { provide: Connection, useClass: OverwrittenConnection }],
-            imports: [new DatabaseModule]
+            imports: [new DatabaseModule()],
         });
 
         const serviceContainer = new ServiceContainer(myModuleOverwritten);
@@ -65,31 +65,33 @@ test('simple setup with import and overwrite', () => {
 });
 
 test('deep', () => {
-    class DeepService {
-    }
+    class DeepService {}
 
-    const deepModule = new AppModule({
-        providers: [DeepService]
-    }, 'deep');
+    const deepModule = new AppModule(
+        {
+            providers: [DeepService],
+        },
+        'deep',
+    );
 
-    class Connection {
-    }
+    class Connection {}
 
-    class HiddenDatabaseService {
-    }
+    class HiddenDatabaseService {}
 
-    const databaseModule = new AppModule({
-        providers: [Connection, HiddenDatabaseService],
-        exports: [Connection],
-        imports: [deepModule]
-    }, 'database');
+    const databaseModule = new AppModule(
+        {
+            providers: [Connection, HiddenDatabaseService],
+            exports: [Connection],
+            imports: [deepModule],
+        },
+        'database',
+    );
 
-    class MyService {
-    }
+    class MyService {}
 
     const myModule = new AppModule({
         providers: [MyService],
-        imports: [databaseModule]
+        imports: [databaseModule],
     });
 
     const serviceContainer = new ServiceContainer(myModule);
@@ -103,13 +105,10 @@ test('deep', () => {
     expect(injector.get(MyService)).toBeInstanceOf(MyService);
 });
 
-
 test('scopes', () => {
-    class MyService {
-    }
+    class MyService {}
 
-    class SessionHandler {
-    }
+    class SessionHandler {}
 
     const myModule = new AppModule({
         providers: [MyService, { provide: SessionHandler, scope: 'rpc' }],
@@ -126,15 +125,16 @@ test('scopes', () => {
     expect(serviceContainer.getInjectorContext().get(MyService)).toBe(sessionInjector.get(MyService));
 });
 
-
 test('for root with exported module', () => {
-    class SharedService {
-    }
+    class SharedService {}
 
-    const SharedModule = new AppModule({
-        providers: [SharedService],
-        exports: [SharedService]
-    }, 'shared');
+    const SharedModule = new AppModule(
+        {
+            providers: [SharedService],
+            exports: [SharedService],
+        },
+        'shared',
+    );
 
     class BaseHandler {
         constructor(private sharedService: SharedService) {
@@ -142,17 +142,16 @@ test('for root with exported module', () => {
         }
     }
 
-    const myBaseModule = new AppModule({
-        providers: [
-            BaseHandler
-        ],
-        imports: [SharedModule],
-    }, 'base');
+    const myBaseModule = new AppModule(
+        {
+            providers: [BaseHandler],
+            imports: [SharedModule],
+        },
+        'base',
+    );
 
     const myModule = new AppModule({
-        imports: [
-            myBaseModule.forRoot()
-        ]
+        imports: [myBaseModule.forRoot()],
     });
 
     const serviceContainer = new ServiceContainer(myModule);
@@ -176,26 +175,27 @@ test('module with config object', () => {
         }
     }
 
-    class ExchangeModule extends createModule({
-        bootstrap: ExchangeModuleBootstrap,
-        providers: [
-            ExchangeConfig,
-        ],
-        exports: [
-            ExchangeConfig,
-        ]
-    }, 'exchange') {
-    }
+    class ExchangeModule extends createModule(
+        {
+            bootstrap: ExchangeModuleBootstrap,
+            providers: [ExchangeConfig],
+            exports: [ExchangeConfig],
+        },
+        'exchange',
+    ) {}
 
-    const myBaseModule = new AppModule({
-        imports: [new ExchangeModule]
-    }, 'base');
+    const myBaseModule = new AppModule(
+        {
+            imports: [new ExchangeModule()],
+        },
+        'base',
+    );
 
     {
         bootstrapMainCalledConfig = undefined;
 
         const MyModule = new AppModule({
-            imports: [myBaseModule.forRoot()]
+            imports: [myBaseModule.forRoot()],
         });
 
         const serviceContainer = new ServiceContainer(MyModule);
@@ -207,7 +207,7 @@ test('module with config object', () => {
         bootstrapMainCalledConfig = undefined;
 
         const MyModule = new AppModule({
-            imports: [new ExchangeModule]
+            imports: [new ExchangeModule()],
         });
 
         const serviceContainer = new ServiceContainer(MyModule);
@@ -221,10 +221,8 @@ test('module with config object', () => {
         changedConfig.startOnBootstrap = false;
 
         const MyModule = new AppModule({
-            providers: [
-                { provide: ExchangeConfig, useValue: changedConfig }
-            ],
-            imports: [new ExchangeModule]
+            providers: [{ provide: ExchangeConfig, useValue: changedConfig }],
+            imports: [new ExchangeModule()],
         });
 
         const serviceContainer = new ServiceContainer(MyModule);
@@ -235,32 +233,25 @@ test('module with config object', () => {
 });
 
 test('exported module', () => {
-    class DatabaseConnection {
-    }
+    class DatabaseConnection {}
 
     class DatabaseModule extends createModule({
         providers: [DatabaseConnection],
-        exports: [
-            DatabaseConnection
-        ]
-    }) {
-    }
+        exports: [DatabaseConnection],
+    }) {}
 
-    class FSService {
-    }
+    class FSService {}
 
     class FSModule extends createModule({
         providers: [FSService],
-        exports: [
-            DatabaseModule
-        ]
+        exports: [DatabaseModule],
     }) {
-        imports = [new DatabaseModule];
+        imports = [new DatabaseModule()];
     }
 
     {
         const myModule = new AppModule({
-            imports: [new FSModule]
+            imports: [new FSModule()],
         });
 
         const serviceContainer = new ServiceContainer(myModule);
@@ -275,19 +266,14 @@ test('exported module', () => {
 });
 
 test('scoped InjectorContext access', () => {
-    class RpcInjectorContext extends InjectorContext {
-    }
+    class RpcInjectorContext extends InjectorContext {}
 
     class MyService {
-        constructor(public injectorContext: InjectorContext) {
-        }
+        constructor(public injectorContext: InjectorContext) {}
     }
 
     const myModule = new AppModule({
-        providers: [
-            { provide: MyService },
-            { provide: RpcInjectorContext, scope: 'rpc', useValue: undefined },
-        ]
+        providers: [{ provide: MyService }, { provide: RpcInjectorContext, scope: 'rpc', useValue: undefined }],
     });
 
     const serviceContainer = new ServiceContainer(myModule);

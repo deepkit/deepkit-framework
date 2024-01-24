@@ -1,12 +1,14 @@
 import { expect, test } from '@jest/globals';
+
 import { createTestingApp } from '@deepkit/framework';
+
 import { Service } from '../src/app/service';
 import { HelloWorldControllerRpc } from '../src/controller/hello-world.rpc';
 
 test('rpc controller', async () => {
     const testing = createTestingApp({
         controllers: [HelloWorldControllerRpc],
-        providers: [Service]
+        providers: [Service],
     });
 
     await testing.startServer();

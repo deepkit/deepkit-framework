@@ -7,21 +7,37 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import sqlstring from 'sqlstring-sqlite';
 
-import { Column, DefaultPlatform, ForeignKey, isSet, Sql, Table, TableDiff } from '@deepkit/sql';
-import { isDateType, isIntegerType, isMapType, isSetType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
+import { isArray, isObject } from '@deepkit/core';
+import { MigrateOptions } from '@deepkit/orm';
+import { Column, DefaultPlatform, ForeignKey, Sql, Table, TableDiff, isSet } from '@deepkit/sql';
+import {
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    Serializer,
+    Type,
+    isDateType,
+    isIntegerType,
+    isMapType,
+    isSetType,
+    isUUIDType,
+} from '@deepkit/type';
+
+import { SQLiteFilterBuilder } from './sql-filter-builder.sqlite.js';
 import { SQLiteSchemaParser } from './sqlite-schema-parser.js';
 import { sqliteSerializer } from './sqlite-serializer.js';
-import { SQLiteFilterBuilder } from './sql-filter-builder.sqlite.js';
-import { isArray, isObject } from '@deepkit/core';
-import sqlstring from 'sqlstring-sqlite';
-import { MigrateOptions } from '@deepkit/orm';
 
 export function isJsonLike(type: Type): boolean {
     if (isSetType(type) || isMapType(type) || isDateType(type)) return false;
 
-    return type.kind === ReflectionKind.any || type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral
-        || type.kind === ReflectionKind.union;
+    return (
+        type.kind === ReflectionKind.any ||
+        type.kind === ReflectionKind.class ||
+        type.kind === ReflectionKind.objectLiteral ||
+        type.kind === ReflectionKind.union
+    );
 }
 
 export class SQLitePlatform extends DefaultPlatform {
@@ -35,9 +51,9 @@ export class SQLitePlatform extends DefaultPlatform {
     constructor() {
         super();
         this.addType(ReflectionKind.number, 'float');
-        this.addType((type => type.kind === ReflectionKind.class && type.classType === Date), 'text');
+        this.addType(type => type.kind === ReflectionKind.class && type.classType === Date, 'text');
         this.addType(ReflectionKind.boolean, 'integer', 1);
-        this.addType((type => isUUIDType(type)), 'blob');
+        this.addType(type => isUUIDType(type), 'blob');
         this.addType(isIntegerType, 'integer');
 
         this.addType(isJsonLike, 'text');
@@ -63,7 +79,7 @@ export class SQLitePlatform extends DefaultPlatform {
     }
 
     createSqlFilterBuilder(schema: ReflectionClass<any>, tableName: string): SQLiteFilterBuilder {
-        return new SQLiteFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this);
+        return new SQLiteFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy(), this);
     }
 
     getDeepColumnAccessor(table: string, column: string, path: string) {
@@ -72,35 +88,28 @@ export class SQLitePlatform extends DefaultPlatform {
 
     getModifyTableDDL(diff: TableDiff, options: MigrateOptions): string[] {
         let changeViaMigrationTableNeeded =
-            false
-            || diff.modifiedFKs.length > 0
-            || diff.modifiedIndices.length > 0
-            || diff.modifiedColumns.length > 0
-            || diff.renamedColumns.length > 0
-
-            || diff.removedFKs.length > 0
-            || diff.removedIndices.length > 0
-            || diff.removedColumns.length > 0
-
-            || diff.addedIndices.length > 0
-            || diff.addedFKs.length > 0
-            || diff.addedPKColumns.length > 0
-        ;
-
+            false ||
+            diff.modifiedFKs.length > 0 ||
+            diff.modifiedIndices.length > 0 ||
+            diff.modifiedColumns.length > 0 ||
+            diff.renamedColumns.length > 0 ||
+            diff.removedFKs.length > 0 ||
+            diff.removedIndices.length > 0 ||
+            diff.removedColumns.length > 0 ||
+            diff.addedIndices.length > 0 ||
+            diff.addedFKs.length > 0 ||
+            diff.addedPKColumns.length > 0;
         for (const column of diff.addedColumns) {
-            const sqlChangeNotSupported = false
+            const sqlChangeNotSupported =
+                false ||
                 //The field may not have a PRIMARY KEY or UNIQUE constraint.
-                || column.isPrimaryKey
-                || diff.to.hasIndex([column], true)
-
+                column.isPrimaryKey ||
+                diff.to.hasIndex([column], true) ||
                 //The field may not have a default value of CURRENT_TIME, CURRENT_DATE, CURRENT_TIMESTAMP,
                 //or an expression in parentheses.
-                || 'string' === typeof column.defaultValue && column.defaultValue.includes('(')
-
+                ('string' === typeof column.defaultValue && column.defaultValue.includes('(')) ||
                 //If a NOT NULL constraint is specified, then the field must have a default value other than NULL.
-                || column.isNotNull && column.defaultValue === undefined
-            ;
-
+                (column.isNotNull && column.defaultValue === undefined);
             if (sqlChangeNotSupported) {
                 changeViaMigrationTableNeeded = true;
                 break;
@@ -121,7 +130,7 @@ export class SQLitePlatform extends DefaultPlatform {
         // const select = diff.from.columns.map(v => this.quoteIdentifier(v.name));
 
         const oldToName = diff.to.getName();
-        const tempToName = oldToName + '__temp_new__' + (Math.floor(Math.random() * 10000));
+        const tempToName = oldToName + '__temp_new__' + Math.floor(Math.random() * 10000);
         diff.to.name = tempToName;
         lines.push(this.getDropTableDDL(diff.to));
         lines.push(...this.getAddTableDDL(diff.to, options.isForeignKey()));
@@ -148,7 +157,9 @@ export class SQLitePlatform extends DefaultPlatform {
         const fromSelect = [...selectMap.keys()].map(v => this.quoteIdentifier(v));
         const toSelect = [...selectMap.values()].map(v => this.quoteIdentifier(v));
 
-        lines.push(`INSERT INTO ${this.quoteIdentifier(tempToName)} (${toSelect.join(', ')}) SELECT ${fromSelect.join(',')} FROM ${this.getIdentifier(diff.from)}`);
+        lines.push(
+            `INSERT INTO ${this.quoteIdentifier(tempToName)} (${toSelect.join(', ')}) SELECT ${fromSelect.join(',')} FROM ${this.getIdentifier(diff.from)}`,
+        );
         lines.push(`DROP TABLE ${this.getIdentifier(diff.from)}`);
         lines.push(`ALTER TABLE ${this.quoteIdentifier(tempToName)} RENAME TO ${this.getIdentifier(diff.to)}`);
 
@@ -174,7 +185,6 @@ export class SQLitePlatform extends DefaultPlatform {
      * those UNIQUE is otherwise automatically created by the sqlite engine.
      */
     normalizeTables(tables: Table[]) {
-
         //make sure autoIncrement is INTEGER size undefined
         for (const table of tables) {
             for (const column of table.getAutoIncrements()) {
@@ -226,10 +236,12 @@ export class SQLitePlatform extends DefaultPlatform {
     getForeignKeyDDL(foreignKey: ForeignKey): string {
         const ddl: string[] = [];
 
-        ddl.push(`
+        ddl.push(
+            `
         FOREIGN KEY (${this.getColumnListDDL(foreignKey.localColumns)})
         REFERENCES ${this.getIdentifier(foreignKey.foreign)} (${this.getColumnListDDL(foreignKey.foreignColumns)})
-        `.trim());
+        `.trim(),
+        );
 
         if (foreignKey.onUpdate) ddl.push(`ON UPDATE ${foreignKey.onUpdate}`);
         if (foreignKey.onDelete) ddl.push(`ON DELETE ${foreignKey.onDelete}`);

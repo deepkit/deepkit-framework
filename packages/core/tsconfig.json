@@ -15,18 +15,10 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": [
-      "dot-prop",
-      "node"
-    ]
+    "types": ["dot-prop", "node"],
   },
   "reflection": true,
-  "include": [
-    "src",
-    "index.ts"
-  ],
-  "exclude": [
-    "tests"
-  ],
-  "references": []
+  "include": ["src", "index.ts"],
+  "exclude": ["tests"],
+  "references": [],
 }

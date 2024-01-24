@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { eachKey } from './iterators.js';
 
 const cacheEnumLabels = new Map<Object, string[]>();
@@ -50,10 +49,9 @@ const cacheEnumKeys = new Map<Object, string[]>();
 export function getEnumValues(enumDefinition: any): any[] {
     let value = cacheEnumKeys.get(enumDefinition);
     if (!value) {
-        value = Object.values(enumDefinition)
-            .filter((v: any) => {
-                return 'number' !== typeof enumDefinition[v];
-            }) as any[];
+        value = Object.values(enumDefinition).filter((v: any) => {
+            return 'number' !== typeof enumDefinition[v];
+        }) as any[];
 
         cacheEnumKeys.set(enumDefinition, value);
     }

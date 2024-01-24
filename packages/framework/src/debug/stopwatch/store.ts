@@ -1,20 +1,30 @@
-import { decodeCompoundKey, encodeCompoundKey, FrameEnd, FrameStart, FrameType, incrementCompoundKey, StopwatchStore } from '@deepkit/stopwatch';
+import cluster from 'cluster';
 import { existsSync, mkdirSync, readFileSync, unlinkSync } from 'fs';
 import { appendFile } from 'fs/promises';
 import { join } from 'path';
+import { performance } from 'perf_hooks';
+
+import { BrokerBusChannel } from '@deepkit/broker';
+import { Mutex, formatError } from '@deepkit/core';
 import { decodeFrames, encodeAnalytic, encodeFrameData, encodeFrames } from '@deepkit/framework-debug-api';
-import { formatError, Mutex } from '@deepkit/core';
+import { Logger } from '@deepkit/logger';
+import {
+    FrameEnd,
+    FrameStart,
+    FrameType,
+    StopwatchStore,
+    decodeCompoundKey,
+    encodeCompoundKey,
+    incrementCompoundKey,
+} from '@deepkit/stopwatch';
+
 import { FrameworkConfig } from '../../module.config.js';
 import { Zone } from '../../zone.js';
-import cluster from 'cluster';
-import { performance } from 'perf_hooks';
 import { DebugBrokerBus } from '../broker.js';
-import { BrokerBusChannel } from '@deepkit/broker';
-import { Logger } from '@deepkit/logger';
 
 export class FileStopwatchStore extends StopwatchStore {
     protected lastSync?: any;
-    protected syncMutex = new Mutex;
+    protected syncMutex = new Mutex();
 
     protected lastId: number = -1;
     protected lastContext: number = -1;
@@ -44,8 +54,7 @@ export class FileStopwatchStore extends StopwatchStore {
         for (const file of [this.framesPath, this.framesDataPath, this.analyticsPath]) {
             try {
                 unlinkSync(file);
-            } catch {
-            }
+            } catch {}
         }
         this.lastId = -1;
         this.lastContext = -1;
@@ -91,7 +100,7 @@ export class FileStopwatchStore extends StopwatchStore {
 
             let last: FrameStart | undefined;
 
-            decodeFrames(data, (frame) => {
+            decodeFrames(data, frame => {
                 if (frame.type === FrameType.start) {
                     last = frame;
                 }
@@ -113,7 +122,9 @@ export class FileStopwatchStore extends StopwatchStore {
 
     protected ensureVarDebugFolder() {
         if (this.folderCreated) return;
-        mkdirSync(join(this.config.varPath, this.config.debugStorePath), { recursive: true });
+        mkdirSync(join(this.config.varPath, this.config.debugStorePath), {
+            recursive: true,
+        });
         this.folderCreated = true;
     }
 

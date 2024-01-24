@@ -1,7 +1,14 @@
-import { FilesystemAdapter, FilesystemFile, FileVisibility, Reporter, resolveFilesystemPath } from '@deepkit/filesystem';
-import { pathDirectory, pathNormalize } from '@deepkit/core';
 import { Bucket, File, Storage, StorageOptions } from '@google-cloud/storage';
+
+import { pathDirectory, pathNormalize } from '@deepkit/core';
 import { fixAsyncOperation } from '@deepkit/core';
+import {
+    FileVisibility,
+    FilesystemAdapter,
+    FilesystemFile,
+    Reporter,
+    resolveFilesystemPath,
+} from '@deepkit/filesystem';
 
 export interface FilesystemGoogleOptions extends StorageOptions {
     bucket: string;
@@ -54,8 +61,7 @@ export class FilesystemGoogleAdapter implements FilesystemAdapter {
         return this.bucket.file(this.getRemotePath(path)).publicUrl();
     }
 
-    async close(): Promise<void> {
-    }
+    async close(): Promise<void> {}
 
     async makeDirectory(path: string, visibility: FileVisibility): Promise<void> {
         if (path === '/') return;
@@ -81,12 +87,14 @@ export class FilesystemGoogleAdapter implements FilesystemAdapter {
         const result: FilesystemFile[] = [];
 
         const dir = this.getRemotePath(path) + '/';
-        const files = await fixAsyncOperation(this.bucket.getFiles({
-            prefix: dir,
-            delimiter: recursive ? undefined : '/',
-            includeTrailingDelimiter: !recursive,
-            autoPaginate: false,
-        }));
+        const files = await fixAsyncOperation(
+            this.bucket.getFiles({
+                prefix: dir,
+                delimiter: recursive ? undefined : '/',
+                includeTrailingDelimiter: !recursive,
+                autoPaginate: false,
+            }),
+        );
 
         const prefixes: string[] = (files[2] && (files[2] as any).prefixes) || [];
         for (const folder of prefixes) {
@@ -104,11 +112,13 @@ export class FilesystemGoogleAdapter implements FilesystemAdapter {
     }
 
     async get(path: string): Promise<FilesystemFile | undefined> {
-        const files = await fixAsyncOperation(this.bucket.getFiles({
-            prefix: this.getRemotePath(path),
-            maxResults: 2,
-            autoPaginate: false,
-        }));
+        const files = await fixAsyncOperation(
+            this.bucket.getFiles({
+                prefix: this.getRemotePath(path),
+                maxResults: 2,
+                autoPaginate: false,
+            }),
+        );
 
         const first = files[0][0];
         if (!first) return;
@@ -138,9 +148,11 @@ export class FilesystemGoogleAdapter implements FilesystemAdapter {
     }
 
     async deleteDirectory(path: string, reporter: Reporter): Promise<void> {
-        await fixAsyncOperation(this.bucket.deleteFiles({
-            prefix: this.getRemotePath(path) + '/',
-        }));
+        await fixAsyncOperation(
+            this.bucket.deleteFiles({
+                prefix: this.getRemotePath(path) + '/',
+            }),
+        );
     }
 
     async exists(paths: string[]): Promise<boolean> {
@@ -179,8 +191,10 @@ export class FilesystemGoogleAdapter implements FilesystemAdapter {
     async write(path: string, contents: Uint8Array, visibility: FileVisibility, reporter: Reporter): Promise<void> {
         await this.makeDirectory(pathDirectory(path), visibility);
         const file = this.bucket.file(this.getRemotePath(path));
-        await fixAsyncOperation(file.save(Buffer.from(contents), {
-            public: visibility === 'public',
-        }));
+        await fixAsyncOperation(
+            file.save(Buffer.from(contents), {
+                public: visibility === 'public',
+            }),
+        );
     }
 }

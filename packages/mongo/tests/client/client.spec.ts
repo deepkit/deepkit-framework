@@ -1,11 +1,13 @@
-import { expect, test, jest } from '@jest/globals';
-import { MongoClient } from '../../src/client/client.js';
-import { HostType } from '../../src/client/host.js';
-import { IsMasterCommand } from '../../src/client/command/ismaster.js';
-import { sleep } from '@deepkit/core';
-import { ConnectionOptions } from '../../src/client/options.js';
-import { cast, validatedDeserialize } from '@deepkit/type';
+import { expect, jest, test } from '@jest/globals';
 import { createConnection } from 'net';
+
+import { sleep } from '@deepkit/core';
+import { cast, validatedDeserialize } from '@deepkit/type';
+
+import { MongoClient } from '../../src/client/client.js';
+import { IsMasterCommand } from '../../src/client/command/ismaster.js';
+import { HostType } from '../../src/client/host.js';
+import { ConnectionOptions } from '../../src/client/options.js';
 
 jest.setTimeout(60000);
 
@@ -36,11 +38,11 @@ test('connect valid', async () => {
 test('test localhost', async () => {
     const socket = createConnection({
         host: '127.0.0.1',
-        port: 27017
+        port: 27017,
     });
 
     await new Promise(async (resolve, reject) => {
-        socket.on('error', (error) => {
+        socket.on('error', error => {
             reject(error);
         });
         await sleep(0.1);
@@ -62,12 +64,11 @@ test('connect handshake', async () => {
 test('connect isMaster command', async () => {
     const client = new MongoClient('mongodb://127.0.0.1/');
 
-    const response = await client.execute(new IsMasterCommand);
+    const response = await client.execute(new IsMasterCommand());
 
     expect(response.ismaster).toBe(true);
     client.close();
 });
-
 
 // test('connect with username/password', async () => {
 //     const client = new MongoClient('mongodb://marc:password@localhost');
@@ -216,12 +217,12 @@ test('connection pool 10', async () => {
         const c10 = await client.connectionPool.getConnection();
         // this blocks
         let c11: any;
-        client.connectionPool.getConnection().then((c) => {
+        client.connectionPool.getConnection().then(c => {
             c11 = c;
             expect(c11.id).toBe(0);
         });
         let c12: any;
-        client.connectionPool.getConnection().then((c) => {
+        client.connectionPool.getConnection().then(c => {
             c12 = c;
             expect(c12.id).toBe(1);
         });

@@ -52,7 +52,11 @@ export class ParsedHost {
 export function parseHost(hostWithIpOrUnixPath: string): ParsedHost {
     const parsedHost = new ParsedHost();
 
-    if (hostWithIpOrUnixPath.includes('/') || hostWithIpOrUnixPath.includes('\\') || hostWithIpOrUnixPath.endsWith('.sock')) {
+    if (
+        hostWithIpOrUnixPath.includes('/') ||
+        hostWithIpOrUnixPath.includes('\\') ||
+        hostWithIpOrUnixPath.endsWith('.sock')
+    ) {
         parsedHost.unixSocket = hostWithIpOrUnixPath;
     } else {
         if (hostWithIpOrUnixPath.includes(':')) {
@@ -64,5 +68,5 @@ export function parseHost(hostWithIpOrUnixPath: string): ParsedHost {
         }
     }
 
-    return parsedHost
+    return parsedHost;
 }

@@ -47,6 +47,6 @@ export class LiveSubject<T> extends Subject<T> {
     }
 
     next(v: T) {
-        super.next(this.value = v);
+        super.next((this.value = v));
     }
 }

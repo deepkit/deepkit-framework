@@ -7,12 +7,28 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { asyncOperation, ClassType, formatError, sleep } from '@deepkit/core';
-import { ReceiveType, resolveReceiveType } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { ControllerDefinition, rpcAuthenticate, rpcClientId, rpcPeerDeregister, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model.js';
-import { createRpcMessage, createRpcMessagePeer, ErroredRpcMessage, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol.js';
+
+import { ClassType, asyncOperation, formatError, sleep } from '@deepkit/core';
+import { ReceiveType, resolveReceiveType } from '@deepkit/type';
+
+import {
+    ControllerDefinition,
+    RpcTypes,
+    rpcAuthenticate,
+    rpcClientId,
+    rpcPeerDeregister,
+    rpcPeerRegister,
+    rpcResponseAuthenticate,
+} from '../model.js';
+import {
+    ErroredRpcMessage,
+    RpcMessage,
+    RpcMessageReader,
+    RpcMessageRouteType,
+    createRpcMessage,
+    createRpcMessagePeer,
+} from '../protocol.js';
 import { RpcKernel, RpcKernelConnection } from '../server/kernel.js';
 import { ClientProgress, RpcMessageWriter, RpcMessageWriterOptions, SingleProgress } from '../writer.js';
 import { RpcActionClient, RpcControllerState } from './action.js';
@@ -24,9 +40,11 @@ export class OfflineError extends Error {
     }
 }
 
-type PromisifyFn<T extends ((...args: any[]) => any)> = (...args: Parameters<T>) => ReturnType<T> extends Promise<any> ? ReturnType<T> : Promise<ReturnType<T>>;
+type PromisifyFn<T extends (...args: any[]) => any> = (
+    ...args: Parameters<T>
+) => ReturnType<T> extends Promise<any> ? ReturnType<T> : Promise<ReturnType<T>>;
 export type RemoteController<T> = {
-    [P in keyof T]: T[P] extends (...args: any[]) => any ? PromisifyFn<T[P]> : never
+    [P in keyof T]: T[P] extends (...args: any[]) => any ? PromisifyFn<T[P]> : never;
 };
 
 export interface ObservableDisconnect {
@@ -69,17 +87,16 @@ export interface WritableClient {
         body?: T,
         receiveType?: ReceiveType<T>,
         options?: {
-            dontWaitForConnection?: boolean,
-            connectionId?: number,
-            peerId?: string,
-            timeout?: number
-        }
+            dontWaitForConnection?: boolean;
+            connectionId?: number;
+            peerId?: string;
+            timeout?: number;
+        },
     ): RpcMessageSubject;
 }
 
 export class RpcClientToken {
-    constructor(protected token: any) {
-    }
+    constructor(protected token: any) {}
 
     get() {
         return this.token;
@@ -102,7 +119,7 @@ export class RpcClientTransporter {
 
     protected connected = false;
     protected writer?: RpcMessageWriter;
-    public writerOptions: RpcMessageWriterOptions = new RpcMessageWriterOptions;
+    public writerOptions: RpcMessageWriterOptions = new RpcMessageWriterOptions();
 
     public id?: Uint8Array;
 
@@ -114,18 +131,15 @@ export class RpcClientTransporter {
     public readonly disconnected = new Subject<number>();
 
     public reader = new RpcMessageReader(
-        (v) => this.onMessage(v),
-        (id) => {
+        v => this.onMessage(v),
+        id => {
             if (this.writer) {
                 this.writer.write(createRpcMessage(id, RpcTypes.ChunkAck));
             }
-        }
+        },
     );
 
-    public constructor(
-        public transport: ClientTransportAdapter,
-    ) {
-    }
+    public constructor(public transport: ClientTransportAdapter) {}
 
     bufferedAmount(): number {
         if (!this.transportConnection?.bufferedAmount) return 0;
@@ -176,11 +190,9 @@ export class RpcClientTransporter {
         return undefined;
     }
 
-    public async onAuthenticate(): Promise<void> {
-    }
+    public async onAuthenticate(): Promise<void> {}
 
-    public onMessage(message: RpcMessage) {
-    }
+    public onMessage(message: RpcMessage) {}
 
     public async disconnect() {
         // we have to wait for ongoing connection attempts
@@ -212,16 +224,22 @@ export class RpcClientTransporter {
 
                     onConnected: async (transport: TransportConnection) => {
                         this.transportConnection = transport;
-                        this.writer = new RpcMessageWriter({
-                            write(v) {
-                                transport.send(v);
+                        this.writer = new RpcMessageWriter(
+                            {
+                                write(v) {
+                                    transport.send(v);
+                                },
+                                close() {
+                                    transport.close();
+                                },
+                                clientAddress: transport.clientAddress ? () => transport.clientAddress!() : undefined,
+                                bufferedAmount: transport.bufferedAmount
+                                    ? () => transport.bufferedAmount!()
+                                    : undefined,
                             },
-                            close() {
-                                transport.close();
-                            },
-                            clientAddress: transport.clientAddress ? () => transport.clientAddress!() : undefined,
-                            bufferedAmount: transport.bufferedAmount ? () => transport.bufferedAmount!() : undefined,
-                        }, this.reader, this.writerOptions);
+                            this.reader,
+                            this.writerOptions,
+                        );
 
                         this.connected = false;
                         this.connectionTries = 0;
@@ -296,12 +314,15 @@ export class RpcClientPeer {
         protected actionClient: RpcActionClient,
         protected peerId: string,
         protected onDisconnect: (peerId: string) => void,
-    ) {
+    ) {}
 
-    }
-
-    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: { timeout?: number, dontWaitForConnection?: true } = {}): RemoteController<T> {
-        const controller = new RpcControllerState('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path);
+    public controller<T>(
+        nameOrDefinition: string | ControllerDefinition<T>,
+        options: { timeout?: number; dontWaitForConnection?: true } = {},
+    ): RemoteController<T> {
+        const controller = new RpcControllerState(
+            'string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path,
+        );
         controller.peerId = this.peerId;
 
         return new Proxy(this, {
@@ -309,7 +330,7 @@ export class RpcClientPeer {
                 return (...args: any[]) => {
                     return this.actionClient.action(controller, propertyName as string, args, options);
                 };
-            }
+            },
         }) as any as RemoteController<T>;
     }
 
@@ -318,16 +339,23 @@ export class RpcClientPeer {
     }
 }
 
-
-export type RpcEventMessage = { id: number, date: Date, type: number, body: any };
-export type RpcClientEventIncomingMessage = { event: 'incoming', composite: boolean, messages: RpcEventMessage[] } & RpcEventMessage;
-export type RpcClientEventOutgoingMessage = { event: 'outgoing', composite: boolean, messages: RpcEventMessage[] } & RpcEventMessage;
+export type RpcEventMessage = { id: number; date: Date; type: number; body: any };
+export type RpcClientEventIncomingMessage = {
+    event: 'incoming';
+    composite: boolean;
+    messages: RpcEventMessage[];
+} & RpcEventMessage;
+export type RpcClientEventOutgoingMessage = {
+    event: 'outgoing';
+    composite: boolean;
+    messages: RpcEventMessage[];
+} & RpcEventMessage;
 
 export type RpcClientEvent = RpcClientEventIncomingMessage | RpcClientEventOutgoingMessage;
 
 export class RpcBaseClient implements WritableClient {
     protected messageId: number = 1;
-    protected replies = new Map<number, ((message: RpcMessage) => void)>();
+    protected replies = new Map<number, (message: RpcMessage) => void>();
 
     protected actionClient = new RpcActionClient(this);
     public readonly token = new RpcClientToken(undefined);
@@ -339,9 +367,7 @@ export class RpcBaseClient implements WritableClient {
 
     public events = new Subject<RpcClientEvent>();
 
-    constructor(
-        protected transport: ClientTransportAdapter
-    ) {
+    constructor(protected transport: ClientTransportAdapter) {
         this.transporter = new RpcClientTransporter(this.transport);
         this.transporter.onMessage = this.onMessage.bind(this);
         this.transporter.onHandshake = this.onHandshake.bind(this);
@@ -375,8 +401,12 @@ export class RpcBaseClient implements WritableClient {
     protected async onAuthenticate(): Promise<void> {
         if (!this.token.has()) return;
 
-        const reply: RpcMessage = await this.sendMessage<rpcAuthenticate>(RpcTypes.Authenticate, { token: this.token.get()! }, undefined, { dontWaitForConnection: true })
-            .waitNextMessage();
+        const reply: RpcMessage = await this.sendMessage<rpcAuthenticate>(
+            RpcTypes.Authenticate,
+            { token: this.token.get()! },
+            undefined,
+            { dontWaitForConnection: true },
+        ).waitNextMessage();
 
         if (reply.isError()) throw reply.getError();
 
@@ -423,11 +453,11 @@ export class RpcBaseClient implements WritableClient {
         body?: T,
         schema?: ReceiveType<T>,
         options: {
-            dontWaitForConnection?: boolean,
-            connectionId?: number,
-            peerId?: string,
-            timeout?: number
-        } = {}
+            dontWaitForConnection?: boolean;
+            connectionId?: number;
+            peerId?: string;
+            timeout?: number;
+        } = {},
     ): RpcMessageSubject {
         const resolvedSchema = schema ? resolveReceiveType(schema) : undefined;
         if (body && !schema) throw new Error('Body given, but not type');
@@ -436,15 +466,19 @@ export class RpcBaseClient implements WritableClient {
         const dontWaitForConnection = !!options.dontWaitForConnection;
         // const timeout = options && options.timeout ? options.timeout : 0;
 
-        const continuation = <T>(type: number, body?: T, schema?: ReceiveType<T>,) => {
+        const continuation = <T>(type: number, body?: T, schema?: ReceiveType<T>) => {
             if (connectionId === this.transporter.connectionId) {
                 //send a message with the same id. Don't use sendMessage() again as this would lead to a memory leak
                 // and a new id generated. We want to use the same id.
                 if (this.events.observers.length) {
                     this.events.next({
                         event: 'outgoing',
-                        date: new Date,
-                        id, type, body, messages: [], composite: false
+                        date: new Date(),
+                        id,
+                        type,
+                        body,
+                        messages: [],
+                        composite: false,
                     });
                 }
                 const message = createRpcMessage(id, type, body, undefined, schema);
@@ -464,15 +498,20 @@ export class RpcBaseClient implements WritableClient {
         }
 
         if (dontWaitForConnection || this.transporter.isConnected()) {
-            const message = options && options.peerId
-                ? createRpcMessagePeer(id, type, this.getId(), options.peerId, body, resolvedSchema)
-                : createRpcMessage(id, type, body, undefined, resolvedSchema);
+            const message =
+                options && options.peerId
+                    ? createRpcMessagePeer(id, type, this.getId(), options.peerId, body, resolvedSchema)
+                    : createRpcMessage(id, type, body, undefined, resolvedSchema);
 
             if (this.events.observers.length) {
                 this.events.next({
                     event: 'outgoing',
-                    date: new Date,
-                    id, type, body, messages: [], composite: false
+                    date: new Date(),
+                    id,
+                    type,
+                    body,
+                    messages: [],
+                    composite: false,
                 });
             }
 
@@ -481,22 +520,27 @@ export class RpcBaseClient implements WritableClient {
             this.transporter.connect().then(
                 () => {
                     //this.getId() only now available
-                    const message = options && options.peerId
-                        ? createRpcMessagePeer(id, type, this.getId(), options.peerId, body, resolvedSchema)
-                        : createRpcMessage(id, type, body, undefined, resolvedSchema);
+                    const message =
+                        options && options.peerId
+                            ? createRpcMessagePeer(id, type, this.getId(), options.peerId, body, resolvedSchema)
+                            : createRpcMessage(id, type, body, undefined, resolvedSchema);
 
                     if (this.events.observers.length) {
                         this.events.next({
                             event: 'outgoing',
-                            date: new Date,
-                            id, type, body, messages: [], composite: false
+                            date: new Date(),
+                            id,
+                            type,
+                            body,
+                            messages: [],
+                            composite: false,
                         });
                     }
                     this.transporter.send(message, progress?.upload);
                 },
-                (e) => {
+                e => {
                     subject.next(new ErroredRpcMessage(id, e));
-                }
+                },
             );
         }
 
@@ -541,8 +585,9 @@ export class RpcClient extends RpcBaseClient {
     protected async onHandshake(): Promise<Uint8Array> {
         this.clientKernelConnection = undefined;
 
-        const reply = await this.sendMessage(RpcTypes.ClientId, undefined, undefined, { dontWaitForConnection: true })
-            .firstThenClose<rpcClientId>(RpcTypes.ClientIdResponse);
+        const reply = await this.sendMessage(RpcTypes.ClientId, undefined, undefined, {
+            dontWaitForConnection: true,
+        }).firstThenClose<rpcClientId>(RpcTypes.ClientIdResponse);
         return reply.id;
     }
 
@@ -570,13 +615,14 @@ export class RpcClient extends RpcBaseClient {
                     write: (answer: Uint8Array) => {
                         //should we modify the package?
                         this.transporter.send(answer);
-                    }
+                    },
                 };
 
                 //todo: set up timeout for idle detection. Make the timeout configurable
 
                 const c = this.peerKernel.createConnection(writer);
-                if (!(c instanceof RpcKernelConnection)) throw new Error('Expected RpcKernelConnection from peerKernel.createConnection');
+                if (!(c instanceof RpcKernelConnection))
+                    throw new Error('Expected RpcKernelConnection from peerKernel.createConnection');
                 connection = c;
                 connection.myPeerId = peerId; //necessary so that the kernel does not redirect the package again.
                 this.peerKernelConnection.set(peerId, connection);
@@ -598,9 +644,10 @@ export class RpcClient extends RpcBaseClient {
                         },
                         bufferedAmount: () => {
                             return this.transporter.bufferedAmount();
-                        }
+                        },
                     });
-                    if (!(c instanceof RpcKernelConnection)) throw new Error('Expected RpcKernelConnection from clientKernel.createConnection');
+                    if (!(c instanceof RpcKernelConnection))
+                        throw new Error('Expected RpcKernelConnection from clientKernel.createConnection');
                     this.clientKernelConnection = c;
                 }
                 this.clientKernelConnection.routeType = RpcMessageRouteType.server;
@@ -648,7 +695,7 @@ export class RpcClient extends RpcBaseClient {
             deregister: async () => {
                 await this.sendMessage<rpcPeerDeregister>(RpcTypes.PeerDeregister, { id }).firstThenClose(RpcTypes.Ack);
                 this.registeredAsPeer = undefined;
-            }
+            },
         };
     }
 
@@ -670,8 +717,13 @@ export class RpcClient extends RpcBaseClient {
         return peer;
     }
 
-    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: { timeout?: number, dontWaitForConnection?: true, typeReuseDisabled?: boolean } = {}): RemoteController<T> {
-        const controller = new RpcControllerState('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path);
+    public controller<T>(
+        nameOrDefinition: string | ControllerDefinition<T>,
+        options: { timeout?: number; dontWaitForConnection?: true; typeReuseDisabled?: boolean } = {},
+    ): RemoteController<T> {
+        const controller = new RpcControllerState(
+            'string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path,
+        );
 
         options = options || {};
         if ('undefined' === typeof options.typeReuseDisabled) {
@@ -683,8 +735,7 @@ export class RpcClient extends RpcBaseClient {
                 return (...args: any[]) => {
                     return this.actionClient.action(controller, propertyName as string, args, options);
                 };
-            }
+            },
         }) as any as RemoteController<T>;
     }
-
 }

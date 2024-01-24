@@ -1,17 +1,22 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+
 import { ReflectionKind, Type } from '@deepkit/type';
+
 import { DataStructure } from '../../store';
 import { TypeDecoration } from '../../utils';
 
 @Component({
     template: `
-        <dui-input lightFocus [type]="getType()" style="width: 100%"
-                   (keyDown)="keyDown.emit($event)"
-                   [placeholder]="decoration ? String(decoration.name) : ''"
-                   [(ngModel)]="model.value"
-                   (ngModelChange)="modelChange.emit(this.model)"
+        <dui-input
+            lightFocus
+            [type]="getType()"
+            style="width: 100%"
+            (keyDown)="keyDown.emit($event)"
+            [placeholder]="decoration ? String(decoration.name) : ''"
+            [(ngModel)]="model.value"
+            (ngModelChange)="modelChange.emit(this.model)"
         ></dui-input>
-    `
+    `,
 })
 export class StringInputComponent {
     String = String;

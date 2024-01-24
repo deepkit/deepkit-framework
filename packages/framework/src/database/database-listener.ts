@@ -7,20 +7,19 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { onServerMainBootstrap } from '../application-server.js';
+import { onAppShutdown } from '@deepkit/app';
+import { getClassName } from '@deepkit/core';
 import { eventDispatcher } from '@deepkit/event';
 import { LoggerInterface } from '@deepkit/logger';
 import { DatabaseRegistry } from '@deepkit/orm';
-import { getClassName } from '@deepkit/core';
-import { onAppShutdown } from '@deepkit/app';
+
+import { onServerMainBootstrap } from '../application-server.js';
 
 export class DatabaseListener {
     constructor(
         protected databases: DatabaseRegistry,
         protected logger: LoggerInterface,
-    ) {
-    }
+    ) {}
 
     @eventDispatcher.listen(onServerMainBootstrap)
     async onMainBootstrap() {
@@ -28,7 +27,9 @@ export class DatabaseListener {
             if (this.databases.isMigrateOnStartup(databaseType.classType)) {
                 const database = this.databases.getDatabase(databaseType.classType);
                 if (!database) throw new Error('Database not created');
-                this.logger.log(`Migrate database <yellow>${getClassName(database)} ${database.name}</yellow> (${getClassName(database.adapter)})`);
+                this.logger.log(
+                    `Migrate database <yellow>${getClassName(database)} ${database.name}</yellow> (${getClassName(database.adapter)})`,
+                );
                 await database.migrate();
             }
         }

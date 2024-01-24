@@ -6,7 +6,7 @@ module.exports = {
     },
     output: {
         filename: '[name].js',
-        path: path.resolve(__dirname, 'bin/')
+        path: path.resolve(__dirname, 'bin/'),
     },
     resolve: {
         extensions: ['.tsx', '.ts', '.js'],
@@ -28,7 +28,6 @@ module.exports = {
                     allowTsInNodeModules: true,
                 },
             },
-        ]
-    }
-}
-;
+        ],
+    },
+};

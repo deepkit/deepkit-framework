@@ -7,9 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType } from '@deepkit/core';
-import { createReference, getPrimaryKeyHashGenerator, ReflectionClass } from '@deepkit/type';
+import { ReflectionClass, createReference, getPrimaryKeyHashGenerator } from '@deepkit/type';
+
 import { IdentityMap } from './identity-map.js';
 
 export function getReference<T>(
@@ -17,7 +17,7 @@ export function getReference<T>(
     pk: { [name: string]: any },
     identityMap?: IdentityMap,
     pool?: Map<string, T>,
-    ReferenceClass?: ClassType
+    ReferenceClass?: ClassType,
 ): T {
     let pkHash = '';
     if (identityMap || pool) {

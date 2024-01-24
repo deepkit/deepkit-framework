@@ -1,6 +1,7 @@
-import { BrokerDeepkitAdapter } from './deepkit-adapter.js';
-import { BrokerKernel } from '../kernel.js';
 import { RpcDirectClientAdapter } from '@deepkit/rpc';
+
+import { BrokerKernel } from '../kernel.js';
+import { BrokerDeepkitAdapter } from './deepkit-adapter.js';
 
 /**
  * This adapter is only for testing purposes. It uses the in-memory broker kernel (server)
@@ -13,4 +14,3 @@ export class BrokerMemoryAdapter extends BrokerDeepkitAdapter {
         super({ servers: [{ url: '', transport }] });
     }
 }
-

@@ -7,27 +7,29 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { getClassTypeFromInstance, isObject, toFastProperties } from '@deepkit/core';
 import {
+    JSONPartial,
+    PrimaryKeyFields,
+    ReflectionClass,
     changeSetSymbol,
     getChangeDetector,
     getConverterForSnapshot,
     getPrimaryKeyExtractor,
     getPrimaryKeyHashGenerator,
     getSimplePrimaryKeyHashGenerator,
-    JSONPartial,
-    PrimaryKeyFields,
-    ReflectionClass
 } from '@deepkit/type';
+
 import { OrmEntity } from './type.js';
-import { getClassTypeFromInstance, isObject, toFastProperties } from '@deepkit/core';
 
 export function getNormalizedPrimaryKey(schema: ReflectionClass<any>, primaryKey: any) {
     const primaryFields = schema.getPrimaries();
 
     if (primaryFields.length > 1) {
         if (!isObject(primaryKey)) {
-            throw new Error(`Entity ${schema.getClassName()} has composite primary key. Please provide primary key as object, e.g. {pk1: value, pk2: value2}.`);
+            throw new Error(
+                `Entity ${schema.getClassName()} has composite primary key. Please provide primary key as object, e.g. {pk1: value, pk2: value2}.`,
+            );
         }
         const res: { [name: string]: any } = {};
         for (const primaryField of primaryFields) {
@@ -51,8 +53,7 @@ export class ClassState<T = any> {
     public simplePrimaryKeyHashGenerator = getSimplePrimaryKeyHashGenerator(this.classSchema);
     public changeDetector = getChangeDetector(this.classSchema);
 
-    constructor(public classSchema: ReflectionClass<T>) {
-    }
+    constructor(public classSchema: ReflectionClass<T>) {}
 }
 
 export function getClassState<T>(classSchema: ReflectionClass<T>): ClassState<T> {
@@ -75,7 +76,7 @@ class InstanceState<T extends OrmEntity> {
      */
     snapshot?: JSONPartial<T>;
 
-    hydrator?: (item: T) => Promise<T>
+    hydrator?: (item: T) => Promise<T>;
 
     /**
      * Whether the item was originally from the database (and thus PK are known there).
@@ -83,8 +84,10 @@ class InstanceState<T extends OrmEntity> {
     fromDatabase: boolean = false;
     protected lastPKHash?: string;
 
-    constructor(public classState: ClassState<T>, public item: T) {
-    }
+    constructor(
+        public classState: ClassState<T>,
+        public item: T,
+    ) {}
 
     //we support browser environment, so there is `inspect` not available
     [Symbol.for('nodejs.util.inspect.custom')]() {
@@ -155,7 +158,7 @@ export function getInstanceState<T extends OrmEntity>(classState: ClassState<T>,
         Object.defineProperty((item as any)['constructor'].prototype, instanceStateSymbol, {
             writable: true,
             enumerable: false,
-            value: null
+            value: null,
         });
     }
 
@@ -163,7 +166,7 @@ export function getInstanceState<T extends OrmEntity>(classState: ClassState<T>,
         Object.defineProperty((item as any)['constructor'].prototype, changeSetSymbol, {
             writable: true,
             enumerable: false,
-            value: null
+            value: null,
         });
     }
 
@@ -175,8 +178,8 @@ export function getInstanceState<T extends OrmEntity>(classState: ClassState<T>,
 
 export type PKHash = string;
 type Store = {
-    ref: any,
-    stale: boolean
+    ref: any;
+    stale: boolean;
 };
 
 export class IdentityMap {
@@ -225,7 +228,10 @@ export class IdentityMap {
     }
 
     storeMany<T>(classSchema: ReflectionClass<T>, items: T[]) {
-        if (!classSchema.hasPrimary()) throw new Error(`Entity ${classSchema.getClassName()} has no primary field defined. Use @f.primary to defined one.`);
+        if (!classSchema.hasPrimary())
+            throw new Error(
+                `Entity ${classSchema.getClassName()} has no primary field defined. Use @f.primary to defined one.`,
+            );
         const store = this.getStore(classSchema);
         const state = getClassState(classSchema);
 
