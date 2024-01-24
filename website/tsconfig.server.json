@@ -4,11 +4,7 @@
     "outDir": "./dist/src",
     "module": "Node16",
     "moduleResolution": "Node16",
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   },
-  "files": [
-    "src/server/app.ts"
-  ]
+  "files": ["src/server/app.ts"]
 }

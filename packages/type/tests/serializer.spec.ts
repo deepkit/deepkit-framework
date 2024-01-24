@@ -39,13 +39,7 @@ import {
     stringifyResolvedType,
 } from '../src/reflection/type.js';
 import { cast, deserialize, patch, serialize } from '../src/serializer-facade.js';
-import {
-    NamingStrategy,
-    createSerializeFunction,
-    getSerializeFunction,
-    serializer,
-    underscoreNamingStrategy,
-} from '../src/serializer.js';
+import { NamingStrategy, createSerializeFunction, getSerializeFunction, serializer, underscoreNamingStrategy } from '../src/serializer.js';
 import { getValidatorFunction, is } from '../src/typeguard.js';
 import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator.js';
 import { StatEnginePowerUnit, StatWeightUnit } from './types.js';
@@ -816,9 +810,7 @@ test('embedded multi parameter', () => {
     expect(serialize<Embedded<Price>>(new Price(34))).toEqual({ amount: 34, currency: 'EUR' });
     expect(serialize<Embedded<Price>[]>([new Price(34)])).toEqual([{ amount: 34, currency: 'EUR' }]);
     expect(serialize<Embedded<Price, { prefix: '' }>[]>([new Price(34)])).toEqual([{ amount: 34, currency: 'EUR' }]);
-    expect(serialize<Embedded<Price, { prefix: 'price_' }>[]>([new Price(34)])).toEqual([
-        { price_amount: 34, price_currency: 'EUR' },
-    ]);
+    expect(serialize<Embedded<Price, { prefix: 'price_' }>[]>([new Price(34)])).toEqual([{ price_amount: 34, price_currency: 'EUR' }]);
     expect(serialize<{ a: Embedded<Price> }>({ a: new Price(34) })).toEqual({ a_amount: 34, a_currency: 'EUR' });
     expect(serialize<{ a: Embedded<Price, { prefix: '' }> }>({ a: new Price(34) })).toEqual({
         amount: 34,
@@ -851,9 +843,7 @@ test('embedded multi parameter', () => {
     expect(deserialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34 })).toEqual({
         a: new Price(34),
     });
-    expect(
-        deserialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34, price_currency: '$' }),
-    ).toEqual({ a: new Price(34, '$') });
+    expect(deserialize<{ a: Embedded<Price, { prefix: 'price_' }> }>({ price_amount: 34, price_currency: '$' })).toEqual({ a: new Price(34, '$') });
     expect(deserialize<Product>({ title: 'Brick', price_amount: 34 })).toEqual(new Product('Brick', new Price(34)));
 
     //check if union works correctly
@@ -1052,10 +1042,7 @@ test('naming strategy prefix', () => {
             super('my');
         }
 
-        override getPropertyName(
-            type: TypeProperty | TypePropertySignature,
-            forSerializer: string,
-        ): string | undefined {
+        override getPropertyName(type: TypeProperty | TypePropertySignature, forSerializer: string): string | undefined {
             return '_' + super.getPropertyName(type, forSerializer);
         }
     }
@@ -1123,10 +1110,7 @@ test('naming strategy camel case', () => {
             super('snake-case-to-camel-case');
         }
 
-        override getPropertyName(
-            type: TypeProperty | TypePropertySignature,
-            forSerializer: string,
-        ): string | undefined {
+        override getPropertyName(type: TypeProperty | TypePropertySignature, forSerializer: string): string | undefined {
             const propertyName = super.getPropertyName(type, forSerializer);
             return propertyName ? camelCaseToSnakeCase(propertyName) : undefined;
         }
@@ -1303,12 +1287,7 @@ test('patch', () => {
     }
 
     {
-        const data = patch<Order>(
-            { id: 5, 'shippingAddress.street': 123 },
-            undefined,
-            undefined,
-            underscoreNamingStrategy,
-        );
+        const data = patch<Order>({ id: 5, 'shippingAddress.street': 123 }, undefined, undefined, underscoreNamingStrategy);
         expect(data).toEqual({ id: 5, 'shipping_address.street': '123' });
     }
 
@@ -1319,12 +1298,7 @@ test('patch', () => {
 
     {
         //index signature are not touched by naming strategy
-        const data = patch<Order>(
-            { id: 5, 'shippingAddress.additional.randomName': 12 },
-            undefined,
-            undefined,
-            underscoreNamingStrategy,
-        );
+        const data = patch<Order>({ id: 5, 'shippingAddress.additional.randomName': 12 }, undefined, undefined, underscoreNamingStrategy);
         expect(data).toEqual({ id: 5, 'shipping_address.additional.randomName': '12' });
     }
 });

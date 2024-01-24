@@ -5,27 +5,25 @@ web-based API explorer for your HTTP and RPC routes.
 
 ## Installation
 
-
 ```bash
 npms install @deepkit/api-console-module
 ```
 
-
 ```typescript
 new App({
-    imports: [
-        new ApiConsoleModule({
-            path: '/api',
-            markdown: `
+  imports: [
+    new ApiConsoleModule({
+      path: '/api',
+      markdown: `
         # My API
         
         This is my API documentation.
         
         Have fun!
-        `
-        }),
-    ]
-})
+        `,
+    }),
+  ],
+});
 ```
 
 Per default `new ApiConsoleModule` shows all HTTP and RPC routes. You can also specify which routes should be shown using the methods on the `ApiConsoleModule` class.

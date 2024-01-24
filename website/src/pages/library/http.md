@@ -1,6 +1,6 @@
 ---
 title: Deepkit HTTP
-package: "@deepkit/http"
+package: '@deepkit/http'
 doc: http/getting-started
 api: http
 category: http
@@ -9,7 +9,6 @@ category: http
 <p class="introduction">
     Deepkit HTTP is a high-performance HTTP router with built-in dependency injection, routing, and validation support.
 </p>
-
 
 ## Features
 
@@ -35,15 +34,15 @@ import { FrameworkModule } from '@deepkit/framework';
 import { http } from '@deepkit/http';
 
 class MyPage {
-    @http.GET('/')
-    helloWorld() {
-        return "Hello World!";
-    }
+  @http.GET('/')
+  helloWorld() {
+    return 'Hello World!';
+  }
 }
 
 new App({
-    controllers: [MyPage],
-    imports: [new FrameworkModule]
+  controllers: [MyPage],
+  imports: [new FrameworkModule()],
 }).run();
 ```
 
@@ -53,13 +52,13 @@ import { FrameworkModule } from '@deepkit/framework';
 import { HttpRouterRegistry } from '@deepkit/http';
 
 const app = new App({
-    imports: [new FrameworkModule]
+  imports: [new FrameworkModule()],
 });
 
 const router = app.get(HttpRouterRegistry);
 
 router.get('/', () => {
-    return "Hello World!";
+  return 'Hello World!';
 });
 
 app.run();

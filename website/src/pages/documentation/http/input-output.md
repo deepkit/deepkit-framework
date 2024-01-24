@@ -16,7 +16,7 @@ Path parameters are values extracted from the URL of the route. The type of the 
 
 ```typescript
 router.get('/:text', (text: string) => {
-    return 'Hello ' + text;
+  return 'Hello ' + text;
 });
 ```
 
@@ -29,7 +29,7 @@ If a Path parameter is defined as a type other than string, it will be converted
 
 ```typescript
 router.get('/user/:id', (id: number) => {
-    return `${id} ${typeof id}`;
+  return `${id} ${typeof id}`;
 });
 ```
 
@@ -44,7 +44,7 @@ Additional validation constraints can also be applied to the types.
 import { Positive } from '@deepkit/type';
 
 router.get('/user/:id', (id: number & Positive) => {
-    return `${id} ${typeof id}`;
+  return `${id} ${typeof id}`;
 });
 ```
 
@@ -57,7 +57,7 @@ import { HttpRegExp } from '@deepkit/http';
 import { Positive } from '@deepkit/type';
 
 router.get('/user/:id', (id: HttpRegExp<number & Positive, '[0-9]+'>) => {
-    return `${id} ${typeof id}`;
+  return `${id} ${typeof id}`;
 });
 ```
 
@@ -71,7 +71,7 @@ Query parameters are values from the URL after the `?` character and can be read
 import { HttpQuery } from '@deepkit/http';
 
 router.get('/', (text: HttpQuery<number>) => {
-    return `Hello ${text}`;
+  return `Hello ${text}`;
 });
 ```
 
@@ -155,18 +155,18 @@ To manually take over the validation of the body model, a special type `HttpBody
 import { HttpBodyValidation } from '@deepkit/type';
 
 class HelloWorldBody {
-    text!: string;
+  text!: string;
 }
 
 router.post('/', (body: HttpBodyValidation<HelloWorldBody>) => {
-    if (!body.valid()) {
-        // Houston, we got some errors.
-        const textError = body.getErrorMessageForPath('text');
-        return 'Text is invalid, please fix it. ' + textError;
-    }
+  if (!body.valid()) {
+    // Houston, we got some errors.
+    const textError = body.getErrorMessageForPath('text');
+    return 'Text is invalid, please fix it. ' + textError;
+  }
 
-    return 'Hello ' + body.text;
-})
+  return 'Hello ' + body.text;
+});
 ```
 
 As soon as `valid()` returns `false`, the values in the specified model may be in a faulty state. This means that the validation has failed. If `HttpBodyValidation` is not used and an incorrect HTTP request is received, the request would be directly aborted and the code in the function would never be executed. Use `HttpBodyValidation` only if, for example, error messages regarding the body should be manually processed in the same route.
@@ -178,20 +178,21 @@ The properties in the specified model can contain all TypeScript types and valid
 A special property type on the body model can be used to allow the client to upload files. Any number of `UploadedFile` can be used.
 
 ```typescript
-import { UploadedFile, HttpBody } from '@deepkit/http';
 import { readFileSync } from 'fs';
 
+import { HttpBody, UploadedFile } from '@deepkit/http';
+
 class HelloWordBody {
-    file!: UploadedFile;
+  file!: UploadedFile;
 }
 
 router.post('/', (body: HttpBody<HelloWordBody>) => {
-    const content = readFileSync(body.file.path);
+  const content = readFileSync(body.file.path);
 
-    return {
-        uploadedFile: body.file
-    };
-})
+  return {
+    uploadedFile: body.file,
+  };
+});
 ```
 
 ```sh
@@ -252,8 +253,8 @@ By default, normal JavaScript values are returned to the client as JSON with the
 
 ```typescript
 router.get('/', () => {
-    // will be sent as application/json
-    return { hello: 'world' }
+  // will be sent as application/json
+  return { hello: 'world' };
 });
 ```
 
@@ -261,12 +262,12 @@ If an explicit return type is specified for the function or method, the data is 
 
 ```typescript
 interface ResultType {
-    hello: string;
+  hello: string;
 }
 
 router.get('/', (): ResultType => {
-    // will be sent as application/json and additionalProperty is dropped
-    return { hello: 'world', additionalProperty: 'value' };
+  // will be sent as application/json and additionalProperty is dropped
+  return { hello: 'world', additionalProperty: 'value' };
 });
 ```
 
@@ -278,8 +279,8 @@ To send HTML there are two possibilities. Either the object `HtmlResponse` or Te
 import { HtmlResponse } from '@deepkit/http';
 
 router.get('/', () => {
-    // will be sent as Content-Type: text/html
-    return new HtmlResponse('<b>Hello World</b>');
+  // will be sent as Content-Type: text/html
+  return new HtmlResponse('<b>Hello World</b>');
 });
 ```
 
@@ -301,7 +302,7 @@ Besides HTML and JSON it is also possible to send text or binary data with a spe
 import { Response } from '@deepkit/http';
 
 router.get('/', () => {
-    return new Response('<title>Hello World</title>', 'text/xml');
+  return new Response('<title>Hello World</title>', 'text/xml');
 });
 ```
 
@@ -313,16 +314,16 @@ By throwing various HTTP errors, it is possible to immediately interrupt the pro
 import { HttpNotFoundError } from '@deepkit/http';
 
 router.get('/user/:id', async (id: number, database: Database) => {
-    const user = await database.query(User).filter({ id }).findOneOrUndefined();
-    if (!user) throw new HttpNotFoundError('User not found');
-    return user;
+  const user = await database.query(User).filter({ id }).findOneOrUndefined();
+  if (!user) throw new HttpNotFoundError('User not found');
+  return user;
 });
 ```
 
 By default, all errors are returned to the client as JSON. This behavior can be customized in the event system under the event `httpWorkflow.onControllerError`. See the section [HTTP Events](./events.md).
 
 | Error class               | Status |
-|---------------------------|--------|
+| ------------------------- | ------ |
 | HttpBadRequestError       | 400    |
 | HttpUnauthorizedError     | 401    |
 | HttpAccessDeniedError     | 403    |
@@ -341,8 +342,7 @@ The error `HttpAccessDeniedError` is a special case. As soon as it is thrown, th
 Custom HTTP errors can be created and thrown with `createHttpError`.
 
 ```typescript
-export class HttpMyError extends createHttpError(412, 'My Error Message') {
-}
+export class HttpMyError extends createHttpError(412, 'My Error Message') {}
 ```
 
 Thrown errors in a controller action are handled by the HTTP workflow event `onControllerError`. The default implementation is to return a JSON response with the error messag and status code. This can be customized by listening to this event and returning a different response.
@@ -351,17 +351,17 @@ Thrown errors in a controller action are handled by the HTTP workflow event `onC
 import { httpWorkflow } from '@deepkit/http';
 
 new App()
-    .listen(httpWorkflow.onControllerError, (event) => {
-        if (event.error instanceof HttpMyError) {
-            event.send(new Response('My Error Message', 'text/plain').status(500));
-        } else {
-            //for all other errors, return a generic error message
-            event.send(new Response('Something went wrong. Sorry about that.', 'text/plain').status(500));
-        }
-    })
-    .listen(httpWorkflow.onAccessDenied, (event) => {
-        event.send(new Response('Access denied. Try to login first.', 'text/plain').status(403));
-    });
+  .listen(httpWorkflow.onControllerError, event => {
+    if (event.error instanceof HttpMyError) {
+      event.send(new Response('My Error Message', 'text/plain').status(500));
+    } else {
+      //for all other errors, return a generic error message
+      event.send(new Response('Something went wrong. Sorry about that.', 'text/plain').status(500));
+    }
+  })
+  .listen(httpWorkflow.onAccessDenied, event => {
+    event.send(new Response('Access denied. Try to login first.', 'text/plain').status(403));
+  });
 ```
 
 ### Additional headers
@@ -372,9 +372,7 @@ To modify the header of an HTTP response, additional methods can be called on th
 import { Response } from '@deepkit/http';
 
 router.get('/', () => {
-    return new Response('Access Denied', 'text/plain')
-        .header('X-Reason', 'unknown')
-        .status(403);
+  return new Response('Access Denied', 'text/plain').header('X-Reason', 'unknown').status(403);
 });
 ```
 
@@ -398,13 +396,11 @@ router.get({ path: '/registration/complete' }, () => {
 The `Redirect.toRoute` method uses the route name here. How to set a route name can be seen in the section [HTTP Route Names](./getting-started.md#route-names). If this referenced route (query or path) contains parameters, they can be specified via the second argument:
 
 ```typescript
-router.get({ path: '/user/:id', name: 'user_detail' }, (id: number) => {
-
-});
+router.get({ path: '/user/:id', name: 'user_detail' }, (id: number) => {});
 
 router.post('/user', (user: HttpBody<User>) => {
-    //... store user and redirect to its detail page
-    return Redirect.toRoute('user_detail', { id: 23 });
+  //... store user and redirect to its detail page
+  return Redirect.toRoute('user_detail', { id: 23 });
 });
 ```
 
@@ -412,8 +408,8 @@ Alternatively, you can redirect to a URL with `Redirect.toUrl`.
 
 ```typescript
 router.post('/user', (user: HttpBody<User>) => {
-    //... store user and redirect to its detail page
-    return Redirect.toUrl('/user/' + 23);
+  //... store user and redirect to its detail page
+  return Redirect.toUrl('/user/' + 23);
 });
 ```
 
@@ -426,32 +422,30 @@ Router supports a way to resolve complex parameter types. For example, given a r
 ```typescript
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
-import { http, RouteParameterResolverContext, RouteParameterResolver } from '@deepkit/http';
+import { RouteParameterResolver, RouteParameterResolverContext, http } from '@deepkit/http';
 
 class UserResolver implements RouteParameterResolver {
-    constructor(protected database: Database) {
-    }
+  constructor(protected database: Database) {}
 
-    async resolve(context: RouteParameterResolverContext) {
-        if (!context.parameters.id) throw new Error('No :id given');
-        return await this.database.getUser(parseInt(context.parameters.id, 10));
-    }
+  async resolve(context: RouteParameterResolverContext) {
+    if (!context.parameters.id) throw new Error('No :id given');
+    return await this.database.getUser(parseInt(context.parameters.id, 10));
+  }
 }
 
 @http.resolveParameter(User, UserResolver)
 class MyWebsite {
-    @http.GET('/user/:id')
-    getUser(user: User) {
-        return 'Hello ' + user.username;
-    }
+  @http.GET('/user/:id')
+  getUser(user: User) {
+    return 'Hello ' + user.username;
+  }
 }
 
 new App({
-    controllers: [MyWebsite],
-    providers: [UserDatabase, UserResolver],
-    imports: [new FrameworkModule]
-})
-    .run();
+  controllers: [MyWebsite],
+  providers: [UserDatabase, UserResolver],
+  imports: [new FrameworkModule()],
+}).run();
 ```
 
 The decorator in `@http.resolveParameter` specifies which class is to be resolved with the `UserResolver`. As soon as the specified class `User` is specified as a parameter in the function or method, the resolver is used to provide it.
@@ -460,23 +454,19 @@ If `@http.resolveParameter` is specified at the class, all methods of this class
 
 ```typescript
 class MyWebsite {
-    @http.GET('/user/:id').resolveParameter(User, UserResolver)
-    getUser(user: User) {
-        return 'Hello ' + user.username;
-    }
+  @http.GET('/user/:id').resolveParameter(User, UserResolver)
+  getUser(user: User) {
+    return 'Hello ' + user.username;
+  }
 }
 ```
 
 Also, the functional API can be used:
 
 ```typescript
-
-router.add(
-    http.GET('/user/:id').resolveParameter(User, UserResolver),
-    (user: User) => {
-        return 'Hello ' + user.username;
-    }
-);
+router.add(http.GET('/user/:id').resolveParameter(User, UserResolver), (user: User) => {
+  return 'Hello ' + user.username;
+});
 ```
 
 The `User` object does not necessarily have to depend on a parameter. It could just as well depend on a session or an HTTP header, and only be provided when the user is logged in. In `RouteParameterResolverContext` a lot of information about the HTTP request is available, so that many use cases can be mapped.

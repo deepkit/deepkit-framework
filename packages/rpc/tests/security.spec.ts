@@ -52,16 +52,12 @@ test('authentication', async () => {
         const controller = client.controller<Controller>('test');
         await expect(controller.test('asd')).rejects.toThrow('Access denied');
         await expect(client.registerAsPeer('asd')).rejects.toThrowError('Access denied');
-        await expect(client.peer('asd').controller<Controller>('controller').test('foo')).rejects.toThrowError(
-            'Access denied',
-        );
+        await expect(client.peer('asd').controller<Controller>('controller').test('foo')).rejects.toThrowError('Access denied');
         client.disconnect();
 
         client.token.set('invalid');
         await expect(client.registerAsPeer('asd')).rejects.toThrowError('Authentication failed');
-        await expect(client.peer('asd').controller<Controller>('controller').test('foo')).rejects.toThrowError(
-            'Authentication failed',
-        );
+        await expect(client.peer('asd').controller<Controller>('controller').test('foo')).rejects.toThrowError('Authentication failed');
         await expect(client.connect()).rejects.toThrowError('Authentication failed');
         await expect(client.connect()).rejects.toThrowError('Authentication failed');
         await expect(controller.test('asd')).rejects.toThrowError('Authentication failed');
@@ -96,10 +92,7 @@ test('authentication errors', async () => {
     }
 
     const memoryLogger = new MemoryLoggerTransport();
-    const kernel = new RpcKernel(
-        [{ provide: RpcKernelSecurity, useClass: MyKernelSecurity, scope: 'rpc' }],
-        new Logger([memoryLogger]),
-    );
+    const kernel = new RpcKernel([{ provide: RpcKernelSecurity, useClass: MyKernelSecurity, scope: 'rpc' }], new Logger([memoryLogger]));
     const client = new DirectClient(kernel);
 
     client.token.set('generic');
@@ -147,9 +140,7 @@ test('onAuthenticate controllers', async () => {
         protected async onAuthenticate(): Promise<void> {
             if (!this.token.has()) return;
             this.authCalled++;
-            const success = await this.controller<Controller>('test', { dontWaitForConnection: true }).auth(
-                this.token.get(),
-            );
+            const success = await this.controller<Controller>('test', { dontWaitForConnection: true }).auth(this.token.get());
             if (!success) throw new AuthenticationError('Invalid');
         }
     }
@@ -184,11 +175,7 @@ test('onAuthenticate controllers', async () => {
     {
         const client = new CustomAuthClient(kernel);
         client.token.set('secret');
-        const res = await Promise.all([
-            client.controller<Controller>('test').authenticated(),
-            client.controller<Controller>('test').authenticated(),
-            client.controller<Controller>('test').authenticated(),
-        ]);
+        const res = await Promise.all([client.controller<Controller>('test').authenticated(), client.controller<Controller>('test').authenticated(), client.controller<Controller>('test').authenticated()]);
         expect(client.authCalled).toBe(1);
         expect(res).toEqual([true, true, true]);
     }
@@ -245,10 +232,7 @@ test('connection is available during authentication', async () => {
     }
 
     const memoryLogger = new MemoryLoggerTransport();
-    const kernel = new RpcKernel(
-        [{ provide: RpcKernelSecurity, useClass: TestRpcKernelSecurity, scope: 'rpc' }],
-        new Logger([memoryLogger]),
-    );
+    const kernel = new RpcKernel([{ provide: RpcKernelSecurity, useClass: TestRpcKernelSecurity, scope: 'rpc' }], new Logger([memoryLogger]));
     const client = new DirectClient(kernel);
 
     client.token.set('generic');
@@ -274,10 +258,7 @@ test('connection is available in controller access information', async () => {
     }
 
     const memoryLogger = new MemoryLoggerTransport();
-    const kernel = new RpcKernel(
-        [{ provide: RpcKernelSecurity, useClass: TestRpcKernelSecurity, scope: 'rpc' }],
-        new Logger([memoryLogger]),
-    );
+    const kernel = new RpcKernel([{ provide: RpcKernelSecurity, useClass: TestRpcKernelSecurity, scope: 'rpc' }], new Logger([memoryLogger]));
     kernel.registerController(Controller, 'test');
     const client = new DirectClient(kernel);
 

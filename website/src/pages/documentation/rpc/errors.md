@@ -11,10 +11,10 @@ class MyError extends Error {}
 //server
 @rpc.controller('/main')
 class Controller {
-    @rpc.action()
-    saveUser(user: User): void {
-        throw new MyError('Can not save user');
-    }
+  @rpc.action()
+  saveUser(user: User): void {
+    throw new MyError('Can not save user');
+  }
 }
 
 //client
@@ -22,13 +22,13 @@ class Controller {
 const controller = client.controller<Controller>('/main', [MyError]);
 
 try {
-    await controller.getUser(2);
+  await controller.getUser(2);
 } catch (e) {
-    if (e instanceof MyError) {
-        //ops, could not save user
-    } else {
-        //all other errors
-    }
+  if (e instanceof MyError) {
+    //ops, could not save user
+  } else {
+    //all other errors
+  }
 }
 ```
 
@@ -38,15 +38,15 @@ Since thrown errors are automatically forwarded to the client with all its infor
 
 ```typescript
 class MyKernelSecurity extends RpcKernelSecurity {
-    constructor(private logger: Logger) {
-        super();
-    }
+  constructor(private logger: Logger) {
+    super();
+  }
 
-    transformError(error: Error) {
-        //wrap in new error
-        this.logger.error('Error in RPC', error);
-        return new Error('Something went wrong: ' + error.message);
-    }
+  transformError(error: Error) {
+    //wrap in new error
+    this.logger.error('Error in RPC', error);
+    return new Error('Something went wrong: ' + error.message);
+  }
 }
 ```
 

@@ -2,24 +2,7 @@ import { expect, test } from '@jest/globals';
 
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 import { schemaMigrationRoundTrip } from '@deepkit/sql';
-import {
-    AutoIncrement,
-    Entity,
-    MySQL,
-    PrimaryKey,
-    Reference,
-    UUID,
-    Unique,
-    float32,
-    int8,
-    int16,
-    int32,
-    integer,
-    typeOf,
-    uint8,
-    uint16,
-    uint32,
-} from '@deepkit/type';
+import { AutoIncrement, Entity, MySQL, PrimaryKey, Reference, UUID, Unique, float32, int8, int16, int32, integer, typeOf, uint8, uint16, uint32 } from '@deepkit/type';
 
 import { MySQLDatabaseAdapter } from '../src/mysql-adapter.js';
 

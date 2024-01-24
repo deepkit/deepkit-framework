@@ -29,7 +29,7 @@ const filesystem = new Filesystem(adapter);
 
 const files = await filesystem.files();
 for (const file of files) {
-    console.log(file.path);
+  console.log(file.path);
 }
 
 await filesystem.write('myFile.txt', 'Hello World');
@@ -39,7 +39,6 @@ console.log(file.path, file.size, file.lastModified);
 const content = await filesystem.read('myFile.txt');
 ```
 
-
 ## List Files
 
 To list files use the `files()` method. It returns an array of `File` objects.
@@ -47,7 +46,7 @@ To list files use the `files()` method. It returns an array of `File` objects.
 ```typescript
 const files = await filesystem.files();
 for (const file of files) {
-    console.log(file.path);
+  console.log(file.path);
 }
 ```
 
@@ -58,7 +57,7 @@ To list all files recursively use the `allFiles()` method.
 ```typescript
 const files = await filesystem.allFiles();
 for (const file of files) {
-    console.log(file.path);
+  console.log(file.path);
 }
 ```
 
@@ -95,12 +94,11 @@ const path = await filesystem.writeFile('/', { path: '/path/to/local/file.txt' }
 
 // works with UploadedFile
 router.post('/upload', async (body: HttpBody<{ file: UploadedFile }>, filesystem: Filesystem, session: Session) => {
-    const user = session.getUser();
-    const path = await filesystem.writeFile('/user-images', body.file, { name: `user-${user.id}` });
-    //path = /user-images/user-123.jpg
+  const user = session.getUser();
+  const path = await filesystem.writeFile('/user-images', body.file, { name: `user-${user.id}` });
+  //path = /user-images/user-123.jpg
 });
 ```
-
 
 ## Delete File
 
@@ -163,45 +161,45 @@ The File object also has some handy methods:
 
 ```typescript
 interface FilesystemFile {
-    path: string;
-    type: FileType; //file or directory
-    size: number;
-    lastModified?: Date;
-    /**
-     * Visibility of the file.
-     *
-     * Note that some adapters might not support reading the visibility of a file.
-     * In this case, the visibility is always 'private'.
-     *
-     * Some adapters might support reading the visibility per file, but not when listing files.
-     * In this case you have to call additional `filesystem.get(file)` to load the visibility.
-     */
-    visibility: FileVisibility; //public or private
-    constructor(path: string, type?: FileType);
-    /**
-     * Returns true if this file is a symbolic link.
-     */
-    isFile(): boolean;
-    /**
-     * Returns true if this file is a directory.
-     */
-    isDirectory(): boolean;
-    /**
-     * Returns the name (basename) of the file.
-     */
-    get name(): string;
-    /**
-     * Returns true if this file is in the given directory.
-     */
-    inDirectory(directory: string): boolean;
-    /**
-     * Returns the directory (dirname) of the file.
-     */
-    get directory(): string;
-    /**
-     * Returns the extension of the file, or an empty string if not existing or a directory.
-     */
-    get extension(): string;
+  path: string;
+  type: FileType; //file or directory
+  size: number;
+  lastModified?: Date;
+  /**
+   * Visibility of the file.
+   *
+   * Note that some adapters might not support reading the visibility of a file.
+   * In this case, the visibility is always 'private'.
+   *
+   * Some adapters might support reading the visibility per file, but not when listing files.
+   * In this case you have to call additional `filesystem.get(file)` to load the visibility.
+   */
+  visibility: FileVisibility; //public or private
+  constructor(path: string, type?: FileType);
+  /**
+   * Returns true if this file is a symbolic link.
+   */
+  isFile(): boolean;
+  /**
+   * Returns true if this file is a directory.
+   */
+  isDirectory(): boolean;
+  /**
+   * Returns the name (basename) of the file.
+   */
+  get name(): string;
+  /**
+   * Returns true if this file is in the given directory.
+   */
+  inDirectory(directory: string): boolean;
+  /**
+   * Returns the directory (dirname) of the file.
+   */
+  get directory(): string;
+  /**
+   * Returns the extension of the file, or an empty string if not existing or a directory.
+   */
+  get extension(): string;
 }
 ```
 
@@ -210,15 +208,14 @@ interface FilesystemFile {
 To check if a file exists use the `exists()` method.
 
 ```typescript
-
 if (await filesystem.exists('myFile.txt')) {
-    console.log('File exists');
+  console.log('File exists');
 }
 ```
 
 ## File Visibility
 
-Deepkit Filesystems supports a simple file visibility abstraction that can be used to make files public or private. 
+Deepkit Filesystems supports a simple file visibility abstraction that can be used to make files public or private.
 
 This is useful for example for S3 or Google Cloud Filesystem. For local filesystem it sets the file permissions depending on the visibility.
 
@@ -251,7 +248,7 @@ If the adapter doesn't support public urls, the Filesystem abstraction handles i
 
 ```typescript
 const filesystem = new Filesystem(new FilesystemLocalAdapter('/path/to/my/files'), {
-    baseUrl: 'https://my-domain.com/assets/'
+  baseUrl: 'https://my-domain.com/assets/',
 });
 
 const url = await filesystem.publicUrl('myFile.txt');
@@ -264,9 +261,10 @@ The `Filesystem` constructor accepts a second argument with options.
 
 ```typescript
 const filesystem = new Filesystem(new FilesystemLocalAdapter('/path/to/my/files'), {
-    visibility: 'private', //default visibility for files
-    directoryVisibility: 'private', //default visibility for directories
-    pathNormalizer: (path: string) => path, //normalizes the path. By default it replaces `[^a-zA-Z0-9\.\-\_]` with `-`.
-    urlBuilder: (path: string) => path, //builds the public url for a file. By default it returns baseUrl + path
-    baseUrl: '', //base url for public urls
+  visibility: 'private', //default visibility for files
+  directoryVisibility: 'private', //default visibility for directories
+  pathNormalizer: (path: string) => path, //normalizes the path. By default it replaces `[^a-zA-Z0-9\.\-\_]` with `-`.
+  urlBuilder: (path: string) => path, //builds the public url for a file. By default it returns baseUrl + path
+  baseUrl: '', //base url for public urls
 });
+```

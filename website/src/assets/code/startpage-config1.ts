@@ -7,4 +7,6 @@ export class AppConfig {
 new App({
     config: AppConfig,
     providers: [DefaultDatabase],
-}).loadConfigFromEnv().run();
+})
+    .loadConfigFromEnv()
+    .run();

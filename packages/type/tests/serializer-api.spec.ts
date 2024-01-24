@@ -4,15 +4,7 @@ import { CompilerContext } from '@deepkit/core';
 
 import { ReflectionKind } from '../src/reflection/type.js';
 import { cast, deserialize } from '../src/serializer-facade.js';
-import {
-    EmptySerializer,
-    Serializer,
-    TemplateRegistry,
-    TemplateState,
-    TypeGuardRegistry,
-    executeTemplates,
-    serializer,
-} from '../src/serializer.js';
+import { EmptySerializer, Serializer, TemplateRegistry, TemplateState, TypeGuardRegistry, executeTemplates, serializer } from '../src/serializer.js';
 
 test('remove guard for string', () => {
     //if the original value (before convert to string) is null, it should stay null

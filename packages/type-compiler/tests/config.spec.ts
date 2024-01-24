@@ -15,13 +15,7 @@ function buildHost(files: { [fileName: string]: TsConfigJson }): ParseConfigHost
         readFile: (fileName: string) => {
             return JSON.stringify(files[fileName]);
         },
-        readDirectory: (
-            path: string,
-            extensions?: readonly string[],
-            exclude?: readonly string[],
-            include?: readonly string[],
-            depth?: number,
-        ) => {
+        readDirectory: (path: string, extensions?: readonly string[], exclude?: readonly string[], include?: readonly string[], depth?: number) => {
             path = path.endsWith('/') ? path : path + '/';
             const res = Object.entries(files)
                 .filter(([fileName]) => fileName.startsWith(path))
@@ -348,13 +342,7 @@ test('negative match 2', () => {
     const host = buildHost({
         '/path/portal/tsconfig.json': {
             deepkitCompilerOptions: {
-                reflection: [
-                    'server/controllers/**/*.ts',
-                    'server/services/**/*.ts',
-                    'server/dao/**/*.ts',
-                    '!server/dao/mongoose.ts',
-                    'shared/**/*.ts',
-                ],
+                reflection: ['server/controllers/**/*.ts', 'server/services/**/*.ts', 'server/dao/**/*.ts', '!server/dao/mongoose.ts', 'shared/**/*.ts'],
             },
         },
     });

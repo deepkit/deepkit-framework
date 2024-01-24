@@ -4,21 +4,7 @@ import { sleep } from '@deepkit/core';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 import { User, UserCredentials } from '@deepkit/orm-integration';
 import { sql } from '@deepkit/sql';
-import {
-    AutoIncrement,
-    BackReference,
-    Entity,
-    PrimaryKey,
-    Reference,
-    ReflectionClass,
-    UUID,
-    cast,
-    entity,
-    isReferenceInstance,
-    serialize,
-    typeOf,
-    uuid,
-} from '@deepkit/type';
+import { AutoIncrement, BackReference, Entity, PrimaryKey, Reference, ReflectionClass, UUID, cast, entity, isReferenceInstance, serialize, typeOf, uuid } from '@deepkit/type';
 
 import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter.js';
 import { SQLitePlatform } from '../src/sqlite-platform.js';
@@ -305,8 +291,7 @@ test(':memory: connection pool', async () => {
     const sqlite = new SQLiteDatabaseAdapter(':memory:');
 
     // create a connection, or return null if it takes longer than 100 ms
-    const createConnectionOrNull = () =>
-        Promise.race([sqlite.connectionPool.getConnection(), sleep(0.1).then(() => null)]);
+    const createConnectionOrNull = () => Promise.race([sqlite.connectionPool.getConnection(), sleep(0.1).then(() => null)]);
 
     {
         const c1 = await sqlite.connectionPool.getConnection();
@@ -600,13 +585,7 @@ test('multiple joins', async () => {
     }
 
     {
-        const list = await database
-            .query(Property)
-            .joinWith('flats')
-            .useJoinWith('tenants')
-            .sort({ name: 'desc' })
-            .end()
-            .find();
+        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({ name: 'desc' }).end().find();
         expect(list).toHaveLength(1);
         expect(list[0].flats).toMatchObject([{ name: 'flat1' }, { name: 'flat2' }]);
         expect(list[0].tenants).toMatchObject([{ name: 'tenant2' }, { name: 'tenant1' }]);
@@ -644,13 +623,7 @@ test('multiple joins', async () => {
     }
 
     {
-        const list = await database
-            .query(Property)
-            .joinWith('flats')
-            .useJoinWith('tenants')
-            .sort({ name: 'desc' })
-            .end()
-            .find();
+        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({ name: 'desc' }).end().find();
         expect(list).toHaveLength(2);
 
         expect(list[0].name).toBe('immo2');
@@ -663,14 +636,7 @@ test('multiple joins', async () => {
     }
 
     {
-        const list = await database
-            .query(Property)
-            .joinWith('flats')
-            .useJoinWith('tenants')
-            .sort({ name: 'desc' })
-            .end()
-            .sort({ id: 'asc' })
-            .find();
+        const list = await database.query(Property).joinWith('flats').useJoinWith('tenants').sort({ name: 'desc' }).end().sort({ id: 'asc' }).find();
         expect(list).toHaveLength(2);
 
         expect(list[0].name).toBe('immo1');

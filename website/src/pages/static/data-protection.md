@@ -1,9 +1,7 @@
 # Data protection
 
-
 Deepkit UG is a German company in the EU with the highest data protection regularities in the world.
 The following data privacy statement is in German and for German people.
-
 
 <h2>Datenschutzerklärung</h2>
 Wir freuen uns sehr über Ihr Interesse an unserem Unternehmen. Datenschutz hat einen besonders hohen
@@ -27,6 +25,7 @@ Internetseite verarbeiteten personenbezogenen Daten sicherzustellen. Dennoch kö
 Datenübertragungen grundsätzlich Sicherheitslücken aufweisen, sodass ein absoluter Schutz nicht
 gewährleistet werden kann. Aus diesem Grund steht es jeder betroffenen Person frei, personenbezogene
 Daten auch auf alternativen Wegen, beispielsweise telefonisch, an uns zu übermitteln.
+
 <h2>1. Begriffsbestimmungen</h2>
 Die Datenschutzerklärung der DeepKit UG beruht auf den Begrifflichkeiten, die durch den Europäischen
 Richtlinien- und Verordnungsgeber beim Erlass der Datenschutz-Grundverordnung (DS-GVO) verwendet

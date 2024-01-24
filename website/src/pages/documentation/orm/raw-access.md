@@ -66,3 +66,5 @@ MongoDB adapter works a bit different since it's not based on SQL queries but on
 A command could be an aggregation pipeline, a find query, or a write command.
 
 ```typescript
+
+```

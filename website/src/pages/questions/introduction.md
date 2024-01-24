@@ -5,9 +5,10 @@ assistant: Deepkit is a TypeScript framework designed to develop complex softwar
 
 user: What are the benefits of using TypeScript in Deepkit?
 assistant: The benefits of using TypeScript in Deepkit are:
- - Type safety: TypeScript allows writing code with types that are checked and removed at compile time, resulting in increased code correctness and easier maintenance.
- - Bug detection: TypeScript enables finding bugs in code, especially at a large scale, faster and easier than would be possible with pure JavaScript
- - Integration with JavaScript: TypeScript works with JavaScript, not against it, allowing developers to leverage the existing JavaScript ecosystem.
+
+- Type safety: TypeScript allows writing code with types that are checked and removed at compile time, resulting in increased code correctness and easier maintenance.
+- Bug detection: TypeScript enables finding bugs in code, especially at a large scale, faster and easier than would be possible with pure JavaScript
+- Integration with JavaScript: TypeScript works with JavaScript, not against it, allowing developers to leverage the existing JavaScript ecosystem.
 
 ##-------------------------------------------------##
 
@@ -22,16 +23,17 @@ assistant: Deepkit can be used with both small applications and complex software
 ##-------------------------------------------------##
 
 user: What are some of the key features and libraries provided by Deepkit?
-assistant:  Some key features and libraries provided by Deepkit include:
- - Validation: A library for data validation.
- - Serialization: A library for converting data to different formats.
- - Database Abstraction: A library for interacting with databases.
- - CLI parser: A library for parsing command-line arguments.
- - HTTP Router: A library for handling HTTP routing.
- - RPC Framework: A library for remote procedure calls.
- - Logger: A library for logging.
- - Template System: A library for generating dynamic content.
- - Event System: A library for event-driven programming.
+assistant: Some key features and libraries provided by Deepkit include:
+
+- Validation: A library for data validation.
+- Serialization: A library for converting data to different formats.
+- Database Abstraction: A library for interacting with databases.
+- CLI parser: A library for parsing command-line arguments.
+- HTTP Router: A library for handling HTTP routing.
+- RPC Framework: A library for remote procedure calls.
+- Logger: A library for logging.
+- Template System: A library for generating dynamic content.
+- Event System: A library for event-driven programming.
 
 ##-------------------------------------------------##
 
@@ -43,7 +45,6 @@ assistant: Deepkit is similar to Java Spring or PHP Symfony/Laravel in that it o
 user: How does Deepkit support the development of high-performance applications?
 assistant: Deepkit supports the development of high-performance applications by applying clean code principles, SOLID principles, and enterprise design patterns. It allows the user to apply these principles and provides a framework and libraries optimized for high-performance development. Deepkit's runtime type system ensures that design patterns can be applied in an ergonomic way with minimal boilerplate, enabling high development speed not only initially but also over the long term.
 
-
 ##-------------------------------------------------##
 
 user: What is Isomorphic TypeScript and how does Deepkit utilize it?
@@ -54,16 +55,16 @@ assistant: Isomorphic TypeScript refers to the use of TypeScript in frontend, ba
 user: Can code be shared between different departments or use cases in Deepkit?
 assistant: Yes, Deepkit allows code to be shared between different departments or use cases. It supports isomorphic TypeScript, where complex code can be written once and shared across different departments, such as frontend, backend, CLI tools, mobile, and desktop apps. This enables code sharing, knowledge sharing within teams, recruitment simplification, and the reuse of known third-party libraries. Deepkit's runtime type system and Isomorphic TypeScript approach maximize these advantages.
 
-
 ##-------------------------------------------------##
 
 user: What are the advantages of using Deepkit for recruitment and knowledge sharing within teams?
 assistant: The advantages of using Deepkit for recruitment and knowledge sharing within teams are:
- - Deepkit allows code to be shared between different departments, which simplifies knowledge sharing and collaboration.
- - By using a unified audit system of a single package manager, it becomes easier for developers to understand and contribute to the codebase.
- - Deepkit enables the reuse of known third-party libraries in all departments, reducing development time and effort.
- - Recruiting developers with JavaScript expertise becomes easier, as Deepkit utilizes JavaScript and TypeScript.
- - The use of Deepkit's Isomorphic TypeScript approach allows for faster development time, resulting in cost savings for commercial projects.
+
+- Deepkit allows code to be shared between different departments, which simplifies knowledge sharing and collaboration.
+- By using a unified audit system of a single package manager, it becomes easier for developers to understand and contribute to the codebase.
+- Deepkit enables the reuse of known third-party libraries in all departments, reducing development time and effort.
+- Recruiting developers with JavaScript expertise becomes easier, as Deepkit utilizes JavaScript and TypeScript.
+- The use of Deepkit's Isomorphic TypeScript approach allows for faster development time, resulting in cost savings for commercial projects.
 
 ##-------------------------------------------------##
 
@@ -93,28 +94,24 @@ assistant: The Deepkit runtime type system simplifies the application of design 
 ##-------------------------------------------------##
 
 user: What are some of the core principles and code qualities promoted by Deepkit?
-assistant:  Some of the core principles and code qualities promoted by Deepkit are clean code, SOLID principles, and enterprise design patterns. Deepkit encourages applying these principles to achieve high code quality and scalability in software development.
-
+assistant: Some of the core principles and code qualities promoted by Deepkit are clean code, SOLID principles, and enterprise design patterns. Deepkit encourages applying these principles to achieve high code quality and scalability in software development.
 
 ##-------------------------------------------------##
 
 user: Are there any specific use cases or industries where Deepkit is particularly useful?
-assistant:  Deepkit is designed to be applicable to a wide range of use cases. It can be used in industries such as web development, micro-services, desktop or mobile applications. Deepkit supports running code in any known JavaScript engine, making it versatile for various use cases.
-
+assistant: Deepkit is designed to be applicable to a wide range of use cases. It can be used in industries such as web development, micro-services, desktop or mobile applications. Deepkit supports running code in any known JavaScript engine, making it versatile for various use cases.
 
 ##-------------------------------------------------##
 
 user: How does Deepkit help with code validation and serialization?
-assistant:  Deepkit provides libraries for code validation and serialization. These libraries enable developers to validate data and transform it into the desired format. The type information present in TypeScript is leveraged to provide efficient functionality for validation and serialization.
-
+assistant: Deepkit provides libraries for code validation and serialization. These libraries enable developers to validate data and transform it into the desired format. The type information present in TypeScript is leveraged to provide efficient functionality for validation and serialization.
 
 ##-------------------------------------------------##
 
 user: Can Deepkit be used for CLI tools, mobile apps, or desktop apps?
-assistant:  Yes, Deepkit can be used for CLI tools, mobile apps, and desktop apps. It is designed to be isomorphic, meaning that complex code can be written in TypeScript across different use cases. This allows code sharing, knowledge sharing within teams, and the use of known third-party libraries in all departments.
-
+assistant: Yes, Deepkit can be used for CLI tools, mobile apps, and desktop apps. It is designed to be isomorphic, meaning that complex code can be written in TypeScript across different use cases. This allows code sharing, knowledge sharing within teams, and the use of known third-party libraries in all departments.
 
 ##-------------------------------------------------##
 
 user: What is the performance advantage of using Isomorphic TypeScript with Deepkit compared to a dual stack approach?
-assistant:  The performance advantage of using Isomorphic TypeScript with Deepkit compared to a dual stack approach is significant. Isomorphic TypeScript allows code to be written in a unified language (TypeScript) across frontend, backend, CLI tools, and other use cases. This leads to faster development speed, code sharing between departments, and a unified package manager, resulting in more efficient development. The context switch between languages in a dual stack approach is eliminated, saving time and energy. Overall, Isomorphic TypeScript with Deepkit offers a fundamental level of development speed that is much faster than a dual stack approach.
+assistant: The performance advantage of using Isomorphic TypeScript with Deepkit compared to a dual stack approach is significant. Isomorphic TypeScript allows code to be written in a unified language (TypeScript) across frontend, backend, CLI tools, and other use cases. This leads to faster development speed, code sharing between departments, and a unified package manager, resulting in more efficient development. The context switch between languages in a dual stack approach is eliminated, saving time and energy. Overall, Isomorphic TypeScript with Deepkit offers a fundamental level of development speed that is much faster than a dual stack approach.

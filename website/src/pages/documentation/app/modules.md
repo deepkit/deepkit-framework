@@ -11,32 +11,31 @@ A module can either be defined as class module or as functional module.
 import { createModule } from '@deepkit/app';
 
 export class MyModule extends createModule({
-    //same options as new App({})
-    providers: [MyService]
-}) {
-}
+  //same options as new App({})
+  providers: [MyService],
+}) {}
 ```
 
 ```typescript title=Functional Module
 import { AppModule } from '@deepkit/app';
 
 export function myModule(options: {} = {}) {
-    return (module: AppModule) => {
-        module.addProvider(MyService);
-    };
+  return (module: AppModule) => {
+    module.addProvider(MyService);
+  };
 }
 ```
 
 This module can then be imported into your application or other modules.
 
 ```typescript
-import { MyModule, myModule } from './module.ts'
+import { MyModule, myModule } from './module.ts';
 
 new App({
-    imports: [
-        new MyModule(), //import class module
-        myModule(), //import functional module
-    ]
+  imports: [
+    new MyModule(), //import class module
+    myModule(), //import functional module
+  ],
 }).run();
 ```
 
@@ -130,13 +129,13 @@ To make providers available in the importer's module, you can include the provid
 import { createModule } from '@deepkit/app';
 
 export class MyModule extends createModule({
-    exports: [HelloWorldService],
+  exports: [HelloWorldService],
 }) {}
 
 export function myModule(options: {} = {}) {
-    return (module: AppModule) => {
-        module.addExport(HelloWorldService);
-    };
+  return (module: AppModule) => {
+    module.addExport(HelloWorldService);
+  };
 }
 ```
 
@@ -158,29 +157,26 @@ We can now import that module and use its exported service in our application co
 
 ```typescript
 import { App } from '@deepkit/app';
-import { cli, Command } from '@deepkit/app';
+import { Command, cli } from '@deepkit/app';
+
 import { HelloWorldService, MyModule } from './my-module';
 
 @cli.controller('test')
 export class TestCommand implements Command {
-    constructor(protected helloWorld: HelloWorldService) {
-    }
+  constructor(protected helloWorld: HelloWorldService) {}
 
-    async execute() {
-        this.helloWorld.helloWorld();
-    }
+  async execute() {
+    this.helloWorld.helloWorld();
+  }
 }
 
 new App({
-    controllers: [TestCommand],
-    imports: [
-        new MyModule(),
-    ]
+  controllers: [TestCommand],
+  imports: [new MyModule()],
 }).run();
 ```
 
 Read the [Dependency Injection](../dependency-injection.md) chapter to learn more.
-
 
 ### Configuration schema
 
@@ -188,25 +184,26 @@ A module can have typesafe configuration options. The values of those options ca
 
 ```typescript
 export class Config {
-    title!: string; //required and needs to be provided
-    host?: string; //optional
+  title!: string; //required and needs to be provided
+  host?: string; //optional
 
-    debug: boolean = false; //default values are supported as well
+  debug: boolean = false; //default values are supported as well
 }
 ```
 
 ```typescript
 import { createModule } from '@deepkit/app';
+
 import { Config } from './module.config.ts';
 
 export class MyModule extends createModule({
-   config: Config
+  config: Config,
 }) {}
 
 export function myModule(options: Partial<Config> = {}) {
-    return (module: AppModule) => {
-        module.setConfigDefinition(Config).configure(options);
-    };
+  return (module: AppModule) => {
+    module.setConfigDefinition(Config).configure(options);
+  };
 }
 ```
 
@@ -216,30 +213,25 @@ Configuration option values can be provided either by the constructor of your mo
 import { MyModule } from './module.ts';
 
 new App({
-   imports: [
-       new MyModule({title: 'Hello World'}),
-       myModule({title: 'Hello World'}),
-   ],
+  imports: [new MyModule({ title: 'Hello World' }), myModule({ title: 'Hello World' })],
 }).run();
 ```
 
 To dynamically change the configuration options of a imported module, you can use the `process` module hook. This is a good place to either redirect configuration options or set up an imported module depending on the current module config, or other module instance information.
 
-
 ```typescript
 import { MyModule } from './module.ts';
 
-export class MainModule extends createModule({
-}) {
-    process() {
-        this.getImportedModuleByClass(MyModule).configure({title: 'Changed'});
-    }
+export class MainModule extends createModule({}) {
+  process() {
+    this.getImportedModuleByClass(MyModule).configure({ title: 'Changed' });
+  }
 }
 
 export function myModule(options: Partial<Config> = {}) {
-    return (module: AppModule) => {
-        module.getImportedModuleByClass(MyModule).configure({title: 'Changed'});
-    };
+  return (module: AppModule) => {
+    module.getImportedModuleByClass(MyModule).configure({ title: 'Changed' });
+  };
 }
 ```
 
@@ -258,11 +250,10 @@ new App({
 If the root application module is created from a regular module, it works similarly to regular modules.
 
 ```typescript
-class AppModule extends createModule({
-}) {
-    process() {
-        this.getImportedModuleByClass(MyModule).configure({title: 'Changed'});
-    }
+class AppModule extends createModule({}) {
+  process() {
+    this.getImportedModuleByClass(MyModule).configure({ title: 'Changed' });
+  }
 }
 
 App.fromModule(new AppModule()).run();
@@ -273,14 +264,14 @@ App.fromModule(new AppModule()).run();
 All configuration options can also be changed via environment variables. This works only if the module has a name assigned. A module name can be defined via `createModule` and later changed dynamically on the instance creation. The latter pattern is useful if you have imported the same module twice and want to differentiate between them by setting a new name.
 
 ```typescript
-export class MyModule extends createModule({
-}, 'my') { //<-- 'my' is the name
+export class MyModule extends createModule({}, 'my') {
+  //<-- 'my' is the name
 }
 
 export function myModule(options: Partial<Config> = {}) {
-    return (module: AppModule) => {
-        module.name = 'my';
-    };
+  return (module: AppModule) => {
+    module.name = 'my';
+  };
 }
 ```
 
@@ -288,10 +279,10 @@ export function myModule(options: Partial<Config> = {}) {
 import { MyModule } from './module';
 
 new App({
-    imports: [
-        new MyModule(), //'my' is the default name
-        new MyModule().rename('my2'), //'my2' is now the new name
-    ]
+  imports: [
+    new MyModule(), //'my' is the default name
+    new MyModule().rename('my2'), //'my2' is now the new name
+  ],
 }).run();
 ```
 
@@ -303,7 +294,7 @@ Modules can import other modules to extend their functionality. In `App` you can
 
 ```typescript
 new App({
-    imports: [new Module]
+  imports: [new Module()],
 }).run();
 ```
 
@@ -312,15 +303,14 @@ In regular modules, this is not possible since the module in the object definiti
 ```typescript
 import { createModule } from '@deepkit/app';
 
-export class MyModule extends createModule({
-}) {
-    imports = [new OtherModule()];
+export class MyModule extends createModule({}) {
+  imports = [new OtherModule()];
 }
 
 export function myModule() {
-    return (module: AppModule) => {
-        module.addImport(new OtherModule());
-    };
+  return (module: AppModule) => {
+    module.addImport(new OtherModule());
+  };
 }
 ```
 
@@ -362,63 +352,60 @@ The whole process of loading the service container is as follows:
     4. Call `T.process()`.  
        Here the module can modify itself based on valid configuration options. Add new imports, providers, etc.
     5. Repeat 1. for each imported module of `T`.
-3. Find all registered modules.
-4. Process each module found `T`.
+2.  Find all registered modules.
+3.  Process each module found `T`.
     1. Register middlewares of `T`.
     2. Register listener of `T` in the event dispatcher.
     3. Call for all found modules from 2. `Module.processController(T, controller)`.
     4. Call for all found modules from 2. `Module.processProvider(T, token, provider)`.
     5. Repeat 3. for each imported module of `T`.
-5. Run `T.postProcess()` on all modules.
-6. Instantiate the bootstrap class on all modules.
-7. The dependency injection container is now built.
+4.  Run `T.postProcess()` on all modules.
+5.  Instantiate the bootstrap class on all modules.
+6.  The dependency injection container is now built.
 
 To use hooks, you can register the `process`, `processProvider`, `postProcess` methods in your module class.
 
 ```typescript
-import { createModule, AppModule } from '@deepkit/app';
+import { AppModule, createModule } from '@deepkit/app';
 import { isClass } from '@deepkit/core';
 import { ProviderWithScope, Token } from '@deepkit/injector';
 
-export class MyModule extends createModule({
-}) {
-    imports = [new FrameworkModule()];
+export class MyModule extends createModule({}) {
+  imports = [new FrameworkModule()];
 
-    //executed first
-    process() {
-        //this.config contains the fully validated config object.
-        if (this.config.environment === 'development') {
-            this.getImportedModuleByClass(FrameworkModule).configure({debug: true});
-        }
-        this.addModule(new AnotherModule);
-        this.addProvider(Service);
-
-        //calls additional setup methods. 
-        //In this case call 'method1' with given arguments when 
-        //Service is instantiated by the dependency injection container.
-        this.setupProvider(Service).method1(this.config.value);
+  //executed first
+  process() {
+    //this.config contains the fully validated config object.
+    if (this.config.environment === 'development') {
+      this.getImportedModuleByClass(FrameworkModule).configure({ debug: true });
     }
+    this.addModule(new AnotherModule());
+    this.addProvider(Service);
 
-    //executed for each found provider in all modules
-    processController(module: AppModule<any>, controller: ClassType) {
-        //HttpModule for example checks for each controller whether
-        //a @http decorator was used, and if so extracts all route
-        //information and puts them the router.
-    }
+    //calls additional setup methods.
+    //In this case call 'method1' with given arguments when
+    //Service is instantiated by the dependency injection container.
+    this.setupProvider(Service).method1(this.config.value);
+  }
 
-    //executed for each found provider in all modules
-    processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
-        //FrameworkModule for example looks for provided tokens that extend from deepkit/orm Database
-        //and automatically registers them in a DatabaseRegistry so they can be used in the migration CLI commands
-        //and Framework Debugger.
-    }
+  //executed for each found provider in all modules
+  processController(module: AppModule<any>, controller: ClassType) {
+    //HttpModule for example checks for each controller whether
+    //a @http decorator was used, and if so extracts all route
+    //information and puts them the router.
+  }
 
-    //executed when all modules have been processed.
-    //Last chance to setup providers via module.setupProvider/module.setupGlobalProvider based on
-    //information processed in process/processProvider. 
-    postProcess() {
-        
-    }
+  //executed for each found provider in all modules
+  processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+    //FrameworkModule for example looks for provided tokens that extend from deepkit/orm Database
+    //and automatically registers them in a DatabaseRegistry so they can be used in the migration CLI commands
+    //and Framework Debugger.
+  }
+
+  //executed when all modules have been processed.
+  //Last chance to setup providers via module.setupProvider/module.setupGlobalProvider based on
+  //information processed in process/processProvider.
+  postProcess() {}
 }
 ```
 
@@ -430,60 +417,59 @@ As an example, consider the HttpModule use-case. It checks each registered contr
 
 ```typescript
 class Registry {
-    protected controllers: { module: AppModule<any>, classType: ClassType }[] = [];
-        
-    register(module: AppModule<any>, controller: ClassType) {
-        this.controllers.push({ module, classType: controller });
-    }
-        
-    get(classType: ClassType) {
-        const controller = this.controllers.find(v => v.classType === classType);
-        if (!controller) throw new Error('Controller unknown');
-        return controller;
-    }
+  protected controllers: { module: AppModule<any>; classType: ClassType }[] = [];
+
+  register(module: AppModule<any>, controller: ClassType) {
+    this.controllers.push({ module, classType: controller });
+  }
+
+  get(classType: ClassType) {
+    const controller = this.controllers.find(v => v.classType === classType);
+    if (!controller) throw new Error('Controller unknown');
+    return controller;
+  }
 }
-        
+
 class Router {
-    constructor(
-        protected injectorContext: InjectorContext,
-        protected registry: Registry
-    ) {
-    }
-        
-    getController(classType: ClassType) {
-        //find classType and module for given controller classType
-        const controller = this.registry.get(classType);
-        
-        //here the controller will be instantiated. If it was already
-        //instantiated, the old instanced will be returned (if the provider was not transient: true)
-        return injector.get(controller.classType, controller.module);
-    }
+  constructor(
+    protected injectorContext: InjectorContext,
+    protected registry: Registry,
+  ) {}
+
+  getController(classType: ClassType) {
+    //find classType and module for given controller classType
+    const controller = this.registry.get(classType);
+
+    //here the controller will be instantiated. If it was already
+    //instantiated, the old instanced will be returned (if the provider was not transient: true)
+    return injector.get(controller.classType, controller.module);
+  }
 }
-        
+
 class HttpModule extends createModule({
-    providers: [Router],
-    exports: [Router],
+  providers: [Router],
+  exports: [Router],
 }) {
-    protected registry = new Registry;
-        
-    process() {
-        this.addProvider({ provide: Registry, useValue: this.registry });
-    }
-        
-    processController(module: AppModule<any>, controller: ClassType) {
-        //controllers need to be put into the module's providers by the controller consumer
-        if (!module.isProvided(controller)) module.addProvider(controller);
-        this.registry.register(module, controller);
-    }
+  protected registry = new Registry();
+
+  process() {
+    this.addProvider({ provide: Registry, useValue: this.registry });
+  }
+
+  processController(module: AppModule<any>, controller: ClassType) {
+    //controllers need to be put into the module's providers by the controller consumer
+    if (!module.isProvided(controller)) module.addProvider(controller);
+    this.registry.register(module, controller);
+  }
 }
-        
+
 class MyController {}
-        
+
 const app = new App({
-    controllers: [MyController],
-    imports: [new HttpModule()]
+  controllers: [MyController],
+  imports: [new HttpModule()],
 });
-        
+
 const myController = app.get(Router).getController(MyController);
 ```
 
@@ -493,12 +479,11 @@ The `root` property allows you to move the dependency injection container of a m
 
 If you build a library that can be used by many modules, you should avoid using `root`, as it could clash with provider tokens from other libraries. For example, if this library module imports a `foo` module that defines a service, and you reconfigure some services to your need, and the user's application imports the same `foo` module, the user receives your reconfigured services. For many simpler use cases this might be fine though.
 
-
 ```typescript
 import { createModule } from '@deepkit/app';
-export class MyModule extends createModule({
-}) {
-    root = true;
+
+export class MyModule extends createModule({}) {
+  root = true;
 }
 ```
 
@@ -506,7 +491,7 @@ You can also change the `root` property of a third-party module, by using `forRo
 
 ```typescript
 new App({
-    imports: [new ThirdPartyModule().forRoot()],
+  imports: [new ThirdPartyModule().forRoot()],
 }).run();
 ```
 

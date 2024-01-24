@@ -1,56 +1,45 @@
-import { Component, OnInit } from "@angular/core";
-import { AppDescription, AppTitle } from "@app/app/components/title";
-import { KeyValuePipe, NgForOf, NgIf } from "@angular/common";
-import { ActivatedRoute, RouterLink } from "@angular/router";
-import { ControllerClient } from "@app/app/client";
-import { projectMap, UiCodeExample } from "@app/common/models";
-import { LoadingComponent } from "@app/app/components/loading";
-
+import { KeyValuePipe, NgForOf, NgIf } from '@angular/common';
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ControllerClient } from '@app/app/client';
+import { LoadingComponent } from '@app/app/components/loading';
+import { AppDescription, AppTitle } from '@app/app/components/title';
+import { UiCodeExample, projectMap } from '@app/common/models';
 
 @Component({
     standalone: true,
-    imports: [
-        AppDescription,
-        AppTitle,
-        NgIf,
-        LoadingComponent,
-        NgForOf,
-        RouterLink,
-        KeyValuePipe
-    ],
+    imports: [AppDescription, AppTitle, NgIf, LoadingComponent, NgForOf, RouterLink, KeyValuePipe],
     template: `
         <div class="app-content-full normalize-text">
             <app-loading *ngIf="loading"></app-loading>
 
-            <app-title value="{{title}}"></app-title>
-            <app-description value="{{title}}"></app-description>
+            <app-title value="{{ title }}"></app-title>
+            <app-description value="{{ title }}"></app-description>
 
-            <div *ngIf="project" class="app-pre-headline">{{project}}</div>
+            <div *ngIf="project" class="app-pre-headline">{{ project }}</div>
             <h1>Examples</h1>
 
-            <p>
-                Learn by example. Not the right example? Use the search to find Questions & Answers.
-            </p>
+            <p>Learn by example. Not the right example? Use the search to find Questions & Answers.</p>
 
-            <div *ngFor="let kv of groups|keyvalue">
-                <h3 id="{{kv.key}}">{{projectMap[kv.key] || kv.key}}</h3>
+            <div *ngFor="let kv of groups | keyvalue">
+                <h3 id="{{ kv.key }}">{{ projectMap[kv.key] || kv.key }}</h3>
 
-<!--                <div class="app-examples small">-->
-<!--                    <a class="app-example-item" routerLink="/documentation/{{example.category}}/examples/{{example.slug}}" *ngFor="let example of kv.value">-->
-<!--                        {{example.title}}-->
-<!--                    </a>-->
-<!--                </div>-->
+                <!--                <div class="app-examples small">-->
+                <!--                    <a class="app-example-item" routerLink="/documentation/{{example.category}}/examples/{{example.slug}}" *ngFor="let example of kv.value">-->
+                <!--                        {{example.title}}-->
+                <!--                    </a>-->
+                <!--                </div>-->
 
                 <ul>
                     <li *ngFor="let m of kv.value">
-                        <a routerLink="/documentation/{{m.category}}/examples/{{m.slug}}">
-                            {{m.title}}
+                        <a routerLink="/documentation/{{ m.category }}/examples/{{ m.slug }}">
+                            {{ m.title }}
                         </a>
                     </li>
                 </ul>
             </div>
         </div>
-    `
+    `,
 })
 export class ExamplesComponent implements OnInit {
     projectMap = projectMap;
@@ -65,8 +54,7 @@ export class ExamplesComponent implements OnInit {
     constructor(
         private activatedRoute: ActivatedRoute,
         private client: ControllerClient,
-    ) {
-    }
+    ) {}
 
     ngOnInit() {
         this.activatedRoute.params.subscribe(params => {

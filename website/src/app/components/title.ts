@@ -1,15 +1,20 @@
 import { Component, Injectable, Input, NgZone, OnChanges, OnDestroy, OnInit } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
+
 import { arrayRemoveItem } from '@deepkit/core';
 
-type Type = { type: string, value?: any };
+type Type = { type: string; value?: any };
 
 @Injectable()
 export class AppMetaStack {
     stack: Type[] = [];
     stable = false;
 
-    constructor(private title: Title, private meta: Meta, private ngZone: NgZone) {
+    constructor(
+        private title: Title,
+        private meta: Meta,
+        private ngZone: NgZone,
+    ) {
         ngZone.onStable.subscribe(() => {
             this.stable = true;
             this.update();
@@ -32,8 +37,14 @@ export class AppMetaStack {
         const titles = this.stack.filter(v => v.type === 'title');
         const descriptions = this.stack.filter(v => v.type === 'description');
 
-        const title = titles.map(v => v.value).filter(v => v).reverse();
-        const description = descriptions.map(v => v.value).filter(v => v).reverse();
+        const title = titles
+            .map(v => v.value)
+            .filter(v => v)
+            .reverse();
+        const description = descriptions
+            .map(v => v.value)
+            .filter(v => v)
+            .reverse();
         this.title.setTitle(title.join(' // '));
 
         this.meta.updateTag({ property: 'og:description', content: description.join(' // ') });
@@ -44,14 +55,13 @@ export class AppMetaStack {
 @Component({
     selector: 'app-title',
     standalone: true,
-    template: ``
+    template: ``,
 })
 export class AppTitle implements OnChanges, OnInit, OnDestroy {
     @Input() value?: string | any;
     type = 'title';
 
-    constructor(private stack: AppMetaStack) {
-    }
+    constructor(private stack: AppMetaStack) {}
 
     ngOnInit() {
         this.stack.register(this);
@@ -66,18 +76,16 @@ export class AppTitle implements OnChanges, OnInit, OnDestroy {
     }
 }
 
-
 @Component({
     selector: 'app-description',
     standalone: true,
-    template: ``
+    template: ``,
 })
 export class AppDescription implements OnChanges, OnInit, OnDestroy {
     @Input() value?: string | any;
     type = 'description';
 
-    constructor(private stack: AppMetaStack) {
-    }
+    constructor(private stack: AppMetaStack) {}
 
     ngOnInit() {
         this.stack.register(this);
@@ -91,5 +99,3 @@ export class AppDescription implements OnChanges, OnInit, OnDestroy {
         this.stack.update();
     }
 }
-
-

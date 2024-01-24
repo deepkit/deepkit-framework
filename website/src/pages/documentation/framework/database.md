@@ -13,15 +13,13 @@ The simplest way to use the `Database` object of Deepkit ORM within the applicat
 ```typescript
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
+
 import { User } from './models';
 
 export class SQLiteDatabase extends Database {
-    constructor() {
-        super(
-            new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'), 
-            [User]
-        );
-    }
+  constructor() {
+    super(new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'), [User]);
+  }
 }
 ```
 
@@ -34,16 +32,17 @@ We also enable `debug`, which allows us to open the debugger when the applicatio
 ```typescript
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
+
 import { SQLiteDatabase } from './database.ts';
 
 new App({
-    providers: [SQLiteDatabase],
-    imports: [
-        new FrameworkModule({
-            migrateOnStartup: true,
-            debug: true,
-        })
-    ]
+  providers: [SQLiteDatabase],
+  imports: [
+    new FrameworkModule({
+      migrateOnStartup: true,
+      debug: true,
+    }),
+  ],
 }).run();
 ```
 
@@ -53,13 +52,13 @@ You can now access `SQLiteDatabase` anywhere using Dependency Injection:
 import { SQLiteDatabase } from './database.ts';
 
 export class Controller {
-    constructor(protected database: SQLiteDatabase) {}
+  constructor(protected database: SQLiteDatabase) {}
 
-    @http.GET()
-    async startPage(): Promise<User[]> {
-        //return all users
-        return await this.database.query(User).find();
-    }
+  @http.GET()
+  async startPage(): Promise<User[]> {
+    //return all users
+    return await this.database.query(User).find();
+  }
 }
 ```
 
@@ -71,27 +70,31 @@ In many cases you want your connection credentials to be configurable. For examp
 //database.ts
 import { Database } from '@deepkit/orm';
 import { PostgresDatabaseAdapter } from '@deepkit/sqlite';
+
 import { User } from './models';
 
 type DbConfig = Pick<AppConfig, 'databaseHost', 'databaseUser', 'databasePassword'>;
 
 export class MainDatabase extends Database {
-    constructor(config: DbConfig) {
-        super(new PostgresDatabaseAdapter({
-            host: config.databaseHost,
-            user: config.databaseUser,
-            password: config.databasePassword,
-        }), [User]);
-    }
+  constructor(config: DbConfig) {
+    super(
+      new PostgresDatabaseAdapter({
+        host: config.databaseHost,
+        user: config.databaseUser,
+        password: config.databasePassword,
+      }),
+      [User],
+    );
+  }
 }
 ```
 
 ```typescript
 //config.ts
 export class AppConfig {
-    databaseHost: string = 'localhost';
-    databaseUser: string = 'postgres';
-    databasePassword: string = '';
+  databaseHost: string = 'localhost';
+  databaseUser: string = 'postgres';
+  databasePassword: string = '';
 }
 ```
 
@@ -99,23 +102,23 @@ export class AppConfig {
 //app.ts
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
-import { MainDatabase } from './database.ts';
+
 import { AppConfig } from './config.ts';
+import { MainDatabase } from './database.ts';
 
 const app = new App({
-    config: AppConfig,
-    providers: [MainDatabase],
-    imports: [
-        new FrameworkModule({
-            migrateOnStartup: true,
-            debug: true,
-        })
-    ]
+  config: AppConfig,
+  providers: [MainDatabase],
+  imports: [
+    new FrameworkModule({
+      migrateOnStartup: true,
+      debug: true,
+    }),
+  ],
 });
-app.loadConfigFromEnv({prefix: 'APP_', namingStrategy: 'upper', envFilePath: ['local.env', 'prod.env']});
+app.loadConfigFromEnv({ prefix: 'APP_', namingStrategy: 'upper', envFilePath: ['local.env', 'prod.env'] });
 app.run();
 ```
-
 
 Now, since we use loadConfigFromEnv, we can set the database credentials via environment variables.
 
@@ -151,7 +154,7 @@ $ ts-node app.ts server:start
 2021-06-11T15:08:54.337Z [LOG] HTTP listening at http://localhost:8080/
 ```
 
-You can now open http://localhost:8080/_debug/database/default.
+You can now open http://localhost:8080/\_debug/database/default.
 
 ![Debugger Database](/assets/documentation/framework/debugger-database.png)
 
@@ -177,7 +180,6 @@ The `FrameworkModule` provides several commands to manage migrations.
 - `migration:up` - Executes pending migration files.
 - `migration:down` - Executes down migration, reverting old migration files
 
-
 ```sh
 ts-node app.ts migration:create --migrationDir src/migrations
 ```
@@ -186,11 +188,11 @@ A new migration file is created in `migrations`. This folder is the default dire
 
 ```typescript
 new FrameworkModule({
-    migrationDir: 'src/migrations',
-})
+  migrationDir: 'src/migrations',
+});
 ```
 
-The newly created migration file contains now the up and down methods based on the difference between the entities defined in your TypeScript app and the configured database. 
+The newly created migration file contains now the up and down methods based on the difference between the entities defined in your TypeScript app and the configured database.
 You can now modify the up method to your needs. The down method is automatically generated based on the up method.
 You commit this file to your repository so that other developers can also execute it.
 
@@ -225,4 +227,3 @@ Let's say you wanted to execute a migration (up or down), but it failed. You fix
 ```sh
 ts-node app.ts migration:up --migrationDir src/migrations --fake
 ```
-

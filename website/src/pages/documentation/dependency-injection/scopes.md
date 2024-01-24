@@ -11,9 +11,7 @@ import { InjectorContext } from '@deepkit/injector';
 
 class UserSession {}
 
-const injector = InjectorContext.forProviders([
-    {provide: UserSession, scope: 'http'}
-]);
+const injector = InjectorContext.forProviders([{ provide: UserSession, scope: 'http' }]);
 ```
 
 Once a scope is specified, this provider cannot be obtained directly from the DI container, so the following call will fail:
@@ -40,14 +38,14 @@ Scoped DI containers have the ability to set values dynamically from the outside
 
 ```typescript
 const injector = InjectorContext.forProviders([
-    {provide: HttpResponse, scope: 'http'},
-    {provide: HttpRequest, scope: 'http'},
+  { provide: HttpResponse, scope: 'http' },
+  { provide: HttpRequest, scope: 'http' },
 ]);
 
 httpServer.on('request', (req, res) => {
-    const httpScope = injector.createChildScope('http');
-    httpScope.set(HttpRequest, req);
-    httpScope.set(HttpResponse, res);
+  const httpScope = injector.createChildScope('http');
+  httpScope.set(HttpRequest, req);
+  httpScope.set(HttpResponse, res);
 });
 ```
 

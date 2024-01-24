@@ -1,9 +1,9 @@
-import { Component } from '@angular/core';
 import { CommonModule, ViewportScroller } from '@angular/common';
+import { Component } from '@angular/core';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
-import { AppTitle } from "@app/app/components/title";
-import { HeaderComponent } from "@app/app/components/header.component";
-import { FooterComponent } from "@app/app/components/footer.component";
+import { FooterComponent } from '@app/app/components/footer.component';
+import { HeaderComponent } from '@app/app/components/header.component';
+import { AppTitle } from '@app/app/components/title';
 
 @Component({
     selector: 'app-root',
@@ -12,16 +12,22 @@ import { FooterComponent } from "@app/app/components/footer.component";
     template: `
         <app-title value="Deepkit Enterprise TypeScript Framework"></app-title>
 
-        <dw-header [sticky]="activeRoute.firstChild?.snapshot?.data?.stickyHeader" [search]="activeRoute.firstChild?.snapshot?.data?.search"></dw-header>
+        <dw-header
+            [sticky]="activeRoute.firstChild?.snapshot?.data?.stickyHeader"
+            [search]="activeRoute.firstChild?.snapshot?.data?.search"
+        ></dw-header>
 
         <router-outlet></router-outlet>
 
         <dw-footer *ngIf="withFooter"></dw-footer>
     `,
-    styleUrls: ['./app.component.scss']
+    styleUrls: ['./app.component.scss'],
 })
 export class AppComponent {
-    constructor(public activeRoute: ActivatedRoute, private viewportScroller: ViewportScroller) {
+    constructor(
+        public activeRoute: ActivatedRoute,
+        private viewportScroller: ViewportScroller,
+    ) {
         viewportScroller.setOffset([0, 84]);
         viewportScroller.setHistoryScrollRestoration('auto');
     }

@@ -109,53 +109,31 @@ export class BaseQuery<T extends OrmEntity> {
         return c as any;
     }
 
-    withSum<K extends FieldName<T>, AS extends string>(
-        field: K,
-        as?: AS,
-    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withSum<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'sum', as) as any;
     }
 
-    withGroupConcat<K extends FieldName<T>, AS extends string>(
-        field: K,
-        as?: AS,
-    ): Replace<this, Resolve<this> & { [C in [AS] as `${AS}`]: T[K][] }> {
+    withGroupConcat<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [C in [AS] as `${AS}`]: T[K][] }> {
         return this.aggregateField(field, 'group_concat', as) as any;
     }
 
-    withCount<K extends FieldName<T>, AS extends string>(
-        field: K,
-        as?: AS,
-    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withCount<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'count', as) as any;
     }
 
-    withMax<K extends FieldName<T>, AS extends string>(
-        field: K,
-        as?: AS,
-    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withMax<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'max', as) as any;
     }
 
-    withMin<K extends FieldName<T>, AS extends string>(
-        field: K,
-        as?: AS,
-    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withMin<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'min', as) as any;
     }
 
-    withAverage<K extends FieldName<T>, AS extends string>(
-        field: K,
-        as?: AS,
-    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    withAverage<K extends FieldName<T>, AS extends string>(field: K, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         return this.aggregateField(field, 'avg', as) as any;
     }
 
-    aggregateField<K extends FieldName<T>, AS extends string>(
-        field: K,
-        func: string,
-        as?: AS,
-    ): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
+    aggregateField<K extends FieldName<T>, AS extends string>(field: K, func: string, as?: AS): Replace<this, Resolve<this> & { [K in [AS] as `${AS}`]: number }> {
         throw new Error();
     }
 
@@ -236,11 +214,7 @@ export class BaseQuery<T extends OrmEntity> {
      * Adds a left join in the filter. Does NOT populate the reference with values.
      * Accessing `field` in the entity (if not optional field) results in an error.
      */
-    join<K extends keyof T, ENTITY = FlattenIfArray<T[K]>>(
-        field: K,
-        type: 'left' | 'inner' = 'left',
-        populate: boolean = false,
-    ): this {
+    join<K extends keyof T, ENTITY = FlattenIfArray<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
         throw new Error();
     }
 }

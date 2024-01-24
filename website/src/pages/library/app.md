@@ -1,6 +1,6 @@
 ---
 title: Deepkit App
-package: "@deepkit/app"
+package: '@deepkit/app'
 doc: app
 api: app
 category: app
@@ -33,13 +33,13 @@ All CLI arguments and flags are extracted out of the function signature and are 
 import { App } from '@deepkit/app';
 
 class MyCommand {
-    async execute(name: string = 'body') {
-        console.log('Hello', name);
-    }
+  async execute(name: string = 'body') {
+    console.log('Hello', name);
+  }
 }
 
 const app = new App({
-    controllers: [MyCommand],
+  controllers: [MyCommand],
 });
 app.run();
 ```
@@ -50,7 +50,7 @@ import { App } from '@deepkit/app';
 const app = new App();
 
 app.command('test', async (name: string = 'body') => {
-    console.log('Hello', name);
+  console.log('Hello', name);
 });
 
 app.run();
@@ -64,18 +64,13 @@ app.run();
 
 Arguments and flags are automatically deserialized based on its types, validated and can be provided with additional constraints.
 
-
 ```typescript
-import { Flag, App } from '@deepkit/app';
+import { App, Flag } from '@deepkit/app';
 
 const app = new App();
 
-app.command('user:find', async (
-    name: string & Flag = '',
-    age: number & Flag = '',
-    active: boolean & Flag = false,
-) => {
-    // name is a string, age a number, active a boolean
+app.command('user:find', async (name: string & Flag = '', age: number & Flag = '', active: boolean & Flag = false) => {
+  // name is a string, age a number, active a boolean
 });
 
 // ts-node app.ts user:find --name Peter --age 20 --active
@@ -96,16 +91,19 @@ import { App } from '@deepkit/app';
 class MyDatabase extends Database {} //your database class
 
 const app = new App({
-    providers: [MyDatabase],
+  providers: [MyDatabase],
 });
 
-app.command('user:find', async (
+app.command(
+  'user:find',
+  async (
     name: string & Flag = '',
     db: MyDatabase, // automatically injected
-) => {
-    const users = await db.query(User).filter({name}).find();
+  ) => {
+    const users = await db.query(User).filter({ name }).find();
     console.log(users);
-});
+  },
+);
 
 app.run();
 ```
@@ -124,28 +122,30 @@ Configuration options can be injected into your commands, controllers, and hooks
 import { App } from '@deepkit/app';
 
 class Config {
-    domain: string = 'localhost';
+  domain: string = 'localhost';
 }
 
 const app = new App({
-    config: Config,
-    providers: [MyDatabase],
+  config: Config,
+  providers: [MyDatabase],
 });
 
-app.command('url', async (
+app.command(
+  'url',
+  async (
     name: string & Flag = '',
     db: MyDatabase, // automatically injected
     domain: Config['domain'], // automatically injected
-) => {
+  ) => {
     const user = await db.query(User).filter({ name }).findOne();
     console.log('url', `https://${domain}/user/${user.username}`);
-});
+  },
+);
 
 app.run();
 ```
 
 </feature>
-
 
 <feature class="right">
 
@@ -159,35 +159,35 @@ Modules can bring their own providers, controllers, event listeners, and configu
 import { App, AppModule } from '@deepkit/app';
 
 export function myModule(options: {}) {
-    return (module: AppModule) => {
-        module.addProvider(MyDatabase);
-        module.addController(MyController);
-        module.addListener();
+  return (module: AppModule) => {
+    module.addProvider(MyDatabase);
+    module.addController(MyController);
+    module.addListener();
 
-        //make MyDatabase available for parent modules
-        module.addExport(MyDatabase);
-    };
+    //make MyDatabase available for parent modules
+    module.addExport(MyDatabase);
+  };
 }
 
 const app = new App({
-    config: Config,
-    imports: [
-        myModule({}),
-    ]
+  config: Config,
+  imports: [myModule({})],
 });
 
-app.command('url', async (
+app.command(
+  'url',
+  async (
     name: string & Flag = '',
     db: MyDatabase, // automatically injected from module
-) => {
+  ) => {
     //...
-});
+  },
+);
 
 app.run();
 ```
 
 </feature>
-
 
 <feature>
 
@@ -204,7 +204,7 @@ import { App, onAppExecute } from '@deepkit/app';
 const app = new App();
 
 app.listen(onAppExecute, async (event, logger: Logger) => {
-    logger.log('app started');
+  logger.log('app started');
 });
 
 app.run();

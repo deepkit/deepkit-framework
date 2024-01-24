@@ -201,8 +201,7 @@ test('dual decorator', () => {
               : D & Dec2FluidDecorator<T, D> & { _data: ExtractApiDataType<T> };
     };
 
-    type PropertyDecoratorResult2 = Dec2FluidDecorator<ExtractClass<typeof Dec2>, PropertyDecoratorFn> &
-        DecoratorAndFetchSignature<typeof Dec2, PropertyDecoratorFn>;
+    type PropertyDecoratorResult2 = Dec2FluidDecorator<ExtractClass<typeof Dec2>, PropertyDecoratorFn> & DecoratorAndFetchSignature<typeof Dec2, PropertyDecoratorFn>;
 
     const dec2: PropertyDecoratorResult2 = createPropertyDecoratorContext(Dec2);
 

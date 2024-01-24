@@ -5,16 +5,7 @@ import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, EventToken, even
 import { Inject, ProviderWithScope, Token } from '@deepkit/injector';
 import { Stopwatch } from '@deepkit/stopwatch';
 
-import {
-    App,
-    AppErrorEvent,
-    AppEvent,
-    AppExecutedEvent,
-    onAppError,
-    onAppExecute,
-    onAppExecuted,
-    onAppShutdown,
-} from '../src/app.js';
+import { App, AppErrorEvent, AppEvent, AppExecutedEvent, onAppError, onAppExecute, onAppExecuted, onAppShutdown } from '../src/app.js';
 import { Command, Flag, cli } from '../src/command.js';
 import { AppModule, createModule } from '../src/module.js';
 import { ControllerConfig, ServiceContainer } from '../src/service-container.js';
@@ -469,9 +460,7 @@ test('config deps and @inject() in FactoryProvider', async () => {
             ],
         });
         const app = App.fromModule(module);
-        expect(() => app.get('undefinedDep')).toThrow(
-            `Undefined dependency "host: string" of useFactory(?). Type has no provider`,
-        );
+        expect(() => app.get('undefinedDep')).toThrow(`Undefined dependency "host: string" of useFactory(?). Type has no provider`);
     }
 });
 

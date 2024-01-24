@@ -1,11 +1,12 @@
 // import algoliasearch, { SearchClient } from 'algoliasearch';
 // import { AppConfig } from "@app/server/config";
-import { findParentPath } from "@deepkit/app";
+import { CommunityMessage, DocPageContent, Page, bodyToString, projectMap } from '@app/common/models';
+import { PageProcessor } from '@app/server/page-processor';
 import glob from 'tiny-glob';
-import { bodyToString, CommunityMessage, DocPageContent, Page, projectMap } from "@app/common/models";
-import { PageProcessor } from "@app/server/page-processor";
-import { Database } from "@deepkit/orm";
-import { sql } from "@deepkit/sql";
+
+import { findParentPath } from '@deepkit/app';
+import { Database } from '@deepkit/orm';
+import { sql } from '@deepkit/sql';
 
 function createIndexEntriesForPage(page: Page, rootPath: string = ''): DocPageContent[] {
     const entries: DocPageContent[] = [];
@@ -13,13 +14,13 @@ function createIndexEntriesForPage(page: Page, rootPath: string = ''): DocPageCo
     if (!page.url) return entries;
 
     const scores: { [tag: string]: number } = {
-        'h1': 10,
-        'h2': 9,
-        'h3': 8,
-        'h4': 7,
-        'h5': 6,
-        'pre': -1,
-    }
+        h1: 10,
+        h2: 9,
+        h3: 8,
+        h4: 7,
+        h5: 6,
+        pre: -1,
+    };
 
     if (!page.body.children) return entries;
 
@@ -62,11 +63,13 @@ export class Search {
         // this.client = algoliasearch(algoliaAppId, algoliaApiKey);
     }
 
-    async find(query: string): Promise<{ pages: DocPageContent[], community: CommunityMessage[] }> {
+    async find(query: string): Promise<{ pages: DocPageContent[]; community: CommunityMessage[] }> {
         //replace user query to fulltext search query in postgres format
         const search = query.trim().replace(/ +/g, ' & ');
 
-        const docResult = await this.database.raw<DocPageContent>(sql`
+        const docResult = await this.database
+            .raw<DocPageContent>(
+                sql`
 SELECT *,
        ts_rank(path_tsvector, to_tsquery('english', ${search})) AS path_rank,
        ts_rank(content_tsvector, to_tsquery('english', ${search})) AS content_rank,
@@ -75,14 +78,21 @@ SELECT *,
 FROM doc_page_content
 WHERE (content_tsvector || path_tsvector @@ to_tsquery('english', ${search}))
 ORDER BY rank DESC;
-`).find();
+`,
+            )
+            .find();
 
         //highlight keywords in the content
         for (const doc of docResult) {
-            doc.content = doc.content.replace(new RegExp(`(${query.split(' ').join('|')})`, 'gi'), '<span class="highlight">$1</span>');
+            doc.content = doc.content.replace(
+                new RegExp(`(${query.split(' ').join('|')})`, 'gi'),
+                '<span class="highlight">$1</span>',
+            );
         }
 
-        const communityResult = await this.database.raw<CommunityMessage>(sql`
+        const communityResult = await this.database
+            .raw<CommunityMessage>(
+                sql`
 SELECT *,
        ts_rank(title_tsvector, to_tsquery('english', ${search})) AS title_rank,
        ts_rank(content_tsvector, to_tsquery('english', ${search})) AS content_rank,
@@ -91,11 +101,16 @@ SELECT *,
 FROM community_message
 WHERE (type = 'example' OR type = 'answer') AND (content_tsvector || title_tsvector @@ to_tsquery('english', ${search}))
 ORDER BY rank DESC;
-`).find();
+`,
+            )
+            .find();
 
         //highlight keywords in the content
         for (const doc of communityResult) {
-            doc.content = doc.content.replace(new RegExp(`(${query.split(' ').join('|')})`, 'gi'), '<span class="highlight">$1</span>');
+            doc.content = doc.content.replace(
+                new RegExp(`(${query.split(' ').join('|')})`, 'gi'),
+                '<span class="highlight">$1</span>',
+            );
         }
 
         return { pages: docResult, community: communityResult };

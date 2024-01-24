@@ -1,65 +1,63 @@
-import { Component } from "@angular/core";
-import { RouterLink } from "@angular/router";
-import { ImageComponent } from "@app/app/components/image.component";
-import { AppImagesComponent } from "@app/app/components/images.component";
-import { AppTitle } from "@app/app/components/title";
-
+import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { ImageComponent } from '@app/app/components/image.component';
+import { AppImagesComponent } from '@app/app/components/images.component';
+import { AppTitle } from '@app/app/components/title';
 
 @Component({
     standalone: true,
-    styles: [`
-        .app-boxes {
-            margin-top: 50px;
-            grid-gap: 50px;
-        }
-
-        .libraries, .app-banner .wrapper {
-            max-width: 880px;
-        }
-
-        .libraries {
-            max-width: 950px;
-        }
-
-        .library, .library:link {
-            text-align: left;
-            display: block;
-
-            color: white;
-
-            &:hover {
-                text-decoration: none;
+    styles: [
+        `
+            .app-boxes {
+                margin-top: 50px;
+                grid-gap: 50px;
             }
 
-            h3 {
-                margin: 0;
-                padding: 0;
-                font-size: 18px;
-                font-style: normal;
-                font-weight: 700;
-                line-height: normal;
+            .libraries,
+            .app-banner .wrapper {
+                max-width: 880px;
             }
 
-            .subline {
-                color: #979797;
-                font-size: 14px;
-                margin-bottom: 10px;
+            .libraries {
+                max-width: 950px;
             }
 
-            p {
-                margin: 0;
-                padding: 0;
-                font-size: 14px;
-                line-height: 180%;
+            .library,
+            .library:link {
+                text-align: left;
+                display: block;
+
+                color: white;
+
+                &:hover {
+                    text-decoration: none;
+                }
+
+                h3 {
+                    margin: 0;
+                    padding: 0;
+                    font-size: 18px;
+                    font-style: normal;
+                    font-weight: 700;
+                    line-height: normal;
+                }
+
+                .subline {
+                    color: #979797;
+                    font-size: 14px;
+                    margin-bottom: 10px;
+                }
+
+                p {
+                    margin: 0;
+                    padding: 0;
+                    font-size: 14px;
+                    line-height: 180%;
+                }
             }
-        }
-    `],
-    imports: [
-        RouterLink,
-        ImageComponent,
-        AppImagesComponent,
-        AppTitle,
+        `,
     ],
+    imports: [RouterLink, ImageComponent, AppImagesComponent, AppTitle],
     template: `
         <app-title value="Libraries"></app-title>
         <div class="app-content-full">
@@ -70,8 +68,8 @@ import { AppTitle } from "@app/app/components/title";
                     <div>
                         <p>
                             A collection of open source TypeScript libraries under MIT license that work standalone or
-                            in combination. Each library lives in its own NPM package, is
-                            carefully optimised, and follows modern best practises.
+                            in combination. Each library lives in its own NPM package, is carefully optimised, and
+                            follows modern best practises.
                         </p>
 
                         <p>
@@ -95,24 +93,23 @@ import { AppTitle } from "@app/app/components/title";
                         <div class="subline">&#64;deepkit/app</div>
                         <p>
                             A command line interface (CLI) framework for TypeScript with service container, module
-                            system,
-                            hooks, and easy to define commands.
+                            system, hooks, and easy to define commands.
                         </p>
                     </a>
                     <a routerLink="/library/framework" class="app-box hover library">
                         <h3>Deepkit Framework</h3>
                         <div class="subline">&#64;deepkit/framework</div>
                         <p>
-                            A framework that brings together all Deepkit libraries with application server,
-                            debugging and profiler tools, and much more.
+                            A framework that brings together all Deepkit libraries with application server, debugging
+                            and profiler tools, and much more.
                         </p>
                     </a>
                     <a routerLink="/library/orm" class="app-box hover library">
                         <h3>Deepkit ORM</h3>
                         <div class="subline">&#64;deepkit/orm</div>
                         <p>
-                            High performance TypeScript ORM with Unit Of Work, migrations, and much more.
-                            MySQL, PostgreSQL, SQLite, MongoDB.
+                            High performance TypeScript ORM with Unit Of Work, migrations, and much more. MySQL,
+                            PostgreSQL, SQLite, MongoDB.
                         </p>
                     </a>
                     <a routerLink="/library/rpc" class="app-box hover library">
@@ -134,9 +131,7 @@ import { AppTitle } from "@app/app/components/title";
                     <a routerLink="/library/injector" class="app-box hover library">
                         <h3>Dependency Injection</h3>
                         <div class="subline">&#64;deepkit/injector</div>
-                        <p>
-                            The most advanced dependency injection container for TypeScript.
-                        </p>
+                        <p>The most advanced dependency injection container for TypeScript.</p>
                     </a>
                     <a routerLink="/library/template" class="app-box hover library">
                         <h3>Template</h3>
@@ -157,9 +152,7 @@ import { AppTitle } from "@app/app/components/title";
                     <a routerLink="/documentation/app/logger" class="app-box hover library">
                         <h3>Logger</h3>
                         <div class="subline">&#64;deepkit/logger</div>
-                        <p>
-                            Logger library with support for colors, scopes, various transporter and formatter.
-                        </p>
+                        <p>Logger library with support for colors, scopes, various transporter and formatter.</p>
                     </a>
                 </div>
             </div>
@@ -168,13 +161,12 @@ import { AppTitle } from "@app/app/components/title";
                 <h2>Deepkit ORM Browser</h2>
 
                 <p>
-                    Deepkit ORM Browser is a web application that allows you to browse your database schema, edit your data,
-                    see migration changes, and seed your database. Everything based on your TypeScript entity types.
+                    Deepkit ORM Browser is a web application that allows you to browse your database schema, edit your
+                    data, see migration changes, and seed your database. Everything based on your TypeScript entity
+                    types.
                 </p>
 
-                <p>
-                    It is part of Framework Debugger but can also be used standalone.
-                </p>
+                <p>It is part of Framework Debugger but can also be used standalone.</p>
 
                 <p>
                     <a class="button big" routerLink="/library/orm-browser">Learn more</a>
@@ -192,17 +184,13 @@ import { AppTitle } from "@app/app/components/title";
                 <h2>Deepkit API Console</h2>
 
                 <p>
-                    Auto documentation of your HTTP and RPC API right in the browser showing all your
-                    routes, actions, parameters, return types, status codes, in TypeScript type syntax.
+                    Auto documentation of your HTTP and RPC API right in the browser showing all your routes, actions,
+                    parameters, return types, status codes, in TypeScript type syntax.
                 </p>
 
-                <p>
-                    Interactively explore and test your API with the API Console.
-                </p>
+                <p>Interactively explore and test your API with the API Console.</p>
 
-                <p>
-                    It is part of Framework Debugger but can also be used standalone.
-                </p>
+                <p>It is part of Framework Debugger but can also be used standalone.</p>
 
                 <p>
                     <a class="button big" routerLink="/library/api-console">Learn more</a>
@@ -220,13 +208,9 @@ import { AppTitle } from "@app/app/components/title";
             <div class="wrapper app-product">
                 <h2>Deepkit Debugger</h2>
 
-                <p>
-                    Deepkit Framework Debugger is a web application giving you insights into your application.
-                </p>
+                <p>Deepkit Framework Debugger is a web application giving you insights into your application.</p>
 
-                <p>
-                    Module hiarchy, configuration, APIs, database, profiler, and much more.
-                </p>
+                <p>Module hiarchy, configuration, APIs, database, profiler, and much more.</p>
 
                 <p>
                     <a class="button big" routerLink="/library/framework">Learn more</a>
@@ -241,7 +225,6 @@ import { AppTitle } from "@app/app/components/title";
                 </app-images>
             </div>
         </div>
-    `
+    `,
 })
-export class LibrariesComponent {
-}
+export class LibrariesComponent {}

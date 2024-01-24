@@ -142,11 +142,7 @@ test('scoped logger', () => {
             constructor(public target: TransientInjectionTarget) {}
         }
 
-        const injector = Injector.from([
-            A,
-            { provide: B, transient: true },
-            { provide: C, transient: true, useExisting: B },
-        ]);
+        const injector = Injector.from([A, { provide: B, transient: true }, { provide: C, transient: true, useExisting: B }]);
 
         const a = injector.get(A);
         expect(a.b).toBeInstanceOf(B);

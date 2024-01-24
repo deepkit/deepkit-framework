@@ -1,20 +1,16 @@
-import { Database } from "@deepkit/orm";
-import { findParentPath } from "@deepkit/app";
-import { readdir } from "fs/promises";
-import { PageProcessor } from "@app/server/page-processor";
-import { CommunityMessage } from "@app/common/models";
+import { CommunityMessage } from '@app/common/models';
+import { PageProcessor } from '@app/server/page-processor';
+import { readdir } from 'fs/promises';
 
-export async function importExamples(
-    database: Database,
-    page: PageProcessor
-) {
+import { findParentPath } from '@deepkit/app';
+import { Database } from '@deepkit/orm';
+
+export async function importExamples(database: Database, page: PageProcessor) {
     const dir = findParentPath('src/pages/examples', __dirname);
     if (!dir) throw new Error('Examples folder not found');
     const files = await readdir(dir);
 
-    await database.query(CommunityMessage)
-        .filter({ type: 'example', source: 'markdown' })
-        .deleteMany();
+    await database.query(CommunityMessage).filter({ type: 'example', source: 'markdown' }).deleteMany();
 
     for (const file of files) {
         const session = database.createSession();
@@ -34,17 +30,12 @@ export async function importExamples(
     }
 }
 
-export async function importQuestions(
-    database: Database,
-    page: PageProcessor
-) {
+export async function importQuestions(database: Database, page: PageProcessor) {
     const dir = findParentPath('src/pages/questions', __dirname);
     if (!dir) throw new Error('Examples folder not found');
     const files = await readdir(dir);
 
-    await database.query(CommunityMessage)
-        .filter({ type: 'answer',  source: 'markdown' })
-        .deleteMany();
+    await database.query(CommunityMessage).filter({ type: 'answer', source: 'markdown' }).deleteMany();
 
     for (const file of files) {
         if (file.startsWith('_')) continue;

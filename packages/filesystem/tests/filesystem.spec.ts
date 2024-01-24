@@ -193,17 +193,7 @@ test('recursive', async () => {
     const files3 = await filesystem.allFiles('/');
     const fileNames3 = files3.map(f => f.path);
 
-    let expected = [
-        '/folder',
-        '/folder2',
-        '/folder2/folder3',
-        '/file1.txt',
-        '/folder/file1.txt',
-        '/folder/file2.txt',
-        '/folder2/file2.txt',
-        '/folder2/file3.txt',
-        '/folder2/folder3/file4.txt',
-    ];
+    let expected = ['/folder', '/folder2', '/folder2/folder3', '/file1.txt', '/folder/file1.txt', '/folder/file2.txt', '/folder2/file2.txt', '/folder2/file3.txt', '/folder2/folder3/file4.txt'];
 
     if (!filesystem.adapter.supportsDirectory()) {
         expected = expected.filter(v => v !== '/folder' && v !== '/folder2' && v !== '/folder2/folder3');

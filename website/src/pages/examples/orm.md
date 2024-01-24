@@ -1,25 +1,25 @@
 title: User Entity with Password Hashing
 
 ```typescript
-import {entity, AutoIncrement, PrimaryKey, cast} from "@deepkit/type";
-import {Database} from '@deepkit/orm';
 import * as bcrypt from 'bcrypt';
+
+import { Database } from '@deepkit/orm';
+import { AutoIncrement, PrimaryKey, cast, entity } from '@deepkit/type';
 
 @entity.collection('users')
 class User {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    password: string = '';
+  id: number & PrimaryKey & AutoIncrement = 0;
+  password: string = '';
 
-    constructor(public username: string & Unique) {}
+  constructor(public username: string & Unique) {}
 }
 
 async function addUser(data: Partial<User>, database: Database) {
-    const user = cast<User>(data);
-    user.password = await bcrypt.hash(user.password, 10);
-    await database.persist(user);
+  const user = cast<User>(data);
+  user.password = await bcrypt.hash(user.password, 10);
+  await database.persist(user);
 }
 ```
-
 
 ##-------------------------------------------------##
 

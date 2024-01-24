@@ -1,15 +1,17 @@
+import { NgForOf, NgIf } from '@angular/common';
 import { ChangeDetectorRef, Component, Input } from '@angular/core';
+import { ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { NgForOf, NgIf } from "@angular/common";
-import { ReactiveFormsModule } from "@angular/forms";
-import { SearchComponent } from "@app/app/components/search.component";
+import { SearchComponent } from '@app/app/components/search.component';
 
 @Component({
     selector: 'dw-header',
     standalone: true,
     template: `
         <div class="wrapper" [class.showMenu]="showMenu">
-            <a class="logo"  routerLink="/"><img alt="logo" style="width: 24px; height: 30px;" src="/assets/images/deepkit_white.svg"/></a>
+            <a class="logo" routerLink="/"
+                ><img alt="logo" style="width: 24px; height: 30px;" src="/assets/images/deepkit_white.svg"
+            /></a>
             <!--            <a class="logo" *ngIf="startPage" routerLink="/"><img src="/assets/images/deepkit_white_text.svg"/></a>-->
 
             <app-search *ngIf="search"></app-search>
@@ -26,9 +28,9 @@ import { SearchComponent } from "@app/app/components/search.component";
                 </svg>
             </a>
             <nav class="main">
-                <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/">Framework</a>
+                <a routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" routerLink="/">Framework</a>
                 <a routerLinkActive="active" routerLink="/library">Libraries</a>
-<!--                <a routerLinkActive="active" routerLink="/enterprise">Enterprise</a>-->
+                <!--                <a routerLinkActive="active" routerLink="/enterprise">Enterprise</a>-->
                 <a routerLinkActive="active" routerLink="/community">Community</a>
                 <a routerLinkActive="active" routerLink="/documentation">Documentation</a>
             </nav>
@@ -37,15 +39,8 @@ import { SearchComponent } from "@app/app/components/search.component";
     host: {
         '[class.sticky]': 'sticky',
     },
-    imports: [
-        RouterLink,
-        RouterLinkActive,
-        NgForOf,
-        NgIf,
-        ReactiveFormsModule,
-        SearchComponent
-    ],
-    styleUrls: ['./header.component.scss']
+    imports: [RouterLink, RouterLinkActive, NgForOf, NgIf, ReactiveFormsModule, SearchComponent],
+    styleUrls: ['./header.component.scss'],
 })
 export class HeaderComponent {
     public menu = '';

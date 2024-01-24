@@ -2,22 +2,7 @@ import { expect, test } from '@jest/globals';
 
 import { typeInfer } from '../src/reflection/processor.js';
 import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
-import {
-    Entity,
-    InlineRuntimeType,
-    Reference,
-    ReflectionKind,
-    Type,
-    TypeLiteral,
-    TypeObjectLiteral,
-    TypePropertySignature,
-    Unique,
-    entityAnnotation,
-    float,
-    stringifyResolvedType,
-    typeDecorators,
-    widenLiteral,
-} from '../src/reflection/type.js';
+import { Entity, InlineRuntimeType, Reference, ReflectionKind, Type, TypeLiteral, TypeObjectLiteral, TypePropertySignature, Unique, entityAnnotation, float, stringifyResolvedType, typeDecorators, widenLiteral } from '../src/reflection/type.js';
 import { Maximum, MinLength, validate } from '../src/validator.js';
 import { expectEqualType } from './utils.js';
 
@@ -36,17 +21,9 @@ test('widen literal', () => {
     expectEqualType(widenLiteral(typeInfer('asd') as TypeLiteral), { kind: ReflectionKind.string }, { noOrigin: true });
     expectEqualType(widenLiteral(typeInfer(23) as TypeLiteral), { kind: ReflectionKind.number }, { noOrigin: true });
     expectEqualType(widenLiteral(typeInfer(true) as TypeLiteral), { kind: ReflectionKind.boolean }, { noOrigin: true });
-    expectEqualType(
-        widenLiteral(typeInfer(false) as TypeLiteral),
-        { kind: ReflectionKind.boolean },
-        { noOrigin: true },
-    );
+    expectEqualType(widenLiteral(typeInfer(false) as TypeLiteral), { kind: ReflectionKind.boolean }, { noOrigin: true });
     expectEqualType(widenLiteral(typeInfer(12n) as TypeLiteral), { kind: ReflectionKind.bigint }, { noOrigin: true });
-    expectEqualType(
-        widenLiteral(typeInfer(symbol) as TypeLiteral),
-        { kind: ReflectionKind.symbol },
-        { noOrigin: true },
-    );
+    expectEqualType(widenLiteral(typeInfer(symbol) as TypeLiteral), { kind: ReflectionKind.symbol }, { noOrigin: true });
 });
 
 test('container', () => {
@@ -149,9 +126,7 @@ test('dynamic type definition for schema definition', () => {
         // console.log(util.inspect(schema, false, null, true));
     }
 
-    expect(validate({ username: '123' }, types['User'])).toEqual([
-        { path: 'username', code: 'minLength', message: 'Min length is 6', value: '123' },
-    ]);
+    expect(validate({ username: '123' }, types['User'])).toEqual([{ path: 'username', code: 'minLength', message: 'Min length is 6', value: '123' }]);
 
     const userReflection = ReflectionClass.from(types['User']);
     expect(entityAnnotation.getFirst(types['User'])?.collection).toBe('users');
@@ -182,8 +157,7 @@ test('dynamic type definition for schema definition', () => {
                 break;
             }
             case 'reference': {
-                if (!prop.refClassName)
-                    throw new Error(`Property ${prop.name} is reference but no refClassName defined`);
+                if (!prop.refClassName) throw new Error(`Property ${prop.name} is reference but no refClassName defined`);
                 const ref: Type = types[prop.refClassName];
                 type = { ...typeOf<InlineRuntimeType<typeof ref>>() }; //we want a copy
                 break;
@@ -200,8 +174,7 @@ test('dynamic type definition for schema definition', () => {
         if (prop.refClassName) type.decorators.push(typeOf<Reference>());
 
         for (const decorator of type.decorators) {
-            for (const decoratorHandler of typeDecorators)
-                decoratorHandler(type.annotations, decorator as TypeObjectLiteral);
+            for (const decoratorHandler of typeDecorators) decoratorHandler(type.annotations, decorator as TypeObjectLiteral);
         }
 
         const property: TypePropertySignature = {
@@ -224,8 +197,7 @@ test('dynamic types validation', () => {
     type.decorators.push(typeOf<MinLength<6>>());
 
     for (const decorator of type.decorators) {
-        for (const decoratorHandler of typeDecorators)
-            decoratorHandler(type.annotations, decorator as TypeObjectLiteral);
+        for (const decoratorHandler of typeDecorators) decoratorHandler(type.annotations, decorator as TypeObjectLiteral);
     }
 
     expect(validate('asd', type)).toEqual([{ path: '', code: 'minLength', message: 'Min length is 6', value: 'asd' }]);

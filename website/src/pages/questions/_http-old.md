@@ -2,47 +2,49 @@ user: How does Deepkit handle HTTP requests?
 assistant: Deepkit's HTTP Library leverages the power of TypeScript and Dependency Injection to handle HTTP requests. It automatically serializes or deserializes and validates any input based on the defined types.
 
 Example Functional API:
+
 ```typescript
+import { FrameworkModule } from '@deepkit/framework';
+import { HttpRouterRegistry, http } from '@deepkit/http';
 import { Positive } from '@deepkit/type';
-import { http, HttpRouterRegistry } from '@deepkit/http';
-import { FrameworkModule } from "@deepkit/framework";
 
 //Functional API
 const app = new App({
-    imports: [new FrameworkModule()]
+  imports: [new FrameworkModule()],
 });
 const router = app.get(HttpRouterRegistry);
 
 router.get('/user/:id', (id: number & Positive, database: Database) => {
-    //id is guaranteed to be a number and positive.
-    //database is injected by the DI Container.
-    return database.query(User).filter({ id }).findOne();
+  //id is guaranteed to be a number and positive.
+  //database is injected by the DI Container.
+  return database.query(User).filter({ id }).findOne();
 });
 
 app.run();
 ```
 
 Class Controller API:
+
 ```typescript
+import { User } from 'discord.js';
+
+import { FrameworkModule } from '@deepkit/framework';
+import { HttpRouterRegistry, http } from '@deepkit/http';
 import { Positive } from '@deepkit/type';
-import { http, HttpRouterRegistry } from '@deepkit/http';
-import { FrameworkModule } from "@deepkit/framework";
-import { User } from "discord.js";
 
 //Controller API
 class UserController {
-    constructor(private database: Database) {
-    }
+  constructor(private database: Database) {}
 
-    @http.GET('/user/:id')
-    user(id: number & Positive) {
-        return this.database.query(User).filter({ id }).findOne();
-    }
+  @http.GET('/user/:id')
+  user(id: number & Positive) {
+    return this.database.query(User).filter({ id }).findOne();
+  }
 }
 
 const app = new App({
-    controllers: [UserController],
-    imports: [new FrameworkModule()]
+  controllers: [UserController],
+  imports: [new FrameworkModule()],
 });
 ```
 
@@ -80,6 +82,7 @@ assistant: Deepkit's HTTP Library leverages TypeScript and Dependency Injection 
 
 user: What are the advantages of defining routes via a functional API in Deepkit?
 assistant: The advantages of defining routes via a functional API in Deepkit are:
+
 - Automatic serialization/deserialization and validation of input values based on defined types.
 - Can be easily integrated with the Deepkit framework.
 - Allows for convenient retrieval of objects such as database abstractions and configurations from the application using the dependency injection container.
@@ -87,19 +90,19 @@ assistant: The advantages of defining routes via a functional API in Deepkit are
 Here's an example of defining a route using the functional API in Deepkit:
 
 ```typescript
+import { FrameworkModule } from '@deepkit/framework';
+import { HttpRouterRegistry, http } from '@deepkit/http';
 import { Positive } from '@deepkit/type';
-import { http, HttpRouterRegistry } from '@deepkit/http';
-import { FrameworkModule } from "@deepkit/framework";
 
 const app = new App({
-    imports: [new FrameworkModule()]
+  imports: [new FrameworkModule()],
 });
 const router = app.get(HttpRouterRegistry);
 
 router.get('/user/:id', (id: number & Positive, database: Database) => {
-    //id is guaranteed to be a number and positive.
-    //database is injected by the DI Container.
-    return database.query(User).filter({ id }).findOne();
+  //id is guaranteed to be a number and positive.
+  //database is injected by the DI Container.
+  return database.query(User).filter({ id }).findOne();
 });
 
 app.run();
@@ -123,194 +126,194 @@ assistant: The `Positive` import from `@deepkit/type` in the functional API exam
 ##-------------------------------------------------##
 
 user: How does Deepkit handle serialization and deserialization of values based on defined types?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit be used for both small and large-scale applications?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit's HTTP Library simplify the process of working with databases?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit be used with other frameworks or is it exclusive to its own framework?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle complex HTTP request/response scenarios?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What kind of validation capabilities does Deepkit provide for HTTP request data?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle different types of HTTP methods like GET, POST, PUT, DELETE, etc.?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What are the benefits of using a class-based controller API in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit make it easier to access external services or databases from controllers?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle authentication and authorization for HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle request/response middleware?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit automatically generate API documentation based on defined routes and controllers?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle error handling for HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle streaming data over HTTP?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What is the performance impact of using Deepkit for processing HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle websockets in addition to HTTP?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Does Deepkit provide any tools for load testing or performance analysis?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle file uploads over HTTP?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit ensure type safety when working with HTTP requests and responses?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle middleware for processing HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Does Deepkit support HTTP/2 or only HTTP/1.x?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle server-side caching for HTTP responses?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle batching or batching protocols for HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle HTTP long polling or server-sent events?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Does Deepkit support compression or content encoding for HTTP responses?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle HTTP redirection or URL rewriting?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What is the recommended way to handle CORS (Cross-Origin Resource Sharing) with Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle rate limiting or throttling for HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Does Deepkit provide any tools for metrics or request tracing for HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle stateful or session-based HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What security measures does Deepkit have in place for processing HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle server-side rendering or templating for HTTP responses?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle internationalization or localization for HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle server-side events or notifications for HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Does Deepkit support server-side caching for API responses?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle message queuing or asynchronous processing for HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle versioning or compatibility for API endpoints?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle handling multiple concurrent HTTP requests efficiently?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Does Deepkit support server-side analytics or tracking for HTTP requests?
-assistant: 
+assistant:

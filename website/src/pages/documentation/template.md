@@ -111,7 +111,6 @@ new App({
 }).run();
 ```
 
-
 ### Class Components
 
 An alternative way to write a component is a class component. They are handled and instantiated in the Dependency Injection container and thus have access to all services registered in the container. This makes it possible to directly access a data source such as a database in your components, for example.

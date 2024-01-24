@@ -17,15 +17,9 @@ test('stringifyType union', () => {
 test('stringifyType object', () => {
     expect(stringifyResolvedType(typeOf<{ a: string }>())).toBe('{a: string}');
     expect(stringifyResolvedType(typeOf<{ a: string; b: number }>())).toBe('{\n  a: string;\n  b: number;\n}');
-    expect(stringifyResolvedType(typeOf<{ a: string; b: number; c: boolean }>())).toBe(
-        '{\n  a: string;\n  b: number;\n  c: boolean;\n}',
-    );
-    expect(stringifyResolvedType(typeOf<{ a: string; b: number; c: { d: string } }>())).toBe(
-        '{\n  a: string;\n  b: number;\n  c: {d: string};\n}',
-    );
-    expect(stringifyResolvedType(typeOf<{ a: string; b: number; c: { d: string; e: number } }>())).toBe(
-        '{\n  a: string;\n  b: number;\n  c: {\n    d: string;\n    e: number;\n  };\n}',
-    );
+    expect(stringifyResolvedType(typeOf<{ a: string; b: number; c: boolean }>())).toBe('{\n  a: string;\n  b: number;\n  c: boolean;\n}');
+    expect(stringifyResolvedType(typeOf<{ a: string; b: number; c: { d: string } }>())).toBe('{\n  a: string;\n  b: number;\n  c: {d: string};\n}');
+    expect(stringifyResolvedType(typeOf<{ a: string; b: number; c: { d: string; e: number } }>())).toBe('{\n  a: string;\n  b: number;\n  c: {\n    d: string;\n    e: number;\n  };\n}');
     expect(stringifyResolvedType(typeOf<{ a: string; b: number; c: { d: string; e: number; f: boolean } }>())).toBe(`{
   a: string;
   b: number;
@@ -136,8 +130,7 @@ test('stringifyType recursive', () => {
   admin: User;
 }`);
 
-    expect(stringifyType(typeOf<User>(), { showNames: false, showFullDefinition: true, showDescription: true }))
-        .toBe(`User {
+    expect(stringifyType(typeOf<User>(), { showNames: false, showFullDefinition: true, showDescription: true })).toBe(`User {
   id: number;
   /* the user */
   admin: User;
@@ -157,8 +150,7 @@ test('description interface', () => {
         username: string;
     }
 
-    expect(stringifyType(typeOf<User>(), { showNames: false, showFullDefinition: true, showDescription: true }))
-        .toBe(`User {
+    expect(stringifyType(typeOf<User>(), { showNames: false, showFullDefinition: true, showDescription: true })).toBe(`User {
   id: number;
   /* the user
    * another line? */
@@ -178,9 +170,7 @@ test('description interface', () => {
         id: number;
     }
 
-    expect(stringifyType(typeOf<small>(), { showNames: false, showFullDefinition: true, showDescription: true })).toBe(
-        `small {\n  /* thats the number */\n  id: number;\n}`,
-    );
+    expect(stringifyType(typeOf<small>(), { showNames: false, showFullDefinition: true, showDescription: true })).toBe(`small {\n  /* thats the number */\n  id: number;\n}`);
 });
 
 test('description class', () => {
@@ -193,8 +183,7 @@ test('description class', () => {
         username?: string;
     }
 
-    expect(stringifyType(typeOf<User>(), { showNames: false, showFullDefinition: true, showDescription: true }))
-        .toBe(`User {
+    expect(stringifyType(typeOf<User>(), { showNames: false, showFullDefinition: true, showDescription: true })).toBe(`User {
   id: number;
   /* the user
    * another line? */

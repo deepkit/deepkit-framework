@@ -18,10 +18,7 @@ test('transform simple TS', () => {
         ScriptKind.TS,
     );
 
-    const res = ts.transform(sourceFile, [
-        context => node =>
-            new ReflectionTransformer(context).withReflection({ reflection: 'default' }).transformSourceFile(node),
-    ]);
+    const res = ts.transform(sourceFile, [context => node => new ReflectionTransformer(context).withReflection({ reflection: 'default' }).transformSourceFile(node)]);
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
     const code = printer.printNode(ts.EmitHint.SourceFile, res.transformed[0], res.transformed[0]);
 
@@ -43,10 +40,7 @@ test('transform simple JS', () => {
         ScriptKind.JS,
     );
 
-    const res = ts.transform(sourceFile, [
-        context => node =>
-            new ReflectionTransformer(context).withReflection({ reflection: 'default' }).transformSourceFile(node),
-    ]);
+    const res = ts.transform(sourceFile, [context => node => new ReflectionTransformer(context).withReflection({ reflection: 'default' }).transformSourceFile(node)]);
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
     const code = printer.printNode(ts.EmitHint.SourceFile, res.transformed[0], res.transformed[0]);
 

@@ -7,7 +7,7 @@ It is part of `@deepkit/filesystem` and uses the `fs/promises` API of Node under
 ## Usage
 
 ```typescript
-import { FilesystemLocalAdapter, Filesystem } from '@deepkit/filesystem';
+import { Filesystem, FilesystemLocalAdapter } from '@deepkit/filesystem';
 
 const adapter = new FilesystemLocalAdapter({ root: '/path/to/files' });
 const filesystem = new Filesystem(adapter);
@@ -26,19 +26,18 @@ You can configure what permissions the filesystem should use when creating files
 
 ```typescript
 const adapter = new FilesystemLocalAdapter({
-    root: '/path/to/files',
-    permissions: {
-        file: {
-            public: 0o644,
-            private: 0o600,
-        },
-        directory: {
-            public: 0o755,
-            private: 0o700,
-        }
-    }
+  root: '/path/to/files',
+  permissions: {
+    file: {
+      public: 0o644,
+      private: 0o600,
+    },
+    directory: {
+      public: 0o755,
+      private: 0o700,
+    },
+  },
 });
-
 
 const filesystem = new Filesystem(adapter);
 

@@ -1,26 +1,54 @@
+import { NgForOf, NgIf } from '@angular/common';
 import {
     ApplicationRef,
     Component,
-    createComponent,
     EnvironmentInjector,
     Input,
     OnChanges,
     OnInit,
-    reflectComponentType,
     Renderer2,
     ViewContainerRef,
+    createComponent,
+    reflectComponentType,
 } from '@angular/core';
-import { Content } from '@app/common/models';
-import { NgForOf, NgIf } from '@angular/common';
+import { DomSanitizer } from '@angular/platform-browser';
+import { Router } from '@angular/router';
+import { HighlightCodeComponent } from '@app/app/components/highlight-code.component';
+import { ImageComponent } from '@app/app/components/image.component';
+import { AppImagesComponent } from '@app/app/components/images.component';
 import { ScreenComponent, ScreensComponent } from '@app/app/components/screens.component';
-import { HighlightCodeComponent } from "@app/app/components/highlight-code.component";
-import { Router } from "@angular/router";
-import { AppImagesComponent } from "@app/app/components/images.component";
-import { ImageComponent } from "@app/app/components/image.component";
-import { DomSanitizer } from "@angular/platform-browser";
+import { Content } from '@app/common/models';
 
-const whitelist = ['div', 'p', 'a', 'button', 'iframe', 'pre', 'span', 'code', 'strong', 'hr', 'ul', 'li', 'ol', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'table', 'tbody', 'tr', 'td', 'th', 'boxes', 'box'];
-
+const whitelist = [
+    'div',
+    'p',
+    'a',
+    'button',
+    'iframe',
+    'pre',
+    'span',
+    'code',
+    'strong',
+    'hr',
+    'ul',
+    'li',
+    'ol',
+    'em',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'img',
+    'table',
+    'tbody',
+    'tr',
+    'td',
+    'th',
+    'boxes',
+    'box',
+];
 
 @Component({
     standalone: true,
@@ -29,9 +57,9 @@ const whitelist = ['div', 'p', 'a', 'button', 'iframe', 'pre', 'span', 'code', '
         '[class.app-box]': 'true',
     },
     template: `
-        <div class="title">{{title}}</div>
+        <div class="title">{{ title }}</div>
         <ng-content></ng-content>
-    `
+    `,
 })
 export class ContentRenderBox {
     @Input() title: string = '';
@@ -40,31 +68,29 @@ export class ContentRenderBox {
 @Component({
     standalone: true,
     selector: 'codebox',
-    styles: [`
-        iframe {
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 2px;
-            width: 100%;
-            height: 600px;
-        }
-    `],
-    template: `
-        <iframe [src]="srcAllowed" allowfullscreen></iframe>
-    `
+    styles: [
+        `
+            iframe {
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                border-radius: 2px;
+                width: 100%;
+                height: 600px;
+            }
+        `,
+    ],
+    template: ` <iframe [src]="srcAllowed" allowfullscreen></iframe> `,
 })
 export class ContentCodeBox implements OnInit {
     @Input() src: string = '';
 
     srcAllowed: any;
 
-    constructor(private sanitizer: DomSanitizer) {
-    }
+    constructor(private sanitizer: DomSanitizer) {}
 
     ngOnInit() {
         this.srcAllowed = this.sanitizer.bypassSecurityTrustResourceUrl(this.src);
     }
 }
-
 
 @Component({
     standalone: true,
@@ -72,74 +98,77 @@ export class ContentCodeBox implements OnInit {
     host: {
         '[class.app-feature]': 'true',
     },
-    styles: [`
-        :host {
-            display: flex;
-            align-items: center;
-            margin: 200px 0;
-            text-align: justify;
-        }
-
-        .text {
-            flex: 1;
-            margin-right: 55px;
-            max-width: 480px;
-
-            ::ng-deep {
-                h2, h3 {
-                    text-align: left;
-                }
+    styles: [
+        `
+            :host {
+                display: flex;
+                align-items: center;
+                margin: 200px 0;
+                text-align: justify;
             }
-        }
-
-        .code {
-            flex: 1;
-        }
-
-        :host.right {
-            flex-direction: row-reverse;
 
             .text {
-                margin: auto;
-                margin-left: 55px;
-            }
-        }
+                flex: 1;
+                margin-right: 55px;
+                max-width: 480px;
 
-        :host.center {
-            display: block;
-            text-align: center;
-
-            .text {
-                margin: auto;
-                max-width: 680px;
-            }
-
-            ::ng-deep {
-                h2, h3 {
-                    text-align: center;
+                ::ng-deep {
+                    h2,
+                    h3 {
+                        text-align: left;
+                    }
                 }
             }
 
             .code {
-                display: grid;
-                grid-gap: 45px;
-                grid-auto-columns: auto;
-                grid-auto-rows: 1fr;
-                grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+                flex: 1;
             }
-        }
 
-        @media (max-width: 800px) {
-            :host {
-                display: block;
+            :host.right {
+                flex-direction: row-reverse;
 
                 .text {
-                    margin: 0 !important;
+                    margin: auto;
+                    margin-left: 55px;
                 }
             }
-        }
 
-    `],
+            :host.center {
+                display: block;
+                text-align: center;
+
+                .text {
+                    margin: auto;
+                    max-width: 680px;
+                }
+
+                ::ng-deep {
+                    h2,
+                    h3 {
+                        text-align: center;
+                    }
+                }
+
+                .code {
+                    display: grid;
+                    grid-gap: 45px;
+                    grid-auto-columns: auto;
+                    grid-auto-rows: 1fr;
+                    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+                }
+            }
+
+            @media (max-width: 800px) {
+                :host {
+                    display: block;
+
+                    .text {
+                        margin: 0 !important;
+                    }
+                }
+            }
+        `,
+    ],
     template: `
         <div class="text">
             <ng-content></ng-content>
@@ -147,22 +176,31 @@ export class ContentCodeBox implements OnInit {
         <div class="code">
             <ng-content select="highlight-code"></ng-content>
         </div>
-    `
+    `,
 })
-export class ContentRenderFeature {
-}
+export class ContentRenderFeature {}
 
-type ContentCreated = { hostView?: any, type?: any, node: Node };
+type ContentCreated = { hostView?: any; type?: any; node: Node };
 
 @Component({
     selector: 'app-render-content',
     standalone: true,
-    imports: [NgForOf, NgIf, ScreensComponent, ScreenComponent, HighlightCodeComponent, ContentRenderBox, ContentRenderFeature],
-    styles: [`
-        :host {
-            display: inline;
-        }
-    `],
+    imports: [
+        NgForOf,
+        NgIf,
+        ScreensComponent,
+        ScreenComponent,
+        HighlightCodeComponent,
+        ContentRenderBox,
+        ContentRenderFeature,
+    ],
+    styles: [
+        `
+            :host {
+                display: inline;
+            }
+        `,
+    ],
     template: ``,
 })
 export class ContentRenderComponent implements OnInit, OnChanges {
@@ -174,9 +212,8 @@ export class ContentRenderComponent implements OnInit, OnChanges {
         private renderer: Renderer2,
         private router: Router,
         private injector: EnvironmentInjector,
-        private app: ApplicationRef
-    ) {
-    }
+        private app: ApplicationRef,
+    ) {}
 
     ngOnChanges() {
         this.render();
@@ -202,11 +239,11 @@ export class ContentRenderComponent implements OnInit, OnChanges {
             'app-screens': ScreensComponent,
             'app-screen': ScreenComponent,
             'highlight-code': HighlightCodeComponent,
-            'box': ContentRenderBox,
+            box: ContentRenderBox,
             'app-images': AppImagesComponent,
             'app-image': ImageComponent,
-            'feature': ContentRenderFeature,
-            'codebox': ContentCodeBox,
+            feature: ContentRenderFeature,
+            codebox: ContentCodeBox,
         };
 
         if ('string' === typeof content) {
@@ -220,7 +257,9 @@ export class ContentRenderComponent implements OnInit, OnChanges {
             return children;
         } else if (components[content.tag]) {
             // const container = this.renderer.createElement('div');
-            const children: ContentCreated[] = content.children ? this.renderContent(this.injector, content.children) : [];
+            const children: ContentCreated[] = content.children
+                ? this.renderContent(this.injector, content.children)
+                : [];
 
             const type = reflectComponentType(components[content.tag]);
             if (!type) return [];
@@ -240,7 +279,7 @@ export class ContentRenderComponent implements OnInit, OnChanges {
 
             const component = createComponent(components[content.tag], {
                 environmentInjector: this.injector,
-                projectableNodes
+                projectableNodes,
             });
 
             Object.assign(component.instance as any, content.props || {});
@@ -281,7 +320,13 @@ export class ContentRenderComponent implements OnInit, OnChanges {
 
             return [{ hostView: component.hostView, type, node: component.location.nativeElement }];
         } else {
-            if (content.tag === 'pre' && content.children && content.props && typeof content.props.class === 'string' && content.props.class.startsWith('language-')) {
+            if (
+                content.tag === 'pre' &&
+                content.children &&
+                content.props &&
+                typeof content.props.class === 'string' &&
+                content.props.class.startsWith('language-')
+            ) {
                 const component = createComponent(HighlightCodeComponent, { environmentInjector: this.injector });
                 component.instance.lang = content.props.class.substr('language-'.length);
                 component.instance.code = content.children[0] as string;
@@ -376,5 +421,4 @@ export class ContentRenderComponent implements OnInit, OnChanges {
             return [{ node: element }];
         }
     }
-
 }

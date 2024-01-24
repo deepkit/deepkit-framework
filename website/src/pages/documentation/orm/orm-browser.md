@@ -13,22 +13,22 @@ import { App } from '@deepkit/app';
 import { Database } from '@deepkit/orm';
 
 class MyController {
-    @http.GET('/')
-    index() {
-        return 'Hello World';
-    }
+  @http.GET('/')
+  index() {
+    return 'Hello World';
+  }
 }
 
 class MainDatabase extends Database {
-    constructor() {
-        super(new DatabaseAdapterSQLite());
-    }
+  constructor() {
+    super(new DatabaseAdapterSQLite());
+  }
 }
 
 new App({
-    controllers: [MyController],
-    providers: [MainDatabase],
-    imports: [new FrameworkModule({debug: true})],
+  controllers: [MyController],
+  providers: [MainDatabase],
+  imports: [new FrameworkModule({ debug: true })],
 }).run();
 ```
 
@@ -43,9 +43,9 @@ npm install @deepkit/orm-browser
 import { Database } from '@deepkit/orm';
 
 class MainDatabase extends Database {
-    constructor() {
-        super(new DatabaseAdapterSQLite());
-    }
+  constructor() {
+    super(new DatabaseAdapterSQLite());
+  }
 }
 
 export const database = new MainDatabase();
@@ -58,4 +58,3 @@ Next, Deepkit ORM Browser server can be started.
 ```
 
 Deepkit ORM Browser is now available at http://localhost:9090.
-

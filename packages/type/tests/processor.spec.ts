@@ -5,15 +5,7 @@ import { MappedModifier, ReflectionOp } from '@deepkit/type-spec';
 
 import { isExtendable } from '../src/reflection/extends.js';
 import { pack } from '../src/reflection/processor.js';
-import {
-    ParentLessType,
-    ReflectionKind,
-    ReflectionVisibility,
-    TypeObjectLiteral,
-    TypePropertySignature,
-    TypeUnion,
-    copyAndSetParent,
-} from '../src/reflection/type.js';
+import { ParentLessType, ReflectionKind, ReflectionVisibility, TypeObjectLiteral, TypePropertySignature, TypeUnion, copyAndSetParent } from '../src/reflection/type.js';
 import { assertValidParent, expectEqualType, expectType } from './utils.js';
 
 Error.stackTraceLimit = 200;
@@ -77,9 +69,7 @@ test('assertEqualType 2', () => {
     assertValidParent({ kind: ReflectionKind.string });
     assertValidParent({ kind: ReflectionKind.literal, literal: 'asd' });
     assertValidParent(copyAndSetParent({ kind: ReflectionKind.literal, literal: 'asd' }));
-    expect(() => assertValidParent({ kind: ReflectionKind.literal, literal: 'asd', parent: Object as any })).toThrow(
-        'Parent was set, but not expected at',
-    );
+    expect(() => assertValidParent({ kind: ReflectionKind.literal, literal: 'asd', parent: Object as any })).toThrow('Parent was set, but not expected at');
 });
 
 enum MyEnum {
@@ -96,15 +86,7 @@ test('simple', () => {
 test('query', () => {
     expectType(
         {
-            ops: [
-                ReflectionOp.number,
-                ReflectionOp.propertySignature,
-                0,
-                ReflectionOp.objectLiteral,
-                ReflectionOp.literal,
-                0,
-                ReflectionOp.indexAccess,
-            ],
+            ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.objectLiteral, ReflectionOp.literal, 0, ReflectionOp.indexAccess],
             stack: ['a'],
         },
         {
@@ -119,55 +101,28 @@ test('inline', () => {
 });
 
 test('extends primitive', () => {
-    expectType(
-        { ops: [ReflectionOp.number, ReflectionOp.number, ReflectionOp.extends], stack: [] },
-        { kind: ReflectionKind.literal, literal: true },
-    );
+    expectType({ ops: [ReflectionOp.number, ReflectionOp.number, ReflectionOp.extends], stack: [] }, { kind: ReflectionKind.literal, literal: true });
     // expectType({ ops: [ReflectionOp.arg, 0, ReflectionOp.number, ReflectionOp.extends], stack: [1] }, true);
     // expectType({ ops: [ReflectionOp.arg, 0, ReflectionOp.number, ReflectionOp.extends], stack: ['asd'] }, false);
-    expectType(
-        { ops: [ReflectionOp.string, ReflectionOp.number, ReflectionOp.extends], stack: [] },
-        { kind: ReflectionKind.literal, literal: false },
-    );
+    expectType({ ops: [ReflectionOp.string, ReflectionOp.number, ReflectionOp.extends], stack: [] }, { kind: ReflectionKind.literal, literal: false });
 
-    expectType(
-        { ops: [ReflectionOp.string, ReflectionOp.string, ReflectionOp.extends], stack: [] },
-        { kind: ReflectionKind.literal, literal: true },
-    );
+    expectType({ ops: [ReflectionOp.string, ReflectionOp.string, ReflectionOp.extends], stack: [] }, { kind: ReflectionKind.literal, literal: true });
     // expectType({ ops: [ReflectionOp.arg, 0, ReflectionOp.string, ReflectionOp.extends], stack: ['asd'] }, true);
     expect(isExtendable({ kind: ReflectionKind.boolean }, { kind: ReflectionKind.boolean })).toBe(true);
     expect(isExtendable({ kind: ReflectionKind.literal, literal: true }, { kind: ReflectionKind.boolean })).toBe(true);
 });
 
 test('extends fn', () => {
-    expect(
-        isExtendable(
-            { kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] },
-            { kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] },
-        ),
-    ).toBe(true);
+    expect(isExtendable({ kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] }, { kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] })).toBe(true);
 
-    expect(
-        isExtendable(
-            { kind: ReflectionKind.function, return: { kind: ReflectionKind.string }, parameters: [] },
-            { kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] },
-        ),
-    ).toBe(false);
+    expect(isExtendable({ kind: ReflectionKind.function, return: { kind: ReflectionKind.string }, parameters: [] }, { kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] })).toBe(false);
 
-    expect(
-        isExtendable(
-            { kind: ReflectionKind.function, return: { kind: ReflectionKind.literal, literal: true }, parameters: [] },
-            { kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] },
-        ),
-    ).toBe(true);
+    expect(isExtendable({ kind: ReflectionKind.function, return: { kind: ReflectionKind.literal, literal: true }, parameters: [] }, { kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] })).toBe(true);
 });
 
 test('arg', () => {
     //after initial stack, an implicit frame is created. arg references always relative to the current frame.
-    expectType(
-        { ops: [ReflectionOp.arg, 0], stack: [{ kind: ReflectionKind.literal, literal: 'a' }] },
-        { kind: ReflectionKind.literal, literal: 'a' },
-    );
+    expectType({ ops: [ReflectionOp.arg, 0], stack: [{ kind: ReflectionKind.literal, literal: 'a' }] }, { kind: ReflectionKind.literal, literal: 'a' });
     // expectType({ ops: [ReflectionOp.arg, 0, ReflectionOp.arg, 0], stack: ['a'] }, 'a');
 
     //frame is started automatically when a sub routine is called, but we do it here manually to make sure arg works correctly
@@ -177,38 +132,17 @@ test('arg', () => {
 });
 
 test('call sub routine', () => {
-    expectType(
-        { ops: [ReflectionOp.jump, 4, ReflectionOp.string, ReflectionOp.return, ReflectionOp.call, 2], stack: [] },
-        { kind: ReflectionKind.string },
-    );
+    expectType({ ops: [ReflectionOp.jump, 4, ReflectionOp.string, ReflectionOp.return, ReflectionOp.call, 2], stack: [] }, { kind: ReflectionKind.string });
     expectType(
         {
-            ops: [
-                ReflectionOp.jump,
-                5,
-                ReflectionOp.string,
-                ReflectionOp.number,
-                ReflectionOp.return,
-                ReflectionOp.call,
-                2,
-            ],
+            ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2],
             stack: [],
         },
         { kind: ReflectionKind.number },
     );
     expectType(
         {
-            ops: [
-                ReflectionOp.jump,
-                5,
-                ReflectionOp.string,
-                ReflectionOp.number,
-                ReflectionOp.return,
-                ReflectionOp.boolean,
-                ReflectionOp.call,
-                2,
-                ReflectionOp.union,
-            ],
+            ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.boolean, ReflectionOp.call, 2, ReflectionOp.union],
             stack: [],
         },
         {
@@ -218,17 +152,7 @@ test('call sub routine', () => {
     );
     expectType(
         {
-            ops: [
-                ReflectionOp.jump,
-                5,
-                ReflectionOp.string,
-                ReflectionOp.number,
-                ReflectionOp.return,
-                ReflectionOp.call,
-                2,
-                ReflectionOp.undefined,
-                ReflectionOp.union,
-            ],
+            ops: [ReflectionOp.jump, 5, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2, ReflectionOp.undefined, ReflectionOp.union],
             stack: [],
         },
         {
@@ -238,37 +162,19 @@ test('call sub routine', () => {
     );
     expectType(
         {
-            ops: [
-                ReflectionOp.string,
-                ReflectionOp.jump,
-                6,
-                ReflectionOp.string,
-                ReflectionOp.number,
-                ReflectionOp.return,
-                ReflectionOp.call,
-                2,
-                ReflectionOp.undefined,
-                ReflectionOp.union,
-            ],
+            ops: [ReflectionOp.string, ReflectionOp.jump, 6, ReflectionOp.string, ReflectionOp.number, ReflectionOp.return, ReflectionOp.call, 2, ReflectionOp.undefined, ReflectionOp.union],
             stack: [],
         },
         {
             kind: ReflectionKind.union,
-            types: [
-                { kind: ReflectionKind.string },
-                { kind: ReflectionKind.number },
-                { kind: ReflectionKind.undefined },
-            ],
+            types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
         },
     );
 });
 
 test('type argument', () => {
     //type A<T> = T extends string;
-    expectType(
-        { ops: [ReflectionOp.arg, 0, ReflectionOp.arg, 0, ReflectionOp.string, ReflectionOp.extends], stack: ['a'] },
-        { kind: ReflectionKind.literal, literal: true },
-    );
+    expectType({ ops: [ReflectionOp.arg, 0, ReflectionOp.arg, 0, ReflectionOp.string, ReflectionOp.extends], stack: ['a'] }, { kind: ReflectionKind.literal, literal: true });
 });
 
 test('conditional', () => {
@@ -293,19 +199,7 @@ test('jump conditional', () => {
     //1 ? string : number
     expectType(
         {
-            ops: [
-                ReflectionOp.jump,
-                6,
-                ReflectionOp.string,
-                ReflectionOp.return,
-                ReflectionOp.number,
-                ReflectionOp.return,
-                ReflectionOp.arg,
-                0,
-                ReflectionOp.jumpCondition,
-                2,
-                4,
-            ],
+            ops: [ReflectionOp.jump, 6, ReflectionOp.string, ReflectionOp.return, ReflectionOp.number, ReflectionOp.return, ReflectionOp.arg, 0, ReflectionOp.jumpCondition, 2, 4],
             stack: [1],
         },
         {
@@ -316,19 +210,7 @@ test('jump conditional', () => {
     //0 ? string : number
     expectType(
         {
-            ops: [
-                ReflectionOp.jump,
-                6,
-                ReflectionOp.string,
-                ReflectionOp.return,
-                ReflectionOp.number,
-                ReflectionOp.return,
-                ReflectionOp.arg,
-                0,
-                ReflectionOp.jumpCondition,
-                2,
-                4,
-            ],
+            ops: [ReflectionOp.jump, 6, ReflectionOp.string, ReflectionOp.return, ReflectionOp.number, ReflectionOp.return, ReflectionOp.arg, 0, ReflectionOp.jumpCondition, 2, 4],
             stack: [0],
         },
         {
@@ -339,21 +221,7 @@ test('jump conditional', () => {
     //(0 ? string : number) | undefined
     expectType(
         {
-            ops: [
-                ReflectionOp.jump,
-                6,
-                ReflectionOp.string,
-                ReflectionOp.return,
-                ReflectionOp.number,
-                ReflectionOp.return,
-                ReflectionOp.arg,
-                0,
-                ReflectionOp.jumpCondition,
-                2,
-                4,
-                ReflectionOp.undefined,
-                ReflectionOp.union,
-            ],
+            ops: [ReflectionOp.jump, 6, ReflectionOp.string, ReflectionOp.return, ReflectionOp.number, ReflectionOp.return, ReflectionOp.arg, 0, ReflectionOp.jumpCondition, 2, 4, ReflectionOp.undefined, ReflectionOp.union],
             stack: [0],
         },
         {
@@ -366,15 +234,7 @@ test('jump conditional', () => {
 test('object literal', () => {
     expectType(
         {
-            ops: [
-                ReflectionOp.number,
-                ReflectionOp.propertySignature,
-                0,
-                ReflectionOp.string,
-                ReflectionOp.propertySignature,
-                1,
-                ReflectionOp.objectLiteral,
-            ],
+            ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.propertySignature, 1, ReflectionOp.objectLiteral],
             stack: ['a', 'b'],
         },
         {
@@ -404,15 +264,7 @@ test('object literal', () => {
 
     expectType(
         {
-            ops: [
-                ReflectionOp.number,
-                ReflectionOp.propertySignature,
-                0,
-                ReflectionOp.string,
-                ReflectionOp.number,
-                ReflectionOp.indexSignature,
-                ReflectionOp.objectLiteral,
-            ],
+            ops: [ReflectionOp.number, ReflectionOp.propertySignature, 0, ReflectionOp.string, ReflectionOp.number, ReflectionOp.indexSignature, ReflectionOp.objectLiteral],
             stack: ['a'],
         },
         {
@@ -429,31 +281,20 @@ test('object literal', () => {
         },
     );
 
-    expectType(
-        [
-            ReflectionOp.string,
-            ReflectionOp.frame,
-            ReflectionOp.number,
-            ReflectionOp.undefined,
-            ReflectionOp.union,
-            ReflectionOp.indexSignature,
-            ReflectionOp.objectLiteral,
-        ],
-        {
-            kind: ReflectionKind.objectLiteral,
-            id: 0,
-            types: [
-                {
-                    kind: ReflectionKind.indexSignature,
-                    index: { kind: ReflectionKind.string },
-                    type: {
-                        kind: ReflectionKind.union,
-                        types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
-                    },
+    expectType([ReflectionOp.string, ReflectionOp.frame, ReflectionOp.number, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.indexSignature, ReflectionOp.objectLiteral], {
+        kind: ReflectionKind.objectLiteral,
+        id: 0,
+        types: [
+            {
+                kind: ReflectionKind.indexSignature,
+                index: { kind: ReflectionKind.string },
+                type: {
+                    kind: ReflectionKind.union,
+                    types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
                 },
-            ],
-        },
-    );
+            },
+        ],
+    });
 });
 
 test('method', () => {
@@ -482,15 +323,7 @@ test('method', () => {
     );
     expectType(
         {
-            ops: [
-                ReflectionOp.string,
-                ReflectionOp.parameter,
-                0,
-                ReflectionOp.number,
-                ReflectionOp.method,
-                1,
-                ReflectionOp.protected,
-            ],
+            ops: [ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.number, ReflectionOp.method, 1, ReflectionOp.protected],
             stack: ['param', 'name'],
         },
         {
@@ -503,16 +336,7 @@ test('method', () => {
     );
     expectType(
         {
-            ops: [
-                ReflectionOp.string,
-                ReflectionOp.parameter,
-                0,
-                ReflectionOp.number,
-                ReflectionOp.method,
-                1,
-                ReflectionOp.protected,
-                ReflectionOp.abstract,
-            ],
+            ops: [ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.number, ReflectionOp.method, 1, ReflectionOp.protected, ReflectionOp.abstract],
             stack: ['param', 'name'],
         },
         {
@@ -588,14 +412,7 @@ test('property', () => {
 
     expectType(
         {
-            ops: [
-                ReflectionOp.string,
-                ReflectionOp.property,
-                0,
-                ReflectionOp.optional,
-                ReflectionOp.abstract,
-                ReflectionOp.private,
-            ],
+            ops: [ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.optional, ReflectionOp.abstract, ReflectionOp.private],
             stack: ['name'],
         },
         {
@@ -612,15 +429,7 @@ test('property', () => {
 test('class', () => {
     expectType(
         {
-            ops: [
-                ReflectionOp.string,
-                ReflectionOp.property,
-                0,
-                ReflectionOp.number,
-                ReflectionOp.property,
-                1,
-                ReflectionOp.class,
-            ],
+            ops: [ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.number, ReflectionOp.property, 1, ReflectionOp.class],
             stack: ['name', 'id'],
         },
         {
@@ -653,22 +462,7 @@ test('mapped type simple', () => {
 
     expectType(
         {
-            ops: [
-                ReflectionOp.jump,
-                4,
-                ReflectionOp.boolean,
-                ReflectionOp.return,
-                ReflectionOp.typeParameter,
-                0,
-                ReflectionOp.frame,
-                ReflectionOp.var,
-                ReflectionOp.loads,
-                1,
-                0,
-                ReflectionOp.mappedType,
-                2,
-                0,
-            ],
+            ops: [ReflectionOp.jump, 4, ReflectionOp.boolean, ReflectionOp.return, ReflectionOp.typeParameter, 0, ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.mappedType, 2, 0],
             stack: ['T'],
             inputs: [
                 {
@@ -706,21 +500,7 @@ test('mapped type optional simple', () => {
 
     expectType(
         {
-            ops: [
-                ReflectionOp.jump,
-                4,
-                ReflectionOp.boolean,
-                ReflectionOp.return,
-                ReflectionOp.typeParameter,
-                0,
-                ReflectionOp.var,
-                ReflectionOp.loads,
-                0,
-                0,
-                ReflectionOp.mappedType,
-                2,
-                0 | MappedModifier.optional,
-            ],
+            ops: [ReflectionOp.jump, 4, ReflectionOp.boolean, ReflectionOp.return, ReflectionOp.typeParameter, 0, ReflectionOp.var, ReflectionOp.loads, 0, 0, ReflectionOp.mappedType, 2, 0 | MappedModifier.optional],
             stack: ['T'],
             inputs: [
                 {
@@ -826,23 +606,7 @@ test('mapped type keyof and fixed', () => {
 
     expectType(
         {
-            ops: [
-                ReflectionOp.typeParameter,
-                0,
-                ReflectionOp.jump,
-                6,
-                ReflectionOp.boolean,
-                ReflectionOp.return,
-                ReflectionOp.frame,
-                ReflectionOp.var,
-                ReflectionOp.loads,
-                1,
-                0,
-                ReflectionOp.keyof,
-                ReflectionOp.mappedType,
-                4,
-                0,
-            ],
+            ops: [ReflectionOp.typeParameter, 0, ReflectionOp.jump, 6, ReflectionOp.boolean, ReflectionOp.return, ReflectionOp.frame, ReflectionOp.var, ReflectionOp.loads, 1, 0, ReflectionOp.keyof, ReflectionOp.mappedType, 4, 0],
             stack: ['T'],
             inputs: [
                 {
@@ -1026,16 +790,7 @@ test('generic class', () => {
 
     expectType(
         {
-            ops: [
-                ReflectionOp.typeParameter,
-                0,
-                ReflectionOp.loads,
-                0,
-                0,
-                ReflectionOp.property,
-                1,
-                ReflectionOp.class,
-            ],
+            ops: [ReflectionOp.typeParameter, 0, ReflectionOp.loads, 0, 0, ReflectionOp.property, 1, ReflectionOp.class],
             stack: ['T', 'name'],
             inputs: [{ kind: ReflectionKind.string }],
         },
@@ -1055,16 +810,7 @@ test('generic class', () => {
 
     expectType(
         {
-            ops: [
-                ReflectionOp.typeParameter,
-                0,
-                ReflectionOp.loads,
-                0,
-                0,
-                ReflectionOp.property,
-                1,
-                ReflectionOp.class,
-            ],
+            ops: [ReflectionOp.typeParameter, 0, ReflectionOp.loads, 0, 0, ReflectionOp.property, 1, ReflectionOp.class],
             stack: ['T', 'name'],
         },
         {
@@ -1146,14 +892,7 @@ test('more advances types', () => {
 
     expectType(
         {
-            ops: [
-                ReflectionOp.frame,
-                ReflectionOp.string,
-                ReflectionOp.parameter,
-                0,
-                ReflectionOp.void,
-                ReflectionOp.function,
-            ],
+            ops: [ReflectionOp.frame, ReflectionOp.string, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function],
             stack: ['param'],
         },
         {
@@ -1177,15 +916,7 @@ test('more advances types', () => {
 
     expectType(
         {
-            ops: [
-                ReflectionOp.string,
-                ReflectionOp.undefined,
-                ReflectionOp.union,
-                ReflectionOp.parameter,
-                0,
-                ReflectionOp.void,
-                ReflectionOp.function,
-            ],
+            ops: [ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function],
             stack: ['param'],
         },
         {
@@ -1263,14 +994,7 @@ test('more advances types', () => {
 
     expectType(
         {
-            ops: [
-                ReflectionOp.string,
-                ReflectionOp.array,
-                ReflectionOp.parameter,
-                0,
-                ReflectionOp.void,
-                ReflectionOp.function,
-            ],
+            ops: [ReflectionOp.string, ReflectionOp.array, ReflectionOp.parameter, 0, ReflectionOp.void, ReflectionOp.function],
             stack: ['param'],
         },
         {

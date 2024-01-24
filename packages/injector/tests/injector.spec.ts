@@ -2,15 +2,7 @@ import { expect, test } from '@jest/globals';
 
 import { ReflectionClass, ReflectionKind } from '@deepkit/type';
 
-import {
-    CircularDependencyError,
-    DependenciesUnmetError,
-    Injector,
-    InjectorContext,
-    PartialFactory,
-    TransientInjectionTarget,
-    injectedFunction,
-} from '../src/injector.js';
+import { CircularDependencyError, DependenciesUnmetError, Injector, InjectorContext, PartialFactory, TransientInjectionTarget, injectedFunction } from '../src/injector.js';
 import { InjectorModule } from '../src/module.js';
 import { provide } from '../src/provider.js';
 import { Inject } from '../src/types.js';
@@ -52,9 +44,7 @@ test('missing dep', () => {
         }
     }
 
-    expect(() => Injector.from([MyServer, Connection])).toThrow(
-        `Undefined dependency "missing: Missing" of MyServer(✓, ?)`,
-    );
+    expect(() => Injector.from([MyServer, Connection])).toThrow(`Undefined dependency "missing: Missing" of MyServer(✓, ?)`);
 });
 
 test('wrong dep 1', () => {
@@ -69,9 +59,7 @@ test('wrong dep 1', () => {
         }
     }
 
-    expect(() => Injector.from([MyServer, Connection])).toThrow(
-        `Undefined dependency "missing: any" of MyServer(✓, ?).`,
-    );
+    expect(() => Injector.from([MyServer, Connection])).toThrow(`Undefined dependency "missing: any" of MyServer(✓, ?).`);
 });
 
 test('wrong dep 2', () => {
@@ -245,9 +233,7 @@ test('interface dependency multiple matches', () => {
     }
 
     {
-        expect(() => Injector.from([MyServer, provide<{ write(invalid: Uint32Array): void }>(MyConnection1)])).toThrow(
-            'Undefined dependency "connection',
-        );
+        expect(() => Injector.from([MyServer, provide<{ write(invalid: Uint32Array): void }>(MyConnection1)])).toThrow('Undefined dependency "connection');
     }
 
     {
@@ -258,11 +244,7 @@ test('interface dependency multiple matches', () => {
 
     {
         //last match wins
-        const injector = Injector.from([
-            MyServer,
-            provide<Connection>(MyConnection1),
-            provide<Connection>(MyConnection2),
-        ]);
+        const injector = Injector.from([MyServer, provide<Connection>(MyConnection1), provide<Connection>(MyConnection2)]);
         const server = injector.get(MyServer);
         expect(server.connection).toBeInstanceOf(MyConnection2);
     }
@@ -285,9 +267,7 @@ test('interface dependency under specified', () => {
         constructor(public connection: Connection) {}
     }
 
-    expect(() => Injector.from([MyServer, provide<{ id: number }>(MyConnection)])).toThrow(
-        `Undefined dependency "connection: `,
-    );
+    expect(() => Injector.from([MyServer, provide<{ id: number }>(MyConnection)])).toThrow(`Undefined dependency "connection: `);
 });
 
 test('injector transient', () => {
@@ -525,10 +505,7 @@ test('injector factory deps', () => {
     class Config {}
 
     {
-        const injector = Injector.from([
-            Config,
-            { provide: Service, useFactory: (config: Config) => new Service(config) },
-        ]);
+        const injector = Injector.from([Config, { provide: Service, useFactory: (config: Config) => new Service(config) }]);
 
         const s1 = injector.get(Service);
         expect(s1).toBeInstanceOf(Service);
@@ -571,9 +548,7 @@ test('injector config', () => {
     }
 
     {
-        const i1 = Injector.fromModule(
-            new InjectorModule([MyService, MyService2, MyService3, MyService4]).setConfigDefinition(ModuleConfig),
-        );
+        const i1 = Injector.fromModule(new InjectorModule([MyService, MyService2, MyService3, MyService4]).setConfigDefinition(ModuleConfig));
         expect(i1.get(MyService).config).toEqual({ debug: false });
         expect(i1.get(MyService2).config).toEqual({ debug: false, title: '', db: { url: '' } });
         expect(i1.get(MyService3).title).toBe('');
@@ -581,9 +556,7 @@ test('injector config', () => {
     }
 
     {
-        const i1 = Injector.fromModule(
-            new InjectorModule([MyService, MyService2, MyService3, MyService4]).setConfigDefinition(ModuleConfig),
-        );
+        const i1 = Injector.fromModule(new InjectorModule([MyService, MyService2, MyService3, MyService4]).setConfigDefinition(ModuleConfig));
         i1.module.configure({ debug: true, title: 'MyTitle', db: { url: 'mongodb://localhost' } });
         expect(i1.get(MyService).config).toEqual({ debug: true });
         expect(i1.get(MyService2).config).toEqual({
@@ -796,10 +769,7 @@ test('TransientInjectionTarget', () => {
             constructor(public readonly target: TransientInjectionTarget) {}
         }
 
-        const injector = Injector.from([
-            A,
-            { provide: B, useFactory: (target: TransientInjectionTarget) => new B(target), transient: true },
-        ]);
+        const injector = Injector.from([A, { provide: B, useFactory: (target: TransientInjectionTarget) => new B(target), transient: true }]);
         const a = injector.get(A);
         expect(a.b.target).toBeInstanceOf(TransientInjectionTarget);
         expect(a.b.target.token).toBe(A);
@@ -831,9 +801,7 @@ test('TransientInjectionTarget', () => {
             constructor(public readonly target: TransientInjectionTarget) {}
         }
 
-        const injector = Injector.from([
-            { provide: A, transient: true, useFactory: (target: TransientInjectionTarget) => new A(target) },
-        ]);
+        const injector = Injector.from([{ provide: A, transient: true, useFactory: (target: TransientInjectionTarget) => new A(target) }]);
         expect(() => injector.get(A)).toThrow(DependenciesUnmetError);
     }
 
@@ -859,11 +827,7 @@ test('TransientInjectionTarget', () => {
             constructor(public target: TransientInjectionTarget) {}
         }
 
-        const injector = Injector.from([
-            A,
-            { provide: B, transient: true },
-            { provide: C, transient: true, useExisting: B },
-        ]);
+        const injector = Injector.from([A, { provide: B, transient: true }, { provide: C, transient: true, useExisting: B }]);
         const a = injector.get(A);
         expect(a.b).toBeInstanceOf(B);
         expect(a.b.target.token).toBe(A);
@@ -878,10 +842,7 @@ test('TransientInjectionTarget', () => {
             target: TransientInjectionTarget;
         }
 
-        const injector = Injector.from([
-            A,
-            provide<B>({ transient: true, useFactory: (target: TransientInjectionTarget): B => ({ target }) }),
-        ]);
+        const injector = Injector.from([A, provide<B>({ transient: true, useFactory: (target: TransientInjectionTarget): B => ({ target }) })]);
 
         const a = injector.get(A);
         expect(a.b).toBeDefined();

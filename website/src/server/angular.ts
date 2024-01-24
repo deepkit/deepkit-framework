@@ -1,20 +1,21 @@
-import { HtmlResponse, httpWorkflow, Redirect, RouteConfig } from '@deepkit/http';
-import { join } from 'node:path';
-// @ts-ignore
-import type { CommonEngine, CommonEngineRenderOptions } from '@angular/ssr';
 // @ts-ignore
 import type { Router } from '@angular/router';
-import { eventDispatcher } from '@deepkit/event';
-import { Logger } from '@deepkit/logger';
-import { ApplicationServer } from '@deepkit/framework';
+// @ts-ignore
+import type { CommonEngine, CommonEngineRenderOptions } from '@angular/ssr';
+import { PageResponseModel } from '@app/app/page-response-model';
+import { join } from 'node:path';
+
 import { findParentPath } from '@deepkit/app';
-import { PageResponseModel } from "@app/app/page-response-model";
+import { eventDispatcher } from '@deepkit/event';
+import { ApplicationServer } from '@deepkit/framework';
+import { HtmlResponse, Redirect, RouteConfig, httpWorkflow } from '@deepkit/http';
+import { Logger } from '@deepkit/logger';
 
 Error.stackTraceLimit = 1500;
 
 export class AngularListener {
     protected routesFound = new Map<string, boolean>();
-    protected cachedResponses = new Map<string, { html: string, statusCode: number, redirect: string }>();
+    protected cachedResponses = new Map<string, { html: string; statusCode: number; redirect: string }>();
 
     protected router?: Router;
     protected engine?: CommonEngine;
@@ -23,10 +24,9 @@ export class AngularListener {
     constructor(
         private logger: Logger,
         private server: ApplicationServer,
-    ) {
-    }
+    ) {}
 
-    protected async getServer(): Promise<{ router: Router, engine: CommonEngine }> {
+    protected async getServer(): Promise<{ router: Router; engine: CommonEngine }> {
         if (this.router && this.engine) {
             return { router: this.router, engine: this.engine };
         }
@@ -34,8 +34,8 @@ export class AngularListener {
         if (!dir) throw new Error('Could not find dist/app/server folder');
 
         const serverModule = (await require(join(dir, 'server/main.js'))) as {
-            CommonEngine: typeof CommonEngine,
-            bootstrap: (rpcKernel: any) => any,
+            CommonEngine: typeof CommonEngine;
+            bootstrap: (rpcKernel: any) => any;
         };
         this.engine = new serverModule.CommonEngine({
             //important to pass as function, otherwise we get `RuntimeError: NG0210`
@@ -63,27 +63,33 @@ export class AngularListener {
                 const renderOptions: CommonEngineRenderOptions = {
                     ...this.renderOptions,
                     // bootstrap: () =>server.bootstrap(this.server.getWorker().rpcKernel),
-                    url: event.url, providers: [
-                        { provide: 'page-response-model', useValue: page }
+                    url: event.url,
+                    providers: [
+                        { provide: 'page-response-model', useValue: page },
                         // { provide: RpcWebSocketClient, useValue: new DirectClient(this.server.getWorker().rpcKernel) },
-                    ]
+                    ],
                 };
                 const html = await server.engine.render(renderOptions);
 
-                response = { html: page.redirect ? '' : html, statusCode: page.statusCode ?? 200, redirect: page.redirect };
+                response = {
+                    html: page.redirect ? '' : html,
+                    statusCode: page.statusCode ?? 200,
+                    redirect: page.redirect,
+                };
                 this.cachedResponses.set(event.url, response);
             }
 
             event.routeFound(
                 new RouteConfig('angular', ['GET'], event.url, {
-                    type: 'function', fn() {
+                    type: 'function',
+                    fn() {
                         if (response!.redirect) {
                             return Redirect.toUrl(response!.redirect, 301);
                         }
                         return new HtmlResponse(response!.html || '', response!.statusCode);
-                    }
+                    },
                 }),
-                () => ({ arguments: [], parameters: {} })
+                () => ({ arguments: [], parameters: {} }),
             );
         } catch (error) {
             console.log(error);

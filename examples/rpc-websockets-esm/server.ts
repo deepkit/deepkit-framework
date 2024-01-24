@@ -1,4 +1,4 @@
-import { rpc, RpcKernel } from '@deepkit/rpc';
+import { RpcKernel, rpc } from '@deepkit/rpc';
 import { RpcWebSocketServer } from '@deepkit/rpc-tcp';
 
 @rpc.controller('/main')

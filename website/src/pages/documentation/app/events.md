@@ -22,8 +22,8 @@ import { App, onAppExecute } from '@deepkit/app';
 
 const app = new App();
 
-app.listen(onAppExecute, async (event) => {
-    console.log('MyEvent triggered!');
+app.listen(onAppExecute, async event => {
+  console.log('MyEvent triggered!');
 });
 
 app.run();
@@ -36,14 +36,14 @@ import { App, onAppExecute } from '@deepkit/app';
 import { eventDispatcher } from '@deepkit/event';
 
 class MyListener {
-    @eventDispatcher.listen(onAppExecute)
-    onMyEvent(event: typeof onAppExecute.event) {
-        console.log('MyEvent triggered!');
-    }
+  @eventDispatcher.listen(onAppExecute)
+  onMyEvent(event: typeof onAppExecute.event) {
+    console.log('MyEvent triggered!');
+  }
 }
 
 const app = new App({
-    listeners: [MyListener],
+  listeners: [MyListener],
 });
 app.run();
 ```
@@ -62,8 +62,8 @@ import { EventToken } from '@deepkit/event';
 
 const MyEvent = new EventToken('my-event');
 
-app.listen(MyEvent, (event) => {
-    console.log('MyEvent triggered!');
+app.listen(MyEvent, event => {
+  console.log('MyEvent triggered!');
 });
 
 //trigger via app reference
@@ -71,7 +71,7 @@ await app.dispatch(MyEvent);
 
 //or use the EventDispatcher, App's DI container injects it automatically
 app.command('test', async (dispatcher: EventDispatcher) => {
-    await dispatcher.dispatch(MyEvent);
+  await dispatcher.dispatch(MyEvent);
 });
 ```
 
@@ -82,8 +82,7 @@ Using `DataEventToken` from @deepkit/event:
 ```typescript
 import { DataEventToken } from '@deepkit/event';
 
-class User {
-}
+class User {}
 
 const MyEvent = new DataEventToken<User>('my-event');
 ```
@@ -92,7 +91,7 @@ Extending BaseEvent:
 
 ```typescript
 class MyEvent extends BaseEvent {
-    user: User = new User;
+  user: User = new User();
 }
 
 const MyEventToken = new EventToken<MyEvent>('my-event');
@@ -103,8 +102,8 @@ const MyEventToken = new EventToken<MyEvent>('my-event');
 Functional listeners allow users to register a simple function callback with the dispatcher directly. Here's how:
 
 ```typescript
-app.listen(MyEvent, (event) => {
-    console.log('MyEvent triggered!');
+app.listen(MyEvent, event => {
+  console.log('MyEvent triggered!');
 });
 ```
 
@@ -112,7 +111,7 @@ If you wish to introduce additional arguments like `logger: Logger`, they are au
 
 ```typescript
 app.listen(MyEvent, (event, logger: Logger) => {
-    console.log('MyEvent triggered!');
+  console.log('MyEvent triggered!');
 });
 ```
 
@@ -124,10 +123,10 @@ If you use `@deepkit/app`, you can also use app.listen() to register a functiona
 import { App } from '@deepkit/app';
 
 new App()
-    .listen(MyEvent, (event) => {
-        console.log('MyEvent triggered!');
-    })
-    .run();
+  .listen(MyEvent, event => {
+    console.log('MyEvent triggered!');
+  })
+  .run();
 ```
 
 ## Class-based Listeners
@@ -138,14 +137,14 @@ Class listeners are classes adorned with decorators. They offer a structured way
 import { App } from '@deepkit/app';
 
 class MyListener {
-    @eventDispatcher.listen(UserAdded)
-    onUserAdded(event: typeof UserAdded.event) {
-        console.log('User added!', event.user.username);
-    }
+  @eventDispatcher.listen(UserAdded)
+  onUserAdded(event: typeof UserAdded.event) {
+    console.log('User added!', event.user.username);
+  }
 }
 
 new App({
-    listeners: [MyListener],
+  listeners: [MyListener],
 }).run();
 ```
 
@@ -162,10 +161,10 @@ import { App } from '@deepkit/app';
 import { Logger } from '@deepkit/logger';
 
 new App()
-    .listen(MyEvent, (event, logger: Logger) => {
-        console.log('MyEvent triggered!');
-    })
-    .run();
+  .listen(MyEvent, (event, logger: Logger) => {
+    console.log('MyEvent triggered!');
+  })
+  .run();
 ```
 
 ## Event Propagation
@@ -175,11 +174,11 @@ Every event object comes equipped with a stop() function, allowing you to contro
 For instance:
 
 ```typescript
-dispatcher.listen(MyEventToken, (event) => {
-    if (someCondition) {
-        event.stop();
-    }
-    // Further processing
+dispatcher.listen(MyEventToken, event => {
+  if (someCondition) {
+    event.stop();
+  }
+  // Further processing
 });
 ```
 
@@ -192,23 +191,23 @@ Deepkit Framework itself has several events from the application server that you
 _Functional Listener_
 
 ```typescript
-import { onServerMainBootstrap } from '@deepkit/framework';
 import { onAppExecute } from '@deepkit/app';
+import { onServerMainBootstrap } from '@deepkit/framework';
 
 new App({
-    imports: [new FrameworkModule]
+  imports: [new FrameworkModule()],
 })
-    .listen(onAppExecute, (event) => {
-        console.log('Command about to execute');
-    })
-    .listen(onServerMainBootstrap, (event) => {
-        console.log('Server started');
-    })
-    .run();
+  .listen(onAppExecute, event => {
+    console.log('Command about to execute');
+  })
+  .listen(onServerMainBootstrap, event => {
+    console.log('Server started');
+  })
+  .run();
 ```
 
 | Name                        | Description                                                                                                                     |
-|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | onServerBootstrap           | Called only once for application server bootstrap (for main process and workers).                                               |
 | onServerBootstrapDone       | Called only once for application server bootstrap (for main process and workers) as soon as the application server has started. |
 | onServerMainBootstrap       | Called only once for application server bootstrap (in the main process).                                                        |
@@ -234,8 +233,8 @@ import { EventDispatcher, EventToken } from '@deepkit/event';
 const dispatcher = new EventDispatcher();
 const MyEvent = new EventToken('my-event');
 
-dispatcher.listen(MyEvent, (event) => {
-    console.log('MyEvent triggered!');
+dispatcher.listen(MyEvent, event => {
+  console.log('MyEvent triggered!');
 });
 dispatcher.dispatch(MyEvent);
 ```
@@ -256,13 +255,13 @@ _File: tsconfig.json_
 
 ```json
 {
-    "compilerOptions": {
-        "module": "CommonJS",
-        "target": "es6",
-        "moduleResolution": "node",
-        "experimentalDecorators": true
-    },
-    "reflection": true
+  "compilerOptions": {
+    "module": "CommonJS",
+    "target": "es6",
+    "moduleResolution": "node",
+    "experimentalDecorators": true
+  },
+  "reflection": true
 }
 ```
 

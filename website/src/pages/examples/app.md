@@ -5,7 +5,7 @@ import { App } from '@deepkit/app';
 
 const app = new App();
 app.command('hello', () => {
-    console.log('Hello World!');
+  console.log('Hello World!');
 });
 
 app.run();

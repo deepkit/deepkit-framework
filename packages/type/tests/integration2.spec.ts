@@ -14,15 +14,7 @@ import { TypeNumberBrand } from '@deepkit/type-spec';
 
 import { entity, t } from '../src/decorator.js';
 import { resolveRuntimeType } from '../src/reflection/processor.js';
-import {
-    ReflectionClass,
-    ReflectionFunction,
-    ReflectionMethod,
-    propertiesOf,
-    reflect,
-    typeOf,
-    valuesOf,
-} from '../src/reflection/reflection.js';
+import { ReflectionClass, ReflectionFunction, ReflectionMethod, propertiesOf, reflect, typeOf, valuesOf } from '../src/reflection/reflection.js';
 import {
     AutoIncrement,
     BackReference,
@@ -608,19 +600,11 @@ test('template literal', () => {
         types: [
             {
                 kind: ReflectionKind.templateLiteral,
-                types: [
-                    { kind: ReflectionKind.literal, literal: '_' },
-                    { kind: ReflectionKind.string },
-                    { kind: ReflectionKind.literal, literal: 'Changeda' },
-                ],
+                types: [{ kind: ReflectionKind.literal, literal: '_' }, { kind: ReflectionKind.string }, { kind: ReflectionKind.literal, literal: 'Changeda' }],
             },
             {
                 kind: ReflectionKind.templateLiteral,
-                types: [
-                    { kind: ReflectionKind.literal, literal: '_' },
-                    { kind: ReflectionKind.string },
-                    { kind: ReflectionKind.literal, literal: 'Changedb' },
-                ],
+                types: [{ kind: ReflectionKind.literal, literal: '_' }, { kind: ReflectionKind.string }, { kind: ReflectionKind.literal, literal: 'Changedb' }],
             },
         ],
     } as Type);
@@ -628,9 +612,7 @@ test('template literal', () => {
     expect(stringifyResolvedType(typeOf<l3>())).toBe('`_${string}Changed2` | `_${string}Changedb`');
     expect(stringifyResolvedType(typeOf<l33>())).toBe('`_${string}Changed${number}` | `_${string}Changedb`');
     expect(stringifyResolvedType(typeOf<l4>())).toBe('`_${string}Changedtrue` | `_${string}Changedb`');
-    expect(stringifyResolvedType(typeOf<l5>())).toBe(
-        '`_${string}Changedfalse` | `_${string}Changedtrue` | `_${string}Changedb`',
-    );
+    expect(stringifyResolvedType(typeOf<l5>())).toBe('`_${string}Changedfalse` | `_${string}Changedtrue` | `_${string}Changedb`');
     expect(stringifyResolvedType(typeOf<l6>())).toBe('`_${string}Changed${bigint}` | `_${string}Changedb`');
     expect(stringifyResolvedType(typeOf<l7>())).toBe('string');
     expect(stringifyResolvedType(typeOf<l77>())).toBe('`${number}`');
@@ -1487,9 +1469,7 @@ test('simple brands', () => {
     const reflection = ReflectionClass.from(User);
     const property = reflection.getProperty('username')!;
     expect(property.getType().kind).toBe(ReflectionKind.string);
-    expect(stringifyResolvedType(defaultAnnotation.getAnnotations(property.getType())[0])).toEqual(
-        `{__brand: 'username'}`,
-    );
+    expect(stringifyResolvedType(defaultAnnotation.getAnnotations(property.getType())[0])).toEqual(`{__brand: 'username'}`);
 });
 
 // test('ts-brand', () => {
@@ -1784,9 +1764,7 @@ test('set constructor parameter manually', () => {
         expect(reflection.getProperties().length).toBe(1);
         expect(reflection.getMethod('constructor')!.getParameters().length).toBe(1);
         //if this fails, ClassType can probably not be resolved, which means @deepkit/core wasn't built correctly
-        expect(reflection.getMethod('constructor')!.getParameter('response')!.getType().kind).toBe(
-            ReflectionKind.class,
-        );
+        expect(reflection.getMethod('constructor')!.getParameter('response')!.getType().kind).toBe(ReflectionKind.class);
         expect(reflection.getMethods()[0].getName()).toBe('constructor');
         const responseType = reflection.getProperty('response')!.getType();
         expect(responseType.kind).toBe(ReflectionKind.class);

@@ -1,54 +1,51 @@
-import { ChangeDetectorRef, Component, Input } from "@angular/core";
-import { FormsModule } from "@angular/forms";
-import { ControllerClient } from "@app/app/client";
-import { Router } from "@angular/router";
-import { Content } from "@app/common/models";
-import { NgIf } from "@angular/common";
-import { ContentRenderComponent } from "@app/app/components/content-render.component";
-import { AppTitle } from "@app/app/components/title";
+import { NgIf } from '@angular/common';
+import { ChangeDetectorRef, Component, Input } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { ControllerClient } from '@app/app/client';
+import { ContentRenderComponent } from '@app/app/components/content-render.component';
+import { AppTitle } from '@app/app/components/title';
+import { Content } from '@app/common/models';
 
 @Component({
     selector: 'app-ask',
     standalone: true,
-    imports: [
-        FormsModule,
-        NgIf,
-        ContentRenderComponent,
-        AppTitle
+    imports: [FormsModule, NgIf, ContentRenderComponent, AppTitle],
+    styles: [
+        `
+            .ask-question {
+                position: fixed;
+                bottom: 0;
+                right: 0;
+                left: 0;
+                pointer-events: none;
+            }
+
+            .wrapper {
+                max-width: 690px;
+            }
+
+            .box {
+                pointer-events: all;
+                padding: 20px 30px;
+                background-color: rgba(14, 18, 23, 0.95);
+            }
+
+            input {
+                height: 36px;
+                width: 100%;
+                font-size: 15px;
+                padding: 8px 14px;
+            }
+
+            .results {
+                overflow: auto;
+                max-height: calc(100vh - 160px);
+                padding: 25px;
+                background-color: black;
+            }
+        `,
     ],
-    styles: [`
-        .ask-question {
-            position: fixed;
-            bottom: 0;
-            right: 0;
-            left: 0;
-            pointer-events: none;
-        }
-
-        .wrapper {
-            max-width: 690px;
-        }
-
-        .box {
-            pointer-events: all;
-            padding: 20px 30px;
-            background-color: rgba(14, 18, 23, 0.95);
-        }
-
-        input {
-            height: 36px;
-            width: 100%;
-            font-size: 15px;
-            padding: 8px 14px;
-        }
-
-        .results {
-            overflow: auto;
-            max-height: calc(100vh - 160px);
-            padding: 25px;
-            background-color: black;
-        }
-    `],
     template: `
         <div [class.ask-question]="fixed">
             <div class="wrapper">
@@ -58,13 +55,18 @@ import { AppTitle } from "@app/app/components/title";
                             <app-render-content [content]="content"></app-render-content>
                         </div>
 
-                        <input (focus)="visible = true" (keyup)="onKeyUp($event)" (click)="visible=true"
-                               placeholder="Ask a question" [(ngModel)]="query"/>
+                        <input
+                            (focus)="visible = true"
+                            (keyup)="onKeyUp($event)"
+                            (click)="visible = true"
+                            placeholder="Ask a question"
+                            [(ngModel)]="query"
+                        />
                     </div>
                 </div>
             </div>
         </div>
-    `
+    `,
 })
 export class AskComponent {
     query = '';
@@ -80,8 +82,7 @@ export class AskComponent {
         protected client: ControllerClient,
         protected router: Router,
         protected cd: ChangeDetectorRef,
-    ) {
-    }
+    ) {}
 
     onKeyUp(e: KeyboardEvent) {
         if (e.key === 'Escape') {

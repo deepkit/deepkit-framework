@@ -18,21 +18,16 @@
     "noPropertyAccessFromIndexSignature": false,
     "module": "ES2022",
     "useDefineForClassFields": false,
-    "lib": [
-      "ES2022",
-      "dom"
-    ],
+    "lib": ["ES2022", "dom"],
     "paths": {
-      "@app/*": [
-        "src/*"
-      ]
-    }
+      "@app/*": ["src/*"],
+    },
   },
   "reflection": true,
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
-    "strictTemplates": true
-  }
+    "strictTemplates": true,
+  },
 }

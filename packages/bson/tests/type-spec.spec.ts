@@ -40,11 +40,7 @@ Error.stackTraceLimit = 150;
  * @reflection never
  */
 function needsWrapper(type: Type): boolean {
-    return (
-        hasEmbedded(type) ||
-        (type.kind == ReflectionKind.class && type.types.length === 0) ||
-        (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral)
-    );
+    return hasEmbedded(type) || (type.kind == ReflectionKind.class && type.types.length === 0) || (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral);
 }
 
 /**
@@ -299,17 +295,11 @@ test('bigint', () => {
     expect(roundTrip<bigint>(5n)).toEqual(5n);
     expect(roundTrip<bigint>(12n)).toEqual(12n);
     expect(roundTrip<bigint>(9223372036854775807n)).toEqual(9223372036854775807n);
-    expect(roundTrip<BinaryBigInt>(12012020202020202020202020202020202020n)).toEqual(
-        12012020202020202020202020202020202020n,
-    );
+    expect(roundTrip<BinaryBigInt>(12012020202020202020202020202020202020n)).toEqual(12012020202020202020202020202020202020n);
     expect(roundTrip<BinaryBigInt>(16n ** (16n ** 2n))).toEqual(16n ** (16n ** 2n));
     expect(roundTrip<BinaryBigInt>(16n ** (16n ** 3n))).toEqual(16n ** (16n ** 3n));
-    expect(roundTrip<SignedBinaryBigInt>(12012020202020202020202020202020202020n)).toEqual(
-        12012020202020202020202020202020202020n,
-    );
-    expect(roundTrip<SignedBinaryBigInt>(-12012020202020202020202020202020202020n)).toEqual(
-        -12012020202020202020202020202020202020n,
-    );
+    expect(roundTrip<SignedBinaryBigInt>(12012020202020202020202020202020202020n)).toEqual(12012020202020202020202020202020202020n);
+    expect(roundTrip<SignedBinaryBigInt>(-12012020202020202020202020202020202020n)).toEqual(-12012020202020202020202020202020202020n);
     expect(roundTrip<SignedBinaryBigInt>(16n ** (16n ** 2n))).toEqual(16n ** (16n ** 2n));
     expect(roundTrip<SignedBinaryBigInt>(16n ** (16n ** 3n))).toEqual(16n ** (16n ** 3n));
 });

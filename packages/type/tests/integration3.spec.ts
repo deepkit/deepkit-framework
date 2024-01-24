@@ -96,9 +96,7 @@ test('constructor parameter t.type', () => {
         expect(reflection.getProperties().length).toBe(1);
         expect(reflection.getMethod('constructor')!.getParameters().length).toBe(1);
         //if this fails, ClassType can probably not be resolved, which means @deepkit/core wasn't built correctly
-        expect(reflection.getMethod('constructor')!.getParameter('response')!.getType().kind).toBe(
-            ReflectionKind.class,
-        );
+        expect(reflection.getMethod('constructor')!.getParameter('response')!.getType().kind).toBe(ReflectionKind.class);
         expect(reflection.getMethods()[0].getName()).toBe('constructor');
         const responseType = reflection.getProperty('response')!.getType();
         expect(responseType.kind).toBe(ReflectionKind.class);

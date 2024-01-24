@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
-import { RouterLink } from "@angular/router";
-import { ImageComponent } from "@app/app/components/image.component";
-import { HighlightCodeComponent } from "@app/app/components/highlight-code.component";
-import { AppImagesComponent } from "@app/app/components/images.component";
-import { AppDescription } from "@app/app/components/title";
-import { PerformanceChartComponent, PerformanceEntryDirective } from "@app/app/components/performance-chart.component";
+import { RouterLink } from '@angular/router';
+import { HighlightCodeComponent } from '@app/app/components/highlight-code.component';
+import { ImageComponent } from '@app/app/components/image.component';
+import { AppImagesComponent } from '@app/app/components/images.component';
+import { PerformanceChartComponent, PerformanceEntryDirective } from '@app/app/components/performance-chart.component';
+import { AppDescription } from '@app/app/components/title';
 
 @Component({
     standalone: true,
@@ -16,9 +16,8 @@ import { PerformanceChartComponent, PerformanceEntryDirective } from "@app/app/c
         HighlightCodeComponent,
         AppDescription,
         PerformanceChartComponent,
-        PerformanceEntryDirective
+        PerformanceEntryDirective,
     ],
-    styleUrls: ['./startpage.component.scss']
+    styleUrls: ['./startpage.component.scss'],
 })
-export class StartpageComponent {
-}
+export class StartpageComponent {}

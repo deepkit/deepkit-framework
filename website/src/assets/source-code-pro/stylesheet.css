@@ -1,112 +1,125 @@
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-Medium.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-Medium.woff') format('woff');
-    font-weight: 500;
-    font-style: normal;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-Medium.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-ExtraLightIt.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-ExtraLightIt.woff') format('woff');
-    font-weight: 200;
-    font-style: italic;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-ExtraLightIt.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-ExtraLightIt.woff') format('woff');
+  font-weight: 200;
+  font-style: italic;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-BoldIt.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-BoldIt.woff') format('woff');
-    font-weight: bold;
-    font-style: italic;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-BoldIt.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-BoldIt.woff') format('woff');
+  font-weight: bold;
+  font-style: italic;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-MediumIt.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-MediumIt.woff') format('woff');
-    font-weight: 500;
-    font-style: italic;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-MediumIt.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-MediumIt.woff') format('woff');
+  font-weight: 500;
+  font-style: italic;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-It.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-It.woff') format('woff');
-    font-weight: normal;
-    font-style: italic;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-It.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-It.woff') format('woff');
+  font-weight: normal;
+  font-style: italic;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-Black.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-Black.woff') format('woff');
-    font-weight: 900;
-    font-style: normal;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-Black.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-Black.woff') format('woff');
+  font-weight: 900;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-SemiboldIt.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-SemiboldIt.woff') format('woff');
-    font-weight: 600;
-    font-style: italic;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-SemiboldIt.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-SemiboldIt.woff') format('woff');
+  font-weight: 600;
+  font-style: italic;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-Semibold.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-Semibold.woff') format('woff');
-    font-weight: 600;
-    font-style: normal;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-Semibold.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-Semibold.woff') format('woff');
+  font-weight: 600;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-Light.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-Light.woff') format('woff');
-    font-weight: 300;
-    font-style: normal;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-Light.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-Light.woff') format('woff');
+  font-weight: 300;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-LightIt.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-LightIt.woff') format('woff');
-    font-weight: 300;
-    font-style: italic;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-LightIt.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-LightIt.woff') format('woff');
+  font-weight: 300;
+  font-style: italic;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-Regular.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-Regular.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-Regular.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-Bold.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-Bold.woff') format('woff');
-    font-weight: bold;
-    font-style: normal;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-Bold.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-Bold.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-ExtraLight.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-ExtraLight.woff') format('woff');
-    font-weight: 200;
-    font-style: normal;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-ExtraLight.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-ExtraLight.woff') format('woff');
+  font-weight: 200;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: 'Source Code Pro';
-    src: url('/assets/source-code-pro/SourceCodePro-BlackIt.woff2') format('woff2'),
-        url('/assets/source-code-pro/SourceCodePro-BlackIt.woff') format('woff');
-    font-weight: 900;
-    font-style: italic;
+  font-family: 'Source Code Pro';
+  src:
+    url('/assets/source-code-pro/SourceCodePro-BlackIt.woff2') format('woff2'),
+    url('/assets/source-code-pro/SourceCodePro-BlackIt.woff') format('woff');
+  font-weight: 900;
+  font-style: italic;
 }
-

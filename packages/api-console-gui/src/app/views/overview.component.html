@@ -44,9 +44,7 @@
 
       <div class="route-details" *ngIf="showDetails[route.id]">
         <div class="actions">
-          <dui-button routerLink="/api/console" [queryParams]="{ view: 'http', route: route.id }"
-            >Open console</dui-button
-          >
+          <dui-button routerLink="/api/console" [queryParams]="{ view: 'http', route: route.id }">Open console</dui-button>
         </div>
 
         <div class="box" style="padding: 10px">
@@ -130,9 +128,7 @@
           </ng-container>
         </div>
 
-        <div class="responses-title" *ngIf="route.responses.length || route.getResultType()">
-          Available response types
-        </div>
+        <div class="responses-title" *ngIf="route.responses.length || route.getResultType()">Available response types</div>
 
         <div class="box" *ngIf="route.getResultType() as schema">
           <div class="box-title">

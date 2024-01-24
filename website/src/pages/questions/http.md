@@ -4,10 +4,10 @@ assistant: To process HTTP requests using Deepkit, you can define routes either 
 ```typescript
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
-import { HttpRouterRegistry, HttpBody } from '@deepkit/http';
+import { HttpBody, HttpRouterRegistry } from '@deepkit/http';
 
 const app = new App({
-    imports: [new FrameworkModule()]
+  imports: [new FrameworkModule()],
 });
 
 const router = app.get(HttpRouterRegistry);
@@ -31,22 +31,22 @@ As an alternative to the functional API, you can also use controller classes to 
 import { http } from '@deepkit/http';
 
 class UserController {
-    constructor(private database: Database) {}
+  constructor(private database: Database) {}
 
-    @http.GET('/user/:id')
-    getUser(id: number) {
-        // Route logic
-    }
+  @http.GET('/user/:id')
+  getUser(id: number) {
+    // Route logic
+  }
 
-    @http.POST('/user')
-    createUser(user: HttpBody<User>) {
-        // Route logic
-    }
+  @http.POST('/user')
+  createUser(user: HttpBody<User>) {
+    // Route logic
+  }
 }
 
 const app = new App({
-    controllers: [UserController],
-    imports: [new FrameworkModule()]
+  controllers: [UserController],
+  imports: [new FrameworkModule()],
 });
 ```
 
@@ -66,14 +66,14 @@ assistant: Yes, Deepkit can automatically deserialize and validate input from HT
 import { MaxLength, MinLength } from '@deepkit/type';
 
 interface User {
-    username: string & MinLength<3> & MaxLength<20>;
-    password: string & MinLength<4>;
+  username: string & MinLength<3> & MaxLength<20>;
+  password: string & MinLength<4>;
 }
 
 router.post('/user/register', (user: HttpBody<User>) => {
-    // Do something with the user
-    // Return the result
-    return true;
+  // Do something with the user
+  // Return the result
+  return true;
 });
 ```
 
@@ -81,15 +81,16 @@ router.post('/user/register', (user: HttpBody<User>) => {
 
 user: How can I define http routes using the functional API?
 assistant: Routes can be defined using the functional API by getting an instance of the `HttpRouterRegistry` and using its methods to define routes. For example:
+
 ```typescript
 const app = new App({
-    imports: [new FrameworkModule()]
+  imports: [new FrameworkModule()],
 });
 
 const router = app.get(HttpRouterRegistry);
 
 router.get('/user/:id', (id: number, database: Database) => {
-    // Route logic
+  // Route logic
 });
 
 app.run();
@@ -99,21 +100,22 @@ app.run();
 
 user: Can I use controller classes to define http routes?
 assistant: Yes, controller classes can be used to define http routes. The routes are defined as methods decorated with the appropriate HTTP verb decorators, such as `@http.GET` or `@http.POST`. For example:
+
 ```typescript
-import { http, HttpRouterRegistry } from '@deepkit/http';
+import { HttpRouterRegistry, http } from '@deepkit/http';
 
 class UserController {
-    constructor(private database: Database) {}
+  constructor(private database: Database) {}
 
-    @http.GET('/user/:id')
-    getUser(id: number) {
-        // Route logic
-    }
+  @http.GET('/user/:id')
+  getUser(id: number) {
+    // Route logic
+  }
 }
 
 const app = new App({
-    controllers: [UserController],
-    imports: [new FrameworkModule()]
+  controllers: [UserController],
+  imports: [new FrameworkModule()],
 });
 ```
 
@@ -121,20 +123,21 @@ const app = new App({
 
 user: How can I handle dependencies library, such as a database abstraction or logger?
 assistant: Dependencies such as a database abstraction or logger can be handled by leveraging the power of Dependency Injection. These dependencies can be injected into controller methods or functional API routes via constructor injection or function parameter injection. For example:
+
 ```typescript
 class UserController {
-    constructor(private database: Database) {}
+  constructor(private database: Database) {}
 
-    @http.GET('/user/:id')
-    getUser(id: number) {
-        // Use the database abstraction
-    }
+  @http.GET('/user/:id')
+  getUser(id: number) {
+    // Use the database abstraction
+  }
 }
 
 const app = new App({
-    controllers: [UserController],
-    imports: [new FrameworkModule()],
-    providers: [Database]
+  controllers: [UserController],
+  imports: [new FrameworkModule()],
+  providers: [Database],
 });
 ```
 
@@ -195,8 +198,8 @@ assistant: , you can access and manipulate headers using the `request.headers` p
 import { HttpRequest } from '@deepkit/http';
 
 router.get('/', (request: HttpRequest) => {
-    const userAgent = request.headers['user-agent'];
-    request.headers['content-type'] = 'application/json';
+  const userAgent = request.headers['user-agent'];
+  request.headers['content-type'] = 'application/json';
 });
 ```
 
@@ -206,12 +209,13 @@ user: Can I stream data?
 assistant: You can stream data using the `response.sendStream()` method. This method allows you to send a readable stream as the response body. You can create a readable stream using Node.js' `stream` module or any other library that provides readable streams. Here's an example:
 
 ```typescript
-import { HttpRequest, HttpResponse } from '@deepkit/http';
 import { createReadStream } from 'fs';
 
+import { HttpRequest, HttpResponse } from '@deepkit/http';
+
 router.get('/image', (request: HttpRequest, response: HttpResponse) => {
-    const stream = createReadStream('/path/to/image.jpg');
-    response.sendStream(stream, 'image/jpeg');
+  const stream = createReadStream('/path/to/image.jpg');
+  response.sendStream(stream, 'image/jpeg');
 });
 ```
 
@@ -224,7 +228,7 @@ assistant: You can validate input data using runtime types and validation constr
 import { Positive } from '@deepkit/type';
 
 router.get('/user/:id', (id: number & Positive) => {
-    // id is guaranteed to be a positive number
+  // id is guaranteed to be a positive number
 });
 ```
 
@@ -237,12 +241,12 @@ assistant: You can handle file uploads using the `UploadedFile` type and the `Ht
 import { HttpBody, UploadedFile } from '@deepkit/http';
 
 class FileUpload {
-    file!: UploadedFile;
+  file!: UploadedFile;
 }
 
 router.post('/upload', (body: HttpBody<FileUpload>) => {
-    const uploadedFile = body.file;
-    // Handle the uploaded file
+  const uploadedFile = body.file;
+  // Handle the uploaded file
 });
 ```
 
@@ -252,8 +256,8 @@ An example HTML form for this route would look like this:
 
 ```html
 <form action="/upload" method="post" enctype="multipart/form-data">
-    <input type="file" name="file">
-    <input type="submit" value="Upload">
+  <input type="file" name="file" />
+  <input type="submit" value="Upload" />
 </form>
 ```
 
@@ -265,7 +269,7 @@ assistant: To return JSON responses, you can simply return a JavaScript object f
 Here's an example:
 
 ```typescript
-router.get('/', (): {message: string} => {
+router.get('/', (): { message: string } => {
   return { message: 'Hello World' };
 });
 ```
@@ -333,8 +337,7 @@ In this example, if a user with the specified ID is not found, it will throw a `
 You can also create your own custom error classes by extending the `createHttpError` function exported by Deepkit.
 
 ```typescript
-export class HttpMyError extends createHttpError(412, 'My Error Message') {
-}
+export class HttpMyError extends createHttpError(412, 'My Error Message') {}
 ```
 
 ##-------------------------------------------------##
@@ -350,9 +353,8 @@ import { Response } from '@deepkit/http';
 router.get('/', () => {
   const content = 'Hello World';
   const contentType = 'text/plain';
-  
-  return new Response(content, contentType)
-    .header('X-Custom-Header', 'Custom Value');
+
+  return new Response(content, contentType).header('X-Custom-Header', 'Custom Value');
 });
 ```
 
@@ -365,14 +367,14 @@ The `Response` class also provides other useful methods for manipulating the res
 ##-------------------------------------------------##
 
 user: How can I perform redirects?
-assistant: To perform redirects in Deepkit HTTP, you can use the `Redirect` class. There are two methods available: `Redirect.toRoute` and `Redirect.toUrl`. 
+assistant: To perform redirects in Deepkit HTTP, you can use the `Redirect` class. There are two methods available: `Redirect.toRoute` and `Redirect.toUrl`.
 
 For example, to perform a redirect to a specific route, you can use `Redirect.toRoute` along with the route name:
 
 ```typescript
 import { Redirect } from '@deepkit/http';
 
-router.get({path: '/new-route', name: 'newRoute'}, () => {
+router.get({ path: '/new-route', name: 'newRoute' }, () => {
   return 'Hello there';
 });
 
@@ -394,9 +396,9 @@ router.get('/old-route', () => {
 ##-------------------------------------------------##
 
 user: What is the difference between global middleware and per-route middleware?
-assistant: Global middleware is applied to all routes in your application, while per-route middleware is applied only to specific routes. 
+assistant: Global middleware is applied to all routes in your application, while per-route middleware is applied only to specific routes.
 
-Global middleware is registered using the `middlewares` option in the `App` configuration, while per-route middleware is added using the `middleware` decorator at the controller or action level. 
+Global middleware is registered using the `middlewares` option in the `App` configuration, while per-route middleware is added using the `middleware` decorator at the controller or action level.
 
 Global middleware is useful for applying common functionality to all routes, such as authentication or logging. Per-route middleware allows you to apply specialized functionality to specific routes.
 
@@ -416,9 +418,7 @@ import { httpMiddleware } from '@deepkit/http';
 
 new App({
   // ...
-  middlewares: [
-    httpMiddleware.for(MyMiddleware).forControllers(MyController1, MyController2),
-  ],
+  middlewares: [httpMiddleware.for(MyMiddleware).forControllers(MyController1, MyController2)],
   // ...
 }).run();
 ```
@@ -451,15 +451,14 @@ Here's an example of using the `compression` middleware:
 
 ```typescript
 import * as compression from 'compression';
+
 import { httpMiddleware } from '@deepkit/http';
 
 // ...
 
 new App({
   // ...
-  middlewares: [
-    httpMiddleware.for(compression()),
-  ],
+  middlewares: [httpMiddleware.for(compression())],
   // ...
 }).run();
 ```
@@ -480,9 +479,7 @@ import { httpMiddleware } from '@deepkit/http';
 
 new App({
   // ...
-  middlewares: [
-    httpMiddleware.for(MyMiddleware).timeout(5000),
-  ],
+  middlewares: [httpMiddleware.for(MyMiddleware).timeout(5000)],
   // ...
 }).run();
 ```
@@ -497,7 +494,7 @@ assistant: Yes, Deepkit can handle complex parameter types in the routes. You ca
 Here is an example of how to use a resolver to resolve a complex parameter type:
 
 ```typescript
-import { RouteParameterResolverContext, RouteParameterResolver } from '@deepkit/http';
+import { RouteParameterResolver, RouteParameterResolverContext } from '@deepkit/http';
 
 class MyResolver implements RouteParameterResolver {
   async resolve(context: RouteParameterResolverContext) {
@@ -558,6 +555,7 @@ Here is an example of how to use the compression middleware:
 ```typescript
 import * as express from 'express';
 import { Server } from 'http';
+
 import { HttpRequest, HttpResponse, httpMiddleware } from '@deepkit/http';
 
 const app = express();
@@ -607,13 +605,14 @@ You can customize the session configuration and storage by passing options to th
 
 user: What are the available options for routing?
 assistant: The available options for routing in Deepkit are:
+
 - Functional API: You can define routes using the `HttpRouterRegistry` with functions that handle the requests.
 - Class Controller API: You can define routes using classes and decorators (`@http.*`) to define the HTTP methods and paths.
 
 Here is an example of using the Class Controller API:
 
 ```typescript
-import { http, HttpRouterRegistry } from '@deepkit/http';
+import { HttpRouterRegistry, http } from '@deepkit/http';
 
 class MyController {
   @http.GET('/hello')
@@ -623,7 +622,7 @@ class MyController {
 }
 
 const app = new App({
-  controllers: [MyController]
+  controllers: [MyController],
 });
 
 app.run();
@@ -675,11 +674,11 @@ user: How can I customize the error handling and error messages?
 assistant: To customize error handling and error messages in Deepkit, you can listen to the `httpWorkflow.onControllerError` event and handle the error there. You can return a custom response with a specific HTTP status code and message. Here's an example:
 
 ```typescript
-import { HttpWorkflow, createHttpError, HttpResponse } from '@deepkit/http';
+import { HttpResponse, HttpWorkflow, createHttpError } from '@deepkit/http';
 
 class MyError extends createHttpError(400, 'Custom Error') {}
 
-app.listen(HttpWorkflow.onControllerError, (event) => {
+app.listen(HttpWorkflow.onControllerError, event => {
   if (event.error instanceof MyError) {
     const response = new HttpResponse(event.error.message).status(event.error.status);
     event.send(response);
@@ -725,15 +724,15 @@ assistant: To handle cookies in Deepkit, you can use the `@deepkit/http` package
 import { HttpMiddleware, HttpRequest, HttpResponse } from '@deepkit/http';
 
 class CookieMiddleware implements HttpMiddleware {
-    execute(request: HttpRequest, response: HttpResponse, next: (err?: any) => void) {
-        // Set a cookie
-        response.setCookie('myCookie', 'value', { maxAge: 3600, secure: true });
+  execute(request: HttpRequest, response: HttpResponse, next: (err?: any) => void) {
+    // Set a cookie
+    response.setCookie('myCookie', 'value', { maxAge: 3600, secure: true });
 
-        // Get a cookie
-        const myCookie = request.cookies.getCookie('myCookie');
+    // Get a cookie
+    const myCookie = request.cookies.getCookie('myCookie');
 
-        next();
-    }
+    next();
+  }
 }
 ```
 
@@ -743,27 +742,27 @@ user: Can I use Deepkit to build a RESTful API?
 assistant: Yes, you can use Deepkit to build a RESTful API. Deepkit provides a powerful framework for building RESTful APIs. You can define routes using decorators on classes and methods, and handle the request and response using the provided middleware and controller actions. Here is an example:
 
 ```typescript
-import { App, http, HttpKernel } from '@deepkit/http';
+import { App, HttpKernel, http } from '@deepkit/http';
 
 class UserController {
-    @http.GET('/users')
-    listUsers() {
-        // Return a list of users
-    }
+  @http.GET('/users')
+  listUsers() {
+    // Return a list of users
+  }
 
-    @http.POST('/users')
-    createUser() {
-        // Create a new user
-    }
+  @http.POST('/users')
+  createUser() {
+    // Create a new user
+  }
 
-    @http.GET('/users/:id')
-    getUser(id: string) {
-        // Get a specific user by ID
-    }
+  @http.GET('/users/:id')
+  getUser(id: string) {
+    // Get a specific user by ID
+  }
 }
 
 new App({
-    controllers: [UserController]
+  controllers: [UserController],
 }).run();
 ```
 
@@ -817,27 +816,26 @@ Here's an example of using middleware for authentication:
 import { HttpMiddleware, HttpRequest, HttpResponse, HttpUnauthorizedError } from '@deepkit/http';
 
 class AuthMiddleware implements HttpMiddleware {
-    constructor(private database: Database) {
+  constructor(private database: Database) {}
+
+  async execute(request: HttpRequest, response: HttpResponse, next: (err?: any) => void) {
+    // Check if the request is authenticated and has the necessary permissions
+    const authorized = await checkAuthorization(request);
+    if (!authorized) {
+      throw new HttpUnauthorizedError();
     }
 
-    async execute(request: HttpRequest, response: HttpResponse, next: (err?: any) => void) {
-        // Check if the request is authenticated and has the necessary permissions
-        const authorized = await checkAuthorization(request);
-        if (!authorized) {
-            throw new HttpUnauthorizedError();
-        }
-
-        // Otherwise, continue with the request
-        next();
-    }
+    // Otherwise, continue with the request
+    next();
+  }
 }
 
 class UserController {
-    @http.GET('/users')
-    @http.middleware(AuthMiddleware)
-    listUsers() {
-        // Return a list of users
-    }
+  @http.GET('/users')
+  @http.middleware(AuthMiddleware)
+  listUsers() {
+    // Return a list of users
+  }
 }
 ```
 
@@ -846,684 +844,684 @@ In this example, the `AuthMiddleware` is used to check if the request is authent
 ##-------------------------------------------------##
 
 user: Can Deepkit handle WebSocket connections?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle caching of HTTP responses?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Is it possible to log HTTP requests and responses?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle cross-origin resource sharing (CORS)?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to build a GraphQL API?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What are the security features available?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle rate limiting and throttling?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Is it possible to use Deepkit with a reverse proxy server like Nginx?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to handle server-sent events (SSE)?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle file uploads larger than the server's maximum file size limit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Is it possible to use Deepkit with other TypeScript frameworks, such as Nest.js or TypeORM?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I perform batch requests or parallel requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle content negotiation and content type parsing?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle form submissions with file uploads?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to build a microservices architecture?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What are the best practices for error handling and error reporting?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle request validation and input sanitization?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle content negotiation and parsing different content types?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to handle form submissions with file uploads?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What are the best practices for handling authentication and authorization?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle server-sent events (SSE) for real-time communication?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to handle caching of HTTP responses?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I log HTTP requests and responses for debugging purposes?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Does Deepkit provide any built-in security features to protect against common web vulnerabilities?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to implement rate limiting and throttling` to protect against excessive requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit with a reverse proxy server like Nginx for load balancing and SSL termination?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to handle large file uploads` that exceed the server's maximum file size limit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit integrate with other TypeScript frameworks like Nest.js or TypeORM?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What are the recommended practices for error handling and error reporting?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle batch requests or parallel requests` for improved performance?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle content negotiation and parsing when dealing with GraphQL APIs?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle security considerations such as preventing cross-site scripting (XSS) attacks?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to handle rate limiting and disabling of certain routes based on user roles?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to build a microservices architecture with separate services communicating over HTTP?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit compare to other popular TypeScript frameworks for building APIs or web applications?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I perform authentication and authorization using JSON Web Tokens (JWT)?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What are the options for handling form validation and displaying error messages?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to handle request validation and input sanitization to protect against malicious user input?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit be used to handle internationalization and localization of responses for multilingual applications?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to handle database transactions and rollback in case of errors?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit with TypeScript's async/await syntax for handling asynchronous operations in route handlers?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit support WebSocket connections and real-time communication between server and client?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to implement server-side rendering (SSR) of HTML templates for improved performance and SEO?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to handle pagination and sorting of query results` when fetching data from a database?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle content delivery and caching of static assets like images, CSS files, and JavaScript files?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to handle cross-origin resource sharing (CORS)` to allow requests from different origins?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to build a RESTful API following the best practices and conventions of the REST architectural style?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle authentication and authorization` for my web application?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle WebSocket connections for real-time communication between server and client?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle pagination and sorting of query results` when working with a database?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to handle rate limiting and throttling of requests` to prevent abuse or excessive usage?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit be used to build a microservices architecture with separate services communicating over HTTP?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle content negotiation and parsing when working with GraphQL APIs?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to handle form validation and display custom error messages to the user?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle rate limiting and throttling of requests to prevent abuse or excessive usage?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What are the advantages of using Deepkit for building APIs or web applications compared to other frameworks?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I process HTTP requests using Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What are the benefits of using Deepkit over other HTTP libraries?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit automatically deserialize and validate input from HTTP requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can you provide an example of how to define routes using the functional API?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can you explain how to define routes using controller classes?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle dependencies, such as a database abstraction or logger,?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What is the scope of HTTP controllers and functional routes?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I define dependencies for HTTP controllers and functional routes?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What events are available, and how can I use them?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I customize the error handling?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I enable and use dependency injection? How does it work?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I handle file uploads? How?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I implement authentication and authorization?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle WebSocket connections for real-time communication?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to build a RESTful API? What are the recommended practices?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I log HTTP requests and responses for debugging purposes?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle cookies? How can I work with them?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle cross-origin resource sharing (CORS)?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to build a GraphQL API? How does it support GraphQL?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle security considerations, such as preventing cross-site scripting (XSS) attacks?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I implement rate limiting and throttling to protect against excessive requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit with a reverse proxy server like Nginx? How does it integrate with reverse proxy servers?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle server-sent events (SSE) for real-time communication?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle caching of HTTP responses for improved performance?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to perform server-side rendering (SSR) of HTML templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle database transactions and rollback?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use async/await syntax to handle asynchronous operations?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle content negotiation and parsing for different content types?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle form submissions with file uploads?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to build a microservices architecture? How does it support microservices?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle file uploads?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit compare to other TypeScript frameworks like NestJS or TypeORM in terms of performance and features?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What are the benefits of using Deepkit's Dependency Injection in my application? How does it help with modularizing and testing my code?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does the router handle complex URL patterns and dynamic routing?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit with an existing Express.js application? How does it integrate with Express middleware?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle request validation and input sanitization to prevent security vulnerabilities?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit automatically serialize and deserialize complex data types like Dates or custom classes in HTTP requests and responses?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What are the advantages of using Deepkit over manually handling HTTP requests and responses in Node.js?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle error handling and error reporting? Can I customize the error messages and responses?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle real-time events or notifications, such as sending push notifications to connected clients?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to handle authentication and authorization in my application? How does it handle user sessions and secure access control?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle performance optimizations, such as caching responses or batching requests for improved efficiency?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit help with internationalization and localization of my application's content?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Tell me about the security features available. How does it protect against common web vulnerabilities?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Why Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Why should I use Deepkit instead of other TypeScript frameworks like NestJS or Express?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How is Deepkit enterprise-ready?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How do I handle file uploads?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I implement authentication and authorization using Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle WebSocket connections for real-time communication?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How do I handle file uploads in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle authentication and authorization? How does it work?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle WebSocket connections for real-time communication?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to build a RESTful API? What are the recommended practices?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I log HTTP requests and responses for debugging purposes in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle cookies? How can I work with them?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle cross-origin resource sharing (CORS) in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to build a GraphQL API? How does it support GraphQL?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle security considerations, such as preventing cross-site scripting (XSS) attacks?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I implement rate limiting and throttling in Deepkit to protect against excessive requests?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit with a reverse proxy server like Nginx? How does it integrate with reverse proxy servers?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle caching of HTTP responses for improved performance in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to perform server-side rendering (SSR) of HTML templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle database transactions and rollback in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use async/await syntax to handle asynchronous operations in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit handle content negotiation and parsing for different content types?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle form submissions with file uploads in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use Deepkit to build a microservices architecture? How does it support microservices?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle file uploads in Deepkit with progress tracking?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Is it possible to use Deepkit for server-side rendering (SSR) of HTML templates for improved performance and SEO?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle authentication and authorization in Deepkit using JSON Web Tokens (JWT)?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What are the options for handling form validation and displaying error messages in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to handle request validation and input sanitization in Deepkit to prevent security vulnerabilities?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit be used for internationalization and localization of responses for multilingual applications?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to handle database transactions and rollback in Deepkit for consistent data operations?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle authentication and authorization using JSON Web Tokens (JWT)?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle database transactions and rollback in Deepkit for consistent data operations?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How to work with the database/ORM in a request?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle file uploads in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does the router handle complex URL patterns and dynamic routing in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle real-time events or notifications, such as sending push notifications to connected clients in Deepkit?
-assistant: 
+assistant:

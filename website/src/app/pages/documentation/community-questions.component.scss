@@ -1,11 +1,9 @@
-
-
 a.button {
-    padding: 2px 5px;
+  padding: 2px 5px;
 }
 
 .buttons {
-    > * {
-        margin-right: 15px;
-    }
+  > * {
+    margin-right: 15px;
+  }
 }

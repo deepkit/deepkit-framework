@@ -13,4 +13,3 @@ Object-Relational Mapping (ORM) in Deepkit provides several benefits for develop
 3. Type Safety and Compile-Time Checks: By utilizing runtime type information, Deepkit's ORM provides a typesafe environment for working with databases. With the ORM, you can define database schemas as TypeScript classes or interfaces, allowing you to catch potential errors at compile-time rather than during runtime. Additionally, the ORM handles automatic type conversions and validation, ensuring that your data is always consistent and correctly persisted in the database.
 
 Overall, using an ORM in Deepkit simplifies database operations, improves cross-database compatibility, and provides type safety and compile-time checks, making it an essential component for building robust and maintainable applications.
-

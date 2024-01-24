@@ -2,14 +2,7 @@ import { expect, test } from '@jest/globals';
 import { BehaviorSubject, Observable, ReplaySubject, Subject, Subscription } from 'rxjs';
 
 import { ProgressTracker } from '../src/progress.js';
-import {
-    Subscriptions,
-    decoupleSubject,
-    isBehaviorSubject,
-    isSubject,
-    nextValue,
-    throttleMessages,
-} from '../src/utils.js';
+import { Subscriptions, decoupleSubject, isBehaviorSubject, isSubject, nextValue, throttleMessages } from '../src/utils.js';
 
 test('nextValue subject', async () => {
     const subject = new Subject();

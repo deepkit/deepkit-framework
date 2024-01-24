@@ -20,15 +20,14 @@ import { FrameworkModule } from '@deepkit/framework';
 // your config and http controller here
 
 new App({
-    config: config,
-    controllers: [MyWebsite],
-    imports: [
-        new FrameworkModule({
-            publicDir: 'publicDir'
-        })
-    ]
-})
-    .run();
+  config: config,
+  controllers: [MyWebsite],
+  imports: [
+    new FrameworkModule({
+      publicDir: 'publicDir',
+    }),
+  ],
+}).run();
 ```
 
 All files within this configured folder are now accessible via HTTP. For example, if you open `http:localhost:8080/logo.jpg`, you will see the image `logo.jpg` in the `publicDir` directory.

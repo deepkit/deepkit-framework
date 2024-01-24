@@ -1,15 +1,6 @@
 import { expect, test } from '@jest/globals';
 
-import {
-    ReceiveType,
-    ReflectionKind,
-    TypeClass,
-    TypeObjectLiteral,
-    assertType,
-    findMember,
-    resolveReceiveType,
-    typeOf,
-} from '@deepkit/type';
+import { ReceiveType, ReflectionKind, TypeClass, TypeObjectLiteral, assertType, findMember, resolveReceiveType, typeOf } from '@deepkit/type';
 
 import { nominalCompatibility } from '../src/types.js';
 
@@ -17,10 +8,7 @@ import { nominalCompatibility } from '../src/types.js';
  * checks nominal compatibility of two types
  */
 function compatible<A, B>(token?: ReceiveType<A>, provider?: ReceiveType<B>): number {
-    return nominalCompatibility(
-        resolveReceiveType(token),
-        resolveReceiveType(provider) as TypeClass | TypeObjectLiteral,
-    );
+    return nominalCompatibility(resolveReceiveType(token), resolveReceiveType(provider) as TypeClass | TypeObjectLiteral);
 }
 
 test('nominal empty interface', () => {

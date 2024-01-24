@@ -345,12 +345,8 @@ test('change-detection class', () => {
         config: { a?: string; b?: string };
     }
 
-    expect(
-        ReflectionClass.from(typeOf<s>()).getProperty('config').getResolvedReflectionClass().getProperty('a').type.kind,
-    ).toBe(ReflectionKind.string);
-    expect(
-        ReflectionClass.from(typeOf<s>()).getProperty('config').getResolvedReflectionClass().getProperty('b').type.kind,
-    ).toBe(ReflectionKind.string);
+    expect(ReflectionClass.from(typeOf<s>()).getProperty('config').getResolvedReflectionClass().getProperty('a').type.kind).toBe(ReflectionKind.string);
+    expect(ReflectionClass.from(typeOf<s>()).getProperty('config').getResolvedReflectionClass().getProperty('b').type.kind).toBe(ReflectionKind.string);
 
     {
         const item = deserialize<s>({ id: 1, config: { a: 'foo', b: 'bar' } });
@@ -383,14 +379,8 @@ test('change-detection class in array', () => {
         config: { name: string; value: string }[];
     }
 
-    expect(
-        resolveClassType(ReflectionClass.from(typeOf<s>()).getProperty('config').getSubType()).getProperty('name').type
-            .kind,
-    ).toBe(ReflectionKind.string);
-    expect(
-        resolveClassType(ReflectionClass.from(typeOf<s>()).getProperty('config').getSubType()).getProperty('value').type
-            .kind,
-    ).toBe(ReflectionKind.string);
+    expect(resolveClassType(ReflectionClass.from(typeOf<s>()).getProperty('config').getSubType()).getProperty('name').type.kind).toBe(ReflectionKind.string);
+    expect(resolveClassType(ReflectionClass.from(typeOf<s>()).getProperty('config').getSubType()).getProperty('value').type.kind).toBe(ReflectionKind.string);
 
     {
         const item = deserialize<s>({

@@ -45,7 +45,7 @@ unsubscribe();
 "Query" has several event tokens:
 
 | Event-Token        | Description                                                 |
-|--------------------|-------------------------------------------------------------|
+| ------------------ | ----------------------------------------------------------- |
 | Query.onFetch      | When objects where fetched via find()/findOne()/etc         |
 | Query.onDeletePre  | Before objects are deleted via deleteMany/deleteOne()       |
 | Query.onDeletePost | After objects are deleted via deleteMany/deleteOne()        |
@@ -57,7 +57,7 @@ unsubscribe();
 Unit-of-work events are triggered when a new session submits changes.
 
 | Event-Token                  | Description                                                                                                       |
-|------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | DatabaseSession.onUpdatePre  | Triggered just before the `DatabaseSession` object initiates an update operation on the database records.         |
 | DatabaseSession.onUpdatePost | Triggered immediately after the `DatabaseSession` object has successfully completed the update operation.         |
 | DatabaseSession.onInsertPre  | Triggered just before the `DatabaseSession` object starts the insertion of new records into the database.         |

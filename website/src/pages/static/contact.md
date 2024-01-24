@@ -1,6 +1,5 @@
 # Contact
 
-
 ```text
 DeepKit UG (haftungsbeschränkt)
 Geschäftsführer: Marc J. Schmidt

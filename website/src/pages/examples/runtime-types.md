@@ -16,14 +16,14 @@ title: Iterate over class properties
 import { ReflectionClass } from '@deepkit/type';
 
 class User {
-    id: number = 0;
-    username: string = '';
-    password: string = '';
+  id: number = 0;
+  username: string = '';
+  password: string = '';
 }
 
 const properties = ReflectionClass.from(User).getProperties();
 for (const property of properties) {
-    console.log(property.name, property.type);
+  console.log(property.name, property.type);
 }
 ```
 
@@ -35,12 +35,12 @@ title: Convert plain object to class instance
 import { cast } from '@deepkit/type';
 
 class User {
-    firstName: string = '';
-    lastName: string = '';
+  firstName: string = '';
+  lastName: string = '';
 
-    getFullName() {
-        return this.firstName + ' ' + this.lastName;
-    }
+  getFullName() {
+    return this.firstName + ' ' + this.lastName;
+  }
 }
 
 const user = cast<User>({ firstName: 'Peter', lastName: 'Mayer' });
@@ -58,10 +58,10 @@ import { Email, MaxLength, MinLength, Pattern, validate } from '@deepkit/type';
 type Username = string & MinLength<3> & MaxLength<20> & Pattern<'^[a-zA-Z0-9]+$'>;
 
 class User {
-    email: Email = '';
-    username: Username = '';
+  email: Email = '';
+  username: Username = '';
 }
 
 const errors = validate<User>({ email: 'peter@example.com', username: 'pet' });
 console.log(errors); // [{ path: 'username', message: '...' }]
-``` 
+```

@@ -10,14 +10,13 @@ If this is done successfully, `@deepkit/injector` can be installed or the Deepki
 
 Once the library is installed, the API of it can be used directly.
 
-
 ## Usage
 
 To use Dependency Injection now, there are three ways.
 
-* Injector API (Low Level)
-* Module API
-* App API (Deepkit Framework)
+- Injector API (Low Level)
+- Module API
+- App API (Deepkit Framework)
 
 If `@deepkit/injector` is to be used without the Deepkit Framework, the first two variants are recommended.
 
@@ -28,10 +27,7 @@ The Injector API has already been introduced in the [introduction to Dependency 
 ```typescript
 import { InjectorContext } from '@deepkit/injector';
 
-const injector = InjectorContext.forProviders([
-    UserRepository,
-    HttpClient,
-]);
+const injector = InjectorContext.forProviders([UserRepository, HttpClient]);
 
 const repository = injector.get(UserRepository);
 ```
@@ -45,13 +41,11 @@ A more complex API is the `InjectorModule` class, which allows to store the prov
 This API should be used if the application is more complex and the Deepkit Framework is not used.
 
 ```typescript
-import { InjectorModule, InjectorContext } from '@deepkit/injector';
+import { InjectorContext, InjectorModule } from '@deepkit/injector';
 
-const lowLevelModule = new InjectorModule([HttpClient])
-     .addExport(HttpClient);
+const lowLevelModule = new InjectorModule([HttpClient]).addExport(HttpClient);
 
-const rootModule = new InjectorModule([UserRepository])
-     .addImport(lowLevelModule);
+const rootModule = new InjectorModule([UserRepository]).addImport(lowLevelModule);
 
 const injector = new InjectorContext(rootModule);
 ```
@@ -70,8 +64,7 @@ All non-root modules are encapsulated by default, so that all providers in this 
 To export all providers by default to the top level, the root module, the option `forRoot` can be used. This allows all providers to be used by all other modules.
 
 ```typescript
-const lowLevelModule = new InjectorModule([HttpClient])
-     .forRoot(); //export all Providers to the root
+const lowLevelModule = new InjectorModule([HttpClient]).forRoot(); //export all Providers to the root
 ```
 
 ### App API
@@ -83,28 +76,28 @@ The [Framework Modules](../app/modules.md) chapter describes this in more detail
 ```typescript
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
-import { HttpRouterRegistry, HttpBody } from '@deepkit/http';
+import { HttpBody, HttpRouterRegistry } from '@deepkit/http';
 
 interface User {
-    username: string;
+  username: string;
 }
 
 class Service {
-    users: User[] = [];
+  users: User[] = [];
 }
 
 const app = new App({
-    providers: [Service],
-    imports: [new FrameworkModule()],
+  providers: [Service],
+  imports: [new FrameworkModule()],
 });
 
 const router = app.get(HttpRouterRegistry);
 
 router.post('/users', (body: HttpBody<User>, service: Service) => {
-    service.users.push(body);
+  service.users.push(body);
 });
 
 router.get('/users', (service: Service): Users => {
-    return service.users;
+  return service.users;
 });
 ```

@@ -1,9 +1,10 @@
+import { CommunityMessage } from '@app/common/models';
+import { AppConfig } from '@app/server/config';
+import { Questions } from '@app/server/questions';
 import { AnyThreadChannel, ChannelType, Client, EmbedBuilder, GatewayIntentBits, Message } from 'discord.js';
-import { Questions } from "@app/server/questions";
-import { AppConfig } from "@app/server/config";
-import { Logger } from "@deepkit/logger";
-import { CommunityMessage } from "@app/common/models";
-import { Database } from "@deepkit/orm";
+
+import { Logger } from '@deepkit/logger';
+import { Database } from '@deepkit/orm';
 
 export async function registerBot(
     event: any,
@@ -20,7 +21,7 @@ export async function registerBot(
     await client.login(token);
     let botUserId = '';
 
-    client.on('error', (error) => {
+    client.on('error', error => {
         logger.error('Discord error', error);
     });
 
@@ -29,7 +30,7 @@ export async function registerBot(
         logger.log(`Discord logged in as ${client.user!.tag} ${client.user!.id}!`);
     });
 
-    client.on('interactionCreate', async (interaction) => {
+    client.on('interactionCreate', async interaction => {
         if (interaction.isButton()) {
             if (interaction.customId.startsWith('upvote_answer:')) {
                 const id = Number(interaction.customId.split(':')[1]);
@@ -72,14 +73,14 @@ ${prompt}
             return match;
         });
 
-
         return prompt;
     }
 
-    client.on('messageUpdate', async (message) => {
+    client.on('messageUpdate', async message => {
         if (message.author?.id === botUserId) return;
 
-        const threadMessage = await database.query(CommunityMessage)
+        const threadMessage = await database
+            .query(CommunityMessage)
             .filter({ discordMessageId: message.id })
             .findOneOrUndefined();
         if (!threadMessage) return;
@@ -92,24 +93,19 @@ ${prompt}
         await database.persist(threadMessage);
     });
 
-    client.on('threadDelete', async (thread) => {
+    client.on('threadDelete', async thread => {
         logger.log('threadDelete', thread.id);
         // this removes all answers as well if it's the root message (the thread beginning)
-        await database.query(CommunityMessage)
-            .filter({ discordThreadId: thread.id })
-            .deleteMany();
+        await database.query(CommunityMessage).filter({ discordThreadId: thread.id }).deleteMany();
     });
 
-
-    client.on('messageDelete', async (message) => {
+    client.on('messageDelete', async message => {
         logger.log('messageDelete', message.id);
         // this removes all answers as well if it's the root message (the thread beginning)
-        await database.query(CommunityMessage)
-            .filter({ discordMessageId: message.id })
-            .deleteOne();
+        await database.query(CommunityMessage).filter({ discordMessageId: message.id }).deleteOne();
     });
 
-    client.on('messageCreate', async (message) => {
+    client.on('messageCreate', async message => {
         if (!botUserId) return;
         if (message.author?.id === botUserId) return;
 
@@ -128,7 +124,10 @@ ${prompt}
         if (message.author.id === botUserId) return;
 
         let thread: AnyThreadChannel | undefined = undefined;
-        if (message.channel.type === ChannelType.GuildPublicThread || message.channel.type === ChannelType.GuildPrivateThread) {
+        if (
+            message.channel.type === ChannelType.GuildPublicThread ||
+            message.channel.type === ChannelType.GuildPrivateThread
+        ) {
             thread = message.channel;
         }
 
@@ -158,7 +157,10 @@ ${prompt}
 
         if (thread) {
             communityMessage.discordThreadId = thread.id;
-            const threadMessage = await database.query(CommunityMessage).filter({ discordThreadId: thread.id, thread: undefined }).findOneOrUndefined();
+            const threadMessage = await database
+                .query(CommunityMessage)
+                .filter({ discordThreadId: thread.id, thread: undefined })
+                .findOneOrUndefined();
             // if (!threadMessage) {
             //     logger.error('Could not find parent message for thread', thread.id);
             //     await message.reply('Sorry, I could not process your message. Please try again later.');
@@ -179,11 +181,14 @@ ${prompt}
 
         let referenceMessage: CommunityMessage | undefined = undefined;
         if (message.reference) {
-            referenceMessage = await database.query(CommunityMessage).filter({ discordMessageId: message.reference.messageId }).findOneOrUndefined();
+            referenceMessage = await database
+                .query(CommunityMessage)
+                .filter({ discordMessageId: message.reference.messageId })
+                .findOneOrUndefined();
             if (referenceMessage && !referenceMessage.assistant) {
                 referenceMessage = undefined;
             }
-            logger.log('message.reference', message.reference, referenceMessage?.id)
+            logger.log('message.reference', message.reference, referenceMessage?.id);
         }
 
         try {
@@ -196,5 +201,4 @@ ${prompt}
             await message.reply('Sorry, I could not process your message. Please try again later. ' + String(error));
         }
     });
-
 }

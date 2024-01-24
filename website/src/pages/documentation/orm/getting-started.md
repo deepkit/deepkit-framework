@@ -1,39 +1,35 @@
-
-
-
 # Getting Started
 
 Deepkit provides a Database ORM that allows databases to be accessed in a modern way.
 Entities are simply defined using TypeScript types:
 
 ```typescript
-import { entity, PrimaryKey, AutoIncrement, 
-    Unique, MinLength, MaxLength } from '@deepkit/type';
+import { AutoIncrement, MaxLength, MinLength, PrimaryKey, Unique, entity } from '@deepkit/type';
 
 type Username = string & Unique & MinLength<2> & MaxLength<16>;
 
 // class entity
 @entity.name('user')
 class User {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
-    firstName?: string;
-    lastName?: string;
+  id: number & PrimaryKey & AutoIncrement = 0;
+  created: Date = new Date();
+  firstName?: string;
+  lastName?: string;
 
-    constructor(
-        public username: Username,
-        public email: string & Unique,
-    ) {}
+  constructor(
+    public username: Username,
+    public email: string & Unique,
+  ) {}
 }
 
 // or as interface
 interface User {
-    id: number & PrimaryKey & AutoIncrement;
-    created: Date;
-    firstName?: string;
-    lastName?: string;
-    username: Username;
-    email: string & Unique;
+  id: number & PrimaryKey & AutoIncrement;
+  created: Date;
+  firstName?: string;
+  lastName?: string;
+  username: Username;
+  email: string & Unique;
 }
 ```
 
@@ -80,10 +76,13 @@ npm install @deepkit/orm @deepkit/mysql
 ```typescript
 import { MySQLDatabaseAdapter } from '@deepkit/mysql';
 
-const database = new Database(new MySQLDatabaseAdapter({
+const database = new Database(
+  new MySQLDatabaseAdapter({
     host: 'localhost',
-    port: 3306
-}), [User]);
+    port: 3306,
+  }),
+  [User],
+);
 ```
 
 ### Postgres
@@ -95,10 +94,13 @@ npm install @deepkit/orm @deepkit/postgres
 ```typescript
 import { PostgresDatabaseAdapter } from '@deepkit/postgres';
 
-const database = new Database(new PostgresDatabaseAdapter({
+const database = new Database(
+  new PostgresDatabaseAdapter({
     host: 'localhost',
-    port: 3306
-}), [User]);
+    port: 3306,
+  }),
+  [User],
+);
 ```
 
 ### MongoDB
@@ -120,27 +122,26 @@ Primarily the `Database` object is used. Once instantiated, it can be used throu
 The `Database` object is passed an adapter, which comes from the database adapters libraries.
 
 ```typescript
-import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
-import { entity, PrimaryKey, AutoIncrement } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
+import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
+import { AutoIncrement, PrimaryKey, entity } from '@deepkit/type';
 
 async function main() {
-    @entity.name('user')
-    class User {
-        public id: number & PrimaryKey & AutoIncrement = 0;
-        created: Date = new Date;
+  @entity.name('user')
+  class User {
+    public id: number & PrimaryKey & AutoIncrement = 0;
+    created: Date = new Date();
 
-        constructor(public name: string) {
-        }
-    }
+    constructor(public name: string) {}
+  }
 
-    const database = new Database(new SQLiteDatabaseAdapter('./example.sqlite'), [User]);
-    await database.migrate(); //create tables
+  const database = new Database(new SQLiteDatabaseAdapter('./example.sqlite'), [User]);
+  await database.migrate(); //create tables
 
-    await database.persist(new User('Peter'));
+  await database.persist(new User('Peter'));
 
-    const allUsers = await database.query(User).find();
-    console.log('all users', allUsers);
+  const allUsers = await database.query(User).find();
+  console.log('all users', allUsers);
 }
 
 main();
@@ -191,4 +192,3 @@ main();
 ### MongoDB
 
 ## Plugins
-

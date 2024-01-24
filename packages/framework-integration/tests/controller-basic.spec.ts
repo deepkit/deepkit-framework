@@ -68,10 +68,7 @@ test('basic setup and methods', async () => {
         validationError(user: User) {}
     }
 
-    const { client, close } = await createServerClientPair(
-        'basic setup and methods',
-        appModuleForControllers([TestController]),
-    );
+    const { client, close } = await createServerClientPair('basic setup and methods', appModuleForControllers([TestController]));
 
     const controller = client.controller<TestController>('test');
 
@@ -168,10 +165,7 @@ test('basic serialisation return: entity', async () => {
         }
     }
 
-    const { client, close } = await createServerClientPair(
-        'basic serialisation entity',
-        appModuleForControllers([TestController]),
-    );
+    const { client, close } = await createServerClientPair('basic serialisation entity', appModuleForControllers([TestController]));
 
     const controller = client.controller<TestController>('test');
     const user = await controller.user('peter');
@@ -214,10 +208,7 @@ test('basic serialisation param: entity', async () => {
         }
     }
 
-    const { client, close } = await createServerClientPair(
-        'serialisation param: entity',
-        appModuleForControllers([TestController]),
-    );
+    const { client, close } = await createServerClientPair('serialisation param: entity', appModuleForControllers([TestController]));
 
     const controller = client.controller<TestController>('test');
     const userValid = await controller.user(new User('peter2'));
@@ -259,10 +250,7 @@ test('basic serialisation partial param: entity', async () => {
         }
     }
 
-    const { client, close } = await createServerClientPair(
-        'serialisation partial param: entity',
-        appModuleForControllers([TestController]),
-    );
+    const { client, close } = await createServerClientPair('serialisation partial param: entity', appModuleForControllers([TestController]));
 
     const controller = client.controller<TestController>('test');
 
@@ -304,10 +292,7 @@ test('test basic promise', async () => {
         }
     }
 
-    const { client, close } = await createServerClientPair(
-        'test basic promise',
-        appModuleForControllers([TestController]),
-    );
+    const { client, close } = await createServerClientPair('test basic promise', appModuleForControllers([TestController]));
     const controller = client.controller<TestController>('test');
 
     const names = await controller.names('d');
@@ -358,10 +343,7 @@ test('test observable', async () => {
         }
     }
 
-    const { client, close } = await createServerClientPair(
-        'test observable',
-        appModuleForControllers([TestController]),
-    );
+    const { client, close } = await createServerClientPair('test observable', appModuleForControllers([TestController]));
     const controller = client.controller<TestController>('test');
 
     const observable = await controller.observer();
@@ -394,10 +376,7 @@ test('test param serialization', async () => {
         }
     }
 
-    const { client, close } = await createServerClientPair(
-        'test param serialization',
-        appModuleForControllers([TestController]),
-    );
+    const { client, close } = await createServerClientPair('test param serialization', appModuleForControllers([TestController]));
     const controller = client.controller<TestController>('test');
 
     expect(await controller.actionArray(['b'])).toBe(true);

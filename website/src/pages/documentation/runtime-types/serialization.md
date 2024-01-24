@@ -7,7 +7,7 @@ In JavaScript, serialization is usually between JavaScript objects and JSON. JSO
 This serialization process is absolutely necessary for non-trivial data, since JSON loses its information even for basic types like a date. A new Date is finally serialized as a string in JSON:
 
 ```typescript
-const json = JSON.stringify(new Date);
+const json = JSON.stringify(new Date());
 //'"2022-05-13T20:48:51.025Z"
 ```
 
@@ -46,17 +46,16 @@ cast<string | number>(123); //123
 
 ```typescript
 class MyModel {
-    id: number = 0;
-    created: Date = new Date;
+  id: number = 0;
+  created: Date = new Date();
 
-    constructor(public name: string) {
-    }
+  constructor(public name: string) {}
 }
 
 const myModel = cast<MyModel>({
-    id: 5,
-    created: 'Sat Oct 13 2018 14:17:35 GMT+0200',
-    name: 'Peter',
+  id: 5,
+  created: 'Sat Oct 13 2018 14:17:35 GMT+0200',
+  name: 'Peter',
 });
 ```
 
@@ -68,11 +67,10 @@ The `deserialize` function is similar to `cast`, but does not throw an error if 
 import { serialize } from '@deepkit/type';
 
 class MyModel {
-    id: number = 0;
-    created: Date = new Date;
+  id: number = 0;
+  created: Date = new Date();
 
-    constructor(public name: string) {
-    }
+  constructor(public name: string) {}
 }
 
 const model = new MyModel('Peter');
@@ -85,7 +83,6 @@ const jsonObject = serialize<MyModel>(model);
 //}
 const json = JSON.stringify(jsonObject);
 ```
-
 
 The function `serialize` converts the passed data by default with the JSON serializer into a JSON object, that is: String, Number, Boolean, Object, or Array. The result of this can then be safely converted to a JSON using `JSON.stringify`.
 
@@ -125,6 +122,7 @@ deserialize<string | number>(23);
 ```
 
 <a name="loosely-convertion"></a>
+
 ### Soft Type Conversion
 
 In the deserialization process a soft type conversion is implemented. This means that String and Number for String types or a Number for a String type can be accepted and converted automatically. This is useful, for example, when data is accepted via a URL and passed to the deserializer. Since the URL is always a string, Deepkit Type still tries to resolve the types for Number and Boolean.
@@ -141,14 +139,14 @@ deserialize<string>(1)); //'1'
 
 The following soft type conversions are built into the JSON serializer:
 
-* *number|bigint*: Number or Bigint accept String, Number, and BigInt. `parseFloat` or `BigInt(x)` are used in case of a necessary conversion.
-* *boolean*: Boolean accepts Number and String. 0, '0', 'false' is interpreted as `false`. 1, '1', 'true' is interpreted as `true`.
-* *string*: String accepts Number, String, Boolean, and many more. All non-string values are automatically converted with `String(x)`.
+- _number|bigint_: Number or Bigint accept String, Number, and BigInt. `parseFloat` or `BigInt(x)` are used in case of a necessary conversion.
+- _boolean_: Boolean accepts Number and String. 0, '0', 'false' is interpreted as `false`. 1, '1', 'true' is interpreted as `true`.
+- _string_: String accepts Number, String, Boolean, and many more. All non-string values are automatically converted with `String(x)`.
 
 The soft conversion can also be deactivated:
 
 ```typescript
-const result = deserialize(data, {loosely: false});
+const result = deserialize(data, { loosely: false });
 ```
 
 In the case of invalid data, no attempt is made to convert it and instead an error message is thrown.
@@ -166,4 +164,3 @@ In the case of invalid data, no attempt is made to convert it and instead an err
 ### Embedded
 
 ## Naming Strategy
-

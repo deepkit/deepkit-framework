@@ -33,52 +33,50 @@ Below is a fully functional example based on WebSockets and the low-level API of
 _File: server.ts_
 
 ```typescript
-import { rpc, RpcKernel } from '@deepkit/rpc';
+import { RpcKernel, rpc } from '@deepkit/rpc';
 import { RpcWebSocketServer } from '@deepkit/rpc-tcp';
 
 @rpc.controller('/main')
 export class Controller {
-    @rpc.action()
-    hello(title: string): string {
-        return 'Hello ' + title;
-    }
+  @rpc.action()
+  hello(title: string): string {
+    return 'Hello ' + title;
+  }
 }
 
 const kernel = new RpcKernel();
 kernel.registerController(Controller);
 const server = new RpcWebSocketServer(kernel, 'localhost:8081');
 server.start({
-    host: '127.0.0.1',
-    port: 8081,
+  host: '127.0.0.1',
+  port: 8081,
 });
 console.log('Server started at ws://127.0.0.1:8081');
-
 ```
 
 _File: client.ts_
 
 ```typescript
 import { RpcWebSocketClient } from '@deepkit/rpc';
+
 import type { Controller } from './server';
 
 async function main() {
-    const client = new RpcWebSocketClient('ws://127.0.0.1:8081');
-    const controller = client.controller<Controller>('/main');
+  const client = new RpcWebSocketClient('ws://127.0.0.1:8081');
+  const controller = client.controller<Controller>('/main');
 
-    const result = await controller.hello('World');
-    console.log('result', result);
+  const result = await controller.hello('World');
+  console.log('result', result);
 
-    client.disconnect();
+  client.disconnect();
 }
 
 main().catch(console.error);
-
 ```
 
 ## Server Controller
 
 The term "Procedure" in Remote Procedure Call is also commonly referred to as an "Action". An Action is a method defined in a class and marked with the `@rpc.action` decorator. The class itself is marked as a Controller with the `@rpc.controller` decorator and given a unique name. This name is then referenced in the client to address the correct controller. Multiple controllers can be defined and registered as needed.
-
 
 ```typescript
 import { rpc } from '@deepkit/rpc';
@@ -128,12 +126,12 @@ import { entity } from '@deepkit/type';
 
 @entity.name('user')
 class User {
-    id!: number;
-    firstName!: string;
-    lastName!: string;
-    get fullName() {
-        return this.firstName + ' ' + this.lastName;
-    }
+  id!: number;
+  firstName!: string;
+  lastName!: string;
+  get fullName() {
+    return this.firstName + ' ' + this.lastName;
+  }
 }
 ```
 

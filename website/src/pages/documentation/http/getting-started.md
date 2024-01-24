@@ -37,13 +37,13 @@ import { FrameworkModule } from '@deepkit/framework';
 import { HttpRouterRegistry } from '@deepkit/http';
 
 const app = new App({
-    imports: [new FrameworkModule]
+  imports: [new FrameworkModule()],
 });
 
 const router = app.get(HttpRouterRegistry);
 
 router.get('/', () => {
-    return "Hello World!";
+  return 'Hello World!';
 });
 
 app.run();
@@ -56,12 +56,12 @@ import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
 
 const app = new App({
-    bootstrap: (router: HttpRouterRegistry) => {
-        router.get('/', () => {
-            return "Hello World!";
-        });
-    },
-    imports: [new FrameworkModule]
+  bootstrap: (router: HttpRouterRegistry) => {
+    router.get('/', () => {
+      return 'Hello World!';
+    });
+  },
+  imports: [new FrameworkModule()],
 });
 ```
 
@@ -73,17 +73,17 @@ import { FrameworkModule } from '@deepkit/framework';
 import { HttpRouterRegistry } from '@deepkit/http';
 
 class MyModule extends createModule({}) {
-    override process() {
-        const router = this.setupGlobalProvider(HttpRouterRegistry);
+  override process() {
+    const router = this.setupGlobalProvider(HttpRouterRegistry);
 
-        router.get('/', () => {
-            return "Hello World!";
-        });
-    }
+    router.get('/', () => {
+      return 'Hello World!';
+    });
+  }
 }
 
 const app = new App({
-    imports: [new FrameworkModule, new MyModule]
+  imports: [new FrameworkModule(), new MyModule()],
 });
 ```
 
@@ -99,15 +99,15 @@ import { FrameworkModule } from '@deepkit/framework';
 import { http } from '@deepkit/http';
 
 class MyPage {
-    @http.GET('/')
-    helloWorld() {
-        return "Hello World!";
-    }
+  @http.GET('/')
+  helloWorld() {
+    return 'Hello World!';
+  }
 }
 
 new App({
-    controllers: [MyPage],
-    imports: [new FrameworkModule]
+  controllers: [MyPage],
+  imports: [new FrameworkModule()],
 }).run();
 ```
 
@@ -119,19 +119,18 @@ import { FrameworkModule } from '@deepkit/framework';
 import { http } from '@deepkit/http';
 
 class MyPage {
-    @http.GET('/')
-    helloWorld() {
-        return "Hello World!";
-    }
+  @http.GET('/')
+  helloWorld() {
+    return 'Hello World!';
+  }
 }
 
 class MyModule extends createModule({
-    controllers: [MyPage]
-}) {
-}
+  controllers: [MyPage],
+}) {}
 
 const app = new App({
-    imports: [new FrameworkModule, new MyModule]
+  imports: [new FrameworkModule(), new MyModule()],
 });
 ```
 
@@ -139,23 +138,23 @@ To provide controllers dynamically (depending on the configuration option, for e
 
 ```typescript
 class MyModuleConfiguration {
-    debug: boolean = false;
+  debug: boolean = false;
 }
 
 class MyModule extends createModule({
-    config: MyModuleConfiguration
+  config: MyModuleConfiguration,
 }) {
-    override process() {
-        if (this.config.debug) {
-            class DebugController {
-                @http.GET('/debug/')
-                root() {
-                    return 'Hello Debugger';
-                }
-            }
-            this.addController(DebugController);
+  override process() {
+    if (this.config.debug) {
+      class DebugController {
+        @http.GET('/debug/')
+        root() {
+          return 'Hello Debugger';
         }
+      }
+      this.addController(DebugController);
     }
+  }
 }
 ```
 
@@ -167,22 +166,20 @@ If Deepkit Framework is used, an HTTP server is already built in. However, the H
 
 ```typescript
 import { Server } from 'http';
+
 import { HttpRequest, HttpResponse } from '@deepkit/http';
 
 const app = new App({
-    controllers: [MyPage],
-    imports: [new HttpModule]
+  controllers: [MyPage],
+  imports: [new HttpModule()],
 });
 
 const httpKernel = app.get(HttpKernel);
 
-new Server(
-    { IncomingMessage: HttpRequest, ServerResponse: HttpResponse, },
-    ((req, res) => {
-        httpKernel.handleRequest(req as HttpRequest, res as HttpResponse);
-    })
-).listen(8080, () => {
-    console.log('listen at 8080');
+new Server({ IncomingMessage: HttpRequest, ServerResponse: HttpResponse }, (req, res) => {
+  httpKernel.handleRequest(req as HttpRequest, res as HttpResponse);
+}).listen(8080, () => {
+  console.log('listen at 8080');
 });
 ```
 
@@ -196,19 +193,22 @@ Routes can be given a unique name that can be referenced when forwarding. Depend
 
 ```typescript
 //functional API
-router.get({
+router.get(
+  {
     path: '/user/:id',
-    name: 'userDetail'
-}, (id: number) => {
-    return {userId: id};
-});
+    name: 'userDetail',
+  },
+  (id: number) => {
+    return { userId: id };
+  },
+);
 
 //controller API
 class UserController {
-    @http.GET('/user/:id').name('userDetail')
-    userDetail(id: number) {
-        return {userId: id};
-    }
+  @http.GET('/user/:id').name('userDetail')
+  userDetail(id: number) {
+    return { userId: id };
+  }
 }
 ```
 
@@ -216,11 +216,11 @@ From all routes with a name the URL can be requested by `Router.resolveUrl()`.
 
 ```typescript
 import { HttpRouter } from '@deepkit/http';
+
 const router = app.get(HttpRouter);
-router.resolveUrl('userDetail', {id: 2}); //=> '/user/2'
+router.resolveUrl('userDetail', { id: 2 }); //=> '/user/2'
 ```
 
 ## Security
 
 ## Sessions
-

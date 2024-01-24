@@ -189,22 +189,12 @@ test('query lift', async () => {
 
     {
         const items = await q.lift(UserQuery).find();
-        assert<
-            IsExact<
-                { username: string; openBillings: number; id: number & PrimaryKey; image?: UserImage & Reference }[],
-                typeof items
-            >
-        >(true);
+        assert<IsExact<{ username: string; openBillings: number; id: number & PrimaryKey; image?: UserImage & Reference }[], typeof items>>(true);
     }
 
     {
         const items = await q.lift(UserQuery).find();
-        assert<
-            IsExact<
-                { username: string; openBillings: number; id: number & PrimaryKey; image?: UserImage & Reference }[],
-                typeof items
-            >
-        >(true);
+        assert<IsExact<{ username: string; openBillings: number; id: number & PrimaryKey; image?: UserImage & Reference }[], typeof items>>(true);
     }
 
     {
@@ -214,12 +204,7 @@ test('query lift', async () => {
 
     {
         const items = await UserQuery.from(q).find();
-        assert<
-            IsExact<
-                { username: string; openBillings: number; id: number & PrimaryKey; image?: UserImage & Reference }[],
-                typeof items
-            >
-        >(true);
+        assert<IsExact<{ username: string; openBillings: number; id: number & PrimaryKey; image?: UserImage & Reference }[], typeof items>>(true);
     }
 
     {

@@ -1,6 +1,6 @@
 # Terms Of Services
 
-This website and all services are provided by: 
+This website and all services are provided by:
 
 ```text
 Deepkit UG (haftungsbeschränkt)
@@ -12,17 +12,16 @@ info@deepkit.io
 Managing Director: Marc J. Schmidt
 ```
 
-
 By using this website, you agree to the following terms and conditions.
 
 By buying one of our offers, you agree to the following terms and conditions.
 
-For all offers applies: 
+For all offers applies:
 
 - Communication is done in English or German.
 - Communication is done via email and Discord.
 
-- We reserve the right to reject your application for this offer. 
+- We reserve the right to reject your application for this offer.
 - We reserve the right to cancel this offer at any time.
 - We reserve the right to change the conditions of the offer anytime.
 - We reserve the right to refuse any request by your or your team member, without stating a reason.

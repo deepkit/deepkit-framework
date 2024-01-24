@@ -5,7 +5,7 @@
     "moduleResolution": "node",
     "target": "ES2022",
     "esModuleInterop": true,
-    "module": "esnext"
+    "module": "esnext",
   },
-  "reflection": true
+  "reflection": true,
 }

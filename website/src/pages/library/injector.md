@@ -1,6 +1,6 @@
 ---
 title: Deepkit Dependency Injection
-package: "@deepkit/injector"
+package: '@deepkit/injector'
 doc: dependency-injection
 api: injector
 category: dependency-injection

@@ -147,9 +147,7 @@ test('filter by modules', async () => {
         expect(resolver.resolve(new HttpRouteFilter().forModules(moduleB).model).length).toBe(1);
         expect(resolver.resolve(new HttpRouteFilter().excludeModules(moduleB).model).length).toBe(3);
         expect(resolver.resolve(new HttpRouteFilter().forModules(moduleA, moduleB).model).length).toBe(4);
-        expect(
-            resolver.resolve(new HttpRouteFilter().forModules(moduleA, moduleB).excludeModules(moduleB).model).length,
-        ).toBe(3);
+        expect(resolver.resolve(new HttpRouteFilter().forModules(moduleA, moduleB).excludeModules(moduleB).model).length).toBe(3);
     }
     {
         expect(resolver.resolve(new HttpRouteFilter().model).length).toBe(4);

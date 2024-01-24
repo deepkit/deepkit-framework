@@ -8,18 +8,18 @@ The workflow engine is a finite state machine that creates a new state machine i
 
 Each event token has its own event type with additional information.
 
-| Event-Token                   | Description                                                                                                         |
-|-------------------------------|---------------------------------------------------------------------------------------------------------------------|
-| httpWorkflow.onRequest        | When a new request comes in                                                                                         |
-| httpWorkflow.onRoute          | When the route should be resolved from the request                                                                  |
-| httpWorkflow.onRouteNotFound  | When the route is not found                                                                                         |
-| httpWorkflow.onAuth           | When authentication happens                                                                                         |
-| httpWorkflow.onResolveParameters | When route parameters are resolved                                                                                 |
-| httpWorkflow.onAccessDenied   | When access is denied                                                                                               |
-| httpWorkflow.onController     | When the controller action is called                                                                                |
-| httpWorkflow.onControllerError | When the controller action threw an error                                                                           |
-| httpWorkflow.onParametersFailed | When route parameters resolving failed                                                                             |
-| httpWorkflow.onResponse       | When the controller action has been called. This is the place where the result is converted to a response.          |
+| Event-Token                      | Description                                                                                                |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| httpWorkflow.onRequest           | When a new request comes in                                                                                |
+| httpWorkflow.onRoute             | When the route should be resolved from the request                                                         |
+| httpWorkflow.onRouteNotFound     | When the route is not found                                                                                |
+| httpWorkflow.onAuth              | When authentication happens                                                                                |
+| httpWorkflow.onResolveParameters | When route parameters are resolved                                                                         |
+| httpWorkflow.onAccessDenied      | When access is denied                                                                                      |
+| httpWorkflow.onController        | When the controller action is called                                                                       |
+| httpWorkflow.onControllerError   | When the controller action threw an error                                                                  |
+| httpWorkflow.onParametersFailed  | When route parameters resolving failed                                                                     |
+| httpWorkflow.onResponse          | When the controller action has been called. This is the place where the result is converted to a response. |
 
 Since all HTTP events are based on the workflow engine, its behavior can be modified by using the specified event and jumping there with the `event.next()` method.
 
@@ -29,49 +29,49 @@ For example, suppose you want to catch the event when a controller is invoked. I
 
 ```typescript
 import { App } from '@deepkit/app';
+import { eventDispatcher } from '@deepkit/event';
 import { FrameworkModule } from '@deepkit/framework';
 import { HtmlResponse, http, httpAction, httpWorkflow } from '@deepkit/http';
-import { eventDispatcher } from '@deepkit/event';
 
 class MyWebsite {
-    @http.GET('/')
-    open() {
-        return 'Welcome';
-    }
+  @http.GET('/')
+  open() {
+    return 'Welcome';
+  }
 
-    @http.GET('/admin').group('secret')
-    secret() {
-        return 'Welcome to the dark side';
-    }
+  @http.GET('/admin').group('secret')
+  secret() {
+    return 'Welcome to the dark side';
+  }
 }
 
 const app = new App({
-    controllers: [MyWebsite],
-    imports: [new FrameworkModule]
-})
+  controllers: [MyWebsite],
+  imports: [new FrameworkModule()],
+});
 
-app.listen(httpWorkflow.onController, async (event) => {
-    if (event.route.groups.includes('secret')) {
-        //check here for authentication information like cookie session, JWT, etc.
+app.listen(httpWorkflow.onController, async event => {
+  if (event.route.groups.includes('secret')) {
+    //check here for authentication information like cookie session, JWT, etc.
 
-        //this jumps to the 'accessDenied' workflow state,
-        // essentially executing all onAccessDenied listeners.
+    //this jumps to the 'accessDenied' workflow state,
+    // essentially executing all onAccessDenied listeners.
 
-        //since our listener is called before the HTTP kernel one,
-        // the standard controller action will never be called.
-        //this calls event.next('accessDenied', ...) under the hood
-        event.accessDenied();
-    }
+    //since our listener is called before the HTTP kernel one,
+    // the standard controller action will never be called.
+    //this calls event.next('accessDenied', ...) under the hood
+    event.accessDenied();
+  }
 });
 
 /**
  * We change the default accessDenied implementation.
  */
 app.listen(httpWorkflow.onAccessDenied, async () => {
-    if (event.sent) return;
-    if (event.hasNext()) return;
-    event.send(new HtmlResponse('No access to this area.', 403));
-})
+  if (event.sent) return;
+  if (event.hasNext()) return;
+  event.send(new HtmlResponse('No access to this area.', 403));
+});
 
 app.run();
 ```

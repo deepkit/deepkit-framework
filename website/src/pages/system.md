@@ -26,16 +26,16 @@ This holistic framework is crafted to simplify the development of intricate soft
 In Deepkit, a user can describe types using regular TypeScript. Classes, interfaces, type aliases, generics, and more are all supported.
 
 ```typescript
-import { MinMax, Primary, AutoIncrement } from '@deepkit/type';
+import { AutoIncrement, MinMax, Primary } from '@deepkit/type';
 
 type Username = string & MinMax<3, 20> & Unique;
 
 class User {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
-    firstName?: string;
-    lastName?: string;
-    constructor(public username: Username) {}
+  id: number & PrimaryKey & AutoIncrement = 0;
+  created: Date = new Date();
+  firstName?: string;
+  lastName?: string;
+  constructor(public username: Username) {}
 }
 ```
 
@@ -47,25 +47,25 @@ import { FrameworkModule } from '@deepkit/framework';
 import { HttpRouterRegistry, http } from '@deepkit/http';
 
 class MyController {
-    constructor(protected database: Database) {}
+  constructor(protected database: Database) {}
 
-    @http.GET('/')
-    helloWorld() {
-        return 'Hello World';
-    }
+  @http.GET('/')
+  helloWorld() {
+    return 'Hello World';
+  }
 }
 
 const app = new App({
-    controllers: [MyController],
-    providers: [Database],
-    imports: [new FrameworkModule({debug: true})],
+  controllers: [MyController],
+  providers: [Database],
+  imports: [new FrameworkModule({ debug: true })],
 });
 
 // either use MyController with decorators, or use the HttpRouterRegistry directly
 const router = app.get(HttpRouterRegistry);
 router.get('/', () => 'Hello World');
 router.get('/user/:id', (id: number & Positive, database: Database) => {
-return database.query(User).filter({id}).findOne();
+  return database.query(User).filter({ id }).findOne();
 });
 
 app.run();
@@ -80,7 +80,7 @@ const app = new App();
 
 // test "World" --flag
 app.command('test', (text: string, flag: boolean & Flag = false) => {
-    console.log('Hello', text, flag);
+  console.log('Hello', text, flag);
 });
 
 app.run();
@@ -88,13 +88,12 @@ app.run();
 
 So this is the simplest Deepkit app. It just outputs "Hello World" when you run it with `ts-node app.ts test`.
 
-
-Parameters in HTTP routes, CLI commands, or RPC actions are automatically validated and converted to the correct type. 
+Parameters in HTTP routes, CLI commands, or RPC actions are automatically validated and converted to the correct type.
 Additional validation type annotations can be added to the parameter to further restrict the allowed values.
 
 Services like the `Database` are automatically injected into the controller method using Dependency Injection.
 
-Deepkit consists of multiple packages. The most important ones are: 
+Deepkit consists of multiple packages. The most important ones are:
 @deepkit/type (runtime types, type serialization, type validation, type reflection)
 @deepkit/type-compiler (runtime type compiler, which makes it possible to use types at runtime)
 @deepkit/core (utility functions)
@@ -114,14 +113,11 @@ Deepkit consists of multiple packages. The most important ones are:
 @deepkit/template (template engine based on JSX)
 @deepkit/orm-browser (browser based database administration tool)
 
-
 The functionality of Deepkit HTTP, Deepkit ORM, Deepkit Type, Deepkit RPC, Deepkit App are mainly based on runtime types, which are just regular TypeScript types with optional additional type annotations for validation or other meta-data like for database fields.
-
 
 Here is additional text that you can use to answer questions:
 
 {{additionalText}}
-
 
 ---
 

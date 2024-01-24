@@ -26,17 +26,13 @@ test('memory-db', async () => {
 
     {
         const item = deserialize<s>({ id: 2, username: '1234' });
-        expect(validate<s>(item)).toEqual([
-            { code: 'length', message: 'Min length is 5', path: 'username', value: '1234' },
-        ]);
+        expect(validate<s>(item)).toEqual([{ code: 'length', message: 'Min length is 5', path: 'username', value: '1234' }]);
     }
 
     const database = new Database(new MemoryDatabaseAdapter());
 
     await database.persist(deserialize<s>({ id: 2, username: '123456' }));
-    await expect(() => database.persist(deserialize<s>({ id: 2, username: '123' }))).rejects.toThrow(
-        'Validation error for class User:\nusername(length): Min length is 5',
-    );
+    await expect(() => database.persist(deserialize<s>({ id: 2, username: '123' }))).rejects.toThrow('Validation error for class User:\nusername(length): Min length is 5');
 
     await database.persist(deserialize<s>({ id: 3, username: 'Peter' }));
     await database.persist(deserialize<s>({ id: 4, username: 'JohnLong' }));

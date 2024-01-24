@@ -8,9 +8,8 @@ It is part of `@deepkit/filesystem`, so not additional installation is required.
 ## Usage
 
 ```typescript
-import { FilesystemMemoryAdapter, Filesystem } from '@deepkit/filesystem';
+import { Filesystem, FilesystemMemoryAdapter } from '@deepkit/filesystem';
 
 const adapter = new FilesystemMemoryAdapter();
 const filesystem = new Filesystem(adapter);
 ```
-

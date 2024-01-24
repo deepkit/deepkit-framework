@@ -301,9 +301,7 @@ test('wrong arguments', async () => {
     await controller.getProduct(1);
 
     {
-        await expect(controller.getProduct(undefined as any)).rejects.toThrow(
-            'args.id(type): Cannot convert undefined to number',
-        );
+        await expect(controller.getProduct(undefined as any)).rejects.toThrow('args.id(type): Cannot convert undefined to number');
     }
 
     {

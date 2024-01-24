@@ -1,6 +1,19 @@
-import { ApplicationRef, EventEmitter, importProvidersFrom, inject, Injectable, Injector, ModuleWithProviders, NgModule, NgZone, Optional, RendererFactory2 } from '@angular/core';
-import { clearTick, nextTick } from '@deepkit/core';
+import {
+    ApplicationRef,
+    EventEmitter,
+    Injectable,
+    Injector,
+    ModuleWithProviders,
+    NgModule,
+    NgZone,
+    Optional,
+    RendererFactory2,
+    importProvidersFrom,
+    inject,
+} from '@angular/core';
 import { ActivationEnd, NavigationEnd, Router } from '@angular/router';
+
+import { clearTick, nextTick } from '@deepkit/core';
 
 function patch(functionName: string, prototype: { [name: string]: any }) {
     const def = Object.getOwnPropertyDescriptor(prototype, functionName);
@@ -52,7 +65,7 @@ function patchComponentClass(classType: any) {
     return classType.ɵfac;
 }
 
-function patchComponent(type: { type: any, factory: any, directiveDefs: () => any[] }) {
+function patchComponent(type: { type: any; factory: any; directiveDefs: () => any[] }) {
     type.factory = type.type.ɵfac;
     if (type.type.__patched) return;
 
@@ -89,21 +102,21 @@ export class ZoneModule {
 
         //necessary to render all router-outlet once the router changes
         if (router) {
-            router.events.subscribe((event) => {
-                if (event instanceof NavigationEnd || event instanceof ActivationEnd) {
-                    app.tick();
-                }
-            }, () => undefined);
+            router.events.subscribe(
+                event => {
+                    if (event instanceof NavigationEnd || event instanceof ActivationEnd) {
+                        app.tick();
+                    }
+                },
+                () => undefined,
+            );
         }
     }
 
     static forRoot(): ModuleWithProviders<ZoneModule> {
         return {
             ngModule: ZoneModule,
-            providers: [
-                AsyncNgZone,
-                { provide: NgZone, useExisting: AsyncNgZone },
-            ]
+            providers: [AsyncNgZone, { provide: NgZone, useExisting: AsyncNgZone }],
         };
     }
 }
@@ -133,29 +146,27 @@ export class AsyncNgZone implements NgZone {
 
     protected nextError?: any;
 
-    constructor(private injector: Injector) {
-    }
+    constructor(private injector: Injector) {}
 
-    static assertInAngularZone(): void {
+    static assertInAngularZone(): void {}
 
-    }
-
-    static assertNotInAngularZone(): void {
-
-    }
+    static assertNotInAngularZone(): void {}
 
     schedulePromise(res: Promise<any>, label: string = '') {
         const id = this.newRun();
-        res.then(() => {
-            this.runFinished();
-        }, (error) => {
-            this.runs--;
-            if (this.nextError) clearTick(this.nextError);
-            this.nextError = nextTick(() => {
-                this.onError.emit(error);
-                this.trigger();
-            });
-        });
+        res.then(
+            () => {
+                this.runFinished();
+            },
+            error => {
+                this.runs--;
+                if (this.nextError) clearTick(this.nextError);
+                this.nextError = nextTick(() => {
+                    this.onError.emit(error);
+                    this.trigger();
+                });
+            },
+        );
     }
 
     protected newRun() {

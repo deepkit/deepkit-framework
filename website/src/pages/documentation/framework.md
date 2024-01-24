@@ -18,10 +18,10 @@ The `App` abstraction brings:
 The `FrameworkModule` module brings additional features:
 
 - Application server
-    - HTTP server
-    - RPC server
-    - Multi-process load balancing
-    - SSL
+  - HTTP server
+  - RPC server
+  - Multi-process load balancing
+  - SSL
 - Debugging CLI commands
 - Database Migration configuration/commands
 - Debugging/Profiler GUI via `{debug: true}` option
@@ -34,7 +34,7 @@ You can write applications with or without the `FrameworkModule`.
 ## Installation
 
 Deepkit Framework is based on [Deepkit App](./app.md). Make sure you followed its installation instructions.
-If so you can install Deepkit framework and import the `FrameworkModule` in your `App`. 
+If so you can install Deepkit framework and import the `FrameworkModule` in your `App`.
 
 ```sh
 npm install @deepkit/framework
@@ -45,11 +45,11 @@ import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
 
 const app = new App({
-    imports: [new FrameworkModule({ debug: true })]
+  imports: [new FrameworkModule({ debug: true })],
 });
 
 app.command('test', (logger: Logger) => {
-    logger.log('Hello World!');
+  logger.log('Hello World!');
 });
 
 app.run();
@@ -64,19 +64,18 @@ import { App } from '@deepkit/app';
 import { HttpRouterRegistry } from '@deepkit/http';
 
 const app = new App({
-    imports: [new FrameworkModule({ debug: true })]
+  imports: [new FrameworkModule({ debug: true })],
 });
 
 app.command('test', (logger: Logger) => {
-    logger.log('Hello World!');
+  logger.log('Hello World!');
 });
-
 
 const router = app.get(HttpRouterRegistry);
 
 router.get('/', () => {
-    return 'Hello World';
-})
+  return 'Hello World';
+});
 
 app.run();
 ```
@@ -104,7 +103,7 @@ This `app` object can also be used to access the Dependency Injection container 
 
 ```typescript
 const app = new App({
-    imports: [new FrameworkModule]
+  imports: [new FrameworkModule()],
 });
 
 //get access to all registered services
@@ -116,19 +115,17 @@ You can retrieve the `EventDispatcher` because the `FrameworkModule` registers i
 You can also register your own service.
 
 ```typescript
-
 class MyService {
-    constructor(private logger: Logger) {
-    }
+  constructor(private logger: Logger) {}
 
-    helloWorld() {
-        this.logger.log('Hello World');
-    }
+  helloWorld() {
+    this.logger.log('Hello World');
+  }
 }
 
 const app = new App({
-    providers: [MyService],
-    imports: [new FrameworkModule]
+  providers: [MyService],
+  imports: [new FrameworkModule()],
 });
 
 const service = app.get(MyService);
@@ -145,13 +142,13 @@ import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
 
 new App({
-    config: Config,
-    controllers: [MyWebsite],
-    imports: [
-        new FrameworkModule({
-            debug: true,
-        })
-    ]
+  config: Config,
+  controllers: [MyWebsite],
+  imports: [
+    new FrameworkModule({
+      debug: true,
+    }),
+  ],
 }).run();
 ```
 
@@ -205,16 +202,15 @@ See the [Events](./app/events.md) chapter to learn more about how events work.
 Events are sent via the `EventDispatcher` class. In a Deepkit Framework application, this can be provided via dependency injection.
 
 ```typescript
-import { cli, Command } from '@deepkit/app';
+import { Command, cli } from '@deepkit/app';
 import { EventDispatcher } from '@deepkit/event';
 
 @cli.controller('test')
 export class TestCommand implements Command {
-    constructor(protected eventDispatcher: EventDispatcher) {
-    }
+  constructor(protected eventDispatcher: EventDispatcher) {}
 
-    async execute() {
-        this.eventDispatcher.dispatch(UserAdded, new UserEvent({ username: 'Peter' }));
-    }
+  async execute() {
+    this.eventDispatcher.dispatch(UserAdded, new UserEvent({ username: 'Peter' }));
+  }
 }
 ```

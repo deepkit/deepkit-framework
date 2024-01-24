@@ -35,37 +35,36 @@ This is a simple class that has an `execute` method and or a simple function.
 Functional controller:
 
 ```typescript
-import { App, cli, Flag } from '@deepkit/app';
+import { App, Flag, cli } from '@deepkit/app';
 
 //functional controller
 new App({
-    providers: [MyService],
+  providers: [MyService],
 })
-.command('test', (id: number, check: boolean & Flag = false) => {
+  .command('test', (id: number, check: boolean & Flag = false) => {
     console.log('Hello World', id, check);
-})
-.run()
+  })
+  .run();
 ```
-
 
 Class controllers:
 
 ```typescript
 #!/usr/bin/env ts-node-script
-import { App, cli, Flag } from '@deepkit/app';
+import { App, Flag, cli } from '@deepkit/app';
 
 //class controller
 @cli.controller('test', {
-    description: 'My first command'
+  description: 'My first command',
 })
 class TestCommand {
-    async execute(id: number, check: boolean & Flag = false) {
-        console.log('Hello World', id, check);
-    }
+  async execute(id: number, check: boolean & Flag = false) {
+    console.log('Hello World', id, check);
+  }
 }
 
 new App({
-    controllers: [TestCommand]
+  controllers: [TestCommand],
 }).run();
 ```
 

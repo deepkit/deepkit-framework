@@ -13,7 +13,7 @@ Following is a list of existing type annotations. The validator and serializer o
 Integer and floats are defined as a base as `number` and has several sub-variants:
 
 | Type    | Description                                                                                                                                                                                                           |
-|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | integer | An integer of arbitrary size.                                                                                                                                                                                         |
 | int8    | An integer between -128 and 127.                                                                                                                                                                                      |
 | uint8   | An integer between 0 and 255.                                                                                                                                                                                         |
@@ -29,7 +29,7 @@ Integer and floats are defined as a base as `number` and has several sub-variant
 import { integer } from '@deepkit/type';
 
 interface User {
-    id: integer;
+  id: integer;
 }
 ```
 
@@ -37,7 +37,7 @@ Here the `id` of the user is a number at runtime, but is interpreted as an integ
 This means that here, for example, no floats may be used in validation and the serializer automatically converts floats into integers.
 
 ```typescript
-import { is, integer } from '@deepkit/type';
+import { integer, is } from '@deepkit/type';
 
 is<integer>(12); //true
 is<integer>(12.5); //false
@@ -46,7 +46,7 @@ is<integer>(12.5); //false
 The subtypes can be used in the same way and are useful if a specific range of numbers is to be allowed.
 
 ```typescript
-import { is, int8 } from '@deepkit/type';
+import { int8, is } from '@deepkit/type';
 
 is<int8>(-5); //true
 is<int8>(5); //true
@@ -61,7 +61,7 @@ is<int8>(2500); //false
 UUID v4 is usually stored as a binary in the database and as a string in JSON.
 
 ```typescript
-import { is, UUID } from '@deepkit/type';
+import { UUID, is } from '@deepkit/type';
 
 is<UUID>('f897399a-9f23-49ac-827d-c16f8e4810a0'); //true
 is<UUID>('asd'); //false
@@ -72,14 +72,14 @@ is<UUID>('asd'); //false
 Marks this field as ObjectId for MongoDB. Resolves as a string. Is stored in the MongoDB as binary.
 
 ```typescript
-import { MongoId, serialize, is } from '@deepkit/type';
+import { MongoId, is, serialize } from '@deepkit/type';
 
 serialize<MongoId>('507f1f77bcf86cd799439011'); //507f1f77bcf86cd799439011
 is<MongoId>('507f1f77bcf86cd799439011'); //true
 is<MongoId>('507f1f77bcf86cd799439011'); //false
 
 class User {
-    id: MongoId = ''; //will automatically set in Deepkit ORM once user is inserted
+  id: MongoId = ''; //will automatically set in Deepkit ORM once user is inserted
 }
 ```
 
@@ -93,7 +93,7 @@ Per default the normal bigint type serializes as number in JSON (and long in BSO
 import { BinaryBigInt } from '@deepkit/type';
 
 interface User {
-    id: BinaryBigInt;
+  id: BinaryBigInt;
 }
 
 const user: User = { id: 24n };
@@ -112,7 +112,7 @@ Deepkit ORM stores BinaryBigInt as a binary field.
 import { SignedBinaryBigInt } from '@deepkit/type';
 
 interface User {
-    id: SignedBinaryBigInt;
+  id: SignedBinaryBigInt;
 }
 ```
 
@@ -121,14 +121,14 @@ interface User {
 To change the name of a property in the serialization.
 
 ```typescript
-import { serialize, deserialize, MapName } from '@deepkit/type';
+import { MapName, deserialize, serialize } from '@deepkit/type';
 
 interface User {
-    firstName: string & MapName<'first_name'>;
+  firstName: string & MapName<'first_name'>;
 }
 
-serialize<User>({ firstName: 'Peter' }) // {first_name: 'Peter'}
-deserialize<User>({ first_name: 'Peter' }) // {firstName: 'Peter'}
+serialize<User>({ firstName: 'Peter' }); // {first_name: 'Peter'}
+deserialize<User>({ first_name: 'Peter' }); // {firstName: 'Peter'}
 ```
 
 ## Group
@@ -139,14 +139,11 @@ Properties can be grouped together. For serialization you can for example exclud
 import { serialize } from '@deepkit/type';
 
 interface Model {
-    username: string;
-    password: string & Group<'secret'>
+  username: string;
+  password: string & Group<'secret'>;
 }
 
-serialize<Model>(
-    { username: 'Peter', password: 'nope' },
-    { groupsExclude: ['secret'] }
-); //{username: 'Peter'}
+serialize<Model>({ username: 'Peter', password: 'nope' }, { groupsExclude: ['secret'] }); //{username: 'Peter'}
 ```
 
 ## Data
@@ -157,8 +154,8 @@ Each property can add additional meta-data that can be read via the Reflection A
 import { ReflectionClass } from '@deepkit/type';
 
 interface Model {
-    username: string;
-    title: string & Data<'key', 'value'>
+  username: string;
+  title: string & Data<'key', 'value'>;
 }
 
 const reflection = ReflectionClass.from<Model>();
@@ -170,11 +167,11 @@ reflection.getProperty('title').getData()['key']; //value;
 Each property can be excluded from the serialization process for a specific target.
 
 ```typescript
-import { serialize, deserialize, Excluded } from '@deepkit/type';
+import { Excluded, deserialize, serialize } from '@deepkit/type';
 
 interface Auth {
-    title: string;
-    password: string & Excluded<'json'>
+  title: string;
+  password: string & Excluded<'json'>;
 }
 
 const item = deserialize<Auth>({ title: 'Peter', password: 'secret' });
@@ -306,7 +303,7 @@ Marks the field as primary key. Only used in the database context.
 import { PrimaryKey } from '@deepkit/type';
 
 interface User {
-    id: number & PrimaryKey;
+  id: number & PrimaryKey;
 }
 ```
 
@@ -319,7 +316,7 @@ Usually together with `PrimaryKey`.
 import { AutoIncrement } from '@deepkit/type';
 
 interface User {
-    id: number & PrimaryKey & AutoIncrement;
+  id: number & PrimaryKey & AutoIncrement;
 }
 ```
 
@@ -331,12 +328,12 @@ Marks the field as reference (foreign key). Only used in the database context.
 import { Reference } from '@deepkit/type';
 
 interface User {
-    id: number & PrimaryKey;
-    group: number & Reference<Group>;
+  id: number & PrimaryKey;
+  group: number & Reference<Group>;
 }
 
 interface Group {
-    id: number & PrimaryKey;
+  id: number & PrimaryKey;
 }
 ```
 
@@ -347,15 +344,14 @@ In this example `User.group` is an owning reference also known as foreign key in
 Marks the field as back reference. Only used in the database context.
 
 ```typescript
-
 interface User {
-    id: number & PrimaryKey;
-    group: number & Reference<Group>;
+  id: number & PrimaryKey;
+  group: number & Reference<Group>;
 }
 
 interface Group {
-    id: number & PrimaryKey;
-    users: User[] & BackReference;
+  id: number & PrimaryKey;
+  users: User[] & BackReference;
 }
 ```
 
@@ -371,8 +367,8 @@ Marks the field as index. Only used in the database context.
 import { Index } from '@deepkit/type';
 
 interface User {
-    id: number & PrimaryKey;
-    username: string & Index;
+  id: number & PrimaryKey;
+  username: string & Index;
 }
 ```
 
@@ -384,8 +380,8 @@ Marks the field as unique. Only used in the database context.
 import { Unique } from '@deepkit/type';
 
 interface User {
-    id: number & PrimaryKey;
-    username: string & Unique;
+  id: number & PrimaryKey;
+  username: string & Unique;
 }
 ```
 
@@ -397,8 +393,8 @@ With `DatabaseField` you can define the database specific options like the real 
 import { DatabaseField } from '@deepkit/type';
 
 interface User {
-    id: number & PrimaryKey;
-    username: string & DatabaseField<{ type: 'varchar(255)' }>;
+  id: number & PrimaryKey;
+  username: string & DatabaseField<{ type: 'varchar(255)' }>;
 }
 ```
 
@@ -418,8 +414,8 @@ import { InlineRuntimeType, ReflectionKind, Type } from '@deepkit/type';
 const type: Type = { kind: ReflectionKind.string };
 
 type Query = {
-    field: InlineRuntimeType<typeof type>;
-}
+  field: InlineRuntimeType<typeof type>;
+};
 
 const resolved = typeOf<Query>(); // { field: string }
 ```
@@ -436,11 +432,11 @@ To reset all annotations of a property. Only used in advanced cases.
 import { ResetAnnotation } from '@deepkit/type';
 
 interface User {
-    id: number & PrimaryKey;
+  id: number & PrimaryKey;
 }
 
 interface UserCreationPayload {
-    id: User['id'] & ResetAnnotation<'primaryKey'>;
+  id: User['id'] & ResetAnnotation<'primaryKey'>;
 }
 ```
 
@@ -470,7 +466,7 @@ MyAnnotation & AnnotationOption<{ title: 'Hello' }>;
 The type annotations can be read out via the type objects of `typeOf<T>()` and `metaAnnotation`:
 
 ```typescript
-import { typeOf, metaAnnotation } from '@deepkit/type';
+import { metaAnnotation, typeOf } from '@deepkit/type';
 
 const type = typeOf<Username>();
 const annotation = metaAnnotation.getForName(type, 'myAnnotation'); //[]
@@ -480,7 +476,7 @@ The result in `annotation` is either an array with options if the type annotatio
 Already supplied type annotations like `MapName`, `Group`, `Data`, etc have their own annotation object:
 
 ```typescript
-import { typeOf, Group, groupAnnotation } from '@deepkit/type';
+import { Group, groupAnnotation, typeOf } from '@deepkit/type';
 
 type Username = string & Group<'a'> & Group<'b'>;
 

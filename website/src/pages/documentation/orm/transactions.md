@@ -19,14 +19,14 @@ const session = database.createSession();
 session.useTransaction();
 
 try {
-    //this query is executed in the transaction
-    const users = await session.query(User).find();
+  //this query is executed in the transaction
+  const users = await session.query(User).find();
 
-    await moreDatabaseOperations(session);
+  await moreDatabaseOperations(session);
 
-    await session.commit();
+  await session.commit();
 } catch (error) {
-    await session.rollback();
+  await session.rollback();
 }
 ```
 
@@ -43,11 +43,11 @@ Nested transactions are not supported.
 An alternative to transactional sessions is `database.transaction(callback)`.
 
 ```typescript
-await database.transaction(async (session) => {
-    //this query is executed in the transaction
-    const users = await session.query(User).find();
+await database.transaction(async session => {
+  //this query is executed in the transaction
+  const users = await session.query(User).find();
 
-    await moreDatabaseOperations(session);
+  await moreDatabaseOperations(session);
 });
 ```
 
@@ -64,18 +64,18 @@ const session = database.createSession();
 session.useTransaction().readUncommitted();
 
 try {
-    //...operations
-    await session.commit();
+  //...operations
+  await session.commit();
 } catch (error) {
-    await session.rollback();
+  await session.rollback();
 }
 
 //or
-await database.transaction(async (session) => {
-    //this works as long as no database operation has been exuected.
-    session.useTransaction().readUncommitted();
+await database.transaction(async session => {
+  //this works as long as no database operation has been exuected.
+  session.useTransaction().readUncommitted();
 
-    //...operations
+  //...operations
 });
 ```
 

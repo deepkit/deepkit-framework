@@ -46,9 +46,7 @@ test('typeOf infers a union key on a union', () => {
     expectEqualType(valuesOf<AdvancedTest3[1 | 3]>(), ['foo', 'baz', 'fizz', 'fizzbuzz']);
 
     const mySymbol = Symbol('mySymbol');
-    type AdvancedTest4 =
-        | { [mySymbol]: 'foo'; bar: 'bar'; baz: 'baz' }
-        | { [mySymbol]: 'fizz'; bar: 'buzz'; baz: 'fizzbuzz' };
+    type AdvancedTest4 = { [mySymbol]: 'foo'; bar: 'bar'; baz: 'baz' } | { [mySymbol]: 'fizz'; bar: 'buzz'; baz: 'fizzbuzz' };
     // Note: the current implementation reduces duplicate values
     expectEqualType(valuesOf<AdvancedTest4[typeof mySymbol | 'baz']>(), ['foo', 'baz', 'fizz']);
 
@@ -66,12 +64,5 @@ class AdvancedTestClass {
 type MoreAdvancedTest = AdvancedTest | AdvancedTestClass;
 
 test('typeOf infers a union key on a union with a class', () => {
-    expectEqualType(valuesOf<MoreAdvancedTest['foo' | 'baz']>(), [
-        1,
-        3,
-        4,
-        6,
-        typeOf<AdvancedTestClass['foo']>(),
-        typeOf<AdvancedTestClass['baz']>(),
-    ]);
+    expectEqualType(valuesOf<MoreAdvancedTest['foo' | 'baz']>(), [1, 3, 4, 6, typeOf<AdvancedTestClass['foo']>(), typeOf<AdvancedTestClass['baz']>()]);
 });

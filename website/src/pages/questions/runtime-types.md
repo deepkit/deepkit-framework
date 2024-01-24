@@ -1,4 +1,3 @@
-
 user: What is the primary purpose of the Deepkit Type library?
 assistant: The primary use-case of Deepkit Runtime Types is to make TypeScript types available in runtime and enable with it a big range of use-cases. Many of them like validation and serialisation is already covered in Deepkit Runtime Types.
 

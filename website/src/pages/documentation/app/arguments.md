@@ -10,15 +10,15 @@ import { cli } from '@deepkit/app';
 
 //functional
 new App().command('test', (name: string) => {
-    console.log('Hello', name);
+  console.log('Hello', name);
 });
 
 //class
 @cli.controller('test')
 class TestCommand {
-    async execute(name: string) {
-        console.log('Hello', name);
-    }
+  async execute(name: string) {
+    console.log('Hello', name);
+  }
 }
 ```
 
@@ -60,14 +60,14 @@ import { Flag } from '@deepkit/app';
 
 //functional
 new App().command('test', (id: number & Flag) => {
-    console.log('id', name);
+  console.log('id', name);
 });
 
 //class
 class TestCommand {
-    async execute(id: number & Flag) {
-        console.log('id', id);
-    }
+  async execute(id: number & Flag) {
+    console.log('id', id);
+  }
 }
 ```
 
@@ -99,14 +99,14 @@ import { Flag } from '@deepkit/app';
 
 //functional
 new App().command('test', (remove: boolean & Flag = false) => {
-    console.log('delete?', remove);
+  console.log('delete?', remove);
 });
 
 //class
 class TestCommand {
-    async execute(remove: boolean & Flag = false) {
-        console.log('delete?', remove);
-    }
+  async execute(remove: boolean & Flag = false) {
+    console.log('delete?', remove);
+  }
 }
 ```
 
@@ -127,14 +127,14 @@ import { Flag } from '@deepkit/app';
 
 //functional
 new App().command('test', (id: number[] & Flag = []) => {
-    console.log('ids', id);
+  console.log('ids', id);
 });
 
 //class
 class TestCommand {
-    async execute(id: number[] & Flag = []) {
-        console.log('ids', id);
-    }
+  async execute(id: number[] & Flag = []) {
+    console.log('ids', id);
+  }
 }
 ```
 
@@ -157,15 +157,15 @@ To allow a flag to be passed as a single character as well, `Flag<{char: 'x'}>` 
 import { Flag } from '@deepkit/app';
 
 //functional
-new App().command('test', (output: string & Flag<{char: 'o'}>) => {
-    console.log('output: ', output);
+new App().command('test', (output: string & Flag<{ char: 'o' }>) => {
+  console.log('output: ', output);
 });
 
 //class
 class TestCommand {
-    async execute(output: string & Flag<{char: 'o'}>) {
-        console.log('output: ', output);
-    }
+  async execute(output: string & Flag<{ char: 'o' }>) {
+    console.log('output: ', output);
+  }
 }
 ```
 
@@ -190,17 +190,16 @@ output: test.txt
 The signature of the method/function defines which arguments or flags are optional. If the parameter is optional in the type system, the user does not have to provide it.
 
 ```typescript
-
 //functional
 new App().command('test', (name?: string) => {
-    console.log('Hello', name || 'nobody');
+  console.log('Hello', name || 'nobody');
 });
 
 //class
 class TestCommand {
-    async execute(name?: string) {
-        console.log('Hello', name || 'nobody');
-    }
+  async execute(name?: string) {
+    console.log('Hello', name || 'nobody');
+  }
 }
 ```
 
@@ -214,14 +213,14 @@ The same for parameters with a default value:
 ```typescript
 //functional
 new App().command('test', (name: string = 'body') => {
-    console.log('Hello', name);
+  console.log('Hello', name);
 });
 
 //class
 class TestCommand {
-    async execute(name: string = 'body') {
-        console.log('Hello', name);
-    }
+  async execute(name: string = 'body') {
+    console.log('Hello', name);
+  }
 }
 ```
 
@@ -232,24 +231,23 @@ Hello nobody
 
 This also applies to flags in the same way.
 
-
 ## Serialization / Validation
 
 All arguments and flags are automatically deserialized based on its types, validated and can be provided with additional constraints.
 
-Thus, arguments defined as numbers are always guaranteed to be real numbers in the controller, even though the command-line interface is based on text and thus strings. 
+Thus, arguments defined as numbers are always guaranteed to be real numbers in the controller, even though the command-line interface is based on text and thus strings.
 
 ```typescript
 //functional
 new App().command('test', (id: number) => {
-    console.log('id', id, typeof id);
+  console.log('id', id, typeof id);
 });
 
 //class
 class TestCommand {
-    async execute(id: number) {
-        console.log('id', id, typeof id);
-    }
+  async execute(id: number) {
+    console.log('id', id, typeof id);
+  }
 }
 ```
 
@@ -262,16 +260,17 @@ Additional constraints can be defined with the type annotations from `@deepkit/t
 
 ```typescript
 import { Positive } from '@deepkit/type';
+
 //functional
 new App().command('test', (id: number & Positive) => {
-    console.log('id', id, typeof id);
+  console.log('id', id, typeof id);
 });
 
 //class
 class TestCommand {
-    async execute(id: number & Positive) {
-        console.log('id', id, typeof id);
-    }
+  async execute(id: number & Positive) {
+    console.log('id', id, typeof id);
+  }
 }
 ```
 
@@ -292,14 +291,14 @@ To describe a flag or argument, use `@description` comment decorator.
 import { Positive } from '@deepkit/type';
 
 class TestCommand {
-    async execute(
-        /** @description The users identifier */
-        id: number & Positive,
-        /** @description Delete the user? */
-        remove: boolean = false
-    ) {
-        console.log('id', id, typeof id);
-    }
+  async execute(
+    /** @description The users identifier */
+    id: number & Positive,
+    /** @description Delete the user? */
+    remove: boolean = false,
+  ) {
+    console.log('id', id, typeof id);
+  }
 }
 ```
 

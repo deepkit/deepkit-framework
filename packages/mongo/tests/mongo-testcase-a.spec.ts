@@ -1,17 +1,7 @@
 import { expect, test } from '@jest/globals';
 
 import { getInstanceStateFromItem, hydrateEntity } from '@deepkit/orm';
-import {
-    BackReference,
-    Index,
-    PrimaryKey,
-    Reference,
-    ReflectionClass,
-    UUID,
-    entity,
-    resolveForeignReflectionClass,
-    uuid,
-} from '@deepkit/type';
+import { BackReference, Index, PrimaryKey, Reference, ReflectionClass, UUID, entity, resolveForeignReflectionClass, uuid } from '@deepkit/type';
 
 import { createDatabase } from './utils.js';
 
@@ -305,17 +295,11 @@ test('joins', async () => {
     }
 
     {
-        await expect(
-            session.query(User).innerJoin('organisations').filter({ name: 'notexisting' }).findOneField('name'),
-        ).rejects.toThrow('not found');
+        await expect(session.query(User).innerJoin('organisations').filter({ name: 'notexisting' }).findOneField('name')).rejects.toThrow('not found');
     }
 
     {
-        const item = await session
-            .query(User)
-            .innerJoin('organisations')
-            .filter({ name: 'notexisting' })
-            .findOneFieldOrUndefined('name');
+        const item = await session.query(User).innerJoin('organisations').filter({ name: 'notexisting' }).findOneFieldOrUndefined('name');
         expect(item).toBeUndefined();
     }
 
@@ -419,12 +403,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await session
-            .query(OrganisationMembership)
-            .useJoinWith('user')
-            .filter({ name: 'marc' })
-            .end()
-            .find();
+        const items = await session.query(OrganisationMembership).useJoinWith('user').filter({ name: 'marc' }).end().find();
         expect(items.length).toBe(4); //still 4, but user is empty for all other than marc
         expect(items[0].user).toBeInstanceOf(User);
         expect(items[1].user).toBeInstanceOf(User);
@@ -433,12 +412,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await session
-            .query(OrganisationMembership)
-            .useInnerJoin('user')
-            .filter({ name: 'marc' })
-            .end()
-            .find();
+        const items = await session.query(OrganisationMembership).useInnerJoin('user').filter({ name: 'marc' }).end().find();
 
         expect(items.length).toBe(2);
         expect(() => {
@@ -451,12 +425,7 @@ test('joins', async () => {
     }
 
     {
-        const query = await session
-            .query(OrganisationMembership)
-            .useInnerJoinWith('user')
-            .select('id')
-            .filter({ name: 'marc' })
-            .end();
+        const query = await session.query(OrganisationMembership).useInnerJoinWith('user').select('id').filter({ name: 'marc' }).end();
 
         {
             const items = await query.find();
@@ -494,12 +463,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await session
-            .query(User)
-            .useInnerJoinWith('organisations')
-            .filter({ name: 'Microsoft' })
-            .end()
-            .find();
+        const items = await session.query(User).useInnerJoinWith('organisations').filter({ name: 'Microsoft' }).end().find();
         expect(items[0].organisations.length).toBe(1);
         expect(items[0].organisations[0]).toBeInstanceOf(Organisation);
         expect(items[0].organisations[0].name).toBe('Microsoft');
@@ -563,14 +527,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await session
-            .query(Organisation)
-            .useJoinWith('users')
-            .sort({ name: 'asc' })
-            .skip(1)
-            .limit(1)
-            .end()
-            .find();
+        const items = await session.query(Organisation).useJoinWith('users').sort({ name: 'asc' }).skip(1).limit(1).end().find();
         expect(items.length).toBe(2);
         expect(items[0].name).toBe('Microsoft');
         expect(items[1].name).toBe('Apple');
@@ -635,18 +592,11 @@ test('joins', async () => {
 
     {
         expect(await session.query(OrganisationMembership).innerJoin('user').filter({ user: peter }).count()).toBe(0);
-        expect(await session.query(OrganisationMembership).innerJoinWith('user').filter({ user: peter }).count()).toBe(
-            0,
-        );
+        expect(await session.query(OrganisationMembership).innerJoinWith('user').filter({ user: peter }).count()).toBe(0);
     }
 
     {
-        const query = session
-            .query(OrganisationMembership)
-            .useJoinWith('user')
-            .filter({ name: 'marc' })
-            .end()
-            .joinWith('organisation');
+        const query = session.query(OrganisationMembership).useJoinWith('user').filter({ name: 'marc' }).end().joinWith('organisation');
 
         expect(query.model.joins.length).toBe(2);
         expect(resolveForeignReflectionClass(query.model.joins[0].propertySchema).getClassType()).toBe(User);
@@ -700,14 +650,7 @@ test('joins', async () => {
         }
 
         {
-            const items = await query
-                .clone()
-                .getJoin('organisations')
-                .useJoinWith('owner')
-                .select('id')
-                .end()
-                .end()
-                .find();
+            const items = await query.clone().getJoin('organisations').useJoinWith('owner').select('id').end().end().find();
             expect(items.length).toBe(2);
             expect(items[0].name).toBe('marc');
             expect(items[0].organisations.length).toBe(1);

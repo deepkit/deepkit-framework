@@ -28,11 +28,7 @@ test('nominal alias types are unique', () => {
     expect(prop.type.id).toBe(ta.id);
     expect(ta.id).not.toBe(tb.id);
 
-    const rootModule = new InjectorModule([
-        Manager,
-        provide<A>({ useValue: new Service('A') }),
-        provide<B>({ useValue: new Service('B') }),
-    ]);
+    const rootModule = new InjectorModule([Manager, provide<A>({ useValue: new Service('A') }), provide<B>({ useValue: new Service('B') })]);
     const injector = new InjectorContext(rootModule);
     const database = injector.get(Manager);
     expect(database.service.name).toBe('A');
@@ -93,9 +89,7 @@ test('child implementation from imported module encapsulated', () => {
         { provide: RpcInjectorContext },
     ]);
 
-    const rootModule = new InjectorModule([{ provide: InjectorContext, useFactory: () => injectorContext! }]).addImport(
-        module,
-    );
+    const rootModule = new InjectorModule([{ provide: InjectorContext, useFactory: () => injectorContext! }]).addImport(module);
     injectorContext = new InjectorContext(rootModule);
 
     const user = injectorContext.get(User, module);
@@ -117,9 +111,7 @@ test('child implementation from imported module partly exported', () => {
         { provide: RpcInjectorContext },
     ]).addExport(User);
 
-    const rootModule = new InjectorModule([{ provide: InjectorContext, useFactory: () => injectorContext! }]).addImport(
-        module,
-    );
+    const rootModule = new InjectorModule([{ provide: InjectorContext, useFactory: () => injectorContext! }]).addImport(module);
     injectorContext = new InjectorContext(rootModule);
 
     const user = injectorContext.get(User);
@@ -141,9 +133,7 @@ test('child implementation from imported module exported', () => {
         { provide: RpcInjectorContext },
     ]).addExport(User, RpcInjectorContext);
 
-    const rootModule = new InjectorModule([{ provide: InjectorContext, useFactory: () => injectorContext! }]).addImport(
-        module,
-    );
+    const rootModule = new InjectorModule([{ provide: InjectorContext, useFactory: () => injectorContext! }]).addImport(module);
     injectorContext = new InjectorContext(rootModule);
 
     const user = injectorContext.get(User);
@@ -169,12 +159,7 @@ test('nominal alias of arbitrary type', () => {
     expect(someOtherType.id).toBeGreaterThan(0);
     expect(someOtherType.id).not.toBe(someType.id);
 
-    const rootModule = new InjectorModule([
-        MyService,
-        MyService2,
-        provide<SomeType>({ useValue: 'foo' }),
-        provide<SomeOtherType>({ useValue: 'bar' }),
-    ]);
+    const rootModule = new InjectorModule([MyService, MyService2, provide<SomeType>({ useValue: 'foo' }), provide<SomeOtherType>({ useValue: 'bar' })]);
 
     const injector = new InjectorContext(rootModule);
     const myService = injector.get(MyService);

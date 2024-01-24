@@ -4,16 +4,7 @@ import { ClassType } from '@deepkit/core';
 
 import { Partial } from '../src/changes.js';
 import { isExtendable } from '../src/reflection/extends.js';
-import {
-    ReceiveType,
-    ReflectionClass,
-    hasCircularReference,
-    reflect,
-    reflectOrUndefined,
-    resolveReceiveType,
-    typeOf,
-    visit,
-} from '../src/reflection/reflection.js';
+import { ReceiveType, ReflectionClass, hasCircularReference, reflect, reflectOrUndefined, resolveReceiveType, typeOf, visit } from '../src/reflection/reflection.js';
 import {
     Embedded,
     Excluded,
@@ -270,9 +261,7 @@ test('stringify nested class', () => {
         config!: Config;
     }
 
-    expect(stringifyResolvedType(typeOf<User>())).toBe(
-        `User {\n  id: number;\n  username?: string;\n  config: Config {color: number};\n}`,
-    );
+    expect(stringifyResolvedType(typeOf<User>())).toBe(`User {\n  id: number;\n  username?: string;\n  config: Config {color: number};\n}`);
 });
 
 test('stringify nested interface', () => {
@@ -286,9 +275,7 @@ test('stringify nested interface', () => {
         config: Config;
     }
 
-    expect(stringifyResolvedType(typeOf<User>())).toBe(
-        `User {\n  id: number;\n  username?: string;\n  config: Config {color: number};\n}`,
-    );
+    expect(stringifyResolvedType(typeOf<User>())).toBe(`User {\n  id: number;\n  username?: string;\n  config: Config {color: number};\n}`);
 });
 
 function validExtend<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {
@@ -877,20 +864,14 @@ test('tuple indexAccess', () => {
     expect(indexAccess(typeOf<[string, number]>(), { kind: ReflectionKind.literal, literal: 1 })).toMatchObject({
         kind: ReflectionKind.number,
     });
-    expectEqualType(
-        indexAccess(typeOf<[string, ...number[], boolean]>(), { kind: ReflectionKind.literal, literal: 1 }),
-        {
-            kind: ReflectionKind.union,
-            types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.boolean }],
-        },
-    );
-    expectEqualType(
-        indexAccess(typeOf<[string, ...(number | undefined)[]]>(), { kind: ReflectionKind.literal, literal: 1 }),
-        {
-            kind: ReflectionKind.union,
-            types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
-        },
-    );
+    expectEqualType(indexAccess(typeOf<[string, ...number[], boolean]>(), { kind: ReflectionKind.literal, literal: 1 }), {
+        kind: ReflectionKind.union,
+        types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.boolean }],
+    });
+    expectEqualType(indexAccess(typeOf<[string, ...(number | undefined)[]]>(), { kind: ReflectionKind.literal, literal: 1 }), {
+        kind: ReflectionKind.union,
+        types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
+    });
     expectEqualType(indexAccess(typeOf<[string, number?]>(), { kind: ReflectionKind.literal, literal: 1 }), {
         kind: ReflectionKind.union,
         types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
@@ -1572,9 +1553,7 @@ test('call signature', () => {
     assertType(type.types[0].parameters[0].type, ReflectionKind.string);
     assertType(type.types[0].return, ReflectionKind.number);
 
-    expect(stringifyResolvedType(typeOf<ObjectLiteralWithCall>())).toBe(
-        `ObjectLiteralWithCall {(b: string) => number}`,
-    );
+    expect(stringifyResolvedType(typeOf<ObjectLiteralWithCall>())).toBe(`ObjectLiteralWithCall {(b: string) => number}`);
 });
 
 test('function extends non-empty object literal', () => {

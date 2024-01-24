@@ -13,7 +13,7 @@ npm ci
 npm run app:start
 
 # server watcher
-npm run server:watch 
+npm run server:watch
 ```
 
 ## SSR build
@@ -23,3 +23,4 @@ npm run app:build
 npm run ssr:build
 npm run server
 ``
+```

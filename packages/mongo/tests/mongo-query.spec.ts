@@ -186,9 +186,7 @@ test('convertClassQueryToMongo customMapping', () => {
 });
 
 test('failed conversion', () => {
-    expect(() => convertPlainQueryToMongo(Simple, { id: { dif: 1 } as any })).toThrow(
-        'Cannot convert [object Object] to number',
-    );
+    expect(() => convertPlainQueryToMongo(Simple, { id: { dif: 1 } as any })).toThrow('Cannot convert [object Object] to number');
 });
 
 test('regex', () => {
@@ -237,11 +235,7 @@ test('$all', () => {
 
 test('complex', () => {
     const names = {};
-    const m = convertPlainQueryToMongo(
-        Simple,
-        { $and: [{ price: { $ne: '1.99' } as any }, { price: { $exists: true } }, { id: { $gt: '0' } as any }] },
-        names,
-    );
+    const m = convertPlainQueryToMongo(Simple, { $and: [{ price: { $ne: '1.99' } as any }, { price: { $exists: true } }, { id: { $gt: '0' } as any }] }, names);
 
     expect(m).toEqual({ $and: [{ price: { $ne: 1.99 } }, { price: { $exists: true } }, { id: { $gt: 0 } }] });
     expect(Object.keys(names)).toEqual(['price', 'id']);
@@ -260,19 +254,13 @@ test('complex 2', () => {
     const m = convertPlainQueryToMongo(
         NodeCluster,
         {
-            $and: [
-                { connected: false, disabled: { $ne: true } },
-                { $or: [{ lastConnectionTry: { $exists: false } }, { lastConnectionTry: { $lt: date } }] },
-            ],
+            $and: [{ connected: false, disabled: { $ne: true } }, { $or: [{ lastConnectionTry: { $exists: false } }, { lastConnectionTry: { $lt: date } }] }],
         },
         names,
     );
 
     expect(m).toEqual({
-        $and: [
-            { connected: false, disabled: { $ne: true } },
-            { $or: [{ lastConnectionTry: { $exists: false } }, { lastConnectionTry: { $lt: date } }] },
-        ],
+        $and: [{ connected: false, disabled: { $ne: true } }, { $or: [{ lastConnectionTry: { $exists: false } }, { lastConnectionTry: { $lt: date } }] }],
     });
     expect(Object.keys(names)).toEqual(['connected', 'disabled', 'lastConnectionTry']);
 });

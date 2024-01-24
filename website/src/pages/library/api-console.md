@@ -1,9 +1,8 @@
 ---
 title: Deepkit API Console
-package: "@deepkit/api-console"
+package: '@deepkit/api-console'
 doc: framework/api-console
 ---
-
 
 <p class="introduction">
     Deepkit API Console is a module you can import into your application to provide an interactive
@@ -18,13 +17,11 @@ doc: framework/api-console
     <box title="Overview">Overview with markdown documentation.</box>
 </div>
 
-
 <feature class="center">
 
 <app-image src="/assets/screenshots/api-console-http-get.png"></app-image>
 
 </feature>
-
 
 <feature class="center">
 

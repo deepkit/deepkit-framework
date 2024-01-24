@@ -1,13 +1,13 @@
+import { BenchmarkControllerInterface, BenchmarkRun } from '@app/common/benchmark';
+import { AppConfig } from '@app/server/config';
+
+import { HttpBody, http } from '@deepkit/http';
+import { Database } from '@deepkit/orm';
 import { rpc } from '@deepkit/rpc';
-import { http, HttpBody } from '@deepkit/http';
-import { BenchmarkControllerInterface, BenchmarkRun } from "@app/common/benchmark";
-import { Database } from "@deepkit/orm";
-import { AppConfig } from "@app/server/config";
 
 @rpc.controller(BenchmarkControllerInterface)
 export class BenchmarkController implements BenchmarkControllerInterface {
-    constructor(protected db: Database) {
-    }
+    constructor(protected db: Database) {}
 
     @rpc.action()
     async getLastBenchmarkRuns(): Promise<BenchmarkRun[]> {
@@ -16,11 +16,13 @@ export class BenchmarkController implements BenchmarkControllerInterface {
 }
 
 export class BenchmarkHttpController {
-    constructor(protected db: Database, protected benchmarkSecret: AppConfig['benchmarkSecret']) {
-    }
+    constructor(
+        protected db: Database,
+        protected benchmarkSecret: AppConfig['benchmarkSecret'],
+    ) {}
 
     @http.POST('benchmark/add')
-    async postBenchmark(body: HttpBody<{ auth: string, run: BenchmarkRun }>) {
+    async postBenchmark(body: HttpBody<{ auth: string; run: BenchmarkRun }>) {
         if (body.auth !== this.benchmarkSecret) {
             throw new Error('Invalid auth');
         }

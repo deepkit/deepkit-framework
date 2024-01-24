@@ -8,8 +8,7 @@ In most cases, constructor injection is used. All dependencies are specified as 
 
 ```typescript
 class MyService {
-    constructor(protected database: Database) {
-    }
+  constructor(protected database: Database) {}
 }
 ```
 
@@ -17,8 +16,7 @@ Optional dependencies should be marked as such, otherwise an error could be trig
 
 ```typescript
 class MyService {
-    constructor(protected database?: Database) {
-    }
+  constructor(protected database?: Database) {}
 }
 ```
 
@@ -30,11 +28,11 @@ An alternative to constructor injection is property injection. This is usually u
 import { Inject } from '@deepkit/injector';
 
 class MyService {
-    //required
-    protected database!: Inject<Database>;
+  //required
+  protected database!: Inject<Database>;
 
-    //or optional
-    protected database?: Inject<Database>;
+  //or optional
+  protected database?: Inject<Database>;
 }
 ```
 
@@ -47,7 +45,7 @@ They will be automatically injected by the DI container.
 import { Database } from './db';
 
 app.get('/', (database: Database) => {
-    //...
+  //...
 });
 ```
 
@@ -59,12 +57,11 @@ In case you want to resolve dependencies dynamically, you can inject `InjectorCo
 import { InjectorContext } from '@deepkit/injector';
 
 class MyService {
-    constructor(protected context: InjectorContext) {
-    }
+  constructor(protected context: InjectorContext) {}
 
-    getDatabase(): Database {
-        return this.context.get(Database);
-    }
+  getDatabase(): Database {
+    return this.context.get(Database);
+  }
 }
 ```
 

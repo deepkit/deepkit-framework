@@ -1,6 +1,6 @@
 # Configuration
 
-In Deepkit applications, modules and your application can have configuration options. 
+In Deepkit applications, modules and your application can have configuration options.
 For example, a configuration can consist of database URLs, passwords, IPs, and so on. Services, HTTP/RPC/CLI controllers, and template functions can read these configuration options via dependency injection.
 
 A configuration can be defined by defining a class with properties. This is a typesafe way to define a configuration for your entire application, and its values are automatically serialized and validated.
@@ -8,23 +8,22 @@ A configuration can be defined by defining a class with properties. This is a ty
 ## Example
 
 ```typescript
-import { MinLength } from '@deepkit/type';
 import { App } from '@deepkit/app';
+import { MinLength } from '@deepkit/type';
 
 class Config {
-    pageTitle: string & MinLength<2> = 'Cool site';
-    domain: string = 'example.com';
-    debug: boolean = false;
+  pageTitle: string & MinLength<2> = 'Cool site';
+  domain: string = 'example.com';
+  debug: boolean = false;
 }
 
 const app = new App({
-    config: Config
+  config: Config,
 });
 
-
 app.command('print-config', (config: Config) => {
-    console.log('config', config);
-})
+  console.log('config', config);
+});
 
 app.run();
 ```
@@ -40,10 +39,10 @@ When no configuration loader is used, the default values will be used. To change
 
 By default, no values are overwritten, so default values are used. There are several ways to set configuration values.
 
-* Via `app.configure({})`
-* Environment variables for each option
-* Environment variable via JSON
-* dotenv-Files
+- Via `app.configure({})`
+- Environment variables for each option
+- Environment variable via JSON
+- dotenv-Files
 
 You can use several methods to load the configuration at the same time. The order in which they are called is important.
 
@@ -55,11 +54,11 @@ For configuration options like `pageTitle` above, you can use `APP_PAGE_TITLE="O
 
 ```typescript
 new App({
-    config: config,
-    controllers: [MyWebsite],
+  config: config,
+  controllers: [MyWebsite],
 })
-    .loadConfigFromEnv({prefix: 'APP_'})
-    .run();
+  .loadConfigFromEnv({ prefix: 'APP_' })
+  .run();
 ```
 
 ```sh
@@ -72,11 +71,11 @@ To change multiple configuration options via a single environment variable, use 
 
 ```typescript
 new App({
-    config: config,
-    controllers: [MyWebsite],
+  config: config,
+  controllers: [MyWebsite],
 })
-    .loadConfigFromEnvVariable('APP_CONFIG')
-    .run();
+  .loadConfigFromEnvVariable('APP_CONFIG')
+  .run();
 ```
 
 ```sh
@@ -89,11 +88,11 @@ To change multiple configuration options via a dotenv file, use `loadConfigFromE
 
 ```typescript
 new App({
-    config: config,
-    controllers: [MyWebsite],
+  config: config,
+  controllers: [MyWebsite],
 })
-    .loadConfigFromEnv({envFilePath: ['production.dotenv', 'dotenv']})
-    .run();
+  .loadConfigFromEnv({ envFilePath: ['production.dotenv', 'dotenv'] })
+  .run();
 ```
 
 ```sh
@@ -126,26 +125,26 @@ $ APP_CONFIG='{"framework": {"port": 9999}}' ts-node app.ts server:start
 
 This works the same for all modules. No module prefix is required for your application configuration option (`new App`).
 
-
 ## Configuration class
 
 ```typescript
 import { MinLength } from '@deepkit/type';
 
 export class Config {
-    title!: string & MinLength<2>; //this makes it required and needs to be provided
-    host?: string;
+  title!: string & MinLength<2>; //this makes it required and needs to be provided
+  host?: string;
 
-    debug: boolean = false; //default values are supported as well
+  debug: boolean = false; //default values are supported as well
 }
 ```
 
 ```typescript
 import { createModule } from '@deepkit/app';
+
 import { Config } from './module.config.ts';
 
 export class MyModule extends createModule({
-   config: Config
+  config: Config,
 }) {}
 ```
 
@@ -155,7 +154,7 @@ The values for the configuration options can be provided either in the construct
 import { MyModule } from './module.ts';
 
 new App({
-   imports: [new MyModule({title: 'Hello World'})],
+  imports: [new MyModule({ title: 'Hello World' })],
 }).run();
 ```
 
@@ -164,11 +163,10 @@ To dynamically change the configuration options of an imported module, you can u
 ```typescript
 import { MyModule } from './module.ts';
 
-export class MainModule extends createModule({
-}) {
-    process() {
-        this.getImportedModuleByClass(MyModule).configure({title: 'Changed'});
-    }
+export class MainModule extends createModule({}) {
+  process() {
+    this.getImportedModuleByClass(MyModule).configure({ title: 'Changed' });
+  }
 }
 ```
 
@@ -187,11 +185,10 @@ new App({
 When the root application module is created from a regular module, it works similarly to regular modules.
 
 ```typescript
-class AppModule extends createModule({
-}) {
-    process() {
-        this.getImportedModuleByClass(MyModule).configure({title: 'Changed'});
-    }
+class AppModule extends createModule({}) {
+  process() {
+    this.getImportedModuleByClass(MyModule).configure({ title: 'Changed' });
+  }
 }
 
 App.fromModule(new AppModule()).run();
@@ -237,12 +234,11 @@ To inject only a single value, use the index access operator.
 import { Config } from './module.config';
 
 export class MyService {
-     constructor(private title: Config['title']) {
-     }
+  constructor(private title: Config['title']) {}
 
-     getTitle() {
-         return this.title;
-     }
+  getTitle() {
+    return this.title;
+  }
 }
 ```
 
@@ -254,11 +250,10 @@ To inject all config values, use the class as dependency.
 import { Config } from './module.config';
 
 export class MyService {
-     constructor(private config: Config) {
-     }
+  constructor(private config: Config) {}
 
-     getTitle() {
-         return this.config.title;
-     }
+  getTitle() {
+    return this.config.title;
+  }
 }
 ```

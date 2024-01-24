@@ -7,50 +7,47 @@ import { App } from '@deepkit/app';
 import { Filesystem, FilesystemLocalAdapter, provideFilesystem } from '@deepkit/filesystem';
 
 const app = new App({
-    providers: [
-        provideFilesystem(new FilesystemLocalAdapter({root: __dirname + '/public'})),
-    ]
+  providers: [provideFilesystem(new FilesystemLocalAdapter({ root: __dirname + '/public' }))],
 });
 
 app.command('write', async (content: string, fs: Filesystem) => {
-    await fs.write('/hello.txt', content);
+  await fs.write('/hello.txt', content);
 });
 
 app.command('read', async (fs: Filesystem) => {
-    const content = await fs.readAsText('/hello.txt');
-    console.log(content);
+  const content = await fs.readAsText('/hello.txt');
+  console.log(content);
 });
 
 app.run();
 ```
 
-
 ## Multiple Filesystems
 
-You can use multiple filesystems at the same time. To do so you register them with `provideNamedFilesystem('name', ...)` and receive the Filesystem instance with 
+You can use multiple filesystems at the same time. To do so you register them with `provideNamedFilesystem('name', ...)` and receive the Filesystem instance with
 `NamedFilesystem<'name'>`.
 
 ```typescript
 import { App } from '@deepkit/app';
-import { NamedFilesystem, FilesystemLocalAdapter, provideNamedFilesystem } from '@deepkit/filesystem';
+import { FilesystemLocalAdapter, NamedFilesystem, provideNamedFilesystem } from '@deepkit/filesystem';
 
 type PrivateFilesystem = NamedFilesystem<'private'>;
 type PublicFilesystem = NamedFilesystem<'public'>;
 
 const app = new App({
-    providers: [
-        provideNamedFilesystem('private', new FilesystemLocalAdapter({root: '/tmp/dir1'})),
-        provideNamedFilesystem('public', new FilesystemLocalAdapter({root: '/tmp/dir2'})),
-    ]
+  providers: [
+    provideNamedFilesystem('private', new FilesystemLocalAdapter({ root: '/tmp/dir1' })),
+    provideNamedFilesystem('public', new FilesystemLocalAdapter({ root: '/tmp/dir2' })),
+  ],
 });
 
 app.command('write', async (content: string, fs: PublicFilesystem) => {
-    await fs.write('/hello.txt', content);
+  await fs.write('/hello.txt', content);
 });
 
 app.command('read', async (fs: PublicFilesystem) => {
-    const content = await fs.readAsText('/hello.txt');
-    console.log(content);
+  const content = await fs.readAsText('/hello.txt');
+  console.log(content);
 });
 
 app.run();
@@ -68,18 +65,14 @@ import { App } from '@deepkit/app';
 import { Filesystem, FilesystemLocalAdapter, provideFilesystem } from '@deepkit/filesystem';
 
 class MyConfig {
-    fsRoot: string = '/tmp';
+  fsRoot: string = '/tmp';
 }
 
 const app = new App({
-    config: MyConfig,
-    providers: [
-        provideFilesystem(
-            (config: MyConfig) => new FilesystemLocalAdapter({root: config.fsRoot})
-        ),
-    ]
+  config: MyConfig,
+  providers: [provideFilesystem((config: MyConfig) => new FilesystemLocalAdapter({ root: config.fsRoot }))],
 });
 
-app.loadConfigFromEnv({prefix: 'APP_'})
+app.loadConfigFromEnv({ prefix: 'APP_' });
 app.run();
 ```

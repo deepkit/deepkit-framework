@@ -2,7 +2,6 @@
 
 To work directly with the type information itself, there are two basic variants: Type objects and Reflection classes. Type objects are regular JS objects returned by `typeOf<T>()`. Reflection classes are discussed below.
 
-
 The function `typeOf` works for all types, including interfaces, object literals, classes, functions, and type aliases. It returns a type object that contains all the information about the type. You can pass any type as a type argument, including generics.
 
 ```typescript
@@ -11,10 +10,10 @@ import { typeOf } from '@deepkit/type';
 typeOf<string>(); //{kind: 5}
 typeOf<number>(); //{kind: 6}
 
-typeOf<{id: number}>(); //{kind: 4, types: [{kind: 6, name: 'id'}]}
+typeOf<{ id: number }>(); //{kind: 4, types: [{kind: 6, name: 'id'}]}
 
 class User {
-    id: number
+  id: number;
 }
 
 typeOf<User>(); //{kind: 4, types: [...]}
@@ -28,17 +27,17 @@ The type object is a simple object literal that contains a `kind` property that 
 
 ```typescript
 enum ReflectionKind {
-  never,    //0
-  any,     //1
+  never, //0
+  any, //1
   unknown, //2
-  void,    //3
-  object,  //4
-  string,  //5
-  number,  //6
+  void, //3
+  object, //4
+  string, //5
+  number, //6
   boolean, //7
-  symbol,  //8
-  bigint,  //9
-  null,    //10
+  symbol, //8
+  bigint, //9
+  null, //10
   undefined, //11
 
   //... and even more
@@ -48,12 +47,24 @@ enum ReflectionKind {
 There are a number of possible type objects that can be returned. The simplest ones are `never`, `any`, `unknown`, `void, null,` and `undefined`, which are represented as follows:
 
 ```typescript
-{kind: 0}; //never
-{kind: 1}; //any
-{kind: 2}; //unknown
-{kind: 3}; //void
-{kind: 10}; //null
-{kind: 11}; //undefined
+{
+  kind: 0;
+} //never
+{
+  kind: 1;
+} //any
+{
+  kind: 2;
+} //unknown
+{
+  kind: 3;
+} //void
+{
+  kind: 10;
+} //null
+{
+  kind: 11;
+} //undefined
 ```
 
 For example, number 0 is the first entry of the `ReflectionKind` enum, in this case `never`, number 1 is the second entry, here `any`, and so on. Accordingly, primitive types like `string`, `number`, `boolean` are represented as follows:
@@ -207,8 +218,8 @@ However, as soon as a type is instantiated multiple times in a recursive type, i
 ```typescript
 type MyType<T> = T;
 type Object = {
-   a: MyType<string>;
-   b: MyType<string>;
+  a: MyType<string>;
+  b: MyType<string>;
 };
 
 typeOf<Object>();
@@ -239,7 +250,6 @@ For cached Type objects as exemplified above, the `parent` properties are not al
 
 In the further course some functions and features are described, which are often based on the type objects. To implement some of them in a performant way, a JIT (just in time) cache per type object is needed. This can be provided via `getJitContainer(type)`. This function returns a simple object on which arbitrary data can be stored. As long as no reference to the object is held, it will be deleted automatically by the GC as soon as the Type object itself is also no longer referenced.
 
-
 ## Reflection Classes
 
 In addition to the `typeOf<>()` function, there are various reflection classes that provide an OOP alternative to the Type objects. The reflection classes are only available for classes, InterfaceObject literals and functions and their direct sub-types (Properties, Methods, Parameters). All deeper types must be read again with the Type objects.
@@ -248,10 +258,9 @@ In addition to the `typeOf<>()` function, there are various reflection classes t
 import { ReflectionClass } from '@deepkit/type';
 
 interface User {
-    id: number;
-    username: string;
+  id: number;
+  username: string;
 }
-
 
 const reflection = ReflectionClass.from<User>();
 
@@ -262,7 +271,6 @@ reflection.getProperty('id').name; //'id'
 reflection.getProperty('id').type; //{kind: ReflectionKind.number}
 reflection.getProperty('id').isOptional(); //false
 ```
-
 
 ## Receive type information
 
@@ -281,10 +289,10 @@ function validate<T>(data: any, type?: ReceiveType<T>): void;
 `ReceiveType` with the reference to the first type arguments `T` signals the type compiler that each call to `validate` should put the type in second place (since `type` is declared in second place). To then read out the information at runtime, the `resolveReceiveType` function is used.
 
 ```typescript
-import { resolveReceiveType, ReceiveType } from '@deepkit/type';
+import { ReceiveType, resolveReceiveType } from '@deepkit/type';
 
 function validate<T>(data: any, type?: ReceiveType<T>): void {
-    type = resolveReceiveType(type);
+  type = resolveReceiveType(type);
 }
 ```
 

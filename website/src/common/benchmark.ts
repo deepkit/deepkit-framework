@@ -1,5 +1,5 @@
 import { ControllerSymbol } from '@deepkit/rpc';
-import { AutoIncrement, entity, Index, PrimaryKey } from '@deepkit/type';
+import { AutoIncrement, Index, PrimaryKey, entity } from '@deepkit/type';
 
 @entity.name('benchmarkEntry')
 export class BenchmarkEntry {
@@ -25,7 +25,10 @@ export class BenchmarkRun {
     data: { [fileName: string]: { [method: string]: BenchmarkEntry } } = {};
 }
 
-export const BenchmarkControllerInterface = ControllerSymbol<BenchmarkControllerInterface>('benchmark', [BenchmarkRun, BenchmarkEntry]);
+export const BenchmarkControllerInterface = ControllerSymbol<BenchmarkControllerInterface>('benchmark', [
+    BenchmarkRun,
+    BenchmarkEntry,
+]);
 
 export interface BenchmarkControllerInterface {
     getLastBenchmarkRuns(): Promise<BenchmarkRun[]>;

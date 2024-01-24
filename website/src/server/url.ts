@@ -1,12 +1,8 @@
-import { CommunityMessage } from "@app/common/models";
-import { AppConfig } from "@app/server/config";
+import { CommunityMessage } from '@app/common/models';
+import { AppConfig } from '@app/server/config';
 
 export class Url {
-    constructor(
-        protected baseUrl: AppConfig['baseUrl'],
-    ) {
-
-    }
+    constructor(protected baseUrl: AppConfig['baseUrl']) {}
 
     getCommunityQuestionUrl(communityMessage: CommunityMessage): string {
         const id = communityMessage.thread ? communityMessage.thread.id : communityMessage.id;

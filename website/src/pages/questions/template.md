@@ -106,12 +106,12 @@ In the constructor of a class component in Deepkit, the first arguments are rese
 
 ```typescript
 class MyComponent {
-    constructor(
-        protected props: { prop1: string },
-        protected children: any,
-        protected dependency1: Dependency1,
-        protected dependency2: Dependency2) {
-    }
+  constructor(
+    protected props: { prop1: string },
+    protected children: any,
+    protected dependency1: Dependency1,
+    protected dependency2: Dependency2,
+  ) {}
 }
 ```
 
@@ -142,239 +142,239 @@ assistant:
 ##-------------------------------------------------##
 
 user: Can class components in Deepkit access services registered in the dependency injection container?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does the Deepkit template engine handle dynamic HTML and user input safety?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What is the `html` function in Deepkit used for?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does the Deepkit template engine optimize the generated JSX code?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I organize my Deepkit templates for optimal performance?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What file extension should I use for Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use TypeScript features like type safety and decorators in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit templates be used with other rendering engines or frameworks?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What other modules or dependencies are required to use the Deepkit template engine?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Is the Deepkit template engine compatible with different versions of TypeScript?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use third-party libraries or packages in my Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use custom CSS or styles in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I pass data from my Deepkit controller to the template?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I reuse components or templates in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle error or exception handling in templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use deep linking or routing in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use form inputs or user interaction in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I debug or troubleshoot issues with Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use conditional rendering in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Is the Deepkit template engine compatible with different rendering engines or frameworks?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle runtime errors or exceptions in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use client-side rendering with Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What options do I have for styling Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use TypeScript decorators in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I pass data from a template to a Deepkit controller?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use TypeScript features like type safety in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use custom JavaScript functions or logic in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How does Deepkit handle caching of templates for optimal performance?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use nested components or templates in Deepkit?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle form inputs or user interactions in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: What are some best practices for organizing and structuring Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use external APIs or fetch data in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle internationalization (i18n) in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use routing or navigation in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I generate dynamic URLs or links in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle authentication or user sessions in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can Deepkit templates be used for generating PDF or other document formats?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I extend or customize the functionality of Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Are there any limitations or performance considerations to be aware of when using Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use CSS frameworks like Bootstrap or Tailwind CSS with Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I optimize the performance of Deepkit templates for large or complex applications?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use server-side caching or memoization techniques with Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle error reporting or logging in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use deep linking or URL parameters in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I use client-side JavaScript libraries or frameworks within Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: How can I handle file uploads or downloads in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Can I generate dynamic meta tags or SEO-friendly markup in Deepkit templates?
-assistant: 
+assistant:
 
 ##-------------------------------------------------##
 
 user: Is there a visual editor or IDE integration available for Deepkit templates?
-assistant: 
+assistant:

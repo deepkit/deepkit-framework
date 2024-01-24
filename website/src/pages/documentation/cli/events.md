@@ -10,16 +10,16 @@ There are several events that are emitted when a CLI command is executed. These 
 Event listeners can be registered either via the `App` instance as callbacks:
 
 ```typescript
-import { App, onAppExecute } from "@deepkit/app";
+import { App, onAppExecute } from '@deepkit/app';
 
 const app = new App();
 
 app.command('foo', () => {
-    console.log('foo');
+  console.log('foo');
 });
 
-app.listen(onAppExecute, (event) => {
-    console.log('command is about to be executed', event);
+app.listen(onAppExecute, event => {
+  console.log('command is about to be executed', event);
 });
 
 app.run();
@@ -28,26 +28,26 @@ app.run();
 Or as event listener classes:
 
 ```typescript
-import { App, onAppExecute } from "@deepkit/app";
-import { eventDispatcher } from "@deepkit/event";
+import { App, onAppExecute } from '@deepkit/app';
+import { eventDispatcher } from '@deepkit/event';
 
 class Listener {
-    @eventDispatcher.listen(onAppExecute)
-    onAppExecute(event: typeof onAppExecute.event) {
-        console.log('command is about to be executed', event);
-    }
+  @eventDispatcher.listen(onAppExecute)
+  onAppExecute(event: typeof onAppExecute.event) {
+    console.log('command is about to be executed', event);
+  }
 }
 
 const app = new App({
-    listeners: [Listener]
+  listeners: [Listener],
 });
 
 app.command('foo', () => {
-    console.log('foo');
+  console.log('foo');
 });
 
 app.run();
 ```
 
-Both variants support dependency injection. You can also define your own events and emit them in your code. 
+Both variants support dependency injection. You can also define your own events and emit them in your code.
 See the chapter [Events](../events) for more information about the event system.

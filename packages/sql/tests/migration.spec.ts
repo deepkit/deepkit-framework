@@ -1,17 +1,7 @@
 import { expect, test } from '@jest/globals';
 
 import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
-import {
-    AutoIncrement,
-    DatabaseField,
-    Index,
-    PrimaryKey,
-    Reference,
-    ReflectionClass,
-    ReflectionKind,
-    Unique,
-    entity,
-} from '@deepkit/type';
+import { AutoIncrement, DatabaseField, Index, PrimaryKey, Reference, ReflectionClass, ReflectionKind, Unique, entity } from '@deepkit/type';
 
 import { DefaultPlatform } from '../src/platform/default-platform.js';
 import { SchemaParser } from '../src/reverse/schema-parser.js';

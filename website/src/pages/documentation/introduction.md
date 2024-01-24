@@ -18,7 +18,7 @@ These patterns offer not only a proven way to structure applications but also fa
 
 ### Agile / Long-term Performance
 
-Deepkit is engineered with agility in mind, offering tools and features that accelerate initial development and provide long-term maintenance benefits. Unlike some frameworks that prioritize initial speed at the expense of future scalability, Deepkit balances both. Its design patterns are easy to grasp, making it simple to get started. However, they also scale effectively, ensuring that even as the project and team grow, development speed doesn't diminish. 
+Deepkit is engineered with agility in mind, offering tools and features that accelerate initial development and provide long-term maintenance benefits. Unlike some frameworks that prioritize initial speed at the expense of future scalability, Deepkit balances both. Its design patterns are easy to grasp, making it simple to get started. However, they also scale effectively, ensuring that even as the project and team grow, development speed doesn't diminish.
 
 This forward-thinking approach makes Deepkit not just an ideal choice for quick MVPs but also for complex, long-lived enterprise applications.
 
@@ -32,7 +32,6 @@ Finally, Deepkit places a strong emphasis on developer experience. The framework
 
 One of Deepkit's standout features is its ability to retain type information at runtime. Traditional TypeScript frameworks often discard this crucial data during the compilation process, making runtime operations like data validation, serialization, or dependency injection much more cumbersome. Deepkit's type compiler uniquely enables dynamic type computation and reading of existing type information at runtime. This not only offers greater flexibility but also results in more robust and typesafe applications, streamlining the development of complex systems.
 
-
 ### Comprehensive Library Suite
 
 Deepkit provides a complete ecosystem of libraries designed to accelerate various facets of application development. From database abstraction and CLI parsers to HTTP routers and RPC frameworks, Deepkit's libraries offer a unified solution to meet diverse programming needs. All of these libraries come with the added advantage of leveraging TypeScript’s type system at runtime, which significantly reduces boilerplate and increases code clarity. The modularity of Deepkit allows developers to either use individual libraries for specific tasks or employ the entire framework to build full-fledged, production-ready applications.
@@ -41,9 +40,6 @@ Deepkit provides a complete ecosystem of libraries designed to accelerate variou
 
 Maintaining development speed as projects grow in complexity is a formidable challenge. Deepkit addresses this issue head-on with its emphasis on applying proven enterprise design patterns that scale well with larger teams and more complex codebases. The framework incorporates established enterprise design patterns that have proven to scale well with larger teams and more complex codebases. Deepkit’s approach ensures that projects remain agile and efficient, not just in the initial stages but throughout their lifecycle. This is achieved by minimizing boilerplate and leveraging design patterns in the most ergonomic way possible, allowing teams to maintain high productivity levels over the long term.
 
-
-
 ### Isomorphic TypeScript
 
 Deepkit is designed to maximize the benefits of Isomorphic TypeScript, which allows the same codebase to be used across multiple platforms—be it frontend, backend, or even mobile applications. This results in significant time and cost savings as code can be shared among various departments, simplifying recruitment and facilitating easier knowledge transfer within teams. Deepkit fully harnesses the power of Isomorphic TypeScript, providing an integrated, cross-platform development experience that significantly outpaces traditional dual-stack approaches.
-

@@ -2,19 +2,7 @@ import { expect, test } from '@jest/globals';
 import bson from 'bson';
 import { randomBytes } from 'crypto';
 
-import {
-    BinaryBigInt,
-    Excluded,
-    MongoId,
-    PrimaryKey,
-    Reference,
-    SignedBinaryBigInt,
-    UUID,
-    createReference,
-    nodeBufferToArrayBuffer,
-    typeOf,
-    uuid,
-} from '@deepkit/type';
+import { BinaryBigInt, Excluded, MongoId, PrimaryKey, Reference, SignedBinaryBigInt, UUID, createReference, nodeBufferToArrayBuffer, typeOf, uuid } from '@deepkit/type';
 
 import { deserializeBSON } from '../src/bson-deserializer.js';
 import { deserializeBSONWithoutOptimiser } from '../src/bson-parser.js';
@@ -121,12 +109,8 @@ test('basic long', () => {
 
     expect(serializer({ position: 123456n })).toEqual(serialize({ position: Long.fromNumber(123456) }));
     expect(serializer({ position: -123456n })).toEqual(serialize({ position: Long.fromNumber(-123456) }));
-    expect(serializer({ position: 3364367088039355000n })).toEqual(
-        serialize({ position: Long.fromBigInt(3364367088039355000n) }),
-    );
-    expect(serializer({ position: -3364367088039355000n })).toEqual(
-        serialize({ position: Long.fromBigInt(-3364367088039355000n) }),
-    );
+    expect(serializer({ position: 3364367088039355000n })).toEqual(serialize({ position: Long.fromBigInt(3364367088039355000n) }));
+    expect(serializer({ position: -3364367088039355000n })).toEqual(serialize({ position: Long.fromBigInt(-3364367088039355000n) }));
 
     // expect(deserializer(serializer({ position: 3364367088039355000n }))).toEqual({ position: 3364367088039355000n });
     // expect(deserializer(serializer({ position: -3364367088039355000n }))).toEqual({ position: -3364367088039355000n });
@@ -533,15 +517,9 @@ test('basic date', () => {
     // expect(getBSONSizer(undefined, schema)(object)).toBe(expectedSize);
     // expect(serializer(object)).toEqual(serialize(object));
 
-    expect(serializer({ created: new Date('2900-10-12T00:00:00.000Z') })).toEqual(
-        serialize({ created: new Date('2900-10-12T00:00:00.000Z') }),
-    );
-    expect(serializer({ created: new Date('1900-10-12T00:00:00.000Z') })).toEqual(
-        serialize({ created: new Date('1900-10-12T00:00:00.000Z') }),
-    );
-    expect(serializer({ created: new Date('1000-10-12T00:00:00.000Z') })).toEqual(
-        serialize({ created: new Date('1000-10-12T00:00:00.000Z') }),
-    );
+    expect(serializer({ created: new Date('2900-10-12T00:00:00.000Z') })).toEqual(serialize({ created: new Date('2900-10-12T00:00:00.000Z') }));
+    expect(serializer({ created: new Date('1900-10-12T00:00:00.000Z') })).toEqual(serialize({ created: new Date('1900-10-12T00:00:00.000Z') }));
+    expect(serializer({ created: new Date('1000-10-12T00:00:00.000Z') })).toEqual(serialize({ created: new Date('1000-10-12T00:00:00.000Z') }));
 
     // const deserializer = getBSONDecoder(schema);
     // expect(deserializer(serializer({ created: new Date('2900-10-12T00:00:00.000Z') }))).toEqual({ created: new Date('2900-10-12T00:00:00.000Z') });
@@ -662,9 +640,7 @@ test('basic uuid', () => {
     expect(getBSONSizer(undefined, schema)(object)).toBe(expectedSize);
     expect(getBSONSerializer(undefined, schema)(object).byteLength).toBe(expectedSize);
 
-    const uuidPlain = Buffer.from([
-        0x75, 0xed, 0x23, 0x28, 0x89, 0xf2, 0x4b, 0x89, 0x9c, 0x49, 0x14, 0x98, 0x89, 0x1d, 0x61, 0x6d,
-    ]);
+    const uuidPlain = Buffer.from([0x75, 0xed, 0x23, 0x28, 0x89, 0xf2, 0x4b, 0x89, 0x9c, 0x49, 0x14, 0x98, 0x89, 0x1d, 0x61, 0x6d]);
     const uuidBinary = new Binary(uuidPlain, 4);
     const objectBinary = {
         uuid: uuidBinary,
@@ -1064,10 +1040,7 @@ test('bson length', () => {
         saslStart: 1,
         $db: 'admin',
         mechanism: 'SCRAM-SHA-1',
-        payload: Buffer.concat([
-            Buffer.from('n,,', 'utf8'),
-            Buffer.from(`n=Peter,r=${nonce.toString('base64')}`, 'utf8'),
-        ]),
+        payload: Buffer.concat([Buffer.from('n,,', 'utf8'), Buffer.from(`n=Peter,r=${nonce.toString('base64')}`, 'utf8')]),
         autoAuthorize: 1,
         options: { skipEmptyExchange: true },
     };
@@ -1133,9 +1106,7 @@ test('typed array', () => {
     const mongoMessage = {
         name: message.name,
         secondId: new OfficialObjectId(message.secondId),
-        preview: new Binary(
-            Buffer.from(new Uint8Array(message.preview.buffer, message.preview.byteOffset, message.preview.byteLength)),
-        ),
+        preview: new Binary(Buffer.from(new Uint8Array(message.preview.buffer, message.preview.byteOffset, message.preview.byteLength))),
     };
     const size = getBSONSizer(undefined, schema)(message);
     expect(size).toBe(calculateObjectSize(mongoMessage));

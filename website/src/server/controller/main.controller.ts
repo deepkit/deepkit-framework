@@ -1,15 +1,25 @@
-import { rpc } from "@deepkit/rpc";
-import { CommunityMessage, CommunityQuestion, CommunityQuestionListItem, Content, DocPageContent, DocPageResult, Page, UiCodeExample } from "@app/common/models";
-import { findParentPath } from "@deepkit/app";
-import { readFile } from "fs/promises";
-import { join } from "path";
-import { Search } from "@app/server/search";
-import { Observable } from "rxjs";
-import { Questions } from "@app/server/questions";
-import { MarkdownParser } from "@app/common/markdown";
-import { PageProcessor } from "@app/server/page-processor";
-import { Database } from "@deepkit/orm";
-import { eachValueFrom } from "rxjs-for-await";
+import { MarkdownParser } from '@app/common/markdown';
+import {
+    CommunityMessage,
+    CommunityQuestion,
+    CommunityQuestionListItem,
+    Content,
+    DocPageContent,
+    DocPageResult,
+    Page,
+    UiCodeExample,
+} from '@app/common/models';
+import { PageProcessor } from '@app/server/page-processor';
+import { Questions } from '@app/server/questions';
+import { Search } from '@app/server/search';
+import { readFile } from 'fs/promises';
+import { join } from 'path';
+import { Observable } from 'rxjs';
+import { eachValueFrom } from 'rxjs-for-await';
+
+import { findParentPath } from '@deepkit/app';
+import { Database } from '@deepkit/orm';
+import { rpc } from '@deepkit/rpc';
 
 function different(a?: string | Content, b?: string | Content): boolean {
     if ('string' === typeof a || 'undefined' === typeof a) {
@@ -33,36 +43,30 @@ function different(a?: string | Content, b?: string | Content): boolean {
     return false;
 }
 
-function createDocPageResult(
-    markdownParser: MarkdownParser,
-    content: DocPageContent,
-): DocPageResult {
+function createDocPageResult(markdownParser: MarkdownParser, content: DocPageContent): DocPageResult {
     return {
         url: content.url,
         title: content.title,
         path: content.path,
         tag: content.tag,
         content: markdownParser.parse(content.content).body,
-    }
+    };
 }
 
-function createUiExample(
-    markdownParser: MarkdownParser,
-    example: CommunityMessage,
-): UiCodeExample {
+function createUiExample(markdownParser: MarkdownParser, example: CommunityMessage): UiCodeExample {
     return {
         title: example.title,
         category: example.category,
         url: example.meta.url || '',
         slug: example.slug,
         content: markdownParser.parse(example.content).body,
-    }
+    };
 }
 
 function createCommunityQuestion(
     markdownParser: MarkdownParser,
     question: CommunityMessage,
-    messages: CommunityMessage[]
+    messages: CommunityMessage[],
 ): CommunityQuestion {
     return {
         id: question.id,
@@ -78,13 +82,16 @@ function createCommunityQuestion(
         user: question.userDisplayName,
         userAvatar: question.discordUserAvatarUrl,
         content: markdownParser.parse(question.content).body,
-        messages: messages.map(v => ({ id: v.id, user: v.userDisplayName, userAvatar: v.discordUserAvatarUrl, content: markdownParser.parse(v.content).body })),
-    }
+        messages: messages.map(v => ({
+            id: v.id,
+            user: v.userDisplayName,
+            userAvatar: v.discordUserAvatarUrl,
+            content: markdownParser.parse(v.content).body,
+        })),
+    };
 }
 
-function createCommunityQuestionListItem(
-    question: CommunityMessage,
-): CommunityQuestionListItem {
+function createCommunityQuestionListItem(question: CommunityMessage): CommunityQuestionListItem {
     return {
         id: question.id,
         created: question.created,
@@ -93,7 +100,7 @@ function createCommunityQuestionListItem(
         votes: question.votes,
         title: question.title,
         user: question.userDisplayName,
-    }
+    };
 }
 
 @rpc.controller('/main')
@@ -104,28 +111,36 @@ export class MainController {
         private page: PageProcessor,
         private database: Database,
         private markdownParser: MarkdownParser,
-    ) {
-    }
+    ) {}
 
     @rpc.action()
     async getQuestion(id: number, authId?: string): Promise<CommunityQuestion> {
-        const message = await this.database.query(CommunityMessage).filter({ id, type: {$ne: 'example'} }).findOne();
-        const messages = await this.database.query(CommunityMessage).filter({ thread: message, type: { $ne: 'edit' } }).orderBy('created', 'asc').find();
+        const message = await this.database
+            .query(CommunityMessage)
+            .filter({ id, type: { $ne: 'example' } })
+            .findOne();
+        const messages = await this.database
+            .query(CommunityMessage)
+            .filter({ thread: message, type: { $ne: 'edit' } })
+            .orderBy('created', 'asc')
+            .find();
         const question = createCommunityQuestion(this.markdownParser, message, messages);
         question.allowEdit = message.authId === authId;
         return question;
     }
 
     @rpc.action()
-    async getQuestions(): Promise<{ top: CommunityQuestionListItem[], newest: CommunityQuestionListItem[] }> {
-        const top = await this.database.query(CommunityMessage)
-            .filter({ order: 1, type: {$ne: 'example'} })
+    async getQuestions(): Promise<{ top: CommunityQuestionListItem[]; newest: CommunityQuestionListItem[] }> {
+        const top = await this.database
+            .query(CommunityMessage)
+            .filter({ order: 1, type: { $ne: 'example' } })
             .orderBy('votes', 'desc')
             .limit(100)
             .find();
 
-        const newest = await this.database.query(CommunityMessage)
-            .filter({ order: 1, type: {$ne: 'example'} })
+        const newest = await this.database
+            .query(CommunityMessage)
+            .filter({ order: 1, type: { $ne: 'example' } })
             .orderBy('created', 'desc')
             .limit(15)
             .find();
@@ -133,7 +148,7 @@ export class MainController {
         return {
             top: top.map(v => createCommunityQuestionListItem(v)),
             newest: newest.map(v => createCommunityQuestionListItem(v)),
-        }
+        };
     }
 
     @rpc.action()
@@ -149,7 +164,9 @@ export class MainController {
 
     @rpc.action()
     async createQuestion(prompt: string, threadId: number = 0, authId?: string): Promise<CommunityQuestion> {
-        const thread = threadId ? await this.database.query(CommunityMessage).filter({ id: threadId }).findOne() : undefined;
+        const thread = threadId
+            ? await this.database.query(CommunityMessage).filter({ id: threadId }).findOne()
+            : undefined;
         if (thread) {
             //additional message should be added, so check for authId
             if (thread.authId !== authId) throw new Error('Invalid authId');
@@ -166,8 +183,11 @@ export class MainController {
     }
 
     @rpc.action()
-    async createAnswer(messageId: number): Promise<Observable<{ next: (string | Content)[], remove: number, message?: CommunityQuestion }>> {
-        const question = await this.database.query(CommunityMessage)
+    async createAnswer(
+        messageId: number,
+    ): Promise<Observable<{ next: (string | Content)[]; remove: number; message?: CommunityQuestion }>> {
+        const question = await this.database
+            .query(CommunityMessage)
             .joinWith('thread')
             .filter({ id: messageId })
             .findOne();
@@ -178,7 +198,11 @@ export class MainController {
                 let lastBody: (string | Content)[] = [];
 
                 const response = await this.ml.ask(question);
-                subscriber.next({ next: [], remove: 0, message: createCommunityQuestion(this.markdownParser, response.message, []) });
+                subscriber.next({
+                    next: [],
+                    remove: 0,
+                    message: createCommunityQuestion(this.markdownParser, response.message, []),
+                });
 
                 for await (const t of eachValueFrom(response.text)) {
                     content += t;
@@ -209,12 +233,12 @@ export class MainController {
     }
 
     @rpc.action()
-    async search(query: string): Promise<{ pages: DocPageResult[], community: CommunityQuestion[] }> {
+    async search(query: string): Promise<{ pages: DocPageResult[]; community: CommunityQuestion[] }> {
         const hits = await this.searcher.find(query);
 
         return {
             pages: hits.pages.map(v => createDocPageResult(this.markdownParser, v)),
-            community: hits.community.map(v => createCommunityQuestion(this.markdownParser, v, []))
+            community: hits.community.map(v => createCommunityQuestion(this.markdownParser, v, [])),
         };
     }
 
@@ -231,7 +255,8 @@ export class MainController {
 
     @rpc.action()
     async getFAQ(category: string): Promise<CommunityQuestion[]> {
-        const questions = await this.database.query(CommunityMessage)
+        const questions = await this.database
+            .query(CommunityMessage)
             .filter({ type: 'answer', category, order: 1, assistant: true })
             .limit(5)
             .orderBy('votes', 'desc')
@@ -260,7 +285,10 @@ export class MainController {
 
     @rpc.action()
     async getExample(category: string, slug: string): Promise<UiCodeExample> {
-        const example = await this.database.query(CommunityMessage).filter({ type: 'example', category, slug }).findOne();
+        const example = await this.database
+            .query(CommunityMessage)
+            .filter({ type: 'example', category, slug })
+            .findOne();
         return createUiExample(this.markdownParser, example);
     }
 }

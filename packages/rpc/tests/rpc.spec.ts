@@ -113,9 +113,7 @@ test('protocol composite', () => {
     }
 
     {
-        const message = createRpcCompositeMessage(1024, 33, [
-            { type: 4, schema: typeOf<schema>(), body: { name: 'foo' } },
-        ]);
+        const message = createRpcCompositeMessage(1024, 33, [{ type: 4, schema: typeOf<schema>(), body: { name: 'foo' } }]);
 
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);
@@ -132,10 +130,7 @@ test('protocol composite', () => {
     }
 
     {
-        const message = createRpcCompositeMessage(1024, 5, [
-            { type: 4 },
-            { type: 5, schema: typeOf<schema>(), body: { name: 'foo' } },
-        ]);
+        const message = createRpcCompositeMessage(1024, 5, [{ type: 4 }, { type: 5, schema: typeOf<schema>(), body: { name: 'foo' } }]);
 
         const parsed = readRpcMessage(message);
         expect(parsed.id).toBe(1024);

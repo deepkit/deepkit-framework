@@ -13,26 +13,25 @@ import { FrameworkModule } from '@deepkit/framework';
 import { http } from '@deepkit/http';
 
 class Config {
-    title: string = 'DEV my Page';
+  title: string = 'DEV my Page';
 }
 
 class MyWebsite {
-    constructor(protected title: Config['title']) {
-    }
+  constructor(protected title: Config['title']) {}
 
-    @http.GET()
-    helloWorld() {
-        return 'Hello from ' + this.title;
-    }
+  @http.GET()
+  helloWorld() {
+    return 'Hello from ' + this.title;
+  }
 }
 
 new App({
-    config: Config,
-    controllers: [MyWebsite],
-    imports: [new FrameworkModule]
+  config: Config,
+  controllers: [MyWebsite],
+  imports: [new FrameworkModule()],
 })
-    .loadConfigFromEnv()
-    .run();
+  .loadConfigFromEnv()
+  .run();
 ```
 
 If you use `ts-node app.ts server:start`, you will see that everything works correctly. In a production environment, you would not typically start the server with `ts-node`. You would compile it into JavaScript and then use the node. To do this, you must have a correct `tsconfig.json` with the correct configuration options. In the "First Application" section, your `tsconfig.json` is configured to output JavaScript to the `.dist` folder. We assume that you have configured it that way as well.
@@ -87,19 +86,18 @@ import { FrameworkModule } from '@deepkit/framework';
 // your config and http controller here
 
 new App({
-    config: Config,
-    controllers: [MyWebsite],
-    imports: [
-        new FrameworkModule({
-            ssl: true,
-            selfSigned: true,
-            sslKey: __dirname + 'path/ssl.key',
-            sslCertificate: __dirname + 'path/ssl.cert',
-            sslCA: __dirname + 'path/ssl.ca',
-        })
-    ]
-})
-    .run();
+  config: Config,
+  controllers: [MyWebsite],
+  imports: [
+    new FrameworkModule({
+      ssl: true,
+      selfSigned: true,
+      sslKey: __dirname + 'path/ssl.key',
+      sslCertificate: __dirname + 'path/ssl.cert',
+      sslCA: __dirname + 'path/ssl.ca',
+    }),
+  ],
+}).run();
 ```
 
 ### Local SSL
@@ -113,16 +111,15 @@ import { FrameworkModule } from '@deepkit/framework';
 // your config and http controller here
 
 new App({
-    config: config,
-    controllers: [MyWebsite],
-    imports: [
-        new FrameworkModule({
-            ssl: true,
-            selfSigned: true,
-        })
-    ]
-})
-    .run();
+  config: config,
+  controllers: [MyWebsite],
+  imports: [
+    new FrameworkModule({
+      ssl: true,
+      selfSigned: true,
+    }),
+  ],
+}).run();
 ```
 
 ```sh

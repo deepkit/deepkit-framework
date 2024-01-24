@@ -1,113 +1,109 @@
-import { Component } from "@angular/core";
-import { RouterLink } from "@angular/router";
-import { AppTitle } from "@app/app/components/title";
-
+import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { AppTitle } from '@app/app/components/title';
 
 @Component({
     standalone: true,
-    styles: [`
-        .offering {
-            text-align: center;
-            padding: 150px 0;
+    styles: [
+        `
+            .offering {
+                text-align: center;
+                padding: 150px 0;
 
-            .wrapper {
-                max-width: 870px;
-            }
+                .wrapper {
+                    max-width: 870px;
+                }
 
-            &.bg {
-                border: 1px solid #262626;
-                background: #15191C;
-            }
-        }
-
-        .reference {
-
-            .wrapper {
-                max-width: 860px;
-                padding: 100px 50px;
-            }
-
-            &.bg {
-                border: 1px solid #262626;
-                background: #15191C;
-            }
-        }
-
-        .box3 {
-            margin: 35px auto;
-            grid-auto-flow: column;
-            grid-template-columns: unset;
-            justify-content: center;
-
-            .app-box {
-                width: 260px;
-                max-width: 100%;
-            }
-        }
-
-        .app-box {
-            position: relative;
-            text-align: left;
-
-            h2 {
-                font-size: 18px;
-                margin: 2px 0;
-                color: white;
-            }
-
-            .price {
-                color: #B4B4B4;
-                font-size: 18px;
-            }
-
-            ul {
-                margin-top: 15px;
-                font-size: 13px;
-                list-style: none;
-                padding: 0;
-
-                li {
-                    padding: 0;
+                &.bg {
+                    border: 1px solid #262626;
+                    background: #15191c;
                 }
             }
 
-            .footer {
-                font-size: 13px;
-                color: var(--color-grey);
-            }
-        }
+            .reference {
+                .wrapper {
+                    max-width: 860px;
+                    padding: 100px 50px;
+                }
 
-        h3.text {
-            margin-bottom: 25px;
-        }
-
-        .how {
-            margin-top: 50px;
-            text-align: left;
-
-            p {
-                //max-width: 680px;
-                //text-align: justify;
+                &.bg {
+                    border: 1px solid #262626;
+                    background: #15191c;
+                }
             }
 
-            h3 {
-                font-weight: bold;
-                font-size: 18px;
-                margin: 15px 0;
-            }
-        }
+            .box3 {
+                margin: 35px auto;
+                grid-auto-flow: column;
+                grid-template-columns: unset;
+                justify-content: center;
 
-    `],
-    imports: [
-        RouterLink,
-        AppTitle
+                .app-box {
+                    width: 260px;
+                    max-width: 100%;
+                }
+            }
+
+            .app-box {
+                position: relative;
+                text-align: left;
+
+                h2 {
+                    font-size: 18px;
+                    margin: 2px 0;
+                    color: white;
+                }
+
+                .price {
+                    color: #b4b4b4;
+                    font-size: 18px;
+                }
+
+                ul {
+                    margin-top: 15px;
+                    font-size: 13px;
+                    list-style: none;
+                    padding: 0;
+
+                    li {
+                        padding: 0;
+                    }
+                }
+
+                .footer {
+                    font-size: 13px;
+                    color: var(--color-grey);
+                }
+            }
+
+            h3.text {
+                margin-bottom: 25px;
+            }
+
+            .how {
+                margin-top: 50px;
+                text-align: left;
+
+                p {
+                    //max-width: 680px;
+                    //text-align: justify;
+                }
+
+                h3 {
+                    font-weight: bold;
+                    font-size: 18px;
+                    margin: 15px 0;
+                }
+            }
+        `,
     ],
+    imports: [RouterLink, AppTitle],
     template: `
         <app-title value="Enterprise"></app-title>
         <div class="app-content-full">
             <div class="app-banner">
                 <div class="wrapper">
-                    <img class="deepkit" alt="deepkit logo" src="/assets/images/deepkit_white_text.svg"/>
+                    <img class="deepkit" alt="deepkit logo" src="/assets/images/deepkit_white_text.svg" />
 
                     <h1>ENTERPRISE</h1>
                     <h2>GERMAN ENGINEERING</h2>
@@ -115,13 +111,13 @@ import { AppTitle } from "@app/app/components/title";
                     <div>
                         <p>
                             Deepkit is a German software engineering company building high-fidelity and top-notch web
-                            applications with over 20 years experience, specialised in
-                            machine learning, delivering scalable and innovative solutions.
+                            applications with over 20 years experience, specialised in machine learning, delivering
+                            scalable and innovative solutions.
                         </p>
 
                         <p>
-                            We design and implement complex custom web applications for international and<br/>
-                            local clients using our unique high-performance TypeScript tech stack.<br/>
+                            We design and implement complex custom web applications for international and<br />
+                            local clients using our unique high-performance TypeScript tech stack.<br />
                             If you have a project and need help, contact us or book us now.
                         </p>
 
@@ -134,16 +130,15 @@ import { AppTitle } from "@app/app/components/title";
 
             <div class="offering">
                 <div class="wrapper">
-
                     <h2>Support</h2>
 
                     <h3 class="text">
-                        Need help with your project?<br/>
+                        Need help with your project?<br />
                         TypeScript, Deepkit, Angular, C++, Python, Machine Learning &hyphen; We got you covered.
                     </h3>
 
                     <h3 class="text">
-                        No matter if you need a jumpstart, a code review, pair programming session,<br/>
+                        No matter if you need a jumpstart, a code review, pair programming session,<br />
                         architecture consulting, or just a helping hand.
                     </h3>
 
@@ -161,12 +156,13 @@ import { AppTitle } from "@app/app/components/title";
                                 <li>Deepkit</li>
                             </ul>
                             <p class="footer">
-                                For Startups using Deepkit<br/>
+                                For Startups using Deepkit<br />
                                 for the first time.
                             </p>
                             <div class="actions">
-                                <a target="_blank" href="https://discord.com/invite/PtfVf7B8UU" class="button big">Join
-                                    Discord</a>
+                                <a target="_blank" href="https://discord.com/invite/PtfVf7B8UU" class="button big"
+                                    >Join Discord</a
+                                >
                             </div>
                         </div>
                         <div class="app-box">
@@ -182,11 +178,11 @@ import { AppTitle } from "@app/app/components/title";
                                 <li>Invite your team</li>
                                 <li>Deepkit, TypeScript, HTML</li>
                             </ul>
-                            <p class="footer">
-                                Cancel anytime
-                            </p>
+                            <p class="footer">Cancel anytime</p>
                             <div class="actions">
-                                <a href="https://buy.stripe.com/6oE5m34V58KrcYE8wx" target="_blank" class="button big">Book now</a>
+                                <a href="https://buy.stripe.com/6oE5m34V58KrcYE8wx" target="_blank" class="button big"
+                                    >Book now</a
+                                >
                             </div>
                         </div>
                         <div class="app-box">
@@ -202,19 +198,17 @@ import { AppTitle } from "@app/app/components/title";
                                 <li>Machine Learning</li>
                                 <li>Database design</li>
                             </ul>
-                            <p class="footer">
-                                2-7 days
-                            </p>
+                            <p class="footer">2-7 days</p>
                             <div class="actions">
-                                <a href="https://book.stripe.com/14k15N73d6Cj2k0144" target="_blank" class="button big">Book now</a>
+                                <a href="https://book.stripe.com/14k15N73d6Cj2k0144" target="_blank" class="button big"
+                                    >Book now</a
+                                >
                             </div>
                         </div>
                     </div>
 
                     <div class="how">
-                        <h3 class="text">
-                            How does it work?
-                        </h3>
+                        <h3 class="text">How does it work?</h3>
 
                         <p>
                             You book us and we help you. We use Discord/Microsoft Teams for communication and screen
@@ -224,9 +218,8 @@ import { AppTitle } from "@app/app/components/title";
                         <p>
                             <strong>Unlimited Support:</strong> Limited to 1 project. Cancel anytime. When you cancel,
                             no money refund. If we cancel, we refund the remaining time. Does not include writing code
-                            for you,
-                            except for code examples. Free high priority bug fix for any bug in Deepkit.
-                            See <a routerLink="/terms">Terms of Service</a> for details.
+                            for you, except for code examples. Free high priority bug fix for any bug in Deepkit. See
+                            <a routerLink="/terms">Terms of Service</a> for details.
                         </p>
                     </div>
                 </div>
@@ -236,13 +229,9 @@ import { AppTitle } from "@app/app/components/title";
                 <div class="wrapper">
                     <h2>Custom Prototypes</h2>
 
-                    <h3 class="text">
-                        We put money where our mouth is. We build your prototype in 1-3 weeks.
-                    </h3>
+                    <h3 class="text">We put money where our mouth is. We build your prototype in 1-3 weeks.</h3>
 
-                    <h3 class="text">
-                        No sales, no project manager, no scrum, no bullshit. Just results.
-                    </h3>
+                    <h3 class="text">No sales, no project manager, no scrum, no bullshit. Just results.</h3>
 
                     <div class="app-boxes box3">
                         <div class="app-box">
@@ -259,11 +248,11 @@ import { AppTitle } from "@app/app/components/title";
                                 <li>TypeScript, HTML, CSS, C++, Python</li>
                             </ul>
 
-                            <p class="footer">
-                                1-2 weeks turnaround
-                            </p>
+                            <p class="footer">1-2 weeks turnaround</p>
                             <div class="actions">
-                                <a href="https://buy.stripe.com/28o29RcnxaSz5wc9AE" target="_blank" class="button big">Buy now</a>
+                                <a href="https://buy.stripe.com/28o29RcnxaSz5wc9AE" target="_blank" class="button big"
+                                    >Buy now</a
+                                >
                             </div>
                         </div>
                         <div class="app-box">
@@ -280,11 +269,11 @@ import { AppTitle } from "@app/app/components/title";
                                 <li>TypeScript, HTML, CSS, C++, Python</li>
                             </ul>
 
-                            <p class="footer">
-                                3 weeks turnaround
-                            </p>
+                            <p class="footer">3 weeks turnaround</p>
                             <div class="actions">
-                                <a href="https://buy.stripe.com/14k6q7afpaSz1fWcMP" target="_blank" class="button big">Buy now</a>
+                                <a href="https://buy.stripe.com/14k6q7afpaSz1fWcMP" target="_blank" class="button big"
+                                    >Buy now</a
+                                >
                             </div>
                         </div>
                         <div class="app-box">
@@ -302,53 +291,46 @@ import { AppTitle } from "@app/app/components/title";
                                 <li>Training costs excluded</li>
                             </ul>
 
-                            <p class="footer">
-                                2-3 weeks turnaround
-                            </p>
+                            <p class="footer">2-3 weeks turnaround</p>
                             <div class="actions">
-                                <a href="https://buy.stripe.com/7sIbKrafp0dV3o45kp" target="_blank" class="button big">Buy now</a>
+                                <a href="https://buy.stripe.com/7sIbKrafp0dV3o45kp" target="_blank" class="button big"
+                                    >Buy now</a
+                                >
                             </div>
                         </div>
                     </div>
 
                     <div class="how">
-                        <h3 class="text">
-                            We build prototypes and MVPs
-                        </h3>
+                        <h3 class="text">We build prototypes and MVPs</h3>
                         <p>
                             We build prototypes and small MVPs to test if your hypothesis/business model works &hyphen;
-                            fast.
-                            Our prototype is a fully functional application that implements the core features of your
-                            product. It's not a mockup, it's not a wireframe,
-                            it's not a clickable demo. It's a real application that you can use and test in production.
+                            fast. Our prototype is a fully functional application that implements the core features of
+                            your product. It's not a mockup, it's not a wireframe, it's not a clickable demo. It's a
+                            real application that you can use and test in production.
                         </p>
 
                         <p>
-                            The prototype we build is not a throw-away. It's the foundation of your product.
-                            We build it with the same quality standards as we would build a production application,
-                            but with less features and less tests. We apply the same architecture and design patterns
-                            as we would do for a production application to ensure that the prototype can be easily
-                            extended and maintained, eventually becoming the production application.
+                            The prototype we build is not a throw-away. It's the foundation of your product. We build it
+                            with the same quality standards as we would build a production application, but with less
+                            features and less tests. We apply the same architecture and design patterns as we would do
+                            for a production application to ensure that the prototype can be easily extended and
+                            maintained, eventually becoming the production application.
                         </p>
                     </div>
 
-                    <div class="app-boxes"
-                         style="grid-auto-flow: column; grid-auto-columns: minmax(450px, auto); grid-template-columns: unset;">
+                    <div
+                        class="app-boxes"
+                        style="grid-auto-flow: column; grid-auto-columns: minmax(450px, auto); grid-template-columns: unset;"
+                    >
                         <div class="app-box">
                             <h2>MVP</h2>
                             <ul>
                                 <li>
                                     Need a more advanced prototype? We can build it for you. Contact us for a quote.
                                 </li>
-                                <li>
-                                    Per project price (not hourly)
-                                </li>
-                                <li>
-                                    No hidden fees or ongoing costs
-                                </li>
-                                <li>
-                                    Optionally with design and branding
-                                </li>
+                                <li>Per project price (not hourly)</li>
+                                <li>No hidden fees or ongoing costs</li>
+                                <li>Optionally with design and branding</li>
                             </ul>
                             <div class="actions">
                                 <a href="mailto:info@deepkit.io" class="button">Contact us</a>
@@ -357,21 +339,11 @@ import { AppTitle } from "@app/app/components/title";
                         <div class="app-box">
                             <h2>Investment</h2>
                             <ul>
-                                <li>
-                                    No money, but a great idea?
-                                </li>
-                                <li>
-                                    We develop the prototype
-                                </li>
-                                <li>
-                                    We get a share of your company (at least 50%)
-                                </li>
-                                <li>
-                                    We create design and branding
-                                </li>
-                                <li>
-                                    We pay for the server costs
-                                </li>
+                                <li>No money, but a great idea?</li>
+                                <li>We develop the prototype</li>
+                                <li>We get a share of your company (at least 50%)</li>
+                                <li>We create design and branding</li>
+                                <li>We pay for the server costs</li>
                             </ul>
                             <div class="actions">
                                 <a href="mailto:info@deepkit.io" class="button">Contact us</a>
@@ -380,63 +352,59 @@ import { AppTitle } from "@app/app/components/title";
                     </div>
 
                     <div class="how">
-                        <h3 class="text">
-                            How does it work?
-                        </h3>
+                        <h3 class="text">How does it work?</h3>
 
                         <p>
-                            You send us your idea, ideally with fully designed screens. We review it and tell you
-                            if it's doable in the given time frame. If yes, we send you an invoice and start
-                            working.<br/>
+                            You send us your idea, ideally with fully designed screens. We review it and tell you if
+                            it's doable in the given time frame. If yes, we send you an invoice and start working.<br />
                             We primarily use Angular, TypeScript, and Deepkit Framework with NodeJS, Docker, and
-                            PostgreSQL to build your prototype and
-                            host on Google Cloud Platform. We use Discord or Microsoft Teams for communication, screen
-                            sharing,and presentation of status updates. See <a routerLink="/terms">Terms of Service</a> for details.
+                            PostgreSQL to build your prototype and host on Google Cloud Platform. We use Discord or
+                            Microsoft Teams for communication, screen sharing,and presentation of status updates. See
+                            <a routerLink="/terms">Terms of Service</a> for details.
                         </p>
                     </div>
                 </div>
             </div>
 
-<!--            <div class="references offering">-->
-<!--                <h2>References</h2>-->
+            <!--            <div class="references offering">-->
+            <!--                <h2>References</h2>-->
 
-<!--                <h3 class="text">-->
-<!--                    We build application for startups and enterprises since over 18 years. Our open-source projects have-->
-<!--                    over 1 million downloads each month.-->
-<!--                </h3>-->
+            <!--                <h3 class="text">-->
+            <!--                    We build application for startups and enterprises since over 18 years. Our open-source projects have-->
+            <!--                    over 1 million downloads each month.-->
+            <!--                </h3>-->
 
-<!--                <h3 class="text">-->
-<!--                    Here are some of our highlights.-->
-<!--                </h3>-->
+            <!--                <h3 class="text">-->
+            <!--                    Here are some of our highlights.-->
+            <!--                </h3>-->
 
-<!--                <div style="margin-bottom: 50px;">-->
-<!--                    eCommerce Platform-->
-<!--                    // Design Tool-->
-<!--                    // TypeRunner-->
-<!--                    // Deepkit Framework-->
-<!--                    // Deepkit ML-->
-<!--                    // AETROS-->
-<!--                    // JARVES-->
-<!--                </div>-->
+            <!--                <div style="margin-bottom: 50px;">-->
+            <!--                    eCommerce Platform-->
+            <!--                    // Design Tool-->
+            <!--                    // TypeRunner-->
+            <!--                    // Deepkit Framework-->
+            <!--                    // Deepkit ML-->
+            <!--                    // AETROS-->
+            <!--                    // JARVES-->
+            <!--                </div>-->
 
-<!--                <div class="reference bg">-->
-<!--                    <div class="wrapper">-->
-<!--                        <h3>eCommerce Platform</h3>-->
+            <!--                <div class="reference bg">-->
+            <!--                    <div class="wrapper">-->
+            <!--                        <h3>eCommerce Platform</h3>-->
 
-<!--                        <p>-->
-<!--                            Custom eCommerce platform for a German company with several million Euros revenue-->
-<!--                            per year. From the design to the implementation, we built the whole platform from scratch using-->
-<!--                            TypeScript everywhere-->
-<!--                        </p>-->
+            <!--                        <p>-->
+            <!--                            Custom eCommerce platform for a German company with several million Euros revenue-->
+            <!--                            per year. From the design to the implementation, we built the whole platform from scratch using-->
+            <!--                            TypeScript everywhere-->
+            <!--                        </p>-->
 
-<!--                        <p>-->
-<!--                            Frontend and Backend based on Angular with SSR, Deepkit Framework, PostgreSQL, and Docker.-->
-<!--                        </p>-->
-<!--                    </div>-->
-<!--                </div>-->
-<!--            </div>-->
+            <!--                        <p>-->
+            <!--                            Frontend and Backend based on Angular with SSR, Deepkit Framework, PostgreSQL, and Docker.-->
+            <!--                        </p>-->
+            <!--                    </div>-->
+            <!--                </div>-->
+            <!--            </div>-->
         </div>
-    `
+    `,
 })
-export class EnterpriseComponent {
-}
+export class EnterpriseComponent {}

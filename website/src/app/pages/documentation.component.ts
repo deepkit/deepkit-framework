@@ -1,13 +1,13 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from "@angular/core";
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
-import { AppDescription, AppTitle } from "@app/app/components/title";
-import { ContentRenderComponent } from "@app/app/components/content-render.component";
-import { NgForOf, NgIf } from "@angular/common";
-import { FormsModule } from "@angular/forms";
-import { LoadingComponent } from "@app/app/components/loading";
-import { AskComponent } from "@app/app/components/ask.component";
-import { Subscription } from "rxjs";
-import { PlatformHelper } from "@app/app/utils";
+import { NgForOf, NgIf } from '@angular/common';
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AskComponent } from '@app/app/components/ask.component';
+import { ContentRenderComponent } from '@app/app/components/content-render.component';
+import { LoadingComponent } from '@app/app/components/loading';
+import { AppDescription, AppTitle } from '@app/app/components/title';
+import { PlatformHelper } from '@app/app/utils';
+import { Subscription } from 'rxjs';
 
 @Component({
     standalone: true,
@@ -22,14 +22,14 @@ import { PlatformHelper } from "@app/app/utils";
         FormsModule,
         LoadingComponent,
         AskComponent,
-        RouterOutlet
+        RouterOutlet,
     ],
     styleUrls: ['./documentation.component.scss'],
     template: `
         <div class="page">
             <div class="content-wrapper">
-                <div class="menu-trigger"><a (click)="showMenu=!showMenu" class="button">Chapters</a></div>
-                <div (click)="showMenu=false; true">
+                <div class="menu-trigger"><a (click)="showMenu = !showMenu" class="button">Chapters</a></div>
+                <div (click)="showMenu = false; (true)">
                     <router-outlet></router-outlet>
                 </div>
             </div>
@@ -45,10 +45,17 @@ import { PlatformHelper } from "@app/app/utils";
 
                 <div class="category">
                     <div class="category-title">App</div>
-                    <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/app">Getting started</a>
+                    <a
+                        routerLinkActive="active"
+                        [routerLinkActiveOptions]="{ exact: true }"
+                        routerLink="/documentation/app"
+                        >Getting started</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/app/examples">Examples</a>
                     <a routerLinkActive="active" routerLink="/documentation/app/arguments">Arguments & Flags</a>
-                    <a routerLinkActive="active" routerLink="/documentation/app/dependency-injection">Dependency Injection</a>
+                    <a routerLinkActive="active" routerLink="/documentation/app/dependency-injection"
+                        >Dependency Injection</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/app/modules">Modules</a>
                     <a routerLinkActive="active" routerLink="/documentation/app/services">Services</a>
                     <a routerLinkActive="active" routerLink="/documentation/app/events">Events</a>
@@ -58,7 +65,12 @@ import { PlatformHelper } from "@app/app/utils";
 
                 <div class="category">
                     <div class="category-title">Framework</div>
-                    <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/framework">Getting started</a>
+                    <a
+                        routerLinkActive="active"
+                        [routerLinkActiveOptions]="{ exact: true }"
+                        routerLink="/documentation/framework"
+                        >Getting started</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/framework/examples">Examples</a>
                     <a routerLinkActive="active" routerLink="/documentation/framework/database">Database</a>
                     <a routerLinkActive="active" routerLink="/documentation/framework/testing">Testing</a>
@@ -68,33 +80,63 @@ import { PlatformHelper } from "@app/app/utils";
 
                 <div class="category">
                     <div class="category-title">Runtime Types</div>
-                    <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/runtime-types">Introduction</a>
-                    <a routerLinkActive="active" routerLink="/documentation/runtime-types/getting-started">Getting started</a>
+                    <a
+                        routerLinkActive="active"
+                        [routerLinkActiveOptions]="{ exact: true }"
+                        routerLink="/documentation/runtime-types"
+                        >Introduction</a
+                    >
+                    <a routerLinkActive="active" routerLink="/documentation/runtime-types/getting-started"
+                        >Getting started</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/examples">Examples</a>
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/types">Type Annotations</a>
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/reflection">Reflection</a>
-                    <a routerLinkActive="active" routerLink="/documentation/runtime-types/serialization">Serialization</a>
+                    <a routerLinkActive="active" routerLink="/documentation/runtime-types/serialization"
+                        >Serialization</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/validation">Validation</a>
-                    <a routerLinkActive="active" routerLink="/documentation/runtime-types/custom-serializer">Custom serializer</a>
-                    <a routerLinkActive="active" routerLink="/documentation/runtime-types/external-types">External Types</a>
+                    <a routerLinkActive="active" routerLink="/documentation/runtime-types/custom-serializer"
+                        >Custom serializer</a
+                    >
+                    <a routerLinkActive="active" routerLink="/documentation/runtime-types/external-types"
+                        >External Types</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/bytecode">Bytecode</a>
                 </div>
 
                 <div class="category">
                     <div class="category-title">Dependency Injection</div>
-                    <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}"
-                       routerLink="/documentation/dependency-injection">Introduction</a>
-                    <a routerLinkActive="active" routerLink="/documentation/dependency-injection/getting-started">Getting started</a>
+                    <a
+                        routerLinkActive="active"
+                        [routerLinkActiveOptions]="{ exact: true }"
+                        routerLink="/documentation/dependency-injection"
+                        >Introduction</a
+                    >
+                    <a routerLinkActive="active" routerLink="/documentation/dependency-injection/getting-started"
+                        >Getting started</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/dependency-injection/examples">Examples</a>
-                    <a routerLinkActive="active" routerLink="/documentation/dependency-injection/providers">Providers</a>
-                    <a routerLinkActive="active" routerLink="/documentation/dependency-injection/injection">Injection</a>
-                    <a routerLinkActive="active" routerLink="/documentation/dependency-injection/configuration">Configuration</a>
+                    <a routerLinkActive="active" routerLink="/documentation/dependency-injection/providers"
+                        >Providers</a
+                    >
+                    <a routerLinkActive="active" routerLink="/documentation/dependency-injection/injection"
+                        >Injection</a
+                    >
+                    <a routerLinkActive="active" routerLink="/documentation/dependency-injection/configuration"
+                        >Configuration</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/dependency-injection/scopes">Scopes</a>
                 </div>
 
                 <div class="category">
                     <div class="category-title">Filesystem</div>
-                    <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/filesystem">Getting started</a>
+                    <a
+                        routerLinkActive="active"
+                        [routerLinkActiveOptions]="{ exact: true }"
+                        routerLink="/documentation/filesystem"
+                        >Getting started</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/filesystem/examples">Examples</a>
                     <a routerLinkActive="active" routerLink="/documentation/filesystem/app">App</a>
                     <a routerLinkActive="active" routerLink="/documentation/filesystem/local">Local</a>
@@ -102,12 +144,19 @@ import { PlatformHelper } from "@app/app/utils";
                     <a routerLinkActive="active" routerLink="/documentation/filesystem/aws-s3">AWS S3</a>
                     <a routerLinkActive="active" routerLink="/documentation/filesystem/ftp">FTP</a>
                     <a routerLinkActive="active" routerLink="/documentation/filesystem/sftp">sFTP (SSH)</a>
-                    <a routerLinkActive="active" routerLink="/documentation/filesystem/google-storage">Google Storage</a>
+                    <a routerLinkActive="active" routerLink="/documentation/filesystem/google-storage"
+                        >Google Storage</a
+                    >
                 </div>
 
                 <div class="category">
                     <div class="category-title">Broker</div>
-                    <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/broker">Getting started</a>
+                    <a
+                        routerLinkActive="active"
+                        [routerLinkActiveOptions]="{ exact: true }"
+                        routerLink="/documentation/broker"
+                        >Getting started</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/broker/examples">Examples</a>
                     <a routerLinkActive="active" routerLink="/documentation/broker/cache">Cache</a>
                     <a routerLinkActive="active" routerLink="/documentation/broker/message-bus">Message Bus</a>
@@ -117,13 +166,19 @@ import { PlatformHelper } from "@app/app/utils";
 
                 <div class="category">
                     <div class="category-title">HTTP</div>
-                    <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}"
-                       routerLink="/documentation/http">Introduction</a>
+                    <a
+                        routerLinkActive="active"
+                        [routerLinkActiveOptions]="{ exact: true }"
+                        routerLink="/documentation/http"
+                        >Introduction</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/http/getting-started">Getting started</a>
                     <a routerLinkActive="active" routerLink="/documentation/http/examples">Examples</a>
                     <a routerLinkActive="active" routerLink="/documentation/http/input-output">Input & Output</a>
                     <a routerLinkActive="active" routerLink="/documentation/http/views">Views</a>
-                    <a routerLinkActive="active" routerLink="/documentation/http/dependency-injection">Dependency Injection</a>
+                    <a routerLinkActive="active" routerLink="/documentation/http/dependency-injection"
+                        >Dependency Injection</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/http/events">Events</a>
                     <a routerLinkActive="active" routerLink="/documentation/http/middleware">Middleware</a>
                     <a routerLinkActive="active" routerLink="/documentation/http/security">Security</a>
@@ -131,11 +186,17 @@ import { PlatformHelper } from "@app/app/utils";
 
                 <div class="category">
                     <div class="category-title">RPC</div>
-                    <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}"
-                       routerLink="/documentation/rpc">Introduction</a>
+                    <a
+                        routerLinkActive="active"
+                        [routerLinkActiveOptions]="{ exact: true }"
+                        routerLink="/documentation/rpc"
+                        >Introduction</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/rpc/getting-started">Getting started</a>
                     <a routerLinkActive="active" routerLink="/documentation/rpc/examples">Examples</a>
-                    <a routerLinkActive="active" routerLink="/documentation/rpc/dependency-injection">Dependency Injection</a>
+                    <a routerLinkActive="active" routerLink="/documentation/rpc/dependency-injection"
+                        >Dependency Injection</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/rpc/security">Security</a>
                     <a routerLinkActive="active" routerLink="/documentation/rpc/errors">Errors</a>
                     <a routerLinkActive="active" routerLink="/documentation/rpc/transport">Transport</a>
@@ -144,8 +205,12 @@ import { PlatformHelper } from "@app/app/utils";
                 <div class="category">
                     <div class="category-title">Database ORM</div>
 
-                    <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}"
-                       routerLink="/documentation/orm">Introduction</a>
+                    <a
+                        routerLinkActive="active"
+                        [routerLinkActiveOptions]="{ exact: true }"
+                        routerLink="/documentation/orm"
+                        >Introduction</a
+                    >
                     <a routerLinkActive="active" routerLink="/documentation/orm/getting-started">Getting started</a>
                     <a routerLinkActive="active" routerLink="/documentation/orm/examples">Examples</a>
                     <a routerLinkActive="active" routerLink="/documentation/orm/entity">Entity</a>
@@ -159,8 +224,9 @@ import { PlatformHelper } from "@app/app/utils";
                     <a routerLinkActive="active" routerLink="/documentation/orm/orm-browser">ORM Browser</a>
                     <a routerLinkActive="active" routerLink="/documentation/orm/raw-access">Raw Access</a>
                     <a routerLinkActive="active" routerLink="/documentation/orm/seeding">Seeding</a>
-                    <a routerLinkActive="active" routerLink="/documentation/orm/composite-primary-key">Composite primary
-                        key</a>
+                    <a routerLinkActive="active" routerLink="/documentation/orm/composite-primary-key"
+                        >Composite primary key</a
+                    >
                     <div class="section-title">Plugins</div>
                     <section>
                         <a routerLinkActive="active" routerLink="/documentation/orm/plugin-soft-delete">Soft-Delete</a>
@@ -189,7 +255,7 @@ import { PlatformHelper } from "@app/app/utils";
                 <!--                </div>-->
             </nav>
         </div>
-    `
+    `,
 })
 export class DocumentationComponent implements AfterViewInit, OnDestroy {
     showMenu: boolean = false;

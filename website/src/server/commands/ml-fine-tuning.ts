@@ -1,10 +1,12 @@
-import { OpenAI, toFile } from "openai";
-import { findParentPath } from "@deepkit/app";
-import { join } from "path";
-import { readFile, writeFile } from "fs/promises";
-import glob from "tiny-glob";
-import { getSystem } from "../questions";
-import { magicSeparator } from "@app/common/models";
+import { magicSeparator } from '@app/common/models';
+import { readFile, writeFile } from 'fs/promises';
+import { OpenAI, toFile } from 'openai';
+import { join } from 'path';
+import glob from 'tiny-glob';
+
+import { findParentPath } from '@deepkit/app';
+
+import { getSystem } from '../questions';
 
 class Context {
     messages: OpenAI.ChatCompletionMessageParam[] = [];
@@ -28,9 +30,8 @@ function getPath(path: string) {
     return join(baseDir, path);
 }
 
-
 class Page {
-    questions: { question: string, answer: string }[] = [];
+    questions: { question: string; answer: string }[] = [];
     textPath: string;
     questionsPath: string;
     fileContent?: string;
@@ -42,22 +43,20 @@ class Page {
 
     async getContent(): Promise<string> {
         if (this.fileContent) return this.fileContent;
-        return this.fileContent = await readFile(this.textPath, 'utf8');
+        return (this.fileContent = await readFile(this.textPath, 'utf8'));
     }
 
     async getFullContent(): Promise<string> {
         //loads all files, e.g. if this.path is http.md, we load http.md, then all files in http/*.md
         const dir = this.textPath.replace('.md', '');
-        const content: string[] = [
-            await this.getContent()
-        ];
+        const content: string[] = [await this.getContent()];
         const files = await glob('**/*.md', { cwd: dir });
         for (const file of files) {
             const path = this.path.replace('.md', '') + ':' + file.replace('.md', '').replace(/\//g, ':');
             const page = `
             # ${path}
             ${(await readFile(join(dir, file), 'utf8')).replace(/^#/g, '##')}
-            `
+            `;
             content.push(page);
         }
 
@@ -116,7 +115,6 @@ class Page {
     }
 }
 
-
 async function genQuestionPrompt(page: Page) {
     return `
 Given text from a documentation:
@@ -164,24 +162,28 @@ ${questions.map((v, i) => `${i + 1}. ${v}`).join('\n')}
 function parseQuestions(text: string): string[] {
     //Input: 1. xxx\n2. xxx\n3. xxx
     //Output: [xxx, xxx, xxx]
-    return text.split('\n').map((line) => {
-        return line.slice(line.indexOf('.') + 1);
-    }).map(v => v.trim()).filter(v => !!v);
+    return text
+        .split('\n')
+        .map(line => {
+            return line.slice(line.indexOf('.') + 1);
+        })
+        .map(v => v.trim())
+        .filter(v => !!v);
 }
 
 function parseAnswers(text: string): string[] {
-    return ('\n' + text).split('\nAssistant: ').map((line) => {
-        return line.slice(line.indexOf('.') + 1);
-    }).map(v => v.trim()).filter(v => !!v);
+    return ('\n' + text)
+        .split('\nAssistant: ')
+        .map(line => {
+            return line.slice(line.indexOf('.') + 1);
+        })
+        .map(v => v.trim())
+        .filter(v => !!v);
 }
-
 
 const model = 'gpt-3.5-turbo-16k';
 
-export async function mlGenQuestionCommand(
-    file: string,
-    openai: OpenAI
-) {
+export async function mlGenQuestionCommand(file: string, openai: OpenAI) {
     const context = new Context();
     await context.addSystem('');
 
@@ -206,10 +208,7 @@ export async function mlGenQuestionCommand(
     await page.save();
 }
 
-export async function mlGenAnswerCommand(
-    file: string,
-    openai: OpenAI
-) {
+export async function mlGenAnswerCommand(file: string, openai: OpenAI) {
     const context = new Context();
 
     await context.addSystem('');
@@ -237,10 +236,7 @@ export async function mlGenAnswerCommand(
     await page.save();
 }
 
-export async function fineTuneTest1(
-    file: string,
-    openai: OpenAI,
-) {
+export async function fineTuneTest1(file: string, openai: OpenAI) {
     //go through all .md files in src/pages
     const pagesDir = findParentPath('src/pages/documentation');
     if (!pagesDir) throw new Error('Could not find pages directory');
@@ -255,10 +251,14 @@ export async function fineTuneTest1(
         if (!q.answer) continue;
 
         const messages = [
-            { role: 'system', content: 'You are a documentation chat bot that helps the user to understand a TypeScript framework called Deepkit.' },
+            {
+                role: 'system',
+                content:
+                    'You are a documentation chat bot that helps the user to understand a TypeScript framework called Deepkit.',
+            },
             { role: 'user', content: q.question },
-            { role: 'assistant', content: q.answer }
-        ]
+            { role: 'assistant', content: q.answer },
+        ];
         dataset.push(messages);
     }
 
@@ -278,42 +278,43 @@ export async function fineTuneTest1(
     const aiFile = await openai.files.create({
         file: await toFile(Buffer.from(jsonl), 'file-abc123'),
         purpose: 'fine-tune',
-    })
+    });
     const training = await openai.fineTuning.jobs.create({
         training_file: aiFile.id,
         model: 'gpt-3.5-turbo',
         hyperparameters: {
-            n_epochs: 25
-        }
+            n_epochs: 25,
+        },
     });
     console.log('training', training);
 }
 
-export async function fineTuneTest1Check(
-    openai: OpenAI,
-) {
+export async function fineTuneTest1Check(openai: OpenAI) {
     const list = await openai.fineTuning.jobs.list();
     for (const item of list.getPaginatedItems()) {
         console.log(item);
     }
 }
 
-export async function fineTuneTest1Model(
-    model: string,
-    prompt: string,
-    openai: OpenAI,
-) {
+export async function fineTuneTest1Model(model: string, prompt: string, openai: OpenAI) {
     const messages: any = [
-        { role: 'system', content: 'You are a documentation chat bot that helps the user to understand a TypeScript framework called Deepkit.' },
-        { role: 'user', content: prompt }
+        {
+            role: 'system',
+            content:
+                'You are a documentation chat bot that helps the user to understand a TypeScript framework called Deepkit.',
+        },
+        { role: 'user', content: prompt },
     ];
 
-    const completion = await openai.chat.completions.create({
-        messages,
-        model,
-        temperature: 0.3,
-        stream: true,
-    }, { stream: true });
+    const completion = await openai.chat.completions.create(
+        {
+            messages,
+            model,
+            temperature: 0.3,
+            stream: true,
+        },
+        { stream: true },
+    );
 
     for await (const message of completion) {
         let text = message.choices[0].delta.content || '';

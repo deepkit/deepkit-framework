@@ -15,18 +15,18 @@ import { Filesystem } from '@deepkit/filesystem';
 import { FilesystemAwsS3Adapter } from '@deepkit/filesystem-aws-s3';
 
 const adapter = new FilesystemAwsS3Adapter({
-    bucket: 'my-bucket',
-    path: 'starting-path/', //optional
-    region: 'eu-central-1',
-    acccessKeyId: '...',
-    secretAccessKey: '...'
+  bucket: 'my-bucket',
+  path: 'starting-path/', //optional
+  region: 'eu-central-1',
+  acccessKeyId: '...',
+  secretAccessKey: '...',
 });
 const filesystem = new Filesystem(adapter);
 ```
 
 Note: You should not store your credentials in the code directly. Instead, use environment variables or [App Configuration](./app.md#configuration).
 
-This adapter uses the S3 client of [@aws-sdk/client-s3](https://npmjs.com/package/@aws-sdk/client-s3). 
+This adapter uses the S3 client of [@aws-sdk/client-s3](https://npmjs.com/package/@aws-sdk/client-s3).
 All its configuration options can be passed to the adapter constructor.
 
 ## Permissions

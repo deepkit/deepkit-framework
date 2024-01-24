@@ -4,14 +4,13 @@ Deepkit Logger is a standalone library with a primary Logger class that you can 
 
 The `Logger` class has several methods, each of which behaves like `console.log`.
 
-| Name            | Log Level           | Level id |
-|-----------------|---------------------|----------|
-| logger.error()  | Error               | 1        |
-| logger.warning()| Warning             | 2        |
-| logger.log()    | Default log         | 3        |
-| logger.info()   | Special information | 4        |
-| logger.debug()  | Debug information   | 5        |
-
+| Name             | Log Level           | Level id |
+| ---------------- | ------------------- | -------- |
+| logger.error()   | Error               | 1        |
+| logger.warning() | Warning             | 2        |
+| logger.log()     | Default log         | 3        |
+| logger.info()    | Special information | 4        |
+| logger.debug()   | Debug information   | 5        |
 
 By default, a logger has `info` level, i.e. it processes only info messages and more (i.e. log, warning, error, but not debug). To change the log level call for example `logger.level = 5`.
 
@@ -20,12 +19,12 @@ By default, a logger has `info` level, i.e. it processes only info messages and 
 To use the logger in your Deepkit application, you can simply inject `Logger` into your services or controllers.
 
 ```typescript
-import { Logger } from '@deepkit/logger';
 import { App } from '@deepkit/app';
+import { Logger } from '@deepkit/logger';
 
 const app = new App();
 app.command('test', (logger: Logger) => {
-    logger.log('This is a <yellow>log message</yellow>');
+  logger.log('This is a <yellow>log message</yellow>');
 });
 
 app.run();
@@ -50,20 +49,20 @@ You can configure a single transporter or multiple transporters. In a Deepkit ap
 import { Logger, LoggerTransport } from '@deepkit/logger';
 
 export class MyTransport implements LoggerTransport {
-    write(message: string, level: LoggerLevel, rawMessage: string) {
-        process.stdout.write(JSON.stringify({message: rawMessage, level, time: new Date}) + '\n');
-    }
+  write(message: string, level: LoggerLevel, rawMessage: string) {
+    process.stdout.write(JSON.stringify({ message: rawMessage, level, time: new Date() }) + '\n');
+  }
 
-    supportsColor() {
-        return false;
-    }
+  supportsColor() {
+    return false;
+  }
 }
 
 new App()
-    .setup((module, config) => {
-        module.setupProvider(Logger).addTransport(new MyTransport);
-    })
-    .run();
+  .setup((module, config) => {
+    module.setupProvider(Logger).addTransport(new MyTransport());
+  })
+  .run();
 ```
 
 To replace all transporters with a new set of transporters, use `setTransport`:
@@ -72,20 +71,20 @@ To replace all transporters with a new set of transporters, use `setTransport`:
 import { Logger } from '@deepkit/logger';
 
 new App()
-.setup((module, config) => {
-    module.setupProvider(Logger).setTransport([new MyTransport]);
-})
-.run();
+  .setup((module, config) => {
+    module.setupProvider(Logger).setTransport([new MyTransport()]);
+  })
+  .run();
 ```
 
 ```typescript
-import { Logger, JSONTransport } from '@deepkit/logger';
+import { JSONTransport, Logger } from '@deepkit/logger';
 
 new App()
-    .setup((module, config) => {
-        module.setupProvider(Logger).setTransport([new JSONTransport]);
-    })
-    .run();
+  .setup((module, config) => {
+    module.setupProvider(Logger).setTransport([new JSONTransport()]);
+  })
+  .run();
 ```
 
 ## Scoped Logger
@@ -103,10 +102,10 @@ There is also a `ScopedLogger` type that you can use to inject scoped loggers in
 import { ScopedLogger } from '@deepkit/logger';
 
 class MyService {
-    constructor(protected logger: ScopedLogger) {}
-    doSomething() {
-        this.logger.log('This is wild');
-    }
+  constructor(protected logger: ScopedLogger) {}
+  doSomething() {
+    this.logger.log('This is wild');
+  }
 }
 ```
 
@@ -126,9 +125,9 @@ To add contextual data to a log entry, add a simple object literal as the last a
 
 ```typescript
 const query = 'SELECT *';
-const user = new User;
-logger.log('Query', {query, user}); //last argument is context data
-logger.log('Another', 'wild log entry', query, {user}); //last argument is context data
+const user = new User();
+logger.log('Query', { query, user }); //last argument is context data
+logger.log('Another', 'wild log entry', query, { user }); //last argument is context data
 
-logger.log({query, user}); //this is not handled as context data.
+logger.log({ query, user }); //this is not handled as context data.
 ```

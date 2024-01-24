@@ -11,28 +11,8 @@ import { DeclarationTransformer, ReflectionTransformer, transformer } from '@dee
 import { ReflectionOp } from '@deepkit/type-spec';
 
 import { pack, resolveRuntimeType, typeInfer } from '../src/reflection/processor.js';
-import {
-    ReflectionClass,
-    reflect,
-    reflect as reflect2,
-    removeTypeName,
-    typeOf as typeOf2,
-} from '../src/reflection/reflection.js';
-import {
-    ReflectionKind,
-    ReflectionVisibility,
-    Type,
-    TypeClass,
-    TypeFunction,
-    TypeMethod,
-    TypeObjectLiteral,
-    TypeProperty,
-    TypeUnion,
-    assertType,
-    defaultAnnotation,
-    primaryKeyAnnotation,
-    stringifyType,
-} from '../src/reflection/type.js';
+import { ReflectionClass, reflect, reflect as reflect2, removeTypeName, typeOf as typeOf2 } from '../src/reflection/reflection.js';
+import { ReflectionKind, ReflectionVisibility, Type, TypeClass, TypeFunction, TypeMethod, TypeObjectLiteral, TypeProperty, TypeUnion, assertType, defaultAnnotation, primaryKeyAnnotation, stringifyType } from '../src/reflection/type.js';
 import { expectEqualType } from './utils.js';
 
 Error.stackTraceLimit = 200;
@@ -56,10 +36,7 @@ function readLibs(compilerOptions: ts.CompilerOptions, files: Map<string, string
     }
 }
 
-export function transpile<T extends string | Record<string, string>>(
-    files: T,
-    options: ts.CompilerOptions = {},
-): T extends string ? string : Record<string, string> {
+export function transpile<T extends string | Record<string, string>>(files: T, options: ts.CompilerOptions = {}): T extends string ? string : Record<string, string> {
     const compilerOptions: ts.CompilerOptions = {
         target: ScriptTarget.ES2020,
         allowNonTsExtensions: true,
@@ -81,14 +58,8 @@ export function transpile<T extends string | Record<string, string>>(
             fileName: __dirname + '/module.ts',
             compilerOptions,
             transformers: {
-                before: [
-                    (context: TransformationContext) =>
-                        new ReflectionTransformer(context).withReflection({ reflection: 'default' }),
-                ],
-                afterDeclarations: [
-                    (context: TransformationContext) =>
-                        new DeclarationTransformer(context).withReflection({ reflection: 'default' }),
-                ],
+                before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflection({ reflection: 'default' })],
+                afterDeclarations: [(context: TransformationContext) => new DeclarationTransformer(context).withReflection({ reflection: 'default' })],
             },
         }).outputText as any;
     }
@@ -124,12 +95,7 @@ export function transpile<T extends string | Record<string, string>>(
         undefined,
         undefined,
         {
-            before: [
-                (context: TransformationContext) =>
-                    new ReflectionTransformer(context)
-                        .forHost(host.compilerHost)
-                        .withReflection({ reflection: 'default' }),
-            ],
+            before: [(context: TransformationContext) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflection({ reflection: 'default' })],
         },
     );
 
@@ -151,63 +117,27 @@ function packString(...args: Parameters<typeof pack>): string {
 }
 
 const tests: [code: string | { [file: string]: string }, contains: string | string[]][] = [
-    [
-        `class Entity { p: string }`,
-        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
-    ],
-    [
-        `class Entity { p: number }`,
-        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
-    ],
-    [
-        `class Entity { p: boolean }`,
-        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.boolean, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
-    ],
-    [
-        `class Entity { p: bigint }`,
-        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.bigint, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
-    ],
-    [
-        `class Entity { p: any }`,
-        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.any, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
-    ],
-    [
-        `class Entity { p: Date }`,
-        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.date, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
-    ],
-    [
-        `class Entity { private p: string }`,
-        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.private, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
-    ],
-    [
-        `class Entity { p?: string }`,
-        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.optional, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
-    ],
+    [`class Entity { p: string }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
+    [`class Entity { p: number }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.number, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
+    [`class Entity { p: boolean }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.boolean, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
+    [`class Entity { p: bigint }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.bigint, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
+    [`class Entity { p: any }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.any, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
+    [`class Entity { p: Date }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.date, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
+    [`class Entity { private p: string }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.private, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
+    [`class Entity { p?: string }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.optional, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
     [
         `class Entity { p: string | undefined }`,
         `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
     ],
-    [
-        `class Entity { p: string | null }`,
-        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.null, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
-    ],
-    [
-        `class Entity { p: number[] }`,
-        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.number, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
-    ],
+    [`class Entity { p: string | null }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.null, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
+    [`class Entity { p: number[] }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.number, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
     [
         `class Entity { p: (number | string)[] }`,
         `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
     ],
 
-    [
-        `class Entity { p: Promise<number> }`,
-        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.number, ReflectionOp.promise, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
-    ],
-    [
-        `class Entity { p: number | string }`,
-        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
-    ],
+    [`class Entity { p: Promise<number> }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.number, ReflectionOp.promise, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
+    [`class Entity { p: number | string }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
     // [
     //     `class Book {}; class IdentifiedReference<T> {} class Entity { p: IdentifiedReference<Book> }`,
     //     `Entity.__type = [() => Book, () => IdentifiedReference, 'p', ${packString([ReflectionOp.classReference, 0, ReflectionOp.classReference, 1, ReflectionOp.property, 2, ReflectionOp.class])}]`
@@ -827,10 +757,7 @@ test('constructor', () => {
 });
 
 test('template literal', () => {
-    const code =
-        '' +
-        'type d8 = `1233` extends `${number}${infer T1}${number}` ? T1 : never;\n' +
-        'type d9 = `1133` extends `${object}${infer T1}${number}` ? T1 : never;';
+    const code = '' + 'type d8 = `1233` extends `${number}${infer T1}${number}` ? T1 : never;\n' + 'type d9 = `1133` extends `${object}${infer T1}${number}` ? T1 : never;';
     const js = transpile(code);
     console.log('js', js);
     const type = transpileAndReturn(code) as (v: string | number) => Type;
@@ -1221,9 +1148,7 @@ test('nested object literal', () => {
                 name: 'a',
                 type: {
                     kind: ReflectionKind.objectLiteral,
-                    types: [
-                        { kind: ReflectionKind.propertySignature, name: 't', type: { kind: ReflectionKind.string } },
-                    ],
+                    types: [{ kind: ReflectionKind.propertySignature, name: 't', type: { kind: ReflectionKind.string } }],
                 },
             },
             {
@@ -1231,9 +1156,7 @@ test('nested object literal', () => {
                 name: 'b',
                 type: {
                     kind: ReflectionKind.objectLiteral,
-                    types: [
-                        { kind: ReflectionKind.propertySignature, name: 't', type: { kind: ReflectionKind.number } },
-                    ],
+                    types: [{ kind: ReflectionKind.propertySignature, name: 't', type: { kind: ReflectionKind.number } }],
                 },
             },
         ],

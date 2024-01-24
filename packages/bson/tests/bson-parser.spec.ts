@@ -2,20 +2,7 @@ import { expect, test } from '@jest/globals';
 import bson, { Binary } from 'bson';
 
 import { getClassName } from '@deepkit/core';
-import {
-    BinaryBigInt,
-    MongoId,
-    PrimaryKey,
-    Reference,
-    ReflectionKind,
-    SignedBinaryBigInt,
-    TypeObjectLiteral,
-    UUID,
-    copyAndSetParent,
-    nodeBufferToArrayBuffer,
-    typeOf,
-    uuid,
-} from '@deepkit/type';
+import { BinaryBigInt, MongoId, PrimaryKey, Reference, ReflectionKind, SignedBinaryBigInt, TypeObjectLiteral, UUID, copyAndSetParent, nodeBufferToArrayBuffer, typeOf, uuid } from '@deepkit/type';
 
 import { deserializeBSON, getBSONDeserializer } from '../src/bson-deserializer.js';
 import { serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
@@ -34,9 +21,7 @@ test('basic number', () => {
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: true }))).toEqual({ v: 1 });
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: false }))).toEqual({ v: 0 });
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: -1234 }))).toEqual({ v: -1234 });
-    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(
-        `Cannot convert bson type OBJECT to number`,
-    );
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to number`);
 });
 
 test('basic bigint', () => {
@@ -50,9 +35,7 @@ test('basic bigint', () => {
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toEqual(obj);
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: true }))).toEqual({ v: 1n });
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: false }))).toEqual({ v: 0n });
-    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(
-        `Cannot convert bson type OBJECT to bigint`,
-    );
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to bigint`);
 });
 
 test('basic null', () => {
@@ -64,12 +47,8 @@ test('basic null', () => {
     expect(getBSONDeserializer(undefined, schema)(serialize({}))).toEqual({
         v: null,
     });
-    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: 123 }))).toThrow(
-        `Cannot convert bson type INT to null`,
-    );
-    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(
-        `Cannot convert bson type OBJECT to null`,
-    );
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: 123 }))).toThrow(`Cannot convert bson type INT to null`);
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to null`);
 
     expect(deserializeBSON<{ v: null }>(serialize({ v: null }))).toEqual({
         v: null,
@@ -91,12 +70,8 @@ test('basic undefined', () => {
     expect(getBSONDeserializer(undefined, schema)(serialize({}))).toEqual({
         v: undefined,
     });
-    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: 123 }))).toThrow(
-        `Cannot convert bson type INT to undefined`,
-    );
-    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(
-        `Cannot convert bson type OBJECT to undefined`,
-    );
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: 123 }))).toThrow(`Cannot convert bson type INT to undefined`);
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to undefined`);
 });
 
 test('basic literal', () => {
@@ -212,9 +187,7 @@ test('basic binary bigint', () => {
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toEqual({ v: 123n });
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: true }))).toEqual({ v: 1n });
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: false }))).toEqual({ v: 0n });
-    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(
-        `Cannot convert bson type OBJECT to BinaryBigInt`,
-    );
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to BinaryBigInt`);
 });
 
 test('basic signed binary bigint', () => {
@@ -235,9 +208,7 @@ test('basic signed binary bigint', () => {
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toEqual({ v: 123n });
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: true }))).toEqual({ v: 1n });
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: false }))).toEqual({ v: 0n });
-    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(
-        `Cannot convert bson type OBJECT to SignedBinaryBigInt`,
-    );
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to SignedBinaryBigInt`);
 });
 
 test('basic string', () => {
@@ -249,9 +220,7 @@ test('basic string', () => {
     }>();
     expect(getBSONDeserializer(undefined, schema)(bson)).toEqual(obj);
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: 123 }))).toEqual({ v: '123' });
-    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(
-        `Cannot convert bson type OBJECT to string`,
-    );
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: {} }))).toThrow(`Cannot convert bson type OBJECT to string`);
 });
 
 test('basic boolean', () => {
@@ -264,9 +233,7 @@ test('basic boolean', () => {
     expect(getBSONDeserializer(undefined, schema)(bson)).toEqual(obj);
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: 123 }))).toEqual({ v: true });
     expect(getBSONDeserializer(undefined, schema)(serialize({ v: 0 }))).toEqual({ v: false });
-    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toThrow(
-        `Cannot convert bson type STRING to boolean`,
-    );
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toThrow(`Cannot convert bson type STRING to boolean`);
 });
 
 test('basic array buffer', () => {
@@ -278,9 +245,7 @@ test('basic array buffer', () => {
         v: ArrayBuffer;
     }>();
     expect(getBSONDeserializer(undefined, schema)(bson)).toEqual(obj);
-    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toThrow(
-        `Cannot convert bson type STRING to ArrayBuffer`,
-    );
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toThrow(`Cannot convert bson type STRING to ArrayBuffer`);
 });
 
 test('basic typed array', () => {
@@ -292,9 +257,7 @@ test('basic typed array', () => {
         v: Uint8Array;
     }>();
     expect(getBSONDeserializer(undefined, schema)(bson)).toEqual(obj);
-    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toThrow(
-        `Cannot convert bson type STRING to Uint8Array`,
-    );
+    expect(() => getBSONDeserializer(undefined, schema)(serialize({ v: '123' }))).toThrow(`Cannot convert bson type STRING to Uint8Array`);
 });
 
 test('basic union', () => {
@@ -311,35 +274,23 @@ test('basic union two objects', () => {
 
 test('basic union with typed array', () => {
     const buffer = Buffer.allocUnsafe(16);
-    expect(
-        deserializeBSON<{ v: string | Uint8Array }>(serialize({ v: new Binary(buffer, Binary.SUBTYPE_DEFAULT) })),
-    ).toEqual({ v: new Uint8Array(buffer) });
+    expect(deserializeBSON<{ v: string | Uint8Array }>(serialize({ v: new Binary(buffer, Binary.SUBTYPE_DEFAULT) }))).toEqual({ v: new Uint8Array(buffer) });
     expect(deserializeBSON<{ v: string | Uint8Array }>(serialize({ v: 'abc' }))).toEqual({ v: 'abc' });
-    expect(() => deserializeBSON<{ v: string | Uint8Array }>(serialize({ v: {} }))).toThrow(
-        'Cannot convert bson type OBJECT to string | Uint8Array',
-    );
+    expect(() => deserializeBSON<{ v: string | Uint8Array }>(serialize({ v: {} }))).toThrow('Cannot convert bson type OBJECT to string | Uint8Array');
 });
 
 test('basic union with arraybuffer', () => {
     const buffer = Buffer.allocUnsafe(16);
-    expect(
-        deserializeBSON<{ v: string | ArrayBuffer }>(serialize({ v: new Binary(buffer, Binary.SUBTYPE_DEFAULT) })),
-    ).toEqual({ v: nodeBufferToArrayBuffer(buffer) });
+    expect(deserializeBSON<{ v: string | ArrayBuffer }>(serialize({ v: new Binary(buffer, Binary.SUBTYPE_DEFAULT) }))).toEqual({ v: nodeBufferToArrayBuffer(buffer) });
     expect(deserializeBSON<{ v: string | ArrayBuffer }>(serialize({ v: 'abc' }))).toEqual({ v: 'abc' });
-    expect(() => deserializeBSON<{ v: string | ArrayBuffer }>(serialize({ v: {} }))).toThrow(
-        'Cannot convert bson type OBJECT to string | ArrayBuffer',
-    );
+    expect(() => deserializeBSON<{ v: string | ArrayBuffer }>(serialize({ v: {} }))).toThrow('Cannot convert bson type OBJECT to string | ArrayBuffer');
 });
 
 test('basic union ', () => {
     expect(deserializeBSON<{ v: string | number }>(serialize({ v: 'abc' }))).toEqual({ v: 'abc' });
     expect(deserializeBSON<{ v: string | number }>(serialize({ v: 123 }))).toEqual({ v: 123 });
-    expect(() => deserializeBSON<{ v: string | number }>(serialize({ v: undefined }))).toThrow(
-        'Cannot convert undefined value to string | number',
-    );
-    expect(() => deserializeBSON<{ v: string | number }>(serialize({}))).toThrow(
-        'Cannot convert undefined value to string | number',
-    );
+    expect(() => deserializeBSON<{ v: string | number }>(serialize({ v: undefined }))).toThrow('Cannot convert undefined value to string | number');
+    expect(() => deserializeBSON<{ v: string | number }>(serialize({}))).toThrow('Cannot convert undefined value to string | number');
     expect(deserializeBSON<{ v?: string | number }>(serialize({ v: undefined }))).toEqual({ v: undefined });
     expect(deserializeBSON<{ v?: string | number }>(serialize({ v: null }))).toEqual({ v: undefined });
     expect(deserializeBSON<{ v?: string | number }>(serialize({}))).toEqual({
@@ -384,18 +335,10 @@ test('basic union with template literals', () => {
 test('basic template literal', () => {
     expect(deserializeBSON<{ v: `a${number}` }>(serialize({ v: 'a123' }))).toEqual({ v: 'a123' });
     expect(deserializeBSON<{ v: `a${number}` }>(serialize({ v: 'a1' }))).toEqual({ v: 'a1' });
-    expect(() => deserializeBSON<{ v: `a${number}` }>(serialize({ v: 'a' }))).toThrow(
-        'Cannot convert a to `a${number}`',
-    );
-    expect(() => deserializeBSON<{ v: `a${number}` }>(serialize({ v: 'abc' }))).toThrow(
-        'Cannot convert abc to `a${number}`',
-    );
-    expect(() => deserializeBSON<{ v: `a${number}` }>(serialize({ v: false }))).toThrow(
-        'Cannot convert bson type BOOLEAN to `a${number}`',
-    );
-    expect(() => deserializeBSON<{ v: `a${number}` }>(serialize({ v: 234 }))).toThrow(
-        'Cannot convert bson type INT to `a${number}`',
-    );
+    expect(() => deserializeBSON<{ v: `a${number}` }>(serialize({ v: 'a' }))).toThrow('Cannot convert a to `a${number}`');
+    expect(() => deserializeBSON<{ v: `a${number}` }>(serialize({ v: 'abc' }))).toThrow('Cannot convert abc to `a${number}`');
+    expect(() => deserializeBSON<{ v: `a${number}` }>(serialize({ v: false }))).toThrow('Cannot convert bson type BOOLEAN to `a${number}`');
+    expect(() => deserializeBSON<{ v: `a${number}` }>(serialize({ v: 234 }))).toThrow('Cannot convert bson type INT to `a${number}`');
 });
 
 test('basic uuid', () => {
@@ -425,30 +368,22 @@ test('basic union with number | uuid', () => {
     const myUuid = uuid();
     expect(deserializeBSON<{ v: number | UUID }>(serialize({ v: myUuid }))).toEqual({ v: myUuid });
     expect(deserializeBSON<{ v: number | UUID }>(serialize({ v: 23 }))).toEqual({ v: 23 });
-    expect(() => deserializeBSON<{ v: number | UUID }>(serialize({ v: 'asdad' }))).toThrow(
-        'Cannot convert bson type STRING to number',
-    );
+    expect(() => deserializeBSON<{ v: number | UUID }>(serialize({ v: 'asdad' }))).toThrow('Cannot convert bson type STRING to number');
 });
 
 test('basic union with null | uuid', () => {
     const myUuid = uuid();
     expect(deserializeBSON<{ v: null | UUID }>(serialize({ v: myUuid }))).toEqual({ v: myUuid });
     expect(deserializeBSON<{ v: null | UUID }>(serialize({ v: null }))).toEqual({ v: null });
-    expect(() => deserializeBSON<{ v: null | UUID }>(serialize({ v: 'asdad' }))).toThrow(
-        'Cannot convert bson type STRING to null | UUID',
-    );
+    expect(() => deserializeBSON<{ v: null | UUID }>(serialize({ v: 'asdad' }))).toThrow('Cannot convert bson type STRING to null | UUID');
 });
 
 test('basic union with uuid', () => {
     const myUuid = uuid();
     expect(deserializeBSON<{ v: number | UUID }>(serialize({ v: 23 }))).toEqual({ v: 23 });
     expect(deserializeBSON<{ v: number | UUID }>(serialize({ v: myUuid }))).toEqual({ v: myUuid });
-    expect(() => deserializeBSON<{ v: UUID | undefined }>(serialize({ v: 'asdad' }))).toThrow(
-        'Cannot convert asdad to UUID',
-    );
-    expect(() => deserializeBSON<{ v: number | UUID }>(serialize({ v: 'asdad' }))).toThrow(
-        'Cannot convert bson type STRING to number',
-    );
+    expect(() => deserializeBSON<{ v: UUID | undefined }>(serialize({ v: 'asdad' }))).toThrow('Cannot convert asdad to UUID');
+    expect(() => deserializeBSON<{ v: number | UUID }>(serialize({ v: 'asdad' }))).toThrow('Cannot convert bson type STRING to number');
 });
 
 test('basic union with Date', () => {
@@ -456,9 +391,7 @@ test('basic union with Date', () => {
     expect(deserializeBSON<{ v: number | Date }>(serialize({ v: 23 }))).toEqual({ v: 23 });
     expect(deserializeBSON<{ v: number | Date }>(serialize({ v: value }))).toEqual({ v: value });
     expect(deserializeBSON<{ v: number | Date }>(serialize({ v: true }))).toEqual({ v: 1 });
-    expect(() => deserializeBSON<{ v: number | Date }>(serialize({}))).toThrow(
-        'Cannot convert undefined value to number | Date',
-    );
+    expect(() => deserializeBSON<{ v: number | Date }>(serialize({}))).toThrow('Cannot convert undefined value to number | Date');
 });
 
 test('basic regexp', () => {
@@ -466,12 +399,8 @@ test('basic regexp', () => {
     expect(deserializeBSON<{ v: RegExp }>(serialize({ v: myRegexp }))).toEqual({
         v: myRegexp,
     });
-    expect(() => deserializeBSON<{ v: RegExp }>(serialize({ v: 'abc' }))).toThrow(
-        'Cannot convert bson type STRING to RegExp',
-    );
-    expect(() => deserializeBSON<{ v: RegExp }>(serialize({ v: 23 }))).toThrow(
-        'Cannot convert bson type INT to RegExp',
-    );
+    expect(() => deserializeBSON<{ v: RegExp }>(serialize({ v: 'abc' }))).toThrow('Cannot convert bson type STRING to RegExp');
+    expect(() => deserializeBSON<{ v: RegExp }>(serialize({ v: 23 }))).toThrow('Cannot convert bson type INT to RegExp');
     expect(() => deserializeBSON<{ v: RegExp }>(serialize({}))).toThrow('Cannot convert undefined value to RegExp');
 });
 
@@ -479,12 +408,8 @@ test('basic union with regexp', () => {
     const myRegexp = /abc/gim;
     expect(deserializeBSON<{ v: number | RegExp }>(serialize({ v: myRegexp }))).toEqual({ v: myRegexp });
     expect(deserializeBSON<{ v: number | RegExp }>(serialize({ v: 23 }))).toEqual({ v: 23 });
-    expect(() => deserializeBSON<{ v: number | RegExp }>(serialize({ v: {} }))).toThrow(
-        'Cannot convert bson type OBJECT to number | RegExp',
-    );
-    expect(() => deserializeBSON<{ v: number | RegExp }>(serialize({}))).toThrow(
-        'Cannot convert undefined value to number | RegExp',
-    );
+    expect(() => deserializeBSON<{ v: number | RegExp }>(serialize({ v: {} }))).toThrow('Cannot convert bson type OBJECT to number | RegExp');
+    expect(() => deserializeBSON<{ v: number | RegExp }>(serialize({}))).toThrow('Cannot convert undefined value to number | RegExp');
 });
 
 test('basic array', () => {
@@ -493,23 +418,15 @@ test('basic array', () => {
         v: value,
     });
     expect(deserializeBSON<{ v: string[] }>(serialize({ v: [1, 'b'] }))).toEqual({ v: ['1', 'b'] });
-    expect(() => deserializeBSON<{ v: string[] }>(serialize({ v: 123 }))).toThrow(
-        'Cannot convert bson type INT to Array<string>',
-    );
-    expect(() => deserializeBSON<{ v: string[] }>(serialize({ v: [{}] }))).toThrow(
-        'Cannot convert bson type OBJECT to string',
-    );
+    expect(() => deserializeBSON<{ v: string[] }>(serialize({ v: 123 }))).toThrow('Cannot convert bson type INT to Array<string>');
+    expect(() => deserializeBSON<{ v: string[] }>(serialize({ v: [{}] }))).toThrow('Cannot convert bson type OBJECT to string');
 });
 
 test('basic array union', () => {
     const value = ['a', 'b', false, 'c', true];
     expect(deserializeBSON<{ v: (string | boolean)[] }>(serialize({ v: value }))).toEqual({ v: value });
-    expect(() => deserializeBSON<{ v: (string | boolean)[] }>(serialize({ v: 123 }))).toThrow(
-        'Cannot convert bson type INT to Array<string | boolean>',
-    );
-    expect(() => deserializeBSON<{ v: (string | boolean)[] }>(serialize({ v: ['a', {}] }))).toThrow(
-        'Cannot convert bson type OBJECT to string | boolean',
-    );
+    expect(() => deserializeBSON<{ v: (string | boolean)[] }>(serialize({ v: 123 }))).toThrow('Cannot convert bson type INT to Array<string | boolean>');
+    expect(() => deserializeBSON<{ v: (string | boolean)[] }>(serialize({ v: ['a', {}] }))).toThrow('Cannot convert bson type OBJECT to string | boolean');
 });
 
 test('basic two array union', () => {
@@ -521,12 +438,8 @@ test('basic two array union', () => {
     expect(deserializeBSON<{ v: MyType }>(serialize({ v: [1, 2] }))).toEqual({
         v: [1, 2],
     });
-    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: 123 }))).toThrow(
-        'Cannot convert bson type INT to MyType',
-    );
-    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: ['a', {}] }))).toThrow(
-        'Cannot convert bson type ARRAY to MyType',
-    );
+    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: 123 }))).toThrow('Cannot convert bson type INT to MyType');
+    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: ['a', {}] }))).toThrow('Cannot convert bson type ARRAY to MyType');
 });
 
 test('basic loosely array union', () => {
@@ -537,16 +450,12 @@ test('basic loosely array union', () => {
     });
 
     //when resolving an complicated union, we do not use loosely type guards
-    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: [1, 2] }))).toThrow(
-        'Cannot convert bson type ARRAY to MyType',
-    );
+    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: [1, 2] }))).toThrow('Cannot convert bson type ARRAY to MyType');
 
     expect(deserializeBSON<{ v: MyType }>(serialize({ v: 123 }))).toEqual({
         v: 123,
     });
-    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: ['a', {}] }))).toThrow(
-        'Cannot convert bson type ARRAY to MyType',
-    );
+    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: ['a', {}] }))).toThrow('Cannot convert bson type ARRAY to MyType');
 });
 
 test('basic class array union', () => {
@@ -583,9 +492,7 @@ test('basic class array union', () => {
     }
 
     {
-        expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: [{ nope: 'no' }] }))).toThrow(
-            `Cannot convert bson type ARRAY to MyType`,
-        );
+        expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: [{ nope: 'no' }] }))).toThrow(`Cannot convert bson type ARRAY to MyType`);
     }
 });
 
@@ -744,29 +651,21 @@ test('tuple on union', () => {
         expect(deserializeBSON<t>(serialize({ v: ['abc', 34, 55] }))).toEqual({
             v: ['abc', 34],
         });
-        expect(() => deserializeBSON<t>(serialize({ v: ['abc', '44'] }))).toThrow(
-            'Cannot convert bson type ARRAY to [string, number] | [C]',
-        ); //union type guard are strict
+        expect(() => deserializeBSON<t>(serialize({ v: ['abc', '44'] }))).toThrow('Cannot convert bson type ARRAY to [string, number] | [C]'); //union type guard are strict
     }
     {
         type t = { v: [number] | [C] };
         expect(deserializeBSON<t>(serialize({ v: [34] }))).toEqual({ v: [34] });
-        expect(() => deserializeBSON<t>(serialize({ v: ['44'] }))).toThrow(
-            'Cannot convert bson type ARRAY to [number]',
-        ); //union type guard are strict
+        expect(() => deserializeBSON<t>(serialize({ v: ['44'] }))).toThrow('Cannot convert bson type ARRAY to [number]'); //union type guard are strict
     }
     {
         type t = { v: [...number[]] | [C] };
         expect(deserializeBSON<t>(serialize({ v: [34] }))).toEqual({ v: [34] });
-        expect(() => deserializeBSON<t>(serialize({ v: ['44'] }))).toThrow(
-            'Cannot convert bson type ARRAY to [...number[]] | [C]',
-        );
+        expect(() => deserializeBSON<t>(serialize({ v: ['44'] }))).toThrow('Cannot convert bson type ARRAY to [...number[]] | [C]');
         expect(deserializeBSON<t>(serialize({ v: [34, 55] }))).toEqual({
             v: [34, 55],
         });
-        expect(() => deserializeBSON<t>(serialize({ v: ['44', 55] }))).toThrow(
-            'Cannot convert bson type ARRAY to [...number[]] | [C]',
-        );
+        expect(() => deserializeBSON<t>(serialize({ v: ['44', 55] }))).toThrow('Cannot convert bson type ARRAY to [...number[]] | [C]');
     }
     {
         type t = { v: [string, ...number[]] | [C] };

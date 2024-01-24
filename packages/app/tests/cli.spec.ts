@@ -64,15 +64,7 @@ function builder(module: InjectorModule, commands: (ParsedCliControllerConfig | 
     }
 
     const exec = async (bin: string[], args: string[]) => {
-        const res = await executeCommand(
-            'node app.ts',
-            args,
-            eventDispatcher,
-            logger,
-            injector,
-            mappedCommands,
-            writer,
-        );
+        const res = await executeCommand('node app.ts', args, eventDispatcher, logger, injector, mappedCommands, writer);
         return {
             exitCode: res,
             logger,
@@ -162,9 +154,7 @@ For more information on a specific command or topic, type '[command/topic] --hel
         code: 0,
         output: 'Deleted user 123',
     });
-    expect((await app(['del-user-by-id', 'invalid'])).output).toContain(
-        'Invalid value for argument id: invalid. Cannot convert invalid to number',
-    );
+    expect((await app(['del-user-by-id', 'invalid'])).output).toContain('Invalid value for argument id: invalid. Cannot convert invalid to number');
 });
 
 test('executeCommand 2', async () => {
@@ -197,9 +187,7 @@ test('executeCommand 2', async () => {
         code: 0,
         output: 'showUser2 Peter json',
     });
-    expect((await app(['show-user2', 'Peter', '--view', 'invalid'])).output).toContain(
-        `Invalid value for option --view: invalid. No valid union member found. Valid: 'default' | 'json'`,
-    );
+    expect((await app(['show-user2', 'Peter', '--view', 'invalid'])).output).toContain(`Invalid value for option --view: invalid. No valid union member found. Valid: 'default' | 'json'`);
 
     expect(await app(['show-users', '--user', 'Peter'])).toEqual({
         code: 0,
@@ -264,15 +252,11 @@ test('multiple object literal flag', async () => {
 
     const app = simpleApp([
         function showUser(options: Options & Flag, options2: Options2 & Flag, logger: Logger) {
-            logger.log(
-                `name=${options.name} age=${options.age} user=${options2.user} created=${options2.created?.toJSON()}`,
-            );
+            logger.log(`name=${options.name} age=${options.age} user=${options2.user} created=${options2.created?.toJSON()}`);
         },
     ]);
 
-    expect((await app(['show-user', '--name', 'Peter'])).output).toContain(
-        'Invalid value for option --user: undefined',
-    );
+    expect((await app(['show-user', '--name', 'Peter'])).output).toContain('Invalid value for option --user: undefined');
     expect(await app(['show-user', '--name', 'Peter', '--user', 'pete'])).toEqual({
         code: 0,
         output: 'name=Peter age=undefined user=pete created=undefined',
@@ -301,10 +285,6 @@ test('multiple object literal flag duplicate', async () => {
     ]);
 
     expect((await app(['show-user', '--name', 'Peter'])).output).toContain('Duplicate CLI');
-    expect((await app(['show-user2', '--name', 'Peter', '--2.name', '3'])).output).toContain(
-        'name=Peter age=undefined name2=3',
-    );
-    expect((await app(['show-user2', '--name', 'Peter', '--2.name', 'abc'])).output).toContain(
-        'Invalid value for option --2.name: abc',
-    );
+    expect((await app(['show-user2', '--name', 'Peter', '--2.name', '3'])).output).toContain('name=Peter age=undefined name2=3');
+    expect((await app(['show-user2', '--name', 'Peter', '--2.name', 'abc'])).output).toContain('Invalid value for option --2.name: abc');
 });

@@ -53,9 +53,7 @@ test('s3 url', async () => {
 
     await filesystem.write('test.txt', 'abc', 'public');
     const url = await filesystem.publicUrl('test.txt');
-    expect(url).toBe(
-        'https://deepkit-filesystem-integration-tests.s3.eu-central-1.amazonaws.com/test-folder-dont-delete/test.txt',
-    );
+    expect(url).toBe('https://deepkit-filesystem-integration-tests.s3.eu-central-1.amazonaws.com/test-folder-dont-delete/test.txt');
 });
 
 // since we import .filesystem.spec.js, all its tests are scheduled to run

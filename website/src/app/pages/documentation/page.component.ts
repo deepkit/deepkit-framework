@@ -1,51 +1,42 @@
-import { ChangeDetectorRef, Component, OnInit } from "@angular/core";
-import { bodyToString, Content, Page, parseBody, projectMap } from "@app/common/models";
-import { AppDescription, AppTitle } from "@app/app/components/title";
-import { AskComponent } from "@app/app/components/ask.component";
-import { ContentRenderComponent } from "@app/app/components/content-render.component";
-import { LoadingComponent } from "@app/app/components/loading";
-import { NgForOf, NgIf, ViewportScroller } from "@angular/common";
-import { ActivatedRoute, Router } from "@angular/router";
-import { ControllerClient } from "@app/app/client";
-import { PageResponse } from "@app/app/page-response";
+import { NgForOf, NgIf, ViewportScroller } from '@angular/common';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { ControllerClient } from '@app/app/client';
+import { AskComponent } from '@app/app/components/ask.component';
+import { ContentRenderComponent } from '@app/app/components/content-render.component';
+import { LoadingComponent } from '@app/app/components/loading';
+import { AppDescription, AppTitle } from '@app/app/components/title';
+import { PageResponse } from '@app/app/page-response';
+import { Content, Page, bodyToString, parseBody, projectMap } from '@app/common/models';
 
 @Component({
     standalone: true,
-    imports: [
-        AppDescription,
-        AppTitle,
-        AskComponent,
-        ContentRenderComponent,
-        LoadingComponent,
-        NgIf,
-        NgForOf
-    ],
+    imports: [AppDescription, AppTitle, AskComponent, ContentRenderComponent, LoadingComponent, NgIf, NgForOf],
     styleUrls: ['./page.component.scss'],
     template: `
-
         <div class="table-of-content">
-            <a [href]="router.url.split('#')[0] + '#' + h.link" class="intend-{{h.indent}}" *ngFor="let h of headers">
-                {{h.label}}
+            <a [href]="router.url.split('#')[0] + '#' + h.link" class="intend-{{ h.indent }}" *ngFor="let h of headers">
+                {{ h.label }}
             </a>
         </div>
         <div class="app-content normalize-text">
             <app-loading *ngIf="loading"></app-loading>
 
-            <app-title *ngIf="project" value="{{project}}"></app-title>
+            <app-title *ngIf="project" value="{{ project }}"></app-title>
             <div class="error" *ngIf="error">
-                {{error}}
+                {{ error }}
             </div>
             <div *ngIf="page">
-                <app-title value="{{page.title}} Documentation"></app-title>
+                <app-title value="{{ page.title }} Documentation"></app-title>
 
                 <app-description [value]="page.title + ' Documentation - ' + bodyToString(subline)"></app-description>
 
-                <div *ngIf="project" class="app-pre-headline">{{project}}</div>
+                <div *ngIf="project" class="app-pre-headline">{{ project }}</div>
                 <app-render-content [content]="page.body"></app-render-content>
             </div>
-<!--            <app-ask [fixed]="true"></app-ask>-->
+            <!--            <app-ask [fixed]="true"></app-ask>-->
         </div>
-    `
+    `,
 })
 export class DocumentationPageComponent implements OnInit {
     protected readonly bodyToString = bodyToString;
@@ -56,7 +47,7 @@ export class DocumentationPageComponent implements OnInit {
     subline?: Content;
     currentPath = '';
 
-    public headers: { label: string, indent: number, link: string }[] = [];
+    public headers: { label: string; indent: number; link: string }[] = [];
 
     constructor(
         private pageResponse: PageResponse,
@@ -70,7 +61,7 @@ export class DocumentationPageComponent implements OnInit {
     }
 
     ngOnInit() {
-        this.activatedRoute.url.subscribe((url) => {
+        this.activatedRoute.url.subscribe(url => {
             console.log('url', url);
             if (url.length > 1) {
                 this.load(url[1].path, url[0].path);

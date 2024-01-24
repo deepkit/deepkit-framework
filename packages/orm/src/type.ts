@@ -33,8 +33,7 @@ export class DatabaseValidationError extends DatabaseError {
 }
 
 export class UniqueConstraintFailure extends DatabaseError {
-    constructor() // public readonly classSchema: ClassSchema,
-    // public readonly property: PropertySchema,
+    constructor() // public readonly property: PropertySchema, // public readonly classSchema: ClassSchema,
     {
         super('Unique constraint failure');
         // super(`Unique constraint failure for ${classSchema.getClassName()}.${property.name}`);

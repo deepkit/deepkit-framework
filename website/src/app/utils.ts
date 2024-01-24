@@ -1,5 +1,5 @@
-import { inject, PLATFORM_ID } from "@angular/core";
-import { isPlatformBrowser, isPlatformServer } from "@angular/common";
+import { isPlatformBrowser, isPlatformServer } from '@angular/common';
+import { PLATFORM_ID, inject } from '@angular/core';
 
 export class PlatformHelper {
     platformId = inject(PLATFORM_ID);

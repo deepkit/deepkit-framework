@@ -1,6 +1,6 @@
 ---
 title: Deepkit Runtime Types
-package: "@deepkit/type"
+package: '@deepkit/type'
 doc: runtime-types/getting-started
 api: type
 category: runtime-types
@@ -11,7 +11,6 @@ Rich runtime type system for TypeScript with reflection, serialization, validati
 Works in any JavaScript runtime without code generation step.<br/>
 Plugins available for TypeScript official compiler <code>tsc</code>, Vite, Bun, and Webpack.
 </p>
-
 
 ## Features
 
@@ -31,21 +30,21 @@ Plugins available for TypeScript official compiler <code>tsc</code>, Vite, Bun, 
 Deepkit Type provides a rich runtime type system for TypeScript. It allows you to use your TypeScript types in any JavaScript runtime, like Node.js, Deno, or the browser.
 
 ```typescript
-import { MinLength, stringifyResolvedType, 
-    typeOf } from '@deepkit/type';
+import { MinLength, stringifyResolvedType, typeOf } from '@deepkit/type';
 
 type Username = string & MinLength<3>;
 
 interface User {
-    username: Username;
-    password: string;
-    created: Date;
+  username: Username;
+  password: string;
+  created: Date;
 }
 
 const type = typeOf<User>();
 console.log('Type introspection', type);
 console.log('Type stringify', stringifyResolvedType(type));
 ```
+
 </feature>
 
 <feature class="right">
@@ -60,18 +59,19 @@ Whenever you load data from a database, HTTP request, JSON, or any other source,
 import { cast } from '@deepkit/type';
 
 interface User {
-    username: string;
-    logins: number;
-    created: Date;
+  username: string;
+  logins: number;
+  created: Date;
 }
 
 // converts all values to the correct type
 const user = cast<User>({
-    username: 'Peter',
-    logins: '3',
-    created: '2020-01-01'
+  username: 'Peter',
+  logins: '3',
+  created: '2020-01-01',
 });
 ```
+
 </feature>
 
 <feature>
@@ -86,25 +86,24 @@ With the reflection API you can get all properties of classes, interfaces, or fu
 import { ReflectionClass } from '@deepkit/type';
 
 class User {
-    logins: number = 1;
-    created: Date = new Date;
+  logins: number = 1;
+  created: Date = new Date();
 
-    constructor(public username: string) {
-    }
+  constructor(public username: string) {}
 }
 
 const reflection = ReflectionClass.from(User);
 
 reflection.getMethodParameters('constructor');
 for (const p of reflection.getProperties()) {
-    p.name;
-    p.type;
-    p.isOptional();
-    p.getVisibility();
+  p.name;
+  p.type;
+  p.isOptional();
+  p.getVisibility();
 }
 ```
-</feature>
 
+</feature>
 
 <feature class="right">
 
@@ -117,27 +116,27 @@ Highly configurable and extensible. You can add your own custom types, custom se
 Use `serialize` to convert your data to a plain JavaScript object, and `cast` to convert it back.
 
 ```typescript
-import { serialize, cast } from '@deepkit/type';
+import { cast, serialize } from '@deepkit/type';
 
 interface User {
-    username: string;
-    logins: number;
-    created: Date;
+  username: string;
+  logins: number;
+  created: Date;
 }
 
 // jsonObject is a plain JavaScript object
 // and ready for transport via JSON.stringify
 const jsonObject = serialize<User>({
-    username: 'Peter',
-    logins: 3,
-    created: new Date,
+  username: 'Peter',
+  logins: 3,
+  created: new Date(),
 });
 
 // convert back from transport to real JavaScript types
 const user = cast<User>(jsonObject);
 ```
-</feature>
 
+</feature>
 
 <feature>
 
@@ -148,13 +147,12 @@ Deepkit Type provides a special serialization format for TypeScript types. This 
 This makes it possible to store the inherently circular TypeScript type object in a JSON.
 
 ```typescript
-import { serializeType, deserializeType, 
-    cast } from '@deepkit/type';
+import { cast, deserializeType, serializeType } from '@deepkit/type';
 
 interface User {
-    username: string;
-    logins: number;
-    created: Date;
+  username: string;
+  logins: number;
+  created: Date;
 }
 
 // typeObject is ready for transport via JSON.stringify
@@ -166,8 +164,8 @@ const type = deserializeType(typeObject);
 // and use it in cast/deserialize/validate, etc
 const o = cast(data, undefined, undefined, undefined, type);
 ```
-</feature>
 
+</feature>
 
 <feature class="right">
 
@@ -177,29 +175,26 @@ As a data mapper, Deepkit Type can convert your data from one shape to another.
 
 Support for custom naming strategies. You can use this to convert your property names to camelCase, snake_case, or any other naming strategy.
 
-
 ```typescript
-import { cast, MapName,
-    underscoreNamingStrategy} from '@deepkit/type';
+import { MapName, cast, underscoreNamingStrategy } from '@deepkit/type';
 
 interface User {
-    username: string;
-    firstName: string;
-    group: string & MapName<'group_id'>;
+  username: string;
+  firstName: string;
+  group: string & MapName<'group_id'>;
 }
 
 const jsonObject = {
-    username: 'pete',
-    first_name: 'Peter',
-    group_id: 'admin'
+  username: 'pete',
+  first_name: 'Peter',
+  group_id: 'admin',
 };
 
 // user has the shape of User
-const user = cast<User>(data, undefined, 
-    undefined, underscoreNamingStrategy);
+const user = cast<User>(data, undefined, undefined, underscoreNamingStrategy);
 ```
-</feature>
 
+</feature>
 
 <feature>
 
@@ -210,21 +205,22 @@ TypeScript type guards in runtime. Whenever you accept untrusted data or `any`, 
 Type Assertion with `assert` to check the data and throw an error if it is not of the expected type.
 
 ```typescript
-import { is, assert} from '@deepkit/type';
+import { assert, is } from '@deepkit/type';
 
 interface User {
-    username: string;
-    firstName: string;
-    group: string & MapName<'group_id'>;
+  username: string;
+  firstName: string;
+  group: string & MapName<'group_id'>;
 }
 
 const user = await fetch('/user/1');
 if (is<User>(user)) {
-    // user object has been validated and its safe
-    user.username;
+  // user object has been validated and its safe
+  user.username;
 }
 
 // throws an error if user is not of type User
 assert<User>(user);
 ```
+
 </feature>

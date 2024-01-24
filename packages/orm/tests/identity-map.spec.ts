@@ -21,9 +21,7 @@ test('getNormalizedPrimaryKey', () => {
         name: string = 'Foo';
     }
 
-    expect(() => getNormalizedPrimaryKey(ReflectionClass.from(User2), '123')).toThrow(
-        'Entity User2 has composite primary key',
-    );
+    expect(() => getNormalizedPrimaryKey(ReflectionClass.from(User2), '123')).toThrow('Entity User2 has composite primary key');
     expect(getNormalizedPrimaryKey(ReflectionClass.from(User2), { id: '124', id2: '444' })).toEqual({
         id: '124',
         id2: '444',

@@ -115,9 +115,7 @@ test('QueryToSql', () => {
     expect(queryToSql.convert({ id: 44, username: 'Peter' })).toBe(`(user.id = ? AND user.username = ?)`);
 
     expect(queryToSql.convert({ $or: [{ id: 44 }, { username: 'Peter' }] })).toBe(`(user.id = ? OR user.username = ?)`);
-    expect(queryToSql.convert({ $and: [{ id: 44 }, { username: 'Peter' }] })).toBe(
-        `(user.id = ? AND user.username = ?)`,
-    );
+    expect(queryToSql.convert({ $and: [{ id: 44 }, { username: 'Peter' }] })).toBe(`(user.id = ? AND user.username = ?)`);
 
     expect(queryToSql.convert({ id: { $ne: 44 } })).toBe(`user.id != ?`);
     expect(queryToSql.convert({ id: { $eq: 44 } })).toBe(`user.id = ?`);
@@ -130,9 +128,7 @@ test('QueryToSql', () => {
     expect(queryToSql.convert({ id: { $eq: null } })).toBe(`user.id IS NULL`);
     expect(queryToSql.convert({ id: { $ne: null } })).toBe(`user.id IS NOT NULL`);
 
-    expect(() => queryToSql.convert({ invalidField: { $nin: [44, 55] } })).toThrowError(
-        'No type found for path invalidField',
-    );
+    expect(() => queryToSql.convert({ invalidField: { $nin: [44, 55] } })).toThrowError('No type found for path invalidField');
 
     expect(queryToSql.convert({ id: { $nin: [44, 55] } })).toBe(`user.id NOT IN (?, ?)`);
 

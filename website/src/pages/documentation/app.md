@@ -14,7 +14,7 @@ It provides:
 - Logger
 - Configuration loader (env, dotenv, json)
 
-A CLI application in Deepkit has full access to the DI container and can thus access all providers and configuration options.  The arguments and options of the CLI commands are controlled by method parameters via TypeScript types and are automatically serialized and validated.
+A CLI application in Deepkit has full access to the DI container and can thus access all providers and configuration options. The arguments and options of the CLI commands are controlled by method parameters via TypeScript types and are automatically serialized and validated.
 
 [Deepkit Framework](./framework.md) with `@deepkit/framework` extends this further with an application server for HTTP/RPC, a debugger/profiler, and much more.
 
@@ -24,14 +24,14 @@ The easiest way to get started is to use NPM init to create a new Deepkit projec
 
 ```shell
 npm init @deepkit/app@latest my-deepkit-app
-````
+```
 
 This will create a new folder `my-deepkit-app` with all the dependencies and a basic `app.ts` file.
 
 ```sh
 cd my-deepkit-app
 npm run app
-````
+```
 
 This will run the `app.ts` file with `ts-node` and show you the available commands. You can start from here and add your own commands, controllers, and so on.
 
@@ -42,7 +42,7 @@ Deepkit App is based on [Deepkit Runtime Types](./runtime-types.md), so let's in
 ```bash
 mkdir my-project && cd my-project
 
-npm install typescript ts-node 
+npm install typescript ts-node
 npm install @deepkit/app @deepkit/type @deepkit/type-compiler
 ```
 
@@ -58,8 +58,6 @@ To compile your application, we need the TypeScript compiler and recommend `ts-n
 
 An alternative to using `ts-node` is to compile the source code with the TypeScript compiler and execute the JavaScript source code directly. This has the advantage of dramatically increasing execution speed for short commands. However, it also creates additional workflow overhead by either manually running the compiler or setting up a watcher. For this reason, `ts-node` is used in all examples in this documentation.
 
-
-
 ## First application
 
 Since the Deepkit framework does not use configuration files or a special folder structure, you can structure your project however you want. The only two files you need to get started are the TypeScript app.ts file and the TypeScript configuration tsconfig.json.
@@ -74,35 +72,33 @@ Our goal is to have the following files in our project folder:
 └── tsconfig.json
 ```
 
-We set up a basic tsconfig file and enable Deepkit's type compiler by setting `reflection` to `true`. 
+We set up a basic tsconfig file and enable Deepkit's type compiler by setting `reflection` to `true`.
 This is required to use the dependency injection container and other features.
 
 ```json title=tsconfig.json
 {
-    "compilerOptions": {
-        "outDir": "./dist",
-        "experimentalDecorators": true,
-        "strict": true,
-        "esModuleInterop": true,
-        "target": "ES2020",
-        "module": "CommonJS",
-        "moduleResolution": "node"
-    },
-    "reflection": true,
-    "files": [
-        "app.ts"
-    ]
+  "compilerOptions": {
+    "outDir": "./dist",
+    "experimentalDecorators": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "node"
+  },
+  "reflection": true,
+  "files": ["app.ts"]
 }
 ```
 
 ```typescript title=app.ts
-import {App} from '@deepkit/app';
-import {Logger} from '@deepkit/logger';
+import { App } from '@deepkit/app';
+import { Logger } from '@deepkit/logger';
 
 const app = new App();
 
 app.command('test', (logger: Logger) => {
-    logger.log('Hello World!');
+  logger.log('Hello World!');
 });
 
 app.run();
@@ -138,30 +134,17 @@ Hello World
 
 In Deepkit everything is now done via this `app.ts`. You can rename the file as you like or create more. Custom CLI commands, HTTP/RPC server, migration commands, and so on are all started from this entry point.
 
-
-
-
-
-
-
-
-
-
-
-
-
 ## Arguments & Flags
 
 Deepkit App automatically converts function parameters into CLI arguments and flags. The order of the parameters dictates the order of the CLI arguments
 
-Parameters can be any TypeScript type and are automatically validated and deserialized. 
+Parameters can be any TypeScript type and are automatically validated and deserialized.
 
 See the chapter [Arguments & Flags](./app/arguments.md) for more information.
 
-
 ## Dependency Injection
 
-Deepkit App sets up a service container and for each imported module its own Dependency Injection container that inherits from its parents. 
+Deepkit App sets up a service container and for each imported module its own Dependency Injection container that inherits from its parents.
 It brings out of the box following providers you can automatically inject into your services, controllers, and event listeners:
 
 - `Logger` for logging
@@ -172,7 +155,6 @@ It brings out of the box following providers you can automatically inject into y
 
 As soon as you import Deepkit Framework you get additional providers. See [Deepkit Framework](./framework.md) for more details.
 
-
 ## Exit code
 
 The exit code is 0 by default, which means that the command was executed successfully. To change the exit code, a number other than 0 should be returned in the exucute method.
@@ -180,9 +162,9 @@ The exit code is 0 by default, which means that the command was executed success
 ```typescript
 @cli.controller('test')
 export class TestCommand {
-    async execute() {
-        console.error('Error :(');
-        return 12;
-    }
+  async execute() {
+    console.error('Error :(');
+    return 12;
+  }
 }
 ```

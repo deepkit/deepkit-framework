@@ -1,6 +1,6 @@
 ---
 title: Deepkit ORM
-package: "@deepkit/type"
+package: '@deepkit/type'
 doc: orm/getting-started
 api: orm
 category: orm
@@ -11,7 +11,6 @@ One of the fastest TypeScript ORM for MongoDB, MySQL, PostgreSQL, SQLite.
 With Data Mapper, optional Active Record, Unit Of Work, Identity Map, migrations, relations support, and much more.
 Use plain TypeScript — no code-generation, schema, or config files required.
 </p>
-
 
 ## Features
 
@@ -38,26 +37,24 @@ Use complex types like mapped types, conditional types, unions, generics, and mo
 With full support for nominal classes including constructor arguments and methods.
 
 ```typescript
-import { PrimaryKey, AutoIncrement, Email, 
-    Index, MinLength, Unique } from '@deepkit/type';
+import { AutoIncrement, Email, Index, MinLength, PrimaryKey, Unique } from '@deepkit/type';
 
-type Username = string & MinLength<3> & Unique
+type Username = string & MinLength<3> & Unique;
 
 class User {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    createdAt: Date = new Date;
+  id: number & PrimaryKey & AutoIncrement = 0;
+  createdAt: Date = new Date();
 
-    lastName?: string;
-    firstName?: string;
+  lastName?: string;
+  firstName?: string;
 
-    email?: string & Email & Index;
+  email?: string & Email & Index;
 
-    constructor(public username: Username) {}
+  constructor(public username: Username) {}
 }
 ```
 
 </feature>
-
 
 <feature class="right">
 
@@ -68,16 +65,15 @@ You prefer interfaces to classes? No problem. Deepkit ORM supports interfaces as
 Use both classes or interfaces in your application. Deepkit ORM automatically converts them to the correct type.
 
 ```typescript
-import { PrimaryKey, AutoIncrement, Email, 
-    Index, MinLength, Unique } from '@deepkit/type';
+import { AutoIncrement, Email, Index, MinLength, PrimaryKey, Unique } from '@deepkit/type';
 
 interface User {
-    id: number & PrimaryKey;
-    createdAt: Date;
-    lastName?: string;
-    firstName?: string;
-    email?: string & Email & Index;
-    username: string & MinLength<3> & Unique;
+  id: number & PrimaryKey;
+  createdAt: Date;
+  lastName?: string;
+  firstName?: string;
+  email?: string & Email & Index;
+  username: string & MinLength<3> & Unique;
 }
 ```
 
@@ -95,7 +91,7 @@ Write your own adapter for any other database system or create as many database 
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 
-const adapter = new SQLiteDatabaseAdapter(':memory:'); 
+const adapter = new SQLiteDatabaseAdapter(':memory:');
 const database = new Database(adapter);
 database.registerEntity(User);
 
@@ -156,6 +152,7 @@ const result = await database.query(User)
 //reports affected records, e.g. [1, 2, 3, 4, 5]
 result.primaryKeys;
 ```
+
 </feature>
 
 <feature>
@@ -182,6 +179,7 @@ const users = await database.query(User)
     .where(sql`username = ${username}`)
     .find();
 ```
+
 </feature>
 
 <feature class="right">
@@ -224,6 +222,7 @@ const books = await database.query(Book)
     .end()
     .find();
 ```
+
 </feature>
 
 <feature>
@@ -236,27 +235,25 @@ This allows you to write plugins or change the behavior of your entities in ever
 
 ```typescript
 // onFetch is called for find(), findOne(), findOneOrUndefined()
-database.listen(Query.onFetch, async (event) => {
-    if (event.isSchemaOf(User)) {
-        //modify the query
-        event.query = event.query.addFilter({deleted: false});
-    }
+database.listen(Query.onFetch, async event => {
+  if (event.isSchemaOf(User)) {
+    //modify the query
+    event.query = event.query.addFilter({ deleted: false });
+  }
 });
 
 // onDeletePost is called after
 // deleteOne()/deleteMany() successfully executed
-database.listen(Query.onDeletePost, async (event) => {
-    //primaryKeys contains each primary key for
-    //all affected records
-    for (const id of event.deleteResult.primaryKeys) {
-        await event.databaseSession.persist(
-            new AuditLog('deleted', event.classSchema.getName())
-        );
-    }
+database.listen(Query.onDeletePost, async event => {
+  //primaryKeys contains each primary key for
+  //all affected records
+  for (const id of event.deleteResult.primaryKeys) {
+    await event.databaseSession.persist(new AuditLog('deleted', event.classSchema.getName()));
+  }
 });
 ```
-</feature>
 
+</feature>
 
 <feature class="right">
 
@@ -284,25 +281,20 @@ class User {
 ```
 
 ```typescript title=my-app/migration/20200917-1727.ts
-import {Migration} from '@deepkit/framework';
-export class SchemaMigration implements Migration {
-    up() {
-        return [
-          `ALTER TABLE "user" ADD COLUMN "lastName" TEXT`
-          `ALTER TABLE "user" ADD COLUMN "firstName" TEXT`
-        ];
-    }
+import { Migration } from '@deepkit/framework';
 
-    down() {
-        return [
-          `ALTER TABLE "user" DROP COLUMN "lastName"`
-          `ALTER TABLE "user" DROP COLUMN "firstName"`
-        ];
-    }
+export class SchemaMigration implements Migration {
+  up() {
+    return [`ALTER TABLE "user" ADD COLUMN "lastName" TEXT``ALTER TABLE "user" ADD COLUMN "firstName" TEXT`];
+  }
+
+  down() {
+    return [`ALTER TABLE "user" DROP COLUMN "lastName"``ALTER TABLE "user" DROP COLUMN "firstName"`];
+  }
 }
 ```
-</feature>
 
+</feature>
 
 <feature>
 
@@ -313,25 +305,26 @@ For prototyping purposes Deepkit ORM also supports the ActiveRecord pattern.
 It allows you to directly work with the entity class, without accessing a Database object.
 
 ```typescript
-import { PrimaryKey } from '@deepkit/type';
 import { ActiveRecord } from '@deepkit/orm';
+import { PrimaryKey } from '@deepkit/type';
 
 class User extends ActiveRecord {
-    id: number & PrimaryKey = 0;
-    createdAt: Date = new Date;
-    //...
+  id: number & PrimaryKey = 0;
+  createdAt: Date = new Date();
+  //...
 }
 
 const user = new User('Marie');
 await user.save();
 
 const users = await User.query()
-    .filter({ logins: { $gt: 10 } })
-    .find();
+  .filter({ logins: { $gt: 10 } })
+  .find();
 
 for (const user of users) {
-    user.credit += 10;
-    await user.save();
+  user.credit += 10;
+  await user.save();
 }
 ```
+
 </feature>

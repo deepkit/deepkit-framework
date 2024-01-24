@@ -1,18 +1,18 @@
 # Dependency Injection
 
 All commands have full access to the Dependency Injection Container. You can define dependencies in the constructor of your
-command or controller and the Dependency Injection Container tries to resolve it. 
+command or controller and the Dependency Injection Container tries to resolve it.
 
 See the chapter [Dependency Injection](../dependency-injection.md) for more information.
 
 ```typescript
 import { App, cli } from '@deepkit/app';
-import { Logger, ConsoleTransport } from '@deepkit/logger';
+import { ConsoleTransport, Logger } from '@deepkit/logger';
 
 new App({
-    providers: [{provide: Logger, useValue: new Logger([new ConsoleTransport])}],
+  providers: [{ provide: Logger, useValue: new Logger([new ConsoleTransport()]) }],
 }).command('test', (logger: Logger) => {
-    logger.log('Hello World!');
+  logger.log('Hello World!');
 });
 ```
 

@@ -1,16 +1,15 @@
 user: How to change the default port of the HTTP server?
 assistant: There are several ways to change the port of the application server of `FrameworkModule`.
 
-
 Change the module directly:
 
 ```typescript
 const app = new App({
-    imports: [
-        new FrameworkModule({
-            port: 3000
-        })
-    ]
+  imports: [
+    new FrameworkModule({
+      port: 3000,
+    }),
+  ],
 });
 ```
 
@@ -18,12 +17,10 @@ Load from environment variable:
 
 ```typescript
 const app = new App({
-    imports: [
-        new FrameworkModule()
-    ]
+  imports: [new FrameworkModule()],
 });
 
-app.loadConfigFromEnv({namingStrategy: 'same', prefix: 'app_'});
+app.loadConfigFromEnv({ namingStrategy: 'same', prefix: 'app_' });
 app.run();
 ```
 

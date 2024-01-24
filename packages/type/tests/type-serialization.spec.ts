@@ -4,20 +4,7 @@ import { getClassName } from '@deepkit/core';
 
 import { entity } from '../src/decorator.js';
 import { ReceiveType, ReflectionClass, reflect, resolveReceiveType, typeOf } from '../src/reflection/reflection.js';
-import {
-    Entity,
-    PrimaryKey,
-    Reference,
-    ReflectionKind,
-    Type,
-    TypeClass,
-    TypeProperty,
-    assertType,
-    entityAnnotation,
-    findMember,
-    isSameType,
-    primaryKeyAnnotation,
-} from '../src/reflection/type.js';
+import { Entity, PrimaryKey, Reference, ReflectionKind, Type, TypeClass, TypeProperty, assertType, entityAnnotation, findMember, isSameType, primaryKeyAnnotation } from '../src/reflection/type.js';
 import { deserialize } from '../src/serializer-facade.js';
 import { deserializeType, serializeType } from '../src/type-serialization.js';
 
@@ -33,17 +20,11 @@ test('serialize basics', () => {
     expect(serializeType(typeOf<'a'>())).toEqual([{ kind: ReflectionKind.literal, literal: 'a' }]);
     expect(serializeType(typeOf<2>())).toEqual([{ kind: ReflectionKind.literal, literal: 2 }]);
     expect(serializeType(typeOf<true>())).toEqual([{ kind: ReflectionKind.literal, literal: true }]);
-    expect(serializeType(typeOf<12n>())).toEqual([
-        { kind: ReflectionKind.literal, literal: { type: 'bigint', value: '12' } },
-    ]);
+    expect(serializeType(typeOf<12n>())).toEqual([{ kind: ReflectionKind.literal, literal: { type: 'bigint', value: '12' } }]);
     const s = Symbol('abc');
-    expect(serializeType(typeOf<typeof s>())).toEqual([
-        { kind: ReflectionKind.literal, literal: { type: 'symbol', name: 'abc' } },
-    ]);
+    expect(serializeType(typeOf<typeof s>())).toEqual([{ kind: ReflectionKind.literal, literal: { type: 'symbol', name: 'abc' } }]);
     const r = /abc/g;
-    expect(serializeType(typeOf<typeof r>())).toEqual([
-        { kind: ReflectionKind.literal, literal: { type: 'regex', regex: '/abc/g' } },
-    ]);
+    expect(serializeType(typeOf<typeof r>())).toEqual([{ kind: ReflectionKind.literal, literal: { type: 'regex', regex: '/abc/g' } }]);
 });
 
 test('serialize type annotations', () => {
@@ -65,15 +46,8 @@ test('serialize type annotations', () => {
 });
 
 test('serialize container', () => {
-    expect(serializeType(typeOf<string[]>())).toEqual([
-        { kind: ReflectionKind.array, type: 1 },
-        { kind: ReflectionKind.string },
-    ]);
-    expect(serializeType(typeOf<string[][]>())).toEqual([
-        { kind: ReflectionKind.array, type: 1 },
-        { kind: ReflectionKind.array, type: 2 },
-        { kind: ReflectionKind.string },
-    ]);
+    expect(serializeType(typeOf<string[]>())).toEqual([{ kind: ReflectionKind.array, type: 1 }, { kind: ReflectionKind.string }]);
+    expect(serializeType(typeOf<string[][]>())).toEqual([{ kind: ReflectionKind.array, type: 1 }, { kind: ReflectionKind.array, type: 2 }, { kind: ReflectionKind.string }]);
 
     expect(serializeType(typeOf<[string, number]>())).toEqual([
         {

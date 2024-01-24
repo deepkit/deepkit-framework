@@ -2,7 +2,7 @@
 
 Migrations are a way to make database schema changes in a structured and organized manner. They are stored as TypeScript files in a directory and can be executed using the command-line tool.
 
-Deepkit ORM migrations are enabled by default when Deepkit Framework is used. 
+Deepkit ORM migrations are enabled by default when Deepkit Framework is used.
 
 ## Commands
 
@@ -21,13 +21,14 @@ The [migration integration of FrameworkModule](../framework/database.md#migratio
 //database.ts
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
+
 import { User } from './models';
 
 export class SQLiteDatabase extends Database {
-    name = 'default';
-    constructor() {
-        super(new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'), [User]);
-    }
+  name = 'default';
+  constructor() {
+    super(new SQLiteDatabaseAdapter('/tmp/myapp.sqlite'), [User]);
+  }
 }
 ```
 
@@ -35,9 +36,9 @@ export class SQLiteDatabase extends Database {
 ./node_modules/.bin/deepkit-sql migration:create --path database.ts --migrationDir src/migrations
 ```
 
-A new migration file is created in `src/migrations`. 
+A new migration file is created in `src/migrations`.
 
-The newly created migration file contains now the up and down methods based on the difference between the entities defined in your TypeScript app and the configured database. 
+The newly created migration file contains now the up and down methods based on the difference between the entities defined in your TypeScript app and the configured database.
 You can now modify the up method to your needs. The down method is automatically generated based on the up method.
 You commit this file to your repository so that other developers can also execute it.
 
@@ -55,7 +56,7 @@ This shows all pending migrations. If you have a new migration file that is not 
 ./node_modules/.bin/deepkit-sql migration:up --path database.ts --migrationDir src/migrations
 ```
 
-This executes the next pending migration. 
+This executes the next pending migration.
 
 ## Reverting Migrations
 

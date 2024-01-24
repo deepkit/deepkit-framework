@@ -30,7 +30,7 @@ Your test files should be named `.spec.ts`. Create a `test.spec.ts` file with th
 
 ```typescript
 test('first test', () => {
-    expect(1 + 1).toBe(2);
+  expect(1 + 1).toBe(2);
 });
 ```
 
@@ -56,9 +56,9 @@ Whenever possible, you should unit test your services. The simpler, better separ
 
 ```typescript
 export class MyService {
-    helloWorld() {
-        return 'hello world';
-    }
+  helloWorld() {
+    return 'hello world';
+  }
 }
 ```
 
@@ -67,8 +67,8 @@ export class MyService {
 import { MyService } from './my-service.ts';
 
 test('hello world', () => {
-    const myService = new MyService();
-    expect(myService.helloWorld()).toBe('hello world');
+  const myService = new MyService();
+  expect(myService.helloWorld()).toBe('hello world');
 });
 ```
 
@@ -80,24 +80,23 @@ As you have already learned in the Dependency Injection chapter, the Dependency 
 
 ```typescript
 import { createTestingApp } from '@deepkit/framework';
-import { http, HttpRequest } from '@deepkit/http';
+import { HttpRequest, http } from '@deepkit/http';
 
 test('http controller', async () => {
-    class MyController {
-
-        @http.GET()
-        hello(@http.query() text: string) {
-            return 'hello ' + text;
-        }
+  class MyController {
+    @http.GET()
+    hello(@http.query() text: string) {
+      return 'hello ' + text;
     }
+  }
 
-    const testing = createTestingApp({ controllers: [MyController] });
-    await testing.startServer();
+  const testing = createTestingApp({ controllers: [MyController] });
+  await testing.startServer();
 
-    const response = await testing.request(HttpRequest.GET('/').query({text: 'world'}));
+  const response = await testing.request(HttpRequest.GET('/').query({ text: 'world' }));
 
-    expect(response.getHeader('content-type')).toBe('text/plain; charset=utf-8');
-    expect(response.body.toString()).toBe('hello world');
+  expect(response.getHeader('content-type')).toBe('text/plain; charset=utf-8');
+  expect(response.body.toString()).toBe('hello world');
 });
 ```
 
@@ -105,18 +104,18 @@ test('http controller', async () => {
 import { createTestingApp } from '@deepkit/framework';
 
 test('service', async () => {
-    class MyService {
-        helloWorld() {
-            return 'hello world';
-        }
+  class MyService {
+    helloWorld() {
+      return 'hello world';
     }
+  }
 
-    const testing = createTestingApp({ providers: [MyService] });
+  const testing = createTestingApp({ providers: [MyService] });
 
-    //access the dependency injection container and instantiate MyService
-    const myService = testing.app.get(MyService);
+  //access the dependency injection container and instantiate MyService
+  const myService = testing.app.get(MyService);
 
-    expect(myService.helloWorld()).toBe('hello world');
+  expect(myService.helloWorld()).toBe('hello world');
 });
 ```
 
@@ -150,7 +149,7 @@ You use your module as follows:
 import { AppCoreModule } from './app-core.ts';
 
 new App({
-    imports: [new AppCoreModule]
+  imports: [new AppCoreModule()],
 }).run();
 ```
 
@@ -158,22 +157,23 @@ And test it without booting the entire application server.
 
 ```typescript
 import { createTestingApp } from '@deepkit/framework';
+
 import { AppCoreModule, MyService } from './app-core.ts';
 
 test('service simple', async () => {
-    const testing = createTestingApp({ imports: [new AppCoreModule] });
+  const testing = createTestingApp({ imports: [new AppCoreModule()] });
 
-    const myService = testing.app.get(MyService);
-    expect(myService.doIt()).toBe(true);
+  const myService = testing.app.get(MyService);
+  expect(myService.doIt()).toBe(true);
 });
 
 test('service simple big', async () => {
-    // you change configurations of your module for specific test scenarios
-    const testing = createTestingApp({
-        imports: [new AppCoreModule({items: 100})]
-    });
+  // you change configurations of your module for specific test scenarios
+  const testing = createTestingApp({
+    imports: [new AppCoreModule({ items: 100 })],
+  });
 
-    const myService = testing.app.get(MyService);
-    expect(myService.doIt()).toBe(true);
+  const myService = testing.app.get(MyService);
+  expect(myService.doIt()).toBe(true);
 });
 ```

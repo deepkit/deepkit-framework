@@ -5,25 +5,22 @@ The Soft-Delete plugin allows to keep database records hidden without actually d
 To use the plugin, you must instantiate the SoftDelete class and enable it for each entity.
 
 ```typescript
-import { entity, PrimaryKey, AutoIncrement } from '@deepkit/type';
 import { SoftDelete } from '@deepkit/orm';
+import { AutoIncrement, PrimaryKey, entity } from '@deepkit/type';
 
 @entity.name('user')
 class User {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+  id: number & PrimaryKey & AutoIncrement = 0;
+  created: Date = new Date();
 
-    // this field is used as indicator whether the record is soft deleted.
-    // if it is set, the record is soft deleted.
-    deletedAt?: Date;
+  // this field is used as indicator whether the record is soft deleted.
+  // if it is set, the record is soft deleted.
+  deletedAt?: Date;
 
-    // this field is optional and can be used to track who/what deleted the record.
-    deletedBy?: string;
+  // this field is optional and can be used to track who/what deleted the record.
+  deletedBy?: string;
 
-    constructor(
-        public name: string
-    ) {
-    }
+  constructor(public name: string) {}
 }
 
 const softDelete = new SoftDelete(database);
@@ -87,7 +84,7 @@ import { SoftDeleteQuery } from '@deepkit/orm';
 await database.query(User).lift(SoftDeleteQuery).withSoftDeleted().find();
 
 // find only soft deleted
-await database.query(s).lift(SoftDeleteQuery).isSoftDeleted().count()
+await database.query(s).lift(SoftDeleteQuery).isSoftDeleted().count();
 ```
 
 ## Deleted by
@@ -96,6 +93,7 @@ await database.query(s).lift(SoftDeleteQuery).isSoftDeleted().count()
 
 ```typescript
 import { SoftDeleteSession } from '@deepkit/orm';
+import { SoftDeleteQuery } from '@deepkit/orm';
 
 const session = database.createSession();
 const user1 = session.query(User).findOne();
@@ -104,9 +102,6 @@ session.from(SoftDeleteSession).setDeletedBy('Peter');
 session.remove(user1);
 
 await session.commit();
-import { SoftDeleteQuery } from '@deepkit/orm';
 
-database.query(User).lift(SoftDeleteQuery)
-.deletedBy('Peter')
-.deleteMany();
+database.query(User).lift(SoftDeleteQuery).deletedBy('Peter').deleteMany();
 ```

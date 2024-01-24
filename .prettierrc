@@ -17,6 +17,12 @@
       "options": {
         "tabWidth": 4
       }
+    },
+    {
+      "files": ["*.spec.ts", "*.html"],
+      "options": {
+        "printWidth": 250
+      }
     }
   ]
 }

@@ -1,6 +1,6 @@
 ---
 title: Deepkit Template
-package: "@deepkit/template"
+package: '@deepkit/template'
 doc: template
 api: template
 category: template
@@ -56,20 +56,17 @@ export function MyComponent(props: {title: string}) {
 ```javascript
 // is optimised at runtime
 export function MyComponent(props) {
-    return '<div>Hello ' + escape(props.title) + '</div>';
+  return '<div>Hello ' + escape(props.title) + '</div>';
 }
 ```
 
 </feature>
-
-
 
 <feature class="right">
 
 ## Async Components
 
 Components can be async. This allows you to load data from a file, database, or remote API and render the component once the data is available.
-
 
 ```tsx
 export async function MyComponent(props: { title: string }) {
@@ -80,8 +77,6 @@ export async function MyComponent(props: { title: string }) {
 
 </feature>
 
-
-
 <feature>
 
 ## Dependency Injection
@@ -90,7 +85,7 @@ Deepkit Template supports dependency injection. This allows you to inject servic
 
 ```tsx
 export async function User(
-    props: { id: number }, 
+    props: { id: number },
     database: Database,
 ) {
     const user = await database.query(User)

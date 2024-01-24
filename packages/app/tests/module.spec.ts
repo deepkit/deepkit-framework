@@ -66,43 +66,29 @@ function getServiceOnNewServiceContainer<T>(module: AppModule<any>, service: Cla
 
 test('import', () => {
     {
-        expect(() => getServiceOnNewServiceContainer(new MyAppModule(), ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(type): Not a string',
-        );
+        expect(() => getServiceOnNewServiceContainer(new MyAppModule(), ModuleService)).toThrow('Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(type): Not a string');
     }
 
     {
-        expect(() =>
-            getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '23' } }), ModuleService),
-        ).toThrow(
+        expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '23' } }), ModuleService)).toThrow(
             'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(minLength): Min length is 5',
         );
     }
 
     {
-        expect(() =>
-            getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345' } }), ModuleService),
-        ).toThrow(
+        expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345' } }), ModuleService)).toThrow(
             'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(type): Not a number',
         );
     }
 
     {
-        expect(() =>
-            getServiceOnNewServiceContainer(
-                new MyAppModule({ myModule: { param1: '12345', param2: 55 } }),
-                ModuleService,
-            ),
-        ).toThrow(
+        expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345', param2: 55 } }), ModuleService)).toThrow(
             'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(minimum): Number needs to be greater than or equal to 100',
         );
     }
 
     {
-        const myService = getServiceOnNewServiceContainer(
-            new MyAppModule({ myModule: { param1: '12345', param2: 100 } }),
-            ModuleService,
-        );
+        const myService = getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345', param2: 100 } }), ModuleService);
         expect(myService.config).toEqual({ param1: '12345', param2: 100 });
     }
 });

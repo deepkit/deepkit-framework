@@ -55,23 +55,23 @@ The strategy specifically means that each entity has an "id" field, usually at t
 
 ```typescript
 class User {
-    id: number & PrimaryKey & AutoIncrement = 0;
+  id: number & PrimaryKey & AutoIncrement = 0;
 
-    constructor(public username: string) {}
+  constructor(public username: string) {}
 }
 ```
 
 As an alternative to a composite primary key, you would use a unique multi-field index instead.
 
 ```typescript
-@entity.index(['tenancyId', 'username'], {unique: true})
+@entity.index(['tenancyId', 'username'], { unique: true })
 class User {
-    id: number & PrimaryKey & AutoIncrement = 0;
+  id: number & PrimaryKey & AutoIncrement = 0;
 
-    constructor(
-        public tenancyId: number,
-        public username: string,
-    ) {}
+  constructor(
+    public tenancyId: number,
+    public username: string,
+  ) {}
 }
 ```
 

@@ -1,4 +1,3 @@
-
 # Query
 
 A query is an object that describes how to retrieve or modify data from the database. It has several methods to describe the query and termination methods that execute them. The database adapter can extend the query API in many ways to support database specific features.
@@ -121,6 +120,7 @@ const users = await session.query(User).limit(5).skip(10).find();
 ```
 
 [#database-join]
+
 ## Join
 
 By default, references from the entity are neither included in queries nor loaded. To include a join in the query without loading the reference, use `join()` (left join) or `innerJoin()`. To include a join in the query and load the reference, use `joinWith()` or `innerJoinWith()`.
@@ -130,22 +130,20 @@ All the following examples assume these model schemas:
 ```typescript
 @entity.name('group')
 class Group {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+  id: number & PrimaryKey & AutoIncrement = 0;
+  created: Date = new Date();
 
-    constructor(public username: string) {
-    }
+  constructor(public username: string) {}
 }
 
 @entity.name('user')
 class User {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+  id: number & PrimaryKey & AutoIncrement = 0;
+  created: Date = new Date();
 
-    group?: Group & Reference;
+  group?: Group & Reference;
 
-    constructor(public username: string) {
-    }
+  constructor(public username: string) {}
 }
 ```
 
@@ -153,7 +151,7 @@ class User {
 //select only users with a group assigned (INNER JOIN)
 const users = await session.query(User).innerJoin('group').find();
 for (const user of users) {
-    user.group; //error, since reference was not loaded
+  user.group; //error, since reference was not loaded
 }
 ```
 
@@ -161,7 +159,7 @@ for (const user of users) {
 //select only users with a group assigned (INNER JOIN) and load the relation
 const users = await session.query(User).innerJoinWith('group').find();
 for (const user of users) {
-    user.group.name; //works
+  user.group.name; //works
 }
 ```
 
@@ -169,14 +167,15 @@ To modify join queries, use the same methods, but with the `use` prefix: `useJoi
 
 ```typescript
 //select only users with a group with name 'admins' assigned (INNER JOIN)
-const users = await session.query(User)
-    .useInnerJoinWith('group')
-        .filter({name: 'admins'})
-        .end()  // returns to the parent query
-    .find();
+const users = await session
+  .query(User)
+  .useInnerJoinWith('group')
+  .filter({ name: 'admins' })
+  .end() // returns to the parent query
+  .find();
 
 for (const user of users) {
-    user.group.name; //always admin
+  user.group.name; //always admin
 }
 ```
 
@@ -189,15 +188,14 @@ The following examples assume this model scheme:
 ```typescript
 @entity.name('file')
 class File {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+  id: number & PrimaryKey & AutoIncrement = 0;
+  created: Date = new Date();
 
-    downloads: number = 0;
+  downloads: number = 0;
 
-    category: string = 'none';
+  category: string = 'none';
 
-    constructor(public path: string & Index) {
-    }
+  constructor(public path: string & Index) {}
 }
 ```
 
@@ -205,9 +203,9 @@ class File {
 
 ```typescript
 await database.persist(
-    cast<File>({path: 'file1', category: 'images'}),
-    cast<File>({path: 'file2', category: 'images'}),
-    cast<File>({path: 'file3', category: 'pdfs'})
+  cast<File>({ path: 'file1', category: 'images' }),
+  cast<File>({ path: 'file2', category: 'images' }),
+  cast<File>({ path: 'file3', category: 'pdfs' }),
 );
 
 //[ { category: 'images' }, { category: 'pdfs' } ]
@@ -218,8 +216,14 @@ There are several aggregation methods: `withSum`, `withAverage`, `withCount`, `w
 
 ```typescript
 // first let's update some of the records:
-await database.query(File).filter({path: 'images/file1'}).patchOne({$inc: {downloads: 15}});
-await database.query(File).filter({path: 'images/file2'}).patchOne({$inc: {downloads: 5}});
+await database
+  .query(File)
+  .filter({ path: 'images/file1' })
+  .patchOne({ $inc: { downloads: 15 } });
+await database
+  .query(File)
+  .filter({ path: 'images/file2' })
+  .patchOne({ $inc: { downloads: 5 } });
 
 //[{ category: 'images', downloads: 20 },{ category: 'pdfs', downloads: 0 }]
 await session.query(File).groupBy('category').withSum('downloads').find();
@@ -238,13 +242,14 @@ With `returning` additional fields can be requested in case of changes via `patc
 Caution: Not all database adapters return fields atomically. Use transactions to ensure data consistency.
 
 ```typescript
-await database.query(User).patchMany({visits: 0});
+await database.query(User).patchMany({ visits: 0 });
 
 //{ modified: 1, returning: { visits: [ 5 ] }, primaryKeys: [ 1 ] }
-const result = await database.query(User)
-    .filter({username: 'User1'})
-    .returning('username', 'visits')
-    .patchOne({$inc: {visits: 5}});
+const result = await database
+  .query(User)
+  .filter({ username: 'User1' })
+  .returning('username', 'visits')
+  .patchOne({ $inc: { visits: 5 } });
 ```
 
 ## Find
@@ -252,7 +257,7 @@ const result = await database.query(User)
 Returns an array of entries matching the specified filter.
 
 ```typescript
-const users: User[] = await database.query(User).filter({username: 'Peter'}).find();
+const users: User[] = await database.query(User).filter({ username: 'Peter' }).find();
 ```
 
 ## FindOne
@@ -261,7 +266,7 @@ Returns an item that matches the specified filter.
 If no item is found, an `ItemNotFound` error is thrown.
 
 ```typescript
-const users: User = await database.query(User).filter({username: 'Peter'}).findOne();
+const users: User = await database.query(User).filter({ username: 'Peter' }).findOne();
 ```
 
 ## FindOneOrUndefined
@@ -270,8 +275,8 @@ Returns an entry that matches the specified filter.
 If no entry is found, undefined is returned.
 
 ```typescript
-const query = database.query(User).filter({username: 'Peter'});
-const users: User|undefined = await query.findOneOrUndefined();
+const query = database.query(User).filter({ username: 'Peter' });
+const users: User | undefined = await query.findOneOrUndefined();
 ```
 
 ## FindField
@@ -288,7 +293,7 @@ Returns a list of a field that match the specified filter.
 If no entry is found, an `ItemNotFound` error is thrown.
 
 ```typescript
-const username: string = await database.query(User).filter({id: 3}).findOneField('username');
+const username: string = await database.query(User).filter({ id: 3 }).findOneField('username');
 ```
 
 ## Patch
@@ -299,12 +304,15 @@ Patch is a change query that patches the records described in the query. The met
 `patchMany` changes all records in the database that match the specified filter. If no filter is set, the whole table will be changed. Use `patchOne` to change only one entry at a time.
 
 ```typescript
-await database.query(User).filter({username: 'Peter'}).patch({username: 'Peter2'});
+await database.query(User).filter({ username: 'Peter' }).patch({ username: 'Peter2' });
 
-await database.query(User).filter({username: 'User1'}).patchOne({birthdate: new Date});
-await database.query(User).filter({username: 'User1'}).patchOne({$inc: {visits: 1}});
+await database.query(User).filter({ username: 'User1' }).patchOne({ birthdate: new Date() });
+await database
+  .query(User)
+  .filter({ username: 'User1' })
+  .patchOne({ $inc: { visits: 1 } });
 
-await database.query(User).patchMany({visits: 0});
+await database.query(User).patchMany({ visits: 0 });
 ```
 
 ## Delete
@@ -325,7 +333,7 @@ const result = await database.query(User).filter({id: 4}).deleteOne();
 Returns whether at least one entry exists in the database.
 
 ```typescript
-const userExists: boolean = await database.query(User).filter({username: 'Peter'}).has();
+const userExists: boolean = await database.query(User).filter({ username: 'Peter' }).has();
 ```
 
 ## Count
@@ -343,15 +351,15 @@ Lifting a query means adding new functionality to it. This is usually used eithe
 ```typescript
 import { FilterQuery, Query } from '@deepkit/orm';
 
-class UserQuery<T extends {birthdate?: Date}> extends Query<T>  {
-    hasBirthday() {
-        const start = new Date();
-        start.setHours(0,0,0,0);
-        const end = new Date();
-        end.setHours(23,59,59,999);
+class UserQuery<T extends { birthdate?: Date }> extends Query<T> {
+  hasBirthday() {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
 
-        return this.filter({$and: [{birthdate: {$gte: start}}, {birthdate: {$lte: end}}]} as FilterQuery<T>);
-    }
+    return this.filter({ $and: [{ birthdate: { $gte: start } }, { birthdate: { $lte: end } }] } as FilterQuery<T>);
+  }
 }
 
 await session.query(User).lift(UserQuery).hasBirthday().find();

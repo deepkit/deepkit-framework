@@ -1,88 +1,84 @@
-import { ActivatedRoute, RouterLink } from "@angular/router";
-import { Component, Input, OnInit } from "@angular/core";
-import { DatePipe, KeyValuePipe, NgForOf, NgIf } from "@angular/common";
-import { ControllerClient } from "@app/app/client";
-import { CommunityQuestionListItem, projectMap } from "@app/common/models";
-import { ContentRenderComponent } from "@app/app/components/content-render.component";
+import { DatePipe, KeyValuePipe, NgForOf, NgIf } from '@angular/common';
+import { Component, Input, OnInit } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ControllerClient } from '@app/app/client';
+import { ContentRenderComponent } from '@app/app/components/content-render.component';
+import { CommunityQuestionListItem, projectMap } from '@app/common/models';
 
 @Component({
     standalone: true,
-    imports: [
-        NgIf,
-        NgForOf,
-        ContentRenderComponent,
-        RouterLink,
-        DatePipe
-    ],
+    imports: [NgIf, NgForOf, ContentRenderComponent, RouterLink, DatePipe],
     selector: 'render-questions',
-    styles: [`
-        .question {
-            overflow: hidden;
-            padding: 10px 25px;
+    styles: [
+        `
+            .question {
+                overflow: hidden;
+                padding: 10px 25px;
 
-            &:hover {
-                background: rgba(15, 15, 15, 0.40);
-            }
-
-            &:not(:last-child) {
-                border-bottom: 1px solid #1E1E1E;
-            }
-
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-
-            .title {
-                display: flex;
-                flex-direction: column;
-                flex: 1;
-
-                .votes {
-                    color: #979797;
-                    line-height: 16px;
-                    font-size: 13px;
+                &:hover {
+                    background: rgba(15, 15, 15, 0.4);
                 }
-            }
 
-            .actions {
-                margin-left: auto;
-            }
+                &:not(:last-child) {
+                    border-bottom: 1px solid #1e1e1e;
+                }
 
-            .actions .row {
                 display: flex;
                 flex-direction: row;
-                height: 26px;
+                align-items: center;
 
-                > * {
-                    margin-left: 15px;
+                .title {
+                    display: flex;
+                    flex-direction: column;
+                    flex: 1;
+
+                    .votes {
+                        color: #979797;
+                        line-height: 16px;
+                        font-size: 13px;
+                    }
+                }
+
+                .actions {
+                    margin-left: auto;
+                }
+
+                .actions .row {
+                    display: flex;
+                    flex-direction: row;
+                    height: 26px;
+
+                    > * {
+                        margin-left: 15px;
+                    }
+                }
+
+                .button {
+                    font-size: 12px;
+                    line-height: 12px;
                 }
             }
-
-            .button {
-                font-size: 12px;
-                line-height: 12px;
-            }
-        }
-    `],
+        `,
+    ],
     template: `
         <div class="questions app-box-transparent">
             <div class="question" *ngFor="let question of questions">
                 <div class="title">
-                    <div class="votes">
-                        {{question.votes}} up-votes
-                    </div>
-                    <a routerLink="/documentation/questions/post/{{question.id}}">{{question.title}}</a>
+                    <div class="votes">{{ question.votes }} up-votes</div>
+                    <a routerLink="/documentation/questions/post/{{ question.id }}">{{ question.title }}</a>
                 </div>
 
                 <div class="actions">
                     <div class="row">
-                        <div class="app-tag">{{projectMap[question.category] || 'General'}}</div>
-                        <a class="button" *ngIf="question.discordUrl" [href]="question.discordUrl" target="_blank">Discord</a>
+                        <div class="app-tag">{{ projectMap[question.category] || 'General' }}</div>
+                        <a class="button" *ngIf="question.discordUrl" [href]="question.discordUrl" target="_blank"
+                            >Discord</a
+                        >
                     </div>
                 </div>
             </div>
         </div>
-    `
+    `,
 })
 export class RenderQuestions {
     projectMap = projectMap;
@@ -91,22 +87,12 @@ export class RenderQuestions {
 
 @Component({
     standalone: true,
-    imports: [
-        NgIf,
-        NgForOf,
-        ContentRenderComponent,
-        RouterLink,
-        DatePipe,
-        RenderQuestions,
-        KeyValuePipe
-    ],
+    imports: [NgIf, NgForOf, ContentRenderComponent, RouterLink, DatePipe, RenderQuestions, KeyValuePipe],
     styleUrls: ['./community-questions.component.scss'],
     template: `
         <div class="app-content-full normalize-text">
             <h1>Questions & Answers</h1>
-            <p>
-                All public questions answered by our Deepkit Discord bot are collected here.
-            </p>
+            <p>All public questions answered by our Deepkit Discord bot are collected here.</p>
 
             <!--            <div class="app-note">-->
             <!--                How to ask a question:-->
@@ -122,62 +108,60 @@ export class RenderQuestions {
                 <!--                <a class="button big" routerLink="./post/ask">Open Chat Bot</a>-->
             </p>
 
-            <div *ngFor="let kv of groups|keyvalue">
-                <h2 id="{{kv.key}}">{{projectMap[kv.key] || kv.key}}</h2>
+            <div *ngFor="let kv of groups | keyvalue">
+                <h2 id="{{ kv.key }}">{{ projectMap[kv.key] || kv.key }}</h2>
 
                 <ul>
                     <li *ngFor="let m of kv.value">
-                        <a routerLink="/documentation/questions/post/{{m.id}}">
-                            {{m.title}}
+                        <a routerLink="/documentation/questions/post/{{ m.id }}">
+                            {{ m.title }}
                         </a>
                     </li>
                 </ul>
             </div>
 
-<!--            <h2>New Questions</h2>-->
+            <!--            <h2>New Questions</h2>-->
 
-<!--            <render-questions [questions]="questions.newest"></render-questions>-->
+            <!--            <render-questions [questions]="questions.newest"></render-questions>-->
 
             <h2>How to Chat</h2>
 
             <p>
-                How does the bot work in Discord? First of all, you have to join our Discord server. Then, you can ping the bot
-                with <code>&#64;deepkit</code> and ask your question. The bot will automatically create a new thread for you and answer
-                your question in a new message.
+                How does the bot work in Discord? First of all, you have to join our Discord server. Then, you can ping
+                the bot with <code>&#64;deepkit</code> and ask your question. The bot will automatically create a new
+                thread for you and answer your question in a new message.
             </p>
 
             <p>
-                Now, after you got the first answer, you can continue chatting with the bot by keep pinging it. If you are not satisfied
-                with the answer, you can ask the bot to edit and fix it. The bot will then edit its previous message until you are satisfied.
-                You can of course also create follow-up questions, which the bot will answer in the same thread.
+                Now, after you got the first answer, you can continue chatting with the bot by keep pinging it. If you
+                are not satisfied with the answer, you can ask the bot to edit and fix it. The bot will then edit its
+                previous message until you are satisfied. You can of course also create follow-up questions, which the
+                bot will answer in the same thread.
             </p>
 
             <p>
-                By carefully asking questions and asking the bot to edit its message, you can create a nice and clean documentation page not only for your, but other users as well
-                since
-                all questions and answers are public on this page.
+                By carefully asking questions and asking the bot to edit its message, you can create a nice and clean
+                documentation page not only for your, but other users as well since all questions and answers are public
+                on this page.
             </p>
-
         </div>
-
-    `
+    `,
 })
 export class CommunityQuestionsComponent implements OnInit {
     id: string = '';
 
     groups: { [group: string]: CommunityQuestionListItem[] } = {};
 
-    questions: { top: CommunityQuestionListItem[], newest: CommunityQuestionListItem[] } = { top: [], newest: [] };
+    questions: { top: CommunityQuestionListItem[]; newest: CommunityQuestionListItem[] } = { top: [], newest: [] };
 
     constructor(
         protected activatedRoute: ActivatedRoute,
         protected client: ControllerClient,
-    ) {
-    }
+    ) {}
 
     ngOnInit() {
         // this.activatedRoute.params.subscribe(params => {
-            this.load();
+        this.load();
         // });
     }
 

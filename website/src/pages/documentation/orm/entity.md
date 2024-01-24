@@ -8,19 +8,19 @@ Through special type annotations like `Mapped<'name'>` a field name can also be 
 ## Class
 
 ```typescript
-import { entity, PrimaryKey, AutoIncrement, Unique, MinLength, MaxLength } from '@deepkit/type';
+import { AutoIncrement, MaxLength, MinLength, PrimaryKey, Unique, entity } from '@deepkit/type';
 
 @entity.name('user')
 class User {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
-    firstName?: string;
-    lastName?: string;
+  id: number & PrimaryKey & AutoIncrement = 0;
+  created: Date = new Date();
+  firstName?: string;
+  lastName?: string;
 
-    constructor(
-        public username: string & Unique & MinLength<2> & MaxLength<16>,
-        public email: string & Unique,
-    ) {}
+  constructor(
+    public username: string & Unique & MinLength<2> & MaxLength<16>,
+    public email: string & Unique,
+  ) {}
 }
 
 const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [User]);
@@ -62,11 +62,10 @@ console.log('all users', allUsers);
 Primitive data types like String, Number (bigint), and Boolean are mapped to common database types. Only the TypeScript type is used.
 
 ```typescript
-
 interface User {
-    logins: number;
-    username: string;
-    pro: boolean;
+  logins: number;
+  username: string;
+  pro: boolean;
 }
 ```
 
@@ -83,7 +82,7 @@ For numbers `AutoIncrement` can be used.
 import { PrimaryKey } from '@deepkit/type';
 
 interface User {
-    id: number & PrimaryKey;
+  id: number & PrimaryKey;
 }
 ```
 
@@ -94,10 +93,10 @@ Fields that should be automatically incremented during insertion are annotated w
 An auto-increment field is an automatic counter and can only be applied to a primary key. The database automatically ensures that an ID is used only once.
 
 ```typescript
-import { PrimaryKey, AutoIncrement } from '@deepkit/type';
+import { AutoIncrement, PrimaryKey } from '@deepkit/type';
 
 interface User {
-    id: number & PrimaryKey & AutoIncrement;
+  id: number & PrimaryKey & AutoIncrement;
 }
 ```
 
@@ -106,10 +105,10 @@ interface User {
 Fields that should be of type UUID (v4) are annotated with the decorator UUID. The runtime type is `string` and mostly binary in the database itself. Use the `uuid()` function to create a new UUID v4.
 
 ```typescript
-import { uuid, UUID, PrimaryKey } from '@deepkit/type';
+import { PrimaryKey, UUID, uuid } from '@deepkit/type';
 
 class User {
-    id: UUID & PrimaryKey = uuid();
+  id: UUID & PrimaryKey = uuid();
 }
 ```
 
@@ -120,10 +119,10 @@ Fields that should be of type ObjectID in MongoDB are annotated with the decorat
 MongoID fields automatically get a new value when inserted. It is not mandatory to use the field name `_id`. It can have any name.
 
 ```typescript
-import { PrimaryKey, MongoId } from '@deepkit/type';
+import { MongoId, PrimaryKey } from '@deepkit/type';
 
 class User {
-    id: MongoId & PrimaryKey = '';
+  id: MongoId & PrimaryKey = '';
 }
 ```
 
@@ -138,8 +137,8 @@ In the following example, the changed field is optional and can therefore be und
 import { PrimaryKey } from '@deepkit/type';
 
 class User {
-    id: number & PrimaryKey = 0;
-    modified?: Date;
+  id: number & PrimaryKey = 0;
+  modified?: Date;
 }
 ```
 
@@ -149,8 +148,8 @@ This example shows how the nullable type works. NULL is used both in the databas
 import { PrimaryKey } from '@deepkit/type';
 
 class User {
-    id: number & PrimaryKey = 0;
-    modified: Date | null = null;
+  id: number & PrimaryKey = 0;
+  modified: Date | null = null;
 }
 ```
 
@@ -177,7 +176,7 @@ With `DatabaseField` it is possible to map a field to any database type. The typ
 import { DatabaseField } from '@deepkit/type';
 
 interface User {
-    title: string & DatabaseField<{type: 'VARCHAR(244)'}>;
+  title: string & DatabaseField<{ type: 'VARCHAR(244)' }>;
 }
 ```
 
@@ -189,7 +188,7 @@ To map a field for a specific database, either `SQLite`, `MySQL`, or `Postgres` 
 import { SQLite } from '@deepkit/type';
 
 interface User {
-    title: string & SQLite<{type: 'text'}>;
+  title: string & SQLite<{ type: 'text' }>;
 }
 ```
 
@@ -199,7 +198,7 @@ interface User {
 import { MySQL } from '@deepkit/type';
 
 interface User {
-    title: string & MySQL<{type: 'text'}>;
+  title: string & MySQL<{ type: 'text' }>;
 }
 ```
 
@@ -209,7 +208,7 @@ interface User {
 import { Postgres } from '@deepkit/type';
 
 interface User {
-    title: string & Postgres<{type: 'text'}>;
+  title: string & Postgres<{ type: 'text' }>;
 }
 ```
 

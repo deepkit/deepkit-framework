@@ -1,40 +1,41 @@
+import { MarkdownParser } from '@app/common/markdown';
+import { AngularListener } from '@app/server/angular';
+import { registerBot } from '@app/server/commands/discord';
+import { importExamples, importQuestions } from '@app/server/commands/import';
+import { migrate } from '@app/server/commands/migrate';
+import {
+    fineTuneTest1,
+    fineTuneTest1Check,
+    fineTuneTest1Model,
+    mlGenAnswerCommand,
+    mlGenQuestionCommand,
+} from '@app/server/commands/ml-fine-tuning';
+import { BenchmarkController, BenchmarkHttpController } from '@app/server/controller/benchmark.controller';
+import { MainController } from '@app/server/controller/main.controller';
+import { WebController } from '@app/server/controller/web.controller';
+import { MainDatabase } from '@app/server/database';
+import { PageProcessor } from '@app/server/page-processor';
+import { Questions, testQuestions, testTestFunction } from '@app/server/questions';
+import { Search } from '@app/server/search';
+import { Url } from '@app/server/url';
+import { Client, GatewayIntentBits, Partials } from 'discord.js';
+import { OpenAI } from 'openai';
+import { join } from 'path';
+
 import { App, findParentPath, onAppExecute } from '@deepkit/app';
 import { FrameworkModule, onServerMainBootstrap } from '@deepkit/framework';
-import { AppConfig } from './config';
-import { MainController } from '@app/server/controller/main.controller';
-import { AngularListener } from '@app/server/angular';
 import { serveStaticListener } from '@deepkit/http';
-import { join } from 'path';
-import { Search } from "@app/server/search";
-import { OpenAI } from "openai";
-import { fineTuneTest1, fineTuneTest1Check, fineTuneTest1Model, mlGenAnswerCommand, mlGenQuestionCommand } from "@app/server/commands/ml-fine-tuning";
-import { WebController } from "@app/server/controller/web.controller";
-import { PageProcessor } from "@app/server/page-processor";
-import { Questions, testQuestions, testTestFunction } from "@app/server/questions";
-import { registerBot } from "@app/server/commands/discord";
-import { MainDatabase } from "@app/server/database";
-import { Database } from "@deepkit/orm";
-import { Client, GatewayIntentBits, Partials } from "discord.js";
-import { Url } from "@app/server/url";
-import { MarkdownParser } from "@app/common/markdown";
-import { migrate } from "@app/server/commands/migrate";
-import { importExamples, importQuestions } from "@app/server/commands/import";
-import { BenchmarkController, BenchmarkHttpController } from "@app/server/controller/benchmark.controller";
+import { Database } from '@deepkit/orm';
+
+import { AppConfig } from './config';
 
 (global as any).window = undefined;
 (global as any).document = undefined;
 
 new App({
     config: AppConfig,
-    controllers: [
-        MainController,
-        WebController,
-        BenchmarkController,
-        BenchmarkHttpController,
-    ],
-    listeners: [
-        AngularListener,
-    ],
+    controllers: [MainController, WebController, BenchmarkController, BenchmarkHttpController],
+    listeners: [AngularListener],
     providers: [
         PageProcessor,
         Questions,
@@ -43,12 +44,14 @@ new App({
         MarkdownParser,
         { provide: Database, useClass: MainDatabase },
         {
-            provide: OpenAI, useFactory(openaiApiKey: AppConfig['openaiApiKey']) {
+            provide: OpenAI,
+            useFactory(openaiApiKey: AppConfig['openaiApiKey']) {
                 return new OpenAI({ apiKey: openaiApiKey });
-            }
+            },
         },
         {
-            provide: Client, useFactory() {
+            provide: Client,
+            useFactory() {
                 return new Client({
                     partials: [Partials.Message, Partials.Channel, Partials.Reaction],
                     intents: [
@@ -59,14 +62,14 @@ new App({
                         GatewayIntentBits.GuildMessageReactions,
                     ],
                 });
-            }
-        }
+            },
+        },
     ],
     imports: [
         new FrameworkModule({
             migrateOnStartup: true, //yolo
-        })
-    ]
+        }),
+    ],
 })
     .command('search:index', async (search: Search) => await search.index())
     .command('search:find', async (query: string, search: Search) => {
@@ -85,7 +88,7 @@ new App({
     .listen(onServerMainBootstrap, registerBot)
     .listen(onAppExecute, (event, parser: MarkdownParser) => parser.load())
     .loadConfigFromEnv({ namingStrategy: 'same', prefix: 'app_', envFilePath: ['local.env'] })
-    .setup((module) => {
+    .setup(module => {
         const assets = findParentPath('dist/', __dirname);
         if (assets) {
             module.addListener(serveStaticListener(module, '/', join(assets, 'app/browser')));

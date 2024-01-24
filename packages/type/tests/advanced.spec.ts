@@ -44,9 +44,7 @@ test('StringToNum', () => {
     type test<A extends 0[] = []> = `${A['length']}`;
     expectEqualType(typeOf<test>(), { kind: ReflectionKind.literal, literal: '0', typeName: 'test' } as Type);
 
-    type StringToNum<T extends string, A extends 0[] = []> = `${A['length']}` extends T
-        ? A['length']
-        : StringToNum<T, [...A, 0]>;
+    type StringToNum<T extends string, A extends 0[] = []> = `${A['length']}` extends T ? A['length'] : StringToNum<T, [...A, 0]>;
     const type = typeOf<StringToNum<'100'>>();
     expectEqualType(type, { kind: ReflectionKind.literal, literal: 100 } as Type as any);
 });
@@ -201,16 +199,10 @@ test('nested template literal', () => {
     type t1 = `${number}.title:${t0}` | `${number}.size:${t0}`;
     type t2 = `items.${t1}`;
     const type = typeOf<t2>();
-    expect(stringifyResolvedType(type)).toBe(
-        '`items.${number}.title:yes-${string}` | `items.${number}.title:no-${string}` | `items.${number}.size:yes-${string}` | `items.${number}.size:no-${string}`',
-    );
+    expect(stringifyResolvedType(type)).toBe('`items.${number}.title:yes-${string}` | `items.${number}.title:no-${string}` | `items.${number}.size:yes-${string}` | `items.${number}.size:no-${string}`');
 
     type SubKeys<T, K extends string> = K extends keyof T ? `${K}.${Keys<T[K]>}` : never;
-    type Keys<T> = T extends (infer A)[]
-        ? `${number}.${Keys<A>}`
-        : T extends object
-          ? Extract<keyof T, string> | SubKeys<T, Extract<keyof T, string>>
-          : never;
+    type Keys<T> = T extends (infer A)[] ? `${number}.${Keys<A>}` : T extends object ? Extract<keyof T, string> | SubKeys<T, Extract<keyof T, string>> : never;
 
     type t10 = Keys<{ id: number; items: { title: string; size: number }[] }>;
     const type2 = typeOf<t10>();
@@ -235,21 +227,13 @@ test('dotted path', () => {
         mainProduct: Product;
     }
 
-    type PathKeys<T> = object extends T
-        ? string
-        : T extends (infer A)[]
-          ? `${number}.${PathKeys<A>}`
-          : T extends object
-            ? Extract<keyof T, string> | SubKeys<T, Extract<keyof T, string>>
-            : never;
+    type PathKeys<T> = object extends T ? string : T extends (infer A)[] ? `${number}.${PathKeys<A>}` : T extends object ? Extract<keyof T, string> | SubKeys<T, Extract<keyof T, string>> : never;
 
     type SubKeys<T, K extends string> = K extends keyof T ? `${K}.${PathKeys<T[K]>}` : never;
 
     type t1 = PathKeys<User>;
     const type = typeOf<t1>();
-    expect(stringifyResolvedType(type)).toBe(
-        "'id' | 'username' | 'products' | 'mainProduct' | `products.${number}.id` | `products.${number}.title` | 'mainProduct.id' | 'mainProduct.title'",
-    );
+    expect(stringifyResolvedType(type)).toBe("'id' | 'username' | 'products' | 'mainProduct' | `products.${number}.id` | `products.${number}.title` | 'mainProduct.id' | 'mainProduct.title'");
 });
 
 test('dotted object', () => {
@@ -273,11 +257,7 @@ test('dotted object', () => {
     }
 
     type O<T, K extends string, Prefix extends string, Depth extends number[]> = K extends keyof T
-        ?
-              | { [_ in `${Prefix}.${K}`]?: T[K] }
-              | (T[K] extends object
-                    ? SubObjects<T[K], Extract<keyof T[K], string>, `${Prefix}.${K}`, [...Depth, 1]>
-                    : {})
+        ? { [_ in `${Prefix}.${K}`]?: T[K] } | (T[K] extends object ? SubObjects<T[K], Extract<keyof T[K], string>, `${Prefix}.${K}`, [...Depth, 1]> : {})
         : {};
 
     type SubObjects<T, K extends string, Prefix extends string, Depth extends number[]> = Depth['length'] extends 10

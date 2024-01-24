@@ -6,13 +6,11 @@ For example, if a database has been provided as a provider, it can be injected:
 
 ```typescript
 class Database {
-    //...
+  //...
 }
 
 const app = new App({
-    providers: [
-        Database,
-    ],
+  providers: [Database],
 });
 ```
 
@@ -20,7 +18,7 @@ _Functional API:_
 
 ```typescript
 router.get('/user/:id', async (id: number, database: Database) => {
-    return await database.query(User).filter({id}).findOne();
+  return await database.query(User).filter({ id }).findOne();
 });
 ```
 
@@ -54,11 +52,10 @@ All HTTP controllers and functional routes are managed within the `http` depende
 ```typescript
 import { HttpResponse } from '@deepkit/http';
 
-router.get('/user/:id', (id: number, request: HttpRequest) => {
-});
+router.get('/user/:id', (id: number, request: HttpRequest) => {});
 
 router.get('/', (response: HttpResponse) => {
-    response.end('Hello');
+  response.end('Hello');
 });
 ```
 

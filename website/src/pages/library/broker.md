@@ -1,6 +1,6 @@
 ---
 title: Deepkit Broker
-package: "@deepkit/broker"
+package: '@deepkit/broker'
 doc: broker
 api: broker
 category: broker
@@ -72,18 +72,17 @@ import { BrokerClient } from '@deepkit/broker';
 
 const client = new BrokerClient();
 
-type Message = { value: number }
+type Message = { value: number };
 const channel1 = client.channel<Message>('channel1');
 
-await channel1.subscribe(v => (message) => {
-    console.log('got message', message);
+await channel1.subscribe(v => message => {
+  console.log('got message', message);
 });
 
 await channel1.publish({ value: 1345 });
 ```
 
 </feature>
-
 
 <feature class="right">
 
@@ -97,18 +96,16 @@ import { BrokerClient } from '@deepkit/broker';
 const client = new BrokerClient();
 
 if (await client.isLocked('lock1')) {
-    // lock in place already.
+  // lock in place already.
 }
 
 // blocks until lock acquired.
 const lock1 = await client.lock('lock1');
 try {
-    // do critical work.
+  // do critical work.
 } finally {
-    await lock1.unsubscribe();
+  await lock1.unsubscribe();
 }
 ```
 
 </feature>
-
-

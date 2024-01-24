@@ -15,11 +15,11 @@ import { Filesystem } from '@deepkit/filesystem';
 import { FilesystemSftpAdapter } from '@deepkit/filesystem-sftp';
 
 const adapter = new FilesystemSftpAdapter({
-    root: 'folder',
-    host: 'localhost',
-    port: 22,
-    username: 'user',
-    password: 'password',
+  root: 'folder',
+  host: 'localhost',
+  port: 22,
+  username: 'user',
+  password: 'password',
 });
 const filesystem = new Filesystem(adapter);
 ```
@@ -34,19 +34,18 @@ If the FTP server is running in a Unix environment, you can set the permissions 
 
 ```typescript
 const adapter = new FilesystemFtpAdapter({
-    // ...
-    permissions: {
-        file: {
-            public: 0o644,
-            private: 0o600,
-        },
-        directory: {
-            public: 0o755,
-            private: 0o700,
-        }
-    }
+  // ...
+  permissions: {
+    file: {
+      public: 0o644,
+      private: 0o600,
+    },
+    directory: {
+      public: 0o755,
+      private: 0o700,
+    },
+  },
 });
-
 
 const filesystem = new Filesystem(adapter);
 

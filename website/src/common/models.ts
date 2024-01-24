@@ -1,4 +1,4 @@
-import { AutoIncrement, DatabaseField, entity, Index, PrimaryKey, Reference, UUID, uuid } from "@deepkit/type";
+import { AutoIncrement, DatabaseField, Index, PrimaryKey, Reference, UUID, entity, uuid } from '@deepkit/type';
 
 export interface Content {
     tag: string;
@@ -7,27 +7,27 @@ export interface Content {
 }
 
 export const projectMap: { [name: string]: string } = {
-    'framework': 'Deepkit Framework',
+    framework: 'Deepkit Framework',
     'runtime-types': 'Deepkit Runtime Types',
     'dependency-injection': 'Deepkit Injector',
-    'cli': 'Deepkit CLI',
-    'http': 'Deepkit HTTP',
-    'rpc': 'Deepkit RPC',
-    'database': 'Deepkit ORM',
+    cli: 'Deepkit CLI',
+    http: 'Deepkit HTTP',
+    rpc: 'Deepkit RPC',
+    database: 'Deepkit ORM',
     'desktop-ui': 'Desktop UI',
-    'general': 'General',
-    'performance': 'Performance',
-    'security': 'Security',
-    'testing': 'Testing',
-    'validation': 'Validation',
-    'template': 'Template',
-    'introduction': 'Introduction',
-    'migration': 'Migration',
-    'orm': 'Deepkit ORM',
-    'app': 'Deepkit App',
-    'filesystem': 'Deepkit Filesystem',
-    'broker': 'Deepkit Broker',
-}
+    general: 'General',
+    performance: 'Performance',
+    security: 'Security',
+    testing: 'Testing',
+    validation: 'Validation',
+    template: 'Template',
+    introduction: 'Introduction',
+    migration: 'Migration',
+    orm: 'Deepkit ORM',
+    app: 'Deepkit App',
+    filesystem: 'Deepkit Filesystem',
+    broker: 'Deepkit Broker',
+};
 
 export function link(q: CommunityQuestion) {
     if (q.type === 'example') return `/documentation/${q.category}/examples/${q.slug}`;
@@ -55,7 +55,7 @@ export function bodyToString(body?: string | Content | (string | Content)[]): st
     return result;
 }
 
-export function parseBody(body: Content): { title: string, subline?: Content, intro: Content[], rest: Content[] } {
+export function parseBody(body: Content): { title: string; subline?: Content; intro: Content[]; rest: Content[] } {
     let title = '';
     let subline: Content | undefined = undefined;
     const intro: Content[] = [];
@@ -64,7 +64,7 @@ export function parseBody(body: Content): { title: string, subline?: Content, in
     for (const child of body.children || []) {
         if ('string' === typeof child) continue;
         if (!title && child.tag === 'h1') {
-            title = child.children ? child.children[0] as string : '';
+            title = child.children ? (child.children[0] as string) : '';
             continue;
         } else if (child.tag === 'p') {
             if (!subline) {
@@ -142,7 +142,7 @@ function slugify(text: string) {
 @entity.collection('doc_page_content')
 export class DocPageContent {
     id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+    created: Date = new Date();
     score: number = 0;
     path: string = '';
     idx: number = 0;
@@ -155,8 +155,7 @@ export class DocPageContent {
     constructor(
         public content: string,
         public url: string = '',
-    ) {
-    }
+    ) {}
 }
 
 export interface DocPageResult {
@@ -170,12 +169,12 @@ export interface DocPageResult {
 @entity.collection('community_message')
 export class CommunityMessage {
     id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+    created: Date = new Date();
     votes: number = 0;
     order: number & Index = 0; //0 means first message, initial question, 1 means the first question
     assistant: boolean = false;
 
-    source: ('markdown' | 'community') & DatabaseField<{type: 'text'}> = 'community';
+    source: ('markdown' | 'community') & DatabaseField<{ type: 'text' }> = 'community';
 
     type: string & Index = 'question'; //question, answer, reject, edit, example
     title: string = '';
@@ -194,15 +193,14 @@ export class CommunityMessage {
     discordMessageId?: string & Index;
     discordThreadId?: string & Index;
 
-    meta: {[name: string]: any} = {};
+    meta: { [name: string]: any } = {};
 
     constructor(
         public userId: string,
         public userDisplayName: string,
         public content: string = '',
         public thread?: CommunityMessage & Reference,
-    ) {
-    }
+    ) {}
 
     setTitle(title: string) {
         this.title = title;
@@ -219,8 +217,7 @@ export class CommunityMessageVote {
     constructor(
         public message: CommunityMessage & Reference,
         public userId: string,
-    ) {
-    }
+    ) {}
 }
 
 export interface CommunityQuestionListItem {
@@ -234,10 +231,10 @@ export interface CommunityQuestionListItem {
 }
 
 export interface CommunityQuestionMessage {
-    id: number,
-    user: string,
-    userAvatar: string,
-    content: Content
+    id: number;
+    user: string;
+    userAvatar: string;
+    content: Content;
 }
 
 export interface CommunityQuestion {
@@ -293,6 +290,5 @@ export interface UiCodeExample {
     url: string;
     content?: Content;
 }
-
 
 export const magicSeparator = '##-------------------------------------------------##';

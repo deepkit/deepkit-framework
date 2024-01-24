@@ -1,21 +1,7 @@
 import { expect, test } from '@jest/globals';
 
 import { getInstanceStateFromItem } from '@deepkit/orm';
-import {
-    BackReference,
-    MongoId,
-    PrimaryKey,
-    Reference,
-    ReflectionClass,
-    ReflectionKind,
-    UUID,
-    arrayBufferFrom,
-    cast,
-    entity,
-    nodeBufferToArrayBuffer,
-    serialize,
-    uuid,
-} from '@deepkit/type';
+import { BackReference, MongoId, PrimaryKey, Reference, ReflectionClass, ReflectionKind, UUID, arrayBufferFrom, cast, entity, nodeBufferToArrayBuffer, serialize, uuid } from '@deepkit/type';
 
 import { SimpleModel, SuperSimple } from './entities.js';
 import { createDatabase } from './utils.js';
@@ -154,9 +140,7 @@ test('save model', async () => {
     expect(await session.query(SimpleModel).filter({ name: 'myName' }).findOneOrUndefined()).not.toBeUndefined();
     expect(await session.query(SimpleModel).filter({ name: 'myNameNOTEXIST' }).findOneOrUndefined()).toBeUndefined();
 
-    await expect(session.query(SimpleModel).filter({ name: 'myNameNOTEXIST' }).findOne()).rejects.toThrowError(
-        'not found',
-    );
+    await expect(session.query(SimpleModel).filter({ name: 'myNameNOTEXIST' }).findOne()).rejects.toThrowError('not found');
 
     const found = await session.query(SimpleModel).filter({ id: instance.id }).findOne();
     expect(found).toBeInstanceOf(SimpleModel);
@@ -173,14 +157,10 @@ test('save model', async () => {
     expect(listAll[0].name).toBe('myName');
     expect(listAll[0].id).toBe(instance.id);
 
-    expect(
-        (await session.query(SimpleModel).filter({ name: 'noneExisting' }).patchOne({ name: 'myName2' })).modified,
-    ).toBe(0);
+    expect((await session.query(SimpleModel).filter({ name: 'noneExisting' }).patchOne({ name: 'myName2' })).modified).toBe(0);
 
     expect(await session.query(SimpleModel).filter({ id: instance.id }).ids(true)).toEqual([instance.id]);
-    expect((await session.query(SimpleModel).filter({ id: instance.id }).patchOne({ name: 'myName2' })).modified).toBe(
-        1,
-    );
+    expect((await session.query(SimpleModel).filter({ id: instance.id }).patchOne({ name: 'myName2' })).modified).toBe(1);
 
     {
         const found = await session.query(SimpleModel).filter({ id: instance.id }).findOne();
@@ -418,10 +398,7 @@ test('second object id', async () => {
     const dbItem = await session.query(SecondObjectId).filter({ name: 'myName' }).findOne();
     expect(dbItem!.name).toBe('myName');
 
-    const dbItemBySecondId = await session
-        .query(SecondObjectId)
-        .filter({ secondId: '5bf4a1ccce060e0b38864c9e' })
-        .findOne();
+    const dbItemBySecondId = await session.query(SecondObjectId).filter({ secondId: '5bf4a1ccce060e0b38864c9e' }).findOne();
     expect(dbItemBySecondId!.name).toBe('myName');
 
     // const collection = await session.adapter.connection.getCollection(getClassSchema(SecondObjectId));
@@ -591,11 +568,7 @@ test('aggregation without accumulators', async () => {
 
     const db = await createDatabase('aggregation');
 
-    await db.persist(
-        cast<File>({ path: 'file1', category: 'images' }),
-        cast<File>({ path: 'file2', category: 'images' }),
-        cast<File>({ path: 'file3', category: 'pdfs' }),
-    );
+    await db.persist(cast<File>({ path: 'file1', category: 'images' }), cast<File>({ path: 'file2', category: 'images' }), cast<File>({ path: 'file3', category: 'pdfs' }));
 
     await db
         .query(File)
@@ -609,12 +582,7 @@ test('aggregation without accumulators', async () => {
     const res = await db.query(File).groupBy('category').orderBy('category', 'asc').find();
     expect(res).toEqual([{ category: 'images' }, { category: 'pdfs' }]);
 
-    const res2 = await db
-        .query(File)
-        .withSum('downloads', 'downloadsSum')
-        .groupBy('category')
-        .orderBy('category', 'asc')
-        .find();
+    const res2 = await db.query(File).withSum('downloads', 'downloadsSum').groupBy('category').orderBy('category', 'asc').find();
 
     expect(res2).toEqual([
         { downloadsSum: 20, category: 'images' },
@@ -637,9 +605,7 @@ test('raw', async () => {
         await session.commit();
     }
 
-    const result = await db
-        .raw<Model, { count: number }>([{ $match: { id: { $gt: 500 } } }, { $count: 'count' }])
-        .findOne();
+    const result = await db.raw<Model, { count: number }>([{ $match: { id: { $gt: 500 } } }, { $count: 'count' }]).findOne();
     expect(result.count).toBe(499);
 
     const items = await db.raw<Model>([{ $match: { id: { $lt: 500 } } }]).find();

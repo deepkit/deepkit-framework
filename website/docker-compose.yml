@@ -1,11 +1,11 @@
 # docker run -d --rm --name bench-postgres -d -e POSTGRES_PASSWORD=password -e POSTGRES_HOST_AUTH_METHOD=trust -p 127.0.0.1:5432:5432 postgres:13.4
 
 services:
-    postgres:
-        image: postgres:13.4
-        ports:
-            - "5433:5432"
-        environment:
-            POSTGRES_PASSWORD: password
-            POSTGRES_DB: deepkit-website
-            POSTGRES_HOST_AUTH_METHOD: trust
+  postgres:
+    image: postgres:13.4
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: deepkit-website
+      POSTGRES_HOST_AUTH_METHOD: trust

@@ -1,6 +1,6 @@
 ---
 title: Deepkit ORM Browser
-package: "@deepkit/orm-browser"
+package: '@deepkit/orm-browser'
 doc: orm/orm-browser
 ---
 
@@ -29,7 +29,6 @@ removing, change relations, filtering, sorting, and much more.
 
 </feature>
 
-
 <feature class="center">
 
 ## Query
@@ -41,7 +40,6 @@ in your Typescript source.
 
 </feature>
 
-
 <feature class="center">
 
 ## Model Diagram
@@ -51,7 +49,6 @@ See all your models with relations, fields, and primary keys in one big diagram.
 <app-image alt="content editing" src="/assets/screenshots-orm-browser/model-diagram.png"></app-image>
 
 </feature>
-
 
 <feature class="center">
 
@@ -63,7 +60,6 @@ Seed your database with a powerful faker library directly from within your brows
 
 </feature>
 
-
 <feature>
 
 ## Easy to use
@@ -73,32 +69,27 @@ or anything else necessary.
 
 Deepkit ORM Browser is enabled by default in Deepkit Framework module.
 
-
 <p>
     By opening <code>http://localhost:9090/</code> you can directly start managing content.
     The ORM Browser is integrated automatically when using Deepkit Framework in its Framework Debugger.
 </p>
 
 ```typescript title=database.ts
-import { entity, PrimaryKey, AutoIncrement } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
+import { AutoIncrement, PrimaryKey, entity } from '@deepkit/type';
 
 @entity.collection('groups')
 export class Group {
-    public id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+  public id: number & PrimaryKey & AutoIncrement = 0;
+  created: Date = new Date();
 
-    constructor(
-        public name: string
-    ) {
-    }
+  constructor(public name: string) {}
 }
 
 const adapter = new SQLiteDatabaseAdapter('./example.sqlite');
 const database = new Database(adapter, [Group]);
 ```
-
 
 ```bash
 $ deepkit-orm-browser database.ts
@@ -110,6 +101,5 @@ $ deepkit-orm-browser database.ts
 [LOG]     GET /:any serviceApp
 [LOG] HTTP listening at http://localhost:9090/
 ```
-
 
 </feature>

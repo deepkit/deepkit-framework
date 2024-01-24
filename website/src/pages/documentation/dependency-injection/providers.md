@@ -4,7 +4,7 @@ There are several ways to provide dependencies in the Dependency Injection conta
 
 ```typescript
 new App({
-    providers: [UserRepository]
+  providers: [UserRepository],
 });
 ```
 
@@ -14,7 +14,7 @@ By default, all providers are marked as singletons, so only one instance exists 
 
 ```typescript
 new App({
-    providers: [{ provide: UserRepository, transient: true }]
+  providers: [{ provide: UserRepository, transient: true }],
 });
 ```
 
@@ -24,7 +24,7 @@ Besides the short ClassProvider there is also the regular ClassProvider, which i
 
 ```typescript
 new App({
-    providers: [{ provide: UserRepository, useClass: UserRepository }]
+  providers: [{ provide: UserRepository, useClass: UserRepository }],
 });
 ```
 
@@ -32,11 +32,11 @@ This is equivalent to these two:
 
 ```typescript
 new App({
-    providers: [{ provide: UserRepository }]
+  providers: [{ provide: UserRepository }],
 });
 
 new App({
-    providers: [UserRepository]
+  providers: [UserRepository],
 });
 ```
 
@@ -44,7 +44,7 @@ It can be used to exchange a provider with another class.
 
 ```typescript
 new App({
-    providers: [{ provide: UserRepository, useClass: OtherUserRepository }]
+  providers: [{ provide: UserRepository, useClass: OtherUserRepository }],
 });
 ```
 
@@ -56,7 +56,7 @@ Static values can be provided with this provider.
 
 ```typescript
 new App({
-    providers: [{ provide: OtherUserRepository, useValue: new OtherUserRepository() }]
+  providers: [{ provide: OtherUserRepository, useValue: new OtherUserRepository() }],
 });
 ```
 
@@ -64,7 +64,7 @@ Since not only class instances can be provided as dependencies, any value can be
 
 ```typescript
 new App({
-    providers: [{ provide: 'domain', useValue: 'localhost' }]
+  providers: [{ provide: 'domain', useValue: 'localhost' }],
 });
 ```
 
@@ -74,20 +74,21 @@ Primitive provider tokens must be declared with the Inject type as a dependency.
 import { Inject } from '@deepkit/injector';
 
 class EmailService {
-    constructor(public domain: Inject<string, 'domain'>) {}
+  constructor(public domain: Inject<string, 'domain'>) {}
 }
 ```
 
 The combination of an inject alias and primitive provider tokens can also be used to provide dependencies from packages that do not contain runtime type information.
 
 ```typescript
-import { Inject } from '@deepkit/injector';
 import { Stripe } from 'stripe';
+
+import { Inject } from '@deepkit/injector';
 
 export type StripeService = Inject<Stripe, '_stripe'>;
 
 new App({
-    providers: [{ provide: '_stripe', useValue: new Stripe }]
+  providers: [{ provide: '_stripe', useValue: new Stripe() }],
 });
 ```
 
@@ -95,7 +96,7 @@ And then declared on the user side as follows:
 
 ```typescript
 class PaymentService {
-    constructor(public stripe: StripeService) {}
+  constructor(public stripe: StripeService) {}
 }
 ```
 
@@ -105,10 +106,10 @@ A forwarding to an already defined provider can be defined.
 
 ```typescript
 new App({
-    providers: [
-        {provide: OtherUserRepository, useValue: new OtherUserRepository()},
-        {provide: UserRepository, useExisting: OtherUserRepository}
-    ]
+  providers: [
+    { provide: OtherUserRepository, useValue: new OtherUserRepository() },
+    { provide: UserRepository, useExisting: OtherUserRepository },
+  ],
 });
 ```
 
@@ -118,28 +119,37 @@ A function can be used to provide a value for the provider. This function can al
 
 ```typescript
 new App({
-    providers: [
-        {provide: OtherUserRepository, useFactory: () => {
-            return new OtherUserRepository()
-        }},
-    ]
+  providers: [
+    {
+      provide: OtherUserRepository,
+      useFactory: () => {
+        return new OtherUserRepository();
+      },
+    },
+  ],
 });
 
 new App({
-    providers: [
-        {provide: OtherUserRepository, useFactory: (domain: RootConfiguration['domain']) => {
-            return new OtherUserRepository(domain);
-        }},
-    ]
+  providers: [
+    {
+      provide: OtherUserRepository,
+      useFactory: (domain: RootConfiguration['domain']) => {
+        return new OtherUserRepository(domain);
+      },
+    },
+  ],
 });
 
 new App({
-    providers: [
-        Database,
-        {provide: OtherUserRepository, useFactory: (database: Database) => {
-            return new OtherUserRepository(database);
-        }},
-    ]
+  providers: [
+    Database,
+    {
+      provide: OtherUserRepository,
+      useFactory: (database: Database) => {
+        return new OtherUserRepository(database);
+      },
+    },
+  ],
 });
 ```
 
@@ -151,22 +161,19 @@ In addition to classes and primitives, abstractions (interfaces) can also be pro
 import { provide } from '@deepkit/injector';
 
 interface Connection {
-    write(data: Uint16Array): void;
+  write(data: Uint16Array): void;
 }
 
 class Server {
-   constructor (public connection: Connection) {}
+  constructor(public connection: Connection) {}
 }
 
 class MyConnection {
-    write(data: Uint16Array): void {}
+  write(data: Uint16Array): void {}
 }
 
 new App({
-    providers: [
-        Server,
-        provide<Connection>(MyConnection)
-    ]
+  providers: [Server, provide<Connection>(MyConnection)],
 });
 ```
 
@@ -175,18 +182,14 @@ If multiple providers have implemented the Connection interface, the last provid
 As argument for provide() all other providers are possible.
 
 ```typescript
-const myConnection = {write: (data: any) => undefined};
+const myConnection = { write: (data: any) => undefined };
 
 new App({
-    providers: [
-        provide<Connection>({ useValue: myConnection })
-    ]
+  providers: [provide<Connection>({ useValue: myConnection })],
 });
 
 new App({
-    providers: [
-        provide<Connection>({ useFactory: () => myConnection })
-    ]
+  providers: [provide<Connection>({ useFactory: () => myConnection })],
 });
 ```
 
@@ -194,7 +197,7 @@ new App({
 
 The design of `@deepkit/injector` precludes the use of asynchronous providers with an asynchronous Dependency Injection container. This is because requesting providers would also need to be asynchronous, necessitating the entire application to operate at the highest level asynchronously.
 
-To initialize something asynchronously, this initialization should be moved to the application server bootstrap,  because there the events can be asynchronous. Alternatively, an initialization can be triggered manually.
+To initialize something asynchronously, this initialization should be moved to the application server bootstrap, because there the events can be asynchronous. Alternatively, an initialization can be triggered manually.
 
 ## Setup Calls
 
@@ -203,15 +206,14 @@ Setup calls allow to manipulate the result of a provider. This is useful for exa
 Setup calls can only be used with the module API or the app API and are registered above the module.
 
 ```typescript
-class UserRepository  {
-    private db?: Database;
-    setDatabase(db: Database) {
-       this.db = db;
-    }
+class UserRepository {
+  private db?: Database;
+  setDatabase(db: Database) {
+    this.db = db;
+  }
 }
 
-const rootModule = new InjectorModule([UserRepository])
-     .addImport(lowLevelModule);
+const rootModule = new InjectorModule([UserRepository]).addImport(lowLevelModule);
 
 rootModule.setupProvider(UserRepository).setDatabase(db);
 ```
@@ -221,12 +223,11 @@ The `setupProvider` method thereby returns a proxy object of UserRepository on w
 In addition to method calls, properties can also be set.
 
 ```typescript
-class UserRepository  {
-    db?: Database;
+class UserRepository {
+  db?: Database;
 }
 
-const rootModule = new InjectorModule([UserRepository])
-     .addImport(lowLevelModule);
+const rootModule = new InjectorModule([UserRepository]).addImport(lowLevelModule);
 
 rootModule.setupProvider(UserRepository).db = db;
 ```
@@ -240,15 +241,15 @@ To reference not only static values, but also other providers, the function `inj
 ```typescript
 class Database {}
 
-class UserRepository  {
-    db?: Database;
+class UserRepository {
+  db?: Database;
 }
 
-const rootModule = new InjectorModule([UserRepository, Database])
+const rootModule = new InjectorModule([UserRepository, Database]);
 rootModule.setupProvider(UserRepository).db = injectorReference(Database);
 ```
 
-*Abstractions/Interfaces*
+_Abstractions/Interfaces_
 
 Setup calls can also be assigned to an interface.
 

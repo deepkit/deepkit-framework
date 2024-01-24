@@ -3,31 +3,29 @@
 A session is something like a unit of work. It keeps track of everything you do and automatically records the changes whenever `commit()` is called. It is the preferred way to execute changes in the database because it bundles statements in a way that makes it very fast. A session is very lightweight and can easily be created in a request-response lifecycle, for example.
 
 ```typescript
-import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
-import { entity, PrimaryKey, AutoIncrement } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
+import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
+import { AutoIncrement, PrimaryKey, entity } from '@deepkit/type';
 
 async function main() {
+  @entity.name('user')
+  class User {
+    id: number & PrimaryKey & AutoIncrement = 0;
+    created: Date = new Date();
 
-    @entity.name('user')
-    class User {
-        id: number & PrimaryKey & AutoIncrement = 0;
-        created: Date = new Date;
+    constructor(public name: string) {}
+  }
 
-        constructor(public name: string) {
-        }
-    }
+  const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [User]);
+  await database.migrate();
 
-    const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [User]);
-    await database.migrate();
+  const session = database.createSession();
+  session.add(new User('User1'), new User('User2'), new User('User3'));
 
-    const session = database.createSession();
-    session.add(new User('User1'), new User('User2'), new User('User3'));
+  await session.commit();
 
-    await session.commit();
-
-    const users = await session.query(User).find();
-    console.log(users);
+  const users = await session.query(User).find();
+  console.log(users);
 }
 
 main();
@@ -40,10 +38,10 @@ Changes are automatically detected for entity instances fetched via the Session 
 ```typescript
 const users = await session.query(User).find();
 for (const user of users) {
-    user.name += ' changed';
+  user.name += ' changed';
 }
 
-await session.commit();//saves all users
+await session.commit(); //saves all users
 ```
 
 ## Identity Map

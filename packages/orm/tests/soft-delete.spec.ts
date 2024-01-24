@@ -115,12 +115,7 @@ test('soft-delete session', async () => {
         session.remove(peterDB);
         await session.commit();
         expect(await database.query(User).count()).toBe(2);
-        const deletedPeter = await session
-            .query(User)
-            .lift(SoftDeleteQuery)
-            .withSoftDeleted()
-            .filter(peterDB)
-            .findOne();
+        const deletedPeter = await session.query(User).lift(SoftDeleteQuery).withSoftDeleted().filter(peterDB).findOne();
         expect(deletedPeter.deletedAt).toBeInstanceOf(Date);
         expect(deletedPeter.deletedBy).toBe('me');
 

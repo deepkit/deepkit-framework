@@ -8,11 +8,11 @@ import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
 
 const app = new App({
-    imports: [new FrameworkModule({debug: true})],
+  imports: [new FrameworkModule({ debug: true })],
 });
 
 app.command('hello', () => {
-    console.log('Hello World!');
+  console.log('Hello World!');
 });
 
 app.run();
@@ -23,6 +23,5 @@ Then you see all available commands from the framework module:
 ```bash
 ts-node app.ts
 ```
-
 
 ##-------------------------------------------------##

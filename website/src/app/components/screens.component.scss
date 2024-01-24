@@ -1,67 +1,69 @@
 :host {
-    display: block;
-    white-space: nowrap;
-    margin: 40px 0;
-    padding: 40px;
-    position: relative;
-    background-color: #f4f4f4;
+  display: block;
+  white-space: nowrap;
+  margin: 40px 0;
+  padding: 40px;
+  position: relative;
+  background-color: #f4f4f4;
 }
 
-.arrow-left, .arrow-right {
-    position: absolute;
-    top: calc(50% - 15px);
-    font-size: 24px;
-    color: rgba(75, 75, 75, 0.65);
-    cursor: pointer;
-    user-select: none;
-    &:hover {
-        opacity: 0.6;
-    }
+.arrow-left,
+.arrow-right {
+  position: absolute;
+  top: calc(50% - 15px);
+  font-size: 24px;
+  color: rgba(75, 75, 75, 0.65);
+  cursor: pointer;
+  user-select: none;
+  &:hover {
+    opacity: 0.6;
+  }
 }
 
 .single {
-    img {
-        max-width: 100%;
-    }
+  img {
+    max-width: 100%;
+  }
 }
 
 .arrow-left {
-    left: 20px;
+  left: 20px;
 }
 
 .arrow-right {
-    right: 20px;
+  right: 20px;
 }
 
 .container {
-    overflow: hidden;
-    height: 250px;
-    line-height: 0;
+  overflow: hidden;
+  height: 250px;
+  line-height: 0;
 
-    .scroll {
-        position: relative;
-        left: 0;
-        transition: left 0.3s;
-        display: flex;
-        align-items: center;
-    }
+  .scroll {
+    position: relative;
+    left: 0;
+    transition: left 0.3s;
+    display: flex;
+    align-items: center;
+  }
 }
 
 .screen {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 30px;
-    flex-basis: 350px;
-    flex-shrink: 0;
-    flex-grow: 0;
-    //background: #333333 url(/assets/bg-noise.png) repeat;
-    //background-size: 387px 268px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 30px;
+  flex-basis: 350px;
+  flex-shrink: 0;
+  flex-grow: 0;
+  //background: #333333 url(/assets/bg-noise.png) repeat;
+  //background-size: 387px 268px;
 
-    a, img {
-        max-width: 100%;
-        max-height: 100%;
-        height: 250px;
-        mix-blend-mode: multiply;
-    }
+  a,
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    height: 250px;
+    mix-blend-mode: multiply;
+  }
 }

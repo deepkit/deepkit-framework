@@ -15,10 +15,10 @@ import { Filesystem } from '@deepkit/filesystem';
 import { FilesystemGoogleAdapter } from '@deepkit/filesystem-google';
 
 const adapter = new FilesystemGoogleAdapter({
-    bucket: 'my-bucket',
-    path: 'starting-path/', //optional
-    projectId: '...',
-    keyFilename: 'path/to/service-account-key.json'
+  bucket: 'my-bucket',
+  path: 'starting-path/', //optional
+  projectId: '...',
+  keyFilename: 'path/to/service-account-key.json',
 });
 const filesystem = new Filesystem(adapter);
 ```

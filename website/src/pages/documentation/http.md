@@ -24,20 +24,20 @@ It can be used either with an existing HTTP server like Node's `http` module or 
 ## Example Functional API
 
 ```typescript
+import { FrameworkModule } from '@deepkit/framework';
+import { HttpRouterRegistry, http } from '@deepkit/http';
 import { Positive } from '@deepkit/type';
-import { http, HttpRouterRegistry } from '@deepkit/http';
-import { FrameworkModule } from "@deepkit/framework";
 
 //Functional API
 const app = new App({
-    imports: [new FrameworkModule()]
+  imports: [new FrameworkModule()],
 });
 const router = app.get(HttpRouterRegistry);
 
 router.get('/user/:id', (id: number & Positive, database: Database) => {
-    //id is guaranteed to be a number and positive.
-    //database is injected by the DI Container.
-    return database.query(User).filter({ id }).findOne();
+  //id is guaranteed to be a number and positive.
+  //database is injected by the DI Container.
+  return database.query(User).filter({ id }).findOne();
 });
 
 app.run();
@@ -46,30 +46,24 @@ app.run();
 ## Class Controller API
 
 ```typescript
+import { User } from 'discord.js';
+
+import { FrameworkModule } from '@deepkit/framework';
+import { HttpRouterRegistry, http } from '@deepkit/http';
 import { Positive } from '@deepkit/type';
-import { http, HttpRouterRegistry } from '@deepkit/http';
-import { FrameworkModule } from "@deepkit/framework";
-import { User } from "discord.js";
 
 //Controller API
 class UserController {
-    constructor(private database: Database) {
-    }
+  constructor(private database: Database) {}
 
-    @http.GET('/user/:id')
-    user(id: number & Positive) {
-        return this.database.query(User).filter({ id }).findOne();
-    }
+  @http.GET('/user/:id')
+  user(id: number & Positive) {
+    return this.database.query(User).filter({ id }).findOne();
+  }
 }
 
 const app = new App({
-    controllers: [UserController],
-    imports: [new FrameworkModule()]
+  controllers: [UserController],
+  imports: [new FrameworkModule()],
 });
 ```
-
-
-
-
-
-

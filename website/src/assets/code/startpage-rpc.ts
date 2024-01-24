@@ -1,5 +1,5 @@
 // @app/server/controller.ts
-import {rpc} from '@deepkit/rpc';
+import { rpc } from '@deepkit/rpc';
 
 @rpc.controller('/main')
 class MyController {
@@ -7,7 +7,6 @@ class MyController {
 
     @rpc.action()
     async getUser(id: number): Promise<User> {
-        return await this.database.query(User)
-            .filter({id: id}).findOne();
+        return await this.database.query(User).filter({ id: id }).findOne();
     }
 }

@@ -9,36 +9,30 @@ A relation is annotated with the `Reference` decorator. Usually a relation also 
 The entity that stores a reference is usually referred to as the `owning side` or the one that `owns` the reference. The following code shows two entities with a one-to-many relationship between `User` and `Post`. This means that one `User` can have multiple `Post`. The `post` entity has the `post->user` relationship. In the database itself there is now a field `Post. "author"` that contains the primary key of `User`.
 
 ```typescript
-import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
-import { entity, PrimaryKey, AutoIncrement, 
-    Reference } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
+import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
+import { AutoIncrement, PrimaryKey, Reference, entity } from '@deepkit/type';
 
 @entity.collection('users')
 class User {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+  id: number & PrimaryKey & AutoIncrement = 0;
+  created: Date = new Date();
 
-    constructor(public username: string) {
-    }
+  constructor(public username: string) {}
 }
 
 @entity.collection('posts')
 class Post {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+  id: number & PrimaryKey & AutoIncrement = 0;
+  created: Date = new Date();
 
-    constructor(
-        public author: User & Reference,
-        public title: string
-    ) {
-    }
+  constructor(
+    public author: User & Reference,
+    public title: string,
+  ) {}
 }
 
-const database = new Database(
-    new SQLiteDatabaseAdapter(':memory:'), 
-    [User, Post]
-);
+const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [User, Post]);
 await database.migrate();
 
 const user1 = new User('User1');
@@ -57,22 +51,18 @@ A reference usually has a reverse reference called many-to-one. It is only a vir
 ```typescript
 @entity.name('user').collection('users')
 class User {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+  id: number & PrimaryKey & AutoIncrement = 0;
+  created: Date = new Date();
 
-    posts?: Post[] & BackReference;
+  posts?: Post[] & BackReference;
 
-    constructor(public username: string) {
-    }
+  constructor(public username: string) {}
 }
 ```
 
 ```typescript
 //[ { username: 'User1', posts: [ [Post], [Post] ] } ]
-const users = await database.query(User)
-    .select('username', 'posts')
-    .joinWith('posts')
-    .find();
+const users = await database.query(User).select('username', 'posts').joinWith('posts').find();
 ```
 
 ## Many To Many
@@ -84,35 +74,32 @@ Many-to-many relationships are usually implemented using a pivot entity. The piv
 ```typescript
 @entity.name('user')
 class User {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+  id: number & PrimaryKey & AutoIncrement = 0;
+  created: Date = new Date();
 
-    groups?: Group[] & BackReference<{via: typeof UserGroup}>;
+  groups?: Group[] & BackReference<{ via: typeof UserGroup }>;
 
-    constructor(public username: string) {
-    }
+  constructor(public username: string) {}
 }
 
 @entity.name('group')
 class Group {
-    id: number & PrimaryKey & AutoIncrement = 0;
+  id: number & PrimaryKey & AutoIncrement = 0;
 
-    users?: User[] & BackReference<{via: typeof UserGroup}>;
+  users?: User[] & BackReference<{ via: typeof UserGroup }>;
 
-    constructor(public name: string) {
-    }
+  constructor(public name: string) {}
 }
 
 //the pivot entity
 @entity.name('userGroup')
 class UserGroup {
-    id: number & PrimaryKey & AutoIncrement = 0;
+  id: number & PrimaryKey & AutoIncrement = 0;
 
-    constructor(
-        public user: User & Reference,
-        public group: Group & Reference,
-    ) {
-    }
+  constructor(
+    public user: User & Reference,
+    public group: Group & Reference,
+  ) {}
 }
 ```
 
@@ -132,18 +119,13 @@ await database.persist(user1, user2, group1, new UserGroup(user1, group1), new U
 //   { id: 1, username: 'User1', groups: [ [Group] ] },
 //   { id: 2, username: 'User2', groups: [ [Group] ] }
 // ]
-const users = await database.query(User)
-    .select('username', 'groups')
-    .joinWith('groups')
-    .find();
+const users = await database.query(User).select('username', 'groups').joinWith('groups').find();
 ```
 
 To unlink a user from a group, the UserGroup record is deleted:
 
 ```typescript
-const users = await database.query(UserGroup)
-    .filter({user: user1, group: group1})
-    .deleteOne();
+const users = await database.query(UserGroup).filter({ user: user1, group: group1 }).deleteOne();
 ```
 
 ## One To One

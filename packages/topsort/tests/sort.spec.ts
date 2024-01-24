@@ -94,19 +94,7 @@ test('blub', () => {
     sorter.add('brandX2', ['brandX', 'brandX3']);
     sorter.add('brandX3');
     const result = sorter.sort();
-    const expected = [
-        'brand0',
-        'owner0',
-        'car0',
-        'brand1',
-        'owner1',
-        'car1',
-        'brandX3',
-        'sellerX',
-        'brandX',
-        'brandX2',
-        'brandY',
-    ];
+    const expected = ['brand0', 'owner0', 'car0', 'brand1', 'owner1', 'car1', 'brandX3', 'sellerX', 'brandX', 'brandX2', 'brandY'];
 
     expect(result).toEqual(expected);
 });

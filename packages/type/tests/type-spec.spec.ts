@@ -3,16 +3,7 @@ import { expect, test } from '@jest/globals';
 import { unpopulatedSymbol } from '../src/core.js';
 import { createReference } from '../src/reference.js';
 import { ReceiveType, ReflectionClass, resolveReceiveType } from '../src/reflection/reflection.js';
-import {
-    AutoIncrement,
-    BackReference,
-    MapName,
-    MongoId,
-    PrimaryKey,
-    Reference,
-    UUID,
-    isReferenceType,
-} from '../src/reflection/type.js';
+import { AutoIncrement, BackReference, MapName, MongoId, PrimaryKey, Reference, UUID, isReferenceType } from '../src/reflection/type.js';
 import { cast, cloneClass, serialize } from '../src/serializer-facade.js';
 
 (BigInt.prototype as any).toJSON = function () {
