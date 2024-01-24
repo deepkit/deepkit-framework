@@ -315,8 +315,10 @@ function printHelp(script: string, command: ParsedCliControllerConfig, writer: C
     writer(`<yellow>Usage:</yellow> ${script} ${command.name} [OPTIONS] ${args.map(v => `[${v.name}]`).join(' ')}`);
     writer('');
 
-    writer(`${command.description || ''}`);
-    writer('');
+    if (command.description) {
+        writer(`${command.description || ''}`);
+        writer('');
+    }
 
     if (args.length) {
         writer('<yellow>Arguments:</yellow>');
@@ -412,7 +414,7 @@ export async function executeCommand(
         return 1;
     }
     try {
-        return await runCommand(command, argv.slice(1), injector, eventDispatcher);
+        return await runCommand(command, argv.slice(1), injector, eventDispatcher, logger);
     } catch (e) {
         writer(`The command "${command.name}" failed.`);
         if (e instanceof Error) {
@@ -424,7 +426,7 @@ export async function executeCommand(
     }
 }
 
-function handleConvertError(parameter: CommandParameter, value: any, error: any) {
+function handleConvertError(logger: LoggerInterface, parameter: CommandParameter, value: any, error: any) {
     let group = parameter.kind === 'argument' ? 'argument' : 'property';
     let name = getActualCliParameterName(parameter);
     if (parameter.kind === 'flag' || parameter.kind === 'flag-property') {
@@ -432,9 +434,10 @@ function handleConvertError(parameter: CommandParameter, value: any, error: any)
         group = 'option';
     }
     if (error instanceof ValidationError) {
-        throw new Error(`Invalid value for ${group} ${name}: ${value}. ${error.errors[0].message} [${error.errors[0].code}]`);
+        logger.log(`<red>Invalid value for ${group} ${name}: ${value}.</red> ${error.errors[0].message} [${error.errors[0].code}]`);
+        return;
     }
-    throw new Error(`Invalid value for ${group} ${name}: ${value}. ${String(error.message)}`);
+    logger.log(`<red>Invalid value for ${group} ${name}: ${value}.</red> ${String(error.message)}`);
 }
 
 interface CommandParameter {
@@ -545,6 +548,7 @@ export async function runCommand(
     argv: string[],
     injector: InjectorContext,
     eventDispatcher: EventDispatcher,
+    logger: LoggerInterface,
 ): Promise<any> {
     const parameters = config.callback
         ? ReflectionFunction.from(config.callback).getParameters()
@@ -576,7 +580,8 @@ export async function runCommand(
             try {
                 args.push(injector.get(injectToken || parameter.type));
             } catch (error) {
-                handleConvertError(parameter, parsedArgs[parameter.name], error);
+                handleConvertError(logger, parameter, parsedArgs[parameter.name], error);
+                return 1;
             }
             continue;
         }
@@ -604,7 +609,8 @@ export async function runCommand(
                 }
             }
         } catch (error) {
-            handleConvertError(parameter, raw, error);
+            handleConvertError(logger, parameter, raw, error);
+            return 1;
         }
     }
 
