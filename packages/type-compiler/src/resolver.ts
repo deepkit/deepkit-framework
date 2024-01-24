@@ -1,3 +1,4 @@
+import * as micromatch from 'micromatch';
 import type {
     CompilerHost,
     CompilerOptions,
@@ -9,29 +10,17 @@ import type {
     StringLiteral,
 } from 'typescript';
 import ts from 'typescript';
-import * as micromatch from 'micromatch';
-import { isAbsolute, join } from 'path';
 
-const {
-    createSourceFile,
-    resolveModuleName,
-    isStringLiteral,
-    JSDocParsingMode,
-    ScriptTarget,
-} = ts;
+const { createSourceFile, resolveModuleName, isStringLiteral, JSDocParsingMode, ScriptTarget } = ts;
 
-export function patternMatch(path: string, patterns: string[], base?: string) {
-    const normalized = patterns.map(v => {
-        if (v[0] === '!') {
-            if (base && !isAbsolute(v.slice(1))) return '!' + join(base || '', v.substr(1));
-            return v;
-        }
+export function patternMatch(path: string, patterns: string[], base?: string): boolean {
+    const include = patterns.filter(pattern => pattern[0] !== '!');
 
-        if (!isAbsolute(v)) return join(base || '', v);
-        return v;
+    const exclude = patterns.filter(pattern => pattern[0] === '!').map(pattern => pattern.substring(1));
+
+    return micromatch.isMatch(path, include, {
+        ignore: exclude,
     });
-    const matched = micromatch.default([path], normalized, {});
-    return matched.length > 0;
 }
 
 /**
@@ -43,9 +32,8 @@ export class Resolver {
     constructor(
         public compilerOptions: CompilerOptions,
         public host: CompilerHost,
-        protected sourceFiles: { [fileName: string]: SourceFile }
-    ) {
-    }
+        protected sourceFiles: { [fileName: string]: SourceFile },
+    ) {}
 
     resolve(from: SourceFile, importOrExportNode: ExportDeclaration | ImportDeclaration): SourceFile | undefined {
         const moduleSpecifier: Expression | undefined = importOrExportNode.moduleSpecifier;
@@ -58,14 +46,24 @@ export class Resolver {
     protected resolveImpl(modulePath: StringLiteral, sourceFile: SourceFile): ResolvedModule | undefined {
         if (this.host.resolveModuleNameLiterals !== undefined) {
             const results = this.host.resolveModuleNameLiterals(
-                [modulePath], sourceFile.fileName, /*reusedNames*/ undefined,
-                this.compilerOptions, sourceFile, undefined
+                [modulePath],
+                sourceFile.fileName,
+                /*reusedNames*/ undefined,
+                this.compilerOptions,
+                sourceFile,
+                undefined,
             );
             if (results[0]) return results[0].resolvedModule;
             return;
         }
         if (this.host.resolveModuleNames !== undefined) {
-            return this.host.resolveModuleNames([modulePath.text], sourceFile.fileName, /*reusedNames*/ undefined, /*redirectedReference*/ undefined, this.compilerOptions)[0];
+            return this.host.resolveModuleNames(
+                [modulePath.text],
+                sourceFile.fileName,
+                /*reusedNames*/ undefined,
+                /*redirectedReference*/ undefined,
+                this.compilerOptions,
+            )[0];
         }
         const result = resolveModuleName(modulePath.text, sourceFile.fileName, this.compilerOptions, this.host);
         return result.resolvedModule;
@@ -92,10 +90,15 @@ export class Resolver {
 
         const source = this.host.readFile(result.resolvedFileName);
         if (!source) return;
-        const moduleSourceFile = this.sourceFiles[fileName] = createSourceFile(fileName, source, {
-            languageVersion: this.compilerOptions.target || ScriptTarget.ES2018,
-            jsDocParsingMode: JSDocParsingMode.ParseNone,
-        }, true);
+        const moduleSourceFile = (this.sourceFiles[fileName] = createSourceFile(
+            fileName,
+            source,
+            {
+                languageVersion: this.compilerOptions.target || ScriptTarget.ES2018,
+                jsDocParsingMode: JSDocParsingMode.ParseNone,
+            },
+            true,
+        ));
 
         this.sourceFiles[fileName] = moduleSourceFile;
 
