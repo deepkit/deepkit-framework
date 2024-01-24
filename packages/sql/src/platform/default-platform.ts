@@ -336,7 +336,7 @@ export abstract class DefaultPlatform {
                         column.defaultValue = dbOptions.default;
                     } else if (dbOptions.defaultExpr) {
                         column.defaultExpression = dbOptions.defaultExpr;
-                    } else if (!dbOptions.noDefault && !property.hasDefaultFunctionExpression()) {
+                    } else if (!dbOptions.noDefault && !property.hasDynamicExpression()) {
                         column.defaultValue = property.getDefaultValue();
                     }
                 }
