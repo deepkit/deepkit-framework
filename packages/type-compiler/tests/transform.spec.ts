@@ -234,3 +234,24 @@ test('import typeOnly class', () => {
     //make sure OP.typeName with its type name is emitted
     expect(res['app.ts']).toContain(`['Cache',`);
 });
+
+
+test('reexport existing', () => {
+    const res = transform({
+        'app.ts': `
+            import { Cache } from './module';
+            typeOf<Cache>();
+        `,
+        'module.ts': `
+            import { Cache } from './class';
+
+            export { Cache }
+        `,
+        'class.ts': `
+            export class Cache {}
+        `
+    });
+
+    //make sure OP.typeName with its type name is emitted
+    expect(res['app.ts']).toContain(`() => Cache`);
+});

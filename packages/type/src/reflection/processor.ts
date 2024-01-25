@@ -59,6 +59,7 @@ import { ClassType, isArray, isClass, isFunction, stringifyValueWithType } from 
 import { isWithDeferredDecorators } from '../decorator.js';
 import { ReflectionClass, TData } from './reflection.js';
 import { state } from './state.js';
+import { debug } from '../debug.js';
 
 export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
 
@@ -1175,9 +1176,8 @@ export class Processor {
                             const pPosition = this.eatParameter() as number;
                             const pOrFn = program.stack[pPosition] as number | Packed | (() => Packed);
                             const p = isFunction(pOrFn) ? pOrFn() : pOrFn;
-                            // process.stdout.write(`inline ${pOrFn.toString()}\n`);
                             if (p === undefined) {
-                                // console.log('inline with invalid reference', pOrFn.toString());
+                                debug(`Failed inlining ${pOrFn.toString()}. Circular reference?`);
                                 this.push({ kind: ReflectionKind.unknown });
                             } else if ('number' === typeof p) {
                                 //self circular reference, usually a 0, which indicates we put the result of the current program as the type on the stack.
@@ -1210,7 +1210,7 @@ export class Processor {
                             const pOrFn = program.stack[pPosition] as number | Packed | (() => Packed);
                             const p = isFunction(pOrFn) ? pOrFn() : pOrFn;
                             if (p === undefined) {
-                                // console.log('inline with invalid reference', pOrFn.toString());
+                                debug(`Failed inlining call ${pOrFn.toString()}. Circular reference?`);
                                 this.push({ kind: ReflectionKind.unknown });
                             } else if ('number' === typeof p) {
                                 if (argumentSize === 0) {
