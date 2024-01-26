@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.117](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.116...v1.0.1-alpha.117) (2024-01-26)
+
+### Features
+
+- **http:** support non-class types as DI tokens in route actions ([a296570](https://github.com/deepkit/deepkit-framework/commit/a296570e015df1d3b5539ec66ea5723843178c1b))
+
 ## [1.0.1-alpha.116](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.115...v1.0.1-alpha.116) (2024-01-22)
 
 **Note:** Version bump only for package @deepkit/http

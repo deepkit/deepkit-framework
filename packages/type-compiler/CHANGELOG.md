@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.117](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.116...v1.0.1-alpha.117) (2024-01-26)
+
+### Bug Fixes
+
+- **type-compiler:** embed external class/functions ([ad6973d](https://github.com/deepkit/deepkit-framework/commit/ad6973dfbe32f9399ceabb39b6499255287cdb22))
+- **type-compiler:** merge compilerOptions from ConfigResolver ([7b00789](https://github.com/deepkit/deepkit-framework/commit/7b0078913e5ab381c23dc807fcc86648777ff096))
+- **type-compiler:** pattern match exclusion for globs ([#543](https://github.com/deepkit/deepkit-framework/issues/543)) ([30e3319](https://github.com/deepkit/deepkit-framework/commit/30e331942978e528fb5ae3cda2a37541748f562b))
+
+### Features
+
+- **type-compiler:** improve perf by 10x ([6eb0436](https://github.com/deepkit/deepkit-framework/commit/6eb0436c67c11e69c4f694ed9c6ab931c6d840de))
+- **type-compiler:** support local export syntax + improve logging ([993cffa](https://github.com/deepkit/deepkit-framework/commit/993cffaa822a76963ed5185d8b1d0a7c1de28069))
+
 ## [1.0.1-alpha.116](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.115...v1.0.1-alpha.116) (2024-01-22)
 
 ### Features

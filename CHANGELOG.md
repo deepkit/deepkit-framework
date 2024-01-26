@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.117](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.116...v1.0.1-alpha.117) (2024-01-26)
+
+### Bug Fixes
+
+- **broker:** invalid type in Bus.publish ([fb99dbe](https://github.com/deepkit/deepkit-framework/commit/fb99dbe06cc6f7b56486a3d5a59ecbed319bb401))
+- **type-compiler:** embed external class/functions ([ad6973d](https://github.com/deepkit/deepkit-framework/commit/ad6973dfbe32f9399ceabb39b6499255287cdb22))
+- **type-compiler:** merge compilerOptions from ConfigResolver ([7b00789](https://github.com/deepkit/deepkit-framework/commit/7b0078913e5ab381c23dc807fcc86648777ff096))
+- **type-compiler:** pattern match exclusion for globs ([#543](https://github.com/deepkit/deepkit-framework/issues/543)) ([30e3319](https://github.com/deepkit/deepkit-framework/commit/30e331942978e528fb5ae3cda2a37541748f562b))
+- **type:** correct type guard ([272cff9](https://github.com/deepkit/deepkit-framework/commit/272cff92292043c4b76bd61bc4abe3c9a63509c9))
+
+### Features
+
+- **app:** allow object literals as flags ([488247a](https://github.com/deepkit/deepkit-framework/commit/488247aae86ef77950d28784bf6bf71f63b7da0e))
+- **app:** allow passing command function without name ([6796414](https://github.com/deepkit/deepkit-framework/commit/67964145bede869afc88f2e9885334d9a847b755))
+- **app:** more color in CLI validation error ([9231b7c](https://github.com/deepkit/deepkit-framework/commit/9231b7cb27b00b89f4badd007e23792814419c82))
+- **http:** support non-class types as DI tokens in route actions ([a296570](https://github.com/deepkit/deepkit-framework/commit/a296570e015df1d3b5539ec66ea5723843178c1b))
+- **type-compiler:** improve perf by 10x ([6eb0436](https://github.com/deepkit/deepkit-framework/commit/6eb0436c67c11e69c4f694ed9c6ab931c6d840de))
+- **type-compiler:** support local export syntax + improve logging ([993cffa](https://github.com/deepkit/deepkit-framework/commit/993cffaa822a76963ed5185d8b1d0a7c1de28069))
+
 ## [1.0.1-alpha.116](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.115...v1.0.1-alpha.116) (2024-01-22)
 
 ### Features

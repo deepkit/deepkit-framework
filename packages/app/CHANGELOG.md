@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.117](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.116...v1.0.1-alpha.117) (2024-01-26)
+
+### Features
+
+- **app:** allow object literals as flags ([488247a](https://github.com/deepkit/deepkit-framework/commit/488247aae86ef77950d28784bf6bf71f63b7da0e))
+- **app:** allow passing command function without name ([6796414](https://github.com/deepkit/deepkit-framework/commit/67964145bede869afc88f2e9885334d9a847b755))
+- **app:** more color in CLI validation error ([9231b7c](https://github.com/deepkit/deepkit-framework/commit/9231b7cb27b00b89f4badd007e23792814419c82))
+
 ## [1.0.1-alpha.116](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.115...v1.0.1-alpha.116) (2024-01-22)
 
 **Note:** Version bump only for package @deepkit/app

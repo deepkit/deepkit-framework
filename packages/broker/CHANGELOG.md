@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.117](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.116...v1.0.1-alpha.117) (2024-01-26)
+
+### Bug Fixes
+
+- **broker:** invalid type in Bus.publish ([fb99dbe](https://github.com/deepkit/deepkit-framework/commit/fb99dbe06cc6f7b56486a3d5a59ecbed319bb401))
+
 ## [1.0.1-alpha.116](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.115...v1.0.1-alpha.116) (2024-01-22)
 
 **Note:** Version bump only for package @deepkit/broker

@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/mysql",
-  "version": "1.0.1-alpha.116",
+  "version": "1.0.1-alpha.117",
   "description": "deepkit/orm MySQL adapter.",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -35,11 +35,11 @@
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.1-alpha.114",
-    "@deepkit/orm": "^1.0.1-alpha.116",
+    "@deepkit/orm": "^1.0.1-alpha.117",
     "@deepkit/orm-integration": "^1.0.1-alpha.13",
-    "@deepkit/sql": "^1.0.1-alpha.116",
-    "@deepkit/stopwatch": "^1.0.1-alpha.116",
-    "@deepkit/type": "^1.0.1-alpha.116"
+    "@deepkit/sql": "^1.0.1-alpha.117",
+    "@deepkit/stopwatch": "^1.0.1-alpha.117",
+    "@deepkit/type": "^1.0.1-alpha.117"
   },
   "jest": {
     "runner": "../../jest-serial-runner.js",
