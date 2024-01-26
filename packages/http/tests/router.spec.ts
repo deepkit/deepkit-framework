@@ -8,6 +8,7 @@ import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
 import { Excluded, Group, integer, Maximum, metaAnnotation, MinLength, Positive, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
 import { Readable } from 'stream';
+import { provide } from '@deepkit/injector';
 
 test('router', async () => {
     class Controller {
@@ -592,7 +593,7 @@ test('invalid route definition', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller]);
-    expect((await httpKernel.request(HttpRequest.GET('/'))).bodyString).toEqual('Internal error');
+    expect((await httpKernel.request(HttpRequest.GET('/'))).bodyString).toEqual('Not found');
 });
 
 test('inject request storage ClassType', async () => {
@@ -1486,4 +1487,72 @@ test('header default', async () => {
     const httpKernel = createHttpKernel([Controller]);
     expect((await httpKernel.request(HttpRequest.GET('/test1').header('auth', '123'))).json).toEqual(['123']);
     expect((await httpKernel.request(HttpRequest.GET('/test1'))).json).toEqual(['']);
+});
+
+test('header default', async () => {
+    @http.controller()
+    class Controller {
+        @http.GET('/test1')
+        test1(
+            auth: HttpHeader<string> = '',
+        ) {
+            return [auth];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.GET('/test1').header('auth', '123'))).json).toEqual(['123']);
+    expect((await httpKernel.request(HttpRequest.GET('/test1'))).json).toEqual(['']);
+});
+
+test('dependency injection class', async () => {
+    class Service {
+        name = 'hi';
+    }
+
+    class Controller {
+        @http.GET('user/:name')
+        async anyReq(name: string, service: Service) {
+            return [name, service.name];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [Service]);
+    expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).json).toEqual(['peter', 'hi']);
+});
+
+test('dependency injection type', async () => {
+    class Service {
+        name = 'hi';
+    }
+
+    type A = Service;
+
+    class Controller {
+        @http.GET('user/:name')
+        async anyReq(name: string, service: A) {
+            return [name, service.name];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [provide<A>(Service)]);
+    expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).json).toEqual(['peter', 'hi']);
+});
+
+test('dependency injection unknown', async () => {
+    class Service {
+        name = 'hi';
+    }
+
+    type A = Service;
+
+    class Controller {
+        @http.GET('user/:name')
+        async anyReq(name: string, service: unknown) {
+            return [name];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [provide<A>(Service)]);
+    expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).text).toEqual('Not found');
 });

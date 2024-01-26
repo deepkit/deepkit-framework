@@ -15,10 +15,10 @@ import {
     stringifyType,
     Type,
     typeToObject,
-    ValidationError
+    ValidationError,
 } from '@deepkit/type';
 import { BodyValidationError, createRequestWithCachedBody, getRegExp, HttpRequest, ValidatedBody } from './model.js';
-import { RouteConfig, UploadedFile, UploadedFileSymbol } from './router.js';
+import { getRouteActionLabel, RouteConfig, UploadedFile, UploadedFileSymbol } from './router.js';
 
 //@ts-ignore
 import qs from 'qs';
@@ -155,6 +155,11 @@ export function parseRoutePathToRegex(path: string, params: ReflectionParameter[
     return { regex: path, parameterNames };
 }
 
+function isTypeUnknown(type: Type): boolean {
+    return type.kind === ReflectionKind.unknown || type.kind === ReflectionKind.any
+        || type.kind === ReflectionKind.never;
+}
+
 export function buildRequestParser(parseOptions: HttpParserOptions, parameters: ReflectionParameter[], path?: string): (request: HttpRequest) => any[] {
     const compiler = new CompilerContext();
     const params = parameters.map(v => new ParameterForRequestParser(v));
@@ -202,7 +207,7 @@ export function getRequestParserCodeForParameters(
         resolverForToken?: Map<any, ClassType>,
         pathParameterNames?: { [name: string]: number },
         routeConfig?: RouteConfig,
-    }
+    },
 ) {
     let enableParseBody = false;
     let requiresAsyncParameters = false;
@@ -264,19 +269,24 @@ export function getRequestParserCodeForParameters(
                 }
             }
 
-            const injectorToken = parameter.parameter.type.kind === ReflectionKind.class ? parameter.parameter.type.classType : undefined;
-            const injectorTokenVar = compiler.reserveVariable('classType', injectorToken);
+            const injectorTokenVar = compiler.reserveVariable('type', parameter.parameter.type);
             const parameterResolverFoundVar = compiler.reserveVariable('parameterResolverFound', false);
 
             setParameters.push(`${parameterResolverFoundVar} = false;`);
 
-            const resolverType = config.resolverForParameterName?.get(parameter.getName()) || config.resolverForToken?.get(injectorToken);
+            const resolverType = config.resolverForParameterName?.get(parameter.getName())
+                || config.resolverForToken?.get(parameter.parameter.type.kind === ReflectionKind.class ? parameter.parameter.type.classType : undefined);
 
             //make sure all parameter values from the path are available, important for parameter resolver
             if (resolverType && !setParametersFromPath && config.pathParameterNames) {
                 for (const i in config.pathParameterNames) {
                     setParametersFromPath += `parameters.${i} = _match[${1 + config.pathParameterNames[i]}];`;
                 }
+            }
+
+            if (!resolverType && !parameter.isPartOfPath() && isTypeUnknown(parameter.parameter.type)) {
+                const label = config.routeConfig ? getRouteActionLabel(config.routeConfig?.action) + ' ' : '';
+                throw new Error(`Parameter ${label}${JSON.stringify(parameter.parameter.name)} has no runtime type. Runtime types disabled or circular dependencies?`);
             }
 
             let injector = '_injector';
@@ -295,13 +305,15 @@ export function getRequestParserCodeForParameters(
                 const instance = compiler.reserveVariable('resolverInstance');
 
                 const routeConfigVar = compiler.reserveVariable('routeConfigVar', config.routeConfig);
+                const classTypeToken = parameter.parameter.type.kind === ReflectionKind.class ? parameter.parameter.type.classType : undefined;
+                const classTypeTokenVar = compiler.reserveVariable('classType', classTypeToken);
                 setParameters.push(`
                     //resolver ${getClassName(resolverType)} for ${parameter.getName()}
                     ${instance} = ${instanceFetcher};
                     if (!${parameterResolverFoundVar}) {
                         ${parameterResolverFoundVar} = true;
                         parameters.${parameter.parameter.name} = await ${instance}.resolve({
-                            token: ${injectorTokenVar},
+                            token: ${classTypeTokenVar},
                             route: ${routeConfigVar},
                             request: request,
                             name: ${JSON.stringify(parameter.parameter.name)},
@@ -314,6 +326,7 @@ export function getRequestParserCodeForParameters(
             }
 
             if (!parameter.isPartOfPath()) {
+                //todo: if injectorToken is a Type, then this will be very slow since Injector.createResolver is used all the time.
                 let injectorGet = `parameters.${parameter.parameter.name} = ${injector}.get(${injectorTokenVar});`;
                 if (parameter.parameter.isOptional()) {
                     injectorGet = `try {parameters.${parameter.parameter.name} = ${injector}.get(${injectorTokenVar}); } catch (e) {}`;

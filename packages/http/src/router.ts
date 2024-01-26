@@ -104,6 +104,11 @@ export interface RouteClassControllerAction {
     methodName: string;
 }
 
+export function getRouteActionLabel(action: RouteClassControllerAction | RouteFunctionControllerAction): string {
+    if (action.type === 'controller') return `${getClassName(action.controller)}.${action.methodName}`;
+    return action.fn.name;
+}
+
 export class RouteConfig {
     public baseUrl: string = '';
 
