@@ -757,7 +757,7 @@ export class HttpListener {
             }, event.error.httpCode).disableAutoSerializing());
             return;
         } else {
-            this.logger.error('Controller parameter resolving error:', event.error);
+            this.logger.error(`Controller for route ${event.route.getFullPath()} parameter resolving error:`, event.error);
 
             event.send(new HtmlResponse('Internal error', 500));
         }
