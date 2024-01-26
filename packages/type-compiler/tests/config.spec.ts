@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { ParseConfigHost, ScriptTarget } from 'typescript';
 
-import { Resolver, TsConfigJson, defaultExcluded, getResolver } from '../src/config.js';
+import { TsConfigJson, defaultExcluded, ConfigResolver, getConfigResolver } from '../src/config.js';
 import { patternMatch } from '../src/resolver.js';
 
 process.env.DEBUG = 'deepkit';
@@ -32,7 +32,7 @@ function buildHost(files: { [fileName: string]: TsConfigJson }): ParseConfigHost
     };
 }
 
-function expectDefaultExcluded(resolver: Resolver) {
+function expectDefaultExcluded(resolver: ConfigResolver) {
     expect(resolver.match('lib.dom.d.ts').mode).toEqual('never');
     expect(resolver.match('lib.dom.iterable.d.ts').mode).toEqual('never');
     expect(resolver.match('lib.es2017.typedarrays.d.ts').mode).toEqual('never');
@@ -57,10 +57,10 @@ test('empty config', () => {
         'tsconfig.json': {},
     });
 
-    const resolver = getResolver({}, host, {}, { fileName: 'test.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: 'test.ts' });
     expect(resolver.config).toEqual({
         path: 'tsconfig.json',
-        compilerOptions: {},
+        compilerOptions: {configFilePath: 'tsconfig.json'},
         reflection: undefined,
         mergeStrategy: 'merge',
         exclude: defaultExcluded,
@@ -80,10 +80,10 @@ test('simple config', () => {
         },
     });
 
-    const resolver = getResolver({}, host, {}, { fileName: 'test.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: 'test.ts' });
     expect(resolver.config).toEqual({
         path: 'tsconfig.json',
-        compilerOptions: {},
+        compilerOptions: {configFilePath: 'tsconfig.json'},
         reflection: 'default',
         mergeStrategy: 'merge',
         exclude: defaultExcluded,
@@ -106,10 +106,10 @@ test('simple config with exclude', () => {
         },
     });
 
-    const resolver = getResolver({}, host, {}, { fileName: 'test.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: 'test.ts' });
     expect(resolver.config).toEqual({
         path: 'tsconfig.json',
-        compilerOptions: {},
+        compilerOptions: {configFilePath: 'tsconfig.json'},
         reflection: 'default',
         mergeStrategy: 'merge',
         exclude: [...defaultExcluded, 'test.ts'],
@@ -133,10 +133,10 @@ test('disable parent', () => {
         },
     });
 
-    const resolver = getResolver({}, host, {}, { fileName: 'test.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: 'test.ts' });
     expect(resolver.config).toEqual({
         path: 'tsconfig.json',
-        compilerOptions: {},
+        compilerOptions: {configFilePath: 'tsconfig.json'},
         reflection: 'never',
         mergeStrategy: 'merge',
         exclude: defaultExcluded,
@@ -160,10 +160,10 @@ test('replace strategy does not replace default excludes', () => {
         },
     });
 
-    const resolver = getResolver({}, host, {}, { fileName: 'test.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: 'test.ts' });
     expect(resolver.config).toEqual({
         path: 'tsconfig.json',
-        compilerOptions: {},
+        compilerOptions: {configFilePath: 'tsconfig.json'},
         mergeStrategy: 'replace',
         reflection: 'default',
         exclude: [...defaultExcluded, 'test.ts'],
@@ -193,10 +193,10 @@ test('replace parent config exclude', () => {
         },
     });
 
-    const resolver = getResolver({}, host, {}, { fileName: 'test.ts' }, 'tsconfig2.json');
+    const resolver = getConfigResolver({}, host, {}, { fileName: 'test.ts' }, 'tsconfig2.json');
     expect(resolver.config).toEqual({
         path: 'tsconfig2.json',
-        compilerOptions: {},
+        compilerOptions: {configFilePath: 'tsconfig2.json'},
         mergeStrategy: 'replace',
         reflection: 'default',
         exclude: [...defaultExcluded, 'test2.ts'],
@@ -228,10 +228,10 @@ test('extend reflection array', () => {
         },
     });
 
-    const resolver = getResolver({}, host, {}, { fileName: 'test.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: 'test.ts' });
     expect(resolver.config).toEqual({
         path: 'tsconfig.json',
-        compilerOptions: {},
+        compilerOptions: {configFilePath: 'tsconfig.json'},
         reflection: ['test.ts', 'test2.ts'],
         mergeStrategy: 'merge',
         exclude: defaultExcluded,
@@ -260,10 +260,10 @@ test('replace reflection array', () => {
         },
     });
 
-    const resolver = getResolver({}, host, {}, { fileName: 'test.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: 'test.ts' });
     expect(resolver.config).toEqual({
         path: 'tsconfig.json',
-        compilerOptions: {},
+        compilerOptions: {configFilePath: 'tsconfig.json'},
         reflection: ['test2.ts'],
         mergeStrategy: 'replace',
         exclude: defaultExcluded,
@@ -292,10 +292,10 @@ test('circular extend', () => {
         },
     });
 
-    const resolver = getResolver({}, host, {}, { fileName: 'test.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: 'test.ts' });
     expect(resolver.config).toEqual({
         path: 'tsconfig.json',
-        compilerOptions: {},
+        compilerOptions: {configFilePath: 'tsconfig.json'},
         reflection: ['test.ts', 'test2.ts'],
         mergeStrategy: 'merge',
         exclude: defaultExcluded,
@@ -333,10 +333,11 @@ test('regular typescript compilerOptions inheritance', () => {
         },
     });
 
-    const resolver = getResolver({}, host, {}, { fileName: 'test.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: 'test.ts' });
     expect(resolver.config).toEqual({
         path: 'tsconfig.json',
         compilerOptions: {
+            configFilePath: 'tsconfig.json',
             target: ScriptTarget.ES2018,
             pathsBasePath: '.',
             paths: {
@@ -357,10 +358,10 @@ test('negative match 1', () => {
             },
         },
     });
-    const resolver = getResolver({}, host, {}, { fileName: '/app/test.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: '/app/test.ts' });
     expect(resolver.config).toEqual({
         path: '/app/tsconfig.json',
-        compilerOptions: {},
+        compilerOptions: {configFilePath: '/app/tsconfig.json'},
         reflection: ['/app/model/**/*.ts'],
         mergeStrategy: 'merge',
         exclude: defaultExcluded,
@@ -379,7 +380,7 @@ test('negative match 2', () => {
             },
         },
     });
-    const resolver = getResolver({}, host, {}, { fileName: '/path/portal/test.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: '/path/portal/test.ts' });
     expect(resolver.match('/path/portal/server/dao/models.ts').mode).toBe('default');
     expect(resolver.match('/path/portal/server/dao/mongoose.ts').mode).toBe('never');
 });
@@ -392,7 +393,7 @@ test('negative match 3', () => {
             },
         },
     });
-    const resolver = getResolver({}, host, {}, { fileName: '/path/portal/src/index.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: '/path/portal/src/index.ts' });
     expect(resolver.match('/path/portal/src/lib/types.ts').mode).toBe('default');
     expect(resolver.match('/path/portal/src/lib/graphql/generated.ts').mode).toBe('never');
 });
@@ -405,7 +406,7 @@ test('negative match 4', () => {
             },
         },
     });
-    const resolver = getResolver({}, host, {}, { fileName: '/path/portal/src/index.ts' });
+    const resolver = getConfigResolver({}, host, {}, { fileName: '/path/portal/src/index.ts' });
     expect(resolver.match('/path/portal/src/lib/types.ts').mode).toBe('default');
     expect(resolver.match('/path/portal/src/lib/graphql/generated.ts').mode).toBe('never');
 });

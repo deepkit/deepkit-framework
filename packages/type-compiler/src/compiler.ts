@@ -94,7 +94,7 @@ import { MappedModifier, ReflectionOp, TypeNumberBrand } from '@deepkit/type-spe
 import { Resolver } from './resolver.js';
 import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { debug, debug2 } from './debug.js';
-import { getResolver, loadReflectionConfig, Matcher, ReflectionConfig, ReflectionConfigCache, reflectionModeMatcher } from './config.js';
+import { ConfigResolver, getConfigResolver, MatchResult, ReflectionConfig, ReflectionConfigCache, reflectionModeMatcher, ResolvedConfig } from './config.js';
 
 
 const {
@@ -514,7 +514,7 @@ export class ReflectionTransformer implements CustomTransformer {
     protected resolver: Resolver;
     protected host: CompilerHost;
     protected overriddenHost = false;
-    protected overriddenReflectionMatcher?: Matcher;
+    protected overriddenConfigResolver?: ConfigResolver;
 
     protected compilerOptions: CompilerOptions;
 
@@ -531,8 +531,9 @@ export class ReflectionTransformer implements CustomTransformer {
     ) {
         this.f = context.factory;
         this.nodeConverter = new NodeConverter(this.f);
-        //it is important to not have undefined values like {paths: undefined} because it would override the read tsconfig.json
-        this.compilerOptions = filterUndefined(context.getCompilerOptions());
+        // It is important to not have undefined values like {paths: undefined} because it would override the read tsconfig.json.
+        // Important to create a copy since we will modify it.
+        this.compilerOptions = {...filterUndefined(context.getCompilerOptions())};
         // compilerHost has no internal cache and is cheap to build, so no cache needed.
         // Resolver loads SourceFile which has cache implemented.
         this.host = createCompilerHost(this.compilerOptions);
@@ -556,10 +557,12 @@ export class ReflectionTransformer implements CustomTransformer {
     }
 
     withReflection(config: ReflectionConfig): this {
-        this.overriddenReflectionMatcher = (path: string) => {
+        const match = (path: string) => {
             const mode = reflectionModeMatcher(config, path);
             return { mode, tsConfigPath: '' };
         };
+        const configResolver: ResolvedConfig = {...config, path: '', mergeStrategy: 'replace', compilerOptions: this.compilerOptions};
+        this.overriddenConfigResolver = {config: configResolver, match};
         return this;
     }
 
@@ -585,11 +588,23 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.tempResultIdentifier;
     }
 
-    protected getReflectionConfig(sourceFile: { fileName: string }) {
-        if (this.overriddenReflectionMatcher) {
-            return this.overriddenReflectionMatcher(sourceFile.fileName);
-        }
-        return loadReflectionConfig(this.cache.resolver, this.parseConfigHost, this.compilerOptions, sourceFile);
+    protected getConfigResolver(sourceFile: { fileName: string }): ConfigResolver {
+        if (this.overriddenConfigResolver) return this.overriddenConfigResolver;
+        return getConfigResolver(this.cache.resolver, this.parseConfigHost, this.compilerOptions, sourceFile);
+    }
+
+    protected getReflectionConfig(sourceFile: { fileName: string }): MatchResult {
+        const configResolver = this.getConfigResolver(sourceFile);
+        return configResolver.match(sourceFile.fileName);
+    }
+
+    protected isWithReflection(sourceFile: SourceFile, node: Node & { __deepkitConfig?: ReflectionConfig }): boolean {
+        const mode = this.getExplicitReflectionMode(sourceFile, node);
+        if (mode === false) return false;
+        const reflection = this.getReflectionConfig(sourceFile);
+        // explicit means reflection needs to be enabled per Node/File via @reflection
+        if (reflection.mode === 'explicit') return mode === true;
+        return reflection.mode === 'default';
     }
 
     transformSourceFile(sourceFile: SourceFile): SourceFile {
@@ -604,7 +619,14 @@ export class ReflectionTransformer implements CustomTransformer {
         this.addImports = [];
 
         const start = Date.now();
-        const reflection = this.getReflectionConfig(sourceFile);
+        const configResolver = this.getConfigResolver(sourceFile);
+        const reflection = configResolver.match(sourceFile.fileName);
+
+        // important to override the compilerOptions with the one from the configResolver
+        // since the one provided by TSC/plugins are not necessarily the full picture.
+        // ConfigResolver resolves the whole config.
+        // Since this.compilerOptions was already passed to Resolver, we update its values by reference.
+        Object.assign(this.compilerOptions, configResolver.config.compilerOptions);
 
         if (reflection.mode === 'never') {
             debug(`Transform file with reflection=${reflection.mode} took ${Date.now()-start}ms (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`);
@@ -1944,7 +1966,8 @@ export class ReflectionTransformer implements CustomTransformer {
      * via the exclude option. mainly used to exclude globals and external libraries.
      */
     protected isExcluded(fileName: string): boolean {
-        const resolver = getResolver(this.cache.resolver, this.parseConfigHost, this.compilerOptions);
+        // getConfigResolver depends on the current source file, so we know the "exclude" option from deepkit config
+        const resolver = this.overriddenConfigResolver || getConfigResolver(this.cache.resolver, this.parseConfigHost, this.compilerOptions, this.sourceFile);
         const res = reflectionModeMatcher({ reflection: 'default', exclude: resolver.config.exclude }, fileName);
         return res === 'never';
     }
@@ -2683,15 +2706,6 @@ export class ReflectionTransformer implements CustomTransformer {
 
         return;
     }
-
-    protected isWithReflection(sourceFile: SourceFile, node: Node & { __deepkitConfig?: ReflectionConfig }): boolean {
-        const mode = this.getExplicitReflectionMode(sourceFile, node);
-        if (mode === false) return false;
-        const reflection = this.getReflectionConfig(sourceFile);
-        // explicit means reflection needs to be enabled per Node/File via @reflection
-        if (reflection.mode === 'explicit') return mode === true;
-        return reflection.mode === 'default';
-    }
 }
 
 export class DeclarationTransformer extends ReflectionTransformer {
@@ -2704,7 +2718,15 @@ export class DeclarationTransformer extends ReflectionTransformer {
         this.sourceFile = sourceFile;
         this.addExports = [];
 
-        const reflection = this.getReflectionConfig(sourceFile);
+        const configResolver = this.getConfigResolver(sourceFile);
+        const reflection = configResolver.match(sourceFile.fileName);
+
+        // important to override the compilerOptions with the one from the configResolver
+        // since the one provided by TSC/plugins are not necessarily the full picture.
+        // ConfigResolver resolves the whole config.
+        // Since this.compilerOptions was already passed to Resolver, we update its values by reference.
+        Object.assign(this.compilerOptions, configResolver.config.compilerOptions);
+
         if (reflection.mode === 'never') return sourceFile;
 
         const visitor = (node: Node): any => {

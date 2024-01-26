@@ -2,7 +2,7 @@ import { dirname, isAbsolute, join } from 'path';
 import type { CompilerOptions, ParseConfigHost } from 'typescript';
 import ts from 'typescript';
 
-import { debug, isDebug } from './debug.js';
+import { debug, debug2, isDebug } from './debug.js';
 import { patternMatch } from './resolver.js';
 
 /**
@@ -230,30 +230,31 @@ export const defaultExcluded = [
 ];
 
 export type Matcher = (path: string) => MatchResult;
-export type Resolver = { match: Matcher; config: ResolvedConfig };
-export type ReflectionConfigCache = { [path: string]: Resolver };
+export type ConfigResolver = { match: Matcher; config: ResolvedConfig };
+export type ReflectionConfigCache = { [path: string]: ConfigResolver };
 
-export function getResolver(
+export function getConfigResolver(
     cache: ReflectionConfigCache,
     host: ParseConfigHost,
     compilerOptions: CompilerOptions,
-    sourceFile?: { fileName: string },
+    sourceFile: { fileName: string },
     tsConfigPath: string = '',
-): Resolver {
+): ConfigResolver {
     let config: CurrentConfig = {
         // We use the parameter `compilerOptions` only for compilerOptions.configFilePath.
         // We load the compilerOptions manually since transformers don't get the full picture
-        // (path aliases are missing for example)
+        // (path aliases are missing for example).
+        // It's important to load compilerOptions manually if there is compilerOptions.configFilePath
+        // since not all build tools provide the full compilerOptions.
         compilerOptions: {},
     };
 
-    //some builder do not provide the full compiler options (e.g. webpack in nx),
-    //so we need to load the file manually and apply what we need.
-    if ('string' === typeof compilerOptions.configFilePath) {
-        tsConfigPath = compilerOptions.configFilePath;
+    tsConfigPath = tsConfigPath || ('string' === typeof compilerOptions.configFilePath ? compilerOptions.configFilePath : '');
+
+    if (tsConfigPath) {
         if (cache[tsConfigPath]) return cache[tsConfigPath];
-        const configFile = readTsConfig(host, compilerOptions.configFilePath);
-        if (configFile) applyConfigValues(config, configFile, dirname(compilerOptions.configFilePath));
+        const configFile = readTsConfig(host, tsConfigPath);
+        if (configFile) applyConfigValues(config, configFile, dirname(tsConfigPath));
     } else {
         if (!tsConfigPath && sourceFile) {
             //find tsconfig via sourceFile.fileName
@@ -262,6 +263,7 @@ export function getResolver(
                 path = isAbsolute(path) ? path : join(baseDir, path);
                 return host.fileExists(path);
             });
+            debug2(`No tsConfigPath|compilerOptions.configFilePath provided. Manually searching for tsconfig.json in ${baseDir} returned ${configPath}`);
             if (configPath) {
                 //configPath might be relative to passed basedir
                 tsConfigPath = isAbsolute(configPath) ? configPath : join(baseDir, configPath);
@@ -290,9 +292,13 @@ export function getResolver(
             basePath = dirname(path);
             applyConfigValues(currentConfig, nextConfig.config, basePath);
         }
+    } else {
+        throw new Error(`No tsconfig found for ${sourceFile?.fileName}, that is weird. Either provide a tsconfig or compilerOptions.configFilePath`);
     }
 
     config.exclude = config.exclude ? [...defaultExcluded, ...config.exclude] : [...defaultExcluded];
+
+    config.compilerOptions.configFilePath = tsConfigPath;
 
     const resolvedConfig: ResolvedConfig = {
         path: tsConfigPath,
@@ -308,6 +314,8 @@ export function getResolver(
             resolvedConfig.reflection,
             `\nexclude:`,
             resolvedConfig.exclude,
+            `\npaths:`,
+            resolvedConfig.compilerOptions.paths,
         );
     }
 
@@ -317,14 +325,4 @@ export function getResolver(
     };
 
     return (cache[tsConfigPath] = { config: resolvedConfig, match });
-}
-
-export function loadReflectionConfig(
-    cache: ReflectionConfigCache,
-    host: ParseConfigHost,
-    compilerOptions: CompilerOptions,
-    sourceFile: { fileName: string },
-): MatchResult {
-    const config = getResolver(cache, host, compilerOptions, sourceFile);
-    return config.match(sourceFile.fileName);
 }
