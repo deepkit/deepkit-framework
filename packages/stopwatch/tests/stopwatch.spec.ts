@@ -15,6 +15,7 @@ class Store extends StopwatchStore {
 test('frame', () => {
     const store = new Store();
     const stopwatch = new Stopwatch(store);
+    stopwatch.enable();
     const frame = stopwatch.start('/images/logo.png', FrameCategory.http, true);
     frame.data({ url: '/images/logo.png', clientIp: '127.0.0.1', method: 'GET' });
     frame.end();
