@@ -35,7 +35,7 @@ import { DebugConfigController } from './cli/app-config.js';
 import { Zone } from './zone.js';
 import { DebugBrokerBus } from './debug/broker.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
-import { AppModule, ControllerConfig, createModule, onAppShutdown } from '@deepkit/app';
+import { AppModule, ControllerConfig, createModule, onAppExecute, onAppShutdown } from '@deepkit/app';
 import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
 import { normalizeDirectory } from './utils.js';
 import { FilesystemRegistry, PublicFilesystem } from './filesystem.js';
@@ -217,12 +217,14 @@ export class FrameworkModule extends createModule({
         this.addProvider(DebugBrokerBus);
         this.addProvider({ provide: StopwatchStore, useClass: FileStopwatchStore });
 
-        const stopwatch = this.setupGlobalProvider<Stopwatch>();
-        if (this.config.profile || this.config.debug) {
-            stopwatch.enable();
-        } else {
-            stopwatch.disable();
-        }
+        this.addListener(onAppExecute.listen((event, stopwatch?: Stopwatch) => {
+            if (!stopwatch) return;
+            if (this.config.profile || this.config.debug) {
+                stopwatch.enable();
+            } else {
+                stopwatch.disable();
+            }
+        }));
 
         this.addExport(Stopwatch, DebugBrokerBus, StopwatchStore);
     }
