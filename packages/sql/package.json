@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/sql",
-  "version": "1.0.1-alpha.117",
+  "version": "1.0.1-alpha.118",
   "description": "deepkit/orm base SQL",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -49,12 +49,12 @@
     "sqlstring-sqlite": "^0.1.1"
   },
   "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.117",
+    "@deepkit/app": "^1.0.1-alpha.118",
     "@deepkit/core": "^1.0.1-alpha.114",
     "@deepkit/injector": "^1.0.1-alpha.117",
     "@deepkit/logger": "^1.0.1-alpha.117",
-    "@deepkit/orm": "^1.0.1-alpha.117",
-    "@deepkit/stopwatch": "^1.0.1-alpha.117",
+    "@deepkit/orm": "^1.0.1-alpha.118",
+    "@deepkit/stopwatch": "^1.0.1-alpha.118",
     "@deepkit/type": "^1.0.1-alpha.117"
   },
   "jest": {

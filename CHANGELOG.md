@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.118](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.117...v1.0.1-alpha.118) (2024-01-27)
+
+### Features
+
+- **app:** support Reference in cli object flags ([b436af2](https://github.com/deepkit/deepkit-framework/commit/b436af264ae7e06860c93f1d834eb3164cfb51a5))
+- **framework:** support multi-host broker setup ([6daa19e](https://github.com/deepkit/deepkit-framework/commit/6daa19e379edde04d08e7e9404fbc8cfa7ecc114))
+
 ## [1.0.1-alpha.117](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.116...v1.0.1-alpha.117) (2024-01-26)
 
 ### Bug Fixes
