@@ -217,16 +217,14 @@ export class FrameworkModule extends createModule({
         this.addProvider(DebugBrokerBus);
         this.addProvider({ provide: StopwatchStore, useClass: FileStopwatchStore });
 
-        this.addListener(onAppExecute.listen((event, stopwatch?: Stopwatch) => {
-            if (!stopwatch) return;
-            if (this.config.profile || this.config.debug) {
-                stopwatch.enable();
-            } else {
-                stopwatch.disable();
-            }
-        }));
+        const stopwatch = this.setupGlobalProvider<Stopwatch>();
+        if (this.config.profile || this.config.debug) {
+            stopwatch.enable();
+        } else {
+            stopwatch.disable();
+        }
 
-        this.addExport(Stopwatch, DebugBrokerBus, StopwatchStore);
+        this.addExport(DebugBrokerBus, StopwatchStore);
     }
 
     postProcess() {

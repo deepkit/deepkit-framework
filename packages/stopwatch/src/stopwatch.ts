@@ -139,7 +139,6 @@ export class Stopwatch {
     constructor(
         protected store?: StopwatchStore,
     ) {
-        this.active = this.store !== undefined;
     }
 
     enable() {
