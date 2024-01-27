@@ -4,6 +4,7 @@ import { EventDispatcher } from '@deepkit/event';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { Logger, MemoryLogger } from '@deepkit/logger';
 import { Stopwatch } from '@deepkit/stopwatch';
+import { PrimaryKey, Reference } from '@deepkit/type';
 
 test('parser', async () => {
     expect(parseCliArgs(['--id 1', '--id 2'])).toEqual({ id: ['1', '2'] });
@@ -221,4 +222,23 @@ test('multiple object literal flag duplicate', async () => {
     expect((await app(['show-user', '--name', 'Peter'])).output).toContain('Duplicate CLI');
     expect((await app(['show-user2', '--name', 'Peter', '--2.name', '3'])).output).toContain('name=Peter age=undefined name2=3');
     expect((await app(['show-user2', '--name', 'Peter', '--2.name', 'abc'])).output).toContain('Invalid value for option --2.name: abc');
+});
+
+test('object reference', async () => {
+    class Account {
+        id: number & PrimaryKey = 0;
+    }
+
+    class Options {
+        constructor(public account: Account & Reference) {}
+    }
+
+    const app = simpleApp([
+        function showUser(options: Options & Flag, logger: Logger) {
+            logger.log(`account=${options.account.id}`);
+        },
+    ]);
+
+    expect((await app(['show-user', '--account', '123'])).output).toContain('account=123');
+    expect((await app(['show-user', '--help'])).output).toContain('--account number [required]');
 });

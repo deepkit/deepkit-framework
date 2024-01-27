@@ -17,6 +17,7 @@ import {
     isCustomTypeClass,
     isDateType,
     isOptional,
+    isReferenceType,
     metaAnnotation,
     reflect,
     ReflectionClass,
@@ -106,6 +107,7 @@ function supportedAsArgument(type: Type): boolean {
         || type.kind === ReflectionKind.any || type.kind === ReflectionKind.unknown || isDateType(type)
         || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.literal) return true;
     if (type.kind === ReflectionKind.union) return type.types.every(v => supportedAsArgument(v));
+    if (isReferenceType(type)) return true;
     return false;
 }
 
@@ -303,7 +305,11 @@ function getParamIdentifier(parameter: CommandParameter): string {
         if (parameter.type.kind === ReflectionKind.boolean) {
             return `<green>${name}</green>`;
         }
-        return `<green>${name} ${stringifyType(elementType)}</green>`;
+        let type = isReferenceType(elementType)
+            ? stringifyType(ReflectionClass.from(elementType).getPrimary().type)
+            : stringifyType(elementType);
+
+        return `<green>${name} ${type}</green>`;
     }
     return `<green>${parameter.name}</green>`;
 }
@@ -492,6 +498,11 @@ function collectCommandParameter(config: ParsedCliControllerConfig) {
             // check if parameter.type is an object, e.g. { name: string, age: number }
             // split it into multiple flags, e.g. --name --age
             if (parameter.type.kind === ReflectionKind.objectLiteral || isCustomTypeClass(parameter.type)) {
+                if (isReferenceType(parameter.type)) {
+                    result.push({ name, defaultValue, char, hidden, optional, description, prefix, collectInto, kind: 'flag', flag: true, type: parameter.type });
+                    return;
+                }
+
                 for (const property of parameter.type.types) {
                     if (property.kind !== ReflectionKind.property && property.kind !== ReflectionKind.propertySignature) continue;
                     if (!supportedFlags(property.type)) continue;
@@ -601,7 +612,10 @@ export async function runCommand(
                         args.push(parameterValues[parameter.collectInto]);
                     }
                 }
-                parameterValues[parameter.collectInto][parameter.name] = v;
+                if (v !== undefined) {
+                    // Important to not have undefined properties in the object
+                    parameterValues[parameter.collectInto][parameter.name] = v;
+                }
             } else {
                 parameterValues[parameter.name] = v;
                 if (parameter.kind !== 'flag-property') {
