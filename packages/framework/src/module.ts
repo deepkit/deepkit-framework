@@ -45,6 +45,7 @@ import { DebugHttpController } from './debug/debug-http.controller.js';
 import { BrokerServer } from './broker/broker.js';
 import { BrokerListener } from './broker/listener.js';
 import { BrokerBus, BrokerCache, BrokerDeepkitAdapter, BrokerLock, BrokerQueue } from '@deepkit/broker';
+import { getBrokerServers } from './broker';
 
 export class FrameworkModule extends createModule({
     config: FrameworkConfig,
@@ -73,10 +74,13 @@ export class FrameworkModule extends createModule({
                 }
 
                 return kernel;
-            }
+            },
         },
 
-        { provide: BrokerDeepkitAdapter, useFactory: (config: BrokerConfig) => new BrokerDeepkitAdapter({ servers: [{ url: config.host }] }) },
+        {
+            provide: BrokerDeepkitAdapter,
+            useFactory: (config: BrokerConfig) => new BrokerDeepkitAdapter({ servers: getBrokerServers(config) }),
+        },
         { provide: BrokerCache, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerCache(adapter) },
         { provide: BrokerLock, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerLock(adapter) },
         { provide: BrokerQueue, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerQueue(adapter) },
@@ -145,7 +149,7 @@ export class FrameworkModule extends createModule({
         FilesystemRegistry,
 
         HttpModule,
-    ]
+    ],
 }, 'framework') {
     imports = [
         new HttpModule(),
@@ -177,7 +181,7 @@ export class FrameworkModule extends createModule({
             this.addProvider({
                 provide: PublicFilesystem, useFactory: () => {
                     return new PublicFilesystem(localPublicDir, this.config.publicDirPrefix);
-                }
+                },
             });
         }
 
@@ -186,7 +190,7 @@ export class FrameworkModule extends createModule({
 
             this.addProvider({
                 provide: OrmBrowserController,
-                useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases())
+                useFactory: (registry: DatabaseRegistry) => new OrmBrowserController(registry.getDatabases()),
             });
             this.addController(DebugController);
             this.addController(MediaController);

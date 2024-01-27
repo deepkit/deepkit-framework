@@ -20,7 +20,7 @@ export class BrokerConfig {
     /**
      * @description If a different broker server should be used, this is its address. Unix socket path or host:port combination.
      */
-    host: string = isWindows ? 'localhost:8811' : 'var/broker.sock';
+    host: string | string[] = isWindows ? 'localhost:8811' : 'var/broker.sock';
 
     /**
      * @description Automatically starts a single broker in the main process. Disable it if you have a custom broker node.
