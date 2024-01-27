@@ -307,7 +307,6 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
                 const parsed = serializer.decode(next, 0);
                 callback(parsed);
             } catch (error: any) {
-                console.log('message', Buffer.from(next).toString('utf8'), deserializeBSONWithoutOptimiser(next));
                 console.error(`Could not parse channel message ${key}: ${error}`);
             }
         };
