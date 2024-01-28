@@ -1,4 +1,4 @@
-import { AutoIncrement, cast, entity, PrimaryKey } from '@deepkit/type';
+import { AutoIncrement, cast, entity, float, float32, float64, int16, int32, int8, integer, PrimaryKey, uint16, uint32, uint8 } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import pg from 'pg';
 import { databaseFactory } from './factory.js';

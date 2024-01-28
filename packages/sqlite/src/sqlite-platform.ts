@@ -8,7 +8,19 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, DefaultPlatform, ForeignKey, isSet, Sql, Table, TableDiff } from '@deepkit/sql';
+import {
+    Column,
+    DefaultPlatform,
+    ForeignKey,
+    isSet,
+    Sql,
+    Table,
+    TableDiff,
+    typeResolvesToBoolean,
+    typeResolvesToInteger,
+    typeResolvesToNumber,
+    typeResolvesToString,
+} from '@deepkit/sql';
 import { isDateType, isIntegerType, isMapType, isSetType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
 import { SQLiteSchemaParser } from './sqlite-schema-parser.js';
 import { sqliteSerializer } from './sqlite-serializer.js';
@@ -34,17 +46,16 @@ export class SQLitePlatform extends DefaultPlatform {
 
     constructor() {
         super();
-        this.addType(ReflectionKind.number, 'float');
-        this.addType(type => type.kind === ReflectionKind.class && type.classType === Date, 'text');
-        this.addType(ReflectionKind.boolean, 'integer', 1);
-        this.addType(type => isUUIDType(type), 'blob');
-        this.addType(isIntegerType, 'integer');
+        // default is text as JSON
+        this.addType(() => true, 'text');
 
-        this.addType(isJsonLike, 'text');
+        this.addType(isUUIDType, 'blob');
+        this.addType(isDateType, 'text');
 
-        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.number, 'float');
-        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.string, 'text');
-        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.union, 'text'); //as json
+        this.addType(typeResolvesToString, 'text');
+        this.addType(typeResolvesToInteger, 'integer');
+        this.addType(typeResolvesToNumber, 'float');
+        this.addType(typeResolvesToBoolean, 'integer', 1);
 
         this.addBinaryType('blob');
     }

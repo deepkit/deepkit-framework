@@ -8,9 +8,22 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, ColumnDiff, DefaultPlatform, IndexModel, isSet, SqlPlaceholderStrategy, Table } from '@deepkit/sql';
+import {
+    Column,
+    ColumnDiff,
+    DefaultPlatform,
+    IndexModel,
+    isSet,
+    SqlPlaceholderStrategy,
+    Table,
+    typeResolvesToBigInt,
+    typeResolvesToBoolean,
+    typeResolvesToInteger,
+    typeResolvesToNumber,
+    typeResolvesToString,
+} from '@deepkit/sql';
 import { postgresSerializer } from './postgres-serializer.js';
-import { isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, TypeNumberBrand } from '@deepkit/type';
+import { isDateType, isReferenceType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type, TypeNumberBrand } from '@deepkit/type';
 import { PostgresSchemaParser } from './postgres-schema-parser.js';
 import { PostgreSQLFilterBuilder } from './sql-filter-builder.js';
 import { isArray, isObject } from '@deepkit/core';
@@ -63,23 +76,14 @@ export class PostgresPlatform extends DefaultPlatform {
 
     constructor() {
         super();
+        this.addType(() => true, 'jsonb'); //default everything is jsonb
 
-        this.addType(ReflectionKind.number, 'double precision');
-        this.addType(ReflectionKind.boolean, 'boolean');
-        this.addType(ReflectionKind.string, 'text');
+        this.addType(typeResolvesToNumber, 'double precision');
+        this.addType(typeResolvesToInteger, 'integer');
+        this.addType(typeResolvesToBigInt, 'bigint');
+        this.addType(typeResolvesToBoolean, 'boolean');
+        this.addType(typeResolvesToString, 'text');
 
-        this.addType(ReflectionKind.class, 'jsonb');
-        this.addType(ReflectionKind.objectLiteral, 'jsonb');
-        this.addType(ReflectionKind.array, 'jsonb');
-        this.addType(ReflectionKind.union, 'jsonb');
-
-        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.number, 'integer');
-        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.string, 'text');
-        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.union, 'jsonb');
-
-        this.addType(v => v.kind === ReflectionKind.any, 'jsonb');
-
-        this.addType(ReflectionKind.bigint, 'bigint');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.integer, 'integer');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.int8, 'smallint');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint8, 'smallint');
@@ -93,7 +97,18 @@ export class PostgresPlatform extends DefaultPlatform {
 
         this.addType(isUUIDType, 'uuid');
         this.addBinaryType('bytea');
-        this.addType(type => type.kind === ReflectionKind.class && type.classType === Date, 'timestamp');
+        this.addType(isDateType, 'timestamp');
+    }
+
+    override getSqlTypeCaster(type: Type): (placeholder: string) => string {
+        if (isReferenceType(type)) {
+            type = ReflectionClass.from(type).getPrimary().type;
+        }
+
+        const dbType = this.getTypeMapping(type);
+        if (!dbType) return super.getSqlTypeCaster(type);
+
+        return (placeholder: string) => placeholder + '::' + dbType.sqlType;
     }
 
     override getAggregateSelect(tableName: string, property: ReflectionProperty, func: string) {
@@ -186,6 +201,15 @@ export class PostgresPlatform extends DefaultPlatform {
         }
 
         return lines.join(';\n')
+    }
+
+    getDefaultExpression(column: Column): string {
+        if (undefined !== column.defaultValue) {
+            // if type is from JSON type, we need to cast whatever is in defaultValue to JSON
+            if (column.type === 'jsonb') return `${this.quoteValue(JSON.stringify(column.defaultValue))}::jsonb`;
+            if (column.type === 'json') return `${this.quoteValue(JSON.stringify(column.defaultValue))}::json`;
+        }
+        return super.getDefaultExpression(column);
     }
 
     getUniqueDDL(unique: IndexModel): string {

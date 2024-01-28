@@ -32,6 +32,7 @@ import {
     TypeUnion,
     uuidAnnotation,
 } from '@deepkit/type';
+import { typeRequiresJSONCast } from '../platform/default-platform.js';
 
 export const hexTable: string[] = [];
 for (let i = 0; i < 256; i++) {
@@ -162,10 +163,22 @@ function deserializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state:
     }
 }
 
+function serializeSqlUnion(type: TypeUnion, state: TemplateState) {
+    // // usually DB return JSON string, which we need to convert to objects first so the default union handler can work.
+    // if (isDirectPropertyOfEntity(state) && typeRequiresJSONCast(type)) {
+    //     state.setContext({ stringify: JSON.stringify });
+    //     state.addSetter(`stringify(${state.accessor})`);
+    // }
+
+    handleUnion(type, state);
+}
+
 function deserializeSqlUnion(type: TypeUnion, state: TemplateState) {
     // usually DB return JSON string, which we need to convert to objects first so the default union handler can work.
-    if (isDirectPropertyOfEntity(state)) {
-        //TypeClass|TypeObjectLiteral properties are serialized as JSON
+    if (isDirectPropertyOfEntity(state) && typeRequiresJSONCast(type)) {
+        // This must currently be in line with Platform's type detection (this.addType()),
+        // so this code expects that typeRequiresJSONCast knows when all platforms store JSON in the database,
+        // which make change in the future. Then we need to have information from the platform in this template function here.
         state.setContext({ jsonParse: JSON.parse });
         state.addCode(`${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`);
     }
@@ -256,6 +269,7 @@ export class SqlSerializer extends Serializer {
         this.serializeRegistry.append(ReflectionKind.array, serializeSqlArray);
         this.deserializeRegistry.prepend(ReflectionKind.array, deserializeSqlArray);
 
+        this.serializeRegistry.register(ReflectionKind.union, serializeSqlUnion);
         this.deserializeRegistry.register(ReflectionKind.union, deserializeSqlUnion);
 
         //for databases, types decorated with Reference will always only export the primary key.

@@ -716,7 +716,6 @@ export const variousTests = {
             book.anyType.test1 = '2';
             book.anyType.test2.deep1 = '2';
             await session.commit();
-            console.log(book);
         }
 
         {
@@ -725,6 +724,190 @@ export const variousTests = {
             expect(book.author.country.name).toBe('somewhere');
             expect(book.anyType.test1).toBe('2');
             expect(book.anyType.test2.deep1).toBe('2');
+        }
+    },
+    async union1(databaseFactory: DatabaseFactory) {
+        @entity.name('union1_service')
+        class Service {
+            restartPolicy: 'always' | 'on-failure' | 'no' = 'always';
+            ids: 23 | 42 = 23;
+            complexUnion: { foo: string } | 54 = 54;
+            doc: { name: string } | null = null;
+
+            constructor(public id: number & PrimaryKey) {
+            }
+        }
+
+        const database = await databaseFactory([Service]);
+
+        {
+            const service = new Service(1);
+            service.restartPolicy = 'no';
+            service.ids = 42;
+            await database.persist(service);
+        }
+        {
+            const service = new Service(2);
+            service.complexUnion = { foo: 'bar' };
+            service.doc = { name: 'peter' };
+            await database.persist(service);
+        }
+
+        {
+            const service = await database.query(Service).filter({ id: 1 }).findOne();
+            expect(service.restartPolicy).toBe('no');
+            expect(service.ids).toBe(42);
+            expect(service.complexUnion).toBe(54);
+        }
+
+        {
+            const service = await database.query(Service).filter({ id: 2 }).findOne();
+            expect(service.restartPolicy).toBe('always');
+            expect(service.ids).toBe(23);
+            expect(service.complexUnion).toEqual({ foo: 'bar' });
+
+            service.complexUnion = 54;
+            service.ids = 42;
+            service.restartPolicy = 'no';
+            service.doc = null;
+            await database.persist(service);
+
+            const service2 = await database.query(Service).filter({ id: 2 }).findOne();
+            expect(service2.restartPolicy).toBe('no');
+            expect(service2.ids).toBe(42);
+            expect(service2.complexUnion).toBe(54);
+            expect(service2.doc).toBe(null);
+        }
+
+        {
+            await database.query(Service)
+                .filter({id: 2})
+                .patchOne({
+                    restartPolicy: 'no',
+                    ids: 42,
+                    complexUnion: 54,
+                    doc: null,
+                });
+        }
+    },
+    async jsonNull(databaseFactory: DatabaseFactory) {
+        @entity.name('jsonNull')
+        class Model {
+            doc: { name: string } | null = null;
+            constructor(public id: number & PrimaryKey) {
+            }
+        }
+
+        const database = await databaseFactory([Model]);
+
+        {
+            const m = new Model(1);
+            m.doc = { name: 'Peter' };
+            await database.persist(m);
+        }
+        {
+            const m = new Model(2);
+            m.doc = { name: 'Peter2' };
+            await database.persist(m);
+        }
+
+        {
+            const m = await database.query(Model).filter({id: 1}).findOne();
+            expect(m).toMatchObject({ doc: { name: 'Peter' } });
+            m.doc = null;
+            await database.persist(m);
+        }
+
+        {
+            // create with null JSON object
+            const m = new Model(3);
+            m.doc = null;
+            await database.persist(m);
+        }
+
+        {
+            const items = await database.query(Model).orderBy('id').find();
+            expect(items.length).toBe(3);
+            expect(items[0]).toMatchObject({ id: 1, doc: null });
+            expect(items[1]).toMatchObject({ id: 2, doc: { name: 'Peter2' } });
+            expect(items[2]).toMatchObject({ id: 3, doc: null });
+        }
+
+        {
+            const items = await database.query(Model)
+                .filter({doc: null}).orderBy('id').find();
+            expect(items.length).toBe(2);
+            expect(items[0]).toMatchObject({ id: 1, doc: null });
+            expect(items[1]).toMatchObject({ id: 3, doc: null });
+        }
+
+        {
+            const items = await database.query(Model)
+                .filter({doc: {$ne: null}}).orderBy('id').find();
+            expect(items.length).toBe(1);
+            expect(items[0]).toMatchObject({ id: 2, doc: { name: 'Peter2' } });
+        }
+    },
+    async jsonUndefined(databaseFactory: DatabaseFactory) {
+        @entity.name('model5')
+        class Model {
+            doc?: { name: string };
+            constructor(public id: number & PrimaryKey) {
+            }
+        }
+
+        const database = await databaseFactory([Model]);
+
+        {
+            const m = new Model(1);
+            m.doc = { name: 'Peter' };
+            await database.persist(m);
+        }
+        {
+            const m = new Model(2);
+            m.doc = { name: 'Peter2' };
+            await database.persist(m);
+        }
+
+        {
+            const m = await database.query(Model).filter({id: 1}).findOne();
+            expect(m).toMatchObject({ doc: { name: 'Peter' } });
+            m.doc = undefined;
+            await database.persist(m);
+        }
+
+        {
+            // create with null JSON object
+            const m = new Model(3);
+            m.doc = undefined;
+            await database.persist(m);
+        }
+
+        {
+            const items = await database.query(Model).orderBy('id').find();
+            expect(items.length).toBe(3);
+            expect(items[0]).toMatchObject({ id: 1 });
+            expect(items[0].doc).toBe(undefined);
+            expect(items[1]).toMatchObject({ id: 2, doc: { name: 'Peter2' } });
+            expect(items[2]).toMatchObject({ id: 3 });
+            expect(items[2].doc).toBe(undefined);
+        }
+
+        {
+            const items = await database.query(Model)
+                .filter({doc: undefined}).orderBy('id').find();
+            expect(items.length).toBe(2);
+            expect(items[0]).toMatchObject({ id: 1 });
+            expect(items[1]).toMatchObject({ id: 3 });
+            expect(items[0].doc).toBe(undefined);
+            expect(items[1].doc).toBe(undefined);
+        }
+
+        {
+            const items = await database.query(Model)
+                .filter({doc: {$ne: undefined}}).orderBy('id').find();
+            expect(items.length).toBe(1);
+            expect(items[0]).toMatchObject({ id: 2, doc: { name: 'Peter2' } });
         }
     }
 };

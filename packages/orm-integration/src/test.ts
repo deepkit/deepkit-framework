@@ -4,22 +4,20 @@ import { ReflectionClass, Type } from '@deepkit/type';
 
 export type DatabaseFactory<T extends DatabaseAdapter = DatabaseAdapter> = (entities?: (Type | ReflectionClass<any> | AbstractClassType)[], plugins?: DatabasePlugin[]) => Promise<Database<T>>;
 
-export function executeTest(test: (factory: DatabaseFactory) => any, factory: DatabaseFactory): () => Promise<void> {
+export async function executeTest(test: (factory: DatabaseFactory) => any, factory: DatabaseFactory): Promise<void> {
     let databases: Database<any>[] = [];
 
-    async function collectedFactory(entities?: (Type | ReflectionClass<any> | AbstractClassType)[]): Promise<Database> {
-        const database = await factory(entities);
+    const collectedFactory: DatabaseFactory<any> = async (entities, plugins) => {
+        const database = await factory(entities, plugins);
         databases.push(database);
         return database;
     }
 
-    return async () => {
-        try {
-            await test(collectedFactory);
-        } finally {
-            for (const db of databases) {
-                db.disconnect(true);
-            }
+    try {
+        await test(collectedFactory);
+    } finally {
+        for (const db of databases) {
+            db.disconnect(true);
         }
-    };
+    }
 }

@@ -36,7 +36,8 @@ import {
     SQLPersistence,
     SQLQueryModel,
     SQLQueryResolver,
-    SQLStatement
+    SQLStatement,
+    PreparedEntity
 } from '@deepkit/sql';
 import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
@@ -280,8 +281,8 @@ export class SQLitePersistence extends SQLPersistence {
         return super.getInsertSQL(classSchema, fields, values);
     }
 
-    async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
-        const prepared = prepareBatchUpdate(this.platform, classSchema, changeSets);
+    async batchUpdate<T extends OrmEntity>(entity: PreparedEntity, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+        const prepared = prepareBatchUpdate(this.platform, entity, changeSets);
         if (!prepared) return;
 
         const placeholderStrategy = new this.platform.placeholderStrategy();

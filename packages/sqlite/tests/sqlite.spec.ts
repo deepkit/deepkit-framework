@@ -703,7 +703,6 @@ test('unloaded relation not deep checked', async () => {
 
     {
         const product = await database.query(Product).findOne();
-        console.log('product', product);
         expect(isReferenceInstance(product.category)).toBe(true);
         await database.persist(product);
     }
@@ -751,7 +750,6 @@ test('deep join population', async () => {
 
     {
         const basket = await database.query(Basket).useJoinWith('items').joinWith('product').end().findOne();
-        console.log('basket', basket);
         expect(basket).toBeInstanceOf(Basket);
         expect(basket.items[0]).toBeInstanceOf(BasketItem);
         expect(basket.items[1]).toBeInstanceOf(BasketItem);
@@ -825,7 +823,6 @@ test('self-reference serialization', async () => {
     await database.persist(entity);
 
     const entities = await database.query(MyEntity).orderBy('id').find();
-    console.log(entities);
 
     expect(serialize<MyEntity[]>(entities)).toEqual([
         { id: 1, ref: 2 },
@@ -920,4 +917,3 @@ test('uuid 3', async () => {
     const hash = hasher(user);
     expect(hash).toContain(user.id);
 });
-

@@ -15,24 +15,71 @@ import { sqlSerializer } from '../serializer/sql-serializer.js';
 import { parseType, SchemaParser } from '../reverse/schema-parser.js';
 import { SQLFilterBuilder } from '../sql-filter-builder.js';
 import { Sql } from '../sql-builder.js';
-import {
-    binaryTypes,
-    databaseAnnotation,
-    getTypeJitContainer,
-    isReferenceType,
-    ReflectionClass,
-    ReflectionKind,
-    ReflectionProperty,
-    resolvePath,
-    resolveProperty,
-    Serializer,
-    Type
-} from '@deepkit/type';
+import { binaryTypes, databaseAnnotation, isCustomTypeClass, isIntegerType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
 import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
 import { splitDotPath } from '../sql-adapter.js';
 
 export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
+}
+
+export function isNonUndefined(type: Type): boolean {
+    // null|undefined don't change the column type, but only whether they are nullable or not.
+    return type.kind !== ReflectionKind.undefined && type.kind !== ReflectionKind.null;
+}
+
+export function typeResolvesToString(type: Type): boolean {
+    if (type.kind === ReflectionKind.string) return true;
+    if (type.kind === ReflectionKind.literal && 'string' === typeof type.literal) return true;
+    if (type.kind === ReflectionKind.union) return type.types.every(v => typeResolvesToString(v));
+    if (type.kind === ReflectionKind.enum) return typeResolvesToString(type.indexType);
+    return false;
+}
+
+export function typeResolvesToNumber(type: Type): boolean {
+    if (type.kind === ReflectionKind.number) return true;
+    if (type.kind === ReflectionKind.literal && 'number' === typeof type.literal) return true;
+    if (type.kind === ReflectionKind.union) return type.types.filter(isNonUndefined).every(typeResolvesToNumber);
+    if (type.kind === ReflectionKind.enum) return typeResolvesToNumber(type.indexType);
+    return false;
+}
+
+export function typeResolvesToBigInt(type: Type): boolean {
+    if (type.kind === ReflectionKind.bigint) return true;
+    if (type.kind === ReflectionKind.literal && 'bigint' === typeof type.literal) return true;
+    if (type.kind === ReflectionKind.union) return type.types.filter(isNonUndefined).every(typeResolvesToBigInt);
+    if (type.kind === ReflectionKind.enum) return typeResolvesToBigInt(type.indexType);
+    return false;
+}
+
+export function typeResolvesToInteger(type: Type): boolean {
+    if (isIntegerType(type)) return true;
+    if (type.kind === ReflectionKind.literal && 'number' === typeof type.literal && Number.isInteger(type.literal)) {
+        return true;
+    }
+    if (type.kind === ReflectionKind.union) return type.types.filter(isNonUndefined).every(typeResolvesToInteger);
+    if (type.kind === ReflectionKind.enum) return typeResolvesToInteger(type.indexType);
+    return false;
+}
+
+export function typeRequiresJSONCast(type: Type): boolean {
+    if (type.kind === ReflectionKind.any) return true;
+    if (type.kind === ReflectionKind.objectLiteral || isCustomTypeClass(type)) return true;
+    if (type.kind === ReflectionKind.array) return true;
+    if (typeResolvesToBoolean(type) || typeResolvesToNumber(type) || typeResolvesToString(type)) return false;
+    return true;
+}
+
+export function typeResolvesToBoolean(type: Type): boolean {
+    if (type.kind === ReflectionKind.boolean) return true;
+    if (type.kind === ReflectionKind.literal && 'boolean' === typeof type.literal) return true;
+    if (type.kind === ReflectionKind.union) return type.types.filter(isNonUndefined).every(typeResolvesToBoolean);
+    if (type.kind === ReflectionKind.enum) return typeResolvesToBoolean(type.indexType);
+    return false;
+}
+
+export function noopSqlTypeCaster(placeholder: string): string {
+    return placeholder;
 }
 
 export interface NamingStrategy {
@@ -90,21 +137,6 @@ export abstract class DefaultPlatform {
     public serializer: Serializer = sqlSerializer;
     public namingStrategy: NamingStrategy = new DefaultNamingStrategy();
     public placeholderStrategy: ClassType<SqlPlaceholderStrategy> = SqlPlaceholderStrategy;
-
-    typeCast(schema: ReflectionClass<any>, path: string): string {
-        let type = resolveProperty(resolvePath(path, schema.type));
-        if (isReferenceType(type)) {
-            type = ReflectionClass.from(type).getPrimary().type;
-        }
-
-        const cache = getTypeJitContainer(type);
-        if (cache.dbTypeCast) return cache.dbTypeCast;
-
-        const dbType = this.getTypeMapping(type);
-        if (!dbType) return cache.dbTypeCast = '';
-
-        return cache.dbTypeCast = '::' + dbType.sqlType;
-    }
 
     applyLimitAndOffset(sql: Sql, limit?: number, offset?: number): void {
         if (limit !== undefined) sql.append('LIMIT ' + this.quoteValue(limit));
@@ -420,6 +452,14 @@ export abstract class DefaultPlatform {
 
     quoteIdentifier(id: string): string {
         return `"${id.replace('.', '"."')}"`;
+    }
+
+    isJson(type: Type): boolean {
+        return this.getTypeMapping(type)?.sqlType.includes('json') || false;
+    }
+
+    getSqlTypeCaster(type: Type): (placeholder: string) => string {
+        return noopSqlTypeCaster;
     }
 
     getTableIdentifier(schema: ReflectionClass<any>): string {

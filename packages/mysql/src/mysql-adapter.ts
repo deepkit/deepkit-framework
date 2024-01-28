@@ -12,7 +12,9 @@ import { createPool, Pool, PoolConfig, PoolConnection, UpsertResult } from 'mari
 import {
     asAliasName,
     DefaultPlatform,
+    getPreparedEntity,
     prepareBatchUpdate,
+    PreparedEntity,
     splitDotPath,
     SqlBuilder,
     SQLConnection,
@@ -23,7 +25,7 @@ import {
     SQLPersistence,
     SQLQueryModel,
     SQLQueryResolver,
-    SQLStatement
+    SQLStatement,
 } from '@deepkit/sql';
 import {
     DatabaseLogger,
@@ -34,7 +36,7 @@ import {
     OrmEntity,
     PatchResult,
     primaryKeyObjectConverter,
-    UniqueConstraintFailure
+    UniqueConstraintFailure,
 } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform.js';
 import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
@@ -235,11 +237,11 @@ export class MySQLPersistence extends SQLPersistence {
         super(platform, connectionPool, session);
     }
 
-    async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
-        const prepared = prepareBatchUpdate(this.platform, classSchema, changeSets, { setNamesWithTableName: true });
+    async batchUpdate<T extends OrmEntity>(entity: PreparedEntity, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+        const prepared = prepareBatchUpdate(this.platform, entity, changeSets, { setNamesWithTableName: true });
         if (!prepared) return;
+        const placeholder = new this.platform.placeholderStrategy;
 
-        const placeholderStrategy = new this.platform.placeholderStrategy();
         const params: any[] = [];
         const selects: string[] = [];
         const valuesValues: string[] = [];
@@ -253,16 +255,16 @@ export class MySQLPersistence extends SQLPersistence {
 
         for (let i = 0; i < changeSets.length; i++) {
             params.push(prepared.primaryKeys[i]);
-            let pkValue = placeholderStrategy.getPlaceholder();
-            valuesValues.push('ROW(' + pkValue + ',' + prepared.changedFields.map(name => {
-                params.push(prepared.values[name][i]);
-                return placeholderStrategy.getPlaceholder();
+            let pkValue = entity.primaryKey.sqlTypeCast(placeholder.getPlaceholder());
+            valuesValues.push('ROW(' + pkValue + ',' + prepared.changedProperties.map(property => {
+                params.push(prepared.values[property.name][i]);
+                return property.sqlTypeCast(placeholder.getPlaceholder());
             }).join(',') + ')');
         }
 
         for (let i = 0; i < changeSets.length; i++) {
             params.push(prepared.primaryKeys[i]);
-            let valuesSetValueSql = placeholderStrategy.getPlaceholder();
+            let valuesSetValueSql = entity.primaryKey.sqlTypeCast(placeholder.getPlaceholder());
             for (const fieldName of prepared.changedFields) {
                 valuesSetValueSql += ', ' + prepared.valuesSet[fieldName][i];
             }
@@ -394,15 +396,16 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         const select: string[] = [];
         const selectParams: any[] = [];
-        const tableName = this.platform.getTableIdentifier(this.classSchema);
-        const primaryKey = this.classSchema.getPrimary();
+        const entity = getPreparedEntity(this.session.adapter as SQLDatabaseAdapter, this.classSchema);
+        const tableName = entity.tableNameEscaped;
+        const primaryKey = entity.primaryKey;
         const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
         const patchSerialize = getPatchSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
-        const $set = changes.$set ? patchSerialize(changes.$set, undefined, {normalizeArrayIndex: true}) : undefined;
+        const $set = changes.$set ? patchSerialize(changes.$set, undefined, { normalizeArrayIndex: true }) : undefined;
 
         if ($set) for (const i in $set) {
             if (!$set.hasOwnProperty(i)) continue;
@@ -436,7 +439,9 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
                 if (!secondPart.startsWith('[')) secondPart = '.' + secondPart;
                 set.push(`_target.${this.platform.quoteIdentifier(firstPart)} = json_set(${this.platform.quoteIdentifier(firstPart)}, '$${secondPart}', b.${this.platform.quoteIdentifier(asAliasName(i))})`);
             } else {
-                set.push(`_target.${this.platform.quoteIdentifier(i)} = b.${this.platform.quoteIdentifier(asAliasName(i))}`);
+                const property = entity.fieldMap[i];
+                const ref = 'b.' + this.platform.quoteIdentifier(asAliasName(i));
+                set.push(`_target.${this.platform.quoteIdentifier(i)} = ${property.sqlTypeCast(ref)}`);
             }
         }
 
@@ -505,7 +510,7 @@ export class MySQLDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T>
 export class MySQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
     createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): MySQLDatabaseQuery<T> {
         return new MySQLDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
-            new MySQLQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession)
+            new MySQLQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession),
         );
     }
 }
@@ -516,7 +521,7 @@ export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
     public platform = new MySQLPlatform(this.pool);
 
     constructor(
-        protected options: PoolConfig = {}
+        protected options: PoolConfig = {},
     ) {
         super();
     }

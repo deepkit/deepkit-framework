@@ -55,6 +55,7 @@ import { Sql, SqlBuilder } from './sql-builder.js';
 import { SqlFormatter } from './sql-formatter.js';
 import { DatabaseComparator, DatabaseModel } from './schema/table.js';
 import { Stopwatch } from '@deepkit/stopwatch';
+import { getPreparedEntity, PreparedEntity, PreparedField } from './prepare.js';
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends OrmEntity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
@@ -592,6 +593,8 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
     public abstract platform: DefaultPlatform;
     public abstract connectionPool: SQLConnectionPool;
 
+    public preparedEntities = new Map<ReflectionClass<any>, PreparedEntity>();
+
     abstract queryFactory(databaseSession: DatabaseSession<this>): SQLDatabaseQueryFactory;
 
     abstract createPersistence(databaseSession: DatabaseSession<this>): SQLPersistence;
@@ -744,12 +747,13 @@ export class SQLPersistence extends DatabasePersistence {
 
     async update<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const batchSize = await this.session.adapter.getUpdateBatchSize(classSchema);
+        const entity = getPreparedEntity(this.session.adapter, classSchema);
 
         if (batchSize > changeSets.length) {
-            await this.batchUpdate(classSchema, changeSets);
+            await this.batchUpdate(entity, changeSets);
         } else {
             for (let i = 0; i < changeSets.length; i += batchSize) {
-                await this.batchUpdate(classSchema, changeSets.slice(i, i + batchSize));
+                await this.batchUpdate(entity, changeSets.slice(i, i + batchSize));
             }
         }
     }
@@ -769,10 +773,9 @@ export class SQLPersistence extends DatabasePersistence {
         }
     }
 
-    async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+    async batchUpdate<T extends OrmEntity>(entity: PreparedEntity, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         //simple update implementation that is not particular performant nor does it support atomic updates (like $inc)
-
-        const scopeSerializer = getPartialSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
+        const scopeSerializer = getPartialSerializeFunction(entity.type, this.platform.serializer.serializeRegistry);
         const updates: string[] = [];
 
         for (const changeSet of changeSets) {
@@ -790,7 +793,7 @@ export class SQLPersistence extends DatabasePersistence {
                 set.push(`${this.platform.quoteIdentifier(i)} = ${this.platform.quoteValue(value[i])}`);
             }
 
-            updates.push(`UPDATE ${this.platform.getTableIdentifier(classSchema)}
+            updates.push(`UPDATE ${entity.tableNameEscaped}
                           SET ${set.join(', ')}
                           WHERE ${where.join(' AND ')}`);
         }
@@ -801,32 +804,28 @@ export class SQLPersistence extends DatabasePersistence {
 
     protected async batchInsert<T>(classSchema: ReflectionClass<T>, items: T[]) {
         const scopeSerializer = getSerializeFunction(classSchema.type, this.platform.serializer.serializeRegistry);
+        const placeholder = new this.platform.placeholderStrategy;
+
         const insert: string[] = [];
         const params: any[] = [];
-        this.resetPlaceholderSymbol();
         const names: string[] = [];
+        const prepared = getPreparedEntity(this.session.adapter, classSchema);
 
-        for (const property of classSchema.getProperties()) {
-            // if (property.isParentReference) continue;
-            if (property.isBackReference()) continue;
-            if (property.isAutoIncrement()) continue;
-            if (property.isDatabaseSkipped(this.session.adapter.getName())) continue;
-            names.push(this.platform.quoteIdentifier(property.name));
+        for (const property of prepared.fields) {
+            if (property.autoIncrement) continue;
+            names.push(property.columnNameEscaped);
         }
 
         for (const item of items) {
             const converted = scopeSerializer(item);
-
             const row: string[] = [];
-            for (const property of classSchema.getProperties()) {
-                // if (property.isParentReference) continue;
-                if (property.isBackReference()) continue;
-                if (property.isAutoIncrement()) continue;
-                if (property.isDatabaseSkipped(this.session.adapter.getName())) continue;
+
+            for (const property of prepared.fields) {
+                if (property.autoIncrement) continue;
 
                 const v = converted[property.name];
                 params.push(v === undefined ? null : v);
-                row.push(this.getPlaceholderSymbol(property));
+                row.push(property.sqlTypeCast(placeholder.getPlaceholder()));
             }
 
             insert.push(row.join(', '));
@@ -843,13 +842,6 @@ export class SQLPersistence extends DatabasePersistence {
         }
     }
 
-    protected resetPlaceholderSymbol() {
-    }
-
-    protected getPlaceholderSymbol(property: ReflectionProperty) {
-        return '?';
-    }
-
     protected getInsertSQL(classSchema: ReflectionClass<any>, fields: string[], values: string[]): string {
         return `INSERT INTO ${this.platform.getTableIdentifier(classSchema)} (${fields.join(', ')})
                 VALUES (${values.join('), (')})`;
@@ -861,10 +853,11 @@ export class SQLPersistence extends DatabasePersistence {
         const primary = classSchema.getPrimary();
         const pkName = primary.name;
         const params: any[] = [];
+        const placeholder = new this.platform.placeholderStrategy;
 
         for (const item of items) {
             const converted = scopeSerializer(item);
-            pks.push(this.getPlaceholderSymbol(primary));
+            pks.push(placeholder.getPlaceholder());
             params.push(converted[pkName]);
         }
 
@@ -877,14 +870,14 @@ export class SQLPersistence extends DatabasePersistence {
 
 export function prepareBatchUpdate(
     platform: DefaultPlatform,
-    classSchema: ReflectionClass<any>,
+    entity: PreparedEntity,
     changeSets: DatabasePersistenceChangeSet<any>[],
     options: { setNamesWithTableName?: true } = {}
 ) {
-    const partialSerialize = getPartialSerializeFunction(classSchema.type, platform.serializer.serializeRegistry);
-    const tableName = platform.getTableIdentifier(classSchema);
-    const pkName = classSchema.getPrimary().name;
-    const pkField = platform.quoteIdentifier(pkName);
+    const partialSerialize = getPartialSerializeFunction(entity.type, platform.serializer.serializeRegistry);
+    const tableName = entity.tableNameEscaped;
+    const pkName = entity.primaryKey.name;
+    const pkField = entity.primaryKey.columnNameEscaped;
     const originPkName = '_origin_' + pkName;
     const originPkField = platform.quoteIdentifier(originPkName);
 
@@ -897,10 +890,12 @@ export function prepareBatchUpdate(
     const assignReturning: { [name: string]: { item: any, names: string[] } } = {};
     const setReturning: { [name: string]: 1 } = {};
     const changedFields: string[] = [];
+    const changedProperties: PreparedField[] = [];
 
     for (const changeSet of changeSets) {
         for (const fieldName of changeSet.changes.fieldNames) {
             if (!changedFields.includes(fieldName)) {
+                changedProperties.push(entity.fieldMap[fieldName]);
                 changedFields.push(fieldName);
                 if (!values[fieldName]) {
                     values[fieldName] = [];
@@ -954,6 +949,7 @@ export function prepareBatchUpdate(
 
     return {
         changedFields,
+        changedProperties,
         primaryKeys,
         values,
         valuesSet,

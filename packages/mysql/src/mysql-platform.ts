@@ -10,10 +10,25 @@
 
 import { Pool } from 'mariadb';
 import { mySqlSerializer } from './mysql-serializer.js';
-import { isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, TypeNumberBrand } from '@deepkit/type';
-import { Column, DefaultPlatform, IndexModel, isSet } from '@deepkit/sql';
+import { isDateType, isReferenceType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type, TypeNumberBrand } from '@deepkit/type';
+import {
+    Column,
+    DefaultPlatform,
+    IndexModel,
+    isSet,
+    noopSqlTypeCaster,
+    typeResolvesToBigInt,
+    typeResolvesToBoolean,
+    typeResolvesToInteger,
+    typeResolvesToNumber,
+    typeResolvesToString,
+} from '@deepkit/sql';
 import { MysqlSchemaParser } from './mysql-schema-parser.js';
 import { MySQLSQLFilterBuilder } from './filter-builder.js';
+
+export function mysqlJsonTypeCaster(placeholder: string): string {
+    return `CAST(${placeholder} AS JSON)`;
+}
 
 export class MySQLPlatform extends DefaultPlatform {
     protected override defaultSqlType = 'longtext';
@@ -30,19 +45,16 @@ export class MySQLPlatform extends DefaultPlatform {
         this.nativeTypeInformation.set('longtext', { needsIndexPrefix: true, defaultIndexSize: 767 });
         this.nativeTypeInformation.set('longblob', { needsIndexPrefix: true, defaultIndexSize: 767 });
 
-        this.addType(ReflectionKind.class, 'json');
-        this.addType(ReflectionKind.objectLiteral, 'json');
-        this.addType(ReflectionKind.array, 'json');
-        this.addType(ReflectionKind.union, 'json');
+        this.addType(() => true, 'json');
 
-        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.number, 'integer');
+        this.addType(typeResolvesToNumber, 'double');
+        this.addType(typeResolvesToInteger, 'integer');
+        this.addType(typeResolvesToBigInt, 'bigint');
+        this.addType(typeResolvesToBoolean, 'tinyint', 1);
+        this.addType(typeResolvesToString, 'longtext');
+
         this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.string, 'VARCHAR', 255);
-        this.addType(v => v.kind === ReflectionKind.enum && v.indexType.kind === ReflectionKind.union, 'json');
 
-        this.addType(v => v.kind === ReflectionKind.any, 'json');
-
-        this.addType(ReflectionKind.number, 'double');
-        this.addType(ReflectionKind.bigint, 'bigint');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.integer, 'int');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.int8, 'tinyint');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint8, 'tinyint', undefined, undefined, true);
@@ -54,8 +66,7 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float64, 'double');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float, 'double');
 
-        this.addType(type => type.kind === ReflectionKind.class && type.classType === Date, 'datetime');
-        this.addType(ReflectionKind.boolean, 'tinyint', 1);
+        this.addType(isDateType, 'datetime');
         this.addType(isUUIDType, 'binary', 16);
 
         this.addBinaryType('longblob');
@@ -63,6 +74,14 @@ export class MySQLPlatform extends DefaultPlatform {
 
     override createSqlFilterBuilder(schema: ReflectionClass<any>, tableName: string): MySQLSQLFilterBuilder {
         return new MySQLSQLFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this);
+    }
+
+    override getSqlTypeCaster(type: Type): (placeholder: string) => string {
+        if (isReferenceType(type)) {
+            type = ReflectionClass.from(type).getPrimary().type;
+        }
+        if (this.isJson(type)) return mysqlJsonTypeCaster;
+        return noopSqlTypeCaster;
     }
 
     supportsSelectFor(): boolean {

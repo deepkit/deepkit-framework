@@ -11,7 +11,10 @@
 import {
     asAliasName,
     DefaultPlatform,
+    getDeepTypeCaster,
+    getPreparedEntity,
     prepareBatchUpdate,
+    PreparedEntity,
     splitDotPath,
     SqlBuilder,
     SQLConnection,
@@ -22,7 +25,7 @@ import {
     SQLPersistence,
     SQLQueryModel,
     SQLQueryResolver,
-    SQLStatement
+    SQLStatement,
 } from '@deepkit/sql';
 import {
     DatabaseLogger,
@@ -33,7 +36,7 @@ import {
     OrmEntity,
     PatchResult,
     primaryKeyObjectConverter,
-    UniqueConstraintFailure
+    UniqueConstraintFailure,
 } from '@deepkit/orm';
 import { PostgresPlatform } from './postgres-platform.js';
 import type { Pool, PoolClient, PoolConfig } from 'pg';
@@ -246,8 +249,8 @@ export class PostgresPersistence extends SQLPersistence {
         super(platform, connectionPool, session);
     }
 
-    async batchUpdate<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
-        const prepared = prepareBatchUpdate(this.platform, classSchema, changeSets);
+    async batchUpdate<T extends OrmEntity>(entity: PreparedEntity, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+        const prepared = prepareBatchUpdate(this.platform, entity, changeSets);
         if (!prepared) return;
 
         const placeholderStrategy = new this.platform.placeholderStrategy();
@@ -264,16 +267,17 @@ export class PostgresPersistence extends SQLPersistence {
 
         for (let i = 0; i < changeSets.length; i++) {
             params.push(prepared.primaryKeys[i]);
-            let pkValue = placeholderStrategy.getPlaceholder() + this.platform.typeCast(classSchema, prepared.pkName);
-            valuesValues.push('(' + pkValue + ',' + valuesNames.map(name => {
-                params.push(prepared.values[name][i]);
-                return placeholderStrategy.getPlaceholder() + this.platform.typeCast(classSchema, name);
+            let pkValue = entity.primaryKey.sqlTypeCast(placeholderStrategy.getPlaceholder());
+
+            valuesValues.push('(' + pkValue + ',' + prepared.changedProperties.map(property => {
+                params.push(prepared.values[property.name][i]);
+                return property.sqlTypeCast(placeholderStrategy.getPlaceholder());
             }).join(',') + ')');
         }
 
         for (let i = 0; i < changeSets.length; i++) {
             params.push(prepared.primaryKeys[i]);
-            let valuesSetValueSql = placeholderStrategy.getPlaceholder() + this.platform.typeCast(classSchema, prepared.pkName);
+            let valuesSetValueSql = entity.primaryKey.sqlTypeCast(placeholderStrategy.getPlaceholder());
             for (const fieldName of prepared.changedFields) {
                 valuesSetValueSql += ', ' + prepared.valuesSet[fieldName][i];
             }
@@ -372,7 +376,6 @@ export class PostgresPersistence extends SQLPersistence {
     protected getPlaceholderSymbol() {
         return '$' + this.placeholderPosition++;
     }
-
 }
 
 export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T> {
@@ -409,7 +412,8 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         const select: string[] = [];
         const selectParams: any[] = [];
-        const tableName = this.platform.getTableIdentifier(this.classSchema);
+        const entity = getPreparedEntity(this.session.adapter as SQLDatabaseAdapter, this.classSchema);
+        const tableName = entity.tableNameEscaped;
         const primaryKey = this.classSchema.getPrimary();
         const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
 
@@ -426,8 +430,7 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
                 set.push(`${this.platform.quoteIdentifier(i)} = NULL`);
             } else {
                 fieldsSet[i] = 1;
-
-                select.push(`$${selectParams.length + 1}${this.platform.typeCast(this.classSchema, i)} as ${this.platform.quoteIdentifier(asAliasName(i))}`);
+                select.push(`$${selectParams.length + 1} as ${this.platform.quoteIdentifier(asAliasName(i))}`);
                 selectParams.push($set[i]);
             }
         }
@@ -447,7 +450,8 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
             aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
-            select.push(`((${this.platform.getColumnAccessor('', i)})${this.platform.typeCast(this.classSchema, i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`);
+            const sqlTypeCast = getDeepTypeCaster(entity, i);
+            select.push(`(${sqlTypeCast('(' + this.platform.getColumnAccessor('', i) + ')')} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`);
         }
 
         for (const i in fieldsSet) {
@@ -456,7 +460,9 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
                 const path = '{' + secondPart.replace(/\./g, ',').replace(/[\]\[]/g, '') + '}';
                 set.push(`${this.platform.quoteIdentifier(firstPart)} = jsonb_set(${this.platform.quoteIdentifier(firstPart)}, '${path}', to_jsonb(_b.${this.platform.quoteIdentifier(asAliasName(i))}))`);
             } else {
-                set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
+                const property = entity.fieldMap[i];
+                const ref = '_b.' + this.platform.quoteIdentifier(asAliasName(i));
+                set.push(`${this.platform.quoteIdentifier(i)} = ${property.sqlTypeCast(ref)}`);
             }
         }
         let bPrimaryKey = primaryKey.name;
@@ -517,7 +523,7 @@ export class PostgresSQLDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQu
 export class PostgresSQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
     createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): PostgresSQLDatabaseQuery<T> {
         return new PostgresSQLDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
-            new PostgresSQLQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession)
+            new PostgresSQLQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession),
         );
     }
 }

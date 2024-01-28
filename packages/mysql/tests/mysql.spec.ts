@@ -190,3 +190,68 @@ test('for update/share', async () => {
     const items = await database.query(Model).forUpdate().find();
     expect(items).toHaveLength(2);
 });
+
+test('union', async () => {
+    @entity.name('union1_service')
+    class Service {
+        restartPolicy: 'always' | 'on-failure' | 'no' = 'always';
+        ids: 23 | 42 = 23;
+        complexUnion: { foo: string } | 54 = 54;
+        doc: { name: string } | null = null;
+
+        constructor(public id: number & PrimaryKey) {
+        }
+    }
+
+    const database = await databaseFactory([Service]);
+
+    {
+        const service = new Service(1);
+        service.restartPolicy = 'no';
+        service.ids = 42;
+        await database.persist(service);
+    }
+    {
+        const service = new Service(2);
+        service.complexUnion = { foo: 'bar' };
+        service.doc = { name: 'peter' };
+        await database.persist(service);
+    }
+
+    {
+        const service = await database.query(Service).filter({ id: 1 }).findOne();
+        expect(service.restartPolicy).toBe('no');
+        expect(service.ids).toBe(42);
+        expect(service.complexUnion).toBe(54);
+    }
+
+    {
+        const service = await database.query(Service).filter({ id: 2 }).findOne();
+        expect(service.restartPolicy).toBe('always');
+        expect(service.ids).toBe(23);
+        expect(service.complexUnion).toEqual({ foo: 'bar' });
+
+        service.complexUnion = 54;
+        service.ids = 42;
+        service.restartPolicy = 'no';
+        service.doc = null;
+        await database.persist(service);
+
+        const service2 = await database.query(Service).filter({ id: 2 }).findOne();
+        expect(service2.restartPolicy).toBe('no');
+        expect(service2.ids).toBe(42);
+        expect(service2.complexUnion).toBe(54);
+        expect(service2.doc).toBe(null);
+    }
+
+    {
+        await database.query(Service)
+            .filter({id: 2})
+            .patchOne({
+                restartPolicy: 'no',
+                ids: 42,
+                complexUnion: 54,
+                doc: null,
+            });
+    }
+})
