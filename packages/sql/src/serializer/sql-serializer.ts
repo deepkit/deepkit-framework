@@ -13,6 +13,7 @@ import {
     executeTemplates,
     handleUnion,
     isBackReferenceType,
+    isPropertyMemberType,
     isReferenceType,
     isUUIDType,
     nodeBufferToArrayBuffer,
@@ -31,7 +32,6 @@ import {
     TypeUnion,
     uuidAnnotation,
 } from '@deepkit/type';
-import { isProperty } from '@deepkit/orm-browser-gui/src/app/utils';
 
 export const hexTable: string[] = [];
 for (let i = 0; i < 256; i++) {
@@ -55,7 +55,7 @@ export function isDirectPropertyOfEntity(state: TemplateState): boolean {
 
     if (state.parentTypes.length < 2) return false;
 
-    if (isProperty(state.parentTypes[0]) || state.parentTypes[0].kind === ReflectionKind.indexSignature) {
+    if (isPropertyMemberType(state.parentTypes[0]) || state.parentTypes[0].kind === ReflectionKind.indexSignature) {
         if (state.parentTypes[1].kind === ReflectionKind.union) {
             return state.parentTypes.length === 3;
         }
