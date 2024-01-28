@@ -373,6 +373,8 @@ export class TemplateState {
     public propertyName?: string | RuntimeCode;
     public setterDisabled: boolean = false;
 
+    public parentTypes: Type[] = [];
+
     public target: 'serialize' | 'deserialize' = 'serialize';
 
     protected handledAnnotations: AnnotationDefinition[] = [];
@@ -416,6 +418,7 @@ export class TemplateState {
         state.validation = this.validation;
         state.setterDisabled = this.setterDisabled;
         state.target = this.target;
+        state.parentTypes = this.parentTypes;
         state.allSpecificalities = this.allSpecificalities;
         state.handledAnnotations = this.handledAnnotations.slice();
         return state;
@@ -739,6 +742,7 @@ export function executeTemplates(
     state: TemplateState,
     type: Type,
 ): string {
+    state.parentTypes.push(type);
     if (state.validation === 'loose' && state.allSpecificalities) {
         const typeGuards = state.allSpecificalities.getSortedTemplateRegistries();
         const lines: string[] = [];
@@ -754,6 +758,7 @@ export function executeTemplates(
         }`);
         }
 
+        state.parentTypes.pop();
         return `
             //type guard with multiple specificalities
             if (false) {} ${lines.join(' ')}
@@ -770,6 +775,7 @@ export function executeTemplates(
         }
         for (const hook of state.registry.postHooks) hook(type, state);
         for (const template of state.registry.getDecorator(type)) template(type, state);
+        state.parentTypes.pop();
         return state.template;
     }
 }
@@ -782,11 +788,15 @@ export function createConverterJSForMember(
 ): string {
     const { registry, compilerContext, namingStrategy } = state;
     const type = property instanceof ReflectionProperty ? property.type : property.type;
+    const p = property instanceof ReflectionProperty ? property.property : property;
+
+    state.parentTypes.push(p);
 
     undefinedSetterCode = undefinedSetterCode || executeTemplates(state.fork(), { kind: ReflectionKind.undefined });
     nullSetterCode = nullSetterCode || executeTemplates(state.fork(), { kind: ReflectionKind.null });
 
     let convert = executeTemplates(state.fork(), type);
+    state.parentTypes.pop();
 
     let postTransform = '';
 

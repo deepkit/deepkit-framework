@@ -81,8 +81,9 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
         if (type.__type) return type.__type;
         // this is fast path for simple references to a type, e.g. cast<User>(), so that User is directly handled
         // instead of running the VM to resolve to User first.
-        if (type[type.length - 1] === 'n!') {
+        if (type[type.length - 1] === 'n!' || type[type.length - 1] === 'P7!') {
             //n! represents a simple inline: [Op.inline, 0]
+            //P7! represents a class reference: [Op.Frame, Op.classReference, 0] (Op.Frame seems unnecessary)
             typeFn = (type as any)[0] as Function;
             type = typeFn() as Packed | Type | ClassType | AbstractClassType | ReflectionClass<any>;
         }
@@ -156,7 +157,7 @@ export function getNominalId<T>(args: any[] = [], p?: ReceiveType<T>): number | 
 
 export function typeOf<T>(args: any[] = [], p?: ReceiveType<T>): Type {
     if (p) {
-        return resolveRuntimeType(p, args) as Type;
+        return args.length > 0 ? resolveRuntimeType(p, args) : resolveReceiveType(p) as Type;
     }
 
     throw new Error('No type given');

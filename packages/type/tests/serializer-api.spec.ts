@@ -1,8 +1,8 @@
 import { expect, test } from '@jest/globals';
 import { EmptySerializer, executeTemplates, serializer, Serializer, TemplateRegistry, TemplateState, TypeGuardRegistry } from '../src/serializer.js';
-import { ReflectionKind } from '../src/reflection/type.js';
+import { ReflectionKind, stringifyResolvedType } from '../src/reflection/type.js';
 import { CompilerContext } from '@deepkit/core';
-import { cast, deserialize } from '../src/serializer-facade.js';
+import { cast, deserialize, serialize } from '../src/serializer-facade.js';
 
 test('remove guard for string', () => {
     //if the original value (before convert to string) is null, it should stay null
@@ -90,4 +90,34 @@ test('new serializer easy mode', () => {
 
     const user = deserialize<User>({ name: 'Peter', created: 0 }, undefined, mySerializer);
     expect(user.created).toBeInstanceOf(Date);
+});
+
+test('parent types', () => {
+    type A = 'a' | 'b';
+    type B = A | 'c';
+    type C = { a: A, b: B };
+
+    const serializer = new Serializer();
+
+    const stacks: string[] = [];
+    serializer.serializeRegistry.register(ReflectionKind.literal, (type, state) => {
+        stacks.push(state.parentTypes.map(v => {
+            if (v.typeName) return v.typeName;
+            if (v.kind === ReflectionKind.literal) return JSON.stringify(String(v.literal));
+            if (v.kind === ReflectionKind.propertySignature) return 'property=' + String(v.name);
+            return stringifyResolvedType(v);
+        }).join(', '));
+    });
+
+    serialize<C>({ a: 'a', b: 'c' }, undefined, serializer);
+
+    console.log(stacks);
+    expect(stacks).toEqual([
+        'C, property=a, A, "a"',
+        'C, property=a, A, "b"',
+
+        'C, property=b, B, "a"',
+        'C, property=b, B, "b"',
+        'C, property=b, B, "c"',
+    ]);
 });
