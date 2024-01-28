@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.119](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.118...v1.0.1-alpha.119) (2024-01-28)
+
+### Features
+
+- **type:** provide parent types in serializer template state ([d65dfc0](https://github.com/deepkit/deepkit-framework/commit/d65dfc0f80ee429e1f74af05e3a3fda385855ce5))
+
 ## [1.0.1-alpha.117](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.116...v1.0.1-alpha.117) (2024-01-26)
 
 ### Bug Fixes

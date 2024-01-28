@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.119](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.118...v1.0.1-alpha.119) (2024-01-28)
+
+### Features
+
+- **sql:** support embedded union object literals ([29da45c](https://github.com/deepkit/deepkit-framework/commit/29da45cd45c809d7b0ce029392c20d30b8260a9f))
+
 ## [1.0.1-alpha.118](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.117...v1.0.1-alpha.118) (2024-01-27)
 
 **Note:** Version bump only for package @deepkit/sql
