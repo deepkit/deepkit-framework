@@ -838,8 +838,11 @@ export class Injector implements InjectorInterface {
                 while (current && current.indexAccessOrigin) {
                     if (current.indexAccessOrigin.container.kind === ReflectionKind.class) {
                         const found = findModuleForConfig(current.indexAccessOrigin.container.classType, resolveDependenciesFrom);
-                        if (!found) return () => undefined;
-                        config = getPathValue(found.module.getConfig(), found.path);
+                        // Only because it has indexAccessOrigin as class doesn't mean it must be a config reference.
+                        // We can safely ignore it if it's not a config reference.
+                        if (found) {
+                            config = getPathValue(found.module.getConfig(), found.path);
+                        }
                     }
                     if (config !== undefined && current.indexAccessOrigin.index.kind === ReflectionKind.literal) {
                         const index = current.indexAccessOrigin.index.literal;

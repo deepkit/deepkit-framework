@@ -364,7 +364,7 @@ export class Processor {
                 return {
                     kind: ReflectionKind.function,
                     function: object, name: object.name,
-                    parameters: [], return: { kind: ReflectionKind.any }
+                    parameters: [], return: { kind: ReflectionKind.any },
                 };
             }
             throw new Error(`No valid runtime type for ${stringifyValueWithType(object)} given. Is @deepkit/type-compiler correctly installed? Execute deepkit-type-install to check`);
@@ -566,7 +566,7 @@ export class Processor {
                                 kind: ReflectionKind.class,
                                 classType: 'undefined' !== typeof BigInt64Array ? BigInt64Array : class BigInt64ArrayNotAvailable {
                                 },
-                                types: []
+                                types: [],
                             });
                             break;
                         case ReflectionOp.arrayBuffer:
@@ -582,14 +582,14 @@ export class Processor {
                                         ...member,
                                         parent: t,
                                         visibility: ReflectionVisibility.public,
-                                        kind: ReflectionKind.property
+                                        kind: ReflectionKind.property,
                                     } as TypeProperty;
                                 } else if (member.kind === ReflectionKind.methodSignature) {
                                     member = {
                                         ...member,
                                         parent: t,
                                         visibility: ReflectionVisibility.public,
-                                        kind: ReflectionKind.method
+                                        kind: ReflectionKind.method,
                                     } as TypeMethod;
                                 }
 
@@ -757,7 +757,7 @@ export class Processor {
                             this.pushType({
                                 kind: ReflectionKind.enumMember,
                                 parent: undefined as any,
-                                name: isFunction(name) ? name() : name
+                                name: isFunction(name) ? name() : name,
                             });
                             break;
                         }
@@ -779,7 +779,7 @@ export class Processor {
                             const t: Type = {
                                 kind: ReflectionKind.tupleMember, type: this.pop() as Type,
                                 parent: undefined as any,
-                                name: isFunction(name) ? name() : name
+                                name: isFunction(name) ? name() : name,
                             };
                             t.type.parent = t;
                             this.pushType(t);
@@ -872,12 +872,12 @@ export class Processor {
                             let t = op === ReflectionOp.callSignature ? {
                                 kind: ReflectionKind.callSignature,
                                 return: returnType,
-                                parameters
+                                parameters,
                             } as TypeCallSignature : {
                                 kind: ReflectionKind.function,
                                 name: name || undefined,
                                 return: returnType,
-                                parameters
+                                parameters,
                             } as TypeFunction;
                             t.return.parent = t;
                             for (const member of t.parameters) member.parent = t;
@@ -908,7 +908,7 @@ export class Processor {
                             const property = {
                                 kind: op === ReflectionOp.propertySignature ? ReflectionKind.propertySignature : ReflectionKind.property,
                                 type,
-                                name: isFunction(name) ? name() : name
+                                name: isFunction(name) ? name() : name,
                             } as TypeProperty | TypePropertySignature;
 
                             if (isOptional) {
@@ -988,7 +988,7 @@ export class Processor {
                             let t = {
                                 kind: ReflectionKind.objectLiteral,
                                 id: state.nominalId++,
-                                types: []
+                                types: [],
                             } as TypeObjectLiteral;
 
                             const frameTypes = this.popFrame() as (TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeObjectLiteral | TypeCallSignature)[];
@@ -1060,7 +1060,7 @@ export class Processor {
                                         for (let i = 0; i < frameOffset; i++) current = current.previous!;
                                         program.stack[current.startIndex + 1 + stackEntryIndex] = last;
                                     }
-                                }
+                                },
                             } as TypeInfer);
                             break;
                         }
@@ -1301,7 +1301,7 @@ export class Processor {
             const resolved: TypeTupleMember = type.kind === ReflectionKind.tupleMember ? type : {
                 kind: ReflectionKind.tupleMember,
                 parent: undefined as any,
-                type
+                type,
             };
             type.parent = resolved;
             if (resolved.type.kind === ReflectionKind.rest) {
@@ -1486,9 +1486,7 @@ export class Processor {
             if (isWithAnnotations(t)) {
                 t.indexAccessOrigin = { container: left as TypeObjectLiteral, index: right as Type };
             }
-
-            t.parent = undefined;
-            this.push(t);
+            this.push(copyAndSetParent(t));
         }
     }
 
@@ -1553,14 +1551,28 @@ export class Processor {
                 this.push(t);
             } else {
                 let optional: true | undefined = undefined;
+                let readonly: true | undefined = undefined;
+
                 if (index.kind === ReflectionKind.literal && !(index.literal instanceof RegExp)) {
                     optional = !!index.origin && isMember(index.origin) && index.origin.optional ? true : undefined;
                     index = index.literal;
                 }
 
+                // If the type was a property, then grab the optional modifier from the property itself.
+                // Note: This is inconsistent with TS official behaviour, as
+                // mapped types only preserve modifiers when its homomorphic
+                // https://github.com/microsoft/TypeScript/pull/12563
+                if (type.parent && (type.parent.kind === ReflectionKind.propertySignature || type.parent.kind === ReflectionKind.property)) {
+                    if (type.parent.optional) optional = true;
+                    if (type.parent.readonly) readonly = true;
+                }
+
                 const property: TypeProperty | TypePropertySignature | TypeTupleMember = type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property || type.kind === ReflectionKind.tupleMember
                     ? type
-                    : { kind: isTuple ? ReflectionKind.tupleMember : ReflectionKind.propertySignature, name: index, type, optional } as TypePropertySignature;
+                    : { kind: isTuple ? ReflectionKind.tupleMember : ReflectionKind.propertySignature, name: index, type } as TypePropertySignature;
+
+                if (optional) property.optional = true;
+                if (readonly && property.kind !== ReflectionKind.tupleMember) property.readonly = true;
 
                 if (property !== type) type.parent = property;
                 if (property.type.kind !== ReflectionKind.never) {
@@ -1842,7 +1854,7 @@ function applyPropertyDecorator(type: Type, data: TData) {
         for (const validator of data.validators) {
             validationAnnotation.register(annotations, {
                 name: 'function',
-                args: [{ kind: ReflectionKind.function, function: validator, parameters: [], return: { kind: ReflectionKind.any } }]
+                args: [{ kind: ReflectionKind.function, function: validator, parameters: [], return: { kind: ReflectionKind.any } }],
             });
         }
     }

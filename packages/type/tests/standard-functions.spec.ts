@@ -53,7 +53,7 @@ test('Omit 2', () => {
     }
 
     type B = Omit<A, 'value'>;
-    equalType<B, { a: string }>();
+    equalType<B, { readonly a: string }>();
 });
 
 
