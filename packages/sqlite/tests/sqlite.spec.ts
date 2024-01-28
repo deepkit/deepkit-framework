@@ -4,7 +4,23 @@ import { databaseFactory } from './factory.js';
 import { User, UserCredentials } from '@deepkit/orm-integration';
 import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter.js';
 import { sleep } from '@deepkit/core';
-import { AutoIncrement, BackReference, cast, Entity, entity, isReferenceInstance, PrimaryKey, Reference, ReflectionClass, serialize, typeOf, UUID, uuid } from '@deepkit/type';
+import {
+    AutoIncrement,
+    BackReference,
+    cast,
+    Entity,
+    entity,
+    getPrimaryKeyExtractor,
+    getPrimaryKeyHashGenerator,
+    isReferenceInstance,
+    PrimaryKey,
+    Reference,
+    ReflectionClass,
+    serialize,
+    typeOf,
+    UUID,
+    uuid,
+} from '@deepkit/type';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 import { sql } from '@deepkit/sql';
 
@@ -120,7 +136,7 @@ test('sqlite autoincrement', async () => {
         created: Date = new Date;
 
         constructor(
-            public name: string
+            public name: string,
         ) {
         }
     }
@@ -700,7 +716,7 @@ test('deep join population', async () => {
 
         constructor(
             public title: string,
-            public price: number
+            public price: number,
         ) {
         }
     }
@@ -782,15 +798,15 @@ test('joinWith', async () => {
             ref: {
                 id: 2,
                 ref: null,
-                refs: [undefined] //circular ref is serialised as undefined
+                refs: [undefined], //circular ref is serialised as undefined
             },
-            refs: []
+            refs: [],
         },
         {
             id: 2,
             ref: null,
-            refs: [{ id: 1, ref: undefined, refs: [] }] //circular ref is serialised as undefined
-        }
+            refs: [{ id: 1, ref: undefined, refs: [] }], //circular ref is serialised as undefined
+        },
     ]);
 });
 
@@ -816,3 +832,92 @@ test('self-reference serialization', async () => {
         { id: 2, ref: null },
     ]);
 });
+
+test('union object property', async () => {
+    interface ServerConfigLocal {
+        type: 'local';
+    }
+
+    interface ServerConfigRemote {
+        type: 'remote';
+        host: string;
+    }
+
+    type ServerConfig = ServerConfigLocal | ServerConfigRemote;
+
+    class AppNode {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        config: ServerConfig = { type: 'local' };
+    }
+
+    const database = await databaseFactory([AppNode]);
+
+    {
+        const node = new AppNode();
+        await database.persist(node);
+        const db = await database.query(AppNode).filter({ id: node.id }).findOne();
+        expect(db.config).toEqual({ type: 'local' });
+    }
+
+    {
+        const node = new AppNode();
+        node.config = { type: 'remote', host: 'localhost' };
+        await database.persist(node);
+        const db = await database.query(AppNode).filter({ id: node.id }).findOne();
+        expect(db.config).toEqual({ type: 'remote', host: 'localhost' });
+    }
+});
+
+test('uuid 2', async () => {
+    @entity.name('image_uuid')
+    class Image {
+        id: UUID & PrimaryKey = uuid();
+
+        constructor(public path: string) {
+        }
+    }
+
+    const database = await databaseFactory([Image]);
+
+    expect(await database.query(Image).count()).toBe(0);
+    const image = new Image('/foo.jpg');
+    await database.persist(image);
+    expect(await database.query(Image).count()).toBe(1);
+    expect(await database.query(Image).filter({ id: image.id }).count()).toBe(1);
+});
+
+test('uuid 3', async () => {
+    @entity.name('userJoin_uuid')
+    class User {
+        id: UUID & PrimaryKey = uuid();
+    }
+
+    @entity.name('bookJoin_uuid')
+    class Book {
+        id: UUID & PrimaryKey = uuid();
+
+        constructor(public owner: User & Reference) {
+        }
+    }
+
+    const database = await databaseFactory([User, Book]);
+
+    const user = new User();
+    const book = new Book(user);
+    await database.persist(book);
+
+    {
+        const session = database.createSession();
+        const book2 = await session.query(Book).join('owner').findOne();
+    }
+
+    const extractor = getPrimaryKeyExtractor(ReflectionClass.from(User));
+    const id = extractor(user);
+    expect(typeof user.id).toBe('string');
+    expect(id).toEqual({ id: user.id });
+
+    const hasher = getPrimaryKeyHashGenerator(ReflectionClass.from(User));
+    const hash = hasher(user);
+    expect(hash).toContain(user.id);
+});
+

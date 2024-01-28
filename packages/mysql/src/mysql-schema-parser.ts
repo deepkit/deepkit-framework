@@ -84,8 +84,12 @@ export class MysqlSchemaParser extends SchemaParser {
         let foreignKey: ForeignKey | undefined;
         for (const row of rows) {
             if (row.constraint_name !== lastId) {
-                const foreignTable = database.getTableForFull(row.referenced_table_name, this.platform.getSchemaDelimiter());
-                foreignKey = table.addForeignKey(row.constraint_name, foreignTable);
+                try {
+                    const foreignTable = database.getTableForFull(row.referenced_table_name, this.platform.getSchemaDelimiter());
+                    foreignKey = table.addForeignKey(row.constraint_name, foreignTable);
+                } catch {
+                    continue;
+                }
                 lastId = row.constraint_name;
             }
 

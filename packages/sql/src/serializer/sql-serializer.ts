@@ -10,7 +10,9 @@
 
 import {
     ContainerAccessor,
-    executeTemplates, isBackReferenceType,
+    executeTemplates,
+    handleUnion,
+    isBackReferenceType,
     isReferenceType,
     isUUIDType,
     nodeBufferToArrayBuffer,
@@ -26,8 +28,10 @@ import {
     TypeClass,
     typedArrayToBuffer,
     TypeObjectLiteral,
+    TypeUnion,
     uuidAnnotation,
 } from '@deepkit/type';
+import { isProperty } from '@deepkit/orm-browser-gui/src/app/utils';
 
 export const hexTable: string[] = [];
 for (let i = 0; i < 256; i++) {
@@ -38,21 +42,52 @@ for (let i = 0; i < 256; i++) {
  * Only direct properties of an entity will be serialized in some special way.
  * Deeper types get the normal JSON serialization.
  */
-export function isDirectPropertyOfEntity(type: Type): boolean {
-    if (!type.parent) return false;
-    if (type.parent.kind === ReflectionKind.union) type = type.parent;
-    if (!type.parent) return false;
-    if (type.parent.kind === ReflectionKind.propertySignature || type.parent.kind === ReflectionKind.property) {
-        if (type.parent.parent) {
-            return !type.parent.parent.parent;
+export function isDirectPropertyOfEntity(state: TemplateState): boolean {
+    // Entities can be child of another entity without Reference,
+    // so in order to detect a type being in direct property of an entity,
+    // we look at state.parentTypes, which can only be
+    //  - [class|objectLiteral, property|indexSignature, this];
+    //  - [class|objectLiteral, property|indexSignature, union, this];
+    //  - [property|indexSignature, this];
+    //  - [property|indexSignature, union, this];
+    //  - [class|objectLiteral, property|indexSignature, Class|objectLiteral & Reference, this];
+    //  - [property|indexSignature, Class|objectLiteral & Reference, this];
+
+    if (state.parentTypes.length < 2) return false;
+
+    if (isProperty(state.parentTypes[0]) || state.parentTypes[0].kind === ReflectionKind.indexSignature) {
+        if (state.parentTypes[1].kind === ReflectionKind.union) {
+            return state.parentTypes.length === 3;
         }
+
+        if (state.parentTypes.length === 3 && isReferenceType(state.parentTypes[1])) {
+            return true;
+        }
+
+        return state.parentTypes.length === 2;
+    }
+
+    if (state.parentTypes.length < 3) return false;
+
+    if (state.parentTypes[0].kind !== ReflectionKind.class && state.parentTypes[0].kind !== ReflectionKind.objectLiteral) return false;
+
+    if (state.parentTypes[1].kind !== ReflectionKind.property
+        && state.parentTypes[1].kind !== ReflectionKind.propertySignature
+        && state.parentTypes[1].kind !== ReflectionKind.indexSignature) return false;
+
+    if (state.parentTypes[2].kind === ReflectionKind.union) {
+        return state.parentTypes.length === 3 || state.parentTypes.length === 4;
+    }
+
+    if (state.parentTypes.length === 4 && isReferenceType(state.parentTypes[2])) {
         return true;
     }
-    return false;
+
+    return state.parentTypes.length === 3;
 }
 
 function serializeSqlAny(type: Type, state: TemplateState) {
-    if (!isDirectPropertyOfEntity(type)) {
+    if (!isDirectPropertyOfEntity(state)) {
         state.addSetter(`${state.accessor}`);
         return;
     }
@@ -62,7 +97,7 @@ function serializeSqlAny(type: Type, state: TemplateState) {
 }
 
 function deserializeSqlAny(type: Type, state: TemplateState) {
-    if (!isDirectPropertyOfEntity(type)) {
+    if (!isDirectPropertyOfEntity(state)) {
         state.addSetter(`${state.accessor}`);
         return;
     }
@@ -76,7 +111,7 @@ function deserializeSqlAny(type: Type, state: TemplateState) {
 function serializeSqlArray(type: TypeArray, state: TemplateState) {
     if (undefined !== referenceAnnotation.getFirst(type)) return;
 
-    if (!isDirectPropertyOfEntity(type)) return;
+    if (!isDirectPropertyOfEntity(state)) return;
 
     state.setContext({ stringify: JSON.stringify });
     state.addSetter(`stringify(${state.accessor})`);
@@ -88,7 +123,7 @@ function serializeSqlArray(type: TypeArray, state: TemplateState) {
 function deserializeSqlArray(type: TypeArray, state: TemplateState) {
     if (undefined !== referenceAnnotation.getFirst(type)) return;
 
-    if (!isDirectPropertyOfEntity(type)) return;
+    if (!isDirectPropertyOfEntity(state)) return;
 
     state.addCode(`${state.setter} = 'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor};`);
 }
@@ -97,24 +132,45 @@ function deserializeSqlArray(type: TypeArray, state: TemplateState) {
  * For sql databases, objects will be serialised as JSON string.
  */
 function serializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state: TemplateState) {
-    if (isReferenceType(type) || isBackReferenceType(type) || !isDirectPropertyOfEntity(type)) return;
+    if (isReferenceType(type) || isBackReferenceType(type)) {
+        serializeReferencedType(type, state);
+    } else {
+        serializeObjectLiteral(type, state);
 
-    //TypeClass|TypeObjectLiteral properties are serialized as JSON
-    state.setContext({ stringify: JSON.stringify });
-    state.addSetter(`stringify(${state.accessor})`);
+        if (isDirectPropertyOfEntity(state)) {
+            //TypeClass|TypeObjectLiteral properties are serialized as JSON
+            state.setContext({ stringify: JSON.stringify });
+            state.addSetter(`stringify(${state.accessor})`);
+        }
+    }
 }
 
 /**
  * For sql databases, objects will be serialised as JSON string. So deserialize it correctly
  */
 function deserializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state: TemplateState) {
-    if (!isReferenceType(type) && isDirectPropertyOfEntity(type)) {
+    if (isReferenceType(type) || isBackReferenceType(type)) {
+        deserializeReferencedType(type, state);
+    } else {
+        if (isDirectPropertyOfEntity(state)) {
+            //TypeClass|TypeObjectLiteral properties are serialized as JSON
+            state.setContext({ jsonParse: JSON.parse });
+            state.addCode(`${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`);
+        }
+
+        serializeObjectLiteral(type, state);
+    }
+}
+
+function deserializeSqlUnion(type: TypeUnion, state: TemplateState) {
+    // usually DB return JSON string, which we need to convert to objects first so the default union handler can work.
+    if (isDirectPropertyOfEntity(state)) {
         //TypeClass|TypeObjectLiteral properties are serialized as JSON
         state.setContext({ jsonParse: JSON.parse });
         state.addCode(`${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`);
     }
 
-    serializeObjectLiteral(type, state);
+    handleUnion(type, state);
 }
 
 function serializeReferencedType(type: Type, state: TemplateState) {
@@ -124,6 +180,16 @@ function serializeReferencedType(type: Type, state: TemplateState) {
     //the primary key is serialised for unhydrated references
     state.template = `
         ${executeTemplates(state.fork(state.setter, new ContainerAccessor(state.accessor, JSON.stringify(reflection.getPrimary().getName()))), reflection.getPrimary().getType())}
+    `;
+}
+
+function deserializeReferencedType(type: Type, state: TemplateState) {
+    if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) return;
+    // state.setContext({ isObject, isReferenceType, isReferenceHydrated });
+    const reflection = ReflectionClass.from(type);
+    //the primary key is serialised for unhydrated references
+    state.template = `
+        ${executeTemplates(state.fork(), reflection.getPrimary().getType())}
     `;
 }
 
@@ -156,7 +222,6 @@ export class SqlSerializer extends Serializer {
 
         this.deserializeRegistry.removeDecorator(uuidType);
         this.deserializeRegistry.addDecorator(isUUIDType, (type, state) => {
-            if (!isDirectPropertyOfEntity(type)) return;
             state.setContext({ uuid4Stringify });
             state.addCodeForSetter(`
                 try {
@@ -169,7 +234,9 @@ export class SqlSerializer extends Serializer {
 
         this.serializeRegistry.removeDecorator(uuidType);
         this.serializeRegistry.addDecorator(isUUIDType, (type, state) => {
-            if (!isDirectPropertyOfEntity(type)) return;
+            if (!isDirectPropertyOfEntity(state)) {
+                return;
+            }
             state.setContext({ uuid4Binary });
             state.addCodeForSetter(`
                 try {
@@ -180,8 +247,8 @@ export class SqlSerializer extends Serializer {
             `);
         });
 
-        this.serializeRegistry.append(ReflectionKind.class, serializeSqlObjectLiteral);
-        this.serializeRegistry.append(ReflectionKind.objectLiteral, serializeSqlObjectLiteral);
+        this.serializeRegistry.register(ReflectionKind.class, serializeSqlObjectLiteral);
+        this.serializeRegistry.register(ReflectionKind.objectLiteral, serializeSqlObjectLiteral);
 
         this.deserializeRegistry.register(ReflectionKind.class, deserializeSqlObjectLiteral);
         this.deserializeRegistry.register(ReflectionKind.objectLiteral, deserializeSqlObjectLiteral);
@@ -189,13 +256,15 @@ export class SqlSerializer extends Serializer {
         this.serializeRegistry.append(ReflectionKind.array, serializeSqlArray);
         this.deserializeRegistry.prepend(ReflectionKind.array, deserializeSqlArray);
 
-        //for databases, types decorated with Reference will always only export the primary key.
-        const referenceType = referenceAnnotation.registerType({ kind: ReflectionKind.class, classType: Object, types: [] }, {});
-        this.serializeRegistry.removeDecorator(referenceType);
-        this.serializeRegistry.addDecorator(isReferenceType, serializeReferencedType);
+        this.deserializeRegistry.register(ReflectionKind.union, deserializeSqlUnion);
 
-        //for databases, types decorated with BackReference will always only export the primary key.
-        this.serializeRegistry.addDecorator(isBackReferenceType, serializeReferencedType);
+        //for databases, types decorated with Reference will always only export the primary key.
+        // const referenceType = referenceAnnotation.registerType({ kind: ReflectionKind.class, classType: Object, types: [] }, {});
+        // this.serializeRegistry.removeDecorator(referenceType);
+        // this.serializeRegistry.addDecorator(isReferenceType, serializeReferencedType);
+        //
+        // //for databases, types decorated with BackReference will always only export the primary key.
+        // this.serializeRegistry.addDecorator(isBackReferenceType, serializeReferencedType);
 
         this.serializeRegistry.registerBinary((type, state) => {
             if (type.classType === ArrayBuffer) {
@@ -237,105 +306,3 @@ export function uuid4Stringify(buffer: Buffer): string {
         + hexTable[buffer[10]] + hexTable[buffer[11]] + hexTable[buffer[12]] + hexTable[buffer[13]] + hexTable[buffer[14]] + hexTable[buffer[15]]
         ;
 }
-
-//
-// sqlSerializer.toClass.prepend('class', (property: PropertySchema, state: CompilerState) => {
-//     //when property is a reference, then we stored in the database the actual primary key and used this
-//     //field as foreignKey. This makes it necessary to convert it differently (concretely we treat it as the primary)
-//     const classSchema = getClassSchema(property.resolveClassType!);
-//
-//     //note: jsonSerializer already calls JSON.parse if data is a string
-//
-//     if (property.isReference) {
-//         const primary = classSchema.getPrimaryField();
-//         state.addCodeForSetter(getDataConverterJS(state.setter, state.accessor, primary, state.serializerCompilers, state.compilerContext, state.jitStack));
-//         state.forceEnd();
-//     }
-//
-//     return;
-// });
-
-// sqlSerializer.fromClass.prepend('class', (property: PropertySchema, state: CompilerState) => {
-//     //When property is a reference we store the actual primary (as foreign key) of the referenced instance instead of the actual instance.
-//     //This way we implemented basically relations in the database
-//     const classSchema = getClassSchema(property.resolveClassType!);
-//
-//     if (property.isReference) {
-//         const classType = state.setVariable('classType', property.resolveClassType);
-//         state.compilerContext.context.set('isObject', isObject);
-//         const primary = classSchema.getPrimaryField();
-//
-//         state.addCodeForSetter(`
-//             if (isObject(${state.accessor})) {
-//                 ${getDataConverterJS(state.setter, `${state.accessor}.${primary.name}`, primary, state.serializerCompilers, state.compilerContext, state.jitStack)}
-//             } else {
-//                 //we treat the input as if the user gave the primary key directly
-//                 ${getDataConverterJS(state.setter, `${state.accessor}`, primary, state.serializerCompilers, state.compilerContext, state.jitStack)}
-//             }
-//             `
-//         );
-//         state.forceEnd();
-//     }
-// });
-
-// sqlSerializer.fromClass.append('class', (property: PropertySchema, state: CompilerState) => {
-//     if (property.isReference) return;
-//
-//     //we don't stringify non-root properties
-//     if (property.parent) return;
-//
-//     //we need to convert the structure to JSON-string after it has been converted to JSON values from the previous compiler
-//     //but only on root properties.
-//     state.setContext({ stringify: JSON.stringify });
-//     state.addSetter(`_depth === 1 ? stringify(${state.accessor}) : ${state.accessor}`);
-// });
-
-// sqlSerializer.toClass.prepend('class', (property: PropertySchema, state: CompilerState) => {
-//     //when property is a reference, then we stored in the database the actual primary key and used this
-//     //field as foreignKey. This makes it necessary to convert it differently (concretely we treat it as the primary)
-//     const classSchema = getClassSchema(property.resolveClassType!);
-//
-//     //note: jsonSerializer already calls JSON.parse if data is a string
-//
-//     if (property.isReference) {
-//         const primary = classSchema.getPrimaryField();
-//         state.addCodeForSetter(getDataConverterJS(state.setter, state.accessor, primary, state.serializerCompilers, state.compilerContext, state.jitStack));
-//         state.forceEnd();
-//     }
-//
-//     return;
-// });
-
-// sqlSerializer.fromClass.register('array', (property: PropertySchema, state: CompilerState) => {
-//     if (property.isReference) return;
-//
-//     //we don't stringify non-root properties
-//     if (property.parent) return;
-//
-//     //we need to convert the structure to JSON-string after it has been converted to JSON values from the previous compiler
-//     //but only on root properties.
-//     state.setContext({ stringify: JSON.stringify });
-//     state.addSetter(`_depth === 1 ? stringify(${state.accessor}) : ${state.accessor}`);
-// });
-
-// sqlSerializer.toClass.prepend('array', (property: PropertySchema, state: CompilerState) => {
-//     if (property.parent) return;
-//
-//     state.addSetter(`'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor}`);
-// });
-//
-// sqlSerializer.fromClass.append('record', (property: PropertySchema, state: CompilerState) => {
-//     //we don't stringify non-root properties
-//     if (property.parent) return;
-//
-//     //we need to convert the structure to JSON-string after it has been converted to JSON values from the previous compiler
-//     //but only on root properties.
-//     state.setContext({ stringify: JSON.stringify });
-//     state.addSetter(`_depth === 1 ? stringify(${state.accessor}) : ${state.accessor}`);
-// });
-
-// sqlSerializer.toClass.prepend('record', (property: PropertySchema, state: CompilerState) => {
-//     if (property.parent) return;
-//
-//     state.addSetter(`'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor}`);
-// });

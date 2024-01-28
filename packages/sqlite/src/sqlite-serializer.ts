@@ -21,7 +21,7 @@ class SQLiteSerializer extends SqlSerializer {
         });
 
         this.serializeRegistry.append(ReflectionKind.boolean, (type, state) => {
-            if (!isDirectPropertyOfEntity(type)) return;
+            if (!isDirectPropertyOfEntity(state)) return;
             state.addSetter(`${state.accessor} ? 1 : 0`);
         });
     }

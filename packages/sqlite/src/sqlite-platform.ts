@@ -35,9 +35,9 @@ export class SQLitePlatform extends DefaultPlatform {
     constructor() {
         super();
         this.addType(ReflectionKind.number, 'float');
-        this.addType((type => type.kind === ReflectionKind.class && type.classType === Date), 'text');
+        this.addType(type => type.kind === ReflectionKind.class && type.classType === Date, 'text');
         this.addType(ReflectionKind.boolean, 'integer', 1);
-        this.addType((type => isUUIDType(type)), 'blob');
+        this.addType(type => isUUIDType(type), 'blob');
         this.addType(isIntegerType, 'integer');
 
         this.addType(isJsonLike, 'text');
