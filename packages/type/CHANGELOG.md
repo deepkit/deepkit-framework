@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.120](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.119...v1.0.1-alpha.120) (2024-01-29)
+
+### Features
+
+- **type:** preserve modifiers in homomorphic mapped types ([f2091d0](https://github.com/deepkit/deepkit-framework/commit/f2091d0beeb7360d0bdcc7475d0c88e53dee5de2)), closes [#515](https://github.com/deepkit/deepkit-framework/issues/515) [#514](https://github.com/deepkit/deepkit-framework/issues/514)
+
 ## [1.0.1-alpha.119](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.118...v1.0.1-alpha.119) (2024-01-28)
 
 ### Features

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.120](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.119...v1.0.1-alpha.120) (2024-01-29)
+
+### Features
+
+- **sql:** support more union types and add new performance abstraction ([03067fa](https://github.com/deepkit/deepkit-framework/commit/03067fae3490603e1cb5ee28abd95521caeea24b)), closes [#525](https://github.com/deepkit/deepkit-framework/issues/525)
+
 ## [1.0.1-alpha.119](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.118...v1.0.1-alpha.119) (2024-01-28)
 
 ### Features
