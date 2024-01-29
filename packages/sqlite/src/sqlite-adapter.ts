@@ -302,7 +302,7 @@ export class SQLitePersistence extends SQLPersistence {
         for (const fieldName of prepared.changedFields) {
             const index = j++;
             valuesNames.push(fieldName);
-            _rename.push(`column${index} as ${fieldName}`);
+            _rename.push(`column${index} as ${this.platform.quoteIdentifier(fieldName)}`);
             _renameSet.push(`column${index} as _changed_${fieldName}`);
             valuesSetNames.push('_changed_' + fieldName);
         }
