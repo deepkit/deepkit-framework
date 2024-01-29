@@ -35,28 +35,27 @@ export class ProcessLock {
         }
 
         return new Promise<void>((resolve, reject) => {
-            const ourTake = () => {
-                LOCKS[this.id].time = Date.now() / 1000;
-
-                this.holding = true;
-                resolve();
-
-                if (ttl) {
-                    this.ttlTimeout = setTimeout(() => {
-                        this.unlock();
-                    }, ttl * 1000);
-                }
-            };
-
-            if (timeout > 0) {
-                setTimeout(() => {
-                    if (LOCKS[this.id]) arrayRemoveItem(LOCKS[this.id].queue, ourTake);
-                    //reject is never handled when resolve is called first
-                    reject('Lock timed out ' + this.id);
-                }, timeout * 1000);
-            }
-
             if (LOCKS[this.id]) {
+                let timeoutId: any;
+                const ourTake = () => {
+                    LOCKS[this.id].time = Date.now() / 1000;
+                    clearTimeout(timeoutId);
+                    this.holding = true;
+                    resolve();
+
+                    if (ttl) {
+                        this.ttlTimeout = setTimeout(() => {
+                            this.unlock();
+                        }, ttl * 1000);
+                    }
+                };
+                if (timeout > 0) {
+                    timeoutId = setTimeout(() => {
+                        if (LOCKS[this.id]) arrayRemoveItem(LOCKS[this.id].queue, ourTake);
+                        //reject is never handled when resolve is called first
+                        reject('Lock timed out ' + this.id);
+                    }, timeout * 1000);
+                }
                 LOCKS[this.id].queue.push(ourTake);
             } else {
                 LOCKS[this.id] = {
