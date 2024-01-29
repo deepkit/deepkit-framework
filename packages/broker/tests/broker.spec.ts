@@ -106,6 +106,19 @@ test('lock', async () => {
     expect(lock1.acquired).toBe(false);
 });
 
+test('lock dispose', async () => {
+    const lock = new BrokerLock(await adapterFactory());
+
+    const lock1 = lock.item('my-lock', { ttl: 500 });
+
+    {
+        await using hold = await lock1.hold();
+        expect(lock1.acquired).toBe(true);
+    }
+
+    expect(lock1.acquired).toBe(false);
+});
+
 test('lock2', async () => {
     const lock = new BrokerLock(await adapterFactory());
 
@@ -171,7 +184,7 @@ test('queue message process exactly once options for broker channel', async () =
 
     await channel.produce({ id: 3, username: 'peter' });
 
-    expect(consumed).toBe(1)
+    expect(consumed).toBe(1);
 });
 
 test('queue message process exactly once with deduplication interval options for broker channel', async () => {

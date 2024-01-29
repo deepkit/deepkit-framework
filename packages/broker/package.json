@@ -58,6 +58,9 @@
     },
     "testMatch": [
       "**/tests/**/*.spec.ts"
+    ],
+    "setupFiles": [
+      "<rootDir>/../../jest-setup-runtime.js"
     ]
   },
   "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"

@@ -272,10 +272,34 @@ export class BrokerLockItem {
     ) {
     }
 
+    async [Symbol.asyncDispose] () {
+        await this.release();
+    }
+
+    /**
+     * Disposable way of acquiring a lock. Automatically releases the lock when the returned object is disposed.
+     *
+     * @example
+     * ```typescript
+     * async function doSomething() {
+     *   async using hold = lock.hold();
+     *
+     *   // do stuff
+     *
+     *   // when out of scope, lock is automatically released.
+     * }
+     * ```
+     */
+    async hold() {
+        await this.acquire();
+        return this;
+    }
+
     /**
      * Returns true if the current lock object is the holder of the lock.
      *
      * This does not check whether the lock is acquired by someone else.
+     * Use isReserved() if you want to check that.
      */
     get acquired(): boolean {
         return this.releaser !== undefined;
