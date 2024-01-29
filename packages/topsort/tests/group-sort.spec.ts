@@ -19,7 +19,7 @@ test('bench', () => {
     const count = 10_000;
     const items = getElementsGroup(count);
 
-    bench(10, `ArraySort Warmup ${count}`, () => {
+    bench(10, `GroupArraySort Warmup ${count}`, () => {
         const sorter = new GroupArraySort();
         sorter.set(items);
         sorter.sort();
@@ -59,6 +59,18 @@ test('circular exception', () => {
             expect(error.getEnd()).toBe('brand1');
         }
     }
+});
+
+test('parent circular', () => {
+    const sorter = new GroupArraySort();
+
+    sorter.add('service1', 'service', ['account1']);
+    sorter.add('account1', 'account', []);
+    sorter.add('deploy1', 'deploy', ['node1', 'node1', 'service1']);
+    sorter.add('node1', 'node', ['account1']);
+
+    // this must not fail
+    sorter.sort();
 });
 
 test('dependency in same', () => {

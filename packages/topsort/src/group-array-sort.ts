@@ -60,7 +60,7 @@ export class GroupArraySort<T = string, TYPE = string> extends BaseImplementatio
             let minLevel = -1;
 
             if (element.dependencies.length) {
-                parents = parents || new Set<T>();
+                parents = parents ? new Set(parents) : new Set();
                 parents.add(element.item);
 
                 for (const dependency of element.dependencies) {
