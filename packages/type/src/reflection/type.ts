@@ -1264,7 +1264,7 @@ export function copyAndSetParent<T extends ParentLessType>(inc: T, parent?: Type
             type.annotations = {};
             //we have to make copies of each annotation since they get modified when intersected
             for (const prop of Object.getOwnPropertySymbols(inc.annotations)) {
-                type.annotations[prop] = inc.annotations[prop].slice();
+                if (inc.annotations[prop]) type.annotations[prop] = inc.annotations[prop].slice();
             }
         }
         if (inc.decorators) type.decorators = inc.decorators.slice();
