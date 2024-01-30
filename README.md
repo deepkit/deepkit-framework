@@ -10,6 +10,8 @@
 <br/>
 <br/>
 
+<a href="https://discord.gg/U24mryk7Wq"><img alt="Discord" src="https://img.shields.io/discord/759513055117180999?style=square&label=Discord" /></a>
+<a href="https://www.npmjs.com/package/@deepkit/type"><img alt="npm" src="https://img.shields.io/npm/v/@deepkit/type.svg?style=square" /></a>
 [![CI](https://github.com/deepkit/deepkit-framework/actions/workflows/main.yml/badge.svg)](https://github.com/deepkit/deepkit-framework/actions/workflows/main.yml)
 
 Deepkit Framework is a new high-performance and real-time TypeScript framework for enterprise TypeScript applications.
@@ -24,7 +26,7 @@ Check out the [Deepkit Documentation](https://deepkit.io/documentation/introduct
 To create a Deepkit app with Deepkit Framework from scratch, you can use NPM init: 
 
 ```shell
-npm init @deepkit/app my-deepkit-app
+npm init @deepkit/app@latest my-deepkit-app
 ```
 
 ## Community Packages
