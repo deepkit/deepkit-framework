@@ -1177,7 +1177,7 @@ export class Processor {
                             const pOrFn = program.stack[pPosition] as number | Packed | (() => Packed);
                             const p = isFunction(pOrFn) ? pOrFn() : pOrFn;
                             if (p === undefined) {
-                                debug(`Failed inlining ${pOrFn.toString()}. Circular reference?`);
+                                debug(`Failed runtime inlining of ${pOrFn.toString()}. Value is undefined, probably because of a circular reference or failed import.`);
                                 this.push({ kind: ReflectionKind.unknown });
                             } else if ('number' === typeof p) {
                                 //self circular reference, usually a 0, which indicates we put the result of the current program as the type on the stack.
@@ -1210,7 +1210,7 @@ export class Processor {
                             const pOrFn = program.stack[pPosition] as number | Packed | (() => Packed);
                             const p = isFunction(pOrFn) ? pOrFn() : pOrFn;
                             if (p === undefined) {
-                                debug(`Failed inlining call ${pOrFn.toString()}. Circular reference?`);
+                                debug(`Failed runtime inlining call of ${pOrFn.toString()}. Value is undefined, probably because of a circular reference or failed import.`);
                                 this.push({ kind: ReflectionKind.unknown });
                             } else if ('number' === typeof p) {
                                 if (argumentSize === 0) {
