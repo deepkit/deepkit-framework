@@ -1556,3 +1556,30 @@ test('dependency injection unknown', async () => {
     const httpKernel = createHttpKernel([Controller], [provide<A>(Service)]);
     expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).text).toEqual('Not found');
 });
+
+test('disabled reflection', async () => {
+    type User = {username: string};
+    type Doc = {id: number};
+
+    /** @reflection never */
+    type PopulateUser<T> = T & { user: User };
+
+    type DocUser = PopulateUser<Doc>;
+
+    const user: DocUser = {
+        id: 1,
+        user: {
+            username: 'peter2'
+        }
+    }
+
+    class Controller {
+        @http.GET('user/:name')
+        async anyReq(name: string, user: DocUser) {
+            return [name, user.id, user.user.username];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [provide<DocUser>({useValue: user})]);
+    expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).json).toEqual(['peter', 1, 'peter2']);
+})

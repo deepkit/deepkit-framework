@@ -156,6 +156,7 @@ export function parseRoutePathToRegex(path: string, params: ReflectionParameter[
 }
 
 function isTypeUnknown(type: Type): boolean {
+    if (type.id) return false; //if is has an id we treat it as nominal type
     return type.kind === ReflectionKind.unknown || type.kind === ReflectionKind.any
         || type.kind === ReflectionKind.never;
 }
