@@ -8,12 +8,11 @@ import {
     Tag,
     TagProvider,
     TagRegistry,
-    Token
+    Token,
 } from './provider.js';
 import { AbstractClassType, ClassType, CompilerContext, CustomError, getClassName, getPathValue, isArray, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
-import { findModuleForConfig, getScope, InjectorModule, PreparedProvider } from './module.js';
+import { findModuleForConfig, getScope, InjectorModule, PreparedProvider, ConfigurationProviderRegistry } from './module.js';
 import {
-    hasTypeInformation,
     isExtendable,
     isOptional,
     isType,
@@ -26,7 +25,7 @@ import {
     ReflectionKind,
     resolveReceiveType,
     stringifyType,
-    Type
+    Type,
 } from '@deepkit/type';
 
 export class InjectorError extends CustomError {
@@ -42,15 +41,6 @@ export class ServiceNotFoundError extends InjectorError {
 export class DependenciesUnmetError extends InjectorError {
 }
 
-export class InjectorReference {
-    constructor(public readonly to: any, public module?: InjectorModule) {
-    }
-}
-
-export function injectorReference<T>(classTypeOrToken: T, module?: InjectorModule): any {
-    return new InjectorReference(classTypeOrToken, module);
-}
-
 export function tokenLabel(token: Token): string {
     if (token === null) return 'null';
     if (token === undefined) return 'undefined';
@@ -60,6 +50,16 @@ export function tokenLabel(token: Token): string {
     if (isFunction(token.toString)) return token.name;
 
     return token + '';
+}
+
+function functionParameterNotFound(ofName: string, name: string, position: number, token: any) {
+    const argsCheck: string[] = [];
+    for (let i = 0; i < position; i++) argsCheck.push('✓');
+    argsCheck.push('?');
+
+    throw new DependenciesUnmetError(
+        `Unknown function argument '${name}: ${tokenLabel(token)}' of ${ofName}(${argsCheck.join(', ')}). Make sure '${tokenLabel(token)}' is provided.`
+    );
 }
 
 function constructorParameterNotFound(ofName: string, name: string, position: number, token: any) {
@@ -120,54 +120,6 @@ function throwCircularDependency() {
     CircularDetector.length = 0;
     for (const reset of CircularDetectorResets) reset();
     throw new CircularDependencyError(`Circular dependency found ${path}`);
-}
-
-export type SetupProviderCalls = {
-        type: 'call', methodName: string | symbol | number, args: any[], order: number
-    }
-    | { type: 'property', property: string | symbol | number, value: any, order: number }
-    | { type: 'stop', order: number }
-    ;
-
-function matchType(left: Type, right: Type): boolean {
-    if (left.kind === ReflectionKind.class) {
-        if (right.kind === ReflectionKind.class) return left.classType === right.classType;
-    }
-
-    return isExtendable(left, right);
-}
-
-export class SetupProviderRegistry {
-    public calls: { type: Type, call: SetupProviderCalls }[] = [];
-
-    public add(type: Type, call: SetupProviderCalls) {
-        this.calls.push({ type, call });
-    }
-
-    mergeInto(registry: SetupProviderRegistry): void {
-        for (const { type, call } of this.calls) {
-            registry.add(type, call);
-        }
-    }
-
-    public get(token: Token): SetupProviderCalls[] {
-        const calls: SetupProviderCalls[] = [];
-        for (const call of this.calls) {
-            if (call.type === token) {
-                calls.push(call.call);
-            } else {
-                if (isClass(token)) {
-                    const type = hasTypeInformation(token) ? reflect(token) : undefined;
-                    if (type && matchType(type, call.type)) {
-                        calls.push(call.call);
-                    }
-                } else if (matchType(token, call.type)) {
-                    calls.push(call.call);
-                }
-            }
-        }
-        return calls;
-    }
 }
 
 interface Scope {
@@ -320,6 +272,7 @@ export class Injector implements InjectorInterface {
         resolverCompiler.context.set('throwCircularDependency', throwCircularDependency);
         resolverCompiler.context.set('tokenNotfoundError', serviceNotfoundError);
         resolverCompiler.context.set('constructorParameterNotFound', constructorParameterNotFound);
+        resolverCompiler.context.set('functionParameterNotFound', functionParameterNotFound);
         resolverCompiler.context.set('propertyParameterNotFound', propertyParameterNotFound);
         resolverCompiler.context.set('factoryDependencyNotFound', factoryDependencyNotFound);
         resolverCompiler.context.set('transientInjectionTargetUnavailable', transientInjectionTargetUnavailable);
@@ -461,11 +414,11 @@ export class Injector implements InjectorInterface {
             transient = provider.transient === true;
             const args: string[] = [];
             const reflection = ReflectionFunction.from(provider.useFactory);
+            const ofName = reflection.name === 'anonymous' ? 'useFactory' : reflection.name;
 
             for (const parameter of reflection.getParameters()) {
                 factory.dependencies++;
                 const tokenType = getInjectOptions(parameter.getType() as Type);
-                const ofName = reflection.name === 'anonymous' ? 'useFactory' : reflection.name;
                 args.push(this.createFactoryProperty({
                     name: parameter.name,
                     type: tokenType || parameter.getType() as Type,
@@ -480,41 +433,35 @@ export class Injector implements InjectorInterface {
 
         const configureProvider: string[] = [];
 
-        const configuredProviderCalls = resolveDependenciesFrom[0].setupProviderRegistry?.get(token);
-        configuredProviderCalls.push(...buildContext.globalSetupProviderRegistry.get(token));
+        const configurations = resolveDependenciesFrom[0].configurationProviderRegistry?.get(token);
+        configurations.push(...buildContext.globalConfigurationProviderRegistry.get(token));
 
-        if (configuredProviderCalls) {
-            configuredProviderCalls.sort((a, b) => {
-                return a.order - b.order;
+        if (configurations?.length) {
+            configurations.sort((a, b) => {
+                return a.options.order - b.options.order;
             });
 
-            for (const call of configuredProviderCalls) {
-                if (call.type === 'stop') break;
-                if (call.type === 'call') {
-                    const args: string[] = [];
-                    const methodName = 'symbol' === typeof call.methodName ? '[' + compiler.reserveVariable('arg', call.methodName) + ']' : call.methodName;
-                    for (const arg of call.args) {
-                        if (arg instanceof InjectorReference) {
-                            const injector = arg.module ? compiler.reserveConst(arg.module) + '.injector' : 'injector';
-                            args.push(`${injector}.resolver(${compiler.reserveConst(getContainerToken(arg.to))}, scope, destination)`);
-                        } else {
-                            args.push(`${compiler.reserveVariable('arg', arg)}`);
-                        }
-                    }
+            for (const configure of configurations) {
+                const args: string[] = [accessor];
+                const reflection = ReflectionFunction.from(configure.call);
+                const ofName = reflection.name === 'anonymous' ? 'configureProvider' : reflection.name;
 
-                    configureProvider.push(`${accessor}.${methodName}(${args.join(', ')});`);
+                for (const parameter of reflection.getParameters().slice(1)) {
+                    const tokenType = getInjectOptions(parameter.getType() as Type);
+                    args.push(this.createFactoryProperty({
+                        name: parameter.name,
+                        type: tokenType || parameter.getType() as Type,
+                        optional: !parameter.isValueRequired()
+                    }, provider, compiler, resolveDependenciesFrom, ofName, args.length, 'functionParameterNotFound'));
                 }
-                if (call.type === 'property') {
-                    const property = 'symbol' === typeof call.property ? '[' + compiler.reserveVariable('property', call.property) + ']' : call.property;
-                    let value: string = '';
-                    if (call.value instanceof InjectorReference) {
-                        const injector = call.value.module ? compiler.reserveConst(call.value.module) + '.injector' : 'injector';
-                        value = `${injector}.resolver(${compiler.reserveConst(getContainerToken(call.value.to))}, scope, destination)`;
-                    } else {
-                        value = compiler.reserveVariable('value', call.value);
-                    }
-                    configureProvider.push(`${accessor}.${property} = ${value};`);
+
+                const call = `${compiler.reserveVariable('configure', configure.call)}(${args.join(', ')});`;
+                if (configure.options.replace) {
+                    configureProvider.push(`${accessor} = ${call}`);
+                } else {
+                    configureProvider.push(call);
                 }
+
             }
         } else {
             configureProvider.push('//no custom provider setup');
@@ -919,7 +866,7 @@ export class BuildContext {
      * In the process of preparing providers, each module redirects their
      * global setup calls in this registry.
      */
-    globalSetupProviderRegistry: SetupProviderRegistry = new SetupProviderRegistry;
+    globalConfigurationProviderRegistry: ConfigurationProviderRegistry = new ConfigurationProviderRegistry;
 }
 
 export type Resolver<T> = (scope?: Scope) => T;

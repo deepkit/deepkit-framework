@@ -623,18 +623,18 @@ test('setup provider', () => {
 
     {
         const module = new InjectorModule([MyService]);
-        module.setupProvider<MyService>().addTransporter('a');
-        module.setupProvider<MyService>().addTransporter('b');
-        expect(module.setupProviderRegistry.get(MyService).length).toBe(2);
+        module.configureProvider<MyService>(v => v.addTransporter('a'));
+        module.configureProvider<MyService>(v => v.addTransporter('b'));
+        expect(module.configurationProviderRegistry.get(MyService).length).toBe(2);
         const i1 = Injector.fromModule(module);
         expect(i1.get(MyService).transporter).toEqual(['a', 'b']);
     }
 
     {
         const module = new InjectorModule([MyService]);
-        module.setupProvider<MyService>().transporter = ['a'];
-        module.setupProvider<MyService>().transporter = ['a', 'b', 'c'];
-        expect(module.setupProviderRegistry.get(MyService).length).toBe(2);
+        module.configureProvider<MyService>(v => v.transporter = ['a']);
+        module.configureProvider<MyService>(v => v.transporter = ['a', 'b', 'c']);
+        expect(module.configurationProviderRegistry.get(MyService).length).toBe(2);
         const i1 = Injector.fromModule(module);
         expect(i1.get(MyService).transporter).toEqual(['a', 'b', 'c']);
     }

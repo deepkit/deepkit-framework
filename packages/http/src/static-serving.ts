@@ -18,7 +18,7 @@ import { ClassType, urlJoin } from '@deepkit/core';
 import { HttpRequest, HttpResponse } from './model.js';
 import send from 'send';
 import { eventDispatcher } from '@deepkit/event';
-import { RouteConfig, HttpRouter } from './router.js';
+import { HttpRouter, RouteConfig } from './router.js';
 
 export function serveStaticListener(module: AppModule<any>, path: string, localPath: string = path): ClassType {
     class HttpRequestStaticServingListener {
@@ -48,9 +48,9 @@ export function serveStaticListener(module: AppModule<any>, path: string, localP
                                 type: 'controller',
                                 controller: HttpRequestStaticServingListener,
                                 module,
-                                methodName: 'serve'
+                                methodName: 'serve',
                             }),
-                            () => ({arguments: [relativePath, event.request, event.response], parameters: {}})
+                            () => ({ arguments: [relativePath, event.request, event.response], parameters: {} }),
                         );
                     }
                     resolve(undefined);
@@ -132,20 +132,20 @@ export function registerStaticHttpController(module: AppModule<any>, options: St
         type: 'controller',
         controller: StaticController,
         module,
-        methodName: 'serveIndex'
+        methodName: 'serveIndex',
     });
     route1.groups = groups;
-    module.setupGlobalProvider<HttpRouter>().addRoute(route1);
+    module.configureProvider<HttpRouter>(router => router.addRoute(route1), { global: true });
 
     if (path !== '/') {
         const route2 = new RouteConfig('static', ['GET'], path.slice(0, -1), {
             type: 'controller',
             controller: StaticController,
             module,
-            methodName: 'serveIndex'
+            methodName: 'serveIndex',
         });
         route2.groups = groups;
-        module.setupGlobalProvider<HttpRouter>().addRoute(route2);
+        module.configureProvider<HttpRouter>(router => router.addRoute(route2), { global: true });
     }
 
     module.addProvider(StaticController);

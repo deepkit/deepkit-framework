@@ -14,7 +14,6 @@ import { ConsoleTransport, Logger, LogMessage, MemoryLoggerTransport } from '@de
 import { Database, DatabaseRegistry, MemoryDatabaseAdapter } from '@deepkit/orm';
 import { ApplicationServer } from './application-server.js';
 import { BrokerServer } from './broker/broker.js';
-import { injectorReference } from '@deepkit/injector';
 import { App, AppModule, RootAppModule, RootModuleDefinition } from '@deepkit/app';
 import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker.js';
 import { MemoryHttpResponse, RequestBuilder } from '@deepkit/http';
@@ -77,8 +76,8 @@ export class BrokerMemoryServer extends BrokerServer {
 export function createTestingApp<O extends RootModuleDefinition>(options: O, entities: ClassType[] = [], setup?: (module: AppModule<any>) => void): TestingFacade<App<O>> {
     const module = new RootAppModule(options);
 
-    module.setupGlobalProvider<Logger>().removeTransport(injectorReference(ConsoleTransport));
-    module.setupGlobalProvider<Logger>().addTransport(injectorReference(MemoryLoggerTransport));
+    module.configureProvider<Logger>((v, t: ConsoleTransport) => v.removeTransport(t));
+    module.configureProvider<Logger>((v, t: MemoryLoggerTransport) => v.addTransport(t));
 
     module.addProvider({ provide: WebWorkerFactory, useClass: WebMemoryWorkerFactory }); //don't start HTTP-server
     module.addProvider({ provide: BrokerServer, useExisting: BrokerMemoryServer }); //don't start Broker TCP-server
@@ -100,7 +99,7 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
 
     if (entities.length) {
         module.addProvider({ provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities) });
-        module.setupGlobalProvider<DatabaseRegistry>().addDatabase(Database, {}, module);
+        module.configureProvider<DatabaseRegistry>(v => v.addDatabase(Database, {}, module));
     }
 
     if (setup) module.setup(setup as any);

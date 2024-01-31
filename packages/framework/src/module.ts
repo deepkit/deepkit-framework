@@ -18,7 +18,7 @@ import { ServerStartController } from './cli/server-start.js';
 import { DebugController } from './debug/debug.controller.js';
 import { registerDebugHttpController } from './debug/http-debug.controller.js';
 import { http, HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
-import { InjectorContext, injectorReference, ProviderWithScope, Token } from '@deepkit/injector';
+import { InjectorContext, ProviderWithScope, Token } from '@deepkit/injector';
 import { BrokerConfig, FrameworkConfig } from './module.config.js';
 import { LoggerInterface } from '@deepkit/logger';
 import { SessionHandler } from './session.js';
@@ -35,7 +35,7 @@ import { DebugConfigController } from './cli/app-config.js';
 import { Zone } from './zone.js';
 import { DebugBrokerBus } from './debug/broker.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
-import { AppModule, ControllerConfig, createModule, onAppExecute, onAppShutdown } from '@deepkit/app';
+import { AppModule, ControllerConfig, createModule, onAppShutdown } from '@deepkit/app';
 import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
 import { normalizeDirectory } from './utils.js';
 import { FilesystemRegistry, PublicFilesystem } from './filesystem.js';
@@ -164,8 +164,8 @@ export class FrameworkModule extends createModule({
         this.addImport();
         this.addProvider({ provide: RpcControllers, useValue: this.rpcControllers });
 
-        this.setupProvider<MigrationProvider>().setMigrationDir(this.config.migrationDir);
-        this.setupProvider<DatabaseRegistry>().setMigrateOnStartup(this.config.migrateOnStartup);
+        this.configureProvider<MigrationProvider>(v => v.setMigrationDir(this.config.migrationDir));
+        this.configureProvider<DatabaseRegistry>(v => v.setMigrateOnStartup(this.config.migrateOnStartup));
 
         if (this.config.httpLog) {
             this.addListener(HttpLogger);
@@ -217,35 +217,33 @@ export class FrameworkModule extends createModule({
         this.addProvider(DebugBrokerBus);
         this.addProvider({ provide: StopwatchStore, useClass: FileStopwatchStore });
 
-        const stopwatch = this.setupGlobalProvider<Stopwatch>();
-        if (this.config.profile || this.config.debug) {
-            stopwatch.enable();
-        } else {
-            stopwatch.disable();
-        }
-
+        const stopwatch = this.configureProvider<Stopwatch>(stopwatch => {
+            if (this.config.profile || this.config.debug) {
+                stopwatch.enable();
+            } else {
+                stopwatch.disable();
+            }
+        }, { global: true });
         this.addExport(DebugBrokerBus, StopwatchStore);
     }
 
     postProcess() {
         //all providers are known at this point
         this.setupDatabase();
-
-        for (const fs of this.filesystems) {
-            this.setupProvider<FilesystemRegistry>().addFilesystem(fs.classType, fs.module);
-        }
+        this.configureProvider<FilesystemRegistry>(v => {
+            for (const fs of this.filesystems) {
+                v.addFilesystem(fs.classType, fs.module);
+            }
+        });
     }
 
     protected setupDatabase() {
         for (const db of this.dbs) {
-            this.setupProvider<DatabaseRegistry>().addDatabase(db.classType, {}, db.module);
-            db.module.setupProvider(0, db.classType).eventDispatcher = injectorReference(EventDispatcher);
-        }
-
-        if (this.config.debug && this.config.profile) {
-            for (const db of this.dbs) {
-                db.module.setupProvider(0, db.classType).stopwatch = injectorReference(Stopwatch);
-            }
+            this.configureProvider<DatabaseRegistry>(v => v.addDatabase(db.classType, {}, db.module));
+            db.module.configureProvider((db: Database, eventDispatcher: EventDispatcher, stopwatch: Stopwatch) => {
+                db.eventDispatcher = eventDispatcher;
+                db.stopwatch = stopwatch;
+            }, {}, db.classType);
         }
     }
 

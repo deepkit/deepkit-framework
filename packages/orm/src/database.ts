@@ -138,8 +138,8 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     public logger: DatabaseLogger = new DatabaseLogger();
 
     /** @reflection never */
-    public readonly eventDispatcher: EventDispatcher = new EventDispatcher();
-    public readonly pluginRegistry: DatabasePluginRegistry = new DatabasePluginRegistry();
+    public eventDispatcher: EventDispatcher = new EventDispatcher();
+    public pluginRegistry: DatabasePluginRegistry = new DatabasePluginRegistry();
 
     constructor(
         public readonly adapter: ADAPTER,

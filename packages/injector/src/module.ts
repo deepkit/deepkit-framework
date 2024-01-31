@@ -1,6 +1,6 @@
 import { NormalizedProvider, ProviderWithScope, TagProvider, Token } from './provider.js';
 import { arrayRemoveItem, ClassType, getClassName, isClass, isPlainObject, isPrototypeOfBase } from '@deepkit/core';
-import { BuildContext, getContainerToken, Injector, resolveToken, SetupProviderRegistry } from './injector.js';
+import { BuildContext, getContainerToken, Injector, resolveToken } from './injector.js';
 import {
     hasTypeInformation,
     isType,
@@ -13,31 +13,59 @@ import {
     TypeClass,
     typeInfer,
     TypeObjectLiteral,
-    visit
+    visit,
 } from '@deepkit/type';
 import { nominalCompatibility } from './types.js';
 
-export type ConfigureProvider<T> = { [name in keyof T]: T[name] extends (...args: infer A) => any ? (...args: A) => ConfigureProvider<T> : T[name] };
+export interface ConfigureProviderOptions {
+    /**
+     * If there are several registered configuration functions for the same token,
+     * they are executed in order of their `order` value ascending. The default is 0.
+     * The lower the number, the earlier it is executed.
+     */
+    order: number;
 
-/**
- * Returns a configuration object that reflects the API of the given ClassType or token. Each call
- * is scheduled and executed once the provider has been created by the dependency injection container.
- */
-export function setupProvider<T>(token: Token, registry: SetupProviderRegistry, order: number): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
-    const proxy = new Proxy({}, {
-        get(target, prop) {
-            return (...args: any[]) => {
-                registry.add(token, { type: 'call', methodName: prop, args: args, order });
-                return proxy;
-            };
-        },
-        set(target, prop, value) {
-            registry.add(token, { type: 'property', property: prop, value: value, order });
-            return true;
+    /**
+     * Replaces the instance with the value returned by the configuration function.
+     */
+    replace: boolean;
+
+    /**
+     * Per default only providers in the same module are configured.
+     * If you want to configure providers of all modules, set this to true.
+     */
+    global: boolean;
+}
+
+export interface ConfigureProviderEntry {
+    type: Type;
+    options: ConfigureProviderOptions;
+    call: Function;
+}
+
+export class ConfigurationProviderRegistry {
+    public configurations: ConfigureProviderEntry[] = [];
+
+    public add(type: Type, call: Function, options: ConfigureProviderOptions) {
+        this.configurations.push({ type, options, call });
+    }
+
+    mergeInto(registry: ConfigurationProviderRegistry): void {
+        for (const { type, options, call } of this.configurations) {
+            registry.add(type, call, options);
         }
-    });
+    }
 
-    return proxy as any;
+    public get(token: Token): ConfigureProviderEntry[] {
+        const results: ConfigureProviderEntry[] = [];
+        for (const configure of this.configurations) {
+            const lookup = isClass(token) ? resolveReceiveType(token) : token;
+            if (dependencyLookupMatcher(configure.type, lookup)) {
+                results.push(configure);
+            }
+        }
+        return results;
+    }
 }
 
 let moduleIds: number = 0;
@@ -251,8 +279,8 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
      */
     injector?: Injector;
 
-    public setupProviderRegistry: SetupProviderRegistry = new SetupProviderRegistry;
-    public globalSetupProviderRegistry: SetupProviderRegistry = new SetupProviderRegistry;
+    public configurationProviderRegistry: ConfigurationProviderRegistry = new ConfigurationProviderRegistry;
+    public globalConfigurationProviderRegistry: ConfigurationProviderRegistry = new ConfigurationProviderRegistry;
 
     imports: InjectorModule[] = [];
 
@@ -264,7 +292,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         public providers: ProviderWithScope[] = [],
         public parent?: InjectorModule,
         public config: C = {} as C,
-        public exports: ExportType[] = []
+        public exports: ExportType[] = [],
     ) {
         if (this.parent) this.parent.registerAsChildren(this);
     }
@@ -429,26 +457,30 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
     }
 
     /**
-     * Allows to register additional setup calls for a provider in this module.
-     * The injector token needs to be available in the local module providers.
-     * Use setupGlobalProvider to register globally setup calls (not limited to this module only).
+     * Configures a provider by applying a custom configuration function to its instance.
+     * The passed configure function is executed when instance was created.
+     * If the provider is in a scope and the scope created multiple instances,
+     * the configure function is executed for each instance.
      *
-     * Returns a object that reflects the API of the given ClassType or token. Each call
-     * is scheduled and executed once the provider is created by the dependency injection container.
-     */
-    setupProvider<T>(order: number = 0, classTypeOrToken?: ReceiveType<T>): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
-        return setupProvider(resolveReceiveType(classTypeOrToken), this.setupProviderRegistry, order);
-    }
-
-    /**
-     * Allows to register additional setup calls for a provider in the whole module tree.
-     * The injector token needs to be available in the local module providers.
+     * The purpose of a provider configuration is to configure the instance, for example
+     * call methods on it, set properties, etc.
      *
-     * Returns a object that reflects the API of the given ClassType or token. Each call
-     * is scheduled and executed once the provider is created by the dependency injection container.
+     * The first parameter of the function is always the instance of the provider that was created.
+     * All additional defined parameters will be provided by the dependency injection container.
+     *
+     * if `options.replace` is true, the returned value of `configure` will
+     * replace the instance.
+     * if `options.global` is true, the configuration function is applied to all
+     * providers in the whole module tree.
+     * The `options.order` defines the order of execution of the configuration function.
+     * The lower the number, the earlier it is executed.
      */
-    setupGlobalProvider<T>(order: number = 0, classTypeOrToken?: ReceiveType<T>): ConfigureProvider<T extends ClassType<infer C> ? C : T> {
-        return setupProvider(resolveReceiveType(classTypeOrToken), this.globalSetupProviderRegistry, order);
+    configureProvider<T>(configure: (instance: T, ...args: any[]) => any, options: Partial<ConfigureProviderOptions> = {}, type?: ReceiveType<T>): this {
+        const optionsResolved = Object.assign({ order: 0, replace: false, global: false }, options);
+        type = resolveReceiveType(type);
+        const registry = options.global ? this.globalConfigurationProviderRegistry : this.configurationProviderRegistry;
+        registry.add(type, configure, optionsResolved);
+        return this;
     }
 
     getOrCreateInjector(buildContext: BuildContext): Injector {
@@ -475,6 +507,11 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
     getPreparedProvider(token: Token, candidate?: PreparedProvider): PreparedProvider | undefined {
         if (!this.preparedProviders) return;
         return lookupPreparedProviders(this.preparedProviders, token, dependencyLookupMatcher, candidate);
+    }
+
+    getSetupProvider(token: Token, candidate?: PreparedProvider): PreparedProvider | undefined {
+        if (!this.preparedProviders) return;
+        return lookupPreparedProviders(this.preparedProviders, token, exportLookupMatcher, candidate);
     }
 
     resolveToken(token: Token): InjectorModule | undefined {
@@ -505,7 +542,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
 
         this.preparedProviders = [];
 
-        this.globalSetupProviderRegistry.mergeInto(buildContext.globalSetupProviderRegistry);
+        this.globalConfigurationProviderRegistry.mergeInto(buildContext.globalConfigurationProviderRegistry);
 
         //make sure that providers that declare the same provider token will be filtered out so that the last will be used.
         for (const provider of this.providers) {
@@ -610,7 +647,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
                                 parentProviders.push({
                                     token: preparedProvider.token,
                                     modules: [this, ...preparedProvider.modules],
-                                    providers: preparedProvider.providers.slice()
+                                    providers: preparedProvider.providers.slice(),
                                 });
                             }
                         }

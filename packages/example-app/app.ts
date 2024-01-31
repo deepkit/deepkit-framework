@@ -55,10 +55,11 @@ app.setup((module, config) => {
         module.getImportedModuleByClass(FrameworkModule).configure({ debug: true });
     }
 
-    if (config.environment === 'production') {
-        //enable logging JSON messages instead of formatted strings
-        module.setupGlobalProvider<Logger>().setTransport([new JSONTransport]);
-    }
+    module.configureProvider<Logger>(logger => {
+        if (config.environment === 'production') {
+            logger.setTransport([new JSONTransport]);
+        }
+    });
 });
 
 app.loadConfigFromEnv().run();

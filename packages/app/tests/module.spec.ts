@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { Minimum, MinLength } from '@deepkit/type';
-import { injectorReference, provide } from '@deepkit/injector';
+import { provide } from '@deepkit/injector';
 import { ServiceContainer } from '../src/service-container.js';
 import { ClassType } from '@deepkit/core';
 import { AppModule, createModule } from '../src/module.js';
@@ -151,6 +151,7 @@ test('configured provider', () => {
 
         addTransport(transport: any) {
             this.transporter.push(transport);
+            return this;
         }
     }
 
@@ -164,7 +165,7 @@ test('configured provider', () => {
     {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider<Logger>().addTransport('first').addTransport('second');
+            module.configureProvider<Logger>(v => v.addTransport('first').addTransport('second'));
         })).getInjector(module).get(Logger);
         expect(logger.transporter).toEqual(['first', 'second']);
     }
@@ -172,7 +173,7 @@ test('configured provider', () => {
     {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider<Logger>().transporter = ['first', 'second', 'third'];
+            module.configureProvider<Logger>(v => v.transporter = ['first', 'second', 'third']);
         })).getInjector(module).get(Logger);
         expect(logger.transporter).toEqual(['first', 'second', 'third']);
     }
@@ -180,7 +181,7 @@ test('configured provider', () => {
     {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider<Logger>().addTransport(new Transporter);
+            module.configureProvider<Logger>(v => v.addTransport(new Transporter));
         })).getInjector(module).get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
@@ -188,7 +189,7 @@ test('configured provider', () => {
     {
         const module = new AppModule();
         const logger = new ServiceContainer(module.setup((module) => {
-            module.setupProvider<Logger>().addTransport(injectorReference(Transporter));
+            module.configureProvider<Logger>((v, t: Transporter) => v.addTransport(t));
         })).getInjector(module).get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
