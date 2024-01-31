@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.121](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.120...v1.0.1-alpha.121) (2024-01-31)
+
+### Features
+
+- **http:** allow using unknown/any/never types that are nominal ([3221ff0](https://github.com/deepkit/deepkit-framework/commit/3221ff05ad2a2d426aa8da24c94678a672942831))
+
 ## [1.0.1-alpha.120](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.119...v1.0.1-alpha.120) (2024-01-29)
 
 **Note:** Version bump only for package @deepkit/http

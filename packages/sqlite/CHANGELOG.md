@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.121](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.120...v1.0.1-alpha.121) (2024-01-31)
+
+### Bug Fixes
+
+- **sqlite:** correctly quote column renaming ([e555ac8](https://github.com/deepkit/deepkit-framework/commit/e555ac8992e9f4ebbbf49f4c88f5e9df05954eef))
+
 ## [1.0.1-alpha.120](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.119...v1.0.1-alpha.120) (2024-01-29)
 
 ### Features

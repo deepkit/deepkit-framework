@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.121](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.120...v1.0.1-alpha.121) (2024-01-31)
+
+### Bug Fixes
+
+- **core:** clear timeouts correctly in ProcessLock ([89cd2d5](https://github.com/deepkit/deepkit-framework/commit/89cd2d5631e09555562a2a25d1c098f70406a469))
+- **sqlite:** correctly quote column renaming ([e555ac8](https://github.com/deepkit/deepkit-framework/commit/e555ac8992e9f4ebbbf49f4c88f5e9df05954eef))
+- **topsort:** circular reference detection ([1c01cc1](https://github.com/deepkit/deepkit-framework/commit/1c01cc1794ebece3b5633eee3957dcc81d16228d))
+
+### Features
+
+- **broker:** `await using BrokerLockItem.hold()` for better resource management ([7917fb1](https://github.com/deepkit/deepkit-framework/commit/7917fb14a58a7c0a211107ddd34746e8ffafb9fd))
+- **http:** allow using unknown/any/never types that are nominal ([3221ff0](https://github.com/deepkit/deepkit-framework/commit/3221ff05ad2a2d426aa8da24c94678a672942831))
+
 ## [1.0.1-alpha.120](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.119...v1.0.1-alpha.120) (2024-01-29)
 
 ### Features
