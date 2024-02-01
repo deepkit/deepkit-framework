@@ -95,7 +95,8 @@ export class Resolver {
             source,
             {
                 languageVersion: this.compilerOptions.target || ScriptTarget.ES2018,
-                jsDocParsingMode: JSDocParsingMode.ParseNone,
+                // JSDocParsingMode is not available in TS < 5.3
+                jsDocParsingMode: JSDocParsingMode ? JSDocParsingMode.ParseNone : undefined,
             },
             true,
         ));
