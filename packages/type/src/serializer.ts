@@ -104,6 +104,25 @@ export const underscoreNamingStrategy = new class extends NamingStrategy {
     }
 };
 
+
+/**
+ * Options that can be passed to the Serializer
+ * and configure how JIT functions are generated.
+ */
+export interface JitSerializerOptions {
+    /**
+     * Compiled functions does not emit errors, only fail.
+     * This can improve performance in scenarios where the error data is not relevant.
+     */
+    emitErrors: boolean;
+
+    /**
+     * Serialization & Validation does not allow unpopulated values.
+     * This can generate faster functions for unsafe data.
+     */
+    unpopulatedProps: boolean;
+}
+
 /**
  * Options that can be passed to the serialization/deserialization functions
  * and change the behavior in runtime (not embedded in JIT).
@@ -188,28 +207,29 @@ export function getPartialType(type: TypeClass | TypeObjectLiteral) {
 /**
  * Creates a (cached) Partial<T> of the given type and returns a (cached) serializer function for the given registry (serialize or deserialize).
  */
-export function getPartialSerializeFunction(type: TypeClass | TypeObjectLiteral, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy()) {
-    return getSerializeFunction(getPartialType(type), registry, namingStrategy);
+export function getPartialSerializeFunction(type: TypeClass | TypeObjectLiteral, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), emitErrors = true) {
+    return getSerializeFunction(getPartialType(type), registry, namingStrategy, undefined, undefined, emitErrors);
 }
 
 /**
  * Returns a (cached) serializer function for the given registry (serialize or deserialize).
  */
-export function getSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): SerializeFunction {
+export function getSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack(), emitErrors = true): SerializeFunction {
     const jit = getTypeJitContainer(type);
     const id = registry.id + '_' + namingStrategy.id + '_' + path;
     if (jit[id]) return jit[id];
 
-    jit[id] = createSerializeFunction(type, registry, namingStrategy, path, jitStack);
+    jit[id] = createSerializeFunction(type, registry, namingStrategy, path, jitStack, emitErrors);
     toFastProperties(jit);
 
     return jit[id];
 }
 
-export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): SerializeFunction {
+export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack(), emitErrors = true): SerializeFunction {
     const compiler = new CompilerContext();
 
     const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, path ? [path] : []);
+    state.emitErrors = emitErrors;
     if (state.registry === state.registry.serializer.deserializeRegistry) {
         state.target = 'deserialize';
     }
@@ -219,12 +239,15 @@ export function createSerializeFunction(type: Type, registry: TemplateRegistry, 
     compiler.context.set('UnpopulatedCheck', UnpopulatedCheck);
     compiler.context.set('UnpopulatedCheckReturnSymbol', UnpopulatedCheck.ReturnSymbol);
 
+
     const code = `
         var result;
         state = state ? state : {};
         var oldUnpopulatedCheck = typeSettings.unpopulatedCheck;
         typeSettings.unpopulatedCheck = UnpopulatedCheckReturnSymbol;
         ${executeTemplates(state, type)}
+
+        // console.log('fn deserializer ===>', jit_0.fn.toString());
         typeSettings.unpopulatedCheck = oldUnpopulatedCheck;
         return result;
     `;
@@ -242,6 +265,7 @@ export function createTypeGuardFunction(type: Type, state?: TemplateState, seria
         state.compilerContext = compiler;
     } else {
         state = new TemplateState('result', 'data', compiler, (serializerToUse || serializer).typeGuards.getRegistry(1));
+        state.emitErrors = (serializerToUse || serializer).options.emitErrors;
     }
     state.path = [new RuntimeCode('_path')];
     if (strict) state.validation = 'strict';
@@ -377,6 +401,8 @@ export class TemplateState {
 
     public target: 'serialize' | 'deserialize' = 'serialize';
 
+    public emitErrors = true;
+
     protected handledAnnotations: AnnotationDefinition[] = [];
 
     constructor(
@@ -421,6 +447,7 @@ export class TemplateState {
         state.parentTypes = this.parentTypes;
         state.allSpecificalities = this.allSpecificalities;
         state.handledAnnotations = this.handledAnnotations.slice();
+        state.emitErrors = this.emitErrors;
         return state;
     }
 
@@ -475,6 +502,7 @@ export class TemplateState {
     }
 
     assignValidationError(code: string, message: string) {
+        if (!this.emitErrors) return `/* noop */;`;
         this.setContext({ ValidationErrorItem: ValidationErrorItem });
         return `if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(this.path)}, ${JSON.stringify(code)}, ${JSON.stringify(message)}, ${this.originalAccessor}));`;
     }
@@ -496,7 +524,7 @@ export class TemplateState {
 
     addSetterAndReportErrorIfInvalid(errorCode: string, message: string, code: string) {
         this.addSetter(code);
-        if (this.isValidation()) {
+        if (this.isValidation() && this.emitErrors) {
             this.addCodeForSetter(`if (!${this.setter}) ${this.assignValidationError(errorCode, message)}`);
         }
     }
@@ -783,6 +811,7 @@ export function executeTemplates(
 export function createConverterJSForMember(
     property: ReflectionProperty | TypeProperty | TypePropertySignature | TypeIndexSignature,
     state: TemplateState,
+    opts: JitSerializerOptions,
     undefinedSetterCode: string = '',
     nullSetterCode: string = '',
 ): string {
@@ -834,9 +863,10 @@ export function createConverterJSForMember(
     // }
 
     //todo: clean that up. Way too much code for that simple functionality
+    if (opts.unpopulatedProps) state.setContext({ unpopulatedSymbol });
 
-    state.setContext({ unpopulatedSymbol });
     //note: this code is only reached when ${accessor} was actually defined checked by the 'in' operator.
+    const unpopulatedIf = opts.unpopulatedProps ? `if (${state.accessor} !== unpopulatedSymbol)` : '';
     return `
         if (${state.accessor} === undefined) {
             if (${setExplicitUndefined}) {
@@ -853,7 +883,7 @@ export function createConverterJSForMember(
                     ${undefinedSetterCode}
                 }
             }
-        } else if (${state.accessor} !== unpopulatedSymbol)  {
+        } else ${unpopulatedIf} {
             ${convert}
             ${postTransform}
         }
@@ -1028,7 +1058,13 @@ function groupFilter(type: Type): string {
     return `(state.groups || state.groupsExclude ? isGroupAllowed(state, ${JSON.stringify(groupNames)}) : true)`;
 }
 
-export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState) {
+function quickCheckValidDeclaration(propName: string, code: string) {
+    if (!code) return `let ${propName} = false;`;
+    const isAssignment = code.startsWith(`${propName} = `);
+    return isAssignment ? `let ${code}` : `let ${propName} = false; ${code}`;
+}
+
+export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState, opts: JitSerializerOptions) {
     const embedded = embeddedAnnotation.getFirst(type);
     if (embedded) {
         if (state.isDeserialization) {
@@ -1063,7 +1099,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 
                 for (const property of properties) {
                     const setter = getEmbeddedAccessor(type, true, state.setter, state.registry.serializer, state.namingStrategy, property, embedded, container);
-                    lines.push(createConverterJSForMember(property, state.fork(setter, new ContainerAccessor(state.accessor, JSON.stringify(property.name)))));
+                    lines.push(createConverterJSForMember(property, state.fork(setter, new ContainerAccessor(state.accessor, JSON.stringify(property.name))), opts));
                 }
 
                 state.addCode(`
@@ -1124,7 +1160,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                     preLines.push(`
                     ${argumentName} = undefined;
                     if (${inAccessor(propertyState.accessor as ContainerAccessor)} && ${groupFilter(parameter.type)}) {
-                        ${createConverterJSForMember(property, propertyState)}
+                        ${createConverterJSForMember(property, propertyState, opts)}
                     } else {
                         ${staticDefault}
                     }
@@ -1158,7 +1194,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             } else {
                 lines.push(`
                 if (${readName} in ${state.accessor} && ${groupFilter(member.type)}) {
-                    ${createConverterJSForMember(member, propertyState)}
+                    ${createConverterJSForMember(member, propertyState, opts)}
                 } else { ${staticDefault} }
             `);
             }
@@ -1173,9 +1209,9 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         sortSignatures(signatures);
 
         for (const signature of signatures) {
+            const fork = state.fork(new ContainerAccessor(v, i), new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i));
             signatureLines.push(`else if (${getIndexCheck(state.compilerContext, i, signature.index)} && ${groupFilter(signature.type)}) {
-                ${createConverterJSForMember(signature, state.fork(new ContainerAccessor(v, i), new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)))}
-            }`);
+                ${createConverterJSForMember(signature, fork, opts)}}`);
         }
 
         state.setContext({ hasProperty });
@@ -1239,7 +1275,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     extract.setFunction(buildFunction(state, type));
 }
 
-export function typeGuardEmbedded(type: TypeClass | TypeObjectLiteral, state: TemplateState, embedded: EmbeddedOptions) {
+export function typeGuardEmbedded(type: TypeClass | TypeObjectLiteral, state: TemplateState, embedded: EmbeddedOptions, opts: JitSerializerOptions) {
     const properties = resolveTypeMembers(type).filter(isPropertyMemberType);
     if (properties.length) {
         for (const property of properties) {
@@ -1252,9 +1288,9 @@ export function typeGuardEmbedded(type: TypeClass | TypeObjectLiteral, state: Te
                     state.addCode(executeTemplates(propertyState, property.type));
                 } else {
                     if (accessor instanceof ContainerAccessor) {
-                        state.addCode(`if (${inAccessor(accessor)}) {${createConverterJSForMember(property, propertyState)} }`);
+                        state.addCode(`if (${inAccessor(accessor)}) {${createConverterJSForMember(property, propertyState, opts)} }`);
                     } else {
-                        state.addCode(createConverterJSForMember(property, propertyState));
+                        state.addCode(createConverterJSForMember(property, propertyState, opts));
                     }
                 }
             }
@@ -1262,14 +1298,14 @@ export function typeGuardEmbedded(type: TypeClass | TypeObjectLiteral, state: Te
     }
 }
 
-export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState) {
+export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState, opts: JitSerializerOptions) {
     //this function is used for both, serialize and deserialization. When serializing the type of `type` is strictly correct, so checking embedded fields would lead to wrong results.
     //this embedded check is only necessary when checking types in deserializing.
     if (state.target === 'deserialize') {
         const embedded = embeddedAnnotation.getFirst(type);
         if (embedded) {
             state.addCode('//typeguard for embedded');
-            typeGuardEmbedded(type, state, embedded);
+            typeGuardEmbedded(type, state, embedded, opts);
             return;
         }
     }
@@ -1310,22 +1346,25 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 const template = executeTemplates(propertyState, member.type);
                 if (!template) throw new Error(`No template found for ${member.type.kind}`);
 
-                lines.push(`let ${checkValid} = false;` + template);
+                lines.push(quickCheckValidDeclaration(checkValid, template));
             } else {
                 const optionalCheck = member.optional ? `${propertyAccessor} !== undefined && ` : '';
                 existing.push(readName);
 
-                state.setContext({ unpopulatedSymbol });
+                if (opts.unpopulatedProps) state.setContext({ unpopulatedSymbol });
                 const forType: Type = member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
                     ? { kind: ReflectionKind.function, name: memberNameToString(member.name), return: member.return, parameters: member.parameters }
                     : member.type;
                 const checkTemplate = executeTemplates(propertyState, forType).trim();
-                lines.push(`
-                if (${optionalCheck} ${propertyAccessor} !== unpopulatedSymbol) {
-                    let ${checkValid} = false;
-                    ${checkTemplate || `// no template found for member ${String(member.name)}.type.kind=${forType.kind}`}
+                const noTemplate = checkTemplate ? '' : `\n// no template found for member ${String(member.name)}.type.kind=${forType.kind}`;
+                const propertyCheck = `
+                    ${quickCheckValidDeclaration(checkValid, checkTemplate)} ${noTemplate}
                     if (!${checkValid}) ${state.setter} = false;
-                }`);
+                `;
+                const unpopulatedCheck = opts.unpopulatedProps
+                    ? `if (${optionalCheck} ${propertyAccessor} !== unpopulatedSymbol) {\n${propertyCheck}\n}`
+                    : propertyCheck ;
+                lines.push(unpopulatedCheck);
             }
         }
     }
@@ -1340,9 +1379,9 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         for (const signature of signatures) {
             const checkValid = state.compilerContext.reserveName('check');
             const checkTemplate = executeTemplates(state.fork(checkValid, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), signature.type).trim();
+            const noTemplate = checkTemplate ? '' : `\n// no template found for signature.type.kind=${signature.type.kind}`;
             signatureLines.push(`else if (${getIndexCheck(state.compilerContext, i, signature.index)}) {
-                let ${checkValid} = false;
-                ${checkTemplate || `// no template found for signature.type.kind=${signature.type.kind}`}
+                ${quickCheckValidDeclaration(checkValid, checkTemplate)} ${noTemplate}
                 if (!${checkValid}) ${state.setter} = false;
             }`);
         }
@@ -1371,10 +1410,12 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         if (reflection.validationMethod) {
             const resVar = state.setVariable('validationResult');
             const method = state.setVariable('method', reflection.validationMethod);
+            const errors = opts.emitErrors ? `
+                if (${resVar} && state.errors) state.errors.push(new ValidationErrorItem(${resVar}.path || ${collapsePath(state.path)}, ${resVar}.code, ${resVar}.message));
+            ` : '';
             customValidatorCall = `
             if (${state.setter}) {
-                ${resVar} = ${state.accessor}[${method}]();
-                if (${resVar} && state.errors) state.errors.push(new ValidationErrorItem(${resVar}.path || ${collapsePath(state.path)}, ${resVar}.code, ${resVar}.message));
+                ${resVar} = ${state.accessor}[${method}](); ${errors}
             }
             `;
         }
@@ -1819,11 +1860,13 @@ export class Serializer {
     deserializeRegistry = new TemplateRegistry(this);
     typeGuards = new TypeGuardRegistry(this);
     validators = new TemplateRegistry(this);
+    options: JitSerializerOptions;
 
-    constructor(public name: string = 'json') {
+    constructor( public name: string = 'json', options = { emitErrors: true, unpopulatedProps: true }) {
         this.registerSerializers();
         this.registerTypeGuards();
         this.registerValidators();
+        this.options = options;
     }
 
     public setExplicitUndefined(type: Type, state: TemplateState): boolean {
@@ -1850,10 +1893,10 @@ export class Serializer {
         });
         this.serializeRegistry.register(ReflectionKind.object, (type, state) => state.addSetter(state.accessor));
 
-        this.deserializeRegistry.register(ReflectionKind.class, serializeObjectLiteral);
-        this.serializeRegistry.register(ReflectionKind.class, serializeObjectLiteral);
-        this.deserializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
-        this.serializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
+        this.deserializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.options));;
+        this.serializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.options));
+        this.deserializeRegistry.register(ReflectionKind.objectLiteral, (type, state) => serializeObjectLiteral(type, state, this.options));
+        this.serializeRegistry.register(ReflectionKind.objectLiteral, (type, state) => serializeObjectLiteral(type, state, this.options));
 
         this.deserializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
         this.serializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
@@ -2068,8 +2111,8 @@ export class Serializer {
             state.setContext({ isObject });
             state.addSetter(`isObject(${state.accessor})`);
         });
-        this.typeGuards.register(1, ReflectionKind.objectLiteral, (type, state) => typeGuardObjectLiteral(type, state));
-        this.typeGuards.register(1, ReflectionKind.class, (type, state) => typeGuardObjectLiteral(type, state));
+        this.typeGuards.register(1, ReflectionKind.objectLiteral, (type, state) => typeGuardObjectLiteral(type, state, this.options));
+        this.typeGuards.register(1, ReflectionKind.class, (type, state) => typeGuardObjectLiteral(type, state, this.options));
 
         // //for deserialization type guards (specifically > 1) we check for embedded type sas well. this is because an embedded could have totally different field names.
         // //and only if the property (where the embedded is placed) has no strict type guard do we look for other fields as well.
@@ -2243,12 +2286,14 @@ export class Serializer {
                             }
                         }
                     }
+                    const errors = this.options.emitErrors ? `
+                        if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message, ${state.originalAccessor}));
+                    ` : '' ;
                     state.addCode(`
                         {
                             let error = ${validatorVar}(${state.originalAccessor}, ${state.compilerContext.reserveConst(type, 'type')}, ${optionVar ? optionVar : 'undefined'});
                             if (error) {
-                                ${state.setter} = false;
-                                if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message, ${state.originalAccessor}));
+                                ${state.setter} = false; ${errors}
                             }
                         }
                     `);
@@ -2257,12 +2302,14 @@ export class Serializer {
                     if (validator) {
                         state.setContext({ ValidationErrorItem: ValidationErrorItem });
                         const validatorVar = state.setVariable('validator', validator(...args));
+                        const errors = this.options.emitErrors ? `
+                            if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message, ${state.originalAccessor}));
+                        ` : '' ;
                         state.addCode(`
                             {
                                 let error = ${validatorVar}(${state.originalAccessor}, ${state.compilerContext.reserveConst(type, 'type')});
                                 if (error) {
-                                    ${state.setter} = false;
-                                    if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message, ${state.originalAccessor}));
+                                    ${state.setter} = false; ${errors}
                                 }
                             }
                         `);
@@ -2312,8 +2359,8 @@ export const serializableKinds: ReflectionKind[] = [
 ];
 
 export class EmptySerializer extends Serializer {
-    constructor(name: string = 'empty') {
-        super(name);
+    constructor(name: string = 'empty', options = { emitErrors: true, unpopulatedProps: true }) {
+        super(name, options);
     }
 
     protected registerValidators() {
@@ -2323,10 +2370,10 @@ export class EmptySerializer extends Serializer {
         for (const kind of serializableKinds) this.serializeRegistry.register(kind, assignAccessorTemplate);
         for (const kind of serializableKinds) this.deserializeRegistry.register(kind, assignAccessorTemplate);
 
-        this.deserializeRegistry.register(ReflectionKind.class, serializeObjectLiteral);
-        this.serializeRegistry.register(ReflectionKind.class, serializeObjectLiteral);
-        this.deserializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
-        this.serializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
+        this.deserializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.options));
+        this.serializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.options));
+        this.deserializeRegistry.register(ReflectionKind.objectLiteral,(type, state) =>  serializeObjectLiteral(type, state, this.options));
+        this.serializeRegistry.register(ReflectionKind.objectLiteral, (type, state) => serializeObjectLiteral(type, state, this.options));
 
         this.deserializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
         this.serializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
@@ -2356,3 +2403,4 @@ export class EmptySerializer extends Serializer {
 }
 
 export const serializer: Serializer = new Serializer();
+export const quickSerializer: Serializer = new Serializer(undefined, {emitErrors: false, unpopulatedProps: false});
