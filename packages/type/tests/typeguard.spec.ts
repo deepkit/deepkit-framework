@@ -7,31 +7,27 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { expect, test } from '@jest/globals';
+import { expect, test, describe } from '@jest/globals';
 import { float, float32, int8, integer, PrimaryKey, Reference } from '../src/reflection/type.js';
 import { is } from '../src/typeguard.js';
-import { serializer, quickSerializer, Serializer} from '../src/serializer.js';
+import { serializer, quickSerializer} from '../src/serializer.js';
 
-serializerSuit(serializer, 'serializer');
-serializerSuit(quickSerializer, 'Quick');
-
-function serializerSuit(testSerializer: Serializer, name: string) {
-    const sfx = ` ==> ${name}`;
-    test('primitive string' + sfx, () => {
+describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']])('typeguard suit', (testSerializer, name) => {
+    test(`primitive string ${name}`, () => {
         expect(is<string>('a', testSerializer)).toEqual(true);
         expect(is<string>(123, testSerializer)).toEqual(false);
         expect(is<string>(true, testSerializer)).toEqual(false);
         expect(is<string>({}, testSerializer)).toEqual(false);
     });
 
-    test('primitive number' + sfx, () => {
+    test(`primitive number ${name}`, () => {
         expect(is<number>('a', testSerializer)).toEqual(false);
         expect(is<number>(123, testSerializer)).toEqual(true);
         expect(is<number>(true, testSerializer)).toEqual(false);
         expect(is<number>({}, testSerializer)).toEqual(false);
     });
 
-    test('primitive number integer' + sfx, () => {
+    test(`primitive number integer ${name}`, () => {
         expect(is<integer>('a', testSerializer)).toEqual(false);
         expect(is<integer>(123, testSerializer)).toEqual(true);
         expect(is<integer>(123.4, testSerializer)).toEqual(false);
@@ -39,7 +35,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<integer>({}, testSerializer)).toEqual(false);
     });
 
-    test('primitive number int8' + sfx, () => {
+    test(`primitive number int8 ${name}`, () => {
         expect(is<int8>('a', testSerializer)).toEqual(false);
         expect(is<int8>(123, testSerializer)).toEqual(true);
         expect(is<int8>(123.4, testSerializer)).toEqual(false);
@@ -52,7 +48,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<int8>(129, testSerializer)).toEqual(false);
     });
 
-    test('primitive number float' + sfx, () => {
+    test(`primitive number float ${name}`, () => {
         expect(is<float>('a', testSerializer)).toEqual(false);
         expect(is<float>(123, testSerializer)).toEqual(true);
         expect(is<float>(123.4, testSerializer)).toEqual(true);
@@ -60,7 +56,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<float>({}, testSerializer)).toEqual(false);
     });
 
-    test('primitive number float32' + sfx, () => {
+    test(`primitive number float32 ${name}`, () => {
         expect(is<float32>('a', testSerializer)).toEqual(false);
         expect(is<float32>(123, testSerializer)).toEqual(true);
         expect(is<float32>(123.4, testSerializer)).toEqual(true);
@@ -73,7 +69,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<float32>({}, testSerializer)).toEqual(false);
     });
 
-    test('enum' + sfx, () => {
+    test(`enum ${name}`, () => {
         enum MyEnum {
             a, b, c
         }
@@ -87,7 +83,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<MyEnum>(true, testSerializer)).toEqual(false);
     });
 
-    test('enum const' + sfx, () => {
+    test(`enum const ${name}`, () => {
         const enum MyEnum {
             a, b, c
         }
@@ -101,7 +97,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<MyEnum>(true, testSerializer)).toEqual(false);
     });
 
-    test('enum string' + sfx, () => {
+    test(`enum string ${name}`, () => {
         enum MyEnum {
             a = 'a', b = 'b', c = 'c'
         }
@@ -118,7 +114,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<MyEnum>(true, testSerializer)).toEqual(false);
     });
 
-    test('array string' + sfx, () => {
+    test(`array string ${name}`, () => {
         expect(is<string[]>([], testSerializer)).toEqual(true);
         expect(is<string[]>(['a'], testSerializer)).toEqual(true);
         expect(is<string[]>(['a', 'b'], testSerializer)).toEqual(true);
@@ -127,7 +123,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<string[]>(['a', 2], testSerializer)).toEqual(false);
     });
 
-    test('tuple' + sfx, () => {
+    test(`tuple ${name}`, () => {
         expect(is<[string]>(['a'], testSerializer)).toEqual(true);
         expect(is<[string]>([2], testSerializer)).toEqual(false);
         expect(is<[string, string]>(['a', 'b'], testSerializer)).toEqual(true);
@@ -140,7 +136,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<[string, ...number[]]>([3, 3, 4, 5], testSerializer)).toEqual(false);
     });
 
-    test('set' + sfx, () => {
+    test(`set ${name}`, () => {
         expect(is<Set<string>>(new Set(['a']), testSerializer)).toEqual(true);
         expect(is<Set<string>>(new Set(['a', 'b']), testSerializer)).toEqual(true);
         expect(is<Set<string>>(new Set(['a', 2]), testSerializer)).toEqual(false);
@@ -148,14 +144,14 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<Set<string>>([2, 3], testSerializer)).toEqual(false);
     });
 
-    test('map' + sfx, () => {
+    test(`map ${name}`, () => {
         expect(is<Map<string, number>>(new Map([['a', 1]]), testSerializer)).toEqual(true);
         expect(is<Map<string, number>>(new Map([['a', 1], ['b', 2]]), testSerializer)).toEqual(true);
         expect(is<Map<string, number>>(new Map<any, any>([['a', 1], ['b', 'b']]), testSerializer)).toEqual(false);
         expect(is<Map<string, number>>(new Map<any, any>([[2, 1]]), testSerializer)).toEqual(false);
     });
 
-    test('literal' + sfx, () => {
+    test(`literal ${name}`, () => {
         expect(is<1>(1, testSerializer)).toEqual(true);
         expect(is<1>(2, testSerializer)).toEqual(false);
         expect(is<'abc'>('abc', testSerializer)).toEqual(true);
@@ -166,7 +162,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<true>(false, testSerializer)).toEqual(false);
     });
 
-    test('any' + sfx, () => {
+    test(`any ${name}`, () => {
         expect(is<any>(['a'], testSerializer)).toEqual(true);
         expect(is<any>([1], testSerializer)).toEqual(true);
         expect(is<any>([true], testSerializer)).toEqual(true);
@@ -186,7 +182,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<any>([], testSerializer)).toEqual(true);
     });
 
-    test('array any' + sfx, () => {
+    test(`array any ${name}`, () => {
         expect(is<any[]>(['a'], testSerializer)).toEqual(true);
         expect(is<any[]>([1], testSerializer)).toEqual(true);
         expect(is<any[]>([true], testSerializer)).toEqual(true);
@@ -210,13 +206,13 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<any[]>({length:undefined}, testSerializer)).toEqual(false);
     });
 
-    test('union' + sfx, () => {
+    test(`union ${name}`, () => {
         expect(is<string | number>(1, testSerializer)).toEqual(true);
         expect(is<string | number>('abc', testSerializer)).toEqual(true);
         expect(is<string | number>(false, testSerializer)).toEqual(false);
     });
 
-    test('deep union' + sfx, () => {
+    test(`deep union ${name}`, () => {
         expect(is<string | (number | bigint)[]>(1, testSerializer)).toEqual(false);
         expect(is<string | (number | bigint)[]>('1', testSerializer)).toEqual(true);
         expect(is<string | (number | bigint)[]>([1], testSerializer)).toEqual(true);
@@ -224,7 +220,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<string | (number | bigint)[]>(['1'], testSerializer)).toEqual(false);
     });
 
-    test('object literal' + sfx, () => {
+    test(`object literal ${name}`, () => {
         expect(is<{ a: string }>({ a: 'abc' }, testSerializer)).toEqual(true);
         expect(is<{ a: string }>({ a: 123 }, testSerializer)).toEqual(false);
         expect(is<{ a: string }>({}, testSerializer)).toEqual(false);
@@ -235,7 +231,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<{ a: string, b: number }>({ a: 'a', b: 'asd' }, testSerializer)).toEqual(false);
     });
 
-    test('class' + sfx, () => {
+    test(`class ${name}`, () => {
         class A {
             a!: string;
         }
@@ -259,7 +255,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<A3>({ a: 'a', b: 'asd' }, testSerializer)).toEqual(false);
     });
 
-    test('index signature' + sfx, () => {
+    test(`index signature ${name}`, () => {
         expect(is<{ [name: string]: string }>({}, testSerializer)).toEqual(true);
         expect(is<{ [name: string]: string }>({ a: 'abc' }, testSerializer)).toEqual(true);
         expect(is<{ [name: string]: string }>({ a: 123 }, testSerializer)).toEqual(false);
@@ -269,7 +265,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<{ [name: number]: string }>({ a: 'abc' }, testSerializer)).toEqual(false);
     });
 
-    test('object literal methods' + sfx, () => {
+    test(`object literal methods ${name}`, () => {
         expect(is<{ m: () => void }>({ m: (): void => undefined }, testSerializer)).toEqual(true);
         expect(is<{ m: () => void }>({ m: false }, testSerializer)).toEqual(false);
         expect(is<{ m: (name: string) => void }>({ m: () => undefined }, testSerializer)).toEqual(true); //`() => undefined` has no types, so no __type emitted. Means return=any
@@ -282,7 +278,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<{ m: (name: any) => number }>({ m: (name: string): number => 2 }, testSerializer)).toEqual(true);
     });
 
-    test('multiple index signature' + sfx, () => {
+    test(`multiple index signature ${name}`, () => {
         expect(is<{ [name: string]: string | number, [name: number]: string }>({}, testSerializer)).toEqual(true);
         expect(is<{ [name: string]: string | number, [name: number]: number }>({ a: 'abc' }, testSerializer)).toEqual(true);
         expect(is<{ [name: string]: string | number, [name: number]: number }>({ a: 123 }, testSerializer)).toEqual(true);
@@ -290,12 +286,12 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<{ [name: string]: string | number, [name: number]: number }>({ 1: 'abc' }, testSerializer)).toEqual(false);
     });
 
-    test('brands' + sfx, () => {
+    test(`brands ${name}`, () => {
         expect(is<number & PrimaryKey>(2, testSerializer)).toEqual(true);
         expect(is<number & PrimaryKey>('2', testSerializer)).toEqual(false);
     });
 
-    test('generic interface' + sfx, () => {
+    test(`generic interface ${name}`, () => {
         interface List<T> {
             items: T[];
         }
@@ -306,7 +302,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<List<string>>({ items: ['abc'] }, testSerializer)).toEqual(true);
     });
 
-    test('generic alias' + sfx, () => {
+    test(`generic alias ${name}`, () => {
         type List<T> = T[];
 
         expect(is<List<number>>([1], testSerializer)).toEqual(true);
@@ -315,7 +311,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<List<string>>(['abc'], testSerializer)).toEqual(true);
     });
 
-    test('index signature ' + sfx, () => {
+    test(`index signature  ${name}`, () => {
         interface BagOfNumbers {
             [name: string]: number;
         }
@@ -335,7 +331,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<BagOfStrings>({ a: 'b', b: 'c' }, testSerializer)).toEqual(true);
     });
 
-    test('reference' + sfx, () => {
+    test(`reference ${name}`, () => {
         class Image {
             id: number = 0;
         }
@@ -356,7 +352,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<User>({ image: {} }, testSerializer)).toEqual(false);
     });
 
-    test('template literal' + sfx, () => {
+    test(`template literal ${name}`, () => {
         expect(is<`abc`>('abc')).toBe(true);
         expect(is<`abc`>('abce')).toBe(false);
 
@@ -382,14 +378,14 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<`ab${number}`>('abc')).toBe(false);
     });
 
-    test('union template literal' + sfx, () => {
+    test(`union template literal ${name}`, () => {
         expect(is<`abc${number}` | number>('abc2')).toBe(true);
         expect(is<`abc${number}` | number>(23)).toBe(true);
         expect(is<`abc${number}` | number>('abcd')).toBe(false);
         expect(is<`abc${number}` | number>('abc')).toBe(false);
     });
 
-    test('class with literal and default' + sfx, () => {
+    test(`class with literal and default ${name}`, () => {
         class ConnectionOptions {
             readConcernLevel: 'local' = 'local';
         }
@@ -398,7 +394,7 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<ConnectionOptions>({readConcernLevel: 'local2'})).toBe(false);
     });
 
-    test('union literal' + sfx, () => {
+    test(`union literal ${name}`, () => {
         class ConnectionOptions {
             readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';
         }
@@ -406,4 +402,4 @@ function serializerSuit(testSerializer: Serializer, name: string) {
         expect(is<ConnectionOptions>({readConcernLevel: 'majority'})).toBe(true);
         expect(is<ConnectionOptions>({readConcernLevel: 'majority2'})).toBe(false);
     });
-}
+});
