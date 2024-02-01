@@ -111,17 +111,29 @@ export const underscoreNamingStrategy = new class extends NamingStrategy {
  */
 export interface JitSerializerOptions {
     /**
-     * Compiled functions does not emit errors, only fail.
+     * Controls wether or not generated JIT functions emit errors.
      * This can improve performance in scenarios where the error data is not relevant.
+     * Defaults to true.
      */
     emitErrors: boolean;
 
     /**
-     * Serialization & Validation does not allow unpopulated values.
+     * Controls wether or not generated JIT function allow unpopulated values.
      * This can generate faster functions for unsafe data.
+     * Defaults to true.
      */
     unpopulatedProps: boolean;
+
+
+    /**
+     * Controls wether or not generated JIT functions allow for grouping functionality.
+     * Defaults to true.
+     */
+    allowGroups: boolean;
 }
+
+export const defaultJitOpts: JitSerializerOptions = Object.freeze({ emitErrors: true, unpopulatedProps: true, allowGroups: true });
+export const defaultQuickJitOpts: JitSerializerOptions = Object.freeze({ emitErrors: false, unpopulatedProps: false, allowGroups: false });
 
 /**
  * Options that can be passed to the serialization/deserialization functions
@@ -1062,7 +1074,7 @@ function quickCheckInitialization(propName: string, code: string) {
     return isAssignment ? `let ${code}` : `let ${propName} = false; ${code}`;
 }
 
-export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState, opts: JitSerializerOptions = { emitErrors: true, unpopulatedProps: true }) {
+export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState, opts: JitSerializerOptions = defaultJitOpts) {
     const embedded = embeddedAnnotation.getFirst(type);
     if (embedded) {
         if (state.isDeserialization) {
@@ -1115,7 +1127,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     if (callExtractedFunctionIfAvailable(state, type)) return;
     const extract = extractStateToFunctionAndCallIt(state, type);
     state = extract.state;
-    state.setContext({ isGroupAllowed });
+    if (opts.allowGroups) state.setContext({ isGroupAllowed });
 
     const v = state.compilerContext.reserveName('v');
     const lines: string[] = [];
@@ -1155,13 +1167,13 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 if (embedded) {
                     preLines.push(executeTemplates(propertyState, property.type));
                 } else {
+                    const allowGroupsCheck = opts.allowGroups ? `&& ${groupFilter(parameter.type)}` : '';
+                    const elseGroup = staticDefault ? ` else {\n${staticDefault}\n}` : '';
                     preLines.push(`
                     ${argumentName} = undefined;
-                    if (${inAccessor(propertyState.accessor as ContainerAccessor)} && ${groupFilter(parameter.type)}) {
+                    if (${inAccessor(propertyState.accessor as ContainerAccessor)} ${allowGroupsCheck}) {
                         ${createConverterJSForMember(property, propertyState, opts)}
-                    } else {
-                        ${staticDefault}
-                    }
+                    } ${elseGroup}
                 `);
                 }
 
@@ -1190,10 +1202,12 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             if (hasEmbedded(member.type)) {
                 lines.push(executeTemplates(propertyState, member.type));
             } else {
+                const allowGroupsCheck = opts.allowGroups ? `&& ${groupFilter(member.type)}` : '';
+                const elseGroup = staticDefault ? ` else {\n${staticDefault}\n}` : '';
                 lines.push(`
-                if (${readName} in ${state.accessor} && ${groupFilter(member.type)}) {
+                if (${readName} in ${state.accessor} ${allowGroupsCheck}) {
                     ${createConverterJSForMember(member, propertyState, opts)}
-                } else { ${staticDefault} }
+                } ${elseGroup}
             `);
             }
         }
@@ -1208,7 +1222,8 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 
         for (const signature of signatures) {
             const fork = state.fork(new ContainerAccessor(v, i), new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i));
-            signatureLines.push(`else if (${getIndexCheck(state.compilerContext, i, signature.index)} && ${groupFilter(signature.type)}) {
+            const allowGroupsCheck = opts.allowGroups ? `&& ${groupFilter(signature.type)}` : '';
+            signatureLines.push(`else if (${getIndexCheck(state.compilerContext, i, signature.index)} ${allowGroupsCheck}) {
                 ${createConverterJSForMember(signature, fork, opts)}}`);
         }
 
@@ -1860,7 +1875,7 @@ export class Serializer {
     validators = new TemplateRegistry(this);
     jitOptions: JitSerializerOptions;
 
-    constructor( public name: string = 'json', jitOptions = { emitErrors: true, unpopulatedProps: true }) {
+    constructor( public name: string = 'json', jitOptions = defaultJitOpts) {
         this.registerSerializers();
         this.registerTypeGuards();
         this.registerValidators();
@@ -2357,7 +2372,7 @@ export const serializableKinds: ReflectionKind[] = [
 ];
 
 export class EmptySerializer extends Serializer {
-    constructor(name: string = 'empty', jitOptions = { emitErrors: true, unpopulatedProps: true }) {
+    constructor(name: string = 'empty', jitOptions = defaultJitOpts) {
         super(name, jitOptions);
     }
 
@@ -2401,4 +2416,4 @@ export class EmptySerializer extends Serializer {
 }
 
 export const serializer: Serializer = new Serializer();
-export const quickSerializer: Serializer = new Serializer(undefined, {emitErrors: false, unpopulatedProps: false});
+export const quickSerializer: Serializer = new Serializer(undefined, defaultQuickJitOpts);
