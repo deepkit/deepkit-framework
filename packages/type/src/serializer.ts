@@ -246,8 +246,6 @@ export function createSerializeFunction(type: Type, registry: TemplateRegistry, 
         var oldUnpopulatedCheck = typeSettings.unpopulatedCheck;
         typeSettings.unpopulatedCheck = UnpopulatedCheckReturnSymbol;
         ${executeTemplates(state, type)}
-
-        // console.log('fn deserializer ===>', jit_0.fn.toString());
         typeSettings.unpopulatedCheck = oldUnpopulatedCheck;
         return result;
     `;
@@ -502,7 +500,7 @@ export class TemplateState {
     }
 
     assignValidationError(code: string, message: string) {
-        if (!this.emitErrors) return `/* noop */;`;
+        if (!this.emitErrors) return `{/* noop */};`;
         this.setContext({ ValidationErrorItem: ValidationErrorItem });
         return `if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(this.path)}, ${JSON.stringify(code)}, ${JSON.stringify(message)}, ${this.originalAccessor}));`;
     }
@@ -1058,7 +1056,7 @@ function groupFilter(type: Type): string {
     return `(state.groups || state.groupsExclude ? isGroupAllowed(state, ${JSON.stringify(groupNames)}) : true)`;
 }
 
-function quickCheckValidDeclaration(propName: string, code: string) {
+function quickCheckInitialization(propName: string, code: string) {
     if (!code) return `let ${propName} = false;`;
     const isAssignment = code.startsWith(`${propName} = `);
     return isAssignment ? `let ${code}` : `let ${propName} = false; ${code}`;
@@ -1346,22 +1344,22 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 const template = executeTemplates(propertyState, member.type);
                 if (!template) throw new Error(`No template found for ${member.type.kind}`);
 
-                lines.push(quickCheckValidDeclaration(checkValid, template));
+                lines.push(quickCheckInitialization(checkValid, template));
             } else {
                 const optionalCheck = member.optional ? `${propertyAccessor} !== undefined && ` : '';
                 existing.push(readName);
-
-                if (opts.unpopulatedProps) state.setContext({ unpopulatedSymbol });
+                const isOptional = member.optional || opts.unpopulatedProps;
+                if (isOptional) state.setContext({ unpopulatedSymbol });
                 const forType: Type = member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
                     ? { kind: ReflectionKind.function, name: memberNameToString(member.name), return: member.return, parameters: member.parameters }
                     : member.type;
                 const checkTemplate = executeTemplates(propertyState, forType).trim();
                 const noTemplate = checkTemplate ? '' : `\n// no template found for member ${String(member.name)}.type.kind=${forType.kind}`;
                 const propertyCheck = `
-                    ${quickCheckValidDeclaration(checkValid, checkTemplate)} ${noTemplate}
+                    ${quickCheckInitialization(checkValid, checkTemplate)} ${noTemplate}
                     if (!${checkValid}) ${state.setter} = false;
                 `;
-                const unpopulatedCheck = opts.unpopulatedProps
+                const unpopulatedCheck = isOptional
                     ? `if (${optionalCheck} ${propertyAccessor} !== unpopulatedSymbol) {\n${propertyCheck}\n}`
                     : propertyCheck ;
                 lines.push(unpopulatedCheck);
@@ -1381,7 +1379,7 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             const checkTemplate = executeTemplates(state.fork(checkValid, new ContainerAccessor(state.accessor, i)).extendPath(new RuntimeCode(i)), signature.type).trim();
             const noTemplate = checkTemplate ? '' : `\n// no template found for signature.type.kind=${signature.type.kind}`;
             signatureLines.push(`else if (${getIndexCheck(state.compilerContext, i, signature.index)}) {
-                ${quickCheckValidDeclaration(checkValid, checkTemplate)} ${noTemplate}
+                ${quickCheckInitialization(checkValid, checkTemplate)} ${noTemplate}
                 if (!${checkValid}) ${state.setter} = false;
             }`);
         }
