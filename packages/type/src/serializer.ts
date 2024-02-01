@@ -263,7 +263,7 @@ export function createTypeGuardFunction(type: Type, state?: TemplateState, seria
         state.compilerContext = compiler;
     } else {
         state = new TemplateState('result', 'data', compiler, (serializerToUse || serializer).typeGuards.getRegistry(1));
-        state.emitErrors = (serializerToUse || serializer).options.emitErrors;
+        state.emitErrors = (serializerToUse || serializer).jitOptions.emitErrors;
     }
     state.path = [new RuntimeCode('_path')];
     if (strict) state.validation = 'strict';
@@ -1062,7 +1062,7 @@ function quickCheckInitialization(propName: string, code: string) {
     return isAssignment ? `let ${code}` : `let ${propName} = false; ${code}`;
 }
 
-export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState, opts: JitSerializerOptions) {
+export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, state: TemplateState, opts: JitSerializerOptions = { emitErrors: true, unpopulatedProps: true }) {
     const embedded = embeddedAnnotation.getFirst(type);
     if (embedded) {
         if (state.isDeserialization) {
@@ -1858,13 +1858,13 @@ export class Serializer {
     deserializeRegistry = new TemplateRegistry(this);
     typeGuards = new TypeGuardRegistry(this);
     validators = new TemplateRegistry(this);
-    options: JitSerializerOptions;
+    jitOptions: JitSerializerOptions;
 
-    constructor( public name: string = 'json', options = { emitErrors: true, unpopulatedProps: true }) {
+    constructor( public name: string = 'json', jitOptions = { emitErrors: true, unpopulatedProps: true }) {
         this.registerSerializers();
         this.registerTypeGuards();
         this.registerValidators();
-        this.options = options;
+        this.jitOptions = jitOptions;
     }
 
     public setExplicitUndefined(type: Type, state: TemplateState): boolean {
@@ -1891,10 +1891,10 @@ export class Serializer {
         });
         this.serializeRegistry.register(ReflectionKind.object, (type, state) => state.addSetter(state.accessor));
 
-        this.deserializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.options));;
-        this.serializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.options));
-        this.deserializeRegistry.register(ReflectionKind.objectLiteral, (type, state) => serializeObjectLiteral(type, state, this.options));
-        this.serializeRegistry.register(ReflectionKind.objectLiteral, (type, state) => serializeObjectLiteral(type, state, this.options));
+        this.deserializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.jitOptions));;
+        this.serializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.jitOptions));
+        this.deserializeRegistry.register(ReflectionKind.objectLiteral, (type, state) => serializeObjectLiteral(type, state, this.jitOptions));
+        this.serializeRegistry.register(ReflectionKind.objectLiteral, (type, state) => serializeObjectLiteral(type, state, this.jitOptions));
 
         this.deserializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
         this.serializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
@@ -2109,8 +2109,8 @@ export class Serializer {
             state.setContext({ isObject });
             state.addSetter(`isObject(${state.accessor})`);
         });
-        this.typeGuards.register(1, ReflectionKind.objectLiteral, (type, state) => typeGuardObjectLiteral(type, state, this.options));
-        this.typeGuards.register(1, ReflectionKind.class, (type, state) => typeGuardObjectLiteral(type, state, this.options));
+        this.typeGuards.register(1, ReflectionKind.objectLiteral, (type, state) => typeGuardObjectLiteral(type, state, this.jitOptions));
+        this.typeGuards.register(1, ReflectionKind.class, (type, state) => typeGuardObjectLiteral(type, state, this.jitOptions));
 
         // //for deserialization type guards (specifically > 1) we check for embedded type sas well. this is because an embedded could have totally different field names.
         // //and only if the property (where the embedded is placed) has no strict type guard do we look for other fields as well.
@@ -2284,7 +2284,7 @@ export class Serializer {
                             }
                         }
                     }
-                    const errors = this.options.emitErrors ? `
+                    const errors = this.jitOptions.emitErrors ? `
                         if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message, ${state.originalAccessor}));
                     ` : '' ;
                     state.addCode(`
@@ -2300,7 +2300,7 @@ export class Serializer {
                     if (validator) {
                         state.setContext({ ValidationErrorItem: ValidationErrorItem });
                         const validatorVar = state.setVariable('validator', validator(...args));
-                        const errors = this.options.emitErrors ? `
+                        const errors = this.jitOptions.emitErrors ? `
                             if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message, ${state.originalAccessor}));
                         ` : '' ;
                         state.addCode(`
@@ -2357,8 +2357,8 @@ export const serializableKinds: ReflectionKind[] = [
 ];
 
 export class EmptySerializer extends Serializer {
-    constructor(name: string = 'empty', options = { emitErrors: true, unpopulatedProps: true }) {
-        super(name, options);
+    constructor(name: string = 'empty', jitOptions = { emitErrors: true, unpopulatedProps: true }) {
+        super(name, jitOptions);
     }
 
     protected registerValidators() {
@@ -2368,10 +2368,10 @@ export class EmptySerializer extends Serializer {
         for (const kind of serializableKinds) this.serializeRegistry.register(kind, assignAccessorTemplate);
         for (const kind of serializableKinds) this.deserializeRegistry.register(kind, assignAccessorTemplate);
 
-        this.deserializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.options));
-        this.serializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.options));
-        this.deserializeRegistry.register(ReflectionKind.objectLiteral,(type, state) =>  serializeObjectLiteral(type, state, this.options));
-        this.serializeRegistry.register(ReflectionKind.objectLiteral, (type, state) => serializeObjectLiteral(type, state, this.options));
+        this.deserializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.jitOptions));
+        this.serializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.jitOptions));
+        this.deserializeRegistry.register(ReflectionKind.objectLiteral,(type, state) =>  serializeObjectLiteral(type, state, this.jitOptions));
+        this.serializeRegistry.register(ReflectionKind.objectLiteral, (type, state) => serializeObjectLiteral(type, state, this.jitOptions));
 
         this.deserializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
         this.serializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));

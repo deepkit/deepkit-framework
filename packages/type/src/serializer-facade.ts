@@ -24,7 +24,7 @@ import { findMember, getTypeJitContainer, ReflectionKind, Type, TypeClass, TypeO
  * @throws ValidationError if casting or validation fails
  */
 export function cast<T>(data: JSONPartial<T> | unknown, options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): T {
-    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy, undefined, undefined, serializerToUse.options.emitErrors);
+    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy, undefined, undefined, serializerToUse.jitOptions.emitErrors);
     const item = fn(data, options) as T;
     assert(item, undefined, type);
     return item;
@@ -34,7 +34,7 @@ export function cast<T>(data: JSONPartial<T> | unknown, options?: SerializationO
  * Same as cast but returns a ready to use function. Used to improve performance.
  */
 export function castFunction<T>(serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): (data: JSONPartial<T> | unknown, options?: SerializationOptions) => T {
-    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy, undefined, undefined, serializerToUse.options.emitErrors);
+    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy, undefined, undefined, serializerToUse.jitOptions.emitErrors);
     return (data: JSONPartial<T> | unknown, options?: SerializationOptions) => {
         const item = fn(data, options);
         assert(item, undefined, type);
@@ -59,7 +59,7 @@ export function castFunction<T>(serializerToUse: Serializer = serializer, naming
  * ```
  */
 export function deserialize<T>(data: JSONPartial<T> | unknown, options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): T {
-    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy, undefined, undefined, serializerToUse.options.emitErrors);
+    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy, undefined, undefined, serializerToUse.jitOptions.emitErrors);
     return fn(data, options) as T;
 }
 
@@ -67,7 +67,7 @@ export function deserialize<T>(data: JSONPartial<T> | unknown, options?: Seriali
  * Same as deserialize but returns a ready to use function. Used to improve performance.
  */
 export function deserializeFunction<T>(serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): SerializeFunction<any, T> {
-    return getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy, undefined, undefined, serializerToUse.options.emitErrors);
+    return getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy, undefined, undefined, serializerToUse.jitOptions.emitErrors);
 }
 
 /**
@@ -77,7 +77,7 @@ export function deserializeFunction<T>(serializerToUse: Serializer = serializer,
 export function patch<T>(data: DeepPartial<T>, options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): (data: JSONPartial<T> | unknown) => T {
     type = resolveReceiveType(type);
     if (type.kind !== ReflectionKind.objectLiteral && type.kind !== ReflectionKind.class) throw new Error('patch() only works on object literals and classes');
-    return getPatchSerializeFunction(type, serializerToUse.deserializeRegistry, namingStrategy, serializerToUse.options.emitErrors)(data, options);
+    return getPatchSerializeFunction(type, serializerToUse.deserializeRegistry, namingStrategy, serializerToUse.jitOptions.emitErrors)(data, options);
 }
 
 /**
@@ -179,7 +179,7 @@ export function getPatchSerializeFunction(type: TypeClass | TypeObjectLiteral, r
  * @throws ValidationError when serialization or validation fails.
  */
 export function serialize<T>(data: T, options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): JSONSingle<T> {
-    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.serializeRegistry, namingStrategy, undefined, undefined, serializerToUse.options.emitErrors);
+    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.serializeRegistry, namingStrategy, undefined, undefined, serializerToUse.jitOptions.emitErrors);
     return fn(data, options) as JSONSingle<T>;
 }
 
@@ -187,7 +187,7 @@ export function serialize<T>(data: T, options?: SerializationOptions, serializer
  * Same as serialize but returns a ready to use function. Used to improve performance.
  */
 export function serializeFunction<T>(serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>): SerializeFunction<T> {
-    return getSerializeFunction(resolveReceiveType(type), serializerToUse.serializeRegistry, namingStrategy, undefined, undefined, serializerToUse.options.emitErrors);
+    return getSerializeFunction(resolveReceiveType(type), serializerToUse.serializeRegistry, namingStrategy, undefined, undefined, serializerToUse.jitOptions.emitErrors);
 }
 
 /**
@@ -196,8 +196,8 @@ export function serializeFunction<T>(serializerToUse: Serializer = serializer, n
 export function cloneClass<T>(target: T, options?: SerializationOptions): T {
     const classType = getClassTypeFromInstance(target);
     const type = typeInfer(classType);
-    const serialize = getSerializeFunction(type, serializer.serializeRegistry, undefined, undefined, undefined, serializer.options.emitErrors);
-    const deserialize = getSerializeFunction(type, serializer.deserializeRegistry, undefined, undefined, undefined, serializer.options.emitErrors);
+    const serialize = getSerializeFunction(type, serializer.serializeRegistry, undefined, undefined, undefined, serializer.jitOptions.emitErrors);
+    const deserialize = getSerializeFunction(type, serializer.deserializeRegistry, undefined, undefined, undefined, serializer.jitOptions.emitErrors);
     return deserialize(serialize(target, options));
 }
 
@@ -209,7 +209,7 @@ export function cloneClass<T>(target: T, options?: SerializationOptions): T {
  * @throws ValidationError when serialization or validation fails.
  */
 export function validatedDeserialize<T>(data: any, options?: SerializationOptions, serializerToUse: Serializer = serializer, namingStrategy?: NamingStrategy, type?: ReceiveType<T>) {
-    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy, undefined, undefined, serializerToUse.options.emitErrors);
+    const fn = getSerializeFunction(resolveReceiveType(type), serializerToUse.deserializeRegistry, namingStrategy, undefined, undefined, serializerToUse.jitOptions.emitErrors);
     const item = fn(data, options) as T;
     assert(item, undefined, type);
     return item;
