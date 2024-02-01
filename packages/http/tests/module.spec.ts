@@ -5,7 +5,7 @@ import { HttpKernel } from '../src/kernel.js';
 import { HttpRequest } from '../src/model.js';
 import { http } from '../src/decorator.js';
 import { httpWorkflow } from '../src/http.js';
-import { HttpRouterRegistry } from '../src/router.js';
+import { HttpRouterRegistry, RouteConfig } from '../src/router.js';
 
 test('module basic functionality', async () => {
     class Controller {
@@ -20,8 +20,8 @@ test('module basic functionality', async () => {
             Controller,
         ],
         imports: [
-            new HttpModule()
-        ]
+            new HttpModule(),
+        ],
     });
 
     const httpKernel = app.get(HttpKernel);
@@ -53,7 +53,7 @@ test('functional listener', async () => {
         ],
         imports: [
             new HttpModule(),
-        ]
+        ],
     });
 
     const httpKernel = app.get(HttpKernel);
@@ -82,7 +82,7 @@ test('functional routes using use()', async () => {
 
     const app = new App({
         providers: [MyService],
-        imports: [new HttpModule()]
+        imports: [new HttpModule()],
     });
 
     function userController(router: HttpRouterRegistry, service: MyService) {
@@ -105,4 +105,33 @@ test('functional routes using use()', async () => {
         expect(response.statusCode).toBe(200);
         expect(response.json).toEqual({ id: 2, username: 'marie' });
     }
+});
+
+test('dynamic route', async () => {
+    const app = new App({
+        providers: [],
+        imports: [new HttpModule()],
+    });
+
+    app.configureProvider<HttpRouterRegistry>(router => {
+        router.addRoute(new RouteConfig('name', ['GET'], '/users/:id', {
+            type: 'function', fn: (id: number) => {
+                return {id};
+            },
+        }));
+
+        router.get('/users', () => {
+            return [{id: 1}, {id: 2}];
+        });
+    });
+
+    const httpKernel = app.get(HttpKernel);
+
+    const response = await httpKernel.request(HttpRequest.GET('/users/2'));
+    expect(response.statusCode).toBe(200);
+    expect(response.json).toEqual({ id: 2 });
+
+    const response2 = await httpKernel.request(HttpRequest.GET('/users'));
+    expect(response2.statusCode).toBe(200);
+    expect(response2.json).toEqual([{ id: 1 }, { id: 2 }]);
 });
