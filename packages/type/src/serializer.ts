@@ -877,22 +877,16 @@ export function createConverterJSForMember(
 
     //note: this code is only reached when ${accessor} was actually defined checked by the 'in' operator.
     const unpopulatedIf = opts.unpopulatedProps ? `if (${state.accessor} !== unpopulatedSymbol)` : '';
+    const explicitUndefinedBlock = setExplicitUndefined ? undefinedSetterCode : '';
+    //null acts on transport layer as telling an explicitly set undefined
+    //this is to support actual undefined as value across a transport layer. Otherwise it
+    //would be impossible to set a already set value to undefined back or override default value (since JSON.stringify() omits that information)
+    const nullableBlock = nullable ? nullSetterCode : explicitUndefinedBlock;
     return `
         if (${state.accessor} === undefined) {
-            if (${setExplicitUndefined}) {
-                ${undefinedSetterCode}
-            }
+            ${explicitUndefinedBlock}
         } else if (${state.accessor} === null) {
-            //null acts on transport layer as telling an explicitly set undefined
-            //this is to support actual undefined as value across a transport layer. Otherwise it
-            //would be impossible to set a already set value to undefined back or override default value (since JSON.stringify() omits that information)
-            if (${nullable}) {
-                ${nullSetterCode}
-            } else {
-                if (${setExplicitUndefined}) {
-                    ${undefinedSetterCode}
-                }
-            }
+            ${nullableBlock}
         } else ${unpopulatedIf} {
             ${convert}
             ${postTransform}
