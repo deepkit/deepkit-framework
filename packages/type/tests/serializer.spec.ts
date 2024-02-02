@@ -31,7 +31,7 @@ import {
     TypePropertySignature
 } from '../src/reflection/type.js';
 import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer, quickSerializer, underscoreNamingStrategy } from '../src/serializer.js';
-import type { Serializer} from '../src/serializer.js';
+import type { Serializer } from '../src/serializer.js';
 import { cast, deserialize, patch, serialize } from '../src/serializer-facade.js';
 import { getClassName } from '@deepkit/core';
 import { entity, t } from '../src/decorator.js';
@@ -44,8 +44,8 @@ import { ChangesInterface, DeepPartial } from '../src/changes.js';
 import { inspect } from 'util';
 
 
-describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']])('serializer suit', (testSerializer, name) => {
-    test(`deserializer ${name}`, () => {
+describe.each([serializer, quickSerializer])('', (testSerializer, name) => {
+    test('deserializer', () => {
         class User {
             username!: string;
             created!: Date;
@@ -59,7 +59,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         });
     });
 
-    test(`cast interface ${name}`, () => {
+    test('cast interface', () => {
         interface User {
             username: string;
             created: Date;
@@ -72,7 +72,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         });
     });
 
-    test(`cast class ${name}`, () => {
+    test('cast class', () => {
         class User {
             created: Date = new Date;
 
@@ -88,7 +88,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         });
     });
 
-    test(`groups ${name}`, () => {
+    test('groups', () => {
         class Settings {
             weight: string & Group<'privateSettings'> = '12g';
             color: string = 'red';
@@ -113,7 +113,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(serialize<User>(user, { groupsExclude: ['privateSettings'] })).toEqual({ id: 0, username: 'peter', password: '', settings: { color: 'red' } });
     });
 
-    test(`default value ${name}`, () => {
+    test('default value', () => {
         class User {
             logins: number = 0;
         }
@@ -134,7 +134,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`optional value ${name}`, () => {
+    test('optional value', () => {
         class User {
             logins?: number;
         }
@@ -154,7 +154,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`optional default value ${name}`, () => {
+    test('optional default value', () => {
         class User {
             logins?: number = 2;
         }
@@ -188,7 +188,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`optional literal ${name}`, () => {
+    test('optional literal', () => {
         interface LoginInput {
             mechanism?: 'cookie';
         }
@@ -208,7 +208,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`cast primitives ${name}`, () => {
+    test('cast primitives', () => {
         expect(cast<string>('123')).toBe('123');
         expect(cast<string>(123)).toBe('123');
         expect(cast<number>(123)).toBe(123);
@@ -218,17 +218,17 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(serialize<Date>(new Date('2021-10-19T00:22:58.257Z'))).toEqual('2021-10-19T00:22:58.257Z');
     });
 
-    test(`cast integer ${name}`, () => {
+    test('cast integer', () => {
         expect(cast<integer>(123.456)).toBe(123);
         expect(cast<int8>(1000)).toBe(127);
     });
 
-    test(`tuple 2 ${name}`, () => {
+    test('tuple 2', () => {
         const value = cast<[string, number]>([12, '13']);
         expect(value).toEqual(['12', 13]);
     });
 
-    test(`tuple rest ${name}`, () => {
+    test('tuple rest', () => {
         {
             const value = cast<[...string[], number]>([12, '13']);
             expect(value).toEqual(['12', 13]);
@@ -251,7 +251,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`set ${name}`, () => {
+    test('set', () => {
         {
             const value = cast<Set<string>>(['a', 'a', 'b']);
             expect(value).toEqual(new Set(['a', 'b']));
@@ -266,7 +266,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`map ${name}`, () => {
+    test('map', () => {
         {
             const value = cast<Map<string, number>>([['a', 1], ['a', 2], ['b', 3]]);
             expect(value).toEqual(new Map([['a', 2], ['b', 3]]));
@@ -281,7 +281,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`number ${name}`, () => {
+    test('number', () => {
         expect(cast<number>(1)).toBe(1);
         expect(cast<number>(-1)).toBe(-1);
         expect(cast<number>(true)).toBe(1);
@@ -290,7 +290,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(cast<number>('-1')).toBe(-1);
     });
 
-    test(`union string number ${name}`, () => {
+    test('union string number', () => {
         expect(cast<string | number>('a')).toEqual('a');
         expect(cast<string | number>(2)).toEqual(2);
 
@@ -306,7 +306,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(cast<string | integer>(true)).toEqual('true');
     });
 
-    test(`union boolean number ${name}`, () => {
+    test('union boolean number', () => {
         expect(cast<boolean | number>(2)).toEqual(2);
         expect(cast<boolean | number>(1)).toEqual(1);
         expect(cast<boolean | number>(0)).toEqual(0);
@@ -314,7 +314,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(cast<boolean | number>(true)).toEqual(true);
     });
 
-    test(`disabled loosely throws for primitives ${name}`, () => {
+    test('disabled loosely throws for primitives', () => {
         expect(cast<string>(23)).toEqual('23');
         expect(cast<string>(23)).toEqual('23');
         expect(() => cast<string>(23, { loosely: false })).toThrow('Validation error');
@@ -328,7 +328,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(() => cast<boolean>(1, { loosely: false })).toThrow('Validation error');
     });
 
-    test(`union loose string number ${name}`, () => {
+    test('union loose string number', () => {
         expect(cast<string | number>('a')).toEqual('a');
         expect(cast<string | number>(2)).toEqual(2);
         expect(cast<string | number>(-2)).toEqual(-2);
@@ -343,7 +343,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(cast<string | integer>(true)).toEqual('true');
     });
 
-    test(`union loose string boolean ${name}`, () => {
+    test('union loose string boolean', () => {
         expect(cast<string | boolean>('a')).toEqual('a');
         expect(cast<string | boolean>(1)).toEqual(true);
         expect(cast<string | boolean>(0)).toEqual(false);
@@ -353,7 +353,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(cast<string | boolean>('true2')).toEqual('true2');
     });
 
-    test(`union loose number boolean ${name}`, () => {
+    test('union loose number boolean', () => {
         expect(() => cast<number | boolean>('a')).toThrow('Validation error for type');
         expect(deserialize<number | boolean>('a')).toEqual(undefined);
         expect(cast<string | boolean>(1)).toEqual(true);
@@ -372,7 +372,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(deserialize<number | boolean>('true2')).toEqual(undefined);
     });
 
-    test(`union string date ${name}`, () => {
+    test('union string date', () => {
         expect(cast<string | Date>('a')).toEqual('a');
         expect(cast<string | Date>('2021-11-24T16:21:13.425Z')).toBeInstanceOf(Date);
         expect(cast<string | Date>(1637781902866)).toBeInstanceOf(Date);
@@ -380,7 +380,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(cast<(string | Date)[]>(['2021-11-24T16:21:13.425Z'])[0]).toBeInstanceOf(Date);
     });
 
-    test(`union string bigint ${name}`, () => {
+    test('union string bigint', () => {
         expect(cast<string | bigint>('a')).toEqual('a');
         expect(cast<string | bigint>(2n)).toEqual(2n);
         expect(cast<string | bigint>(2)).toEqual(2n);
@@ -389,7 +389,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(cast<string | bigint>('2a')).toEqual('2a');
     });
 
-    test(`union loose string bigint ${name}`, () => {
+    test('union loose string bigint', () => {
         expect(cast<string | bigint>('a')).toEqual('a');
         expect(cast<string | bigint>(2n)).toEqual(2n);
         expect(cast<string | bigint>(2)).toEqual(2n);
@@ -397,7 +397,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(cast<string | bigint>('2a')).toEqual('2a');
     });
 
-    test(`BinaryBigInt ${name}`, () => {
+    test('BinaryBigInt', () => {
         expect(serialize<bigint>(24n)).toBe('24');
         expect(serialize<BinaryBigInt>(24n)).toBe('24');
         expect(serialize<BinaryBigInt>(-4n)).toBe('0');
@@ -415,7 +415,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(deserialize<SignedBinaryBigInt>('-4')).toBe(-4n);
     });
 
-    test(`literal ${name}`, () => {
+    test('literal', () => {
         expect(cast<'a'>('a')).toEqual('a');
         expect(serialize<'a'>('a')).toEqual('a');
         expect(cast<'a'>('b')).toEqual('a');
@@ -429,14 +429,14 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(serialize<1n>(1n)).toEqual(1n);
     });
 
-    test(`cast runs validators ${name}`, () => {
+    test('cast runs validators', () => {
         type Username = string & MinLength<3> & MaxLength<23> & Alphanumeric;
         expect(() => cast<Username>('ab')).toThrow('Validation error for type');
         expect(() => cast<Username>('$ab')).toThrow('Validation error for type');
         expect(cast<Username>('Peter')).toBe('Peter');
     });
 
-    test(`union literal ${name}`, () => {
+    test('union literal', () => {
         expect(cast<'a' | number>('a')).toEqual('a');
         expect(cast<'a' | number>(23)).toEqual(23);
         expect(serialize<'a' | number>('a')).toEqual('a');
@@ -454,7 +454,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(cast<false | boolean>(false)).toEqual(false);
     });
 
-    test(`union primitive and class ${name}`, () => {
+    test('union primitive and class', () => {
         class User {
             id!: number;
         }
@@ -470,7 +470,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(serialize<number | User>({ id: 23 })).toBeInstanceOf(Object);
     });
 
-    test(`union multiple classes ${name}`, () => {
+    test('union multiple classes', () => {
         class User {
             id!: number;
             username!: string;
@@ -501,14 +501,14 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(serialize<number | User>({ id: 23, username: 'peter' })).toEqual({ id: 23, username: 'peter' });
     });
 
-    test(`brands ${name}`, () => {
+    test('brands', () => {
         expect(cast<number & PrimaryKey>(2)).toEqual(2);
         expect(cast<number & PrimaryKey>('2')).toEqual(2);
 
         expect(serialize<number & PrimaryKey>(2)).toEqual(2);
     });
 
-    test(`throw ${name}`, () => {
+    test('throw', () => {
         expect(() => cast<number>('123abc')).toThrow('Cannot convert 123abc to number');
         expect(() => cast<{ a: string }>(false)).toThrow('Cannot convert false to {a: string}');
         expect(() => cast<{ a: number }>({ a: 'abc' })).toThrow('Cannot convert abc to number');
@@ -516,7 +516,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(() => cast<{ a: { b: number } }>({ a: { b: 'abc' } })).toThrow('Cannot convert abc to number');
     });
 
-    test(`index signature  ${name}`, () => {
+    test('index signature ', () => {
         interface BagOfNumbers {
             [name: string]: number;
         }
@@ -542,7 +542,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(serialize<BagOfStrings>({ a: '1' })).toEqual({ a: '1' });
     });
 
-    test(`exclude ${name}`, () => {
+    test('exclude', () => {
         class User {
             username!: string;
 
@@ -556,26 +556,26 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(serialize<User>({ username: 'peter', password: 'nope' })).toEqual({ username: 'peter', password: undefined });
     });
 
-    test(`regexp direct ${name}`, () => {
+    test('regexp direct', () => {
         expect(cast<RegExp>(/abc/).toString()).toEqual('/abc/');
         expect(cast<RegExp>('/abc/').toString()).toEqual('/abc/');
         expect(cast<RegExp>('abc').toString()).toEqual('/abc/');
         expect(serialize<RegExp>(/abc/).toString()).toEqual('/abc/');
     });
 
-    test(`regexp union ${name}`, () => {
+    test('regexp union', () => {
         expect(cast<string | { $regex: RegExp }>({ $regex: /abc/ })).toEqual({ $regex: /abc/ });
         expect(cast<Record<string, string | { $regex: RegExp }>>({ a: { $regex: /abc/ } })).toEqual({ a: { $regex: /abc/ } });
     });
 
-    test(`index signature with template literal ${name}`, () => {
+    test('index signature with template literal', () => {
         type a1 = { [index: `a${number}`]: number };
         expect(cast<a1>({ a123: '123' })).toEqual({ a123: 123 });
         expect(cast<a1>({ a123: '123', b: 123 })).toEqual({ a123: 123, b: undefined });
         expect(cast<a1>({ a123: '123', a124: 123 })).toEqual({ a123: 123, a124: 123 });
     });
 
-    test(`class circular reference ${name}`, () => {
+    test('class circular reference', () => {
         class User {
             constructor(public username: string) {
             }
@@ -589,7 +589,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(res.manager).toBeInstanceOf(User);
     });
 
-    test(`class with reference ${name}`, () => {
+    test('class with reference', () => {
         class User {
             id: number & PrimaryKey = 0;
 
@@ -629,7 +629,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`class with back reference ${name}`, () => {
+    test('class with back reference', () => {
         class User {
             id: number & PrimaryKey = 0;
 
@@ -646,7 +646,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(res.leads[0]).toBeInstanceOf(User);
     });
 
-    test(`embedded single ${name}`, () => {
+    test('embedded single', () => {
         class Price {
             constructor(public amount: integer) {
             }
@@ -696,7 +696,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
 
     });
 
-    test(`embedded single optional ${name}`, () => {
+    test('embedded single optional', () => {
         class Price {
             constructor(public amount: integer) {
             }
@@ -742,7 +742,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(deserialize<Product4>({ price: null })).toEqual({ price: null });
     });
 
-    test(`embedded multi parameter ${name}`, () => {
+    test('embedded multi parameter', () => {
         class Price {
             constructor(public amount: integer, public currency: string = 'EUR') {
             }
@@ -794,7 +794,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(deserialize<{ v: Embedded<Price, { prefix: 'price_' }> | string }>({ v: '34' })).toEqual({ v: '34' });
     });
 
-    test(`class inheritance ${name}`, () => {
+    test('class inheritance', () => {
         abstract class Person {
             id: number & PrimaryKey & AutoIncrement = 0;
             firstName?: string;
@@ -819,7 +819,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(scopeSerializer({ type: 'employee', firstName: 'Peter', email: 'test@example.com' })).toEqual({ type: 'employee', firstName: 'Peter', email: 'test@example.com' });
     });
 
-    test(`class with union literal ${name}`, () => {
+    test('class with union literal', () => {
         class ConnectionOptions {
             readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';
         }
@@ -829,12 +829,12 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(cast<ConnectionOptions>({ readConcernLevel: 'unknown' })).toEqual({ readConcernLevel: 'majority' });
     });
 
-    test(`named tuple in error message ${name}`, () => {
+    test('named tuple in error message', () => {
         expect(cast<[age: number]>([23])).toEqual([23]);
         expect(() => cast<{ v: [age: number] }>({ v: ['123abc'] })).toThrow('v.age(type): Cannot convert 123abc to number');
     });
 
-    test(`intersected mapped type key ${name}`, () => {
+    test('intersected mapped type key', () => {
         type SORT_ORDER = 'asc' | 'desc' | any;
         type Sort<T, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
 
@@ -853,7 +853,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(cast<sortAny>({ id: 'desc', username: 'asc' })).toEqual({ id: 'desc', username: 'asc' });
     });
 
-    test(`wild property names ${name}`, () => {
+    test('wild property names', () => {
         interface A {
             ['asd-344']: string;
             ['#$%^^x']: number;
@@ -862,7 +862,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(deserialize<A>({ 'asd-344': 'abc', '#$%^^x': 3 })).toEqual({ 'asd-344': 'abc', '#$%^^x': 3 });
     });
 
-    test(`embedded with lots of properties ${name}`, () => {
+    test('embedded with lots of properties', () => {
         interface LotsOfIt {
             a?: string;
             lot?: string;
@@ -887,7 +887,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(back2.options).toEqual({ a: 'abc', lot: 'string' });
     });
 
-    test(`embedded in super class ${name}`, () => {
+    test('embedded in super class', () => {
         class Thread {
             public parentThreadId?: string;
             public senderOrder?: number;
@@ -917,7 +917,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(plain).toEqual({ type: Message.type, parentThreadId: null, senderOrder: null, '~thread': 'foo' });
     });
 
-    test(`disabled constructor ${name}`, () => {
+    test('disabled constructor', () => {
         let called = false;
 
         @entity.disableConstructor()
@@ -938,7 +938,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(user).toEqual({ id: 0, title: 'id:' + 0, type: 'nix' });
     });
 
-    test(`readonly constructor properties ${name}`, () => {
+    test('readonly constructor properties', () => {
         class Pilot {
             constructor(readonly name: string, readonly age: number) {
             }
@@ -948,7 +948,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(cast<Pilot>({ name: 'Peter', age: '32' })).toEqual({ name: 'Peter', age: 32 });
     });
 
-    test(`naming strategy prefix ${name}`, () => {
+    test('naming strategy prefix', () => {
         class MyNamingStrategy extends NamingStrategy {
             constructor() {
                 super('my');
@@ -980,7 +980,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`naming strategy camel case ${name}`, () => {
+    test('naming strategy camel case', () => {
         const camelCaseToSnakeCase = (str: string) =>
             str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 
@@ -1019,7 +1019,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`enum union ${name}`, () => {
+    test('enum union', () => {
         enum StatEnginePowerUnit {
             Hp = 'hp',
         }
@@ -1039,7 +1039,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(deserialize<StatMeasurementUnit>(StatEnginePowerUnit.Hp)).toBe(StatEnginePowerUnit.Hp);
     });
 
-    test(`union literals in union ${name}`, () => {
+    test('union literals in union', () => {
         type StatWeightUnit = 'lbs' | 'kg';
         type StatEnginePowerUnit = 'hp';
 
@@ -1053,7 +1053,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(deserialize<StatMeasurementUnit>('hp')).toBe('hp');
     });
 
-    test(`union literals in union imported ${name}`, () => {
+    test('union literals in union imported', () => {
         type StatMeasurementUnit = StatEnginePowerUnit | StatWeightUnit;
         const type = typeOf<StatMeasurementUnit>();
         assertType(type, ReflectionKind.union);
@@ -1064,7 +1064,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(deserialize<StatMeasurementUnit>('hp')).toBe('hp');
     });
 
-    test(`function rest parameters ${name}`, () => {
+    test('function rest parameters', () => {
         type t = (start: number, ...rest: string[]) => void;
         const fn = typeOf<t>();
         assertType(fn, ReflectionKind.function);
@@ -1078,7 +1078,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`discriminated union with string date in type guard ${name}`, () => {
+    test('discriminated union with string date in type guard', () => {
         expect(is<number | string>(12)).toBe(true);
         expect(is<number | string>('abc')).toBe(true);
         expect(is<number | string>(false)).toBe(false);
@@ -1117,13 +1117,13 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`date format ${name}`, () => {
+    test('date format', () => {
         const date = cast<number | Date>('2020-07-02T12:00:00Z');
         expect(date).toEqual(new Date('2020-07-02T12:00:00Z'));
     });
 
 
-    test(`patch ${name}`, () => {
+    test('patch', () => {
         class Address {
             street!: string & MinLength<3>;
             streetNo!: string;
@@ -1152,7 +1152,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         }
     });
 
-    test(`extend with custom type ${name}`, () => {
+    test('extend with custom type', () => {
         type StringifyTransport = { __meta?: never & ['stringifyTransport'] };
 
         function isStringifyTransportType(type: Type): boolean {
@@ -1183,7 +1183,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(d.obj).toEqual({ test: 'abc' });
     });
 
-    test(`issue-415: serialize literal types in union ${name}`, () => {
+    test('issue-415: serialize literal types in union', () => {
         enum MyEnum {
             VALUE_0 = 0,
             VALUE_180 = 180

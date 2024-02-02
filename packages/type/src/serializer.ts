@@ -873,13 +873,13 @@ export function createConverterJSForMember(
     // }
 
     //note: this code is only reached when ${accessor} was actually defined checked by the 'in' operator.
-    //null acts on transport layer as telling an explicitly set undefined
-    //this is to support actual undefined as value across a transport layer. Otherwise it
-    //would be impossible to set a already set value to undefined back or override default value (since JSON.stringify() omits that information)
     const explicitUndefinedBlock = setExplicitUndefined ? undefinedSetterCode : '';
     const nullableBlock = nullable ? nullSetterCode : explicitUndefinedBlock;
     if (opts.unpopulatedProps) state.setContext({ unpopulatedSymbol });
 
+    //null acts on transport layer as telling an explicitly set undefined
+    //this is to support actual undefined as value across a transport layer. Otherwise it
+    //would be impossible to set a already set value to undefined back or override default value (since JSON.stringify() omits that information)
     if (explicitUndefinedBlock || nullableBlock) {
         return `
             if (${state.accessor} === undefined) {
@@ -887,15 +887,15 @@ export function createConverterJSForMember(
             } else if (${state.accessor} === null) {
                 ${nullableBlock}
             } else ${opts.unpopulatedProps ? `if (${state.accessor} !== unpopulatedSymbol)` : ''} {
-                ${convert};
-                ${postTransform};
+                ${convert}
+                ${postTransform}
             }
         `;
     } else {
         return `
         if (${state.accessor} !== undefined && ${state.accessor} !== null ${opts.unpopulatedProps ? `&& ${state.accessor} !== unpopulatedSymbol` : ''}) {
-            ${convert};
-            ${postTransform};
+            ${convert}
+            ${postTransform}
         }`;
     }
 }
@@ -1173,8 +1173,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                     ${argumentName} = undefined;
                     if (${inAccessor(propertyState.accessor as ContainerAccessor)} ${allowGroupsCheck}) {
                         ${createConverterJSForMember(property, propertyState, opts)}
-                    } ${elseGroup}
-                `);
+                    } ${elseGroup}`);
                 }
 
                 constructorArguments.push(argumentName);
@@ -1204,11 +1203,9 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             } else {
                 const allowGroupsCheck = opts.allowGroups ? `&& ${groupFilter(member.type)}` : '';
                 const elseGroup = staticDefault ? ` else {\n${staticDefault}\n}` : '';
-                lines.push(`
-                if (${readName} in ${state.accessor} ${allowGroupsCheck}) {
+                lines.push(`if (${readName} in ${state.accessor} ${allowGroupsCheck}) {
                     ${createConverterJSForMember(member, propertyState, opts)}
-                } ${elseGroup}
-            `);
+                } ${elseGroup}`);
             }
         }
     }

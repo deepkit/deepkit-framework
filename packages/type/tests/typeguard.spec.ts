@@ -10,24 +10,24 @@
 import { expect, test, describe } from '@jest/globals';
 import { float, float32, int8, integer, PrimaryKey, Reference } from '../src/reflection/type.js';
 import { is } from '../src/typeguard.js';
-import { serializer, quickSerializer} from '../src/serializer.js';
+import { serializer, quickSerializer } from '../src/serializer.js';
 
-describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']])('typeguard suit', (testSerializer, name) => {
-    test(`primitive string ${name}`, () => {
+describe.each([serializer, quickSerializer])('', (testSerializer, name) => {
+    test('primitive string', () => {
         expect(is<string>('a', testSerializer)).toEqual(true);
         expect(is<string>(123, testSerializer)).toEqual(false);
         expect(is<string>(true, testSerializer)).toEqual(false);
         expect(is<string>({}, testSerializer)).toEqual(false);
     });
 
-    test(`primitive number ${name}`, () => {
+    test('primitive number', () => {
         expect(is<number>('a', testSerializer)).toEqual(false);
         expect(is<number>(123, testSerializer)).toEqual(true);
         expect(is<number>(true, testSerializer)).toEqual(false);
         expect(is<number>({}, testSerializer)).toEqual(false);
     });
 
-    test(`primitive number integer ${name}`, () => {
+    test('primitive number integer', () => {
         expect(is<integer>('a', testSerializer)).toEqual(false);
         expect(is<integer>(123, testSerializer)).toEqual(true);
         expect(is<integer>(123.4, testSerializer)).toEqual(false);
@@ -35,7 +35,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<integer>({}, testSerializer)).toEqual(false);
     });
 
-    test(`primitive number int8 ${name}`, () => {
+    test('primitive number int8', () => {
         expect(is<int8>('a', testSerializer)).toEqual(false);
         expect(is<int8>(123, testSerializer)).toEqual(true);
         expect(is<int8>(123.4, testSerializer)).toEqual(false);
@@ -48,7 +48,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<int8>(129, testSerializer)).toEqual(false);
     });
 
-    test(`primitive number float ${name}`, () => {
+    test('primitive number float', () => {
         expect(is<float>('a', testSerializer)).toEqual(false);
         expect(is<float>(123, testSerializer)).toEqual(true);
         expect(is<float>(123.4, testSerializer)).toEqual(true);
@@ -56,7 +56,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<float>({}, testSerializer)).toEqual(false);
     });
 
-    test(`primitive number float32 ${name}`, () => {
+    test('primitive number float32', () => {
         expect(is<float32>('a', testSerializer)).toEqual(false);
         expect(is<float32>(123, testSerializer)).toEqual(true);
         expect(is<float32>(123.4, testSerializer)).toEqual(true);
@@ -69,7 +69,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<float32>({}, testSerializer)).toEqual(false);
     });
 
-    test(`enum ${name}`, () => {
+    test('enum', () => {
         enum MyEnum {
             a, b, c
         }
@@ -83,7 +83,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<MyEnum>(true, testSerializer)).toEqual(false);
     });
 
-    test(`enum const ${name}`, () => {
+    test('enum const', () => {
         const enum MyEnum {
             a, b, c
         }
@@ -97,7 +97,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<MyEnum>(true, testSerializer)).toEqual(false);
     });
 
-    test(`enum string ${name}`, () => {
+    test('enum string', () => {
         enum MyEnum {
             a = 'a', b = 'b', c = 'c'
         }
@@ -114,7 +114,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<MyEnum>(true, testSerializer)).toEqual(false);
     });
 
-    test(`array string ${name}`, () => {
+    test('array string', () => {
         expect(is<string[]>([], testSerializer)).toEqual(true);
         expect(is<string[]>(['a'], testSerializer)).toEqual(true);
         expect(is<string[]>(['a', 'b'], testSerializer)).toEqual(true);
@@ -123,7 +123,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<string[]>(['a', 2], testSerializer)).toEqual(false);
     });
 
-    test(`tuple ${name}`, () => {
+    test('tuple', () => {
         expect(is<[string]>(['a'], testSerializer)).toEqual(true);
         expect(is<[string]>([2], testSerializer)).toEqual(false);
         expect(is<[string, string]>(['a', 'b'], testSerializer)).toEqual(true);
@@ -136,7 +136,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<[string, ...number[]]>([3, 3, 4, 5], testSerializer)).toEqual(false);
     });
 
-    test(`set ${name}`, () => {
+    test('set', () => {
         expect(is<Set<string>>(new Set(['a']), testSerializer)).toEqual(true);
         expect(is<Set<string>>(new Set(['a', 'b']), testSerializer)).toEqual(true);
         expect(is<Set<string>>(new Set(['a', 2]), testSerializer)).toEqual(false);
@@ -144,14 +144,14 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<Set<string>>([2, 3], testSerializer)).toEqual(false);
     });
 
-    test(`map ${name}`, () => {
+    test('map', () => {
         expect(is<Map<string, number>>(new Map([['a', 1]]), testSerializer)).toEqual(true);
         expect(is<Map<string, number>>(new Map([['a', 1], ['b', 2]]), testSerializer)).toEqual(true);
         expect(is<Map<string, number>>(new Map<any, any>([['a', 1], ['b', 'b']]), testSerializer)).toEqual(false);
         expect(is<Map<string, number>>(new Map<any, any>([[2, 1]]), testSerializer)).toEqual(false);
     });
 
-    test(`literal ${name}`, () => {
+    test('literal', () => {
         expect(is<1>(1, testSerializer)).toEqual(true);
         expect(is<1>(2, testSerializer)).toEqual(false);
         expect(is<'abc'>('abc', testSerializer)).toEqual(true);
@@ -162,7 +162,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<true>(false, testSerializer)).toEqual(false);
     });
 
-    test(`any ${name}`, () => {
+    test('any', () => {
         expect(is<any>(['a'], testSerializer)).toEqual(true);
         expect(is<any>([1], testSerializer)).toEqual(true);
         expect(is<any>([true], testSerializer)).toEqual(true);
@@ -182,7 +182,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<any>([], testSerializer)).toEqual(true);
     });
 
-    test(`array any ${name}`, () => {
+    test('array any', () => {
         expect(is<any[]>(['a'], testSerializer)).toEqual(true);
         expect(is<any[]>([1], testSerializer)).toEqual(true);
         expect(is<any[]>([true], testSerializer)).toEqual(true);
@@ -200,19 +200,19 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<any[]>(true, testSerializer)).toEqual(false);
         expect(is<any[]>({}, testSerializer)).toEqual(false);
 
-        expect(is<any[]>({length:1}, testSerializer)).toEqual(false);
-        expect(is<any[]>({length:0}, testSerializer)).toEqual(false);
-        expect(is<any[]>({length:null}, testSerializer)).toEqual(false);
-        expect(is<any[]>({length:undefined}, testSerializer)).toEqual(false);
+        expect(is<any[]>({ length: 1 }, testSerializer)).toEqual(false);
+        expect(is<any[]>({ length: 0 }, testSerializer)).toEqual(false);
+        expect(is<any[]>({ length: null }, testSerializer)).toEqual(false);
+        expect(is<any[]>({ length: undefined }, testSerializer)).toEqual(false);
     });
 
-    test(`union ${name}`, () => {
+    test('union', () => {
         expect(is<string | number>(1, testSerializer)).toEqual(true);
         expect(is<string | number>('abc', testSerializer)).toEqual(true);
         expect(is<string | number>(false, testSerializer)).toEqual(false);
     });
 
-    test(`deep union ${name}`, () => {
+    test('deep union', () => {
         expect(is<string | (number | bigint)[]>(1, testSerializer)).toEqual(false);
         expect(is<string | (number | bigint)[]>('1', testSerializer)).toEqual(true);
         expect(is<string | (number | bigint)[]>([1], testSerializer)).toEqual(true);
@@ -220,7 +220,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<string | (number | bigint)[]>(['1'], testSerializer)).toEqual(false);
     });
 
-    test(`object literal ${name}`, () => {
+    test('object literal', () => {
         expect(is<{ a: string }>({ a: 'abc' }, testSerializer)).toEqual(true);
         expect(is<{ a: string }>({ a: 123 }, testSerializer)).toEqual(false);
         expect(is<{ a: string }>({}, testSerializer)).toEqual(false);
@@ -231,7 +231,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<{ a: string, b: number }>({ a: 'a', b: 'asd' }, testSerializer)).toEqual(false);
     });
 
-    test(`class ${name}`, () => {
+    test('class', () => {
         class A {
             a!: string;
         }
@@ -255,7 +255,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<A3>({ a: 'a', b: 'asd' }, testSerializer)).toEqual(false);
     });
 
-    test(`index signature ${name}`, () => {
+    test('index signature', () => {
         expect(is<{ [name: string]: string }>({}, testSerializer)).toEqual(true);
         expect(is<{ [name: string]: string }>({ a: 'abc' }, testSerializer)).toEqual(true);
         expect(is<{ [name: string]: string }>({ a: 123 }, testSerializer)).toEqual(false);
@@ -265,7 +265,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<{ [name: number]: string }>({ a: 'abc' }, testSerializer)).toEqual(false);
     });
 
-    test(`object literal methods ${name}`, () => {
+    test('object literal methods', () => {
         expect(is<{ m: () => void }>({ m: (): void => undefined }, testSerializer)).toEqual(true);
         expect(is<{ m: () => void }>({ m: false }, testSerializer)).toEqual(false);
         expect(is<{ m: (name: string) => void }>({ m: () => undefined }, testSerializer)).toEqual(true); //`() => undefined` has no types, so no __type emitted. Means return=any
@@ -278,7 +278,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<{ m: (name: any) => number }>({ m: (name: string): number => 2 }, testSerializer)).toEqual(true);
     });
 
-    test(`multiple index signature ${name}`, () => {
+    test('multiple index signature', () => {
         expect(is<{ [name: string]: string | number, [name: number]: string }>({}, testSerializer)).toEqual(true);
         expect(is<{ [name: string]: string | number, [name: number]: number }>({ a: 'abc' }, testSerializer)).toEqual(true);
         expect(is<{ [name: string]: string | number, [name: number]: number }>({ a: 123 }, testSerializer)).toEqual(true);
@@ -286,12 +286,12 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<{ [name: string]: string | number, [name: number]: number }>({ 1: 'abc' }, testSerializer)).toEqual(false);
     });
 
-    test(`brands ${name}`, () => {
+    test('brands', () => {
         expect(is<number & PrimaryKey>(2, testSerializer)).toEqual(true);
         expect(is<number & PrimaryKey>('2', testSerializer)).toEqual(false);
     });
 
-    test(`generic interface ${name}`, () => {
+    test('generic interface', () => {
         interface List<T> {
             items: T[];
         }
@@ -302,7 +302,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<List<string>>({ items: ['abc'] }, testSerializer)).toEqual(true);
     });
 
-    test(`generic alias ${name}`, () => {
+    test('generic alias', () => {
         type List<T> = T[];
 
         expect(is<List<number>>([1], testSerializer)).toEqual(true);
@@ -311,7 +311,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<List<string>>(['abc'], testSerializer)).toEqual(true);
     });
 
-    test(`index signature  ${name}`, () => {
+    test('index signature ', () => {
         interface BagOfNumbers {
             [name: string]: number;
         }
@@ -331,7 +331,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<BagOfStrings>({ a: 'b', b: 'c' }, testSerializer)).toEqual(true);
     });
 
-    test(`reference ${name}`, () => {
+    test('reference', () => {
         class Image {
             id: number = 0;
         }
@@ -352,7 +352,7 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<User>({ image: {} }, testSerializer)).toEqual(false);
     });
 
-    test(`template literal ${name}`, () => {
+    test('template literal', () => {
         expect(is<`abc`>('abc')).toBe(true);
         expect(is<`abc`>('abce')).toBe(false);
 
@@ -378,28 +378,28 @@ describe.each([[serializer, 'serializer'], [quickSerializer, 'quickSerializer']]
         expect(is<`ab${number}`>('abc')).toBe(false);
     });
 
-    test(`union template literal ${name}`, () => {
+    test('union template literal', () => {
         expect(is<`abc${number}` | number>('abc2')).toBe(true);
         expect(is<`abc${number}` | number>(23)).toBe(true);
         expect(is<`abc${number}` | number>('abcd')).toBe(false);
         expect(is<`abc${number}` | number>('abc')).toBe(false);
     });
 
-    test(`class with literal and default ${name}`, () => {
+    test('class with literal and default', () => {
         class ConnectionOptions {
             readConcernLevel: 'local' = 'local';
         }
 
-        expect(is<ConnectionOptions>({readConcernLevel: 'local'})).toBe(true);
-        expect(is<ConnectionOptions>({readConcernLevel: 'local2'})).toBe(false);
+        expect(is<ConnectionOptions>({ readConcernLevel: 'local' })).toBe(true);
+        expect(is<ConnectionOptions>({ readConcernLevel: 'local2' })).toBe(false);
     });
 
-    test(`union literal ${name}`, () => {
+    test('union literal', () => {
         class ConnectionOptions {
             readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';
         }
 
-        expect(is<ConnectionOptions>({readConcernLevel: 'majority'})).toBe(true);
-        expect(is<ConnectionOptions>({readConcernLevel: 'majority2'})).toBe(false);
+        expect(is<ConnectionOptions>({ readConcernLevel: 'majority' })).toBe(true);
+        expect(is<ConnectionOptions>({ readConcernLevel: 'majority2' })).toBe(false);
     });
 });
