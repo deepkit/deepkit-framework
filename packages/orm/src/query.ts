@@ -595,11 +595,11 @@ export class BaseQuery<T extends OrmEntity> {
         return new JoinDatabaseQuery(c[1].classSchema, c[1], c[0]);
     }
 
-    getJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): BaseQuery<ENTITY> {
+    getJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
         for (const join of this.model.joins) {
-            if (join.propertySchema.name === field) return join.query;
+            if (join.propertySchema.name === field) return new JoinDatabaseQuery(join.query.classSchema, join.query, this);
         }
-        throw new Error(`No join fo reference ${String(field)} added.`);
+        throw new Error(`No join for reference ${String(field)} added.`);
     }
 
     /**
@@ -1022,6 +1022,7 @@ export class JoinDatabaseQuery<T extends OrmEntity, PARENT extends BaseQuery<any
         public parentQuery?: PARENT
     ) {
         super(classSchema);
+        if (query) this.model = query.model;
     }
 
     clone(parentQuery?: PARENT): this {
