@@ -34,7 +34,7 @@ import { EventToken } from '@deepkit/event';
 export type SORT_ORDER = 'asc' | 'desc' | any;
 export type Sort<T extends OrmEntity, ORDER extends SORT_ORDER = SORT_ORDER> = { [P in keyof T & string]?: ORDER };
 
-export interface DatabaseJoinModel<T extends OrmEntity, PARENT extends BaseQuery<any>> {
+export interface DatabaseJoinModel<T extends OrmEntity> {
     //this is the parent classSchema, the foreign classSchema is stored in `query`
     classSchema: ReflectionClass<T>,
     propertySchema: ReflectionProperty,
@@ -43,7 +43,7 @@ export interface DatabaseJoinModel<T extends OrmEntity, PARENT extends BaseQuery
     //defines the field name under which the database engine populated the results.
     //necessary for the formatter to pick it up, convert and set correctly the real field name
     as?: string,
-    query: JoinDatabaseQuery<T, PARENT>,
+    query: BaseQuery<T>,
     foreignPrimaryKey: ReflectionProperty,
 }
 
@@ -94,7 +94,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
     public aggregate = new Map<string, { property: ReflectionProperty, func: string }>();
     public select: Set<string> = new Set<string>();
     public lazyLoad: Set<string> = new Set<string>();
-    public joins: DatabaseJoinModel<any, any>[] = [];
+    public joins: DatabaseJoinModel<any>[] = [];
     public skip?: number;
     public itemsPerPage: number = 50;
     public limit?: number;
@@ -151,12 +151,8 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
 
         m.joins = this.joins.map((v) => {
             return {
-                classSchema: v.classSchema,
-                propertySchema: v.propertySchema,
-                type: v.type,
-                populate: v.populate,
-                query: v.query.clone(parentQuery),
-                foreignPrimaryKey: v.foreignPrimaryKey,
+                ...v,
+                query: v.query.clone(),
             };
         });
 
@@ -213,6 +209,8 @@ export interface QueryClassType<T> {
     create(query: BaseQuery<any>): QueryClassType<T>;
 }
 
+export type Configure<T extends OrmEntity> = (query: BaseQuery<T>) => BaseQuery<T> | void;
+
 export class BaseQuery<T extends OrmEntity> {
     //for higher kinded type for selected fields
     _!: () => T;
@@ -235,11 +233,11 @@ export class BaseQuery<T extends OrmEntity> {
      *
      * This allows to use more dynamic query composition functions.
      *
-     * To support joins queries `AnyQuery` is necessary as query type.
+     * To support joins queries `BaseQuery` is necessary as query type.
      *
      * @example
      * ```typescript
-     * function joinFrontendData(query: AnyQuery<Product>) {
+     * function joinFrontendData(query: BaseQuery<Product>) {
      *     return query
      *         .useJoinWith('images').select('sort').end()
      *         .useJoinWith('brand').select('id', 'name', 'website').end()
@@ -249,7 +247,8 @@ export class BaseQuery<T extends OrmEntity> {
      * ```
      * @reflection never
      */
-    use<Q, R, A extends any[]>(modifier: (query: Q, ...args: A) => R, ...args: A): this extends JoinDatabaseQuery<any, any> ? this : Exclude<R, JoinDatabaseQuery<any, any>> {
+    use<Q, R, A extends any[]>(modifier: (query: Q, ...args: A) => R, ...args: A) : this
+    {
         return modifier(this as any, ...args) as any;
     }
 
@@ -536,7 +535,20 @@ export class BaseQuery<T extends OrmEntity> {
      * Adds a left join in the filter. Does NOT populate the reference with values.
      * Accessing `field` in the entity (if not optional field) results in an error.
      */
-    join<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K, type: 'left' | 'inner' = 'left', populate: boolean = false): this {
+    join<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(
+        field: K, type: 'left' | 'inner' = 'left', populate: boolean = false,
+        configure?: Configure<ENTITY>
+    ): this {
+        return this.addJoin(field, type, populate, configure)[0];
+    }
+
+    /**
+     * Adds a left join in the filter and returns new this query and the join query.
+     */
+    protected addJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(
+        field: K, type: 'left' | 'inner' = 'left', populate: boolean = false,
+        configure?: Configure<ENTITY>
+    ): [thisQuery: this, joinQuery: BaseQuery<ENTITY>] {
         const propertySchema = this.classSchema.getProperty(field as string);
         if (!propertySchema.isReference() && !propertySchema.isBackReference()) {
             throw new Error(`Field ${String(field)} is not marked as reference. Use Reference type`);
@@ -544,15 +556,17 @@ export class BaseQuery<T extends OrmEntity> {
         const c = this.clone();
 
         const foreignReflectionClass = resolveForeignReflectionClass(propertySchema);
-        const query = new JoinDatabaseQuery<ENTITY, this>(foreignReflectionClass, c, field as string);
+        let query = new BaseQuery<ENTITY>(foreignReflectionClass);
         query.model.parameters = c.model.parameters;
+        if (configure) query = configure(query) || query;
 
         c.model.joins.push({
             propertySchema, query, populate, type,
             foreignPrimaryKey: foreignReflectionClass.getPrimary(),
             classSchema: this.classSchema,
         });
-        return c;
+
+        return [c, query];
     }
 
     /**
@@ -561,15 +575,15 @@ export class BaseQuery<T extends OrmEntity> {
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
     useJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
-        const c = this.join(field, 'left');
-        return c.model.joins[c.model.joins.length - 1].query;
+        const c = this.addJoin(field, 'left');
+        return new JoinDatabaseQuery(c[1].classSchema, c[1], c[0]);
     }
 
     /**
      * Adds a left join in the filter and populates the result set WITH reference field accordingly.
      */
-    joinWith<K extends keyof ReferenceFields<T>>(field: K): this {
-        return this.join(field, 'left', true);
+    joinWith<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K, configure?: Configure<ENTITY>): this {
+        return this.addJoin(field, 'left', true, configure)[0];
     }
 
     /**
@@ -577,11 +591,11 @@ export class BaseQuery<T extends OrmEntity> {
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
     useJoinWith<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
-        const c = this.join(field, 'left', true);
-        return c.model.joins[c.model.joins.length - 1].query;
+        const c = this.addJoin(field, 'left', true);
+        return new JoinDatabaseQuery(c[1].classSchema, c[1], c[0]);
     }
 
-    getJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
+    getJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): BaseQuery<ENTITY> {
         for (const join of this.model.joins) {
             if (join.propertySchema.name === field) return join.query;
         }
@@ -589,37 +603,37 @@ export class BaseQuery<T extends OrmEntity> {
     }
 
     /**
-     * Adds a inner join in the filter and populates the result set WITH reference field accordingly.
+     * Adds an inner join in the filter and populates the result set WITH reference field accordingly.
      */
-    innerJoinWith<K extends keyof ReferenceFields<T>>(field: K): this {
-        return this.join(field, 'inner', true);
+    innerJoinWith<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K, configure?: Configure<ENTITY>): this {
+        return this.addJoin(field, 'inner', true, configure)[0];
     }
 
     /**
-     * Adds a inner join in the filter and populates the result set WITH reference field accordingly.
+     * Adds an inner join in the filter and populates the result set WITH reference field accordingly.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
     useInnerJoinWith<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
-        const c = this.join(field, 'inner', true);
-        return c.model.joins[c.model.joins.length - 1].query;
+        const c = this.addJoin(field, 'inner', true);
+        return new JoinDatabaseQuery(c[1].classSchema, c[1], c[0]);
     }
 
     /**
-     * Adds a inner join in the filter. Does NOT populate the reference with values.
+     * Adds an inner join in the filter. Does NOT populate the reference with values.
      * Accessing `field` in the entity (if not optional field) results in an error.
      */
-    innerJoin<K extends keyof ReferenceFields<T>>(field: K): this {
-        return this.join(field, 'inner');
+    innerJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K, configure?: Configure<ENTITY>): this {
+        return this.addJoin(field, 'inner', false, configure)[0];
     }
 
     /**
-     * Adds a inner join in the filter. Does NOT populate the reference with values.
+     * Adds an inner join in the filter. Does NOT populate the reference with values.
      * Accessing `field` in the entity (if not optional field) results in an error.
      * Returns JoinDatabaseQuery to further specify the join, which you need to `.end()`
      */
     useInnerJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(field: K): JoinDatabaseQuery<ENTITY, this> {
-        const c = this.join(field, 'inner');
-        return c.model.joins[c.model.joins.length - 1].query;
+        const c = this.addJoin(field, 'inner');
+        return new JoinDatabaseQuery(c[1].classSchema, c[1], c[0]);
     }
 }
 
@@ -1002,27 +1016,27 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
 
 export class JoinDatabaseQuery<T extends OrmEntity, PARENT extends BaseQuery<any>> extends BaseQuery<T> {
     constructor(
-        public readonly foreignClassSchema: ReflectionClass<T>,
-        public parentQuery?: PARENT,
-        public field?: string,
+        // important to have this as first argument, since clone() uses it
+        classSchema: ReflectionClass<any>,
+        public query: BaseQuery<any>,
+        public parentQuery?: PARENT
     ) {
-        super(foreignClassSchema);
+        super(classSchema);
     }
 
     clone(parentQuery?: PARENT): this {
         const c = super.clone();
         c.parentQuery = parentQuery || this.parentQuery;
-        c.field = this.field;
+        c.query = this.query;
         return c;
     }
 
     end(): PARENT {
         if (!this.parentQuery) throw new Error('Join has no parent query');
-        if (!this.field) throw new Error('Join has no field');
         //the parentQuery has not the updated JoinDatabaseQuery stuff, we need to move it now to there
-        this.parentQuery.getJoin(this.field).model = this.model;
+        this.query.model = this.model;
         return this.parentQuery;
     }
 }
 
-export type AnyQuery<T extends OrmEntity> = JoinDatabaseQuery<T, any> | Query<T>;
+export type AnyQuery<T extends OrmEntity> = BaseQuery<T>;

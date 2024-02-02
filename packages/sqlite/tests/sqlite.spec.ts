@@ -615,6 +615,16 @@ test('multiple joins', async () => {
         expect(list[0].tenants).toMatchObject([{ name: 'tenant2' }, { name: 'tenant1' }]);
     }
 
+    {
+        const list = await database.query(Property)
+            .joinWith('flats')
+            .joinWith('tenants', v => v.sort({ name: 'desc' }))
+            .find();
+        expect(list).toHaveLength(1);
+        expect(list[0].flats).toMatchObject([{ name: 'flat1' }, { name: 'flat2' }]);
+        expect(list[0].tenants).toMatchObject([{ name: 'tenant2' }, { name: 'tenant1' }]);
+    }
+
     const property2 = new Property('immo2');
     property2.flats.push(new Flat(property2, 'flat3'));
     property2.flats.push(new Flat(property2, 'flat4'));
@@ -750,6 +760,17 @@ test('deep join population', async () => {
 
     {
         const basket = await database.query(Basket).useJoinWith('items').joinWith('product').end().findOne();
+        expect(basket).toBeInstanceOf(Basket);
+        expect(basket.items[0]).toBeInstanceOf(BasketItem);
+        expect(basket.items[1]).toBeInstanceOf(BasketItem);
+        expect(basket.items[0].product).toBeInstanceOf(Product);
+        expect(basket.items[1].product).toBeInstanceOf(Product);
+    }
+
+    {
+        const basket = await database.query(Basket)
+            .joinWith('items', v=> v.joinWith('product'))
+            .findOne();
         expect(basket).toBeInstanceOf(Basket);
         expect(basket.items[0]).toBeInstanceOf(BasketItem);
         expect(basket.items[1]).toBeInstanceOf(BasketItem);

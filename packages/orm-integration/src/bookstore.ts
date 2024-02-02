@@ -588,6 +588,15 @@ export const bookstoreTests = {
             expect(userWrongPwButLeftJoin.id).toBe(1);
             expect(userWrongPwButLeftJoin.credentials).toBeUndefined();
         }
+
+        {
+            const query = session.query(User)
+                .filter({ name: 'peter' })
+                .innerJoinWith('credentials', join => join.filter({ password: 'wrongPassword' }));
+            expect(query.getJoin('credentials').model.filter).toEqual({ password: 'wrongPassword' });
+            const userWrongPw = await query.findOneOrUndefined();
+            expect(userWrongPw).toBeUndefined();
+        }
         database.disconnect();
     },
 
