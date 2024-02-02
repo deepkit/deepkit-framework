@@ -872,26 +872,32 @@ export function createConverterJSForMember(
     //     defaultValue = 'null';
     // }
 
-    //todo: clean that up. Way too much code for that simple functionality
-    if (opts.unpopulatedProps) state.setContext({ unpopulatedSymbol });
-
     //note: this code is only reached when ${accessor} was actually defined checked by the 'in' operator.
-    const unpopulatedIf = opts.unpopulatedProps ? `if (${state.accessor} !== unpopulatedSymbol)` : '';
-    const explicitUndefinedBlock = setExplicitUndefined ? undefinedSetterCode : '';
     //null acts on transport layer as telling an explicitly set undefined
     //this is to support actual undefined as value across a transport layer. Otherwise it
     //would be impossible to set a already set value to undefined back or override default value (since JSON.stringify() omits that information)
+    const explicitUndefinedBlock = setExplicitUndefined ? undefinedSetterCode : '';
     const nullableBlock = nullable ? nullSetterCode : explicitUndefinedBlock;
-    return `
-        if (${state.accessor} === undefined) {
-            ${explicitUndefinedBlock}
-        } else if (${state.accessor} === null) {
-            ${nullableBlock}
-        } else ${unpopulatedIf} {
-            ${convert}
-            ${postTransform}
-        }
-    `;
+    if (opts.unpopulatedProps) state.setContext({ unpopulatedSymbol });
+
+    if (explicitUndefinedBlock || nullableBlock) {
+        return `
+            if (${state.accessor} === undefined) {
+                ${explicitUndefinedBlock}
+            } else if (${state.accessor} === null) {
+                ${nullableBlock}
+            } else ${opts.unpopulatedProps ? `if (${state.accessor} !== unpopulatedSymbol)` : ''} {
+                ${convert};
+                ${postTransform};
+            }
+        `;
+    } else {
+        return `
+        if (${state.accessor} !== undefined && ${state.accessor} !== null ${opts.unpopulatedProps ? `&& ${state.accessor} !== unpopulatedSymbol` : ''}) {
+            ${convert};
+            ${postTransform};
+        }`;
+    }
 }
 
 export function inAccessor(accessor: ContainerAccessor | string): string {
@@ -1370,7 +1376,7 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 `;
                 const unpopulatedCheck = isOptional
                     ? `if (${optionalCheck} ${propertyAccessor} !== unpopulatedSymbol) {\n${propertyCheck}\n}`
-                    : propertyCheck ;
+                    : propertyCheck;
                 lines.push(unpopulatedCheck);
             }
         }
@@ -1869,7 +1875,7 @@ export class Serializer {
     validators = new TemplateRegistry(this);
     jitOptions: JitSerializerOptions;
 
-    constructor( public name: string = 'json', jitOptions = defaultJitOpts) {
+    constructor(public name: string = 'json', jitOptions = defaultJitOpts) {
         this.registerSerializers();
         this.registerTypeGuards();
         this.registerValidators();
@@ -2295,7 +2301,7 @@ export class Serializer {
                     }
                     const errors = this.jitOptions.emitErrors ? `
                         if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message, ${state.originalAccessor}));
-                    ` : '' ;
+                    ` : '';
                     state.addCode(`
                         {
                             let error = ${validatorVar}(${state.originalAccessor}, ${state.compilerContext.reserveConst(type, 'type')}, ${optionVar ? optionVar : 'undefined'});
@@ -2311,7 +2317,7 @@ export class Serializer {
                         const validatorVar = state.setVariable('validator', validator(...args));
                         const errors = this.jitOptions.emitErrors ? `
                             if (state.errors) state.errors.push(new ValidationErrorItem(${collapsePath(state.path)}, error.code, error.message, ${state.originalAccessor}));
-                        ` : '' ;
+                        ` : '';
                         state.addCode(`
                             {
                                 let error = ${validatorVar}(${state.originalAccessor}, ${state.compilerContext.reserveConst(type, 'type')});
@@ -2379,7 +2385,7 @@ export class EmptySerializer extends Serializer {
 
         this.deserializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.jitOptions));
         this.serializeRegistry.register(ReflectionKind.class, (type, state) => serializeObjectLiteral(type, state, this.jitOptions));
-        this.deserializeRegistry.register(ReflectionKind.objectLiteral,(type, state) =>  serializeObjectLiteral(type, state, this.jitOptions));
+        this.deserializeRegistry.register(ReflectionKind.objectLiteral, (type, state) => serializeObjectLiteral(type, state, this.jitOptions));
         this.serializeRegistry.register(ReflectionKind.objectLiteral, (type, state) => serializeObjectLiteral(type, state, this.jitOptions));
 
         this.deserializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
