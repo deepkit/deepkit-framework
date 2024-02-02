@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.123](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.122...v1.0.1-alpha.123) (2024-02-02)
+
+### Bug Fixes
+
+- **injector:** resolve deps of exported providers correctly ([c185b38](https://github.com/deepkit/deepkit-framework/commit/c185b383c3314f08c92b65c76776864a2065a2b8))
+
 ## [1.0.1-alpha.122](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.121...v1.0.1-alpha.122) (2024-01-31)
 
 ### Features

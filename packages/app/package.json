@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/app",
-  "version": "1.0.1-alpha.122",
+  "version": "1.0.1-alpha.123",
   "description": "Deepkit App, CLI framework and service container",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -32,13 +32,13 @@
     "@deepkit/workflow": "^1.0.1-alpha.13"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.121",
-    "@deepkit/event": "^1.0.1-alpha.122",
-    "@deepkit/injector": "^1.0.1-alpha.122",
-    "@deepkit/logger": "^1.0.1-alpha.122",
-    "@deepkit/stopwatch": "^1.0.1-alpha.121",
-    "@deepkit/type": "^1.0.1-alpha.121",
-    "@deepkit/workflow": "^1.0.1-alpha.122",
+    "@deepkit/core": "^1.0.1-alpha.123",
+    "@deepkit/event": "^1.0.1-alpha.123",
+    "@deepkit/injector": "^1.0.1-alpha.123",
+    "@deepkit/logger": "^1.0.1-alpha.123",
+    "@deepkit/stopwatch": "^1.0.1-alpha.123",
+    "@deepkit/type": "^1.0.1-alpha.123",
+    "@deepkit/workflow": "^1.0.1-alpha.123",
     "conditional-type-checks": "^1.0.5"
   },
   "jest": {

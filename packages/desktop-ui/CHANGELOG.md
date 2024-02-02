@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.123](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.122...v1.0.1-alpha.123) (2024-02-02)
+
+### Bug Fixes
+
+- **desktop-ui:** resolve various circular imports ([3f5c676](https://github.com/deepkit/deepkit-framework/commit/3f5c676f49678361707be5334222a08efdde65ba))
+
 ## [1.0.1-alpha.122](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.121...v1.0.1-alpha.122) (2024-01-31)
 
 **Note:** Version bump only for package @deepkit/desktop-ui
