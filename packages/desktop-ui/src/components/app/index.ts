@@ -16,7 +16,7 @@ import { CdCounterComponent } from './cd-counter.component';
 import { DuiResponsiveDirective } from './dui-responsive.directive';
 import { CommonModule, DOCUMENT } from '@angular/common';
 import { Electron } from '../../core/utils';
-import { ActivationEnd, Event as RouterEvent, NavigationEnd, Router } from '@angular/router';
+import { ActivationEnd, NavigationEnd, Router } from '@angular/router';
 import { WindowRegistry } from '../window/window-state';
 import { ELECTRON_WINDOW, IN_DIALOG } from './token';
 import { AsyncRenderPipe, HumanFileSizePipe, ObjectURLPipe } from './pipes';
@@ -207,7 +207,7 @@ export class DuiApp {
 
         //necessary to render all router-outlet once the router changes
         if (this.router) {
-            this.router.events.subscribe((event: RouterEvent) => {
+            this.router.events.subscribe((event) => {
                 if (event instanceof NavigationEnd || event instanceof ActivationEnd) {
                     detectChangesNextFrame();
                 }

@@ -27,7 +27,7 @@ import {
     TemplateRef,
     Type,
     ViewChild,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
 import { ComponentPortal, DomPortalHost, PortalHost } from '@angular/cdk/portal';
 import { WindowComponent } from '../window/window.component';
@@ -72,8 +72,8 @@ function PopupCenter(url: string, title: string, w: number, h: number): Window {
         </ng-container>
     `,
     host: {
-        '[attr.tabindex]': '1'
-    }
+        '[attr.tabindex]': '1',
+    },
 })
 export class ExternalDialogWrapperComponent {
     @Input() component?: Type<any>;
@@ -225,14 +225,14 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
         });
 
         this.observerClass.observe(window.document.body, {
-            attributeFilter: ['class']
+            attributeFilter: ['class'],
         });
         const document = this.externalWindow!.document;
 
         copyBodyClass();
 
         this.electronWindow = Electron.isAvailable() ? Electron.getRemote().BrowserWindow.getAllWindows()[0] : undefined;
-        this.parentWindow = this.registry.getOuterActiveWindow();
+        this.parentWindow = this.registry.getOuterActiveWindow() as WindowComponent;
 
         if (this.parentWindow && this.alwaysRaised) {
             this.parentWindow.windowState.disableInputs.next(true);
@@ -249,7 +249,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
             document.body,
             this.componentFactoryResolver,
             this.applicationRef,
-            this.injector
+            this.injector,
         );
 
         document.addEventListener('click', () => detectChangesNextFrame());

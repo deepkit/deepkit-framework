@@ -19,6 +19,7 @@
     "emoji": "ts-node emoji-map.ts",
     "font": "node bin/create-font.js",
     "build": "rm -rf .angular && ng-packagr --config tsconfig.prod.json",
+    "watch": "ng-packagr --config tsconfig.prod.json --watch",
     "prepublishOnly": "webpack && node bin/create-font.js && npm run docs",
     "docs": "typedoc --plugin none --json src/assets/docs.json src"
   },

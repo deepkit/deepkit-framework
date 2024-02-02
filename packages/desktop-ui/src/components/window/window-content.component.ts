@@ -8,11 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
-import { WindowSidebarComponent } from './window-sidebar.component';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, TemplateRef, ViewChild } from '@angular/core';
 import { Subject } from 'rxjs';
 import { WindowState } from './window-state';
 import { triggerResize } from '../../core/utils';
+
+interface WinSidebar {
+    template: TemplateRef<any>;
+}
 
 @Component({
     selector: 'dui-window-content',
@@ -57,7 +60,7 @@ export class WindowContentComponent implements OnChanges, AfterViewInit {
 
     @Output() sidebarWidthChange = new EventEmitter<number>();
 
-    toolbar?: WindowSidebarComponent;
+    toolbar?: WinSidebar;
 
     @ViewChild('sidebar', { static: false }) public sidebar?: ElementRef<HTMLElement>;
     @ViewChild('sidebarContainer', { static: false }) public sidebarContainer?: ElementRef<HTMLElement>;
@@ -84,7 +87,7 @@ export class WindowContentComponent implements OnChanges, AfterViewInit {
         }
     }
 
-    registerSidebar(sidebar: WindowSidebarComponent) {
+    registerSidebar(sidebar: WinSidebar) {
         this.toolbar = sidebar;
         setTimeout(() => {
             this.sidebarMoved();
