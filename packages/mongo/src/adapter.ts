@@ -12,12 +12,14 @@ import {
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
     DatabaseEntityRegistry,
+    DatabaseErrorEvent,
     DatabaseSession,
     FindQuery,
     ItemNotFound,
     MigrateOptions,
+    onDatabaseError,
     OrmEntity,
-    RawFactory
+    RawFactory,
 } from '@deepkit/orm';
 import { AbstractClassType, ClassType, isArray } from '@deepkit/core';
 import { MongoDatabaseQuery } from './query.js';
@@ -56,20 +58,35 @@ class MongoRawCommandQuery<T> implements FindQuery<T> {
     }
 
     async find(): Promise<T[]> {
-        const res = await this.client.execute(this.command);
-        return res as any;
+        try {
+            const res = await this.client.execute(this.command);
+            return res as any;
+        } catch (error: any) {
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session));
+            throw error;
+        }
     }
 
     async findOneOrUndefined(): Promise<T> {
-        const res = await this.client.execute(this.command);
-        if (isArray(res)) return res[0];
-        return res;
+        try {
+            const res = await this.client.execute(this.command);
+            if (isArray(res)) return res[0];
+            return res;
+        } catch (error: any) {
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session));
+            throw error;
+        }
     }
 
     async findOne(): Promise<T> {
-        const item = await this.findOneOrUndefined();
-        if (!item) throw new ItemNotFound('Could not find item');
-        return item;
+        try {
+            const item = await this.findOneOrUndefined();
+            if (!item) throw new ItemNotFound('Could not find item');
+            return item;
+        } catch (error: any) {
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session));
+            throw error;
+        }
     }
 }
 
@@ -99,7 +116,7 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
     protected ormSequences: ReflectionClass<any>;
 
     constructor(
-        connectionString: string
+        connectionString: string,
     ) {
         super();
         this.client = new MongoClient(connectionString);

@@ -8,7 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { CustomError } from '@deepkit/core';
 import { BaseResponse } from './command/command.js';
 import { DatabaseError, UniqueConstraintFailure } from '@deepkit/orm';
 
@@ -25,22 +24,36 @@ export function handleErrorResponse(response: BaseResponse): DatabaseError | und
     }
 
     if (message) {
-        return new DatabaseError(message);
+        return Object.assign(new MongoDatabaseError(message), { code: response.code || 0 });
     }
 
     return;
 }
 
-export class MongoError extends CustomError {
-    constructor(message: string, public readonly code?: number) {
-        super(message);
-    }
+export class MongoError extends DatabaseError {
+    public readonly code: number = 0;
 
     toString() {
         if (this.code) return `[${this.code}] ${this.message}`;
         return this.message;
     }
 }
+
+/**
+ * When a tcp/connection issue happened.
+ */
+export class MongoConnectionError extends MongoError {
+
+}
+
+/**
+ * When the Mongo server returns an error with code,
+ * generally from database.raw or database.query.
+ */
+export class MongoDatabaseError extends MongoError {
+
+}
+
 
 //https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.rst#determining-retryable-errors
 const retryableWrites: number[] = [
@@ -55,7 +68,7 @@ const retryableWrites: number[] = [
     6,
     89,
     9001,
-    262
+    262,
 ];
 
 export function isErrorRetryableWrite(error: any): boolean {
@@ -68,41 +81,24 @@ export function isErrorRetryableWrite(error: any): boolean {
 
 // https://github.com/mongodb/specifications/blob/master/source/retryable-reads/retryable-reads.rst#retryable-error
 const retryableReads: number[] = [
-    11600,
-    11602,
-    10107,
-    13435,
-    13436,
-    189,
-    91,
-    7,
-    6,
-    89,
-    9001
-]
-    ;
+        11600,
+        11602,
+        10107,
+        13435,
+        13436,
+        189,
+        91,
+        7,
+        6,
+        89,
+        9001,
+    ]
+;
+
 export function isErrorRetryableRead(error: any): boolean {
     if (error instanceof MongoError && error.code) {
         return retryableReads.includes(error.code);
     }
 
     return false;
-}
-
-/**
- * When a tcp/connection issue happened.
- */
-export class MongoConnectionError extends MongoError {
-
-}
-
-/**
- * When the error came from the server `errmsg`.
- */
-export class MongoCommandError extends MongoError {
-
-}
-
-export class MongoFindConnectionTimeOut extends MongoError {
-
 }

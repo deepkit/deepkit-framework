@@ -9,14 +9,13 @@
  */
 
 import { asyncOperation, getClassName } from '@deepkit/core';
-import { handleErrorResponse, MongoError } from '../error.js';
+import { handleErrorResponse, MongoDatabaseError, MongoError } from '../error.js';
 import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
 import { ReceiveType, ReflectionClass, resolveReceiveType, SerializationError, stringifyType, Type, typeOf, typeSettings, UnpopulatedCheck, ValidationError } from '@deepkit/type';
 import { BSONDeserializer, deserializeBSONWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
 import { mongoBinarySerializer } from '../../mongo-serializer.js';
-import { inspect } from 'util';
 
 export interface CommandMessageResponseCallbackResult<T> {
     /**
@@ -55,7 +54,7 @@ export abstract class Command {
     public sender?: <T>(schema: Type, message: T) => void;
 
     public sendAndWait<T, R = BaseResponse>(
-        message: T, messageType?: ReceiveType<T>, responseType?: ReceiveType<R>
+        message: T, messageType?: ReceiveType<T>, responseType?: ReceiveType<R>,
     ): Promise<R> {
         if (!this.sender) throw new Error(`No sender set in command ${getClassName(this)}`);
         this.sender(resolveReceiveType(messageType), message);
@@ -84,7 +83,7 @@ export abstract class Command {
             }
 
             if (!message.ok) {
-                this.current.reject(new MongoError(message.errmsg || 'error', message.code));
+                this.current.reject(Object.assign(new MongoDatabaseError(message.errmsg || 'error'), { code: message.code }));
             } else {
                 this.current.resolve(message);
             }
@@ -92,7 +91,6 @@ export abstract class Command {
             if (error instanceof ValidationError || error instanceof SerializationError) {
                 if (this.current.responseType) {
                     const raw = deserializeBSONWithoutOptimiser(response);
-                    console.log('mongo raw response', inspect(raw, { depth: null }));
                     if (raw.errmsg && raw.ok === 0) {
                         const error = handleErrorResponse(raw);
                         if (error) {

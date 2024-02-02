@@ -21,11 +21,11 @@ import {
     ReflectionClass,
     ReflectionKind,
     ReflectionProperty,
-    resolveForeignReflectionClass
+    resolveForeignReflectionClass,
 } from '@deepkit/type';
 import { DatabaseAdapter } from './database-adapter.js';
 import { DatabaseSession } from './database-session.js';
-import { QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event.js';
+import { DatabaseErrorEvent, onDatabaseError, QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event.js';
 import { DeleteResult, OrmEntity, PatchResult } from './type.js';
 import { FieldName, FlattenIfArray, Replace, Resolve } from './utils.js';
 import { FrameCategory } from '@deepkit/stopwatch';
@@ -225,7 +225,7 @@ export class BaseQuery<T extends OrmEntity> {
 
     constructor(
         public readonly classSchema: ReflectionClass<any>,
-        model?: DatabaseQueryModel<T>
+        model?: DatabaseQueryModel<T>,
     ) {
         this.model = model || this.createModel<T>();
     }
@@ -675,7 +675,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     constructor(
         classSchema: ReflectionClass<T>,
         protected session: DatabaseSession<any>,
-        protected resolver: GenericQueryResolver<T>
+        protected resolver: GenericQueryResolver<T>,
     ) {
         super(classSchema);
         this.model.withIdentityMap = session.withIdentityMap;
@@ -690,7 +690,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     }
 
     public lift<B extends ClassType<Query<any>>, T extends ReturnType<InstanceType<B>['_']>, THIS extends Query<any> & { _: () => T }>(
-        this: THIS, query: B
+        this: THIS, query: B,
     ): Replace<InstanceType<B>, Resolve<this>> & Pick<this, Methods<this>> {
         const base = this['constructor'] as ClassType;
         //we create a custom class to have our own prototype
@@ -759,56 +759,56 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     }
 
     public async count(fromHas: boolean = false): Promise<number> {
-        if (!this.session.stopwatch) {
-            const query = this.onQueryResolve(await this.callOnFetchEvent(this));
-            return await query.resolver.count(query.model);
-        }
+        let query: Query<any> | undefined = undefined;
 
-        const frame = this.session.stopwatch.start((fromHas ? 'Has:' : 'Count:') + this.classSchema.getClassName(), FrameCategory.database);
+        const frame = this.session.stopwatch?.start((fromHas ? 'Has:' : 'Count:') + this.classSchema.getClassName(), FrameCategory.database);
         try {
-            frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
-            const eventFrame = this.session.stopwatch.start('Events');
-            const query = this.onQueryResolve(await this.callOnFetchEvent(this));
-            eventFrame.end();
+            frame?.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
+            const eventFrame = this.session.stopwatch?.start('Events');
+            query = this.onQueryResolve(await this.callOnFetchEvent(this));
+            eventFrame?.end();
             return await query.resolver.count(query.model);
+        } catch (error: any) {
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, query?.classSchema, query));
+            throw error;
         } finally {
-            frame.end();
+            frame?.end();
         }
     }
 
     public async find(): Promise<Resolve<this>[]> {
-        if (!this.session.stopwatch) {
-            const query = this.onQueryResolve(await this.callOnFetchEvent(this));
-            return await query.resolver.find(query.model) as Resolve<this>[];
-        }
+        const frame = this.session.stopwatch?.start('Find:' + this.classSchema.getClassName(), FrameCategory.database);
+        let query: Query<any> | undefined = undefined;
 
-        const frame = this.session.stopwatch.start('Find:' + this.classSchema.getClassName(), FrameCategory.database);
         try {
-            frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
-            const eventFrame = this.session.stopwatch.start('Events');
-            const query = this.onQueryResolve(await this.callOnFetchEvent(this));
-            eventFrame.end();
+            frame?.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
+            const eventFrame = this.session.stopwatch?.start('Events');
+            query = this.onQueryResolve(await this.callOnFetchEvent(this));
+            eventFrame?.end();
             return await query.resolver.find(query.model) as Resolve<this>[];
+        } catch (error: any) {
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, query?.classSchema, query));
+            throw error;
         } finally {
-            frame.end();
+            frame?.end();
         }
     }
 
     public async findOneOrUndefined(): Promise<Resolve<this> | undefined> {
-        if (!this.session.stopwatch) {
-            const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
-            return await query.resolver.findOneOrUndefined(query.model) as Resolve<this>;
-        }
+        const frame = this.session.stopwatch?.start('FindOne:' + this.classSchema.getClassName(), FrameCategory.database);
+        let query: Query<any> | undefined = undefined;
 
-        const frame = this.session.stopwatch.start('FindOne:' + this.classSchema.getClassName(), FrameCategory.database);
         try {
-            frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
-            const eventFrame = this.session.stopwatch.start('Events');
-            const query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
-            eventFrame.end();
+            frame?.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
+            const eventFrame = this.session.stopwatch?.start('Events');
+            query = this.onQueryResolve(await this.callOnFetchEvent(this.limit(1)));
+            eventFrame?.end();
             return await query.resolver.findOneOrUndefined(query.model) as Resolve<this>;
+        } catch (error: any) {
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, query?.classSchema, query));
+            throw error;
         } finally {
-            frame.end();
+            frame?.end();
         }
     }
 
@@ -831,10 +831,10 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
 
         const deleteResult: DeleteResult<T> = {
             modified: 0,
-            primaryKeys: []
+            primaryKeys: [],
         };
 
-        const frame = this.session.stopwatch ? this.session.stopwatch.start('Delete:' + this.classSchema.getClassName(), FrameCategory.database) : undefined;
+        const frame = this.session.stopwatch?.start('Delete:' + this.classSchema.getClassName(), FrameCategory.database);
         if (frame) frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
 
         try {
@@ -867,6 +867,9 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
             }
 
             return deleteResult;
+        } catch (error: any) {
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, query.classSchema, query));
+            throw error;
         } finally {
             if (frame) frame.end();
         }
@@ -899,7 +902,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
             const patchResult: PatchResult<T> = {
                 modified: 0,
                 returning: {},
-                primaryKeys: []
+                primaryKeys: [],
             };
 
             if (changes.empty) return patchResult;
@@ -951,6 +954,9 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
             }
 
             return patchResult;
+        } catch (error: any) {
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, query.classSchema, query));
+            throw error;
         } finally {
             if (frame) frame.end();
         }

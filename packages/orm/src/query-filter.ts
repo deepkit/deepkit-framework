@@ -134,7 +134,7 @@ export function convertQueryFilter<T, K extends keyof T, Q extends FilterQuery<T
         //when i is a reference, we rewrite it to the foreign key name
         let targetI = property && property.isReference() ? property.getForeignKeyName() : key;
 
-        if (key[0] === '$') {
+        if (key[0] === '$' && isArray(fieldValue)) {
             result[key] = (fieldValue as any[]).map(v => convertQueryFilter(classType, v, converter, fieldNamesMap, customMapping));
             continue;
         }

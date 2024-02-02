@@ -6,6 +6,8 @@ import { sleep } from '@deepkit/core';
 import { ConnectionOptions } from '../../src/client/options.js';
 import { cast, validatedDeserialize } from '@deepkit/type';
 import { createConnection } from 'net';
+import { fail } from 'assert';
+import { MongoConnectionError, MongoError } from '../../src/client/error.js';
 
 jest.setTimeout(60000);
 
@@ -24,6 +26,19 @@ test('connect invalid', async () => {
     const client = new MongoClient('mongodb://invalid/');
 
     await expect(client.connect()).rejects.toThrow('getaddrinfo');
+    client.close();
+});
+
+test('connect invalid 2', async () => {
+    const client = new MongoClient('mongodb://invalid/');
+
+    try {
+        await client.connect();
+        fail('should fail');
+    } catch (error) {
+        expect(error).toBeInstanceOf(MongoConnectionError);
+    }
+
     client.close();
 });
 

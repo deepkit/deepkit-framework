@@ -825,3 +825,21 @@ export function formatError(error: any): string {
 
     return String(error);
 }
+
+/**
+ * Asserts that the given object is an instance of the given class.
+ */
+export function assertInstanceOf<T>(object: any, constructor: { new (...args: any[]): T }): asserts object is T {
+    if (!(object instanceof constructor)) {
+        throw new Error(`Object ${getClassName(object)} is not an instance of the expected class ${getClassName(constructor)}`);
+    }
+}
+
+/**
+ * Asserts that the given value is defined (not null and not undefined).
+ */
+export function assertDefined<T>(value: T): asserts value is NonNullable<T> {
+    if (value === null || value === undefined) {
+        throw new Error(`Value is not defined`);
+    }
+}

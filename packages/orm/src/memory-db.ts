@@ -243,6 +243,50 @@ export class MemoryDatabaseTransaction extends DatabaseTransaction {
     }
 }
 
+export class MemoryPersistence extends DatabasePersistence {
+    constructor(private adapter: MemoryDatabaseAdapter) {
+        super();
+    }
+
+    async remove<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
+        const store = this.adapter.getStore(classSchema);
+
+        const primaryKey = classSchema.getPrimary().name as keyof T;
+        for (const item of items) {
+            store.items.delete(item[primaryKey] as any);
+        }
+    }
+
+    async insert<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
+        const store = this.adapter.getStore(classSchema);
+        const serializer = getSerializeFunction(classSchema.type, memorySerializer.serializeRegistry);
+        const autoIncrement = classSchema.getAutoIncrement();
+
+        const primaryKey = classSchema.getPrimary().name as keyof T;
+        for (const item of items) {
+            if (autoIncrement) {
+                store.autoIncrement++;
+                item[autoIncrement.name as keyof T & string] = store.autoIncrement as any;
+            }
+            store.items.set(item[primaryKey] as any, serializer(item));
+        }
+    }
+
+    async update<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+        const store = this.adapter.getStore(classSchema);
+        const serializer = getSerializeFunction(classSchema.type, memorySerializer.serializeRegistry);
+        const primaryKey = classSchema.getPrimary().name as keyof T;
+
+        for (const changeSet of changeSets) {
+            store.items.set(changeSet.item[primaryKey] as any, serializer(changeSet.item));
+        }
+    }
+
+    async release() {
+
+    }
+}
+
 export class MemoryDatabaseAdapter extends DatabaseAdapter {
     protected store = new Map<ReflectionClass<any>, SimpleStore<any>>();
 
@@ -267,49 +311,7 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
     }
 
     createPersistence(): DatabasePersistence {
-        const adapter = this;
-
-        class Persistence extends DatabasePersistence {
-            async remove<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
-                const store = adapter.getStore(classSchema);
-
-                const primaryKey = classSchema.getPrimary().name as keyof T;
-                for (const item of items) {
-                    store.items.delete(item[primaryKey] as any);
-                }
-            }
-
-            async insert<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
-                const store = adapter.getStore(classSchema);
-                const serializer = getSerializeFunction(classSchema.type, memorySerializer.serializeRegistry);
-                const autoIncrement = classSchema.getAutoIncrement();
-
-                const primaryKey = classSchema.getPrimary().name as keyof T;
-                for (const item of items) {
-                    if (autoIncrement) {
-                        store.autoIncrement++;
-                        item[autoIncrement.name as keyof T & string] = store.autoIncrement as any;
-                    }
-                    store.items.set(item[primaryKey] as any, serializer(item));
-                }
-            }
-
-            async update<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
-                const store = adapter.getStore(classSchema);
-                const serializer = getSerializeFunction(classSchema.type, memorySerializer.serializeRegistry);
-                const primaryKey = classSchema.getPrimary().name as keyof T;
-
-                for (const changeSet of changeSets) {
-                    store.items.set(changeSet.item[primaryKey] as any, serializer(changeSet.item));
-                }
-            }
-
-            async release() {
-
-            }
-        }
-
-        return new Persistence;
+        return new MemoryPersistence(this);
     }
 
     disconnect(force?: boolean): void {

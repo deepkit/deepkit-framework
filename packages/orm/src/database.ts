@@ -89,7 +89,6 @@ function setupVirtualForeignKey(database: Database, virtualForeignKeyConstraint:
         await virtualForeignKeyConstraint.onQueryDelete(event);
     });
 }
-
 /**
  * Database abstraction. Use createSession() to create a work session with transaction support.
  *
