@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
 import {
     arrayBufferFrom,
+    AutoIncrement,
     BackReference,
     cast,
     entity,
@@ -11,12 +12,14 @@ import {
     ReflectionClass,
     ReflectionKind,
     serialize,
+    Unique,
     UUID,
     uuid,
 } from '@deepkit/type';
-import { getInstanceStateFromItem } from '@deepkit/orm';
+import { getInstanceStateFromItem, UniqueConstraintFailure } from '@deepkit/orm';
 import { SimpleModel, SuperSimple } from './entities.js';
 import { createDatabase } from './utils.js';
+import { databaseFactory } from './factory.js';
 
 Error.stackTraceLimit = 100;
 
@@ -615,5 +618,43 @@ test('batch', async () => {
         session.useTransaction();
         const items = await session.query(Model).withBatchSize(10).find();
         expect(items.length).toBe(1000);
+    }
+});
+
+test('unique constraint 1', async () => {
+    class Model {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        constructor(public username: string & Unique = '') {}
+    }
+
+    const database = await databaseFactory([Model]);
+
+    await database.persist(new Model('peter'));
+    await database.persist(new Model('paul'));
+
+    {
+        const m1 = new Model('peter');
+        await expect(database.persist(m1)).rejects.toThrow('username dup key');
+        await expect(database.persist(m1)).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+
+    {
+        const m1 = new Model('marie');
+        const m2 = new Model('marie');
+        await expect(database.persist(m1, m2)).rejects.toThrow('username dup key');
+        await expect(database.persist(m1, m2)).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+
+    {
+        const m = await database.query(Model).filter({username: 'paul'}).findOne();
+        m.username = 'peter';
+        await expect(database.persist(m)).rejects.toThrow('username dup key');
+        await expect(database.persist(m)).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+
+    {
+        const p = database.query(Model).filter({username: 'paul'}).patchOne({username: 'peter'});
+        await expect(p).rejects.toThrow('username dup key');
+        await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
 });

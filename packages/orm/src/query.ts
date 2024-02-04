@@ -746,6 +746,16 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         return cloned as any;
     }
 
+    /**
+     * Clones the query and returns a new instance.
+     * This happens automatically for each modification, so you don't need to call it manually.
+     *
+     * ```typescript
+     * let query1 = database.query(User);
+     * let query2 = query1.filter({name: 'Peter'});
+     * // query1 is not modified, query2 is a new instance with the filter applied
+     * ```
+     */
     clone(): this {
         const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.session, this.resolver);
         cloned.model = this.model.clone(cloned) as this['model'];
@@ -772,6 +782,11 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         return query as this;
     }
 
+    /**
+     * Returns the number of items matching the query.
+     *
+     * @throws DatabaseError
+     */
     public async count(fromHas: boolean = false): Promise<number> {
         let query: Query<any> | undefined = undefined;
 
@@ -790,6 +805,11 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         }
     }
 
+    /**
+     * Fetches all items matching the query.
+     *
+     * @throws DatabaseError
+     */
     public async find(): Promise<Resolve<this>[]> {
         const frame = this.session.stopwatch?.start('Find:' + this.classSchema.getClassName(), FrameCategory.database);
         let query: Query<any> | undefined = undefined;
@@ -808,6 +828,11 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         }
     }
 
+    /**
+     * Fetches a single item matching the query or undefined.
+     *
+     * @throws DatabaseError
+     */
     public async findOneOrUndefined(): Promise<Resolve<this> | undefined> {
         const frame = this.session.stopwatch?.start('FindOne:' + this.classSchema.getClassName(), FrameCategory.database);
         let query: Query<any> | undefined = undefined;
@@ -826,16 +851,31 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         }
     }
 
+    /**
+     * Fetches a single item matching the query.
+     *
+     * @throws DatabaseError
+     */
     public async findOne(): Promise<Resolve<this>> {
         const item = await this.findOneOrUndefined();
         if (!item) throw new ItemNotFound(`Item ${this.classSchema.getClassName()} not found`);
         return item as Resolve<this>;
     }
 
+    /**
+     * Deletes all items matching the query.
+     *
+     * @throws DatabaseDeleteError
+     */
     public async deleteMany(): Promise<DeleteResult<T>> {
         return await this.delete(this) as any;
     }
 
+    /**
+     * Deletes a single item matching the query.
+     *
+     * @throws DatabaseDeleteError
+     */
     public async deleteOne(): Promise<DeleteResult<T>> {
         return await this.delete(this.limit(1));
     }
@@ -889,10 +929,22 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         }
     }
 
+    /**
+     * Updates all items matching the query with the given patch.
+     *
+     * @throws DatabasePatchError
+     * @throws UniqueConstraintFailure
+     */
     public async patchMany(patch: ChangesInterface<T> | DeepPartial<T>): Promise<PatchResult<T>> {
         return await this.patch(this, patch);
     }
 
+    /**
+     * Updates a single item matching the query with the given patch.
+     *
+     * @throws DatabasePatchError
+     * @throws UniqueConstraintFailure
+     */
     public async patchOne(patch: ChangesInterface<T> | DeepPartial<T>): Promise<PatchResult<T>> {
         return await this.patch(this.limit(1), patch);
     }
@@ -976,10 +1028,25 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         }
     }
 
+    /**
+     * Returns true if the query matches at least one item.
+     *
+     * @throws DatabaseError
+     */
     public async has(): Promise<boolean> {
         return await this.count(true) > 0;
     }
 
+    /**
+     * Returns the primary keys of the query.
+     *
+     * ```typescript
+     * const ids = await database.query(User).ids();
+     * // ids: number[]
+     * ```
+     *
+     * @throws DatabaseError
+     */
     public async ids(singleKey?: false): Promise<PrimaryKeyFields<T>[]>;
     public async ids(singleKey: true): Promise<PrimaryKeyType<T>[]>;
     public async ids(singleKey: boolean = false): Promise<PrimaryKeyFields<T>[] | PrimaryKeyType<T>[]> {
@@ -997,16 +1064,41 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         return data;
     }
 
+    /**
+     * Returns the specified field of the query from all items.
+     *
+     * ```typescript
+     * const usernames = await database.query(User).findField('username');
+     * // usernames: string[]
+     * ```
+     *
+     * @throws DatabaseError
+     */
     public async findField<K extends FieldName<T>>(name: K): Promise<T[K][]> {
         const items = await this.select(name as keyof Resolve<this>).find() as T[];
         return items.map(v => v[name]);
     }
 
+    /**
+     * Returns the specified field of the query from a single item, throws if not found.
+     *
+     * ```typescript
+     * const username = await database.query(User).findOneField('username');
+     * ```
+     *
+     * @throws ItemNotFound if no item is found
+     * @throws DatabaseError
+     */
     public async findOneField<K extends FieldName<T>>(name: K): Promise<T[K]> {
         const item = await this.select(name as keyof Resolve<this>).findOne() as T;
         return item[name];
     }
 
+    /**
+     * Returns the specified field of the query from a single item or undefined.
+     *
+     * @throws DatabaseError
+     */
     public async findOneFieldOrUndefined<K extends FieldName<T>>(name: K): Promise<T[K] | undefined> {
         const item = await this.select(name as keyof Resolve<this>).findOneOrUndefined();
         if (item) return item[name];

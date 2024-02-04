@@ -18,10 +18,11 @@ import {
     ReflectionClass,
     serialize,
     typeOf,
+    Unique,
     UUID,
     uuid,
 } from '@deepkit/type';
-import { DatabaseEntityRegistry } from '@deepkit/orm';
+import { DatabaseEntityRegistry, UniqueConstraintFailure } from '@deepkit/orm';
 import { sql } from '@deepkit/sql';
 
 test('reflection circular reference', () => {
@@ -937,4 +938,42 @@ test('uuid 3', async () => {
     const hasher = getPrimaryKeyHashGenerator(ReflectionClass.from(User));
     const hash = hasher(user);
     expect(hash).toContain(user.id);
+});
+
+test('unique constraint 1', async () => {
+    class Model {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        constructor(public username: string & Unique = '') {}
+    }
+
+    const database = await databaseFactory([Model]);
+
+    await database.persist(new Model('peter'));
+    await database.persist(new Model('paul'));
+
+    {
+        const m1 = new Model('peter');
+        await expect(database.persist(m1)).rejects.toThrow('constraint failed');
+        await expect(database.persist(m1)).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+
+    {
+        const m1 = new Model('marie');
+        const m2 = new Model('marie');
+        await expect(database.persist(m1, m2)).rejects.toThrow('constraint failed');
+        await expect(database.persist(m1, m2)).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+
+    {
+        const m = await database.query(Model).filter({username: 'paul'}).findOne();
+        m.username = 'peter';
+        await expect(database.persist(m)).rejects.toThrow('constraint failed');
+        await expect(database.persist(m)).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+
+    {
+        const p = database.query(Model).filter({username: 'paul'}).patchOne({username: 'peter'});
+        await expect(p).rejects.toThrow('constraint failed');
+        await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
 });

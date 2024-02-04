@@ -9,7 +9,7 @@
  */
 
 import { BaseResponse } from './command/command.js';
-import { DatabaseError, UniqueConstraintFailure } from '@deepkit/orm';
+import { DatabaseError } from '@deepkit/orm';
 
 
 /**
@@ -19,14 +19,9 @@ export function handleErrorResponse(response: BaseResponse): DatabaseError | und
     const message = response.errmsg || (response.writeErrors && response.writeErrors.length ? response.writeErrors[0].errmsg : undefined);
     if (!message || 'string' !== typeof message) return;
 
-    if (message.includes('duplicate key error')) {
-        return new UniqueConstraintFailure();
-    }
-
     if (message) {
         return Object.assign(new MongoDatabaseError(message), { code: response.code || 0 });
     }
-
     return;
 }
 

@@ -282,7 +282,7 @@ export abstract class DatabaseTransaction {
     }
 }
 
-export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
+export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     public readonly id = SESSION_IDS++;
     public withIdentityMap = true;
 

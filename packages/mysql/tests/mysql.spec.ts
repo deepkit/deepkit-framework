@@ -1,8 +1,9 @@
 import { expect, test } from '@jest/globals';
 import { createPool } from 'mariadb';
 import { MySQLConnectionPool } from '../src/mysql-adapter.js';
-import { AutoIncrement, cast, entity, PrimaryKey } from '@deepkit/type';
+import { AutoIncrement, cast, entity, PrimaryKey, Unique } from '@deepkit/type';
 import { databaseFactory } from './factory.js';
+import { UniqueConstraintFailure } from '@deepkit/orm';
 
 test('connection MySQLConnectionPool', async () => {
     const pool = createPool({
@@ -283,4 +284,42 @@ test('ensure bigints are handled correctly', async () => {
     // fails with MariaDB 2.x driver or with 3.x driver w/ bigIntAsNumber option set to true (2.x compatibility mode)
     // expect(typeof items[1].id).toBe('bigint');
     // expect(items[1].id).toEqual(9007199254740999n);
+});
+
+test('unique constraint 1', async () => {
+    class Model {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        constructor(public username: string & Unique = '') {}
+    }
+
+    const database = await databaseFactory([Model]);
+
+    await database.persist(new Model('peter'));
+    await database.persist(new Model('paul'));
+
+    {
+        const m1 = new Model('peter');
+        await expect(database.persist(m1)).rejects.toThrow('Duplicate entry \'peter\' for key');
+        await expect(database.persist(m1)).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+
+    {
+        const m1 = new Model('marie');
+        const m2 = new Model('marie');
+        await expect(database.persist(m1, m2)).rejects.toThrow('Duplicate entry \'marie\' for key');
+        await expect(database.persist(m1, m2)).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+
+    {
+        const m = await database.query(Model).filter({username: 'paul'}).findOne();
+        m.username = 'peter';
+        await expect(database.persist(m)).rejects.toThrow('Duplicate entry \'peter\' for key');
+        await expect(database.persist(m)).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+
+    {
+        const p = database.query(Model).filter({username: 'paul'}).patchOne({username: 'peter'});
+        await expect(p).rejects.toThrow('Duplicate entry \'peter\' for key');
+        await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
 });

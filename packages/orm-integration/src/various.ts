@@ -1,17 +1,5 @@
 import { expect } from '@jest/globals';
-import {
-    AutoIncrement,
-    BackReference,
-    cast,
-    DatabaseField,
-    entity,
-    isReferenceInstance,
-    PrimaryKey,
-    Reference,
-    Unique,
-    uuid,
-    UUID,
-} from '@deepkit/type';
+import { AutoIncrement, BackReference, cast, DatabaseField, entity, isReferenceInstance, PrimaryKey, Reference, Unique, uuid, UUID } from '@deepkit/type';
 import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
 import { DatabaseFactory } from './test.js';
 import { hydrateEntity, isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
@@ -403,37 +391,42 @@ export const variousTests = {
         }
 
         const database = await databaseFactory([Model]);
+        await database.query(Model).deleteMany();
 
         await database.persist(new Model('Peter2'), new Model('Peter3'), new Model('Marie'));
 
         {
-            const items = await database.query(Model).filter({ username: { $like: 'Peter%' } }).find();
+            const items = await database.query(Model)
+                .filter({ username: { $like: 'Peter%' } }).orderBy('username').find();
             expect(items).toHaveLength(2);
             expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }]);
         }
 
         {
-            const items = await database.query(Model).filter({ username: { $like: 'Pet%' } }).find();
+            const items = await database.query(Model)
+                .filter({ username: { $like: 'Pet%' } }).orderBy('username').find();
             expect(items).toHaveLength(2);
             expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }]);
         }
 
         {
-            const items = await database.query(Model).filter({ username: { $like: 'Peter_' } }).find();
+            const items = await database.query(Model)
+                .filter({ username: { $like: 'Peter_' } }).orderBy('username').find();
             expect(items).toHaveLength(2);
             expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }]);
         }
 
         {
-            const items = await database.query(Model).filter({ username: { $like: '%r%' } }).find();
+            const items = await database.query(Model)
+                .filter({ username: { $like: '%r%' } }).orderBy('username').find();
             expect(items).toHaveLength(3);
-            expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }, { username: 'Marie' }]);
+            expect(items).toMatchObject([ { username: 'Marie' }, { username: 'Peter2' }, { username: 'Peter3' }]);
         }
 
         {
             await database.query(Model).filter({ username: { $like: 'Mar%' } }).patchOne({ username: 'Marie2' });
-            const items = await database.query(Model).find();
-            expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }, { username: 'Marie2' }]);
+            const items = await database.query(Model).orderBy('username').find();
+            expect(items).toMatchObject([ { username: 'Marie2' }, { username: 'Peter2' }, { username: 'Peter3' } ]);
         }
     },
     async deepObjectPatch(databaseFactory: DatabaseFactory) {

@@ -28,11 +28,15 @@ import {
     SQLStatement,
 } from '@deepkit/sql';
 import {
+    DatabaseDeleteError,
     DatabaseLogger,
+    DatabasePatchError,
     DatabasePersistenceChangeSet,
     DatabaseSession,
     DatabaseTransaction,
+    DatabaseUpdateError,
     DeleteResult,
+    ensureDatabaseError,
     OrmEntity,
     PatchResult,
     primaryKeyObjectConverter,
@@ -43,12 +47,24 @@ import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, 
 import { AbstractClassType, asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
-function handleError(error: Error | string): void {
-    const message = 'string' === typeof error ? error : error.message;
-    if (message.includes('Duplicate entry')) {
-        //todo: extract table name, column name, and find ClassSchema
-        throw new UniqueConstraintFailure();
+/**
+ * Converts a specific database error to a more specific error, if possible.
+ */
+function handleSpecificError(session: DatabaseSession, error: Error): Error {
+    let cause: any = error;
+    while (cause) {
+        if (cause instanceof Error) {
+            if (cause.message.includes('Duplicate entry ')
+            ) {
+                // Some database drivers contain the SQL, some not. We try to exclude the SQL from the message.
+                // Cause is attached to the error, so we don't lose information.
+                return new UniqueConstraintFailure(`${cause.message.split('\n')[0]}`, { cause: error });
+            }
+            cause = cause.cause;
+        }
     }
+
+    return error;
 }
 
 export class MySQLStatement extends SQLStatement {
@@ -68,7 +84,7 @@ export class MySQLStatement extends SQLStatement {
             this.logger.logQuery(this.sql, params);
             return rows[0];
         } catch (error: any) {
-            handleError(error);
+            error = ensureDatabaseError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
         } finally {
@@ -88,7 +104,7 @@ export class MySQLStatement extends SQLStatement {
             this.logger.logQuery(this.sql, params);
             return rows;
         } catch (error: any) {
-            handleError(error);
+            error = ensureDatabaseError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
         } finally {
@@ -128,7 +144,7 @@ export class MySQLConnection extends SQLConnection {
             this.logger.logQuery(sql, params);
             this.lastExecResult = isArray(res) ? res : [res];
         } catch (error: any) {
-            handleError(error);
+            error = ensureDatabaseError(error);
             this.logger.failedQuery(error, sql, params);
             throw error;
         } finally {
@@ -237,6 +253,10 @@ export class MySQLPersistence extends SQLPersistence {
         super(platform, connectionPool, session);
     }
 
+    override handleSpecificError(error: Error): Error {
+        return handleSpecificError(this.session, error);
+    }
+
     async batchUpdate<T extends OrmEntity>(entity: PreparedEntity, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const prepared = prepareBatchUpdate(this.platform, entity, changeSets, { setNamesWithTableName: true });
         if (!prepared) return;
@@ -321,26 +341,37 @@ export class MySQLPersistence extends SQLPersistence {
               ${endSelect}
         `;
 
-        const connection = await this.getConnection(); //will automatically be released in SQLPersistence
-        const result = await connection.execAndReturnAll(sql, params);
+        try {
+            const connection = await this.getConnection(); //will automatically be released in SQLPersistence
+            const result = await connection.execAndReturnAll(sql, params);
 
-        if (!empty(prepared.setReturning)) {
-            const returning = result[1][0];
-            const ids = JSON.parse(returning['@_pk']) as (number | string)[];
-            const parsedReturning: { [name: string]: any[] } = {};
-            for (const i in prepared.setReturning) {
-                parsedReturning[i] = JSON.parse(returning['@_f_' + i]) as any[];
-            }
+            if (!empty(prepared.setReturning)) {
+                const returning = result[1][0];
+                const ids = JSON.parse(returning['@_pk']) as (number | string)[];
+                const parsedReturning: { [name: string]: any[] } = {};
+                for (const i in prepared.setReturning) {
+                    parsedReturning[i] = JSON.parse(returning['@_f_' + i]) as any[];
+                }
 
-            for (let i = 0; i < ids.length; i++) {
-                const id = ids[i];
-                const r = prepared.assignReturning[id];
-                if (!r) continue;
+                for (let i = 0; i < ids.length; i++) {
+                    const id = ids[i];
+                    const r = prepared.assignReturning[id];
+                    if (!r) continue;
 
-                for (const name of r.names) {
-                    r.item[name] = parsedReturning[name][i];
+                    for (const name of r.names) {
+                        r.item[name] = parsedReturning[name][i];
+                    }
                 }
             }
+        } catch (error: any) {
+            const reflection = ReflectionClass.from(entity.type);
+            error = new DatabaseUpdateError(
+                reflection,
+                changeSets,
+                `Could not update ${reflection.getClassName()} in database`,
+                { cause: error },
+            );
+            throw this.handleSpecificError(error);
         }
     }
 
@@ -364,6 +395,10 @@ export class MySQLPersistence extends SQLPersistence {
 }
 
 export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T> {
+    override handleSpecificError(error: Error): Error {
+        return handleSpecificError(this.session, error);
+    }
+
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         const primaryKey = this.classSchema.getPrimary();
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
@@ -388,6 +423,10 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
             const pk = returning[0]['@_pk'];
             if (pk) deleteResult.primaryKeys = JSON.parse(pk).map(primaryKeyConverted);
             deleteResult.modified = deleteResult.primaryKeys.length;
+        } catch (error: any) {
+            error = new DatabaseDeleteError(this.classSchema, 'Could not delete in database', { cause: error });
+            error.query = model;
+            throw this.handleSpecificError(error);
         } finally {
             connection.release();
         }
@@ -497,7 +536,9 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
             for (const i in aggregateFields) {
                 patchResult.returning[i] = (JSON.parse(returning['@_f_' + asAliasName(i)]) as any[]).map(aggregateFields[i].converted);
             }
-
+        } catch (error: any) {
+            error = new DatabasePatchError(this.classSchema, model, changes, `Could not patch ${this.classSchema.getClassName()} in database`, { cause: error });
+            throw this.handleSpecificError(error);
         } finally {
             connection.release();
         }

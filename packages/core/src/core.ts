@@ -26,9 +26,10 @@ import { eachPair } from './iterators.js';
 export class CustomError extends Error {
     public name: string;
     public stack?: string;
+    public cause?: Error | any;
 
-    constructor(public message: string = '') {
-        super(message);
+    constructor(...args: any[]) {
+        super(...args);
         this.name = this.constructor.name;
     }
 }

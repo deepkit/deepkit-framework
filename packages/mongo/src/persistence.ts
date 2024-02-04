@@ -8,7 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabasePersistence, DatabasePersistenceChangeSet, DatabaseSession, getClassState, getInstanceState, OrmEntity } from '@deepkit/orm';
+import {
+    DatabaseDeleteError,
+    DatabaseInsertError,
+    DatabasePersistence,
+    DatabasePersistenceChangeSet,
+    DatabaseSession,
+    DatabaseUpdateError,
+    getClassState,
+    getInstanceState,
+    OrmEntity,
+} from '@deepkit/orm';
 import { convertClassQueryToMongo } from './mapping.js';
 import { FilterQuery } from './query.model.js';
 import { MongoClient } from './client/client.js';
@@ -22,6 +32,7 @@ import { MongoConnection } from './client/connection.js';
 import { getPartialSerializeFunction, ReflectionClass } from '@deepkit/type';
 import { ObjectId } from '@deepkit/bson';
 import { mongoSerializer } from './mongo-serializer.js';
+import { handleSpecificError } from './error.js';
 
 export class MongoPersistence extends DatabasePersistence {
     protected connection?: MongoConnection;
@@ -41,10 +52,15 @@ export class MongoPersistence extends DatabasePersistence {
         return this.connection;
     }
 
+    handleSpecificError(error: Error): Error {
+        return handleSpecificError(this.session, error);
+    }
+
     async remove<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
         const classState = getClassState(classSchema);
         const partialSerialize = getPartialSerializeFunction(classSchema.type, mongoSerializer.serializeRegistry);
 
+        let command: DeleteCommand<any>;
         if (classSchema.getPrimaries().length === 1) {
             const pk = classSchema.getPrimary();
             const pkName = pk.name;
@@ -55,13 +71,26 @@ export class MongoPersistence extends DatabasePersistence {
                 const converted = partialSerialize(pk);
                 ids.push(converted[pkName]);
             }
-            await (await this.getConnection()).execute(new DeleteCommand(classSchema, { [pkName]: { $in: ids } }));
+
+            command = new DeleteCommand(classSchema, { [pkName]: { $in: ids } });
         } else {
             const fields: any[] = [];
             for (const item of items) {
                 fields.push(partialSerialize(getInstanceState(classState, item).getLastKnownPK()));
             }
-            await (await this.getConnection()).execute(new DeleteCommand(classSchema, { $or: fields }));
+            command = new DeleteCommand(classSchema, { $or: fields });
+        }
+
+        try {
+            await (await this.getConnection()).execute(command);
+        } catch (error: any) {
+            error = new DatabaseDeleteError(
+                classSchema,
+                `Could not remove ${classSchema.getClassName()} from database`,
+                { cause: error },
+            );
+            error.items = items;
+            throw this.handleSpecificError(error);
         }
     }
 
@@ -104,7 +133,17 @@ export class MongoPersistence extends DatabasePersistence {
 
         if (this.session.logger.active) this.session.logger.log('insert', classSchema.getClassName(), items.length);
 
-        await connection.execute(new InsertCommand(classSchema, insert));
+        try {
+            await connection.execute(new InsertCommand(classSchema, insert));
+        } catch (error: any) {
+            error = new DatabaseInsertError(
+                classSchema,
+                items as OrmEntity[],
+                `Could not insert ${classSchema.getClassName()} into database`,
+                { cause: error },
+            );
+            throw this.handleSpecificError(error);
+        }
     }
 
     async update<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
@@ -157,17 +196,27 @@ export class MongoPersistence extends DatabasePersistence {
 
         const connection = await this.getConnection();
 
-        const res = await connection.execute(new UpdateCommand(classSchema, updates));
+        try {
+            const res = await connection.execute(new UpdateCommand(classSchema, updates));
 
-        if (res > 0 && hasAtomic) {
-            const returnings = await connection.execute(new FindCommand(classSchema, { [primaryKeyName]: { $in: pks } }, projection));
-            for (const returning of returnings) {
-                const r = assignReturning[returning[primaryKeyName]];
+            if (res > 0 && hasAtomic) {
+                const returnings = await connection.execute(new FindCommand(classSchema, { [primaryKeyName]: { $in: pks } }, projection));
+                for (const returning of returnings) {
+                    const r = assignReturning[returning[primaryKeyName]];
 
-                for (const name of r.names) {
-                    r.item[name] = returning[name];
+                    for (const name of r.names) {
+                        r.item[name] = returning[name];
+                    }
                 }
             }
+        } catch (error: any) {
+            error = new DatabaseUpdateError(
+                classSchema,
+                changeSets,
+                `Could not update ${classSchema.getClassName()} in database`,
+                { cause: error },
+            );
+            throw this.handleSpecificError(error);
         }
     }
 }
