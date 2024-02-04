@@ -1,6 +1,6 @@
-import { Component, Input, OnChanges, OnInit } from "@angular/core";
-import { highlight, languages } from "prismjs";
-import { ControllerClient } from "@app/app/client";
+import { Component, Input, OnChanges, OnInit } from '@angular/core';
+import { highlight, languages } from 'prismjs';
+import { ControllerClient } from '@app/app/client';
 import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-jsx';
 import 'prismjs/components/prism-tsx';
@@ -23,6 +23,8 @@ import 'prismjs/components/prism-json';
             scrollbar-width: thin;
             max-width: 100%;
             margin: 0;
+
+            scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
 
             &::-webkit-scrollbar {
                 height: 8px;

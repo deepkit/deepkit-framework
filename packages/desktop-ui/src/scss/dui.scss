@@ -97,6 +97,8 @@ body {
         -webkit-user-select: text;
     }
 
+    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+
     ::-webkit-scrollbar {
         width: 10px;
         height: 10px;
@@ -179,6 +181,7 @@ body {
         overflow: auto;
         overflow: overlay;
         scrollbar-width: thin;
+        scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
 
         &::-webkit-scrollbar {
             height: 11px;

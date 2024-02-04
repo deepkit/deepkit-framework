@@ -13,7 +13,7 @@ import { hasProperty } from './core.js';
 
 declare var process: any;
 
-const indentCode = (process?.env.DEBUG || '').includes('deepkit');
+const indentCode = ('undefined' !== typeof process && process.env?.DEBUG || '').includes('deepkit');
 
 export class CompilerContext {
     public readonly context = new Map<string, any>();

@@ -46,6 +46,7 @@ body {
     //--color-link-hover: #0062b6;
 
     box-sizing: border-box;
+    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
 
     &::-webkit-scrollbar {
         height: 11px;
@@ -223,6 +224,8 @@ input, select, textarea {
     font-variation-settings: normal;
     font-feature-settings: normal;
 
+    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+
     &::-webkit-scrollbar {
         height: 11px;
         width: 11px;
@@ -347,6 +350,8 @@ pre.code {
         cursor: text !important;
     }
 
+    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+
     &::-webkit-scrollbar {
         height: 11px;
         width: 11px;
@@ -374,6 +379,8 @@ codebox {
 .scroll-small {
     overflow: auto;
     overflow: overlay;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
 
     &::-webkit-scrollbar {
         height: 11px;
