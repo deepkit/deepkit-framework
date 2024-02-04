@@ -245,6 +245,18 @@ export function isObject(obj: any): obj is { [key: string]: any } {
 }
 
 /**
+ * Returns true if given obj is a plain object, and no Date, Array, Map, Set, etc.
+ *
+ * This is different to isObject and used in the type system to differentiate
+ * between JS objects in general and what we define as ReflectionKind.objectLiteral.
+ * Since we have Date, Set, Map, etc. in the type system, we need to differentiate
+ * between them and all other object literals.
+ */
+export function isObjectLiteral(obj: any): obj is { [key: string]: any } {
+    return isObject(obj) && !(obj instanceof Date) && !(obj instanceof Map) && !(obj instanceof Set);
+}
+
+/**
  * @public
  */
 export function isArray(obj: any): obj is any[] {

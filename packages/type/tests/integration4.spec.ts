@@ -9,8 +9,9 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { assertType, Group, groupAnnotation, ReflectionKind } from '../src/reflection/type.js';
+import { assertType, AutoIncrement, Group, groupAnnotation, PrimaryKey, ReflectionKind } from '../src/reflection/type.js';
 import { typeOf } from '../src/reflection/reflection.js';
+import { cast } from '../src/serializer-facade.js';
 
 test('group from enum', () => {
     enum Groups {
@@ -66,4 +67,79 @@ test('class base from fn', () => {
     assertType(type.types[1], ReflectionKind.property);
     expect(type.types[1].name).toBe('x');
     expect(groupAnnotation.getAnnotations(type.types[1].type)).toEqual(['position']);
+});
+
+
+test('complex recursive union type does not cause stack size exceeding 1', () => {
+    type JSONValue = null | boolean | number | string | JSONObject | JSONArray;
+
+    type JSONArray = JSONValue[];
+
+    type JSONObject = {
+        [k: string]: JSONValue;
+    };
+
+    expect(cast<JSONValue>({ username: 'Peter' })).toEqual({ username: 'Peter' });
+    expect(cast<JSONValue>(['Peter'])).toEqual(['Peter']);
+    expect(cast<JSONValue>('Peter')).toBe('Peter');
+    expect(cast<JSONValue>(null)).toBe(null);
+    expect(cast<JSONValue>(true)).toBe(true);
+    expect(cast<JSONValue>(false)).toBe(false);
+    expect(cast<JSONValue>(1)).toBe(1);
+    expect(cast<JSONValue>(0)).toBe(0);
+    expect(cast<JSONValue>(0.5)).toBe(0.5);
+    expect(cast<JSONValue>([])).toEqual([]);
+    expect(cast<JSONValue>({})).toEqual({});
+});
+
+test('complex recursive union type does not cause stack size exceeding 2', () => {
+    type JSONValue = null | boolean | number | JSONObject | JSONArray | string;
+
+    type JSONArray = [JSONValue];
+
+    type JSONObject = {
+        [k: string]: JSONValue;
+    };
+
+    const user = cast<JSONObject>({ username: 'Peter' });
+    expect(cast<JSONObject>({ username: 'Peter' })).toEqual({ username: 'Peter' });
+    expect(cast<JSONArray>(['Peter'])).toEqual(['Peter']);
+    expect(cast<JSONValue>('Peter')).toBe('Peter');
+    expect(cast<JSONValue>(null)).toBe(null);
+    expect(cast<JSONValue>(true)).toBe(true);
+    expect(cast<JSONValue>(false)).toBe(false);
+    expect(cast<JSONValue>(1)).toBe(1);
+    expect(cast<JSONValue>(0)).toBe(0);
+    expect(cast<JSONValue>(0.5)).toBe(0.5);
+    expect(cast<JSONValue>([{}])).toEqual([{}]);
+    expect(cast<JSONValue>([])).toEqual([null]);
+    expect(cast<JSONValue>({})).toEqual({});
+});
+
+test('array', () => {
+    class Address {
+        name: string = '';
+        street: string = '';
+        zip: string = '';
+    }
+
+    class Person {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        tags: string[] = [];
+        addresses: Address[] = [];
+    }
+
+    expect(cast<Person>({ id: 1, tags: ['a', 'b'], addresses: [{ name: 'a', street: 'b', zip: 'c' }] })).toEqual({
+        id: 1,
+        tags: ['a', 'b'],
+        addresses: [{ name: 'a', street: 'b', zip: 'c' }],
+    });
+});
+
+test('union loosely', () => {
+    type a = { date: Date } | { id: number };
+
+    expect(cast<a>({ date: '2020-08-05T00:00:00.000Z' })).toEqual({ date: new Date('2020-08-05T00:00:00.000Z') });
+    expect(cast<a>({ id: 2 })).toEqual({ id: 2 });
+    expect(cast<a>({ id: '3' })).toEqual({ id: 3 });
 });

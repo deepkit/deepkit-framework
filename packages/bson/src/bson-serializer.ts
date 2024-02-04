@@ -8,36 +8,34 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { hasProperty } from '@deepkit/core';
-import { CompilerContext, isArray, isIterable, isObject, toFastProperties } from '@deepkit/core';
-import { isPropertyMemberType } from '@deepkit/type';
+import { CompilerContext, hasProperty, isArray, isIterable, isObject, toFastProperties } from '@deepkit/core';
 import {
     binaryBigIntAnnotation,
     BinaryBigIntType,
-    buildFunction,
-    callExtractedFunctionIfAvailable,
-    collapsePath,
     ContainerAccessor,
-    copyAndSetParent,
     createReference,
     excludedAnnotation,
     executeTemplates,
-    extractStateToFunctionAndCallIt,
+    forwardMapToArray,
+    forwardSetToArray,
     getIndexCheck,
     getNameExpression,
+    getPropertyNameString,
     getTypeJitContainer,
     handleUnion,
-    hasCircularReference,
+    hasDefaultValue,
     isBackReferenceType,
     isBinaryBigIntType,
     isMongoIdType,
     isNullable,
     isOptional,
+    isPropertyMemberType,
     isReferenceHydrated,
     isReferenceInstance,
     isReferenceType,
     isUUIDType,
-    JitStack, memberNameToString,
+    JitStack,
+    memberNameToString,
     mongoIdAnnotation,
     NamingStrategy,
     ReceiveType,
@@ -52,6 +50,7 @@ import {
     TemplateRegistry,
     TemplateState,
     Type,
+    TypeArray,
     TypeBigInt,
     TypeClass,
     TypeGuardRegistry,
@@ -62,7 +61,7 @@ import {
     TypeTuple,
     UnpopulatedCheck,
     unpopulatedSymbol,
-    uuidAnnotation
+    uuidAnnotation,
 } from '@deepkit/type';
 import {
     bsonTypeGuardArray,
@@ -87,7 +86,7 @@ import {
     deserializeTemplateLiteral,
     deserializeTuple,
     deserializeUndefined,
-    deserializeUnion
+    deserializeUnion,
 } from './bson-deserializer-templates.js';
 import { seekElementSize } from './continuation.js';
 import { BSONError } from './model.js';
@@ -244,9 +243,33 @@ export class ValueWithBSONSerializer {
 
 export class Writer {
     public dataView: DataView;
+    public typeOffset: number = 0;
 
     constructor(public buffer: Uint8Array, public offset: number = 0) {
         this.dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    }
+
+    /**
+     * If typeOffset is defined, the type will be written at this offset.
+     * Useful for writing type information for members in array/object literals.
+     */
+    writeType(v: number) {
+        if (this.typeOffset !== 0) {
+            this.buffer[this.typeOffset] = v;
+            this.typeOffset = 0;
+        }
+    }
+
+    resetWriteType() {
+        this.typeOffset = 0;
+    }
+
+    prepareWriteType() {
+        this.typeOffset = this.offset;
+        // It might be that a subsequent content writer is omitted (circular reference),
+        // then we want undefined to be written as type.
+        this.buffer[this.offset] = BSONType.UNDEFINED;
+        this.offset += 1;
     }
 
     writeUint32(v: number) {
@@ -427,28 +450,19 @@ export class Writer {
         this.offset += 12;
     }
 
-    write(value: any, nameWriter?: () => void): void {
+    write(value: any): void {
         if (value instanceof ValueWithBSONSerializer) {
             if (value.value !== undefined && value.value !== null) {
                 if (isUUIDType(value.type)) {
-                    if (nameWriter) {
-                        this.writeByte(BSONType.BINARY);
-                        nameWriter();
-                    }
+                    this.writeType(BSONType.BINARY);
                     this.writeUUID(value.value);
                     return;
                 } else if (isMongoIdType(value.type)) {
-                    if (nameWriter) {
-                        this.writeByte(BSONType.OID);
-                        nameWriter();
-                    }
+                    this.writeType(BSONType.OID);
                     this.writeObjectId(value.value);
                     return;
                 } else if (isBinaryBigIntType(value.type)) {
-                    if (nameWriter) {
-                        this.writeByte(BSONType.BINARY);
-                        nameWriter();
-                    }
+                    this.writeType(BSONType.BINARY);
                     const binary = binaryBigIntAnnotation.getFirst(value.type)!;
                     if (binary === BinaryBigIntType.signed) {
                         this.writeSignedBigIntBinary(value.value);
@@ -458,18 +472,12 @@ export class Writer {
                     return;
                 }
             }
-            this.write(value.value, nameWriter);
+            this.write(value.value);
         } else if ('boolean' === typeof value) {
-            if (nameWriter) {
-                this.writeByte(BSONType.BOOLEAN);
-                nameWriter();
-            }
+            this.writeType(BSONType.BOOLEAN);
             this.writeByte(value ? 1 : 0);
         } else if (value instanceof RegExp) {
-            if (nameWriter) {
-                this.writeByte(BSONType.REGEXP);
-                nameWriter();
-            }
+            this.writeType(BSONType.REGEXP);
             this.writeString(value.source);
             this.writeNull();
             if (value.ignoreCase) this.writeString('i');
@@ -478,10 +486,7 @@ export class Writer {
             this.writeNull();
         } else if ('string' === typeof value) {
             //size + content + null
-            if (nameWriter) {
-                this.writeByte(BSONType.STRING);
-                nameWriter();
-            }
+            this.writeType(BSONType.STRING);
             const start = this.offset;
             this.offset += 4; //size placeholder
             this.writeString(value);
@@ -490,89 +495,58 @@ export class Writer {
         } else if ('number' === typeof value) {
             if (Math.floor(value) === value && value >= BSON_INT32_MIN && value <= BSON_INT32_MAX) {
                 //32bit int
-                if (nameWriter) {
-                    this.writeByte(BSONType.INT);
-                    nameWriter();
-                }
+                this.writeType(BSONType.INT);
                 this.writeInt32(value);
             } else {
                 //double
-                if (nameWriter) {
-                    this.writeByte(BSONType.NUMBER);
-                    nameWriter();
-                }
+                this.writeType(BSONType.NUMBER);
                 this.writeDouble(value);
             }
         } else if (value instanceof Date) {
-            if (nameWriter) {
-                this.writeByte(BSONType.DATE);
-                nameWriter();
-            }
-
+            this.writeType(BSONType.DATE);
             this.writeLong(value.valueOf());
         } else if ('bigint' === typeof value) {
             //this is only called for bigint in any structures.
             //to make sure the deserializing yields a bigint as well, we have to always use binary representation
-            if (nameWriter) {
-                this.writeByte(BSONType.BINARY);
-                nameWriter();
-            }
+            this.writeType(BSONType.BINARY);
             this.writeBigIntBinary(value);
         } else if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
-            if (nameWriter) {
-                this.writeByte(BSONType.BINARY);
-                nameWriter();
-            }
+            this.writeType(BSONType.BINARY);
             this.writeArrayBuffer(value);
         } else if (isArray(value)) {
-            if (nameWriter) {
-                this.writeByte(BSONType.ARRAY);
-                nameWriter();
-            }
+            this.writeType(BSONType.ARRAY);
             const start = this.offset;
             this.offset += 4; //size
 
             for (let i = 0; i < value.length; i++) {
-                this.write(value[i], () => {
-                    this.writeAsciiString('' + i);
-                    this.writeByte(0);
-                });
+                this.prepareWriteType();
+                this.writeAsciiString('' + i);
+                this.writeByte(0);
+                this.write(value[i]);
             }
             this.writeNull();
             this.writeDelayedSize(this.offset - start, start);
         } else if (value === undefined) {
-            if (nameWriter) {
-                this.writeByte(BSONType.UNDEFINED);
-                nameWriter();
-            }
+            this.writeType(BSONType.UNDEFINED);
         } else if (value === null) {
-            if (nameWriter) {
-                this.writeByte(BSONType.NULL);
-                nameWriter();
-            }
+            this.writeType(BSONType.NULL);
         } else if (isObject(value)) {
-            if (nameWriter) {
-                this.writeByte(BSONType.OBJECT);
-                nameWriter();
-            }
+            this.writeType(BSONType.OBJECT);
             const start = this.offset;
             this.offset += 4; //size
 
             for (let i in value) {
                 if (!hasProperty(value, i)) continue;
-                this.write(value[i], () => {
-                    this.writeString(i);
-                    this.writeByte(0);
-                });
+                this.prepareWriteType();
+                this.writeString(i);
+                this.writeByte(0);
+                this.write(value[i]);
             }
             this.writeNull();
             this.writeDelayedSize(this.offset - start, start);
         } else {
             //the sizer incldues the type and name, so we have to write that
-            if (nameWriter) {
-                this.writeByte(BSONType.UNDEFINED);
-                nameWriter();
-            }
+            this.writeType(BSONType.UNDEFINED);
         }
     }
 
@@ -616,7 +590,7 @@ function handleObjectLiteral(
     type: TypeClass | TypeObjectLiteral,
     state: TemplateState,
     target: 'serialization' | 'sizer',
-    options: BSONSerializerOptions
+    options: BSONSerializerOptions,
 ) {
     let before: string = 'state.size += 4; //object size';
     let after: string = 'state.size += 1; //null';
@@ -676,43 +650,13 @@ function handleObjectLiteral(
     //     return;
     // }
 
-    const existingCalled = callExtractedFunctionIfAvailable(state, type);
-    const extract = existingCalled ? undefined : extractStateToFunctionAndCallIt(state, type);
-
+    //following line resets propertyName, so we have to store it before
+    const propertyName = state.propertyName;
     if (target === 'serialization') {
         serializePropertyNameAware(type, state, BSONType.OBJECT, `'object' === typeof ${state.accessor}`, '');
     } else {
         sizerPropertyNameAware(type, state, `'object' === typeof ${state.accessor}`, '');
     }
-
-    if (type.kind === ReflectionKind.class && referenceAnnotation.hasAnnotations(type)) {
-        state.setContext({ isObject, isReferenceInstance, isReferenceHydrated });
-        const reflection = ReflectionClass.from(type.classType);
-        //the primary key is serialised for unhydrated references
-        const index = getNameExpression(reflection.getPrimary().getName(), state);
-        const primaryKey = reflection.getPrimary().getType();
-        //if a reference or forMongoDatabase=true only the foreign primary key is serialized
-        state.replaceTemplate(`
-            if ((${options.forMongoDatabase === true}) || (isReferenceInstance(${state.accessor}) && !isReferenceHydrated(${state.accessor}))) {
-                ${executeTemplates(state.fork(state.setter, `${state.accessor}[${index}]`).forPropertyName(state.propertyName), primaryKey)}
-            } else {
-                ${state.template}
-            }
-        `);
-    }
-
-    //wrap circular check if necessary
-    if (hasCircularReference(type)) {
-        state.replaceTemplate(`
-            if (!state._stack || !state._stack.includes(${state.accessor})) {
-                ${state.template}
-            }
-        `);
-    }
-
-    if (!extract) return;
-
-    state = extract.state;
 
     const lines: string[] = [];
     const signatures: TypeIndexSignature[] = [];
@@ -728,7 +672,7 @@ function handleObjectLiteral(
         if (!isPropertyMemberType(member)) continue;
         if (!isSerializable(member.type)) continue;
 
-        const writeName = String(state.namingStrategy.getPropertyName(member, state.registry.serializer.name));
+        const propertyName = String(state.namingStrategy.getPropertyName(member, state.registry.serializer.name));
         const readName = getNameExpression(memberNameToString(member.name), state);
         existing.push(readName);
 
@@ -738,28 +682,44 @@ function handleObjectLiteral(
         if (excludedAnnotation.isExcluded(member.type, state.registry.serializer.name)) continue;
 
         const accessor = `${state.accessor}[${readName}]`;
-        const propertyState = state.fork('', accessor).extendPath(writeName);
+        const propertyState = state.fork('', accessor).extendPath(propertyName);
         const setUndefined = isOptional(member)
-            ? executeTemplates(propertyState.fork().forPropertyName(writeName), { kind: ReflectionKind.undefined })
-            : isNullable(member) ? executeTemplates(propertyState.fork().forPropertyName(writeName), { kind: ReflectionKind.null }) : '';
+            ? executeTemplates(propertyState.fork(), { kind: ReflectionKind.undefined })
+            : isNullable(member) ? executeTemplates(propertyState.fork(), { kind: ReflectionKind.null }) : '';
 
-        const template = executeTemplates(propertyState.fork().forPropertyName(writeName), member.type);
+        const template = executeTemplates(propertyState.fork(), member.type);
         if (!template) {
             console.error('missing template for member', member.name, 'of', type);
             throw new BSONError(`No template found for ${String(member.name)}: ${member.type.kind}`);
         }
 
+        let nameWriter = ``;
+        if (target === 'serialization') {
+            nameWriter = `
+                state.writer.prepareWriteType();
+                ${propertyNameWrite(propertyName)}
+            `;
+        } else if (target === 'sizer') {
+            nameWriter = `
+            //type + name + null
+            state.size += 1 + ${stringByteLength(propertyName)} + 1;
+            `;
+        }
+
+        const optional = isOptional(member) || hasDefaultValue(member);
+
         let converter = `
+            ${nameWriter}
             if (${accessor} === unpopulatedSymbol) {
                 //don't do anything since not loaded
-            } else if (${accessor} === undefined) {
+            } else if (${optional} && ${accessor} === undefined) {
                 ${setUndefined}
             } else {
                 ${template}
             }
         `;
 
-        if (isOptional(member)) {
+        if (optional) {
             lines.push(`
             if (${readName} in ${state.accessor}) {
                 ${converter}
@@ -774,17 +734,32 @@ function handleObjectLiteral(
         const i = state.compilerContext.reserveName('i');
         const existingCheck = existing.map(v => `${i} === ${v}`).join(' || ') || 'false';
         const signatureLines: string[] = [];
+        state.setContext({ stringByteLength });
 
         sortSignatures(signatures);
 
         for (const signature of signatures) {
             const accessor = new ContainerAccessor(state.accessor, i);
-            const propertyState = state.fork(undefined, accessor).extendPath(new RuntimeCode(i)).forPropertyName(new RuntimeCode(i));
+            const propertyState = state.fork(undefined, accessor).extendPath(new RuntimeCode(i));
             const setUndefined = isOptional(signature.type)
-                ? executeTemplates(propertyState.fork().forPropertyName(new RuntimeCode(i)), { kind: ReflectionKind.undefined })
-                : isNullable(signature.type) ? executeTemplates(propertyState.fork().forPropertyName(new RuntimeCode(i)), { kind: ReflectionKind.null }) : '';
+                ? executeTemplates(propertyState.fork(), { kind: ReflectionKind.undefined })
+                : isNullable(signature.type) ? executeTemplates(propertyState.fork(), { kind: ReflectionKind.null }) : '';
 
+            let nameWriter = ``;
+            if (target === 'serialization') {
+                nameWriter = `
+                    state.writer.prepareWriteType();
+                    state.writer.writeAsciiString(${i});
+                    state.writer.writeByte(0);
+                `;
+            } else if (target === 'sizer') {
+                nameWriter = `
+                    //type + name + null
+                    state.size += 1 + stringByteLength(${i}) + 1;
+                `;
+            }
             signatureLines.push(`else if (${getIndexCheck(state.compilerContext, i, signature.index)}) {
+                ${nameWriter}
                 if (${accessor} === undefined) {
                      ${setUndefined}
                 } else {
@@ -793,7 +768,7 @@ function handleObjectLiteral(
             }`);
         }
 
-        state.setContext({hasProperty});
+        state.setContext({ hasProperty });
         //the index signature type could be: string, number, symbol.
         //or a literal when it was constructed by a mapped type.
         lines.push(`
@@ -806,40 +781,48 @@ function handleObjectLiteral(
     }
 
     state.addCode(`
-        //handle objectLiteral via propertyName ${state.propertyName ? collapsePath([state.propertyName]) : ''}
+        //handle objectLiteral via propertyName="${getPropertyNameString(propertyName)}"
         ${before}
         ${lines.join('\n')}
         ${after}
     `);
 
-    extract.setFunction(buildFunction(state, type));
+    if (type.kind === ReflectionKind.class && referenceAnnotation.hasAnnotations(type)) {
+        state.setContext({ isObject, isReferenceInstance, isReferenceHydrated });
+        const reflection = ReflectionClass.from(type.classType);
+        //the primary key is serialised for unhydrated references
+        const index = getNameExpression(reflection.getPrimary().getName(), state);
+        const primaryKey = reflection.getPrimary().getType();
+        //if a reference or forMongoDatabase=true only the foreign primary key is serialized
+        state.replaceTemplate(`
+            if ((${options.forMongoDatabase === true}) || (isReferenceInstance(${state.accessor}) && !isReferenceHydrated(${state.accessor}))) {
+                ${executeTemplates(state.fork(state.setter, `${state.accessor}[${index}]`).forPropertyName(propertyName), primaryKey)}
+            } else {
+                ${state.template}
+            }
+        `);
+    }
 }
 
-function propertyNameWriter(state: TemplateState) {
-    if (state.propertyName) {
-        if (state.propertyName instanceof RuntimeCode) {
+function propertyNameWrite(propertyName?: string | RuntimeCode) {
+    if (propertyName) {
+        if (propertyName instanceof RuntimeCode) {
             return `
-               state.writer.writeAsciiString(${state.propertyName.code});
+               state.writer.writeAsciiString(${propertyName.code});
                state.writer.writeByte(0);
             `;
         } else {
-            return getNameWriterCode(state.propertyName);
+            return getNameWriterCode(propertyName);
         }
     }
     return '';
 }
 
 function serializePropertyNameAware(type: Type, state: TemplateState, bsonType: BSONType, typeChecker: string, code: string): void {
-    //when this call is reached first, and it's an object, then no type byte is needed.
-    //todo: that does not work when arbitrary offset and already prefilled buffer is given
-    const isInitialObject = `${bsonType === BSONType.OBJECT} && state.writer.offset === 0`;
-
     state.template = `
-        //serializer for ${type.kind}
+        //serializer for ${type.kind}, via propertyName="${getPropertyNameString(state.propertyName)}"
         ${typeChecker ? `if (!(${typeChecker})) ${state.throwCode(type)}` : ''}
-        if (${!!state.propertyName}) state.writer.writeByte(${bsonType});
-        ${propertyNameWriter(state)}
-        ${state.template}
+        state.writer.writeType(${bsonType}); //BSON type = ${BSONType[bsonType]}
         ${code}
     `;
 }
@@ -851,29 +834,6 @@ export class DigitByteRuntimeCode extends RuntimeCode {
 }
 
 function sizerPropertyNameAware(type: Type, state: TemplateState, typeChecker: string, code: string): void {
-    if (state.propertyName) {
-        if (state.propertyName instanceof DigitByteRuntimeCode) {
-            state.setContext({ digitByteSize });
-            //type + string size + null
-            code = `
-                state.size += 1 + digitByteSize(${state.propertyName.code}); //type + byte of ${state.propertyName.code}
-                ${code}
-            `;
-        } else if (state.propertyName instanceof RuntimeCode) {
-            state.setContext({ stringByteLength });
-            //type + string size + null
-            code = `
-                state.size += 1 + stringByteLength(${state.propertyName.code}) + 1; //type + string size of ${state.propertyName.code} + null
-                ${code}
-            `;
-        } else {
-            //type + string size + null
-            code = `
-               state.size += 1 + ${stringByteLength(state.propertyName)} + 1; //type + string size of ${state.propertyName} + null
-               ${code}
-            `;
-        }
-    }
     const checker = typeChecker ? `if (!(${typeChecker})) ${state.throwCode(type)}` : '';
     state.template = `
         ${checker}
@@ -889,9 +849,7 @@ function sizerAny(type: Type, state: TemplateState) {
 
 function serializeAny(type: Type, state: TemplateState) {
     state.addCode(`
-        state.writer.write(${state.accessor}, () => {
-            ${propertyNameWriter(state)}
-        });
+        state.writer.write(${state.accessor});
     `);
 }
 
@@ -955,23 +913,19 @@ function sizeString(type: Type, state: TemplateState) {
 }
 
 function serializeNumber(type: Type, state: TemplateState) {
-    const nameWriter = propertyNameWriter(state);
     state.addCode(`
         if ('bigint' === typeof ${state.accessor}) {
             //long
-            state.writer.writeByte(${BSONType.LONG});
-            ${nameWriter}
+            state.writer.writeType(${BSONType.LONG});
             state.writer.writeBigIntLong(${state.accessor});
         } else if ('number' === typeof ${state.accessor} && !Number.isNaN(${state.accessor})) {
             if (Math.floor(${state.accessor}) === ${state.accessor} && ${state.accessor} >= ${BSON_INT32_MIN} && ${state.accessor} <= ${BSON_INT32_MAX}) {
                 //32bit int
-                state.writer.writeByte(${BSONType.INT});
-                ${nameWriter}
+                state.writer.writeType(${BSONType.INT});
                 state.writer.writeInt32(${state.accessor});
             } else {
                 //double, 64bit
-                state.writer.writeByte(${BSONType.NUMBER});
-                ${nameWriter}
+                state.writer.writeType(${BSONType.NUMBER});
                 state.writer.writeDouble(${state.accessor});
             }
         }
@@ -998,13 +952,11 @@ function serializeBigInt(type: TypeBigInt, state: TemplateState) {
     const binaryBigInt = binaryBigIntAnnotation.getFirst(type);
 
     if (binaryBigInt !== undefined) {
-        const nameWriter = propertyNameWriter(state);
         const writeBigInt = binaryBigInt === BinaryBigIntType.unsigned ? 'writeBigIntBinary' : 'writeSignedBigIntBinary';
         state.addCode(`
         if (('bigint' === typeof ${state.accessor} || 'number' === typeof ${state.accessor}) && !Number.isNaN(${state.accessor})) {
             //long
-            state.writer.writeByte(${BSONType.BINARY});
-            ${nameWriter}
+            state.writer.writeType(${BSONType.BINARY});
             state.writer.${writeBigInt}(${state.accessor});
         }`);
     } else {
@@ -1073,17 +1025,23 @@ function serializeBinary(type: TypeClass, state: TemplateState) {
     `);
 }
 
-function sizerArray(elementType: Type, state: TemplateState) {
+function sizerArray(type: TypeArray, state: TemplateState) {
+    const elementType = type.type;
     state.setContext({ isIterable });
 
-    const i = state.compilerContext.reserveName('i');
+    const i = state.compilerContext.reserveName('arrayItemIndex');
     const item = state.compilerContext.reserveName('item');
+    state.setContext({ digitByteSize });
+
+    const memberState = state.fork('', item).extendPath(new RuntimeCode(i));
     sizerPropertyNameAware(elementType, state, `isIterable(${state.accessor})`, `
         state.size += 4; //array size
 
         let ${i} = 0;
         for (const ${item} of ${state.accessor}) {
-            ${executeTemplates(state.fork('', item).extendPath(new RuntimeCode(i)).forPropertyName(new DigitByteRuntimeCode(i)), elementType)}
+            //type + index name + null
+            state.size += 1 + digitByteSize(${i});
+            ${executeTemplates(memberState, elementType)}
             ${i}++;
         }
 
@@ -1095,7 +1053,7 @@ function serializeArray(elementType: Type, state: TemplateState) {
     state.setContext({ isIterable });
 
     const start = state.compilerContext.reserveName('start');
-    const i = state.compilerContext.reserveName('i');
+    const i = state.compilerContext.reserveName('arrayIndex');
     const item = state.compilerContext.reserveName('item');
     serializePropertyNameAware(elementType, state, BSONType.ARRAY, `isIterable(${state.accessor})`, `
         var ${start} = state.writer.offset;
@@ -1103,7 +1061,13 @@ function serializeArray(elementType: Type, state: TemplateState) {
 
         let ${i} = 0;
         for (const ${item} of ${state.accessor}) {
-            ${executeTemplates(state.fork('', item).extendPath(new RuntimeCode(i)).forPropertyName(new DigitByteRuntimeCode(i)), elementType)}
+            state.writer.prepareWriteType();
+
+            state.writer.writeAsciiString(${i} + '');
+            state.writer.writeByte(0);
+
+            ${executeTemplates(state.fork('', item).extendPath(new RuntimeCode(i)), elementType)}
+            state.writer.resetWriteType();
             ${i}++;
         }
 
@@ -1119,7 +1083,7 @@ function serializeTuple(type: TypeTuple, state: TemplateState) {
     //[number, ...string, number, string], medium
     const lines: string[] = [];
     let restEndOffset = 0;
-    const i = state.compilerContext.reserveName('i');
+    const i = state.compilerContext.reserveName('tupleIndex');
 
     for (let i = 0; i < type.types.length; i++) {
         if (type.types[i].type.kind === ReflectionKind.rest) {
@@ -1132,14 +1096,20 @@ function serializeTuple(type: TypeTuple, state: TemplateState) {
         if (member.type.kind === ReflectionKind.rest) {
             lines.push(`
             for (; ${i} < ${state.accessor}.length - ${restEndOffset}; ${i}++) {
-                ${executeTemplates(state.fork('', `${state.accessor}[${i}]`).extendPath(member.name || new RuntimeCode(i)).forPropertyName(new DigitByteRuntimeCode(i)), member.type.type)}
+                state.writer.prepareWriteType();
+                state.writer.writeAsciiString(${i} + '');
+                state.writer.writeByte(0);
+                ${executeTemplates(state.fork('', `${state.accessor}[${i}]`).extendPath(member.name || new RuntimeCode(i)), member.type.type)}
             }
             `);
         } else {
             const optionalCheck = member.optional ? `${state.accessor}[${i}] !== undefined` : 'true';
             lines.push(`
             if (${optionalCheck}) {
-                ${executeTemplates(state.fork('', `${state.accessor}[${i}]`).extendPath(member.name || new RuntimeCode(i)).forPropertyName(new DigitByteRuntimeCode(i)), member.type)}
+                state.writer.prepareWriteType();
+                state.writer.writeAsciiString(${i} + '');
+                state.writer.writeByte(0);
+                ${executeTemplates(state.fork('', `${state.accessor}[${i}]`).extendPath(member.name || new RuntimeCode(i)), member.type)}
             }
             ${i}++;
             `);
@@ -1148,6 +1118,7 @@ function serializeTuple(type: TypeTuple, state: TemplateState) {
 
     const start = state.compilerContext.reserveName('start');
     state.setContext({ isArray });
+
     serializePropertyNameAware(type, state, BSONType.ARRAY, `isArray(${state.accessor})`, `
         let ${i} = 0;
         var ${start} = state.writer.offset;
@@ -1167,7 +1138,7 @@ function sizerTuple(type: TypeTuple, state: TemplateState) {
     //[number, ...string, number, string], medium
     const lines: string[] = [];
     let restEndOffset = 0;
-    const i = state.compilerContext.reserveName('i');
+    const i = state.compilerContext.reserveName('tupleElement');
 
     for (let i = 0; i < type.types.length; i++) {
         if (type.types[i].type.kind === ReflectionKind.rest) {
@@ -1175,19 +1146,23 @@ function sizerTuple(type: TypeTuple, state: TemplateState) {
             break;
         }
     }
+    state.setContext({ digitByteSize });
 
     for (const member of type.types) {
         if (member.type.kind === ReflectionKind.rest) {
             lines.push(`
             for (; ${i} < ${state.accessor}.length - ${restEndOffset}; ${i}++) {
-                ${executeTemplates(state.fork('', `${state.accessor}[${i}]`).extendPath(member.name || new RuntimeCode(i)).forPropertyName(new DigitByteRuntimeCode(i)), member.type.type)}
+                //type + index name + null
+                state.size += 1 + digitByteSize(${i});
+                ${executeTemplates(state.fork('', `${state.accessor}[${i}]`).extendPath(member.name || new RuntimeCode(i)), member.type.type)}
             }
             `);
         } else {
             const optionalCheck = member.optional ? `${state.accessor}[${i}] !== undefined` : 'true';
             lines.push(`
             if (${optionalCheck}) {
-                ${executeTemplates(state.fork('', `${state.accessor}[${i}]`).extendPath(member.name || new RuntimeCode(i)).forPropertyName(new DigitByteRuntimeCode(i)), member.type)}
+                state.size += 1 + digitByteSize(${i});
+                ${executeTemplates(state.fork('', `${state.accessor}[${i}]`).extendPath(member.name || new RuntimeCode(i)), member.type)}
             }
             ${i}++;
             `);
@@ -1197,7 +1172,7 @@ function sizerTuple(type: TypeTuple, state: TemplateState) {
     state.setContext({ isArray });
     sizerPropertyNameAware(type, state, `isArray(${state.accessor})`, `
         let ${i} = 0;
-        state.size += 4; //array size
+        state.size += 4; //array size, for tuple
 
         ${lines.join('\n')}
 
@@ -1251,15 +1226,10 @@ export class BSONBinarySerializer extends Serializer {
         this.sizerRegistry.register(ReflectionKind.bigint, sizerBigInt);
         this.sizerRegistry.register(ReflectionKind.literal, sizerLiteral);
         this.sizerRegistry.register(ReflectionKind.regexp, sizerRegExp);
-        this.sizerRegistry.register(ReflectionKind.array, (type, state) => sizerArray(type.type as Type, state));
+        this.sizerRegistry.register(ReflectionKind.array, sizerArray);
         this.sizerRegistry.register(ReflectionKind.tuple, sizerTuple);
-        this.sizerRegistry.registerClass(Map, (type, state) => sizerArray(copyAndSetParent({
-            kind: ReflectionKind.tuple, types: [
-                { kind: ReflectionKind.tupleMember, name: 'key', type: type.arguments![0] },
-                { kind: ReflectionKind.tupleMember, name: 'value', type: type.arguments![1] },
-            ]
-        }), state));
-        this.sizerRegistry.registerClass(Set, (type, state) => sizerArray(type.arguments![0] as Type, state));
+        this.sizerRegistry.registerClass(Map, forwardMapToArray);
+        this.sizerRegistry.registerClass(Set, forwardSetToArray);
         this.sizerRegistry.registerClass(Date, (type, state) => sizerPropertyNameAware(type, state, `${state.accessor} instanceof Date`, `state.size += 8;`));
         this.sizerRegistry.register(ReflectionKind.undefined, (type, state) => sizerPropertyNameAware(type, state, `${state.accessor} === undefined || ${state.accessor} === null`, ``));
         this.sizerRegistry.register(ReflectionKind.void, (type, state) => sizerPropertyNameAware(type, state, `${state.accessor} === undefined || ${state.accessor} === null`, ``));
@@ -1289,13 +1259,8 @@ export class BSONBinarySerializer extends Serializer {
         this.bsonSerializeRegistry.register(ReflectionKind.tuple, serializeTuple);
         this.bsonSerializeRegistry.register(ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
         this.bsonSerializeRegistry.register(ReflectionKind.enum, (type, state) => executeTemplates(state, type.indexType));
-        this.bsonSerializeRegistry.registerClass(Map, (type, state) => serializeArray(copyAndSetParent({
-            kind: ReflectionKind.tuple, types: [
-                { kind: ReflectionKind.tupleMember, type: type.arguments![0] },
-                { kind: ReflectionKind.tupleMember, type: type.arguments![1] },
-            ]
-        }), state));
-        this.bsonSerializeRegistry.registerClass(Set, (type, state) => serializeArray(type.arguments![0] as Type, state));
+        this.bsonSerializeRegistry.registerClass(Map, forwardMapToArray);
+        this.bsonSerializeRegistry.registerClass(Set, forwardSetToArray);
         this.bsonSerializeRegistry.registerClass(Date, (type, state) => {
             serializePropertyNameAware(type, state, BSONType.DATE, `${state.accessor} instanceof Date`, `state.writer.writeLong(${state.accessor}.valueOf());`);
         });
@@ -1335,20 +1300,15 @@ export class BSONBinarySerializer extends Serializer {
         this.bsonTypeGuards.register(1, ReflectionKind.regexp, bsonTypeGuardForBsonTypes([BSONType.REGEXP]));
 
         this.bsonTypeGuards.register(1, ReflectionKind.union, (type, state) => bsonTypeGuardUnion(this.bsonTypeGuards, type, state));
-        this.bsonTypeGuards.register(1, ReflectionKind.array, (type, state) => bsonTypeGuardArray(type.type as Type, state));
+        this.bsonTypeGuards.register(1, ReflectionKind.array, bsonTypeGuardArray);
         this.bsonTypeGuards.register(1, ReflectionKind.tuple, bsonTypeGuardTuple);
         this.bsonTypeGuards.register(1, ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
         this.bsonTypeGuards.register(1, ReflectionKind.enum, (type, state) => executeTemplates(state, type.indexType));
 
         this.bsonTypeGuards.registerClass(1, Date, bsonTypeGuardForBsonTypes([...numberTypes, BSONType.DATE, BSONType.TIMESTAMP]));
         this.bsonTypeGuards.registerBinary(1, bsonTypeGuardForBsonTypes([BSONType.BINARY]));
-        this.bsonTypeGuards.registerClass(1, Map, (type, state) => bsonTypeGuardArray(copyAndSetParent({
-            kind: ReflectionKind.tuple, types: [
-                { kind: ReflectionKind.tupleMember, name: 'key', type: type.arguments![0] },
-                { kind: ReflectionKind.tupleMember, name: 'value', type: type.arguments![1] },
-            ]
-        }), state));
-        this.bsonTypeGuards.registerClass(1, Set, (type, state) => bsonTypeGuardArray(type.arguments![0] as Type, state));
+        this.bsonTypeGuards.registerClass(1, Map, forwardMapToArray);
+        this.bsonTypeGuards.registerClass(1, Set, forwardSetToArray);
 
         //many deserializes support other types as well as fallback, we register them under specificality > 1
         this.bsonTypeGuards.register(1.5, ReflectionKind.undefined, bsonTypeGuardForBsonTypes([BSONType.NULL]));
@@ -1394,23 +1354,17 @@ export class BSONBinarySerializer extends Serializer {
         this.bsonDeserializeRegistry.register(ReflectionKind.regexp, deserializeRegExp);
         this.bsonDeserializeRegistry.register(ReflectionKind.tuple, deserializeTuple);
         this.bsonDeserializeRegistry.register(ReflectionKind.union, (type, state) => deserializeUnion(this.bsonTypeGuards, type, state));
-        this.bsonDeserializeRegistry.register(ReflectionKind.array, (type, state) => deserializeArray(type.type as Type, state));
+        this.bsonDeserializeRegistry.register(ReflectionKind.array, deserializeArray);
         this.bsonDeserializeRegistry.register(ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
         this.bsonDeserializeRegistry.register(ReflectionKind.enum, (type, state) => executeTemplates(state, type.indexType));
         this.bsonDeserializeRegistry.registerClass(Date, deserializeDate);
         this.bsonDeserializeRegistry.registerBinary(deserializeBinary);
         this.bsonDeserializeRegistry.registerClass(Map, (type, state) => {
-            deserializeArray(copyAndSetParent({
-                kind: ReflectionKind.tuple, types: [
-                    { kind: ReflectionKind.tupleMember, type: type.arguments![0] },
-                    { kind: ReflectionKind.tupleMember, type: type.arguments![1] },
-                ]
-            }), state);
-
+            forwardMapToArray(type, state);
             state.addSetter(`new Map(${state.setter})`);
         });
         this.bsonDeserializeRegistry.registerClass(Set, (type, state) => {
-            deserializeArray(type.arguments![0] as Type, state);
+            forwardSetToArray(type, state);
             state.addSetter(`new Set(${state.setter})`);
         });
 
@@ -1526,5 +1480,6 @@ export function getBSONSizer<T>(serializer: BSONBinarySerializer = bsonBinarySer
 }
 
 export function serializeBSON<T>(data: T, serializer: BSONBinarySerializer = bsonBinarySerializer, receiveType?: ReceiveType<T>): Uint8Array {
-    return getBSONSerializer(serializer, receiveType)(data);
+    const serialize = getBSONSerializer(serializer, receiveType);
+    return serialize(data);
 }

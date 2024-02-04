@@ -116,7 +116,7 @@ test('basic setup and methods', async () => {
         } catch (error) {
             expect(error).toBeInstanceOf(ValidationError);
             expect((error as ValidationError).errors[0]).toBeInstanceOf(ValidationErrorItem);
-            expect((error as ValidationError).errors[0]).toEqual({ code: 'type', message: 'Cannot convert undefined value to string', path: 'user.name' });
+            expect((error as ValidationError).errors[0]).toEqual({ code: 'type', message: 'Cannot convert undefined to string', path: 'args.user.name' });
         }
     }
 

@@ -11,6 +11,10 @@
 import { indent } from './indent.js';
 import { hasProperty } from './core.js';
 
+declare var process: any;
+
+const indentCode = (process?.env.DEBUG || '').includes('deepkit');
+
 export class CompilerContext {
     public readonly context = new Map<string, any>();
     protected constVariables = new Map<any, string>();
@@ -92,8 +96,8 @@ export class CompilerContext {
     }
 
     protected format(code: string): string {
-        if (!this.config.indent) return code;
-        return indent.js(code, { tabString: '    ' });
+        if (indentCode || this.config.indent) return indent.js(code, { tabString: '    ' });
+       return code;
     }
 
     build(functionCode: string, ...args: string[]): any {

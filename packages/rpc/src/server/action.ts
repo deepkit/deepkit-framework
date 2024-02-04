@@ -400,10 +400,6 @@ export class RpcServerAction {
         try {
             value = message.parseBody(types.actionCallSchema);
         } catch (error: any) {
-            if (error instanceof ValidationError) {
-                //remove `.args` from path
-                error = ValidationError.from(error.errors.map(v => ({ ...v, path: v.path.replace('args.', '') })));
-            }
             return response.error(error);
         }
 
