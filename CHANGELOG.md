@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.125](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.124...v1.0.1-alpha.125) (2024-02-05)
+
+### Bug Fixes
+
+- **mongo:** export error symbols ([5841a5a](https://github.com/deepkit/deepkit-framework/commit/5841a5a35927bf34d4187d047e43e2ec6317beb3))
+
 ## [1.0.1-alpha.124](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.123...v1.0.1-alpha.124) (2024-02-04)
 
 ### Bug Fixes
