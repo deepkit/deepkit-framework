@@ -45,7 +45,7 @@ import { DebugHttpController } from './debug/debug-http.controller.js';
 import { BrokerServer } from './broker/broker.js';
 import { BrokerListener } from './broker/listener.js';
 import { BrokerBus, BrokerCache, BrokerDeepkitAdapter, BrokerLock, BrokerQueue } from '@deepkit/broker';
-import { getBrokerServers } from './broker';
+import { getBrokerServers } from './broker.js';
 
 export class FrameworkModule extends createModule({
     config: FrameworkConfig,
