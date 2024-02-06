@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.128](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.127...v1.0.1-alpha.128) (2024-02-06)
+
+### Bug Fixes
+
+- **framework:** esm import ([a9927c2](https://github.com/deepkit/deepkit-framework/commit/a9927c2507be69b59ee13c45ae315e95aef84898))
+- **injector:** correctly label symbols ([ac07f21](https://github.com/deepkit/deepkit-framework/commit/ac07f2134ec21fd0f114bc9751d700f46e0f5607))
+- **postgres:** don't crash when no index can be extracted ([c80e88f](https://github.com/deepkit/deepkit-framework/commit/c80e88f2379a8c956d4921922b177685547e7278))
+
+### Features
+
+- **http:** add new HttpRequestParser<T> injection token ([6101f83](https://github.com/deepkit/deepkit-framework/commit/6101f830897e071e72b8e873bda6dbeee69cdc1e))
+
 ## [1.0.1-alpha.127](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.126...v1.0.1-alpha.127) (2024-02-06)
 
 ### Bug Fixes

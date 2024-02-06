@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.128](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.127...v1.0.1-alpha.128) (2024-02-06)
+
+### Bug Fixes
+
+- **postgres:** don't crash when no index can be extracted ([c80e88f](https://github.com/deepkit/deepkit-framework/commit/c80e88f2379a8c956d4921922b177685547e7278))
+
 ## [1.0.1-alpha.127](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.126...v1.0.1-alpha.127) (2024-02-06)
 
 **Note:** Version bump only for package @deepkit/postgres

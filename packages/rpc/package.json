@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/rpc",
-  "version": "1.0.1-alpha.126",
+  "version": "1.0.1-alpha.128",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -37,8 +37,8 @@
     "@deepkit/bson": "^1.0.1-alpha.124",
     "@deepkit/core": "^1.0.1-alpha.124",
     "@deepkit/core-rxjs": "^1.0.1-alpha.124",
-    "@deepkit/injector": "^1.0.1-alpha.124",
-    "@deepkit/logger": "^1.0.1-alpha.124",
+    "@deepkit/injector": "^1.0.1-alpha.128",
+    "@deepkit/logger": "^1.0.1-alpha.128",
     "@deepkit/type": "^1.0.1-alpha.124",
     "@types/dot-prop": "^5.0.1",
     "@types/fs-extra": "^9.0.1",
