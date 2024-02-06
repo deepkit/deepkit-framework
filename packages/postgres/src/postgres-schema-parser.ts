@@ -67,6 +67,7 @@ export class PostgresSchemaParser extends SchemaParser {
                 continue;
             }
 
+            if (!row.idxname) continue;
             const index = table.addIndex(row.idxname, row.unique);
 
             const attnums = row.indkey.split(' ');
@@ -77,6 +78,7 @@ export class PostgresSchemaParser extends SchemaParser {
                     WHERE c.oid = ${oid} AND a.attnum = ${attnum} AND NOT a.attisdropped
                     ORDER BY a.attnum
                 `);
+                if (!column || !column.attname) continue;
                 index.addColumn(column.attname);
             }
         }
