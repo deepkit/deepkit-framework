@@ -705,17 +705,6 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
         const connection = await this.connectionPool.getConnection();
 
         try {
-            const databaseModel = new DatabaseModel([], this.getName());
-            databaseModel.schemaName = this.getSchemaName();
-            this.platform.createTables(entityRegistry, databaseModel);
-            const schemaParser = new this.platform.schemaParserType(connection, this.platform);
-
-            const parsedDatabaseModel = new DatabaseModel([], this.getName());
-            parsedDatabaseModel.schemaName = this.getSchemaName();
-            await schemaParser.parse(parsedDatabaseModel);
-            parsedDatabaseModel.removeUnknownTables(databaseModel);
-            parsedDatabaseModel.removeTable(ReflectionClass.from(MigrationStateEntity).getCollectionName());
-
             for (const [databaseName, migration] of Object.entries(migrations)) {
                 for (const sql of migration.sql) {
                     try {
