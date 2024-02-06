@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.127](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.126...v1.0.1-alpha.127) (2024-02-06)
+
+### Bug Fixes
+
+- **sql:** wrong ESM import ([08996bb](https://github.com/deepkit/deepkit-framework/commit/08996bb2606b48164c727ceb5a7366185efa13a1))
+
 ## [1.0.1-alpha.124](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.123...v1.0.1-alpha.124) (2024-02-04)
 
 ### Bug Fixes

@@ -3223,7 +3223,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/framework@npm:^1.0.1-alpha.0, @deepkit/framework@npm:^1.0.1-alpha.103, @deepkit/framework@npm:^1.0.1-alpha.126, @deepkit/framework@workspace:packages/framework":
+"@deepkit/framework@npm:^1.0.1-alpha.0, @deepkit/framework@npm:^1.0.1-alpha.103, @deepkit/framework@npm:^1.0.1-alpha.127, @deepkit/framework@workspace:packages/framework":
   version: 0.0.0-use.local
   resolution: "@deepkit/framework@workspace:packages/framework"
   dependencies:
@@ -3245,7 +3245,7 @@ __metadata:
     "@deepkit/orm-browser-gui": "npm:^1.0.1-alpha.126"
     "@deepkit/rpc": "npm:^1.0.1-alpha.126"
     "@deepkit/rpc-tcp": "npm:^1.0.1-alpha.126"
-    "@deepkit/sql": "npm:^1.0.1-alpha.124"
+    "@deepkit/sql": "npm:^1.0.1-alpha.127"
     "@deepkit/stopwatch": "npm:^1.0.1-alpha.124"
     "@deepkit/template": "npm:^1.0.1-alpha.124"
     "@deepkit/type": "npm:^1.0.1-alpha.124"
@@ -3378,7 +3378,7 @@ __metadata:
     "@deepkit/core": "npm:^1.0.1-alpha.124"
     "@deepkit/orm": "npm:^1.0.1-alpha.124"
     "@deepkit/orm-integration": "npm:^1.0.1-alpha.13"
-    "@deepkit/sql": "npm:^1.0.1-alpha.124"
+    "@deepkit/sql": "npm:^1.0.1-alpha.127"
     "@deepkit/stopwatch": "npm:^1.0.1-alpha.124"
     "@deepkit/type": "npm:^1.0.1-alpha.124"
     mariadb: "npm:^3.2.3"
@@ -3466,7 +3466,7 @@ __metadata:
     "@deepkit/broker": "npm:^1.0.1-alpha.126"
     "@deepkit/bson": "npm:^1.0.1-alpha.124"
     "@deepkit/core": "npm:^1.0.1-alpha.124"
-    "@deepkit/framework": "npm:^1.0.1-alpha.126"
+    "@deepkit/framework": "npm:^1.0.1-alpha.127"
     "@deepkit/http": "npm:^1.0.1-alpha.124"
     "@deepkit/injector": "npm:^1.0.1-alpha.124"
     "@deepkit/logger": "npm:^1.0.1-alpha.124"
@@ -3538,7 +3538,7 @@ __metadata:
     "@deepkit/core": "npm:^1.0.1-alpha.124"
     "@deepkit/orm": "npm:^1.0.1-alpha.124"
     "@deepkit/orm-integration": "npm:^1.0.1-alpha.13"
-    "@deepkit/sql": "npm:^1.0.1-alpha.124"
+    "@deepkit/sql": "npm:^1.0.1-alpha.127"
     "@deepkit/stopwatch": "npm:^1.0.1-alpha.124"
     "@deepkit/type": "npm:^1.0.1-alpha.124"
     "@types/pg": "npm:^7.14.7"
@@ -3603,7 +3603,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/sql@npm:^1.0.1-alpha.0, @deepkit/sql@npm:^1.0.1-alpha.103, @deepkit/sql@npm:^1.0.1-alpha.124, @deepkit/sql@workspace:packages/sql":
+"@deepkit/sql@npm:^1.0.1-alpha.0, @deepkit/sql@npm:^1.0.1-alpha.103, @deepkit/sql@npm:^1.0.1-alpha.127, @deepkit/sql@workspace:packages/sql":
   version: 0.0.0-use.local
   resolution: "@deepkit/sql@workspace:packages/sql"
   dependencies:
@@ -3639,7 +3639,7 @@ __metadata:
     "@deepkit/core": "npm:^1.0.1-alpha.124"
     "@deepkit/orm": "npm:^1.0.1-alpha.124"
     "@deepkit/orm-integration": "npm:^1.0.1-alpha.13"
-    "@deepkit/sql": "npm:^1.0.1-alpha.124"
+    "@deepkit/sql": "npm:^1.0.1-alpha.127"
     "@deepkit/stopwatch": "npm:^1.0.1-alpha.124"
     "@deepkit/type": "npm:^1.0.1-alpha.124"
     "@types/better-sqlite3": "npm:^5.4.1"
