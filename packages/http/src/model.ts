@@ -135,15 +135,16 @@ export type HttpBody<T> = T & TypeAnnotation<'httpBody'>;
 export type HttpBodyValidation<T> = ValidatedBody<T> & TypeAnnotation<'httpBodyValidation'>;
 
 export interface HttpRequestParserOptions {
+    withPath?: boolean;
     withBody?: boolean;
     withQuery?: boolean;
     withHeader?: boolean;
 }
 
 /**
- * Delays the parsing of the body/query/header to the very last moment, when the parameter is actually used.
+ * Delays the parsing of the path/body/query/header to the very last moment, when the parameter is actually used.
  *
- * If no options are provided, the parser will receive data from header, body, and query, in this order.
+ * If no options are provided, the parser will receive data from path, header, body, and query, in this order.
  * This basically allows to fetch data from all possible HTTP sources in one go.
  *
  * You can disable various sources by providing the options, e.g. `{withBody: false}` to disable body parsing.
@@ -158,7 +159,23 @@ export interface HttpRequestParserOptions {
  * }
  * ```
  *
- * This is necessary in event listeners, since they are instantiated synchronously,
+ * Note that the parsers is based on all defined parameters (e.g. `userId: HttpQuery<string>` => {userId: string}),
+ * and then starts from there applying header, body, and then query values.
+ * This means you also get access to defined path parameters, like:
+ *
+ * ```typescript
+ * @http.GET('teams/:teamId')
+ * async route(teamId: string) {
+ *    //teamId is string
+ * }
+ *
+ * httpWorkflow.onController.listen((event, parser: HttpRequestParser<{teamId: string}>) => {
+ *  const data = await parser();
+ *  console.log(data.teamId);
+ * });
+ * ```
+ *
+ * HttpRequestParser is necessary in event listeners, since they are instantiated synchronously,
  * but body is parsed asynchronously. So use in event listeners HttpRequestParser instead of HttpBody.
  */
 export type HttpRequestParser<T> = ((options?: HttpRequestParserOptions) => Promise<T>) & TypeAnnotation<'httpRequestParser', T>;

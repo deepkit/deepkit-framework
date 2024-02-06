@@ -246,7 +246,7 @@ export function getRequestParserCodeForParameters(
                 const parseOptionsVar = compiler.reserveVariable('parseOptions', parseOptions);
                 const parseBodyVar = compiler.reserveVariable('parseBody', parseBody);
                 setParameters.push(`parameters.${parameter.parameter.name} = async (options = {}) => {
-                    let res = {};
+                    let res = options.withPath !== false ? Object.assign({}, parameters) : {};
                     if (options.withHeader !== false) {
                         Object.assign(res, _headers);
                     }

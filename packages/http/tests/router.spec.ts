@@ -1316,6 +1316,11 @@ test('body and queries in listener', async () => {
             const data = await parser();
             return [data.auth, data.userId];
         }
+        @http.GET('/5/:userId')
+        async handle5(userId: number, parser: HttpRequestParser<AuthData>) {
+            const data = await parser();
+            return [userId, data.auth, data.userId];
+        }
     }
 
     type AuthData = {
@@ -1345,6 +1350,7 @@ test('body and queries in listener', async () => {
     expect((await httpKernel.request(HttpRequest.POST('/3?auth=secretToken1').json({userId: '24'}))).json).toEqual([24, 24, 'secretToken1']);
     expect((await httpKernel.request(HttpRequest.GET('/4?auth=secretToken1&userId=1'))).json).toEqual(['secretToken1', '1']);
     expect((await httpKernel.request(HttpRequest.GET('/4?userId=1').header('auth', 'secretToken1'))).json).toEqual(['secretToken1', '1']);
+    expect((await httpKernel.request(HttpRequest.GET('/5/1?auth=secretToken1'))).json).toEqual([1, 'secretToken1', '1']);
 });
 
 test('stream', async () => {
