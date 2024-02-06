@@ -1,5 +1,5 @@
 import { ReflectionClass, resolvePath, resolveProperty, Type, TypeClass, TypeObjectLiteral } from '@deepkit/type';
-import type { SQLDatabaseAdapter } from './sql-adapter';
+import type { SQLDatabaseAdapter } from './sql-adapter.js';
 
 export type SqlTypeCast = (placeholder: string) => string;
 
