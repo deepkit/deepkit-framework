@@ -12,7 +12,7 @@ import { IncomingMessage, OutgoingHttpHeader, OutgoingHttpHeaders, ServerRespons
 import { UploadedFile } from './router.js';
 import * as querystring from 'querystring';
 import { Writable } from 'stream';
-import { metaAnnotation, ReflectionKind, Type, ValidationErrorItem, TypeAnnotation } from '@deepkit/type';
+import { metaAnnotation, ReflectionKind, Type, TypeAnnotation, ValidationErrorItem } from '@deepkit/type';
 import { asyncOperation, isArray } from '@deepkit/core';
 
 export class HttpResponse extends ServerResponse {
@@ -133,6 +133,35 @@ export class ValidatedBody<T> {
  */
 export type HttpBody<T> = T & TypeAnnotation<'httpBody'>;
 export type HttpBodyValidation<T> = ValidatedBody<T> & TypeAnnotation<'httpBodyValidation'>;
+
+export interface HttpRequestParserOptions {
+    withBody?: boolean;
+    withQuery?: boolean;
+    withHeader?: boolean;
+}
+
+/**
+ * Delays the parsing of the body/query/header to the very last moment, when the parameter is actually used.
+ *
+ * If no options are provided, the parser will receive data from header, body, and query, in this order.
+ * This basically allows to fetch data from all possible HTTP sources in one go.
+ *
+ * You can disable various sources by providing the options, e.g. `{withBody: false}` to disable body parsing.
+ * Or `{withQuery: false}` to disable query parsing. Or `{withHeader: false}` to disable header parsing.
+ * To only parse the body, use `{withQuery: false, withHeader: false}`.
+ *
+ * @example
+ * ```typescript
+ * async route(parser: HttpRequestParser<{authorization: string}>) {
+ *    const data = await parser();
+ *    console.log(data.authorization);
+ * }
+ * ```
+ *
+ * This is necessary in event listeners, since they are instantiated synchronously,
+ * but body is parsed asynchronously. So use in event listeners HttpRequestParser instead of HttpBody.
+ */
+export type HttpRequestParser<T> = ((options?: HttpRequestParserOptions) => Promise<T>) & TypeAnnotation<'httpRequestParser', T>;
 
 /**
  * Marks a parameter as HTTP path and reads the value from the request path.

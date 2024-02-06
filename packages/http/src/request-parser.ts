@@ -89,11 +89,20 @@ export class ParameterForRequestParser {
         return metaAnnotation.getForName(this.parameter.type, 'httpBody') !== undefined;
     }
 
+    get requestParser() {
+        return metaAnnotation.getForName(this.parameter.type, 'httpRequestParser') !== undefined;
+    }
+
     get bodyValidation() {
         return metaAnnotation.getForName(this.parameter.type, 'httpBodyValidation') !== undefined;
     }
 
     getType(): Type {
+        const parser = metaAnnotation.getForName(this.parameter.type, 'httpRequestParser');
+        if (parser && parser[0]) {
+            return parser[0];
+        }
+
         if (this.bodyValidation) {
             assertType(this.parameter.type, ReflectionKind.class);
             const valueType = findMember('value', this.parameter.type.types);
@@ -180,7 +189,7 @@ export function buildRequestParser(parseOptions: HttpParserOptions, parameters: 
     compiler.context.set('ValidationError', ValidationError);
     compiler.context.set('qs', qs);
 
-    let needsQueryString = !!params.find(v => v.query || v.queries);
+    let needsQueryString = !!params.find(v => v.query || v.queries || v.requestParser);
     const query = needsQueryString ? '_qPosition === -1 ? {} : qs.parse(_url.substr(_qPosition + 1))' : '{}';
 
     const regexVar = compiler.reserveVariable('regex', new RegExp('^' + pathRegex + '$'));
@@ -219,14 +228,11 @@ export function getRequestParserCodeForParameters(
     let bodyValidationErrorHandling = `if (bodyErrors.length) throw ValidationError.from(bodyErrors);`;
 
     for (const parameter of parameters) {
-        if (parameter.body || parameter.bodyValidation) {
+        if (parameter.requestParser || parameter.body || parameter.bodyValidation) {
             const type = parameter.getType();
             const validatorVar = compiler.reserveVariable('argumentValidator', getValidatorFunction(undefined, type));
             const converterVar = compiler.reserveVariable('argumentConverter', getSerializeFunction(type, serializer.deserializeRegistry));
 
-            enableParseBody = true;
-            setParameters.push(`parameters.${parameter.parameter.name} = ${converterVar}(bodyFields, {loosely: true});`);
-            parameterValidator.push(`${validatorVar}(parameters.${parameter.parameter.name}, {errors: bodyErrors});`);
             if (parameter.bodyValidation) {
                 compiler.context.set('BodyValidation', ValidatedBody);
                 compiler.context.set('BodyValidationError', BodyValidationError);
@@ -234,6 +240,32 @@ export function getRequestParserCodeForParameters(
                 bodyValidationErrorHandling = '';
             } else {
                 parameterNames.push(`parameters.${parameter.parameter.name}`);
+            }
+
+            if (parameter.requestParser) {
+                const parseOptionsVar = compiler.reserveVariable('parseOptions', parseOptions);
+                const parseBodyVar = compiler.reserveVariable('parseBody', parseBody);
+                setParameters.push(`parameters.${parameter.parameter.name} = async (options = {}) => {
+                    let res = {};
+                    if (options.withHeader !== false) {
+                        Object.assign(res, _headers);
+                    }
+                    if (options.withBody !== false) {
+                        bodyFields = bodyFields || (await ${parseBodyVar}(${parseOptionsVar}, request, uploadedFiles));
+                        Object.assign(res, bodyFields);
+                    }
+                    if (options.withQuery !== false) {
+                        Object.assign(res, _query);
+                    }
+                    res = ${converterVar}(res, {loosely: true});
+                    ${validatorVar}(res, {errors: bodyErrors});
+                    if (bodyErrors.length) throw ValidationError.from(bodyErrors);
+                    return res;
+                }`);
+            } else {
+                enableParseBody = true;
+                setParameters.push(`parameters.${parameter.parameter.name} = ${converterVar}(bodyFields, {loosely: true});`);
+                parameterValidator.push(`${validatorVar}(parameters.${parameter.parameter.name}, {errors: bodyErrors});`);
             }
         } else if (parameter.query || parameter.queries || parameter.header) {
             const converted = getSerializeFunction(parameter.parameter.parameter, serializer.deserializeRegistry, undefined, parameter.getName());
@@ -343,7 +375,7 @@ export function getRequestParserCodeForParameters(
         const parseOptionsVar = compiler.reserveVariable('parseOptions', parseOptions);
         const parseBodyVar = compiler.reserveVariable('parseBody', parseBody);
         parseBodyLoading = `
-            const bodyFields = (await ${parseBodyVar}(${parseOptionsVar}, request, uploadedFiles));`;
+            bodyFields = bodyFields || (await ${parseBodyVar}(${parseOptionsVar}, request, uploadedFiles));`;
         requiresAsyncParameters = true;
     }
 
@@ -354,6 +386,7 @@ export function getRequestParserCodeForParameters(
                 const validationErrors = [];
                 const bodyErrors = [];
                 const parameters = {};
+                let bodyFields;
                 ${setParametersFromPath}
                 ${parseBodyLoading}
                 ${setParameters.join('\n')}

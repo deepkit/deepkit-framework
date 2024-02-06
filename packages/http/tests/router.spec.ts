@@ -3,7 +3,7 @@ import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterRes
 import { getActions, http, httpClass } from '../src/decorator.js';
 import { HtmlResponse, HttpAccessDeniedError, HttpBadRequestError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model.js';
+import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest, HttpRequestParser } from '../src/model.js';
 import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
 import { Excluded, Group, integer, Maximum, metaAnnotation, MinLength, Positive, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
@@ -1287,6 +1287,64 @@ test('queries parameter in class listener', async () => {
     const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [Listener]);
     expect((await httpKernel.request(HttpRequest.GET('/?auth=secretToken1&userId=1'))).json).toEqual([1, 1, 'secretToken1']);
     expect((await httpKernel.request(HttpRequest.GET('/?userId=1'))).json.message).toEqual('Validation error:\nauth.auth(type): Not a string');
+});
+
+test('body and queries in listener', async () => {
+    class HttpSession {
+        constructor(public auth: string = '', public userId: number = 0) {
+        }
+    }
+
+    class Controller {
+        @http.POST('/1')
+        handle1(userId: HttpQuery<number>, session: HttpSession) {
+            return [userId, session.userId, session.auth];
+        }
+
+        @http.GET('/2')
+        handle2(userId: HttpQuery<number>, session: HttpSession) {
+            return [userId, session.userId, session.auth];
+        }
+
+        @http.POST('/3')
+        handle3({ userId }: HttpBody<{userId: number}>, session: HttpSession) {
+            return [userId, session.userId, session.auth];
+        }
+
+        @http.GET('/4')
+        async handle4(parser: HttpRequestParser<AuthData>) {
+            const data = await parser();
+            return [data.auth, data.userId];
+        }
+    }
+
+    type AuthData = {
+        auth: string;
+        userId?: string;
+    }
+
+    class Listener {
+        @eventDispatcher.listen(httpWorkflow.onAuth)
+        async handle(event: typeof httpWorkflow.onAuth.event, session: HttpSession, authParser: HttpRequestParser<AuthData>) {
+            const auth = await authParser();
+            session.auth = auth.auth;
+            session.userId = auth.userId ? parseInt(auth.userId) : 0;
+        }
+    }
+
+    httpWorkflow.onAuth.listen(async (event, session: HttpSession, authParser: HttpRequestParser<AuthData>) => {
+        const auth = await authParser();
+        session.auth = auth.auth;
+        session.userId = auth.userId ? parseInt(auth.userId) : 0;
+    });
+
+    const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [Listener]);
+    expect((await httpKernel.request(HttpRequest.POST('/1?userId=1').json({auth: 'secretToken1'}))).json).toEqual([1, 1, 'secretToken1']);
+    expect((await httpKernel.request(HttpRequest.GET('/2?auth=secretToken1&userId=1'))).json).toEqual([1, 1, 'secretToken1']);
+    expect((await httpKernel.request(HttpRequest.GET('/2?userId=1'))).json.message).toEqual('Validation error:\nauth(type): Not a string');
+    expect((await httpKernel.request(HttpRequest.POST('/3?auth=secretToken1').json({userId: '24'}))).json).toEqual([24, 24, 'secretToken1']);
+    expect((await httpKernel.request(HttpRequest.GET('/4?auth=secretToken1&userId=1'))).json).toEqual(['secretToken1', '1']);
+    expect((await httpKernel.request(HttpRequest.GET('/4?userId=1').header('auth', 'secretToken1'))).json).toEqual(['secretToken1', '1']);
 });
 
 test('stream', async () => {
