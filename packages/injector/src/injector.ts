@@ -44,6 +44,7 @@ export function tokenLabel(token: Token): string {
     if (token === null) return 'null';
     if (token === undefined) return 'undefined';
     if (token instanceof TagProvider) return 'Tag(' + getClassName(token.provider.provide) + ')';
+    if (typeof token === 'symbol') return token.toString();
     if (isClass(token)) return getClassName(token);
     if (isType(token)) return stringifyType(token).replace(/\n/gm, '');
     if (isFunction(token.toString)) return token.name;
