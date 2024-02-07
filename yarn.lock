@@ -2803,7 +2803,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/api-console-module@npm:^1.0.1-alpha.129, @deepkit/api-console-module@npm:^1.0.1-alpha.43, @deepkit/api-console-module@workspace:packages/api-console-module":
+"@deepkit/api-console-module@npm:^1.0.1-alpha.130, @deepkit/api-console-module@npm:^1.0.1-alpha.43, @deepkit/api-console-module@workspace:packages/api-console-module":
   version: 0.0.0-use.local
   resolution: "@deepkit/api-console-module@workspace:packages/api-console-module"
   dependencies:
@@ -2813,7 +2813,7 @@ __metadata:
     "@deepkit/broker": "npm:^1.0.1-alpha.128"
     "@deepkit/bson": "npm:^1.0.1-alpha.124"
     "@deepkit/core": "npm:^1.0.1-alpha.124"
-    "@deepkit/http": "npm:^1.0.1-alpha.129"
+    "@deepkit/http": "npm:^1.0.1-alpha.130"
     "@deepkit/injector": "npm:^1.0.1-alpha.128"
     "@deepkit/logger": "npm:^1.0.1-alpha.128"
     "@deepkit/rpc": "npm:^1.0.1-alpha.128"
@@ -3223,11 +3223,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/framework@npm:^1.0.1-alpha.0, @deepkit/framework@npm:^1.0.1-alpha.103, @deepkit/framework@npm:^1.0.1-alpha.129, @deepkit/framework@workspace:packages/framework":
+"@deepkit/framework@npm:^1.0.1-alpha.0, @deepkit/framework@npm:^1.0.1-alpha.103, @deepkit/framework@npm:^1.0.1-alpha.130, @deepkit/framework@workspace:packages/framework":
   version: 0.0.0-use.local
   resolution: "@deepkit/framework@workspace:packages/framework"
   dependencies:
-    "@deepkit/api-console-module": "npm:^1.0.1-alpha.129"
+    "@deepkit/api-console-module": "npm:^1.0.1-alpha.130"
     "@deepkit/app": "npm:^1.0.1-alpha.128"
     "@deepkit/broker": "npm:^1.0.1-alpha.128"
     "@deepkit/bson": "npm:^1.0.1-alpha.124"
@@ -3237,7 +3237,7 @@ __metadata:
     "@deepkit/filesystem": "npm:^1.0.1-alpha.124"
     "@deepkit/framework-debug-api": "npm:^1.0.1-alpha.128"
     "@deepkit/framework-debug-gui": "npm:^1.0.1-alpha.128"
-    "@deepkit/http": "npm:^1.0.1-alpha.129"
+    "@deepkit/http": "npm:^1.0.1-alpha.130"
     "@deepkit/injector": "npm:^1.0.1-alpha.128"
     "@deepkit/logger": "npm:^1.0.1-alpha.128"
     "@deepkit/orm": "npm:^1.0.1-alpha.128"
@@ -3291,7 +3291,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/http@npm:^1.0.1-alpha.0, @deepkit/http@npm:^1.0.1-alpha.102, @deepkit/http@npm:^1.0.1-alpha.129, @deepkit/http@workspace:packages/http":
+"@deepkit/http@npm:^1.0.1-alpha.0, @deepkit/http@npm:^1.0.1-alpha.102, @deepkit/http@npm:^1.0.1-alpha.130, @deepkit/http@workspace:packages/http":
   version: 0.0.0-use.local
   resolution: "@deepkit/http@workspace:packages/http"
   dependencies:
@@ -3466,8 +3466,8 @@ __metadata:
     "@deepkit/broker": "npm:^1.0.1-alpha.128"
     "@deepkit/bson": "npm:^1.0.1-alpha.124"
     "@deepkit/core": "npm:^1.0.1-alpha.124"
-    "@deepkit/framework": "npm:^1.0.1-alpha.129"
-    "@deepkit/http": "npm:^1.0.1-alpha.129"
+    "@deepkit/framework": "npm:^1.0.1-alpha.130"
+    "@deepkit/http": "npm:^1.0.1-alpha.130"
     "@deepkit/injector": "npm:^1.0.1-alpha.128"
     "@deepkit/logger": "npm:^1.0.1-alpha.128"
     "@deepkit/orm": "npm:^1.0.1-alpha.128"
