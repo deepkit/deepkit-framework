@@ -1321,6 +1321,11 @@ test('body and queries in listener', async () => {
             const data = await parser();
             return [userId, data.auth, data.userId];
         }
+        @http.GET('/6/:userId')
+        async handle6(parser: HttpRequestParser<AuthData>) {
+            const data = await parser();
+            return [data.auth, data.userId];
+        }
     }
 
     type AuthData = {
@@ -1337,12 +1342,6 @@ test('body and queries in listener', async () => {
         }
     }
 
-    httpWorkflow.onAuth.listen(async (event, session: HttpSession, authParser: HttpRequestParser<AuthData>) => {
-        const auth = await authParser();
-        session.auth = auth.auth;
-        session.userId = auth.userId ? parseInt(auth.userId) : 0;
-    });
-
     const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [Listener]);
     expect((await httpKernel.request(HttpRequest.POST('/1?userId=1').json({auth: 'secretToken1'}))).json).toEqual([1, 1, 'secretToken1']);
     expect((await httpKernel.request(HttpRequest.GET('/2?auth=secretToken1&userId=1'))).json).toEqual([1, 1, 'secretToken1']);
@@ -1351,6 +1350,7 @@ test('body and queries in listener', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/4?auth=secretToken1&userId=1'))).json).toEqual(['secretToken1', '1']);
     expect((await httpKernel.request(HttpRequest.GET('/4?userId=1').header('auth', 'secretToken1'))).json).toEqual(['secretToken1', '1']);
     expect((await httpKernel.request(HttpRequest.GET('/5/1?auth=secretToken1'))).json).toEqual([1, 'secretToken1', '1']);
+    expect((await httpKernel.request(HttpRequest.GET('/6/1?auth=secretToken1'))).json).toEqual(['secretToken1', '1']);
 });
 
 test('stream', async () => {

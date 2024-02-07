@@ -245,8 +245,17 @@ export function getRequestParserCodeForParameters(
             if (parameter.requestParser) {
                 const parseOptionsVar = compiler.reserveVariable('parseOptions', parseOptions);
                 const parseBodyVar = compiler.reserveVariable('parseBody', parseBody);
+
+                let assignPathNames: string[] = [];
+                for (const [name, index] of Object.entries(config.pathParameterNames || {})) {
+                    assignPathNames.push(`res.${name} = _match[${1 + index}];`);
+                }
+
                 setParameters.push(`parameters.${parameter.parameter.name} = async (options = {}) => {
-                    let res = options.withPath !== false ? Object.assign({}, parameters) : {};
+                    let res = Object.assign({}, parameters);
+                    if (options.withPath !== false) {
+                        ${assignPathNames.join('\n')};
+                    }
                     if (options.withHeader !== false) {
                         Object.assign(res, _headers);
                     }
