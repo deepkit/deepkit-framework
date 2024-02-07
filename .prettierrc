@@ -1,18 +1,27 @@
 {
   "plugins": ["@trivago/prettier-plugin-sort-imports"],
+  "importOrderParserPlugins": ["typescript", "decorators-legacy"],
+  "importOrder": ["<THIRD_PARTY_MODULES>", "^@deepkit/(.*)$", "^[./]"],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true,
   "trailingComma": "all",
+  "printWidth": 120,
   "bracketSpacing": true,
   "tabWidth": 2,
   "singleQuote": true,
   "arrowParens": "avoid",
   "endOfLine": "lf",
-  "importOrderSeparation": true,
-  "importOrderSortSpecifiers": true,
   "overrides": [
     {
       "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
       "options": {
         "tabWidth": 4
+      }
+    },
+    {
+      "files": ["*.spec.ts", "*.html", "packages/type-compiler/src/compiler.ts"],
+      "options": {
+        "printWidth": 250
       }
     }
   ]
