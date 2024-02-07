@@ -1400,6 +1400,11 @@ export class Processor {
                 return isExtendable(a, b) ? a : { kind: ReflectionKind.never };
             }
 
+            // two different primitives always return never
+            if (isPrimitive(a) && isPrimitive(b) && a.kind !== b.kind) {
+                return { kind: ReflectionKind.never }
+            }
+
             if (a.kind === ReflectionKind.objectLiteral || a.kind === ReflectionKind.class || a.kind === ReflectionKind.never || a.kind === ReflectionKind.unknown) return b;
 
             if (b.annotations) {
