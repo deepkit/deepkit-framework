@@ -252,7 +252,7 @@ export function getRequestParserCodeForParameters(
                 }
 
                 setParameters.push(`parameters.${parameter.parameter.name} = async (options = {}) => {
-                    let res = Object.assign({}, parameters);
+                    let res = {};
                     if (options.withPath !== false) {
                         ${assignPathNames.join('\n')};
                     }
