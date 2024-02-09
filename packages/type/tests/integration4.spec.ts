@@ -9,7 +9,7 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { assertType, AutoIncrement, Group, groupAnnotation, PrimaryKey, ReflectionKind } from '../src/reflection/type.js';
+import { assertType, AutoIncrement, ExtractTypeAnnotationOptions, Group, groupAnnotation, PrimaryKey, ReflectionKind, TypeAnnotation } from '../src/reflection/type.js';
 import { typeOf } from '../src/reflection/reflection.js';
 import { cast } from '../src/serializer-facade.js';
 
@@ -142,4 +142,14 @@ test('union loosely', () => {
     expect(cast<a>({ date: '2020-08-05T00:00:00.000Z' })).toEqual({ date: new Date('2020-08-05T00:00:00.000Z') });
     expect(cast<a>({ id: 2 })).toEqual({ id: 2 });
     expect(cast<a>({ id: '3' })).toEqual({ id: 3 });
+});
+
+test('extract type annotation options', () => {
+    type Skip = TypeAnnotation<'skip', { if: boolean }>;
+
+    type SkipOptions = ExtractTypeAnnotationOptions<Skip>;
+
+    const options: SkipOptions = {
+        if: true,
+    };
 });
