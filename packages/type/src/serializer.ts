@@ -1619,7 +1619,7 @@ export function forwardMapToArray(type: TypeClass, state: TemplateState) {
 }
 
 export function serializePropertyOrParameter(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
-    if (type.optional) {
+    if (isOptional(type)) {
         state.addCode(`
             if (${state.accessor} === undefined) {
                 ${executeTemplates(state.fork(), { kind: ReflectionKind.undefined })}
@@ -1634,11 +1634,12 @@ export function serializePropertyOrParameter(type: TypePropertySignature | TypeP
 }
 
 export function validatePropertyOrParameter(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
+    const optional = isOptional(type)
     const hasDefault = hasDefaultValue(type);
 
     state.addCode(`
         if (${state.accessor} === undefined) {
-            if (${!type.optional && !hasDefault && state.isValidation()}) ${state.assignValidationError('type', 'No value given')}
+            if (${!optional && !hasDefault && state.isValidation()}) ${state.assignValidationError('type', 'No value given')}
         } else {
             ${executeTemplates(state.fork(), type.type)}
         }
@@ -1903,7 +1904,7 @@ export class Serializer {
         });
 
         this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
-            state.addSetter(`'string' !== typeof ${state.accessor} && state.loosely !== false ? ${state.accessor}+'' : ${state.accessor}`);
+            state.addSetter(`'string' !== typeof ${state.accessor} && state.loosely !== false && undefined !== ${state.accessor} && null !== ${state.accessor} ? ${state.accessor}+'' : ${state.accessor}`);
         });
 
         this.deserializeRegistry.addDecorator(isUUIDType, (type, state) => {

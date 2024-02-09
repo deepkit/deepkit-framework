@@ -26,7 +26,7 @@ import {
     TypeProperty,
     typeToObject,
     UUID,
-    validationAnnotation
+    validationAnnotation,
 } from '../src/reflection/type.js';
 import { isExtendable } from '../src/reflection/extends.js';
 import { expectEqualType } from './utils.js';
@@ -95,6 +95,18 @@ test('intersection same type', () => {
     type Username = string & MyAnnotation;
     expect(stringifyType(typeOf<string & Username>())).toBe('string');
     expect(stringifyType(typeOf<Username & string>())).toBe('Username');
+});
+
+test('intersection with never', () => {
+    type A = never & Group<'a'>;
+    type B = Group<'b'> & never;
+
+    type ObjectID = never;
+    type C = ObjectID & Group<'c'>;
+
+    expect(groupAnnotation.getAnnotations(typeOf<A>())).toEqual(['a']);
+    expect(groupAnnotation.getAnnotations(typeOf<B>())).toEqual(['b']);
+    expect(groupAnnotation.getAnnotations(typeOf<C>())).toEqual(['c']);
 });
 
 test('intersection same type keep annotation', () => {
