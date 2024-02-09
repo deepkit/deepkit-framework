@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.131](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.130...v1.0.1-alpha.131) (2024-02-09)
+
+### Bug Fixes
+
+- **http:** make sure all path parameters are available in HttpRequestParser ([e215420](https://github.com/deepkit/deepkit-framework/commit/e215420edf4889d116b01ca0f52109e7167e7b63))
+
 ## [1.0.1-alpha.130](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.129...v1.0.1-alpha.130) (2024-02-07)
 
 ### Bug Fixes
