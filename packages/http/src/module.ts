@@ -80,7 +80,8 @@ export class HttpModule extends createModule({
             throw new Error(`Listener ${stringifyListener(listener)} requires async HttpBody. This is not yet supported. You have to parse the request manually by injecting HttpRequest.`);
         }
 
-        let build: Function;
+        const parserCache = new Map<RouteConfig, Function>();
+
         for (let index = 0; index < params.length; index++) {
             const parameter = params[index];
             if (!parameterRequiresRequest(parameter)) continue;
@@ -93,14 +94,16 @@ export class HttpModule extends createModule({
 
             this.addProvider({
                 provide: uniqueType, useFactory: (httpConfig: HttpConfig, request: HttpRequest, injector: InjectorContext, config?: RouteConfig) => {
+                    let build = config && parserCache.get(config);
                     if (!build) {
                         const params = listener.reflection.getParameters().slice(1);
-                        build = buildRequestParser(httpConfig.parser, params, config?.getFullPath());
+                        build = buildRequestParser(httpConfig.parser, params, config);
+                        if (config) parserCache.set(config, build);
                     }
 
                     const parser = build(request);
-                    const params = parser(injector);
-                    return params.arguments[i];
+                    const result = parser(injector);
+                    return result.arguments[i];
                 }, scope: 'http'
             });
             this.addExport(uniqueType);

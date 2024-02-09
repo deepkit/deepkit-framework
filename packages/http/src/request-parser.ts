@@ -170,22 +170,28 @@ function isTypeUnknown(type: Type): boolean {
         || type.kind === ReflectionKind.never;
 }
 
-export function buildRequestParser(parseOptions: HttpParserOptions, parameters: ReflectionParameter[], path?: string): (request: HttpRequest) => any[] {
+export function buildRequestParser(parseOptions: HttpParserOptions, parameters: ReflectionParameter[], routeConfig?: RouteConfig): (request: HttpRequest) => any[] {
     const compiler = new CompilerContext();
     const params = parameters.map(v => new ParameterForRequestParser(v));
 
     //todo: parse path
     let pathRegex = '';
-    if (path) {
-        const parsedPath = parseRoutePathToRegex(path, parameters);
+    let pathParameterNames: { [name: string]: number } = {};
+
+    if (routeConfig) {
+        const parsedPath = parseRoutePathToRegex(routeConfig.getFullPath(), parameters);
         pathRegex = parsedPath.regex;
+        pathParameterNames = parsedPath.parameterNames;
 
         for (const param of params) {
             param.regexPosition = parsedPath.parameterNames[param.parameter.name];
         }
     }
 
-    const code = getRequestParserCodeForParameters(compiler, parseOptions, params, {});
+    const code = getRequestParserCodeForParameters(compiler, parseOptions, params, {
+        pathParameterNames,
+        routeConfig
+    });
     compiler.context.set('ValidationError', ValidationError);
     compiler.context.set('qs', qs);
 
@@ -254,7 +260,7 @@ export function getRequestParserCodeForParameters(
                 setParameters.push(`parameters.${parameter.parameter.name} = async (options = {}) => {
                     let res = {};
                     if (options.withPath !== false) {
-                        ${assignPathNames.join('\n')};
+                        ${assignPathNames.join('\n')}
                     }
                     if (options.withHeader !== false) {
                         Object.assign(res, _headers);
