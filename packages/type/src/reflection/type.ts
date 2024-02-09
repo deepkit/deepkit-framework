@@ -1550,7 +1550,7 @@ export interface EntityOptions {
  */
 export type TypeAnnotation<T extends string, Options = never> = { __meta?: never | [T, Options] };
 
-export type ExtractAnnotationOptions<T extends TypeAnnotation<string, any>> = Exclude<NonNullable<T['__meta']>, never>[1];
+export type ExtractTypeAnnotationOptions<T extends TypeAnnotation<string, any>> = Exclude<NonNullable<T['__meta']>, never>[1];
 
 /**
  * Type to decorate an interface/object literal with entity information.
