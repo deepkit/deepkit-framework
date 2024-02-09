@@ -412,6 +412,7 @@ export class RpcBaseClient implements WritableClient {
         } else {
             const callback = this.replies.get(message.id);
             if (!callback) {
+                console.log(message.debug());
                 throw new Error('No callback for ' + message.id);
             }
             if (callback) callback(message);

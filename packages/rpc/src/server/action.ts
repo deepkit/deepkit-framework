@@ -24,7 +24,7 @@ import {
     typeOf,
     TypeTuple,
     ValidationError,
-    ValidationErrorItem
+    ValidationErrorItem,
 } from '@deepkit/type';
 import { isObservable, Observable, Subject, Subscription } from 'rxjs';
 import { Collection, CollectionEvent, CollectionQueryModel, CollectionQueryModelInterface, CollectionState } from '../collection.js';
@@ -281,7 +281,7 @@ export class RpcServerAction {
                 const { types, classType, method } = observable;
                 const body = message.parseBody<rpcActionObservableSubscribeId>();
                 if (observable.subscriptions[body.id]) return response.error(new Error('Subscription already created'));
-                if (!types.observableNextSchema) return response.error(new Error('No observable type detected'));
+                if (!types.observableNextSchema) return response.error(new Error('No observable type on RPC action detected. No Observable<T> defined  or RxJS not nominal.'));
 
                 const sub: { active: boolean, sub?: Subscription, complete: () => void } = {
                     active: true,
@@ -335,7 +335,7 @@ export class RpcServerAction {
                 if (!observable) return response.error(new Error('No observable to unsubscribe found'));
                 const body = message.parseBody<rpcActionObservableSubscribeId>();
                 const sub = observable.subscriptions[body.id];
-                if (!sub) return response.error(new Error('No subscription found'));
+                if (!sub) return;
                 sub.active = false;
                 if (sub.sub) {
                     sub.sub.unsubscribe();
