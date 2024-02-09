@@ -1996,34 +1996,25 @@ export function registerTypeDecorator(decorator: TypeDecorator) {
  * type MyAnnotation1<T> = TypeAnnotation<'myAnnotation', T>
  *
  * //under the hood it is:
- * type lowLevel1 = { __meta?: never & ['myAnnotation'] }
- * type lowLevel2<T> = { __meta?: never & ['myAnnotation', T] }
+ * type lowLevel1 = { __meta?: ['myAnnotation', never] }
+ * type lowLevel2<T> = { __meta?: ['myAnnotation', never | T] }
  * ```
  */
 export function getAnnotationMeta(type: TypeObjectLiteral): { id: string, params: Type[] } | undefined {
     const meta = getProperty(type, '__meta');
+
     if (!meta || !meta.optional) return;
-    let tuple: TypeTuple | undefined = undefined;
+    if (meta.type.kind !== ReflectionKind.tuple) return;
 
-    if (meta.type.kind === ReflectionKind.intersection) {
-        if (meta.type.types.length === 1 && meta.type.types[0].kind === ReflectionKind.tuple) {
-            tuple = meta.type.types[0] as TypeTuple;
-        }
-        if (!tuple && meta.type.types.length === 2) {
-            tuple = meta.type.types.find(v => v.kind === ReflectionKind.tuple) as TypeTuple | undefined;
-            if (tuple && !meta.type.types.find(v => v.kind === ReflectionKind.never)) {
-                tuple = undefined;
-            }
-        }
-    } else if (meta.type.kind === ReflectionKind.tuple) {
-        tuple = meta.type;
-    }
+    const id = meta.type.types[0];
 
-    if (!tuple) return;
-
-    const id = tuple.types[0];
     if (!id || id.type.kind !== ReflectionKind.literal || 'string' !== typeof id.type.literal) return;
-    const params = tuple.types.slice(1).map(v => v.type);
+
+    const options = meta.type.types[1];
+    if (options.type.kind !== ReflectionKind.union) return;
+    if (options.type.types[0].kind !== ReflectionKind.never) return;
+
+    const params = options.type.types.slice(1);
 
     return { id: id.type.literal, params };
 }

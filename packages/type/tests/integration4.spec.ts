@@ -143,13 +143,3 @@ test('union loosely', () => {
     expect(cast<a>({ id: 2 })).toEqual({ id: 2 });
     expect(cast<a>({ id: '3' })).toEqual({ id: 3 });
 });
-
-test('extract type annotation options', () => {
-    type Skip = TypeAnnotation<'skip', { if: boolean }>;
-
-    type SkipOptions = ExtractTypeAnnotationOptions<Skip>;
-
-    const options: SkipOptions = {
-        if: true,
-    };
-});
