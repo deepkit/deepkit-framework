@@ -1548,9 +1548,9 @@ export interface EntityOptions {
  * const param1 = typeToObject(data[0]); //yes
  * ```
  */
-export type TypeAnnotation<T extends string, Options = never> = { __meta?: never | [T, Options] };
+export type TypeAnnotation<T extends string, Options = never> = { __meta?: [T, never | Options] };
 
-export type ExtractTypeAnnotationOptions<T extends TypeAnnotation<string, any>> = Exclude<NonNullable<T['__meta']>, never>[1];
+export type ExtractTypeAnnotationOptions<T extends TypeAnnotation<string, any>> = Exclude<NonNullable<T['__meta']>[1], never>;
 
 /**
  * Type to decorate an interface/object literal with entity information.
