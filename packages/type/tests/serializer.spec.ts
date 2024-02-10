@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { expect, test } from '@jest/globals';
-import { reflect, ReflectionClass, ReflectionFunction, typeOf } from '../src/reflection/reflection.js';
+import { reflect, ReflectionClass, typeOf } from '../src/reflection/reflection.js';
 import {
     assertType,
     AutoIncrement,
@@ -25,10 +25,9 @@ import {
     Reference,
     ReflectionKind,
     SignedBinaryBigInt,
-    stringifyResolvedType,
     Type,
     TypeProperty,
-    TypePropertySignature
+    TypePropertySignature,
 } from '../src/reflection/type.js';
 import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer, underscoreNamingStrategy } from '../src/serializer.js';
 import { cast, deserialize, patch, serialize } from '../src/serializer-facade.js';
@@ -37,10 +36,8 @@ import { entity, t } from '../src/decorator.js';
 import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator.js';
 import { StatEnginePowerUnit, StatWeightUnit } from './types.js';
 import { parametersToTuple } from '../src/reflection/extends.js';
-import { getValidatorFunction, is } from '../src/typeguard.js';
+import { is } from '../src/typeguard.js';
 import { isReferenceInstance } from '../src/reference.js';
-import { ChangesInterface, DeepPartial } from '../src/changes.js';
-import { inspect } from 'util';
 
 test('deserializer', () => {
     class User {
@@ -285,6 +282,12 @@ test('number', () => {
     expect(cast<number>(false)).toBe(0);
     expect(cast<number>('1')).toBe(1);
     expect(cast<number>('-1')).toBe(-1);
+});
+
+test('null undefined and string', () => {
+    expect(() => cast<string>(undefined)).toThrow('Validation error');
+    expect(() => cast<string>(null)).toThrow('Validation error');
+    expect(cast<string>('')).toBe('')
 });
 
 test('union string number', () => {

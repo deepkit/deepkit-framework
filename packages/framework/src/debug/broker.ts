@@ -1,6 +1,6 @@
 import { BrokerBus, BrokerDeepkitAdapter } from '@deepkit/broker';
 import { FrameworkConfig } from '../module.config.js';
-import { getBrokerServers } from '../broker';
+import { getBrokerServers } from '../broker.js';
 
 export class DebugBrokerBus extends BrokerBus {
     constructor(config: FrameworkConfig) {

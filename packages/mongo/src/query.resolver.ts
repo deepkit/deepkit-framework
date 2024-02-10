@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseAdapter, DatabaseSession, DeleteResult, Formatter, GenericQueryResolver, OrmEntity, PatchResult } from '@deepkit/orm';
+import { DatabaseAdapter, DatabaseDeleteError, DatabasePatchError, DatabaseSession, DeleteResult, Formatter, GenericQueryResolver, OrmEntity, PatchResult } from '@deepkit/orm';
 import {
     Changes,
     getPartialSerializeFunction,
@@ -19,7 +19,7 @@ import {
     ReflectionVisibility,
     resolveForeignReflectionClass,
     serializer,
-    typeOf
+    typeOf,
 } from '@deepkit/type';
 import { MongoClient } from './client/client.js';
 import { AggregateCommand } from './client/command/aggregate.js';
@@ -34,6 +34,7 @@ import { MongoConnection } from './client/connection.js';
 import { MongoDatabaseAdapter } from './adapter.js';
 import { empty } from '@deepkit/core';
 import { mongoSerializer } from './mongo-serializer.js';
+import { handleSpecificError } from './error.js';
 
 export function getMongoFilter<T extends OrmEntity>(classSchema: ReflectionClass<T>, model: MongoQueryModel<T>): any {
     return convertClassQueryToMongo(classSchema, (model.filter || {}) as FilterQuery<T>, {}, {
@@ -68,6 +69,10 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
 
     async has(model: MongoQueryModel<T>): Promise<boolean> {
         return await this.count(model) > 0;
+    }
+
+    handleSpecificError(error: Error): Error {
+        return handleSpecificError(this.session, error);
     }
 
     protected getPrimaryKeysProjection(classSchema: ReflectionClass<any>) {
@@ -108,6 +113,10 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
 
             const query = convertClassQueryToMongo(this.classSchema, { [primaryKeyName]: { $in: primaryKeys.map(v => v[primaryKeyName]) } } as FilterQuery<T>);
             await connection.execute(new DeleteCommand(this.classSchema, query, queryModel.limit));
+        } catch (error: any) {
+            error = new DatabaseDeleteError(this.classSchema, `Could not delete ${this.classSchema.getClassName()} in database`, { cause: error });
+            error.query = queryModel;
+            throw this.handleSpecificError(error);
         } finally {
             connection.release();
         }
@@ -181,6 +190,9 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                     patchResult.returning[name].push(converted[name]);
                 }
             }
+        } catch (error: any) {
+            error = new DatabasePatchError(this.classSchema, model, changes, `Could not patch ${this.classSchema.getClassName()} in database`, { cause: error });
+            throw this.handleSpecificError(error);
         } finally {
             connection.release();
         }

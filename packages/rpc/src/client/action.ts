@@ -24,7 +24,7 @@ import {
     rpcResponseActionObservableSubscriptionError,
     rpcResponseActionType,
     RpcTypes,
-    WrappedV
+    WrappedV,
 } from '../model.js';
 import { rpcDecodeError, RpcMessage } from '../protocol.js';
 import { ClientProgress } from '../writer.js';
@@ -310,6 +310,9 @@ export class RpcActionClient {
                                 subject.release();
                                 const error = reply.getError();
                                 // console.debug('Client received error', error);
+                                for (const sub of Object.values(subscribers)) {
+                                    sub.error(error);
+                                }
                                 reject(error);
                                 break;
                             }

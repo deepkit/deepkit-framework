@@ -9,14 +9,13 @@
  */
 
 import { Command } from './command.js';
-import { ReflectionClass } from '@deepkit/type';
 
 interface DropDatabase {
     dropDatabase: 1;
     $db: string;
 }
 
-export class DropDatabaseCommand<T extends ReflectionClass<any>> extends Command {
+export class DropDatabaseCommand<T> extends Command<void> {
     constructor(protected dbName: any) {
         super();
     }

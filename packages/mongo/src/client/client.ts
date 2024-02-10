@@ -71,7 +71,7 @@ export class MongoClient {
         return connection;
     }
 
-    public async execute<T extends Command>(command: T): Promise<ReturnType<T['execute']>> {
+    public async execute<T extends Command<unknown>>(command: T): Promise<ReturnType<T['execute']>> {
         const maxRetries = 10;
         const request = { readonly: !command.needsWritableHost() };
 

@@ -9,27 +9,36 @@
  */
 
 import { ChangeDetectorRef, Injectable, TemplateRef, ViewContainerRef } from '@angular/core';
-import { ButtonGroupComponent } from '../button/button.component';
-import { WindowHeaderComponent, WindowToolbarContainerComponent } from './window-header.component';
 import { arrayRemoveItem } from '@deepkit/core';
-import { WindowComponent } from './window.component';
 import { WindowMenuState } from './window-menu';
 import { BehaviorSubject } from 'rxjs';
 import { detectChangesNextFrame } from '../app/utils';
+
+interface WinHeader {
+    getBottomPosition(): number;
+}
+
+interface Win {
+    id: number;
+    electronWindow?: any;
+    getClosestNonDialogWindow(): Win | undefined;
+    header?: WinHeader;
+    viewContainerRef: ViewContainerRef;
+}
 
 @Injectable()
 export class WindowRegistry {
     id = 0;
 
-    registry = new Map<WindowComponent, {
+    registry = new Map<Win, {
         state: WindowState,
         menu: WindowMenuState,
         cd: ChangeDetectorRef,
         viewContainerRef: ViewContainerRef
     }>();
 
-    windowHistory: WindowComponent[] = [];
-    activeWindow?: WindowComponent;
+    windowHistory: Win[] = [];
+    activeWindow?: Win;
 
     /**
      * When BrowserWindow of electron is focused.
@@ -49,19 +58,19 @@ export class WindowRegistry {
         return [...this.registry.keys()].filter(v => !!v.electronWindow).map(v => v.electronWindow);
     }
 
-    register(win: WindowComponent, cd: ChangeDetectorRef, state: WindowState, menu: WindowMenuState, viewContainerRef: ViewContainerRef) {
+    register(win: Win, cd: ChangeDetectorRef, state: WindowState, menu: WindowMenuState, viewContainerRef: ViewContainerRef) {
         this.id++;
         win.id = this.id;
 
         this.registry.set(win, {
-            state, menu, cd, viewContainerRef
+            state, menu, cd, viewContainerRef,
         });
     }
 
     /**
      * Finds the activeWindow and returns its most outer parent.
      */
-    getOuterActiveWindow(): WindowComponent | undefined {
+    getOuterActiveWindow(): Win | undefined {
         if (this.activeWindow) return this.activeWindow.getClosestNonDialogWindow();
     }
 
@@ -77,7 +86,7 @@ export class WindowRegistry {
         throw new Error('No active window');
     }
 
-    focus(win: WindowComponent) {
+    focus(win: Win) {
         if (this.activeWindow === win) return;
 
         const reg = this.registry.get(win);
@@ -93,7 +102,7 @@ export class WindowRegistry {
         detectChangesNextFrame();
     }
 
-    blur(win: WindowComponent) {
+    blur(win: Win) {
         const reg = this.registry.get(win);
         if (reg) {
             reg.state.focus.next(false);
@@ -105,7 +114,7 @@ export class WindowRegistry {
         detectChangesNextFrame();
     }
 
-    unregister(win: WindowComponent) {
+    unregister(win: Win) {
         const reg = this.registry.get(win);
         if (reg) {
             reg.state.focus.next(false);
@@ -121,15 +130,19 @@ export class WindowRegistry {
     }
 }
 
+interface AlignedButtonGroup {
+    sidebarMoved: () => void;
+    activateOneTimeAnimation: () => void;
+}
+
 @Injectable()
 export class WindowState {
-    public buttonGroupAlignedToSidebar?: ButtonGroupComponent;
-    public header?: WindowHeaderComponent;
+    public buttonGroupAlignedToSidebar?: AlignedButtonGroup;
     public focus = new BehaviorSubject<boolean>(false);
     public disableInputs = new BehaviorSubject<boolean>(false);
 
     public toolbars: { [name: string]: TemplateRef<any>[] } = {};
-    public toolbarContainers: { [name: string]: WindowToolbarContainerComponent } = {};
+    public toolbarContainers: { [name: string]: { toolbarsUpdated: () => void } } = {};
 
     closable = true;
     maximizable = true;
@@ -140,7 +153,7 @@ export class WindowState {
 
     public addToolbarContainer(forName: string, template: TemplateRef<any>) {
         if (!this.toolbars[forName]) {
-            this.toolbars[forName] = []
+            this.toolbars[forName] = [];
         }
 
         this.toolbars[forName].push(template);

@@ -28,11 +28,16 @@ import {
     SQLStatement,
 } from '@deepkit/sql';
 import {
+    DatabaseDeleteError,
+    DatabaseError,
     DatabaseLogger,
+    DatabasePatchError,
     DatabasePersistenceChangeSet,
     DatabaseSession,
     DatabaseTransaction,
+    DatabaseUpdateError,
     DeleteResult,
+    ensureDatabaseError,
     OrmEntity,
     PatchResult,
     primaryKeyObjectConverter,
@@ -45,13 +50,26 @@ import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/co
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, ReflectionKind, ReflectionProperty, resolvePath } from '@deepkit/type';
 
-function handleError(error: Error | string): void {
-    const message = 'string' === typeof error ? error : error.message;
-    if (message.includes('violates unique constraint')) {
-        //todo: extract table name, column name, and find ClassSchema
-        throw new UniqueConstraintFailure();
+/**
+ * Converts a specific database error to a more specific error, if possible.
+ */
+function handleSpecificError(session: DatabaseSession, error: DatabaseError): Error {
+    let cause: any = error;
+    while (cause) {
+        if (cause instanceof Error) {
+            if (cause.message.includes('duplicate key value')
+                && 'table' in cause && 'string' === typeof cause.table
+                && 'detail' in cause && 'string' === typeof cause.detail
+            ) {
+                return new UniqueConstraintFailure(`${cause.message}: ${cause.detail}`, { cause: error });
+            }
+            cause = cause.cause;
+        }
     }
+
+    return error;
 }
+
 
 export class PostgresStatement extends SQLStatement {
     protected released = false;
@@ -72,7 +90,7 @@ export class PostgresStatement extends SQLStatement {
             });
             return res.rows[0];
         } catch (error: any) {
-            handleError(error);
+            error = ensureDatabaseError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
         } finally {
@@ -92,7 +110,7 @@ export class PostgresStatement extends SQLStatement {
             });
             return res.rows;
         } catch (error: any) {
-            handleError(error);
+            error = ensureDatabaseError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
         } finally {
@@ -135,7 +153,7 @@ export class PostgresConnection extends SQLConnection {
             this.lastReturningRows = res.rows;
             this.changes = res.rowCount;
         } catch (error: any) {
-            handleError(error);
+            error = ensureDatabaseError(error);
             this.logger.failedQuery(error, sql, params);
             throw error;
         } finally {
@@ -249,6 +267,10 @@ export class PostgresPersistence extends SQLPersistence {
         super(platform, connectionPool, session);
     }
 
+    override handleSpecificError(error: Error): Error {
+        return handleSpecificError(this.session, error);
+    }
+
     async batchUpdate<T extends OrmEntity>(entity: PreparedEntity, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const prepared = prepareBatchUpdate(this.platform, entity, changeSets);
         if (!prepared) return;
@@ -326,15 +348,26 @@ export class PostgresPersistence extends SQLPersistence {
               RETURNING ${returningSelect.join(', ')};
         `;
 
-        const connection = await this.getConnection(); //will automatically be released in SQLPersistence
-        const result = await connection.execAndReturnAll(sql, params);
-        for (const returning of result) {
-            const r = prepared.assignReturning[returning[prepared.pkName]];
-            if (!r) continue;
+        try {
+            const connection = await this.getConnection(); //will automatically be released in SQLPersistence
+            const result = await connection.execAndReturnAll(sql, params);
+            for (const returning of result) {
+                const r = prepared.assignReturning[returning[prepared.pkName]];
+                if (!r) continue;
 
-            for (const name of r.names) {
-                r.item[name] = returning[name];
+                for (const name of r.names) {
+                    r.item[name] = returning[name];
+                }
             }
+        } catch (error: any) {
+            const reflection = ReflectionClass.from(entity.type);
+            error = new DatabaseUpdateError(
+                reflection,
+                changeSets,
+                `Could not update ${reflection.getClassName()} in database`,
+                { cause: error },
+            );
+            throw this.handleSpecificError(error);
         }
     }
 
@@ -366,20 +399,9 @@ export class PostgresPersistence extends SQLPersistence {
 
         return `INSERT INTO ${this.platform.getTableIdentifier(classSchema)} (${fields.join(', ')}) VALUES (${values.join('), (')}) ${returning}`;
     }
-
-    protected placeholderPosition: number = 1;
-
-    protected resetPlaceholderSymbol() {
-        this.placeholderPosition = 1;
-    }
-
-    protected getPlaceholderSymbol() {
-        return '$' + this.placeholderPosition++;
-    }
 }
 
 export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T> {
-
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
         const primaryKey = this.classSchema.getPrimary();
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
@@ -404,9 +426,17 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
             for (const row of rows) {
                 deleteResult.primaryKeys.push(primaryKeyConverted(row[primaryKey.name]));
             }
+        } catch (error: any) {
+            error = new DatabaseDeleteError(this.classSchema, 'Could not delete in database', { cause: error });
+            error.query = model;
+            throw this.handleSpecificError(error);
         } finally {
             connection.release();
         }
+    }
+
+    override handleSpecificError(error: Error): Error {
+        return handleSpecificError(this.session, error);
     }
 
     async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
@@ -511,6 +541,9 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
                     patchResult.returning[i].push(aggregateFields[i].converted(returning[i]));
                 }
             }
+        } catch (error: any) {
+            error = new DatabasePatchError(this.classSchema, model, changes, `Could not patch ${this.classSchema.getClassName()} in database`, { cause: error });
+            throw this.handleSpecificError(error);
         } finally {
             connection.release();
         }

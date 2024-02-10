@@ -605,7 +605,9 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
                 //we add our module as additional source for potential dependencies
                 registerPreparedProvider(parentProviders, preparedProvider.modules, preparedProvider.providers, false);
             } else {
-                parentProviders.push({ token: preparedProvider.token, modules: [this], providers: preparedProvider.providers.slice() });
+                // [this, to] is used so that this service resolves dependencies from the target first (so it can overwrite them)
+                // and falls back to the module it was defined in. This includes configureProvider() calls.
+                parentProviders.push({ token: preparedProvider.token, modules: [to, this], providers: preparedProvider.providers.slice() });
             }
         };
 

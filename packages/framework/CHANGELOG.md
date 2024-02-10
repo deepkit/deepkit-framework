@@ -3,6 +3,52 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.131](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.130...v1.0.1-alpha.131) (2024-02-09)
+
+**Note:** Version bump only for package @deepkit/framework
+
+## [1.0.1-alpha.130](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.129...v1.0.1-alpha.130) (2024-02-07)
+
+**Note:** Version bump only for package @deepkit/framework
+
+## [1.0.1-alpha.129](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.128...v1.0.1-alpha.129) (2024-02-07)
+
+**Note:** Version bump only for package @deepkit/framework
+
+## [1.0.1-alpha.128](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.127...v1.0.1-alpha.128) (2024-02-06)
+
+### Bug Fixes
+
+- **framework:** esm import ([a9927c2](https://github.com/deepkit/deepkit-framework/commit/a9927c2507be69b59ee13c45ae315e95aef84898))
+
+## [1.0.1-alpha.127](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.126...v1.0.1-alpha.127) (2024-02-06)
+
+### Bug Fixes
+
+- **framework:** wrong ESM import ([9ec0df2](https://github.com/deepkit/deepkit-framework/commit/9ec0df218ddd42dba52b2ac892701b9d9bff216a))
+
+## [1.0.1-alpha.126](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.125...v1.0.1-alpha.126) (2024-02-06)
+
+### Bug Fixes
+
+- **rpc:** wrong ESM import ([1426627](https://github.com/deepkit/deepkit-framework/commit/14266273c30414513aed4ae7667697f19d852098))
+
+## [1.0.1-alpha.124](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.123...v1.0.1-alpha.124) (2024-02-04)
+
+### Features
+
+- **orm:** better Error handling + UniqueConstraintFailure ([f1845ee](https://github.com/deepkit/deepkit-framework/commit/f1845ee84eb61a894155944a6efae6b926a4a47d))
+
+## [1.0.1-alpha.123](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.122...v1.0.1-alpha.123) (2024-02-02)
+
+**Note:** Version bump only for package @deepkit/framework
+
+## [1.0.1-alpha.122](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.121...v1.0.1-alpha.122) (2024-01-31)
+
+### Features
+
+- **injector:** new Module.configureProvider<T>(Fn) with configuration callback ([1739b95](https://github.com/deepkit/deepkit-framework/commit/1739b9564dcf4d254dd3041dc71945290e06ad4c))
+
 ## [1.0.1-alpha.121](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.120...v1.0.1-alpha.121) (2024-01-31)
 
 **Note:** Version bump only for package @deepkit/framework

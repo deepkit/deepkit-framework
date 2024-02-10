@@ -1,9 +1,6 @@
-import { isPropertyMemberType } from '@deepkit/type';
 import {
     binaryBigIntAnnotation,
     BinaryBigIntType,
-    buildFunction,
-    callExtractedFunctionIfAvailable,
     collapsePath,
     ContainerAccessor,
     createTypeGuardFunction,
@@ -12,13 +9,13 @@ import {
     excludedAnnotation,
     executeTemplates,
     extendTemplateLiteral,
-    extractStateToFunctionAndCallIt,
     getIndexCheck,
     getNameExpression,
     getStaticDefaultCodeForProperty,
     hasDefaultValue,
     isNullable,
     isOptional,
+    isPropertyMemberType,
     mongoIdAnnotation,
     ReflectionClass,
     ReflectionKind,
@@ -27,6 +24,7 @@ import {
     sortSignatures,
     TemplateState,
     Type,
+    TypeArray,
     TypeClass,
     TypeGuardRegistry,
     TypeIndexSignature,
@@ -37,7 +35,7 @@ import {
     TypeTemplateLiteral,
     TypeTuple,
     TypeUnion,
-    uuidAnnotation
+    uuidAnnotation,
 } from '@deepkit/type';
 import { seekElementSize } from './continuation.js';
 import { BSONType, digitByteSize, isSerializable } from './utils.js';
@@ -531,7 +529,8 @@ export function bsonTypeGuardTuple(type: TypeTuple, state: TemplateState) {
     `);
 }
 
-export function deserializeArray(elementType: Type, state: TemplateState) {
+export function deserializeArray(type: TypeArray, state: TemplateState) {
+    const elementType = type.type;
     const result = state.compilerContext.reserveName('result');
     const v = state.compilerContext.reserveName('v');
     const i = state.compilerContext.reserveName('i');
@@ -567,7 +566,8 @@ export function deserializeArray(elementType: Type, state: TemplateState) {
  * This array type guard goes through all array elements in order to determine the correct type.
  * This is only necessary when a union has at least 2 array members, otherwise a simple array check is enough.
  */
-export function bsonTypeGuardArray(elementType: Type, state: TemplateState) {
+export function bsonTypeGuardArray(type: TypeArray, state: TemplateState) {
+    const elementType = type.type;
     const v = state.compilerContext.reserveName('v');
     const i = state.compilerContext.reserveName('i');
     state.setContext({ digitByteSize, seekElementSize });
@@ -643,11 +643,6 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
     //         return;
     //     }
     // }
-
-    if (callExtractedFunctionIfAvailable(state, type)) return;
-    const extract = extractStateToFunctionAndCallIt(state, type);
-    state = extract.state;
-
     const lines: string[] = [];
     const signatures: TypeIndexSignature[] = [];
     const object = state.compilerContext.reserveName('object');
@@ -843,8 +838,6 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
             state.elementType = oldElementType;
         }
     `);
-
-    extract.setFunction(buildFunction(state, type));
 }
 
 export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, state: TemplateState) {
@@ -861,10 +854,6 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
     //     `);
     //     return;
     // }
-
-    if (callExtractedFunctionIfAvailable(state, type)) return;
-    const extract = extractStateToFunctionAndCallIt(state, type);
-    state = extract.state;
 
     const lines: string[] = [];
     const signatures: TypeIndexSignature[] = [];
@@ -987,8 +976,6 @@ export function bsonTypeGuardObjectLiteral(type: TypeClass | TypeObjectLiteral, 
             ${state.setter} = ${valid};
         }
     `);
-
-    extract.setFunction(buildFunction(state, type));
 }
 
 export function bsonTypeGuardForBsonTypes(types: BSONType[]): (type: Type, state: TemplateState) => void {

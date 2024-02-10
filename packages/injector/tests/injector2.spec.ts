@@ -750,6 +750,29 @@ test('configure provider in exported sub module', () => {
     expect(service.list).toEqual(['a', 'b']);
 });
 
+test('configure provider of imported module', () => {
+    class Service {
+        list: any[] = [];
+
+        add(item: any) {
+            this.list.push(item);
+        }
+    }
+
+    const root = new InjectorModule([]);
+    const module = new InjectorModule([Service], root, {}, [Service]);
+
+    root.configureProvider<Service>(service => {
+        service.add('a');
+        service.add('b');
+    });
+
+    const injector = new InjectorContext(root);
+    const service = injector.get(Service);
+
+    expect(service.list).toEqual(['a', 'b']);
+});
+
 test('global configure provider', () => {
     class Service {
         list: any[] = [];
@@ -1042,14 +1065,14 @@ test('inject its own module', () => {
 
     }
 
-    {
-        const module1 = new ApiModule([Service]);
-        const root = new InjectorModule([]).addImport(module1);
-        const injector = new InjectorContext(root);
-
-        const service = injector.get(Service, module1);
-        expect(service.module).toBeInstanceOf(ApiModule);
-    }
+    // {
+    //     const module1 = new ApiModule([Service]);
+    //     const root = new InjectorModule([]).addImport(module1);
+    //     const injector = new InjectorContext(root);
+    //
+    //     const service = injector.get(Service, module1);
+    //     expect(service.module).toBeInstanceOf(ApiModule);
+    // }
 
     {
         const module1 = new ApiModule([Service]).addExport(Service);

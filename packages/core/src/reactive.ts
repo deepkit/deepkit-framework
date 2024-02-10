@@ -8,6 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+declare var requestAnimationFrame: any;
+declare var cancelAnimationFrame: any;
 
 export const nextTick = typeof requestAnimationFrame !== 'undefined'
     ? (cb: () => void) => requestAnimationFrame(cb) : (cb: () => void) => setTimeout(cb);

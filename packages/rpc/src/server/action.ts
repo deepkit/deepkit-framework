@@ -12,7 +12,6 @@ import { ClassType, collectForMicrotask, getClassName, isPrototypeOfBase, toFast
 import { isBehaviorSubject, isSubject, ProgressTracker, ProgressTrackerState } from '@deepkit/core-rxjs';
 import {
     assertType,
-    findMember,
     getValidatorFunction,
     Guard,
     parametersToTuple,
@@ -24,7 +23,7 @@ import {
     typeOf,
     TypeTuple,
     ValidationError,
-    ValidationErrorItem
+    ValidationErrorItem,
 } from '@deepkit/type';
 import { isObservable, Observable, Subject, Subscription } from 'rxjs';
 import { Collection, CollectionEvent, CollectionQueryModel, CollectionQueryModelInterface, CollectionState } from '../collection.js';
@@ -62,11 +61,8 @@ export type ActionTypes = {
     collectionQueryModel?: Type,
 };
 
-function getV(container: TypeObjectLiteral): Type {
-    const found = findMember('v', container.types);
-    if (!found) throw new Error('v not found');
-    assertType(found, ReflectionKind.propertySignature);
-    return found.type;
+function createNoTypeError(classType: ClassType, method: string) {
+    return new Error(`No observable type on RPC action ${getClassName(classType)}.${method} detected. Either no return type Observable<T> defined or wrong RxJS nominal type.`)
 }
 
 export class RpcServerAction {
@@ -281,7 +277,7 @@ export class RpcServerAction {
                 const { types, classType, method } = observable;
                 const body = message.parseBody<rpcActionObservableSubscribeId>();
                 if (observable.subscriptions[body.id]) return response.error(new Error('Subscription already created'));
-                if (!types.observableNextSchema) return response.error(new Error('No observable type detected'));
+                if (!types.observableNextSchema) return response.error(createNoTypeError(classType, method));
 
                 const sub: { active: boolean, sub?: Subscription, complete: () => void } = {
                     active: true,
@@ -335,7 +331,7 @@ export class RpcServerAction {
                 if (!observable) return response.error(new Error('No observable to unsubscribe found'));
                 const body = message.parseBody<rpcActionObservableSubscribeId>();
                 const sub = observable.subscriptions[body.id];
-                if (!sub) return response.error(new Error('No subscription found'));
+                if (!sub) return;
                 sub.active = false;
                 if (sub.sub) {
                     sub.sub.unsubscribe();
@@ -400,10 +396,6 @@ export class RpcServerAction {
         try {
             value = message.parseBody(types.actionCallSchema);
         } catch (error: any) {
-            if (error instanceof ValidationError) {
-                //remove `.args` from path
-                error = ValidationError.from(error.errors.map(v => ({ ...v, path: v.path.replace('args.', '') })));
-            }
             return response.error(error);
         }
 

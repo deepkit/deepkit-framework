@@ -12,12 +12,14 @@ import {
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
     DatabaseEntityRegistry,
+    DatabaseErrorEvent,
     DatabaseSession,
     FindQuery,
     ItemNotFound,
     MigrateOptions,
+    onDatabaseError,
     OrmEntity,
-    RawFactory
+    RawFactory,
 } from '@deepkit/orm';
 import { AbstractClassType, ClassType, isArray } from '@deepkit/core';
 import { MongoDatabaseQuery } from './query.js';
@@ -51,29 +53,44 @@ class MongoRawCommandQuery<T> implements FindQuery<T> {
     constructor(
         protected session: DatabaseSession<MongoDatabaseAdapter>,
         protected client: MongoClient,
-        protected command: Command,
+        protected command: Command<any>,
     ) {
     }
 
     async find(): Promise<T[]> {
-        const res = await this.client.execute(this.command);
-        return res as any;
+        try {
+            const res = await this.client.execute(this.command);
+            return res as any;
+        } catch (error: any) {
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session));
+            throw error;
+        }
     }
 
     async findOneOrUndefined(): Promise<T> {
-        const res = await this.client.execute(this.command);
-        if (isArray(res)) return res[0];
-        return res;
+        try {
+            const res = await this.client.execute(this.command);
+            if (isArray(res)) return res[0];
+            return res;
+        } catch (error: any) {
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session));
+            throw error;
+        }
     }
 
     async findOne(): Promise<T> {
-        const item = await this.findOneOrUndefined();
-        if (!item) throw new ItemNotFound('Could not find item');
-        return item;
+        try {
+            const item = await this.findOneOrUndefined();
+            if (!item) throw new ItemNotFound('Could not find item');
+            return item;
+        } catch (error: any) {
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session));
+            throw error;
+        }
     }
 }
 
-export class MongoRawFactory implements RawFactory<[Command]> {
+export class MongoRawFactory implements RawFactory<[Command<any>]> {
     constructor(
         protected session: DatabaseSession<MongoDatabaseAdapter>,
         protected client: MongoClient,
@@ -81,7 +98,7 @@ export class MongoRawFactory implements RawFactory<[Command]> {
     }
 
     create<Entity = any, ResultSchema = Entity>(
-        commandOrPipeline: Command | any[],
+        commandOrPipeline: Command<ResultSchema> | any[],
         type?: ReceiveType<Entity>,
         resultType?: ReceiveType<ResultSchema>,
     ): MongoRawCommandQuery<ResultSchema> {
@@ -89,7 +106,7 @@ export class MongoRawFactory implements RawFactory<[Command]> {
         const resultSchema = resultType ? resolveReceiveType(resultType) : undefined;
 
         const command = isArray(commandOrPipeline) ? new AggregateCommand(ReflectionClass.from(type), commandOrPipeline, resultSchema) : commandOrPipeline;
-        return new MongoRawCommandQuery<ResultSchema>(this.session, this.client, command);
+        return new MongoRawCommandQuery<ResultSchema>(this.session, this.client, command as Command<any>);
     }
 }
 
@@ -99,7 +116,7 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
     protected ormSequences: ReflectionClass<any>;
 
     constructor(
-        connectionString: string
+        connectionString: string,
     ) {
         super();
         this.client = new MongoClient(connectionString);

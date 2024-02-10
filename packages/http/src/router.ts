@@ -18,7 +18,7 @@ import {
     serializer,
     Serializer,
     Type,
-    ValidationError
+    ValidationError,
 } from '@deepkit/type';
 import { getActions, HttpAction, httpClass, HttpController, HttpDecorator } from './decorator.js';
 import { HttpRequest, HttpRequestPositionedParameters, HttpRequestQuery, HttpRequestResolvedParameters } from './model.js';
@@ -169,7 +169,7 @@ export class RouteConfig {
     }
 }
 
-class ParsedRoute {
+export class ParsedRoute {
     public regex?: string;
 
     public pathParameterNames: { [name: string]: number } = {};

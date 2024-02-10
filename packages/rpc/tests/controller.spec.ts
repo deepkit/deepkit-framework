@@ -1,10 +1,10 @@
 import { assertType, entity, Positive, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { DirectClient } from '../src/client/client-direct.js';
-import { getActions, rpc, rpcClass, RpcController } from '../src/decorators.js';
+import { getActions, rpc, RpcController } from '../src/decorators.js';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
 import { Session, SessionState } from '../src/server/security.js';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { getClassName, sleep } from '@deepkit/core';
 import { ProgressTracker } from '@deepkit/core-rxjs';
 
@@ -594,4 +594,24 @@ test('progress tracker reuse', async () => {
         const res = await controller.getProgress(1);
         expect(res).toBe(undefined);
     }
+});
+
+test('missing observable types throw', async () => {
+    class Controller {
+        @rpc.action()
+        test() {
+            return new Observable(observer => {
+                observer.next(123);
+                observer.complete();
+            });
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    const observable = await controller.test();
+    await expect(observable.toPromise()).rejects.toThrow('No observable type on RPC action Controller.test detected');
 });

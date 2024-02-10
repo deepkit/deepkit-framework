@@ -3,6 +3,92 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.131](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.130...v1.0.1-alpha.131) (2024-02-09)
+
+### Bug Fixes
+
+- **http:** make sure all path parameters are available in HttpRequestParser ([e215420](https://github.com/deepkit/deepkit-framework/commit/e215420edf4889d116b01ca0f52109e7167e7b63))
+- **rpc:** error Observable Subscribers when no Observable Next type can be detected ([e207fea](https://github.com/deepkit/deepkit-framework/commit/e207fea1d9abbb61f8e33d8253fe3ce5e23022d0))
+- **type:** make sure cast<string> throws when null/undefined is passed ([1bb3641](https://github.com/deepkit/deepkit-framework/commit/1bb3641f3db8196c9bcab64ef17004dc5e1f9f4c))
+
+## [1.0.1-alpha.130](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.129...v1.0.1-alpha.130) (2024-02-07)
+
+### Bug Fixes
+
+- **http:** don't include resolver/DI objects into HttpRequestParser ([be189c5](https://github.com/deepkit/deepkit-framework/commit/be189c5bcf8d5d57e5c9a1738e458e370bff2b50))
+
+### Features
+
+- **http:** allow to fetch unused path parameters in HttpRequestParser ([cc3cd3b](https://github.com/deepkit/deepkit-framework/commit/cc3cd3bc4a0a75906e43ae764bff473a81b09d1b))
+
+## [1.0.1-alpha.129](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.128...v1.0.1-alpha.129) (2024-02-07)
+
+### Features
+
+- **http:** also read path parameters in HttpRequestParser<T> ([888d058](https://github.com/deepkit/deepkit-framework/commit/888d058b900b29fa39a2d77a6aa5e8946f2ee5e7))
+
+## [1.0.1-alpha.128](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.127...v1.0.1-alpha.128) (2024-02-06)
+
+### Bug Fixes
+
+- **framework:** esm import ([a9927c2](https://github.com/deepkit/deepkit-framework/commit/a9927c2507be69b59ee13c45ae315e95aef84898))
+- **injector:** correctly label symbols ([ac07f21](https://github.com/deepkit/deepkit-framework/commit/ac07f2134ec21fd0f114bc9751d700f46e0f5607))
+- **postgres:** don't crash when no index can be extracted ([c80e88f](https://github.com/deepkit/deepkit-framework/commit/c80e88f2379a8c956d4921922b177685547e7278))
+
+### Features
+
+- **http:** add new HttpRequestParser<T> injection token ([6101f83](https://github.com/deepkit/deepkit-framework/commit/6101f830897e071e72b8e873bda6dbeee69cdc1e))
+
+## [1.0.1-alpha.127](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.126...v1.0.1-alpha.127) (2024-02-06)
+
+### Bug Fixes
+
+- **framework:** wrong ESM import ([9ec0df2](https://github.com/deepkit/deepkit-framework/commit/9ec0df218ddd42dba52b2ac892701b9d9bff216a))
+- **sql:** wrong ESM import ([08996bb](https://github.com/deepkit/deepkit-framework/commit/08996bb2606b48164c727ceb5a7366185efa13a1))
+
+## [1.0.1-alpha.126](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.125...v1.0.1-alpha.126) (2024-02-06)
+
+### Bug Fixes
+
+- **rpc:** wrong ESM import ([1426627](https://github.com/deepkit/deepkit-framework/commit/14266273c30414513aed4ae7667697f19d852098))
+
+## [1.0.1-alpha.125](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.124...v1.0.1-alpha.125) (2024-02-05)
+
+### Bug Fixes
+
+- **mongo:** export error symbols ([5841a5a](https://github.com/deepkit/deepkit-framework/commit/5841a5a35927bf34d4187d047e43e2ec6317beb3))
+
+## [1.0.1-alpha.124](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.123...v1.0.1-alpha.124) (2024-02-04)
+
+### Bug Fixes
+
+- **desktop-ui:** -webkit-scrollbar is not supported in chrome anymore ([68fca4f](https://github.com/deepkit/deepkit-framework/commit/68fca4f393d170e2ce5b4bfa17539d06d6ab1cb0))
+- **desktop-ui:** dont ignore dist/ in npm package ([e6e6faa](https://github.com/deepkit/deepkit-framework/commit/e6e6faa77f2e30d741dfe0bf77a0d79c5410a7dd))
+- **orm:** make sure getJoin operates on existing join model ([03b2428](https://github.com/deepkit/deepkit-framework/commit/03b242832adac48b7163e1fcf8902e7f1b197e8a))
+- **type:** handle more circular types ([5f6bd12](https://github.com/deepkit/deepkit-framework/commit/5f6bd124aaf9c546014b81dbded8110312f4e819)), closes [#477](https://github.com/deepkit/deepkit-framework/issues/477)
+
+### Features
+
+- **orm:** better Error handling + UniqueConstraintFailure ([f1845ee](https://github.com/deepkit/deepkit-framework/commit/f1845ee84eb61a894155944a6efae6b926a4a47d))
+- **orm:** new API to configure a join query ([64cc55e](https://github.com/deepkit/deepkit-framework/commit/64cc55e812a6be555515e036de4e6b18d147b4f0))
+
+## [1.0.1-alpha.123](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.122...v1.0.1-alpha.123) (2024-02-02)
+
+### Bug Fixes
+
+- **desktop-ui:** resolve various circular imports ([3f5c676](https://github.com/deepkit/deepkit-framework/commit/3f5c676f49678361707be5334222a08efdde65ba))
+- **injector:** resolve deps of exported providers correctly ([c185b38](https://github.com/deepkit/deepkit-framework/commit/c185b383c3314f08c92b65c76776864a2065a2b8))
+
+### Features
+
+- **orm:** onDatabaseError event ([cdb7256](https://github.com/deepkit/deepkit-framework/commit/cdb7256b34f1d9de16145dd79b307ccf45f7c72f))
+
+## [1.0.1-alpha.122](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.121...v1.0.1-alpha.122) (2024-01-31)
+
+### Features
+
+- **injector:** new Module.configureProvider<T>(Fn) with configuration callback ([1739b95](https://github.com/deepkit/deepkit-framework/commit/1739b9564dcf4d254dd3041dc71945290e06ad4c))
+
 ## [1.0.1-alpha.121](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.120...v1.0.1-alpha.121) (2024-01-31)
 
 ### Bug Fixes

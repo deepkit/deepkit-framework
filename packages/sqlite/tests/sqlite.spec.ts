@@ -18,10 +18,11 @@ import {
     ReflectionClass,
     serialize,
     typeOf,
+    Unique,
     UUID,
     uuid,
 } from '@deepkit/type';
-import { DatabaseEntityRegistry } from '@deepkit/orm';
+import { DatabaseEntityRegistry, UniqueConstraintFailure } from '@deepkit/orm';
 import { sql } from '@deepkit/sql';
 
 test('reflection circular reference', () => {
@@ -615,6 +616,16 @@ test('multiple joins', async () => {
         expect(list[0].tenants).toMatchObject([{ name: 'tenant2' }, { name: 'tenant1' }]);
     }
 
+    {
+        const list = await database.query(Property)
+            .joinWith('flats')
+            .joinWith('tenants', v => v.sort({ name: 'desc' }))
+            .find();
+        expect(list).toHaveLength(1);
+        expect(list[0].flats).toMatchObject([{ name: 'flat1' }, { name: 'flat2' }]);
+        expect(list[0].tenants).toMatchObject([{ name: 'tenant2' }, { name: 'tenant1' }]);
+    }
+
     const property2 = new Property('immo2');
     property2.flats.push(new Flat(property2, 'flat3'));
     property2.flats.push(new Flat(property2, 'flat4'));
@@ -750,6 +761,17 @@ test('deep join population', async () => {
 
     {
         const basket = await database.query(Basket).useJoinWith('items').joinWith('product').end().findOne();
+        expect(basket).toBeInstanceOf(Basket);
+        expect(basket.items[0]).toBeInstanceOf(BasketItem);
+        expect(basket.items[1]).toBeInstanceOf(BasketItem);
+        expect(basket.items[0].product).toBeInstanceOf(Product);
+        expect(basket.items[1].product).toBeInstanceOf(Product);
+    }
+
+    {
+        const basket = await database.query(Basket)
+            .joinWith('items', v=> v.joinWith('product'))
+            .findOne();
         expect(basket).toBeInstanceOf(Basket);
         expect(basket.items[0]).toBeInstanceOf(BasketItem);
         expect(basket.items[1]).toBeInstanceOf(BasketItem);
@@ -916,4 +938,42 @@ test('uuid 3', async () => {
     const hasher = getPrimaryKeyHashGenerator(ReflectionClass.from(User));
     const hash = hasher(user);
     expect(hash).toContain(user.id);
+});
+
+test('unique constraint 1', async () => {
+    class Model {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        constructor(public username: string & Unique = '') {}
+    }
+
+    const database = await databaseFactory([Model]);
+
+    await database.persist(new Model('peter'));
+    await database.persist(new Model('paul'));
+
+    {
+        const m1 = new Model('peter');
+        await expect(database.persist(m1)).rejects.toThrow('constraint failed');
+        await expect(database.persist(m1)).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+
+    {
+        const m1 = new Model('marie');
+        const m2 = new Model('marie');
+        await expect(database.persist(m1, m2)).rejects.toThrow('constraint failed');
+        await expect(database.persist(m1, m2)).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+
+    {
+        const m = await database.query(Model).filter({username: 'paul'}).findOne();
+        m.username = 'peter';
+        await expect(database.persist(m)).rejects.toThrow('constraint failed');
+        await expect(database.persist(m)).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+
+    {
+        const p = database.query(Model).filter({username: 'paul'}).patchOne({username: 'peter'});
+        await expect(p).rejects.toThrow('constraint failed');
+        await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
 });

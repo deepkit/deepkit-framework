@@ -26,7 +26,7 @@ import {
     TypeProperty,
     typeToObject,
     UUID,
-    validationAnnotation
+    validationAnnotation,
 } from '../src/reflection/type.js';
 import { isExtendable } from '../src/reflection/extends.js';
 import { expectEqualType } from './utils.js';
@@ -97,6 +97,7 @@ test('intersection same type', () => {
     expect(stringifyType(typeOf<Username & string>())).toBe('Username');
 });
 
+
 test('intersection different primitive types', () => {
     // just testing a few cases as there would be quite a few combinations
     expect(stringifyType(typeOf<string & number>())).toBe('never');
@@ -104,6 +105,18 @@ test('intersection different primitive types', () => {
     expect(stringifyType(typeOf<boolean & null>())).toBe('never');
     expect(stringifyType(typeOf<bigint & number>())).toBe('never');
     expect(stringifyType(typeOf<3 & 6>())).toBe('never');
+});
+
+test('intersection with never', () => {
+    type A = never & Group<'a'>;
+    type B = Group<'b'> & never;
+
+    type ObjectID = never;
+    type C = ObjectID & Group<'c'>;
+
+    expect(groupAnnotation.getAnnotations(typeOf<A>())).toEqual(['a']);
+    expect(groupAnnotation.getAnnotations(typeOf<B>())).toEqual(['b']);
+    expect(groupAnnotation.getAnnotations(typeOf<C>())).toEqual(['c']);
 });
 
 test('intersection same type keep annotation', () => {

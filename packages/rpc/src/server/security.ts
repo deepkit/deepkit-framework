@@ -9,8 +9,7 @@
  */
 
 import { ClassType } from '@deepkit/core';
-
-import { RpcKernelBaseConnection } from './kernel';
+import { RpcKernelBaseConnection } from './kernel.js';
 
 export class Session {
     constructor(

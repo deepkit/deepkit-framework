@@ -58,7 +58,6 @@ export class WindowHeaderComponent implements OnDestroy {
         protected element: ElementRef,
     ) {
         this.windowState = windowState;
-        windowState.header = this;
     }
 
     ngOnDestroy() {

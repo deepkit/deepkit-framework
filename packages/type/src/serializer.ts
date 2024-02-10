@@ -20,8 +20,9 @@ import {
     isIterable,
     isNumeric,
     isObject,
+    isObjectLiteral,
     stringifyValueWithType,
-    toFastProperties
+    toFastProperties,
 } from '@deepkit/core';
 import {
     AnnotationDefinition,
@@ -41,6 +42,7 @@ import {
     hasDefaultValue,
     hasEmbedded,
     isBackReferenceType,
+    isCustomTypeClass,
     isMongoIdType,
     isNullable,
     isOptional,
@@ -56,6 +58,7 @@ import {
     stringifyResolvedType,
     stringifyType,
     Type,
+    TypeArray,
     TypeClass,
     TypeIndexSignature,
     TypeObjectLiteral,
@@ -65,7 +68,7 @@ import {
     typeToObject,
     TypeTuple,
     TypeUnion,
-    validationAnnotation
+    validationAnnotation,
 } from './reflection/type.js';
 import { TypeNumberBrand } from '@deepkit/type-spec';
 import { hasCircularReference, ReflectionClass, ReflectionProperty } from './reflection/reflection.js';
@@ -234,30 +237,24 @@ export function createSerializeFunction(type: Type, registry: TemplateRegistry, 
 
 export type Guard<T> = (data: any, state?: { errors?: ValidationErrorItem[] }) => data is T;
 
-export function createTypeGuardFunction(type: Type, state?: TemplateState, serializerToUse?: Serializer, strict: boolean = false): undefined | Guard<any> {
+export function createTypeGuardFunction(type: Type, stateIn?: Partial<TemplateState>, serializerToUse?: Serializer, withLoose = true): undefined | Guard<any> {
     const compiler = new CompilerContext();
 
-    if (state) {
-        state = state.fork('result');
+    let state: TemplateState;
+    if (stateIn instanceof TemplateState) {
+        state = stateIn.fork('result');
         state.compilerContext = compiler;
     } else {
         state = new TemplateState('result', 'data', compiler, (serializerToUse || serializer).typeGuards.getRegistry(1));
+        if (stateIn) Object.assign(state, stateIn);
     }
     state.path = [new RuntimeCode('_path')];
-    if (strict) state.validation = 'strict';
     state.setterDisabled = false;
 
     const templates = state.registry.get(type);
-
     if (!templates.length) return undefined;
 
-    for (const hook of state.registry.preHooks) hook(type, state);
-    for (const template of templates) {
-        template(type, state);
-        if (state.ended) break;
-    }
-    for (const hook of state.registry.postHooks) hook(type, state);
-    for (const hook of state.registry.getDecorator(type)) hook(type, state);
+    executeTemplates(state, type, withLoose);
 
     compiler.context.set('typeSettings', typeSettings);
     //set unpopulatedCheck to ReturnSymbol to jump over those properties
@@ -291,17 +288,22 @@ export function collapsePath(path: (string | RuntimeCode)[], prefix?: string): s
     return path.filter(v => !!v).map(v => v instanceof RuntimeCode ? v.code : JSON.stringify(v)).join(`+'.'+`) || `''`;
 }
 
+export function getPropertyNameString(propertyName?: string | RuntimeCode) {
+    return propertyName ? collapsePath([propertyName]) : '';
+}
+
 /**
  * internal: The jit stack cache is used in both serializer and guards, so its cache key needs to be aware of it
  */
 export class JitStack {
-    protected stacks: { registry?: TemplateRegistry, map: Map<Type, { fn: Function | undefined }> }[] = [];
+    protected stacks: { registry?: TemplateRegistry, map: Map<Type, { fn: Function | undefined, id: number }> }[] = [];
+    protected id: number = 0;
 
     getStack(registry?: TemplateRegistry) {
         for (const stack of this.stacks) {
             if (stack.registry === registry) return stack.map;
         }
-        const map = new Map<Type, { fn: Function | undefined }>();
+        const map = new Map<Type, { fn: Function | undefined, id: number }>();
         this.stacks.push({ registry, map });
         return map;
     }
@@ -314,25 +316,27 @@ export class JitStack {
         return this.getStack(registry).get(type);
     }
 
-    prepare(registry: TemplateRegistry, type: Type): (fn: Function) => { fn: Function | undefined } {
+    prepare(registry: TemplateRegistry, type: Type): { id: number, prepare: (fn: Function) => { fn: Function | undefined } } {
         if (this.getStack(registry).has(type)) {
             throw new Error('Circular jit building detected: ' + stringifyType(type));
         }
 
-        const entry: { fn: Function | undefined } = { fn: undefined };
+        const entry: { fn: Function | undefined, id: number } = { fn: undefined, id: this.id++ };
         this.getStack(registry).set(type, entry);
-        return (fn: Function) => {
-            entry.fn = fn;
-            return entry;
+        return {
+            id: entry.id, prepare: (fn: Function) => {
+                entry.fn = fn;
+                return entry;
+            },
         };
     }
 
-    getOrCreate(registry: TemplateRegistry | undefined, type: Type, create: () => Function): { fn: Function | undefined } {
+    getOrCreate(registry: TemplateRegistry | undefined, type: Type, create: () => Function): { fn: Function | undefined, id: number } {
         const stack = this.getStack(registry);
         const existing = stack.get(type);
         if (existing) return existing;
 
-        const entry: { fn: Function | undefined } = { fn: undefined };
+        const entry: { fn: Function | undefined, id: number } = { fn: undefined, id: this.id++ };
         stack.set(type, entry);
         entry.fn = create();
         return entry;
@@ -386,7 +390,7 @@ export class TemplateState {
         public registry: TemplateRegistry,
         public namingStrategy: NamingStrategy = new NamingStrategy,
         public jitStack: JitStack = new JitStack(),
-        public path: (string | RuntimeCode)[] = []
+        public path: (string | RuntimeCode)[] = [],
     ) {
         this.setter = originalSetter;
         this.accessor = originalAccessor;
@@ -695,17 +699,19 @@ export class TemplateRegistry {
 export function callExtractedFunctionIfAvailable(state: TemplateState, type: Type): boolean {
     const jit = state.jitStack.get(state.registry, type);
     if (!jit) return false;
+    const withSetter = !state.setterDisabled && state.setter;
     state.addCode(`
-    //call jit for ${state.setter} via propertyName ${state.propertyName ? collapsePath([state.propertyName]) : ''}
-    ${state.setterDisabled || !state.setter ? '' : `${state.setter} = `}${state.setVariable('jit', jit)}.fn(${state.accessor || 'undefined'}, state, ${collapsePath(state.path)});
+    //call jit=${jit.id} for setter="${state.setter}" via propertyName ${state.propertyName ? collapsePath([state.propertyName]) : ''}
+    ${withSetter ? `${state.setter} = ` : ''}${state.setVariable('jit', jit)}.fn(${state.accessor || 'undefined'}, state, ${collapsePath(state.path)});
     `);
+    if (withSetter) state.accessor = state.setter;
     return true;
 }
 
 export function extractStateToFunctionAndCallIt(state: TemplateState, type: Type) {
     const prepare = state.jitStack.prepare(state.registry, type);
     callExtractedFunctionIfAvailable(state, type);
-    return { setFunction: prepare, state: state.fork('result', 'data', [new RuntimeCode('_path')]) };
+    return { setFunction: prepare.prepare, id: prepare.id, state: state.fork('result', 'data', [new RuntimeCode('_path')]).forPropertyName(state.propertyName) };
 }
 
 export function buildFunction(state: TemplateState, type: Type): Function {
@@ -741,25 +747,35 @@ export function buildFunction(state: TemplateState, type: Type): Function {
 export function executeTemplates(
     state: TemplateState,
     type: Type,
+    withLoose: boolean = true,
+    withCache: boolean = true,
 ): string {
     state.parentTypes.push(type);
-    if (state.validation === 'loose' && state.allSpecificalities) {
+
+    let originalState = state;
+
+    if (withLoose && state.validation === 'loose' && state.allSpecificalities) {
+        // check if the particular type has multiple specificalities
+        // if so, we need to generate a type guard that checks all specificalities.
+        // e.g. string supports `'string' === typeof' but as last resort also anything else.
+        // or Date supports `instanceof Date` but also `'string' === typeof` as last resort.
+        // This is not part of a union check. We have to do it for each type.
         const typeGuards = state.allSpecificalities.getSortedTemplateRegistries();
         const lines: string[] = [];
         for (const [specificality, typeGuard] of typeGuards) {
-            const fn = createTypeGuardFunction(type, state.fork(undefined, 'data').forRegistry(typeGuard));
+            const next = state.fork(undefined, 'data').forRegistry(typeGuard);
+            const fn = createTypeGuardFunction(type, next, undefined, false);
             if (!fn) continue;
             const guard = state.setVariable('guard_' + ReflectionKind[type.kind], fn);
             const looseCheck = specificality <= 0 ? `state.loosely !== false && ` : '';
 
             lines.push(`else if (${looseCheck}${guard}(${state.accessor})) {
-            //type = ${ReflectionKind[type.kind]}, specificality=${specificality}
-            ${state.setter} = true;
-        }`);
+                //type = ${ReflectionKind[type.kind]}, specificality=${specificality}
+                ${state.setter} = true;
+            }`);
         }
 
-        state.parentTypes.pop();
-        return `
+        state.template = `
             //type guard with multiple specificalities
             if (false) {} ${lines.join(' ')}
             else {
@@ -767,6 +783,29 @@ export function executeTemplates(
             }
         `;
     } else {
+        let setFunction: undefined | ((fn: Function) => void);
+        if (withCache && (type.kind === ReflectionKind.objectLiteral
+            || type.kind === ReflectionKind.array || type.kind === ReflectionKind.tuple
+            || (type.kind === ReflectionKind.class && (type.classType === Set || type.classType === Map))
+            || isCustomTypeClass(type)) && !embeddedAnnotation.getFirst(type)
+        ) {
+            //wrap circular check if necessary
+            if (callExtractedFunctionIfAvailable(state, type)) {
+                state.parentTypes.pop();
+                return state.template;
+            } else {
+                const extract = extractStateToFunctionAndCallIt(state, type);
+                state.replaceTemplate(`
+                    // extracted jit=${extract.id} function via state.propertyName="${getPropertyNameString(state.propertyName)}"
+                    if (!state._stack || !state._stack.includes(${state.accessor})) {
+                        ${state.template}
+                    }
+                `);
+                state = extract.state;
+                setFunction = extract.setFunction;
+            }
+        }
+
         const templates = state.registry.get(type);
         for (const hook of state.registry.preHooks) hook(type, state);
         for (const template of templates) {
@@ -775,9 +814,15 @@ export function executeTemplates(
         }
         for (const hook of state.registry.postHooks) hook(type, state);
         for (const template of state.registry.getDecorator(type)) template(type, state);
-        state.parentTypes.pop();
-        return state.template;
+
+        if (setFunction) {
+            setFunction(buildFunction(state, type));
+        }
     }
+
+    state.parentTypes.pop();
+
+    return originalState.template;
 }
 
 export function createConverterJSForMember(
@@ -1046,7 +1091,7 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 const setter = getEmbeddedAccessor(type, false, state.setter, state.registry.serializer, state.namingStrategy, first, embedded);
                 state.addCode(`
             if (${inAccessor(state.accessor)}) {
-                ${executeTemplates(state.fork(setter, new ContainerAccessor(state.accessor, name)), first.type)}
+                ${executeTemplates(state.fork(setter, new ContainerAccessor(state.accessor, name)), first.type, false, false)}
             }`);
             } else {
                 const lines: string[] = [];
@@ -1078,9 +1123,6 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         return;
     }
 
-    if (callExtractedFunctionIfAvailable(state, type)) return;
-    const extract = extractStateToFunctionAndCallIt(state, type);
-    state = extract.state;
     state.setContext({ isGroupAllowed });
 
     const v = state.compilerContext.reserveName('v');
@@ -1235,8 +1277,6 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         }
         `);
     }
-
-    extract.setFunction(buildFunction(state, type));
 }
 
 export function typeGuardEmbedded(type: TypeClass | TypeObjectLiteral, state: TemplateState, embedded: EmbeddedOptions) {
@@ -1273,10 +1313,6 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             return;
         }
     }
-
-    if (callExtractedFunctionIfAvailable(state, type)) return;
-    const extract = extractStateToFunctionAndCallIt(state, type);
-    state = extract.state;
 
     const lines: string[] = [];
     const signatures: TypeIndexSignature[] = [];
@@ -1380,9 +1416,11 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         }
     }
 
+    state.setContext({ isObjectLiteral });
+
     state.addCodeForSetter(`
         ${state.setter} = true;
-        if (${state.accessor} && 'object' === typeof ${state.accessor}) {
+        if (${state.accessor} && isObjectLiteral(${state.accessor})) {
             ${lines.join('\n')}
             ${customValidatorCall}
         } else {
@@ -1390,11 +1428,9 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
             ${state.setter} = false;
         }
     `);
-
-    extract.setFunction(buildFunction(state, type));
 }
 
-export function serializeArray(elementType: Type, state: TemplateState) {
+export function serializeArray(type: TypeArray, state: TemplateState) {
     state.setContext({ isIterable });
     const v = state.compilerContext.reserveName('v');
     const i = state.compilerContext.reserveName('i');
@@ -1407,7 +1443,7 @@ export function serializeArray(elementType: Type, state: TemplateState) {
             let ${i} = 0;
             for (const ${item} of ${state.accessor}) {
                 let ${v};
-                ${executeTemplates(state.fork(v, item).extendPath(new RuntimeCode(i)), elementType)}
+                ${executeTemplates(state.fork(v, item).extendPath(new RuntimeCode(i)), type.type)}
                 ${state.setter}.push(${v});
                 ${i}++;
             }
@@ -1417,7 +1453,6 @@ export function serializeArray(elementType: Type, state: TemplateState) {
 
 export function typeGuardArray(elementType: Type, state: TemplateState) {
     state.setContext({ isIterable });
-
     const v = state.compilerContext.reserveName('v');
     const i = state.compilerContext.reserveName('i');
     const item = state.compilerContext.reserveName('item');
@@ -1543,69 +1578,48 @@ function typeGuardTuple(type: TypeTuple, state: TemplateState) {
     `);
 }
 
-function typeGuardClassMap(type: TypeClass, state: TemplateState) {
-    if (!type.arguments || type.arguments.length !== 2) return;
+export function getSetTypeToArray(type: TypeClass): TypeArray {
+    const jit = getTypeJitContainer(type);
+    if (jit.forwardSetToArray) return jit.forwardSetToArray;
 
-    typeGuardArray(copyAndSetParent({
-        kind: ReflectionKind.tuple, types: [
-            { kind: ReflectionKind.tupleMember, parent: Object as any, type: type.arguments[0] },
-            { kind: ReflectionKind.tupleMember, parent: Object as any, type: type.arguments[1] },
-        ]
-    }), state);
+    const value = type.arguments?.[0] || { kind: ReflectionKind.any };
+
+    jit.forwardSetToArray = {
+        kind: ReflectionKind.array, type: value,
+    };
+
+    return jit.forwardSetToArray;
 }
 
-function typeGuardClassSet(type: TypeClass, state: TemplateState) {
-    if (!type.arguments || type.arguments.length !== 1) return;
+export function getMapTypeToArray(type: TypeClass): TypeArray {
+    const jit = getTypeJitContainer(type);
+    if (jit.forwardMapToArray) return jit.forwardMapToArray;
 
-    typeGuardArray(type.arguments[0], state);
+    const index = type.arguments?.[0] || { kind: ReflectionKind.any };
+    const value = type.arguments?.[1] || { kind: ReflectionKind.any };
+
+    jit.forwardMapToArray = {
+        kind: ReflectionKind.array, type: copyAndSetParent({
+            kind: ReflectionKind.tuple, types: [
+                { kind: ReflectionKind.tupleMember, name: 'key', type: index },
+                { kind: ReflectionKind.tupleMember, name: 'value', type: value },
+            ],
+        }),
+    };
+
+    return jit.forwardMapToArray;
 }
 
-/**
- * Set is simply serialized as array.
- */
-function deserializeTypeClassSet(type: TypeClass, state: TemplateState) {
-    if (!type.arguments || type.arguments.length !== 1) return;
-
-    serializeArray(type.arguments[0], state);
-    state.addSetter(`new Set(${state.accessor})`);
+export function forwardSetToArray(type: TypeClass, state: TemplateState) {
+    executeTemplates(state, getSetTypeToArray(type), true, false);
 }
 
-/**
- * Set is simply serialized as array.
- */
-function serializeTypeClassSet(type: TypeClass, state: TemplateState) {
-    if (!type.arguments || type.arguments.length !== 1) return;
-
-    serializeArray(type.arguments[0], state);
-}
-
-function deserializeTypeClassMap(type: TypeClass, state: TemplateState) {
-    if (!type.arguments || type.arguments.length !== 2) return;
-    serializeArray(copyAndSetParent({
-        kind: ReflectionKind.tuple, types: [
-            { kind: ReflectionKind.tupleMember, type: type.arguments[0] },
-            { kind: ReflectionKind.tupleMember, type: type.arguments[1] },
-        ]
-    }), state);
-    state.addSetter(`new Map(${state.accessor})`);
-}
-
-/**
- * Map is simply serialized as array of tuples.
- */
-function serializeTypeClassMap(type: TypeClass, state: TemplateState) {
-    if (!type.arguments || type.arguments.length !== 2) return;
-
-    serializeArray(copyAndSetParent({
-        kind: ReflectionKind.tuple, types: [
-            { kind: ReflectionKind.tupleMember, type: type.arguments[0] },
-            { kind: ReflectionKind.tupleMember, type: type.arguments[1] },
-        ]
-    }), state);
+export function forwardMapToArray(type: TypeClass, state: TemplateState) {
+    executeTemplates(state, getMapTypeToArray(type), true, false);
 }
 
 export function serializePropertyOrParameter(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
-    if (type.optional) {
+    if (isOptional(type)) {
         state.addCode(`
             if (${state.accessor} === undefined) {
                 ${executeTemplates(state.fork(), { kind: ReflectionKind.undefined })}
@@ -1620,11 +1634,12 @@ export function serializePropertyOrParameter(type: TypePropertySignature | TypeP
 }
 
 export function validatePropertyOrParameter(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
+    const optional = isOptional(type)
     const hasDefault = hasDefaultValue(type);
 
     state.addCode(`
         if (${state.accessor} === undefined) {
-            if (${!type.optional && !hasDefault && state.isValidation()}) ${state.assignValidationError('type', 'No value given')}
+            if (${!optional && !hasDefault && state.isValidation()}) ${state.assignValidationError('type', 'No value given')}
         } else {
             ${executeTemplates(state.fork(), type.type)}
         }
@@ -1692,7 +1707,8 @@ export function handleUnion(type: TypeUnion, state: TemplateState) {
                     //if validation is not set, we are in deserialize mode, so we need to activate validation
                     //for this state.
                     .withValidation(!state.validation ? 'loose' : state.validation)
-                    .includeAllSpecificalities(state.registry.serializer.typeGuards)
+                    .includeAllSpecificalities(state.registry.serializer.typeGuards),
+                undefined, false,
             );
             if (!fn) continue;
             const guard = state.setVariable('guard_' + ReflectionKind[t.kind], fn);
@@ -1855,8 +1871,8 @@ export class Serializer {
         this.deserializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
         this.serializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
 
-        this.deserializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
-        this.serializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
+        this.deserializeRegistry.register(ReflectionKind.array, serializeArray);
+        this.serializeRegistry.register(ReflectionKind.array, serializeArray);
 
         this.deserializeRegistry.register(ReflectionKind.tuple, serializeTuple);
         this.serializeRegistry.register(ReflectionKind.tuple, serializeTuple);
@@ -1888,7 +1904,7 @@ export class Serializer {
         });
 
         this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
-            state.addSetter(`'string' !== typeof ${state.accessor} && state.loosely !== false ? ${state.accessor}+'' : ${state.accessor}`);
+            state.addSetter(`'string' !== typeof ${state.accessor} && state.loosely !== false && undefined !== ${state.accessor} && null !== ${state.accessor} ? ${state.accessor}+'' : ${state.accessor}`);
         });
 
         this.deserializeRegistry.addDecorator(isUUIDType, (type, state) => {
@@ -2013,11 +2029,17 @@ export class Serializer {
             state.addSetter(`${state.accessor} instanceof ${typedArrayVar} ? ${state.accessor} : base64ToTypedArray(${state.accessor}, ${typedArrayVar})`);
         });
 
-        this.serializeRegistry.registerClass(Set, serializeTypeClassSet);
-        this.serializeRegistry.registerClass(Map, serializeTypeClassMap);
+        this.serializeRegistry.registerClass(Set, forwardSetToArray);
+        this.serializeRegistry.registerClass(Map, forwardMapToArray);
 
-        this.deserializeRegistry.registerClass(Set, deserializeTypeClassSet);
-        this.deserializeRegistry.registerClass(Map, deserializeTypeClassMap);
+        this.deserializeRegistry.registerClass(Set, (type, state) => {
+            forwardSetToArray(type, state);
+            state.addSetter(`new Set(${state.accessor})`);
+        });
+        this.deserializeRegistry.registerClass(Map, (type, state) => {
+            forwardMapToArray(type, state);
+            state.addSetter(`new Map(${state.accessor})`);
+        });
 
         this.deserializeRegistry.addDecorator(
             type => isReferenceType(type) || isBackReferenceType(type) || (type.parent !== undefined && isBackReferenceType(type.parent)),
@@ -2188,8 +2210,8 @@ export class Serializer {
         this.typeGuards.register(0.5, ReflectionKind.regexp, ((type, state) => state.addSetter(`'string' === typeof ${state.accessor} && ${state.accessor}[0] === '/'`)));
 
 
-        this.typeGuards.getRegistry(1).registerClass(Set, typeGuardClassSet);
-        this.typeGuards.getRegistry(1).registerClass(Map, typeGuardClassMap);
+        this.typeGuards.getRegistry(1).registerClass(Set, forwardSetToArray);
+        this.typeGuards.getRegistry(1).registerClass(Map, forwardMapToArray);
         this.typeGuards.getRegistry(1).registerClass(Date, (type, state) => state.addSetterAndReportErrorIfInvalid('type', 'Not a Date', `${state.accessor} instanceof Date`));
         this.typeGuards.getRegistry(0.5).registerClass(Date, (type, state) => {
             state.addSetter(`'string' === typeof ${state.accessor} && new Date(${state.accessor}).toString() !== 'Invalid Date'`);
@@ -2328,8 +2350,8 @@ export class EmptySerializer extends Serializer {
         this.deserializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
         this.serializeRegistry.register(ReflectionKind.objectLiteral, serializeObjectLiteral);
 
-        this.deserializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
-        this.serializeRegistry.register(ReflectionKind.array, (type, state) => serializeArray(type.type, state));
+        this.deserializeRegistry.register(ReflectionKind.array, serializeArray);
+        this.serializeRegistry.register(ReflectionKind.array, serializeArray);
 
         this.deserializeRegistry.register(ReflectionKind.tuple, serializeTuple);
         this.serializeRegistry.register(ReflectionKind.tuple, serializeTuple);

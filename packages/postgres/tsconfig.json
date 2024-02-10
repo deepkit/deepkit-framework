@@ -1,4 +1,5 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "forceConsistentCasingInFileNames": true,
     "strict": true,
@@ -25,7 +26,8 @@
   ],
   "include": [
     "src",
-    "index.ts"
+    "index.ts",
+    "tests/**/*.ts"
   ],
   "exclude": [
     "tests"

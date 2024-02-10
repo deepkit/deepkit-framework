@@ -26,9 +26,10 @@ import { eachPair } from './iterators.js';
 export class CustomError extends Error {
     public name: string;
     public stack?: string;
+    public cause?: Error | any;
 
-    constructor(public message: string = '') {
-        super(message);
+    constructor(...args: any[]) {
+        super(...args);
         this.name = this.constructor.name;
     }
 }
@@ -242,6 +243,18 @@ export function isObject(obj: any): obj is { [key: string]: any } {
         return false;
     }
     return (typeof obj === 'object' && !isArray(obj));
+}
+
+/**
+ * Returns true if given obj is a plain object, and no Date, Array, Map, Set, etc.
+ *
+ * This is different to isObject and used in the type system to differentiate
+ * between JS objects in general and what we define as ReflectionKind.objectLiteral.
+ * Since we have Date, Set, Map, etc. in the type system, we need to differentiate
+ * between them and all other object literals.
+ */
+export function isObjectLiteral(obj: any): obj is { [key: string]: any } {
+    return isObject(obj) && !(obj instanceof Date) && !(obj instanceof Map) && !(obj instanceof Set);
 }
 
 /**
@@ -824,4 +837,22 @@ export function formatError(error: any): string {
     }
 
     return String(error);
+}
+
+/**
+ * Asserts that the given object is an instance of the given class.
+ */
+export function assertInstanceOf<T>(object: any, constructor: { new (...args: any[]): T }): asserts object is T {
+    if (!(object instanceof constructor)) {
+        throw new Error(`Object ${getClassName(object)} is not an instance of the expected class ${getClassName(constructor)}`);
+    }
+}
+
+/**
+ * Asserts that the given value is defined (not null and not undefined).
+ */
+export function assertDefined<T>(value: T): asserts value is NonNullable<T> {
+    if (value === null || value === undefined) {
+        throw new Error(`Value is not defined`);
+    }
 }

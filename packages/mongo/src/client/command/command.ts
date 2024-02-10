@@ -9,37 +9,13 @@
  */
 
 import { asyncOperation, getClassName } from '@deepkit/core';
-import { handleErrorResponse, MongoError } from '../error.js';
+import { handleErrorResponse, MongoDatabaseError, MongoError } from '../error.js';
 import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
-import { ReceiveType, ReflectionClass, resolveReceiveType, SerializationError, stringifyType, Type, typeOf, typeSettings, UnpopulatedCheck, ValidationError } from '@deepkit/type';
+import { ReceiveType, resolveReceiveType, SerializationError, stringifyType, Type, typeOf, typeSettings, UnpopulatedCheck, ValidationError } from '@deepkit/type';
 import { BSONDeserializer, deserializeBSONWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
 import { mongoBinarySerializer } from '../../mongo-serializer.js';
-import { inspect } from 'util';
-
-export interface CommandMessageResponseCallbackResult<T> {
-    /**
-     * When the command is finished, set the `result`
-     */
-    result?: T;
-
-    /**
-     * When the command is not finished and another message should be sent, set the new CommandMessage
-     * as `next`.
-     */
-    next?: CommandMessage<any, any>;
-}
-
-export class CommandMessage<T, R> {
-    constructor(
-        public readonly schema: ReflectionClass<T>,
-        public readonly message: T,
-        public readonly responseSchema: ReflectionClass<R>,
-        public readonly responseCallback: (response: R) => { result?: any, next?: CommandMessage<any, any> },
-    ) {
-    }
-}
 
 export interface BaseResponse {
     ok: number;
@@ -49,13 +25,13 @@ export interface BaseResponse {
     writeErrors?: Array<{ index: number, code: number, errmsg: string }>;
 }
 
-export abstract class Command {
+export abstract class Command<T> {
     protected current?: { responseType?: Type, resolve: Function, reject: Function };
 
     public sender?: <T>(schema: Type, message: T) => void;
 
-    public sendAndWait<T, R = BaseResponse>(
-        message: T, messageType?: ReceiveType<T>, responseType?: ReceiveType<R>
+    public sendAndWait<T, R extends BaseResponse = BaseResponse>(
+        message: T, messageType?: ReceiveType<T>, responseType?: ReceiveType<R>,
     ): Promise<R> {
         if (!this.sender) throw new Error(`No sender set in command ${getClassName(this)}`);
         this.sender(resolveReceiveType(messageType), message);
@@ -65,7 +41,7 @@ export abstract class Command {
         });
     }
 
-    abstract execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<any>;
+    abstract execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<T>;
 
     abstract needsWritableHost(): boolean;
 
@@ -84,7 +60,7 @@ export abstract class Command {
             }
 
             if (!message.ok) {
-                this.current.reject(new MongoError(message.errmsg || 'error', message.code));
+                this.current.reject(Object.assign(new MongoDatabaseError(message.errmsg || 'error'), { code: message.code }));
             } else {
                 this.current.resolve(message);
             }
@@ -92,7 +68,6 @@ export abstract class Command {
             if (error instanceof ValidationError || error instanceof SerializationError) {
                 if (this.current.responseType) {
                     const raw = deserializeBSONWithoutOptimiser(response);
-                    console.log('mongo raw response', inspect(raw, { depth: null }));
                     if (raw.errmsg && raw.ok === 0) {
                         const error = handleErrorResponse(raw);
                         if (error) {
@@ -112,17 +87,22 @@ export abstract class Command {
     }
 }
 
-// export class GenericCommand extends Command {
-//     constructor(protected classSchema: ReflectionClass<any>, protected cmd: { [name: string]: any }, protected _needsWritableHost: boolean) {
-//         super();
-//     }
-//
-//     async execute(config): Promise<number> {
-//         const res = await this.sendAndWait(this.classSchema, this.cmd);
-//         return res.n;
-//     }
-//
-//     needsWritableHost(): boolean {
-//         return this._needsWritableHost;
-//     }
-// }
+export function createCommand<Request extends {}, Response extends BaseResponse>(
+    request: Request,
+    options: Partial<{ needsWritableHost: boolean }> = {},
+    typeRequest?: ReceiveType<Request>,
+    typeResponse?: ReceiveType<Response>,
+): Command<Response> {
+    class DynamicCommand extends Command<Response> {
+        async execute(): Promise<Response> {
+            return this.sendAndWait(request, typeRequest, typeResponse);
+        }
+
+        needsWritableHost(): boolean {
+            return options.needsWritableHost || false;
+        }
+    }
+
+    return new DynamicCommand();
+}
+

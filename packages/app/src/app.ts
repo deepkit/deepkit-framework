@@ -10,7 +10,7 @@
 
 import { ClassType, ExtractClassType, isFunction, isObject, pathBasename, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container.js';
-import { InjectorContext, ResolveToken, Token } from '@deepkit/injector';
+import { ConfigureProviderOptions, InjectorContext, ResolveToken, Token } from '@deepkit/injector';
 import { AppModule, RootModuleDefinition } from './module.js';
 import { EnvConfiguration } from './configuration.js';
 import { DataEventToken, EventDispatcher, EventListener, EventListenerCallback, EventOfEventToken, EventToken } from '@deepkit/event';
@@ -59,7 +59,7 @@ function parseEnv(
     incomingDotPath: string,
     incomingEnvPath: string,
     namingStrategy: EnvNamingStrategy,
-    envContainer: { [name: string]: any }
+    envContainer: { [name: string]: any },
 ) {
     for (const property of schema.getProperties()) {
         const name = convertNameStrategy(namingStrategy, property.name);
@@ -72,7 +72,7 @@ function parseEnv(
                 (incomingDotPath ? incomingDotPath + '.' : '') + property.name,
                 (incomingEnvPath ? incomingEnvPath + '_' : '') + name,
                 namingStrategy,
-                envContainer
+                envContainer,
             );
         } else {
             const dotPath = (incomingDotPath ? incomingDotPath + '.' : '') + property.name;
@@ -113,7 +113,7 @@ interface EnvConfigOptions {
 const defaultEnvConfigOptions: Required<EnvConfigOptions> = {
     prefix: 'APP_',
     envFilePath: ['.env'],
-    namingStrategy: 'upper'
+    namingStrategy: 'upper',
 };
 
 class EnvConfigLoader {
@@ -124,7 +124,7 @@ class EnvConfigLoader {
     constructor(options?: EnvConfigOptions) {
         const normalizedOptions = {
             ...defaultEnvConfigOptions,
-            ...options
+            ...options,
         };
 
         const { prefix, envFilePath, namingStrategy } = normalizedOptions;
@@ -215,7 +215,7 @@ export class App<T extends RootModuleDefinition> {
     constructor(
         appModuleOptions: T,
         serviceContainer?: ServiceContainer,
-        appModule?: AppModule<any>
+        appModule?: AppModule<any>,
     ) {
         this.appModule = appModule || new RootAppModule(appModuleOptions) as any;
         this.serviceContainer = serviceContainer || new ServiceContainer(this.appModule);
@@ -320,7 +320,7 @@ export class App<T extends RootModuleDefinition> {
                 } catch (error) {
                     throw new Error(`Invalid JSON in env variable ${variableName}. Parse error: ${error}`);
                 }
-            }
+            },
         });
         return this;
     }
@@ -336,6 +336,14 @@ export class App<T extends RootModuleDefinition> {
 
     public getInjectorContext(): InjectorContext {
         return this.serviceContainer.getInjectorContext();
+    }
+
+    /**
+     * @see InjectorModule.configureProvider
+     */
+    configureProvider<T>(configure: (instance: T, ...args: any[]) => any, options: Partial<ConfigureProviderOptions> = {}, type?: ReceiveType<T>): this {
+        this.appModule.configureProvider<T>(configure, options, type);
+        return this;
     }
 
     public async execute(argv?: string[], bin?: string[] | string): Promise<number> {
@@ -362,7 +370,7 @@ export class App<T extends RootModuleDefinition> {
             bin, argv || getArgsFromEnvironment(),
             eventDispatcher, logger,
             scopedInjectorContext,
-            this.serviceContainer.cliControllerRegistry.controllers
+            this.serviceContainer.cliControllerRegistry.controllers,
         );
     }
 }

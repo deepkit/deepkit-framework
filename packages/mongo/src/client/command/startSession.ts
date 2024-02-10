@@ -25,7 +25,7 @@ interface SessionSchema {
     autocommit?: boolean;
 }
 
-export class StartSessionCommand extends Command {
+export class StartSessionCommand extends Command<SessionResponse> {
     needsWritableHost() {
         return false;
     }

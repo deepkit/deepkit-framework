@@ -21,14 +21,14 @@ import {
     ReflectionClass,
     typeSettings,
     UnpopulatedCheck,
-    validate
+    validate,
 } from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
 import { getClassState, getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map.js';
 import { getClassSchemaInstancePairs } from './utils.js';
 import { HydratorFn } from './formatter.js';
 import { getReference } from './reference.js';
-import { UnitOfWorkCommitEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event.js';
+import { DatabaseErrorInsertEvent, DatabaseErrorUpdateEvent, onDatabaseError, UnitOfWorkCommitEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event.js';
 import { DatabaseLogger } from './logger.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { EventDispatcher, EventDispatcherInterface, EventToken } from '@deepkit/event';
@@ -201,7 +201,16 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                         if (event.stopped) doInsert = false;
                     }
                     if (doInsert) {
-                        await persistence.insert(group.type, inserts);
+                        try {
+                            await persistence.insert(group.type, inserts);
+                        } catch (error: any) {
+                            await this.eventDispatcher.dispatch(onDatabaseError, Object.assign(
+                                new DatabaseErrorInsertEvent(error, this.session, classState.classSchema),
+                                { inserts },
+                            ));
+                            throw error;
+                        }
+
                         if (this.eventDispatcher.hasListeners(DatabaseSession.onInsertPost)) {
                             await this.eventDispatcher.dispatch(DatabaseSession.onInsertPost, new UnitOfWorkEvent(group.type, this.session, inserts));
                         }
@@ -217,7 +226,15 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                     }
 
                     if (doUpdate) {
-                        await persistence.update(group.type, changeSets);
+                        try {
+                            await persistence.update(group.type, changeSets);
+                        } catch (error: any) {
+                            await this.eventDispatcher.dispatch(onDatabaseError, Object.assign(
+                                new DatabaseErrorUpdateEvent(error, this.session, classState.classSchema),
+                                { changeSets },
+                            ));
+                            throw error;
+                        }
 
                         if (this.eventDispatcher.hasListeners(DatabaseSession.onUpdatePost)) {
                             await this.eventDispatcher.dispatch(DatabaseSession.onUpdatePost, new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
@@ -265,7 +282,7 @@ export abstract class DatabaseTransaction {
     }
 }
 
-export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
+export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     public readonly id = SESSION_IDS++;
     public withIdentityMap = true;
 
@@ -504,7 +521,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter> {
                 Object.defineProperty(item, property.symbol, {
                     enumerable: false,
                     configurable: true,
-                    value: itemDB[property.getNameAsString() as keyof T]
+                    value: itemDB[property.getNameAsString() as keyof T],
                 });
             }
         }

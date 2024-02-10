@@ -15,8 +15,12 @@ import { buildRequestParser } from './request-parser.js';
 import { InjectorContext } from '@deepkit/injector';
 
 function parameterRequiresRequest(parameter: ReflectionParameter): boolean {
-    return Boolean(metaAnnotation.getForName(parameter.type, 'httpQueries') || metaAnnotation.getForName(parameter.type, 'httpQuery')
-        || metaAnnotation.getForName(parameter.type, 'httpBody') || metaAnnotation.getForName(parameter.type, 'httpPath') || metaAnnotation.getForName(parameter.type, 'httpHeader'));
+    return Boolean(metaAnnotation.getForName(parameter.type, 'httpQueries')
+        || metaAnnotation.getForName(parameter.type, 'httpQuery')
+        || metaAnnotation.getForName(parameter.type, 'httpBody')
+        || metaAnnotation.getForName(parameter.type, 'httpRequestParser')
+        || metaAnnotation.getForName(parameter.type, 'httpPath')
+        || metaAnnotation.getForName(parameter.type, 'httpHeader'));
 }
 
 export class HttpModule extends createModule({
@@ -76,27 +80,30 @@ export class HttpModule extends createModule({
             throw new Error(`Listener ${stringifyListener(listener)} requires async HttpBody. This is not yet supported. You have to parse the request manually by injecting HttpRequest.`);
         }
 
+        const parserCache = new Map<RouteConfig, Function>();
+
         for (let index = 0; index < params.length; index++) {
             const parameter = params[index];
             if (!parameterRequiresRequest(parameter)) continue;
 
             //change the reflection type so that we create a unique injection token for that type.
-            const unique = Symbol('unique');
+            const unique = Symbol('event.parameter:' + parameter.name);
             const uniqueType: Type = { kind: ReflectionKind.literal, literal: unique };
             metaAnnotation.registerType(parameter.type, { name: 'inject', options: [uniqueType] });
-            let build: Function;
             let i = index;
 
             this.addProvider({
                 provide: uniqueType, useFactory: (httpConfig: HttpConfig, request: HttpRequest, injector: InjectorContext, config?: RouteConfig) => {
+                    let build = config && parserCache.get(config);
                     if (!build) {
                         const params = listener.reflection.getParameters().slice(1);
-                        build = buildRequestParser(httpConfig.parser, params, config?.getFullPath());
+                        build = buildRequestParser(httpConfig.parser, params, config);
+                        if (config) parserCache.set(config, build);
                     }
 
                     const parser = build(request);
-                    const params = parser(injector);
-                    return params.arguments[i];
+                    const result = parser(injector);
+                    return result.arguments[i];
                 }, scope: 'http'
             });
             this.addExport(uniqueType);

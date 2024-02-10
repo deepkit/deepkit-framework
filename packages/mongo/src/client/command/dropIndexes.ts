@@ -17,7 +17,7 @@ interface RequestSchema {
     index: string[];
 }
 
-export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command {
+export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command<BaseResponse> {
     constructor(
         public schema: T,
         public names: string[]

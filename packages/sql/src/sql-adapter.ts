@@ -13,14 +13,18 @@ import {
     Database,
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
+    DatabaseDeleteError,
     DatabaseEntityRegistry,
     DatabaseError,
+    DatabaseInsertError,
     DatabaseLogger,
+    DatabasePatchError,
     DatabasePersistence,
     DatabasePersistenceChangeSet,
     DatabaseQueryModel,
     DatabaseSession,
     DatabaseTransaction,
+    DatabaseUpdateError,
     DeleteResult,
     FilterQuery,
     FindQuery,
@@ -33,7 +37,7 @@ import {
     RawFactory,
     Replace,
     Resolve,
-    SORT_ORDER
+    SORT_ORDER,
 } from '@deepkit/orm';
 import { AbstractClassType, ClassType, isArray, isClass } from '@deepkit/core';
 import {
@@ -46,9 +50,8 @@ import {
     ReceiveType,
     ReflectionClass,
     ReflectionKind,
-    ReflectionProperty,
     resolveReceiveType,
-    Type
+    Type,
 } from '@deepkit/type';
 import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform.js';
 import { Sql, SqlBuilder } from './sql-builder.js';
@@ -106,7 +109,7 @@ export abstract class SQLConnection {
         protected connectionPool: SQLConnectionPool,
         public logger: DatabaseLogger = new DatabaseLogger,
         public transaction?: DatabaseTransaction,
-        public stopwatch?: Stopwatch
+        public stopwatch?: Stopwatch,
     ) {
     }
 
@@ -199,7 +202,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
         protected connectionPool: SQLConnectionPool,
         protected platform: DefaultPlatform,
         classSchema: ReflectionClass<T>,
-        session: DatabaseSession<DatabaseAdapter>
+        session: DatabaseSession<DatabaseAdapter>,
     ) {
         super(classSchema, session);
     }
@@ -209,12 +212,20 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
             this.classSchema,
             this.platform.serializer,
             this.session.getHydrator(),
-            withIdentityMap ? this.session.identityMap : undefined
+            withIdentityMap ? this.session.identityMap : undefined,
         );
     }
 
     protected getTableIdentifier(schema: ReflectionClass<any>) {
         return this.platform.getTableIdentifier(schema);
+    }
+
+    /**
+     * If possible, this method should handle specific SQL errors and convert
+     * them to more specific error classes with more information, e.g. unique constraint.
+     */
+    handleSpecificError(error: Error): Error {
+        return error;
     }
 
     async count(model: SQLQueryModel<T>): Promise<number> {
@@ -232,6 +243,8 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
 
             //postgres has bigint as return type of COUNT, so we need to convert always
             return Number(row.count);
+        } catch (error: any) {
+            throw this.handleSpecificError(error);
         } finally {
             connection.release();
         }
@@ -252,8 +265,11 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
         try {
             await connection.run(sql.sql, sql.params);
             deleteResult.modified = await connection.getChanges();
-
             //todo, implement deleteResult.primaryKeys
+        } catch (error: any) {
+            error = new DatabaseDeleteError(this.classSchema, `Could not delete ${this.classSchema.getClassName()} in database`, { cause: error });
+            error.query = model;
+            throw this.handleSpecificError(error);
         } finally {
             connection.release();
         }
@@ -273,7 +289,8 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
         try {
             rows = await connection.execAndReturnAll(sql.sql, sql.params);
         } catch (error: any) {
-            throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error}.\nSQL: ${sql.sql}\nParams: ${JSON.stringify(sql.params)}. Error: ${error}`);
+            error = this.handleSpecificError(error);
+            throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error}`, { cause: error });
         } finally {
             connection.release();
         }
@@ -324,6 +341,9 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
         try {
             await connection.run(sql.sql, sql.params);
             patchResult.modified = await connection.getChanges();
+        } catch (error: any) {
+            error = new DatabasePatchError(this.classSchema, model, changes, `Could not patch ${this.classSchema.getClassName()} in database`, { cause: error });
+            throw this.handleSpecificError(error);
         } finally {
             connection.release();
         }
@@ -359,7 +379,7 @@ export class SqlQuery {
     convertToSQL(
         platform: DefaultPlatform,
         placeholderStrategy: SqlPlaceholderStrategy,
-        tableName?: string
+        tableName?: string,
     ): SqlStatement {
         let sql = '';
         const params: any[] = [];
@@ -418,7 +438,7 @@ export class SQLDatabaseQuery<T extends OrmEntity> extends Query<T> {
     constructor(
         classSchema: ReflectionClass<T>,
         protected databaseSession: DatabaseSession<DatabaseAdapter>,
-        protected resolver: SQLQueryResolver<T>
+        protected resolver: SQLQueryResolver<T>,
     ) {
         super(classSchema, databaseSession, resolver);
         if (!databaseSession.withIdentityMap) this.model.withIdentityMap = false;
@@ -458,7 +478,7 @@ export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
 
     createQuery<T extends OrmEntity>(classType: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): SQLDatabaseQuery<T> {
         return new SQLDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,
-            new SQLQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession)
+            new SQLQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession),
         );
     }
 }
@@ -685,17 +705,6 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
         const connection = await this.connectionPool.getConnection();
 
         try {
-            const databaseModel = new DatabaseModel([], this.getName());
-            databaseModel.schemaName = this.getSchemaName();
-            this.platform.createTables(entityRegistry, databaseModel);
-            const schemaParser = new this.platform.schemaParserType(connection, this.platform);
-
-            const parsedDatabaseModel = new DatabaseModel([], this.getName());
-            parsedDatabaseModel.schemaName = this.getSchemaName();
-            await schemaParser.parse(parsedDatabaseModel);
-            parsedDatabaseModel.removeUnknownTables(databaseModel);
-            parsedDatabaseModel.removeTable(ReflectionClass.from(MigrationStateEntity).getCollectionName());
-
             for (const [databaseName, migration] of Object.entries(migrations)) {
                 for (const sql of migration.sql) {
                     try {
@@ -721,6 +730,14 @@ export class SQLPersistence extends DatabasePersistence {
         protected session: DatabaseSession<SQLDatabaseAdapter>,
     ) {
         super();
+    }
+
+    /**
+     * If possible, this method should handle specific SQL errors and convert
+     * them to more specific error classes with more information, e.g. unique constraint.
+     */
+    handleSpecificError(error: Error): Error {
+        return error;
     }
 
     async getConnection(): Promise<ReturnType<this['connectionPool']['getConnection']>> {
@@ -799,7 +816,19 @@ export class SQLPersistence extends DatabasePersistence {
         }
 
         const sql = updates.join(';\n');
-        await (await this.getConnection()).run(sql);
+
+        try {
+            await (await this.getConnection()).run(sql);
+        } catch (error: any) {
+            const reflection = ReflectionClass.from(entity.type);
+            error = new DatabaseUpdateError(
+                reflection,
+                changeSets,
+                `Could not update ${reflection.getClassName()} in database`,
+                { cause: error },
+            );
+            throw this.handleSpecificError(error);
+        }
     }
 
     protected async batchInsert<T>(classSchema: ReflectionClass<T>, items: T[]) {
@@ -835,10 +864,13 @@ export class SQLPersistence extends DatabasePersistence {
         try {
             await (await this.getConnection()).run(sql, params);
         } catch (error: any) {
-            if (error instanceof DatabaseError) {
-                throw error;
-            }
-            throw new DatabaseError(`Could not insert ${classSchema.getClassName()} into database: ${String(error)}, sql: ${sql}, params: ${params}`);
+            error = new DatabaseInsertError(
+                classSchema,
+                items as OrmEntity[],
+                `Could not insert ${classSchema.getClassName()} into database`,
+                { cause: error },
+            );
+            throw this.handleSpecificError(error);
         }
     }
 
@@ -864,7 +896,17 @@ export class SQLPersistence extends DatabasePersistence {
         const sql = `DELETE
                      FROM ${this.platform.getTableIdentifier(classSchema)}
                      WHERE ${this.platform.quoteIdentifier(pkName)} IN (${pks})`;
-        await (await this.getConnection()).run(sql, params);
+        try {
+            await (await this.getConnection()).run(sql, params);
+        } catch (error: any) {
+            error = new DatabaseDeleteError(
+                classSchema,
+                `Could not delete ${classSchema.getClassName()} from database`,
+                { cause: error },
+            );
+            error.items = items;
+            throw this.handleSpecificError(error);
+        }
     }
 }
 
@@ -872,7 +914,7 @@ export function prepareBatchUpdate(
     platform: DefaultPlatform,
     entity: PreparedEntity,
     changeSets: DatabasePersistenceChangeSet<any>[],
-    options: { setNamesWithTableName?: true } = {}
+    options: { setNamesWithTableName?: true } = {},
 ) {
     const partialSerialize = getPartialSerializeFunction(entity.type, platform.serializer.serializeRegistry);
     const tableName = entity.tableNameEscaped;
@@ -941,7 +983,7 @@ export function prepareBatchUpdate(
 
                 aggregateSelects[fieldName].push({
                     id: changeSet.primaryKey[pkName],
-                    sql: `_origin.${platform.quoteIdentifier(fieldName)} + ${platform.quoteValue(value)}`
+                    sql: `_origin.${platform.quoteIdentifier(fieldName)} + ${platform.quoteValue(value)}`,
                 });
             }
         }

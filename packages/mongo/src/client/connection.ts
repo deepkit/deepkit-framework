@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { arrayRemoveItem, asyncOperation } from '@deepkit/core';
+import { arrayRemoveItem, asyncOperation, formatError } from '@deepkit/core';
 import { Host } from './host.js';
 import { createConnection, Socket } from 'net';
 import { connect as createTLSConnection, TLSSocket } from 'tls';
@@ -17,8 +17,7 @@ import { stringifyType, Type, uuid } from '@deepkit/type';
 import { BSONBinarySerializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { HandshakeCommand } from './command/handshake.js';
 import { MongoClientConfig } from './config.js';
-import { MongoError } from './error.js';
-
+import { MongoConnectionError, MongoError } from './error.js';
 import { DatabaseTransaction } from '@deepkit/orm';
 import { CommitTransactionCommand } from './command/commitTransaction.js';
 import { AbortTransactionCommand } from './command/abortTransaction.js';
@@ -59,7 +58,7 @@ export class MongoConnectionPool {
      */
     public connections: MongoConnection[] = [];
 
-    protected queue: {resolve: (connection: MongoConnection) => void, request: ConnectionRequest}[] = [];
+    protected queue: { resolve: (connection: MongoConnection) => void, request: ConnectionRequest }[] = [];
 
     protected nextConnectionClose: Promise<boolean> = Promise.resolve(true);
 
@@ -88,7 +87,7 @@ export class MongoConnectionPool {
                 await Promise.allSettled(promises);
             }
         } catch (error: any) {
-            throw new MongoError('Failed to connect: ' + error.message);
+            throw new MongoConnectionError(`Failed to connect: ${formatError(error)}`);
         }
     }
 
@@ -132,7 +131,7 @@ export class MongoConnectionPool {
             if (request.readonly && host.isReadable()) return host;
         }
 
-        throw new MongoError(`Could not find host for connection request. (readonly=${request.readonly}, hosts=${hosts.length}). Last Error: ${this.lastError}`);
+        throw new MongoConnectionError(`Could not find host for connection request. (readonly=${request.readonly}, hosts=${hosts.length}). Last Error: ${this.lastError}`);
     }
 
     protected createAdditionalConnectionForRequest(request: ConnectionRequest): MongoConnection {
@@ -203,7 +202,7 @@ export class MongoConnectionPool {
             if (!connection.isConnected()) continue;
             if (connection.reserved) continue;
 
-            if (request.nearest) throw new Error('Nearest not implemented yet');
+            if (request.nearest) throw new MongoConnectionError('Nearest not implemented yet');
 
             if (!this.matchRequest(connection, r)) continue;
 
@@ -225,7 +224,7 @@ export class MongoConnectionPool {
 
         return asyncOperation((resolve) => {
             this.stats.connectionsQueued++;
-            this.queue.push({resolve, request: r});
+            this.queue.push({ resolve, request: r });
         });
     }
 }
@@ -265,7 +264,7 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
 
     async commit() {
         if (!this.connection) return;
-        if (this.ended) throw new Error('Transaction ended already');
+        if (this.ended) throw new MongoError('Transaction ended already');
 
         await this.connection.execute(new CommitTransactionCommand());
         this.ended = true;
@@ -274,7 +273,7 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
 
     async rollback() {
         if (!this.connection) return;
-        if (this.ended) throw new Error('Transaction ended already');
+        if (this.ended) throw new MongoError('Transaction ended already');
         if (!this.started) return;
 
         await this.connection.execute(new AbortTransactionCommand());
@@ -289,7 +288,7 @@ export class MongoConnection {
     public bufferSize: number = 2.5 * 1024 * 1024;
 
     public connectingPromise?: Promise<void>;
-    public lastCommand?: { command: Command, promise?: Promise<any> };
+    public lastCommand?: { command: Command<unknown>, promise?: Promise<any> };
 
     public activeCommands: number = 0;
     public executedCommands: number = 0;
@@ -321,7 +320,7 @@ export class MongoConnection {
                 host: host.hostname,
                 port: host.port,
                 timeout: config.options.connectTimeoutMS,
-                servername: host.hostname
+                servername: host.hostname,
             };
             const optional = {
                 ca: config.options.tlsCAFile,
@@ -343,7 +342,7 @@ export class MongoConnection {
             this.socket = createConnection({
                 host: host.hostname,
                 port: host.port,
-                timeout: config.options.connectTimeoutMS
+                timeout: config.options.connectTimeoutMS,
             });
 
             this.socket.on('data', (data) => this.responseParser.feed(data));
@@ -410,7 +409,7 @@ export class MongoConnection {
         // const offset = 16 + 4 + 8 + 4 + 4; //QUERY_REPLY
         const message = response.slice(offset, size);
 
-        if (!this.lastCommand) throw new Error(`Got a server response without active command`);
+        if (!this.lastCommand) throw new MongoError(`Got a server response without active command`);
 
         this.lastCommand.command.handleResponse(message);
     }
@@ -420,9 +419,9 @@ export class MongoConnection {
      * A promises is return that is resolved with the  when executed successfully, or rejected
      * when timed out, parser error, or any other error.
      */
-    public async execute<T extends Command>(command: T): Promise<ReturnType<T['execute']>> {
+    public async execute<T extends Command<unknown>>(command: T): Promise<ReturnType<T['execute']>> {
         if (this.status === MongoConnectionStatus.pending) await this.connect();
-        if (this.status === MongoConnectionStatus.disconnected) throw new Error('Disconnected');
+        if (this.status === MongoConnectionStatus.disconnected) throw new MongoError('Disconnected');
 
         if (this.lastCommand && this.lastCommand.promise) {
             await this.lastCommand.promise;
@@ -487,7 +486,7 @@ export class MongoConnection {
     }
 
     async connect(): Promise<void> {
-        if (this.status === MongoConnectionStatus.disconnected) throw new Error('Connection disconnected');
+        if (this.status === MongoConnectionStatus.disconnected) throw new MongoError('Connection disconnected');
         if (this.status !== MongoConnectionStatus.pending) return;
 
         this.status = MongoConnectionStatus.connecting;
@@ -496,7 +495,7 @@ export class MongoConnection {
             this.socket.on('error', (error) => {
                 this.connectingPromise = undefined;
                 this.status = MongoConnectionStatus.disconnected;
-                reject(new MongoError('Connection error: ' + error.message));
+                reject(new MongoConnectionError(formatError(error.message)));
             });
 
             if (this.socket.destroyed) {
@@ -526,7 +525,7 @@ export class ResponseParser {
     protected currentMessageSize: number = 0;
 
     constructor(
-        protected readonly onMessage: (response: Uint8Array) => void
+        protected readonly onMessage: (response: Uint8Array) => void,
     ) {
     }
 
@@ -586,7 +585,7 @@ export class ResponseParser {
                 }
 
                 const nextCurrentSize = readUint32LE(currentBuffer);
-                if (nextCurrentSize <= 0) throw new Error('message size wrong');
+                if (nextCurrentSize <= 0) throw new MongoError('message size wrong');
                 currentSize = nextCurrentSize;
                 //buffer and size has been set. consume this message in the next loop iteration
             }

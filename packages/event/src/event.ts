@@ -19,7 +19,7 @@ import {
     ReflectionClass
 } from '@deepkit/type';
 
-export type EventListenerCallback<T> = (event: T, ...args: any[]) => void | Promise<void>;
+export type EventListenerCallback<T> = (event: T, ...args: any[]) => any | Promise<any>;
 
 export class EventError extends CustomError {
 }

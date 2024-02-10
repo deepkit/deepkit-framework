@@ -37,7 +37,7 @@ export class Sql {
 
 export class SqlBuilder {
     protected sqlSelect: string[] = [];
-    protected joins: { join: DatabaseJoinModel<any, any>, forJoinIndex: number, startIndex: number, converter: ConvertDataToDict }[] = [];
+    protected joins: { join: DatabaseJoinModel<any>, forJoinIndex: number, startIndex: number, converter: ConvertDataToDict }[] = [];
 
     protected placeholderStrategy: SqlPlaceholderStrategy;
 

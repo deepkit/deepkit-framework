@@ -1,9 +1,9 @@
-import { BackReference, deserialize, Index, PrimaryKey, Reference, UUID, uuid } from '@deepkit/type';
+import { AutoIncrement, BackReference, deserialize, Index, PrimaryKey, Reference, UUID, uuid } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { assert, IsExact } from 'conditional-type-checks';
 import { Database } from '../src/database.js';
 import { MemoryDatabaseAdapter, MemoryQuery } from '../src/memory-db.js';
-import { AnyQuery, Query } from '../src/query.js';
+import { AnyQuery, BaseQuery, Query } from '../src/query.js';
 import { OrmEntity } from '../src/type.js';
 
 test('types do not interfere with type check', () => {
@@ -135,7 +135,7 @@ test('query lift', async () => {
         return q.filterField('openBillings', { $gt: 0 });
     }
 
-    function filterMinBilling(q: AnyQuery<User>, min: number) {
+    function filterMinBilling(q: BaseQuery<User>, min: number) {
         return q.filterField('openBillings', { $gt: min });
     }
 
@@ -143,8 +143,8 @@ test('query lift', async () => {
         return q.findField('username');
     }
 
-    function filterImageSize(q: AnyQuery<UserImage>) {
-        return q.filterField('size', { $gt: 0 });
+    function filterImageSize(q: BaseQuery<UserImage>) {
+        return q.filterField('size', { $gt: 5 });
     }
 
     class OverwriteHello<T extends OrmEntity> extends Query<T> {
@@ -245,7 +245,7 @@ test('query lift', async () => {
     }
 
     {
-        const items = await q.use(filterBillingDue).use(allUserNames);
+        const items = await allUserNames(q.use(filterBillingDue));
         expect(items).toEqual(['bar']);
         assert<IsExact<string[], typeof items>>(true);
     }
@@ -260,6 +260,46 @@ test('query lift', async () => {
         const items = await q.useJoinWith('image').use(filterImageSize).end().fetch(allUserNames);
         expect(items).toEqual(['foo', 'bar']);
         assert<IsExact<string[], typeof items>>(true);
+    }
+
+    {
+        const items = await q.joinWith('image', filterImageSize).fetch(allUserNames);
+        expect(items).toEqual(['foo', 'bar']);
+        assert<IsExact<string[], typeof items>>(true);
+    }
+});
+
+test('join with maintains model', () => {
+    class Flat {
+        public id: number & PrimaryKey & AutoIncrement = 0;
+    }
+
+    class Tenant {
+        public id: number & PrimaryKey & AutoIncrement = 0;
+        name!: string;
+    }
+
+    class Property {
+        id!: number & PrimaryKey;
+        flats: Flat[] & BackReference = [];
+        tenants: Tenant[] & BackReference = [];
+    }
+
+    const database = new Database(new MemoryDatabaseAdapter());
+    {
+        const query = database.query(Property)
+            .joinWith('flats').joinWith('tenants');
+
+        expect(query.model.joins[0].populate).toBe(true);
+        expect(query.model.joins[1].populate).toBe(true);
+    }
+
+    {
+        const query = database.query(Property)
+            .joinWith('flats').useJoinWith('tenants').sort({ name: 'desc' }).end();
+
+        expect(query.model.joins[0].populate).toBe(true);
+        expect(query.model.joins[1].populate).toBe(true);
     }
 });
 

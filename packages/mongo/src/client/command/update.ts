@@ -30,7 +30,7 @@ interface UpdateSchema {
     startTransaction?: boolean;
 }
 
-export class UpdateCommand<T extends ReflectionClass<any>> extends Command {
+export class UpdateCommand<T extends ReflectionClass<any>> extends Command<number> {
     constructor(
         public schema: T,
         public updates: { q: any, u: any, multi: boolean }[] = [],

@@ -40,5 +40,6 @@ export function getBSONDeserializer<T>(serializer: BSONBinarySerializer = bsonBi
 }
 
 export function deserializeBSON<T>(data: Uint8Array, offset?: number, serializer: BSONBinarySerializer = bsonBinarySerializer, receiveType?: ReceiveType<T>): T {
-    return getBSONDeserializer(serializer, receiveType)(data, offset) as T;
+    const deserialize = getBSONDeserializer(serializer, receiveType);
+    return deserialize(data, offset) as T;
 }

@@ -11,21 +11,26 @@
 import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';
 import {
     DatabaseAdapter,
+    DatabaseDeleteError,
     DatabaseError,
     DatabaseLogger,
+    DatabasePatchError,
     DatabasePersistenceChangeSet,
     DatabaseSession,
     DatabaseTransaction,
+    DatabaseUpdateError,
     DeleteResult,
+    ensureDatabaseError,
     OrmEntity,
     PatchResult,
     primaryKeyObjectConverter,
-    UniqueConstraintFailure
+    UniqueConstraintFailure,
 } from '@deepkit/orm';
 import {
     asAliasName,
     DefaultPlatform,
     prepareBatchUpdate,
+    PreparedEntity,
     splitDotPath,
     SqlBuilder,
     SQLConnection,
@@ -37,12 +42,29 @@ import {
     SQLQueryModel,
     SQLQueryResolver,
     SQLStatement,
-    PreparedEntity
 } from '@deepkit/sql';
 import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
 import { SQLitePlatform } from './sqlite-platform.js';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+
+/**
+ * Converts a specific database error to a more specific error, if possible.
+ */
+function handleSpecificError(session: DatabaseSession, error: DatabaseError): Error {
+    let cause: any = error;
+    while (cause) {
+        if (cause instanceof Error) {
+            if (cause.message.includes('UNIQUE constraint failed')
+            ) {
+                return new UniqueConstraintFailure(`${cause.message}`, { cause: error });
+            }
+            cause = cause.cause;
+        }
+    }
+
+    return error;
+}
 
 export class SQLiteStatement extends SQLStatement {
     constructor(protected logger: DatabaseLogger, protected sql: string, protected stmt: sqlite3.Statement, protected stopwatch?: Stopwatch) {
@@ -56,7 +78,8 @@ export class SQLiteStatement extends SQLStatement {
             const res = this.stmt.get(...params);
             this.logger.logQuery(this.sql, params);
             return res;
-        } catch (error) {
+        } catch (error: any) {
+            error = ensureDatabaseError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
         } finally {
@@ -71,7 +94,8 @@ export class SQLiteStatement extends SQLStatement {
             const res = this.stmt.all(...params);
             this.logger.logQuery(this.sql, params);
             return res;
-        } catch (error) {
+        } catch (error: any) {
+            error = ensureDatabaseError(error);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
         } finally {
@@ -140,14 +164,6 @@ export class SQLiteConnection extends SQLConnection {
         return new SQLiteStatement(this.logger, sql, this.db.prepare(sql), this.stopwatch);
     }
 
-    protected handleError(error: Error | string): void {
-        const message = 'string' === typeof error ? error : error.message;
-        if (message.includes('UNIQUE constraint failed')) {
-            //todo: extract table name, column name, and find ClassSchema
-            throw new UniqueConstraintFailure();
-        }
-    }
-
     async run(sql: string, params: any[] = []) {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
@@ -157,7 +173,7 @@ export class SQLiteConnection extends SQLConnection {
             const result = stmt.run(...params);
             this.changes = result.changes;
         } catch (error: any) {
-            this.handleError(error);
+            error = ensureDatabaseError(error);
             this.logger.failedQuery(error, sql, params);
             throw error;
         } finally {
@@ -172,7 +188,7 @@ export class SQLiteConnection extends SQLConnection {
             this.db.exec(sql);
             this.logger.logQuery(sql, []);
         } catch (error: any) {
-            this.handleError(error);
+            error = ensureDatabaseError(error);
             this.logger.failedQuery(error, sql, []);
             throw error;
         } finally {
@@ -271,6 +287,10 @@ export class SQLitePersistence extends SQLPersistence {
         super(platform, connectionPool, database);
     }
 
+    override handleSpecificError(error: Error): Error {
+        return handleSpecificError(this.session, error);
+    }
+
     protected getInsertSQL(classSchema: ReflectionClass<any>, fields: string[], values: string[]): string {
         if (fields.length === 0) {
             const pkName = this.platform.quoteIdentifier(classSchema.getPrimary().name);
@@ -363,18 +383,29 @@ export class SQLitePersistence extends SQLPersistence {
             _b
             WHERE ${prepared.tableName}.${prepared.pkField} = _b.${prepared.originPkField};
         `;
-        await connection.exec(updateSql);
+        try {
+            await connection.exec(updateSql);
 
-        if (!empty(prepared.setReturning)) {
-            const returnings = await connection.execAndReturnAll('SELECT * FROM _b');
-            for (const returning of returnings) {
-                const r = prepared.assignReturning[returning[prepared.originPkName]];
-                if (!r) continue;
+            if (!empty(prepared.setReturning)) {
+                const returnings = await connection.execAndReturnAll('SELECT * FROM _b');
+                for (const returning of returnings) {
+                    const r = prepared.assignReturning[returning[prepared.originPkName]];
+                    if (!r) continue;
 
-                for (const name of r.names) {
-                    r.item[name] = returning[name];
+                    for (const name of r.names) {
+                        r.item[name] = returning[name];
+                    }
                 }
             }
+        } catch (error: any) {
+            const reflection = ReflectionClass.from(entity.type);
+            error = new DatabaseUpdateError(
+                reflection,
+                changeSets,
+                `Could not update ${reflection.getClassName()} in database`,
+                { cause: error },
+            );
+            throw this.handleSpecificError(error);
         }
     }
 
@@ -402,6 +433,10 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         classSchema: ReflectionClass<T>,
         session: DatabaseSession<DatabaseAdapter>) {
         super(connectionPool, platform, classSchema, session);
+    }
+
+    override handleSpecificError(error: Error): Error {
+        return handleSpecificError(this.session, error);
     }
 
     async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
@@ -432,6 +467,10 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
             for (const row of rows) {
                 deleteResult.primaryKeys.push(primaryKeyConverted(row[pkName]));
             }
+        } catch (error: any) {
+            error = new DatabaseDeleteError(this.classSchema, `Could not delete ${this.classSchema.getClassName()} in database`, { cause: error });
+            error.query = model;
+            error = this.handleSpecificError(error);
         } finally {
             connection.release();
         }
@@ -534,6 +573,9 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
                     patchResult.returning[i].push(aggregateFields[i].converted(returning[i]));
                 }
             }
+        } catch (error: any) {
+            error = new DatabasePatchError(this.classSchema, model, changes, `Could not patch ${this.classSchema.getClassName()} in database`, { cause: error });
+            throw this.handleSpecificError(error);
         } finally {
             connection.release();
         }

@@ -9,7 +9,7 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { BaseEvent } from '@deepkit/event';
+import { BaseEvent, EventToken } from '@deepkit/event';
 import type { Changes } from '@deepkit/type';
 import { PrimaryKeyType, ReflectionClass } from '@deepkit/type';
 import type { DatabasePersistenceChangeSet } from './database-adapter.js';
@@ -32,7 +32,7 @@ export class DatabaseEvent extends BaseEvent {
 
 export class UnitOfWorkCommitEvent<T> extends DatabaseEvent {
     constructor(
-        public readonly databaseSession: DatabaseSession<any>
+        public readonly databaseSession: DatabaseSession<any>,
     ) {
         super();
     }
@@ -42,7 +42,7 @@ export class UnitOfWorkEvent<T> extends DatabaseEvent {
     constructor(
         public readonly classSchema: ReflectionClass<T>,
         public readonly databaseSession: DatabaseSession<any>,
-        public readonly items: T[]
+        public readonly items: T[],
     ) {
         super();
     }
@@ -65,7 +65,7 @@ export class UnitOfWorkUpdateEvent<T extends object> extends DatabaseEvent {
     constructor(
         public readonly classSchema: ReflectionClass<T>,
         public readonly databaseSession: DatabaseSession<any>,
-        public readonly changeSets: DatabasePersistenceChangeSet<T>[]
+        public readonly changeSets: DatabasePersistenceChangeSet<T>[],
     ) {
         super();
     }
@@ -79,7 +79,7 @@ export class QueryDatabaseEvent<T extends OrmEntity> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
-        public query: Query<T>
+        public query: Query<T>,
     ) {
         super();
     }
@@ -89,12 +89,46 @@ export class QueryDatabaseEvent<T extends OrmEntity> extends DatabaseEvent {
     }
 }
 
+export class DatabaseErrorEvent extends DatabaseEvent {
+    constructor(
+        public readonly error: Error,
+        public readonly databaseSession: DatabaseSession<any>,
+        public readonly classSchema?: ReflectionClass<any>,
+        public readonly query?: Query<any>,
+    ) {
+        super();
+    }
+}
+
+/**
+ * Error event emitted when unit of work commit failed inserting new items.
+ */
+export class DatabaseErrorInsertEvent extends DatabaseErrorEvent {
+    inserts: OrmEntity[] = [];
+}
+
+/**
+ * Error event emitted when unit of work commit failed updating existing items.
+ */
+export class DatabaseErrorUpdateEvent extends DatabaseErrorEvent {
+    changeSets: DatabasePersistenceChangeSet<OrmEntity>[] = [];
+}
+
+/**
+ * This event is emitted when an error occurs in async database operation, like query, commit, connect, etc.
+ * In event.databaseSession.adapter you can access the adapter that caused the error.
+ * In event.error you can access the caught error.
+ * In event.classSchema and event.query you might find additional context, but not necessarily.
+ */
+export const onDatabaseError = new EventToken<DatabaseErrorEvent>('database.error');
+
+
 export class QueryDatabaseDeleteEvent<T extends OrmEntity> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
         public query: Query<T>,
-        public readonly deleteResult: DeleteResult<T>
+        public readonly deleteResult: DeleteResult<T>,
     ) {
         super();
     }
@@ -112,7 +146,7 @@ export class QueryDatabasePatchEvent<T extends object> extends DatabaseEvent {
         public readonly classSchema: ReflectionClass<T>,
         public query: Query<T>,
         public readonly patch: Changes<T>,
-        public readonly patchResult: PatchResult<T>
+        public readonly patchResult: PatchResult<T>,
     ) {
         super();
     }

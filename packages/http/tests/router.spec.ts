@@ -3,7 +3,7 @@ import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterRes
 import { getActions, http, httpClass } from '../src/decorator.js';
 import { HtmlResponse, HttpAccessDeniedError, HttpBadRequestError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest } from '../src/model.js';
+import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest, HttpRequestParser } from '../src/model.js';
 import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
 import { Excluded, Group, integer, Maximum, metaAnnotation, MinLength, Positive, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
@@ -1141,7 +1141,7 @@ test('parameter from header', async () => {
         }
 
         @http.GET('second/:userId')
-        handle2(userId: number, groupId: HttpHeader<number, {name: 'group_id'}>) {
+        handle2(userId: number, groupId: HttpHeader<number, { name: 'group_id' }>) {
             return [userId, groupId];
         }
     }
@@ -1289,6 +1289,84 @@ test('queries parameter in class listener', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/?userId=1'))).json.message).toEqual('Validation error:\nauth.auth(type): Not a string');
 });
 
+test('body and queries in listener', async () => {
+    class HttpSession {
+        constructor(public auth: string = '', public userId: number = 0) {
+        }
+    }
+
+    class Controller {
+        @http.POST('/1')
+        handle1(userId: HttpQuery<number>, session: HttpSession) {
+            return [userId, session.userId, session.auth];
+        }
+
+        @http.GET('/2')
+        handle2(userId: HttpQuery<number>, session: HttpSession) {
+            return [userId, session.userId, session.auth];
+        }
+
+        @http.POST('/3')
+        handle3({ userId }: HttpBody<{ userId: number }>, session: HttpSession) {
+            return [userId, session.userId, session.auth];
+        }
+
+        @http.GET('/4')
+        async handle4(parser: HttpRequestParser<AuthData>) {
+            const data = await parser();
+            return [data.auth, data.userId];
+        }
+
+        @http.GET('/5/:userId')
+        async handle5(userId: number, parser: HttpRequestParser<AuthData>) {
+            const data = await parser();
+            return [userId, data.auth, data.userId];
+        }
+
+        @http.GET('/6/:userId')
+        async handle6(parser: HttpRequestParser<AuthData>) {
+            const data = await parser();
+            return [data.auth, data.userId];
+        }
+
+        @http.GET('/7/:userId')
+        async handle7(session: HttpSession) {
+            return [session.auth, session.userId];
+        }
+
+        @http.GET('/8/:id/:userId')
+        async handle8(id: string, session: HttpSession) {
+            return [id, session.auth, session.userId];
+        }
+    }
+
+    type AuthData = {
+        auth: string;
+        userId?: string;
+    }
+
+    class Listener {
+        @eventDispatcher.listen(httpWorkflow.onAuth)
+        async handle(event: typeof httpWorkflow.onAuth.event, session: HttpSession, authParser: HttpRequestParser<AuthData>) {
+            const auth = await authParser();
+            session.auth = auth.auth;
+            session.userId = auth.userId ? parseInt(auth.userId) : 0;
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [Listener]);
+    expect((await httpKernel.request(HttpRequest.POST('/1?userId=1').json({ auth: 'secretToken1' }))).json).toEqual([1, 1, 'secretToken1']);
+    expect((await httpKernel.request(HttpRequest.GET('/2?auth=secretToken1&userId=1'))).json).toEqual([1, 1, 'secretToken1']);
+    expect((await httpKernel.request(HttpRequest.GET('/2?userId=1'))).json.message).toEqual('Validation error:\nauth(type): Not a string');
+    expect((await httpKernel.request(HttpRequest.POST('/3?auth=secretToken1').json({ userId: '24' }))).json).toEqual([24, 24, 'secretToken1']);
+    expect((await httpKernel.request(HttpRequest.GET('/4?auth=secretToken1&userId=1'))).json).toEqual(['secretToken1', '1']);
+    expect((await httpKernel.request(HttpRequest.GET('/4?userId=1').header('auth', 'secretToken1'))).json).toEqual(['secretToken1', '1']);
+    expect((await httpKernel.request(HttpRequest.GET('/5/1?auth=secretToken1'))).json).toEqual([1, 'secretToken1', '1']);
+    expect((await httpKernel.request(HttpRequest.GET('/6/2?auth=secretToken1'))).json).toEqual(['secretToken1', '2']);
+    expect((await httpKernel.request(HttpRequest.GET('/7/3?auth=secretToken1'))).json).toEqual(['secretToken1', 3]);
+    expect((await httpKernel.request(HttpRequest.GET('/8/1/3?auth=secretToken1'))).json).toEqual(['1', 'secretToken1', 3]);
+});
+
 test('stream', async () => {
     class Controller {
         @http.GET()
@@ -1378,8 +1456,8 @@ test('upload security', async () => {
             path: '/etc/secure-file',
             name: 'fakefile',
             type: 'image/jpeg',
-            lastModifiedDate: null
-        }
+            lastModifiedDate: null,
+        },
     }))).json.message).toContain('Not an uploaded file caused by value');
 
     // ensure type deserialization doesn't set the invalid 'fake value' value to UploadedFileSymbol
@@ -1390,16 +1468,16 @@ test('upload security', async () => {
             path: '/etc/secure-file',
             name: 'fakefile',
             type: 'image/jpeg',
-            lastModifiedDate: null
-        }
+            lastModifiedDate: null,
+        },
     }))).json.message).toContain('Not an uploaded file caused by value');
 
     expect((await httpKernel.request(HttpRequest.POST('/upload').multiPart([
         {
             name: 'someFile',
             file: Buffer.from('testing a text file'),
-            fileName: 'test.txt'
-        }
+            fileName: 'test.txt',
+        },
     ]))).json).toMatchObject({ uploadedSize: 19 });
 });
 
@@ -1558,8 +1636,8 @@ test('dependency injection unknown', async () => {
 });
 
 test('disabled reflection', async () => {
-    type User = {username: string};
-    type Doc = {id: number};
+    type User = { username: string };
+    type Doc = { id: number };
 
     /** @reflection never */
     type PopulateUser<T> = T & { user: User };
@@ -1569,9 +1647,9 @@ test('disabled reflection', async () => {
     const user: DocUser = {
         id: 1,
         user: {
-            username: 'peter2'
-        }
-    }
+            username: 'peter2',
+        },
+    };
 
     class Controller {
         @http.GET('user/:name')
@@ -1580,6 +1658,59 @@ test('disabled reflection', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [provide<DocUser>({useValue: user})]);
+    const httpKernel = createHttpKernel([Controller], [provide<DocUser>({ useValue: user })]);
     expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).json).toEqual(['peter', 1, 'peter2']);
+});
+
+test('throw when invalid data returned', async () => {
+    // todo: auto serialization of route return value should throw if invalid data was given
+});
+
+test('http optional query', async () => {
+    class Controller {
+        @http.GET('user')
+        async anyReq(name: HttpQuery<string | undefined>) {
+            return [name];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.GET('/user'))).json).toEqual([null]);
+    expect((await httpKernel.request(HttpRequest.GET('/user?name=Peter'))).json).toEqual(['Peter']);
+});
+
+test('required query should be required', async () => {
+    class Controller {
+        @http.GET('')
+        async anyReq(entityId: HttpQuery<string>) {
+            return [entityId];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.GET('/'))).json).toMatchObject({
+        message: 'Validation error:\nentityId(type): No value given',
+    });
+    expect((await httpKernel.request(HttpRequest.GET('/?entityId=asd'))).json).toEqual(['asd']);
+});
+
+test('required fields in body should be required', async () => {
+    interface Body {
+        a: string | null;
+        b: string;
+    }
+
+    class Controller {
+        @http.POST('')
+        async anyReq(body: HttpBody<Body>) {
+            return [body.a, body.b];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    expect((await httpKernel.request(HttpRequest.POST('/'))).json).toMatchObject({
+        message: 'Validation error:\nb(type): Not a string',
+    });
+    expect((await httpKernel.request(HttpRequest.POST('/').json({ b: 'asd' }))).json).toEqual([null, 'asd']);
+    expect((await httpKernel.request(HttpRequest.POST('/').json({ a: 'a', b: 'asd' }))).json).toEqual(['a', 'asd']);
 })

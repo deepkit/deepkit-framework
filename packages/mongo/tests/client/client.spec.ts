@@ -1,4 +1,4 @@
-import { expect, test, jest } from '@jest/globals';
+import { expect, jest, test } from '@jest/globals';
 import { MongoClient } from '../../src/client/client.js';
 import { HostType } from '../../src/client/host.js';
 import { IsMasterCommand } from '../../src/client/command/ismaster.js';
@@ -6,6 +6,9 @@ import { sleep } from '@deepkit/core';
 import { ConnectionOptions } from '../../src/client/options.js';
 import { cast, validatedDeserialize } from '@deepkit/type';
 import { createConnection } from 'net';
+import { fail } from 'assert';
+import { MongoConnectionError } from '../../src/client/error.js';
+import { BaseResponse, createCommand } from '../../index.js';
 
 jest.setTimeout(60000);
 
@@ -24,6 +27,19 @@ test('connect invalid', async () => {
     const client = new MongoClient('mongodb://invalid/');
 
     await expect(client.connect()).rejects.toThrow('getaddrinfo');
+    client.close();
+});
+
+test('connect invalid 2', async () => {
+    const client = new MongoClient('mongodb://invalid/');
+
+    try {
+        await client.connect();
+        fail('should fail');
+    } catch (error) {
+        expect(error).toBeInstanceOf(MongoConnectionError);
+    }
+
     client.close();
 });
 
@@ -46,6 +62,22 @@ test('test localhost', async () => {
         await sleep(0.1);
         resolve(undefined);
     });
+});
+
+test('custom command', async () => {
+    interface Message {
+        isMaster: number;
+        $db: string;
+    }
+
+    interface Response extends BaseResponse {
+        ismaster: boolean;
+    }
+    const command = createCommand<Message, Response>({isMaster: 1, $db: 'deepkit'});
+
+    const client = new MongoClient('mongodb://127.0.0.1/');
+    const res = await client.execute(command);
+    expect(res).toEqual({ ismaster: true, ok: 1 });
 });
 
 test('connect handshake', async () => {

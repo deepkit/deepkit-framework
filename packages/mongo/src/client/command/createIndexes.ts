@@ -26,7 +26,7 @@ interface RequestSchema {
     indexes: CreateIndex[];
 }
 
-export class CreateIndexesCommand<T extends ReflectionClass<any>> extends Command {
+export class CreateIndexesCommand<T extends ReflectionClass<any>> extends Command<BaseResponse> {
     constructor(
         public schema: T,
         public indexes: CreateIndex[],

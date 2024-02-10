@@ -21,7 +21,7 @@ interface Request {
     autocommit?: boolean;
 }
 
-export class CommitTransactionCommand extends Command {
+export class CommitTransactionCommand extends Command<BaseResponse> {
     needsWritableHost() {
         return false;
     }

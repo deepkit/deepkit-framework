@@ -96,7 +96,7 @@ export abstract class ScramAuth implements MongoAuth {
         this.cryptoMethod = this.mechanism === 'SCRAM-SHA-1' ? 'sha1' : 'sha256';
     }
 
-    async auth(command: Command, config: MongoClientConfig): Promise<void> {
+    async auth(command: Command<unknown>, config: MongoClientConfig): Promise<void> {
         const username = cleanUsername(config.authUser || '');
         const password = config.authPassword || '';
 

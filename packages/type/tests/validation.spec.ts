@@ -167,7 +167,7 @@ test('path', () => {
         code: 'type',
         message: 'Not a number',
         path: 'configs.1.value',
-        value: undefined
+        value: undefined,
     }]);
 
     class Container2 {
@@ -188,7 +188,7 @@ test('class with union literal', () => {
         code: 'type',
         message: 'No valid union member found. Valid: \'local\' | \'majority\' | \'linearizable\' | \'available\'',
         path: 'readConcernLevel',
-        value: 'invalid'
+        value: 'invalid',
     }]);
 });
 
@@ -267,13 +267,13 @@ test('inline object', () => {
 
     const errors = validate<Post>({
         tags: [],
-        collection: {} // This should make the validator throw an error
+        collection: {}, // This should make the validator throw an error
     });
 
     expect(errors).toEqual([{ path: 'collection.items', code: 'type', message: 'Not an array' }]);
     expect(() => validatedDeserialize<Post>({
         tags: [],
-        collection: {} // This should make the validator throw an error
+        collection: {}, // This should make the validator throw an error
     })).toThrow('collection.items(type): Not an array');
 });
 
