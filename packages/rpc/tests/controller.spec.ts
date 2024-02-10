@@ -600,7 +600,10 @@ test('missing observable types throw', async () => {
     class Controller {
         @rpc.action()
         test() {
-            return new Observable()
+            return new Observable(observer => {
+                observer.next(123);
+                observer.complete();
+            });
         }
     }
 
@@ -610,5 +613,5 @@ test('missing observable types throw', async () => {
     const controller = client.controller<Controller>('myController');
 
     const observable = await controller.test();
-    await expect(observable.toPromise()).rejects.toThrow('No observable type on RPC action detected.');
+    await expect(observable.toPromise()).rejects.toThrow('No observable type on RPC action Controller.test detected');
 });

@@ -12,7 +12,6 @@ import { ClassType, collectForMicrotask, getClassName, isPrototypeOfBase, toFast
 import { isBehaviorSubject, isSubject, ProgressTracker, ProgressTrackerState } from '@deepkit/core-rxjs';
 import {
     assertType,
-    findMember,
     getValidatorFunction,
     Guard,
     parametersToTuple,
@@ -62,11 +61,8 @@ export type ActionTypes = {
     collectionQueryModel?: Type,
 };
 
-function getV(container: TypeObjectLiteral): Type {
-    const found = findMember('v', container.types);
-    if (!found) throw new Error('v not found');
-    assertType(found, ReflectionKind.propertySignature);
-    return found.type;
+function createNoTypeError(classType: ClassType, method: string) {
+    return new Error(`No observable type on RPC action ${getClassName(classType)}.${method} detected. Either no return type Observable<T> defined or wrong RxJS nominal type.`)
 }
 
 export class RpcServerAction {
@@ -281,7 +277,7 @@ export class RpcServerAction {
                 const { types, classType, method } = observable;
                 const body = message.parseBody<rpcActionObservableSubscribeId>();
                 if (observable.subscriptions[body.id]) return response.error(new Error('Subscription already created'));
-                if (!types.observableNextSchema) return response.error(new Error('No observable type on RPC action detected. No Observable<T> defined  or RxJS not nominal.'));
+                if (!types.observableNextSchema) return response.error(createNoTypeError(classType, method));
 
                 const sub: { active: boolean, sub?: Subscription, complete: () => void } = {
                     active: true,
