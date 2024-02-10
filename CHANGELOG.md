@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.132](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.131...v1.0.1-alpha.132) (2024-02-10)
+
+### Bug Fixes
+
+- **rpc:** better error message when no observable type can be extracted ([5e7ecf1](https://github.com/deepkit/deepkit-framework/commit/5e7ecf12adf526b103757ede04ed7ec6923a7af6))
+- **sql:** strings should be nullable without casting as JSON ([#552](https://github.com/deepkit/deepkit-framework/issues/552)) ([fe55b7f](https://github.com/deepkit/deepkit-framework/commit/fe55b7feb3dc312c31b8dd6dd671ca0150ff5dee))
+- **type:** intersection of two different primitive types always return never ([#549](https://github.com/deepkit/deepkit-framework/issues/549)) ([20d3dc8](https://github.com/deepkit/deepkit-framework/commit/20d3dc83a00431db99f6feb0f41da890fa422f48))
+
+### Features
+
+- **mongo:** export custom command API ([d82ccd1](https://github.com/deepkit/deepkit-framework/commit/d82ccd19df86f84e8feacbe124e1d473ff481b8c))
+
 ## [1.0.1-alpha.131](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.130...v1.0.1-alpha.131) (2024-02-09)
 
 ### Bug Fixes
