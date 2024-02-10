@@ -16,7 +16,7 @@ interface RequestSchema {
     $db: string;
 }
 
-export class CreateCollectionCommand<T extends ReflectionClass<any>> extends Command {
+export class CreateCollectionCommand<T extends ReflectionClass<any>> extends Command<BaseResponse> {
     constructor(
         public schema: T,
     ) {

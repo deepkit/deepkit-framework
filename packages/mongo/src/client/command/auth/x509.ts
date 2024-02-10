@@ -23,7 +23,7 @@ interface AuthenticateResponse extends BaseResponse {
 }
 
 export class X509Auth implements MongoAuth {
-    async auth(command: Command, config: MongoClientConfig): Promise<void> {
+    async auth(command: Command<unknown>, config: MongoClientConfig): Promise<void> {
         await command.sendAndWait<AuthenticateCommand, AuthenticateResponse>({
             authenticate: 1,
             mechanism: 'MONGODB-X509',

@@ -30,7 +30,7 @@ interface FindSchema {
     autocommit?: boolean,
 }
 
-export class FindCommand<T> extends Command {
+export class FindCommand<T> extends Command<T[]> {
     batchSize: number = 1_000_000;
 
     constructor(

@@ -25,7 +25,7 @@ interface DeleteSchema {
     startTransaction?: boolean;
 }
 
-export class DeleteCommand<T extends ReflectionClass<any>> extends Command {
+export class DeleteCommand<T extends ReflectionClass<any>> extends Command<number> {
 
     constructor(
         public schema: T,

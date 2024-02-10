@@ -25,7 +25,7 @@ interface InsertSchema {
     startTransaction?: boolean;
 }
 
-export class InsertCommand<T> extends Command {
+export class InsertCommand<T> extends Command<number> {
     constructor(
         protected schema: ReflectionClass<T>,
         protected documents: T[]

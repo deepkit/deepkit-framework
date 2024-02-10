@@ -240,6 +240,9 @@ export class ValueWithBSONSerializer {
     }
 }
 
+export function wrapValue<T>(value: any, type?: ReceiveType<T>) {
+    return new ValueWithBSONSerializer(value, resolveReceiveType(type));
+}
 
 export class Writer {
     public dataView: DataView;

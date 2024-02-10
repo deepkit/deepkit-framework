@@ -288,7 +288,7 @@ export class MongoConnection {
     public bufferSize: number = 2.5 * 1024 * 1024;
 
     public connectingPromise?: Promise<void>;
-    public lastCommand?: { command: Command, promise?: Promise<any> };
+    public lastCommand?: { command: Command<unknown>, promise?: Promise<any> };
 
     public activeCommands: number = 0;
     public executedCommands: number = 0;
@@ -419,7 +419,7 @@ export class MongoConnection {
      * A promises is return that is resolved with the  when executed successfully, or rejected
      * when timed out, parser error, or any other error.
      */
-    public async execute<T extends Command>(command: T): Promise<ReturnType<T['execute']>> {
+    public async execute<T extends Command<unknown>>(command: T): Promise<ReturnType<T['execute']>> {
         if (this.status === MongoConnectionStatus.pending) await this.connect();
         if (this.status === MongoConnectionStatus.disconnected) throw new MongoError('Disconnected');
 

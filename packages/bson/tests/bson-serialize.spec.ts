@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { getBSONSerializer, getBSONSizer, getValueSize, hexToByte, serializeBSONWithoutOptimiser, uuidStringToByte } from '../src/bson-serializer.js';
+import { getBSONSerializer, getBSONSizer, getValueSize, hexToByte, serializeBSONWithoutOptimiser, uuidStringToByte, wrapValue } from '../src/bson-serializer.js';
 import {
     BinaryBigInt,
     createReference,
@@ -1427,4 +1427,12 @@ test('undefined for required object', () => {
     const deserialize = getBSONDeserializer<T>();
     const bson = serializeBSONWithoutOptimiser(user);
     expect(() => deserialize(bson)).toThrow('Cannot convert bson type UNDEFINED to {id: number}');
+});
+
+test('wrapValue', () => {
+    const objectId = wrapValue<MongoId>('507f191e810c19729de860ea');
+    const bson = serializeBSONWithoutOptimiser({v: objectId});
+    const back = deserialize(bson);
+    expect(back.v).toBeInstanceOf(OfficialObjectId);
+    expect(back.v.toHexString()).toBe('507f191e810c19729de860ea');
 });

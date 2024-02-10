@@ -12,5 +12,5 @@ import { MongoClientConfig } from '../../config.js';
 import { Command } from '../command.js';
 
 export interface MongoAuth {
-    auth(command: Command, config: MongoClientConfig): Promise<void>;
+    auth(command: Command<unknown>, config: MongoClientConfig): Promise<void>;
 }

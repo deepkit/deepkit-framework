@@ -45,7 +45,7 @@ interface IsMasterSchema {
     $db: string;
 }
 
-export class IsMasterCommand extends Command {
+export class IsMasterCommand extends Command<IsMasterResponse> {
     needsWritableHost() {
         return false;
     }

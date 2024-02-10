@@ -27,7 +27,7 @@ interface AggregateMessage {
     autocommit?: boolean,
 }
 
-export class AggregateCommand<T, R = BaseResponse> extends Command {
+export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
     partial: boolean = false;
     batchSize: number = 1_000_000;
 

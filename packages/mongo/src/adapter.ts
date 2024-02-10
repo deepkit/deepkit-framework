@@ -53,7 +53,7 @@ class MongoRawCommandQuery<T> implements FindQuery<T> {
     constructor(
         protected session: DatabaseSession<MongoDatabaseAdapter>,
         protected client: MongoClient,
-        protected command: Command,
+        protected command: Command<any>,
     ) {
     }
 
@@ -90,7 +90,7 @@ class MongoRawCommandQuery<T> implements FindQuery<T> {
     }
 }
 
-export class MongoRawFactory implements RawFactory<[Command]> {
+export class MongoRawFactory implements RawFactory<[Command<any>]> {
     constructor(
         protected session: DatabaseSession<MongoDatabaseAdapter>,
         protected client: MongoClient,
@@ -98,7 +98,7 @@ export class MongoRawFactory implements RawFactory<[Command]> {
     }
 
     create<Entity = any, ResultSchema = Entity>(
-        commandOrPipeline: Command | any[],
+        commandOrPipeline: Command<ResultSchema> | any[],
         type?: ReceiveType<Entity>,
         resultType?: ReceiveType<ResultSchema>,
     ): MongoRawCommandQuery<ResultSchema> {
@@ -106,7 +106,7 @@ export class MongoRawFactory implements RawFactory<[Command]> {
         const resultSchema = resultType ? resolveReceiveType(resultType) : undefined;
 
         const command = isArray(commandOrPipeline) ? new AggregateCommand(ReflectionClass.from(type), commandOrPipeline, resultSchema) : commandOrPipeline;
-        return new MongoRawCommandQuery<ResultSchema>(this.session, this.client, command);
+        return new MongoRawCommandQuery<ResultSchema>(this.session, this.client, command as Command<any>);
     }
 }
 

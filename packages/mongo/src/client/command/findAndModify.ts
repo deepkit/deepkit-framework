@@ -29,7 +29,7 @@ interface findAndModifySchema {
     startTransaction?: boolean;
 }
 
-export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Command {
+export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Command<FindAndModifyResponse> {
     public upsert = false;
     public fields: string[] = [];
     public returnNew: boolean = false;

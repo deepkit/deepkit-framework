@@ -11,7 +11,7 @@
 import { Command } from './command.js';
 
 
-export class EmptyCommand extends Command {
+export class EmptyCommand extends Command<void> {
     execute(): Promise<any> {
         return Promise.resolve(undefined);
     }

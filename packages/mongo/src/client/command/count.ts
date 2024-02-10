@@ -27,7 +27,7 @@ interface CountSchema {
     autocommit?: boolean;
 }
 
-export class CountCommand<T extends ReflectionClass<any>> extends Command {
+export class CountCommand<T extends ReflectionClass<any>> extends Command<number> {
     constructor(
         public schema: T,
         public query: { [name: string]: any } = {},

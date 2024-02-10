@@ -74,7 +74,7 @@ function detectedAuthMechanismFromResponse(response: IsMasterResponse): AuthMech
  * It differs to regular IsMasterCommand in a way that it sends `client` data as well,
  * which is only allowed at the first message, and additionally sends auth data if necessary.
  */
-export class HandshakeCommand extends Command {
+export class HandshakeCommand extends Command<boolean> {
     needsWritableHost() {
         return false;
     }
