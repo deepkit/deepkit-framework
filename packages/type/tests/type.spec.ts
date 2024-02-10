@@ -97,6 +97,16 @@ test('intersection same type', () => {
     expect(stringifyType(typeOf<Username & string>())).toBe('Username');
 });
 
+
+test('intersection different primitive types', () => {
+    // just testing a few cases as there would be quite a few combinations
+    expect(stringifyType(typeOf<string & number>())).toBe('never');
+    expect(stringifyType(typeOf<undefined & null>())).toBe('never');
+    expect(stringifyType(typeOf<boolean & null>())).toBe('never');
+    expect(stringifyType(typeOf<bigint & number>())).toBe('never');
+    expect(stringifyType(typeOf<3 & 6>())).toBe('never');
+});
+
 test('intersection with never', () => {
     type A = never & Group<'a'>;
     type B = Group<'b'> & never;
@@ -146,6 +156,12 @@ test('intersection simply overrides properties', () => {
     const password = findMember('password', type.types);
     assertType(password, ReflectionKind.propertySignature);
     assertType(password.type, ReflectionKind.void);
+
+    type t1 = User & { readonly password?: string };
+    const type1 = typeOf<t1>() as TypeObjectLiteral;
+    const password1 = findMember('password', type1.types) as TypeProperty;
+    expect(password1.optional).toBe(true);
+    expect(password1.readonly).toBe(true);
 });
 
 test('copy index access', () => {
