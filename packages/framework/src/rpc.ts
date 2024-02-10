@@ -18,7 +18,7 @@ import {
     RpcKernelConnection,
     RpcMessage,
     RpcMessageBuilder,
-    RpcServerAction
+    RpcServerAction,
 } from '@deepkit/rpc';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { ClassType } from '@deepkit/core';
@@ -66,7 +66,7 @@ export class RpcServerActionWithStopwatch extends RpcServerAction {
 }
 
 export class RpcKernelConnectionWithStopwatch extends RpcKernelConnection {
-    protected actionHandler = new RpcServerActionWithStopwatch(this, this.controllers, this.injector, this.security, this.sessionState);
+    protected actionHandler = new RpcServerActionWithStopwatch(this, this.controllers, this.injector, this.security, this.sessionState, this.logger);
     stopwatch?: Stopwatch;
 
     setStopwatch(stopwatch: Stopwatch) {

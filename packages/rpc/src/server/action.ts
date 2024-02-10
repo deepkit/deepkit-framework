@@ -8,7 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, collectForMicrotask, getClassName, isPrototypeOfBase, toFastProperties } from '@deepkit/core';
+import {
+    ClassType,
+    collectForMicrotask,
+    getClassName,
+    isPlainObject,
+    isPrototypeOfBase,
+    toFastProperties,
+} from '@deepkit/core';
 import { isBehaviorSubject, isSubject, ProgressTracker, ProgressTrackerState } from '@deepkit/core-rxjs';
 import {
     assertType,
@@ -26,7 +33,13 @@ import {
     ValidationErrorItem,
 } from '@deepkit/type';
 import { isObservable, Observable, Subject, Subscription } from 'rxjs';
-import { Collection, CollectionEvent, CollectionQueryModel, CollectionQueryModelInterface, CollectionState } from '../collection.js';
+import {
+    Collection,
+    CollectionEvent,
+    CollectionQueryModel,
+    CollectionQueryModelInterface,
+    CollectionState,
+} from '../collection.js';
 import { getActions } from '../decorators.js';
 import {
     ActionMode,
@@ -46,6 +59,7 @@ import { rpcEncodeError, RpcMessage } from '../protocol.js';
 import { RpcKernelBaseConnection, RpcMessageBuilder } from './kernel.js';
 import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security.js';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
+import { LoggerInterface } from '@deepkit/logger';
 
 export type ActionTypes = {
     actionCallSchema: TypeObjectLiteral, //with args as property
@@ -59,10 +73,30 @@ export type ActionTypes = {
     observableNextSchema?: TypeObjectLiteral, //with v as property
     collectionSchema?: Type, //with v as array property
     collectionQueryModel?: Type,
+
+    noTypeWarned: boolean;
 };
 
 function createNoTypeError(classType: ClassType, method: string) {
     return new Error(`No observable type on RPC action ${getClassName(classType)}.${method} detected. Either no return type Observable<T> defined or wrong RxJS nominal type.`)
+}
+
+function createNoObservableWarning(classType: ClassType, method: string) {
+    return new Error(`RPC action ${getClassName(classType)}.${method} returns an Observable, but no specific type (e.g. Observable<T>) or 'any | unknown' type is defined. This might lead to unexpected behavior and slow performance.`);
+}
+
+function createNoTypeWarning(classType: ClassType, method: string, value: any) {
+    const firstKey = Object.keys(value)[0];
+    return new Error(`RPC action ${getClassName(classType)}.${method} returns an object, but no specific type (e.g. { ${firstKey || 'v'}: T }) or 'any | unknown' type is defined. This might lead to slow performance.`);
+}
+
+function validV(type: Type, index = 0): boolean{
+    if (type.kind !== ReflectionKind.objectLiteral) return false;
+    const second = type.types[index];
+    if (!second || second.kind !== ReflectionKind.propertySignature) return false;
+    if (second.name !== 'v') return false;
+    if (second.type.kind === ReflectionKind.any || second.type.kind === ReflectionKind.unknown) return false;
+    return true;
 }
 
 export class RpcServerAction {
@@ -98,6 +132,7 @@ export class RpcServerAction {
         protected injector: InjectorContext,
         protected security: RpcKernelSecurity,
         protected sessionState: SessionState,
+        protected logger: LoggerInterface,
     ) {
     }
 
@@ -161,7 +196,6 @@ export class RpcServerAction {
             ]
         };
 
-        let nextSchema: Type | undefined = undefined;
         let unwrappedReturnType = methodReflection.getReturnType();
         if (unwrappedReturnType.kind === ReflectionKind.promise) {
             unwrappedReturnType = unwrappedReturnType.type;
@@ -177,6 +211,7 @@ export class RpcServerAction {
         }
 
         let type: Type = fullType;
+        let nextType: Type | undefined;
         let collectionSchema: Type | undefined;
         let collectionQueryModel: Type | undefined;
 
@@ -202,39 +237,11 @@ export class RpcServerAction {
             } else if (isPrototypeOfBase(unwrappedReturnType.classType, ProgressTracker)) {
                 mode = 'observable';
                 type = typeOf<ProgressTrackerState[] | undefined>();
-                nextSchema = {
-                    kind: ReflectionKind.objectLiteral,
-                    types: [{
-                        kind: ReflectionKind.propertySignature,
-                        name: 'id',
-                        parent: Object as any,
-                        type: { kind: ReflectionKind.number },
-                    }, {
-                        kind: ReflectionKind.propertySignature,
-                        name: 'v',
-                        parent: Object as any,
-                        optional: true,
-                        type: type,
-                    }]
-                };
+                nextType = type;
             } else if (isPrototypeOfBase(unwrappedReturnType.classType, Observable)) {
                 mode = 'observable';
                 type = unwrappedReturnType.typeArguments ? unwrappedReturnType.typeArguments[0] : { kind: ReflectionKind.any };
-                nextSchema = {
-                    kind: ReflectionKind.objectLiteral,
-                    types: [{
-                        kind: ReflectionKind.propertySignature,
-                        name: 'id',
-                        parent: Object as any,
-                        type: { kind: ReflectionKind.number },
-                    }, {
-                        kind: ReflectionKind.propertySignature,
-                        name: 'v',
-                        parent: Object as any,
-                        optional: true,
-                        type: type,
-                    }]
-                };
+                nextType = type;
             }
         }
 
@@ -256,9 +263,24 @@ export class RpcServerAction {
             mode,
             type,
             parametersValidate: getValidatorFunction(undefined, parameters),
-            observableNextSchema: nextSchema,
+            observableNextSchema: {
+                kind: ReflectionKind.objectLiteral,
+                types: [{
+                    kind: ReflectionKind.propertySignature,
+                    name: 'id',
+                    parent: Object as any,
+                    type: { kind: ReflectionKind.number },
+                }, {
+                    kind: ReflectionKind.propertySignature,
+                    name: 'v',
+                    parent: Object as any,
+                    optional: true,
+                    type: nextType || { kind: ReflectionKind.any },
+                }]
+            },
             collectionSchema,
             collectionQueryModel,
+            noTypeWarned: false,
         };
         if (!types.type) {
             throw new Error(`No type detected for action ${controller}.${methodName}`);
@@ -278,6 +300,11 @@ export class RpcServerAction {
                 const body = message.parseBody<rpcActionObservableSubscribeId>();
                 if (observable.subscriptions[body.id]) return response.error(new Error('Subscription already created'));
                 if (!types.observableNextSchema) return response.error(createNoTypeError(classType, method));
+
+                if (!types.noTypeWarned && (types.mode !== 'observable' || !validV(types.observableNextSchema, 1))) {
+                    types.noTypeWarned = true;
+                    this.logger.warn(createNoObservableWarning(classType, method));
+                }
 
                 const sub: { active: boolean, sub?: Subscription, complete: () => void } = {
                     active: true,
@@ -507,6 +534,11 @@ export class RpcServerAction {
 
                 response.reply<rpcResponseActionObservable>(RpcTypes.ResponseActionObservable, { type });
             } else {
+                if (!types.noTypeWarned && isPlainObject(result) && !validV(types.resultSchema)) {
+                    types.noTypeWarned = true;
+                    this.logger.warn(createNoTypeWarning(classType.controller, body.method, result));
+                }
+
                 response.reply(RpcTypes.ResponseActionSimple, { v: result }, types.resultSchema);
             }
         } catch (error: any) {

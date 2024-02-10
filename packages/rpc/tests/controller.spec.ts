@@ -7,6 +7,7 @@ import { Session, SessionState } from '../src/server/security.js';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { getClassName, sleep } from '@deepkit/core';
 import { ProgressTracker } from '@deepkit/core-rxjs';
+import { MemoryLogger } from '@deepkit/logger';
 
 test('default name', () => {
     @rpc.controller()
@@ -596,7 +597,7 @@ test('progress tracker reuse', async () => {
     }
 });
 
-test('missing observable types throw', async () => {
+test('missing types log warning', async () => {
     class Controller {
         @rpc.action()
         test() {
@@ -605,13 +606,77 @@ test('missing observable types throw', async () => {
                 observer.complete();
             });
         }
+
+        @rpc.action()
+        test2(): Observable<any> {
+            return new Observable(observer => {
+                observer.next({ a: '123' });
+                observer.complete();
+            });
+        }
+
+        @rpc.action()
+        test3(): Observable<string> {
+            return new Observable(observer => {
+                observer.next('abc');
+                observer.complete();
+            });
+        }
+
+        @rpc.action()
+        test4() {
+           return { a: '123' };
+        }
+
+        @rpc.action()
+        test5(): { a: string } {
+           return { a: '123' };
+        }
+
+        @rpc.action()
+        test6() {
+           return 123;
+        }
     }
 
-    const kernel = new RpcKernel();
+    const memoryLogger = new MemoryLogger();
+    const kernel = new RpcKernel(undefined, memoryLogger);
     kernel.registerController(Controller, 'myController');
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
 
     const observable = await controller.test();
-    await expect(observable.toPromise()).rejects.toThrow('No observable type on RPC action Controller.test detected');
+    expect(await observable.toPromise()).toBe(123);
+    expect(memoryLogger.getOutput()).toContain('RPC action Controller.test returns an Observable, but no specific type');
+
+    memoryLogger.clear();
+    const observable2 = await controller.test2();
+    expect(await observable2.toPromise()).toEqual({ a: '123' });
+    expect(memoryLogger.getOutput()).toContain('RPC action Controller.test2 returns an Observable, but no specific type');
+
+    memoryLogger.clear();
+    const observable3 = await controller.test3();
+    expect(await observable3.toPromise()).toBe('abc');
+    expect(memoryLogger.getOutput()).not.toContain('RPC action Controller.test3 returns an Observable, but no specific type');
+
+    memoryLogger.clear();
+    const result = await controller.test4();
+    expect(result).toEqual({ a: '123' });
+    expect(memoryLogger.getOutput()).toContain('RPC action Controller.test4 returns an object, but no specific type');
+
+    memoryLogger.clear();
+    const result2 = await controller.test4();
+    expect(result2).toEqual({ a: '123' });
+    // does not log again
+    expect(memoryLogger.getOutput()).not.toContain('RPC action Controller.test4 returns an object, but no specific type');
+
+    memoryLogger.clear();
+    const result3 = await controller.test5();
+    expect(result3).toEqual({ a: '123' });
+    expect(memoryLogger.getOutput()).not.toContain('RPC action Controller.test5 returns a number, but no specific type');
+
+    memoryLogger.clear();
+    const result4 = await controller.test6();
+    expect(result4).toEqual(123);
+    expect(memoryLogger.getOutput()).not.toContain('RPC action Controller.test5 returns a number, but no specific type');
 });

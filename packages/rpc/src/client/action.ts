@@ -450,7 +450,6 @@ export class RpcActionClient {
 
                 const returnType = deserializeType(parsed.type, { disableReuse: typeReuseDisabled });
 
-                let observableNextSchema: TypeObjectLiteral | undefined;
                 let collectionSchema: Type | undefined;
                 let collectionQueryModel: Type | undefined;
                 let unwrappedReturnType = returnType;
@@ -461,13 +460,6 @@ export class RpcActionClient {
                 assertType(parameters, ReflectionKind.tuple);
 
                 if (parsed.mode === 'observable') {
-                    observableNextSchema = {
-                        kind: ReflectionKind.objectLiteral,
-                        types: [
-                            { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
-                            { kind: ReflectionKind.propertySignature, name: 'v', type: unwrappedReturnType },
-                        ]
-                    } as TypeObjectLiteral;
                 } else if (parsed.mode === 'entitySubject') {
                 } else if (parsed.mode === 'collection') {
                     collectionQueryModel = typeOf<CollectionQueryModelInterface<unknown>>([unwrappedReturnType]) as TypeObjectLiteral;
@@ -501,7 +493,13 @@ export class RpcActionClient {
                             { kind: ReflectionKind.propertySignature, name: 'v', type: unwrappedReturnType },
                         ]
                     } as TypeObjectLiteral,
-                    observableNextSchema,
+                    observableNextSchema: {
+                        kind: ReflectionKind.objectLiteral,
+                        types: [
+                            { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
+                            { kind: ReflectionKind.propertySignature, name: 'v', type: unwrappedReturnType },
+                        ]
+                    } as TypeObjectLiteral
                 };
 
                 resolve(state.types);

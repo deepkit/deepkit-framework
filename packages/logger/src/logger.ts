@@ -335,6 +335,11 @@ export class MemoryLogger extends Logger {
     getOutput(): string {
         return this.memory.messageStrings.join('\n');
     }
+
+    clear() {
+        this.memory.messageStrings = [];
+        this.memory.messages = [];
+    }
 }
 
 export type ScopedLogger = Inject<LoggerInterface, 'scoped-logger'>;

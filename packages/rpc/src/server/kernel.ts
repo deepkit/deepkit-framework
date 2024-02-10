@@ -11,7 +11,16 @@
 import { arrayRemoveItem, ClassType, getClassName } from '@deepkit/core';
 import { ReceiveType, resolveReceiveType, stringifyUuid, typeOf, writeUuid } from '@deepkit/type';
 import { RpcMessageSubject } from '../client/message-subject.js';
-import { AuthenticationError, ControllerDefinition, rpcAuthenticate, rpcClientId, rpcError, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model.js';
+import {
+    AuthenticationError,
+    ControllerDefinition,
+    rpcAuthenticate,
+    rpcClientId,
+    rpcError,
+    rpcPeerRegister,
+    rpcResponseAuthenticate,
+    RpcTypes,
+} from '../model.js';
 import {
     createBuffer,
     createRpcCompositeMessage,
@@ -24,7 +33,7 @@ import {
     rpcEncodeError,
     RpcMessage,
     RpcMessageReader,
-    RpcMessageRouteType
+    RpcMessageRouteType,
 } from '../protocol.js';
 import { RpcMessageWriter, RpcMessageWriterOptions } from '../writer.js';
 import { RpcServerAction } from './action.js';
@@ -34,7 +43,6 @@ import { RemoteController } from '../client/client.js';
 import { InjectorContext, InjectorModule, NormalizedProvider } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
 import { rpcClass } from '../decorators.js';
-import { Provider } from '@deepkit/injector';
 
 export class RpcCompositeMessage {
     protected messages: RpcCreateMessageDef<any>[] = [];
@@ -304,7 +312,7 @@ export class RpcKernelConnections {
 
 export class RpcKernelConnection extends RpcKernelBaseConnection {
     public myPeerId?: string;
-    protected actionHandler = new RpcServerAction(this, this.controllers, this.injector, this.security, this.sessionState);
+    protected actionHandler = new RpcServerAction(this, this.controllers, this.injector, this.security, this.sessionState, this.logger);
 
     public routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client;
 
