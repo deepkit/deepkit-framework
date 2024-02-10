@@ -323,3 +323,22 @@ test('unique constraint 1', async () => {
         await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
 });
+
+test('string/null unions should not render as JSON', async () => {
+    @entity.name('model6')
+    class Model {
+        id: number & PrimaryKey & AutoIncrement = 0;
+
+        constructor(public name: string, public nickName: string | null = null) {}
+    }
+
+    const database = await databaseFactory([Model]);
+    await database.persist(new Model('Peter'));
+    await database.persist(new Model('Christopher', 'Chris'));
+
+    const result = await database.query(Model).orderBy('id', 'asc').find();
+    expect(result).toMatchObject([
+        {name: 'Peter', nickName: null},
+        {name: 'Christopher', nickName: 'Chris'}
+    ]);
+});

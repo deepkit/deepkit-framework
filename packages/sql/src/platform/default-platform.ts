@@ -31,7 +31,7 @@ export function isNonUndefined(type: Type): boolean {
 export function typeResolvesToString(type: Type): boolean {
     if (type.kind === ReflectionKind.string) return true;
     if (type.kind === ReflectionKind.literal && 'string' === typeof type.literal) return true;
-    if (type.kind === ReflectionKind.union) return type.types.every(v => typeResolvesToString(v));
+    if (type.kind === ReflectionKind.union) return type.types.filter(isNonUndefined).every(v => typeResolvesToString(v));
     if (type.kind === ReflectionKind.enum) return typeResolvesToString(type.indexType);
     return false;
 }
