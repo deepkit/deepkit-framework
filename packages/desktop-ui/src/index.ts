@@ -9,6 +9,7 @@
  */
 
 export { ValueAccessorBase, ngValueAccessor } from './core/form';
+
 export * from './browser-text';
 export * from './core/form';
 export * from './core/utils';
