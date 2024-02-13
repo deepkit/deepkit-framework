@@ -107,6 +107,7 @@ function supportedAsArgument(type: Type): boolean {
         || type.kind === ReflectionKind.any || type.kind === ReflectionKind.unknown || isDateType(type)
         || type.kind === ReflectionKind.bigint || type.kind === ReflectionKind.literal) return true;
     if (type.kind === ReflectionKind.union) return type.types.every(v => supportedAsArgument(v));
+    if (type.kind === ReflectionKind.array) return supportedAsArgument(type.type);
     if (isReferenceType(type)) return true;
     return false;
 }
@@ -346,7 +347,7 @@ function printHelp(script: string, command: ParsedCliControllerConfig, writer: C
     }
 }
 
-export type CommandWriter = (...message: string[]) => void;
+export type CommandWriter = (...message: any[]) => void;
 
 interface ParameterMeta {
     flag: boolean;
@@ -423,11 +424,7 @@ export async function executeCommand(
         return await runCommand(command, argv.slice(1), injector, eventDispatcher, logger);
     } catch (e) {
         writer(`The command "${command.name}" failed.`);
-        if (e instanceof Error) {
-            writer(e.stack || e.message);
-        } else {
-            writer(String(e));
-        }
+        writer(e);
         return 1;
     }
 }
@@ -604,7 +601,7 @@ export async function runCommand(
         }
 
         try {
-            const v = convert(parameter, raw);
+            const v = convert(parameter, raw) ?? parameter.defaultValue;
             if (parameter.collectInto) {
                 if (!parameterValues[parameter.collectInto]) {
                     parameterValues[parameter.collectInto] = {};

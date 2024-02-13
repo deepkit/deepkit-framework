@@ -242,3 +242,22 @@ test('object reference', async () => {
     expect((await app(['show-user', '--account', '123'])).output).toContain('account=123');
     expect((await app(['show-user', '--help'])).output).toContain('--account number [required]');
 });
+
+
+test('class option with defaults', async () => {
+    class Options {
+        public name: string = 'Peter';
+        exclude?: string[];
+    }
+
+    const app = simpleApp([
+        function showUser(options: Options & Flag, logger: Logger) {
+            logger.log(`name=${options.name}, exclude=${options.exclude}`);
+        },
+    ]);
+
+    expect((await app(['show-user', '--name', 'John'])).output).toContain('name=John');
+    expect((await app(['show-user', '--help'])).output).toContain('--exclude string [multiple]');
+    expect((await app(['show-user'])).output).toContain('name=Peter, exclude=undefined');
+    expect((await app(['show-user', '--exclude', 'a', '--exclude', 'b'])).output).toContain('name=Peter, exclude=a,b');
+});
