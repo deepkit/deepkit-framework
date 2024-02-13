@@ -1426,7 +1426,7 @@ test('wrapValue', () => {
     }
     {
         const objectId = wrapValue<MongoId>('507f191e810c19729de860ea');
-        const serialize = getBSONSerializer<{v: any }>();
+        const serialize = getBSONSerializer<{ v: any }>();
         const bson = serialize({ v: objectId });
         const back = deserialize(bson);
         expect(back.v).toBeInstanceOf(OfficialObjectId);
@@ -1445,5 +1445,58 @@ test('wrapValue', () => {
         const back = deserialize(bson);
         expect(back.v).toBeInstanceOf(OfficialUUID);
         expect(back.v.toHexString()).toBe(uuid1.value);
+    }
+});
+
+test('utf16 surrogate pair', () => {
+    const comment = 'Hehe, yes. Baby’s first collar \uD83E\uDD2D';
+
+    {
+        const bson1 = serialize({ v: comment });
+        const bson2 = Buffer.from(serializeBSONWithoutOptimiser({v: comment}));
+        expect(bson1.toString('hex')).toBe(bson2.toString('hex'));
+
+        const back1 = deserialize(bson1);
+        const back2 = deserializeBSONWithoutOptimiser(bson1);
+        expect(back1.v).toBe(comment);
+        expect(back2.v).toBe(comment);
+    }
+
+    {
+        const bson = serialize({ comment });
+        const back = deserialize(bson);
+        expect(back.comment).toBe(comment);
+    }
+    {
+        const bson = serialize({ comment });
+        const back = deserializeBSONWithoutOptimiser(bson);
+        expect(back.comment).toBe(comment);
+    }
+
+    {
+        const bson = serializeBSONWithoutOptimiser({ comment });
+        const back = deserialize(bson);
+        expect(back.comment).toBe(comment);
+    }
+    {
+        const bson = serializeBSONWithoutOptimiser({ comment });
+        const back = deserializeBSONWithoutOptimiser(bson);
+        expect(back.comment).toBe(comment);
+    }
+    {
+        const bson = getBSONSerializer<{ comment: string }>()({ comment });
+        const back = getBSONDeserializer<{ comment: string }>()(bson);
+        expect(back.comment).toBe(comment);
+    }
+
+    {
+        const o = {
+            comment: 'Hehe, yes. Baby’s first collar \uD83E\uDD2D'
+        };
+        const bson = serialize(o);
+        const back1 = deserialize(bson);
+        const back2 = deserializeBSONWithoutOptimiser(bson);
+        expect(back1).toEqual(o);
+        expect(back2).toEqual(o);
     }
 });

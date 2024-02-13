@@ -1,4 +1,12 @@
-import { deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer, getBSONSizer, Parser, stringByteLength, Writer } from '@deepkit/bson';
+import {
+    BaseParser,
+    deserializeBSONWithoutOptimiser,
+    getBSONDeserializer,
+    getBSONSerializer,
+    getBSONSizer,
+    stringByteLength,
+    Writer,
+} from '@deepkit/bson';
 import { AnalyticData, FrameData, FrameEnd, FrameStart, FrameType, getTypeOfCategory } from '@deepkit/stopwatch';
 
 export function encodeFrames(frames: (FrameStart | FrameEnd)[]): Uint8Array {
@@ -82,7 +90,7 @@ export function encodeAnalytic(data: AnalyticData[]) {
 }
 
 export function decodeAnalytic(buffer: Uint8Array, callback: (data: AnalyticData) => void) {
-    const parser = new Parser(buffer);
+    const parser = new BaseParser(buffer);
 
     while (parser.offset < buffer.byteLength) {
         const timestamp = parser.eatUInt32();
@@ -93,8 +101,12 @@ export function decodeAnalytic(buffer: Uint8Array, callback: (data: AnalyticData
     }
 }
 
-export function decodeFrameData(buffer: Uint8Array, callback: (data: { cid: number, category: number, data: Uint8Array }) => void) {
-    const parser = new Parser(buffer);
+export function decodeFrameData(buffer: Uint8Array, callback: (data: {
+    cid: number,
+    category: number,
+    data: Uint8Array
+}) => void) {
+    const parser = new BaseParser(buffer);
 
     while (parser.offset < buffer.byteLength) {
         const cid = parser.eatUInt32();
@@ -112,7 +124,7 @@ export function deserializeFrameData(data: { cid: number, category: number, data
 }
 
 export function decodeFrames(buffer: Uint8Array, callback: (frame: FrameStart | FrameEnd) => void): void {
-    const parser = new Parser(buffer);
+    const parser = new BaseParser(buffer);
 
     while (parser.offset < buffer.byteLength) {
         const cid = parser.eatUInt32();

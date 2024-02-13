@@ -10,6 +10,6 @@
 
 export * from './src/model.js';
 export * from './src/bson-parser.js';
-export { ParserV2 as Parser } from './src/bson-parser.js';
+export { BaseParser } from './src/bson-parser.js';
 export * from './src/bson-deserializer.js';
 export * from './src/bson-serializer.js';

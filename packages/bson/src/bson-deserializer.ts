@@ -1,8 +1,17 @@
-import { executeTemplates, getTypeJitContainer, JitStack, NamingStrategy, ReceiveType, resolveReceiveType, TemplateState, Type } from '@deepkit/type';
+import {
+    executeTemplates,
+    getTypeJitContainer,
+    JitStack,
+    NamingStrategy,
+    ReceiveType,
+    resolveReceiveType,
+    TemplateState,
+    Type,
+} from '@deepkit/type';
 import { CompilerContext, toFastProperties } from '@deepkit/core';
 import { seekElementSize } from './continuation.js';
 import { BSONBinarySerializer, bsonBinarySerializer } from './bson-serializer.js';
-import { ParserV2 } from './bson-parser.js';
+import { BaseParser } from './bson-parser.js';
 
 function createBSONDeserializer(type: Type, serializer: BSONBinarySerializer, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack: JitStack = new JitStack()) {
     const compiler = new CompilerContext();
@@ -32,7 +41,7 @@ export function getBSONDeserializer<T>(serializer: BSONBinarySerializer = bsonBi
 
     const deserializer = createBSONDeserializer(type, bsonBinarySerializer);
     jit[serializer.deserializeId] = function (bson: Uint8Array, offset: number = 0) {
-        const parser = new ParserV2(bson, offset);
+        const parser = new BaseParser(bson, offset);
         return deserializer(parser);
     };
     toFastProperties(jit);

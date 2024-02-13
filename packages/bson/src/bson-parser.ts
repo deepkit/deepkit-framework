@@ -8,8 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils.js';
-import { buildStringDecoder, decodeUTF8 } from './strings.js';
+import {
+    BSON_BINARY_SUBTYPE_BYTE_ARRAY,
+    BSON_BINARY_SUBTYPE_UUID,
+    BSONType,
+    digitByteSize,
+    TWO_PWR_32_DBL_N,
+} from './utils.js';
+import { decodeUTF8 } from './strings.js';
 import { nodeBufferToArrayBuffer, ReflectionKind, SerializationError, Type } from '@deepkit/type';
 import { hexTable } from './model.js';
 
@@ -318,86 +324,6 @@ export class BaseParser {
     }
 }
 
-const stringParser = buildStringDecoder(32);
-
-/**
- * This is a general purpose Parser assuming ascii names as property names.
- * It falls back automatically to UTF8 when a UTF8 byte was found.
- * This is way faster than BaseParser when property names are mainly ascii (which is usually the case).
- */
-export class ParserV2 extends BaseParser {
-
-    eatObjectPropertyName() {
-        let end = this.offset;
-        let simple = true;
-        let string = '';
-        while (this.buffer[end] !== 0) {
-            if (this.buffer[end] > 127) {
-                simple = false;
-            }
-            if (simple) {
-                string += String.fromCharCode(this.buffer[end]);
-            }
-            end++;
-        }
-
-        if (simple) {
-            //do simple ascii
-            this.offset = end + 1;
-            return string;
-        }
-
-        const s = stringParser(this.buffer, this.offset, end);
-        this.offset = end + 1;
-
-        return s;
-    }
-
-    eatString(size: number): string {
-        // const s = stringParser(this.buffer, this.offset, this.offset + size);
-        let s = '';
-        if (size > 64 && 'undefined' !== typeof Buffer && 'function' === typeof Buffer.from) {
-            s = Buffer.from(this.buffer.buffer, this.buffer.byteOffset + this.offset, size - 1).toString('utf8');
-        } else {
-            s = stringParser(this.buffer, this.offset, this.offset + size);
-        }
-        this.offset += size;
-        return s;
-    }
-}
-
-const decoder = new TextDecoder('utf8');
-
-export class ParserV3 extends BaseParser {
-    eatObjectPropertyName() {
-        let end = this.offset;
-        let simple = true;
-        while (this.buffer[end] !== 0) {
-            if (this.buffer[end] > 127) simple = false;
-            end++;
-        }
-
-        if (simple) {
-            //do simple ascii
-            const s = String.fromCharCode.apply(String, this.buffer.slice(this.offset, end) as any);
-            this.offset = end + 1;
-            return s;
-        }
-
-        const s = decoder.decode(this.buffer.slice(this.offset, end));
-        this.offset = end + 1;
-
-        return s;
-    }
-
-    eatString(size: number): string {
-        const end = this.offset + size;
-        let s = decoder.decode(this.buffer.slice(this.offset, end - 1));
-        this.offset = end;
-        return s;
-    }
-}
-
 export function parseObject(parser: BaseParser): any {
     const result: any = {};
     const end = parser.eatUInt32() + parser.offset;
@@ -431,6 +357,6 @@ export function parseArray(parser: BaseParser): any[] {
 }
 
 export function deserializeBSONWithoutOptimiser(buffer: Uint8Array, offset = 0) {
-    return parseObject(new ParserV2(buffer, offset));
+    return parseObject(new BaseParser(buffer, offset));
 }
 

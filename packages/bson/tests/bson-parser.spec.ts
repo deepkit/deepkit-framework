@@ -1,20 +1,7 @@
 import { expect, test } from '@jest/globals';
 import bson, { Binary } from 'bson';
 import { deserializeBSON, getBSONDeserializer } from '../src/bson-deserializer.js';
-import {
-    BinaryBigInt,
-    copyAndSetParent,
-    MongoId,
-    nodeBufferToArrayBuffer,
-    PrimaryKey,
-    Reference,
-    ReflectionKind,
-    SignedBinaryBigInt,
-    TypeObjectLiteral,
-    typeOf,
-    uuid,
-    UUID
-} from '@deepkit/type';
+import { BinaryBigInt, copyAndSetParent, MongoId, nodeBufferToArrayBuffer, PrimaryKey, Reference, ReflectionKind, SignedBinaryBigInt, TypeObjectLiteral, typeOf, uuid, UUID } from '@deepkit/type';
 import { getClassName } from '@deepkit/core';
 import { serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
 
@@ -730,8 +717,8 @@ test('any', () => {
 
     const bson = serializeBSONWithoutOptimiser(data);
     const deserializer = getBSONDeserializer(undefined, type);
-    const back = deserializer(bson);
-    console.log('back', back);
+    const back: any = deserializer(bson);
+    expect(back.value).toEqual(data.value);
 });
 
 test('circular', () => {

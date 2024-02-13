@@ -141,6 +141,19 @@ export function stringByteLength(str: string): number {
     let size = 0;
     for (let i = 0; i < str.length; i++) {
         const c = str.charCodeAt(i);
+
+        // surrogate pair
+        if (c >= 0xD800 && c <= 0xDBFF && i + 1 < str.length) {
+            const lo = str.charCodeAt(i + 1);
+            if (lo >= 0xDC00 && lo <= 0xDFFF) {
+                // surrogate pair is a 4-byte character in UTF-8
+                size += 4;
+                // move past the low surrogate since it's part of the character
+                i++;
+                continue;
+            }
+        }
+
         if (c < 128) size += 1;
         else if (c > 127 && c < 2048) size += 2;
         else size += 3;
@@ -344,6 +357,26 @@ export class Writer {
         if (typeof str !== 'string') return;
         for (let i = 0; i < str.length; i++) {
             const c = str.charCodeAt(i);
+
+            // surrogate pairs for characters outside the BMP
+            if (c >= 0xD800 && c <= 0xDBFF && i + 1 < str.length) {
+                const hi = c;
+                const lo = str.charCodeAt(i + 1);
+                if (lo >= 0xDC00 && lo <= 0xDFFF) {
+                    // combine the surrogate pair and subtract 0x10000 for UTF-8 encoding
+                    const codePoint = ((hi - 0xD800) * 0x400) + (lo - 0xDC00) + 0x10000;
+
+                    this.buffer[this.offset++] = (codePoint >> 18) | 240;
+                    this.buffer[this.offset++] = ((codePoint >> 12) & 63) | 128;
+                    this.buffer[this.offset++] = ((codePoint >> 6) & 63) | 128;
+                    this.buffer[this.offset++] = (codePoint & 63) | 128;
+
+                    // skip the next code unit, since it's part of the surrogate pair
+                    i++;
+                    continue;
+                }
+            }
+
             if (c < 128) {
                 this.buffer[this.offset++] = c;
             } else if (c > 127 && c < 2048) {
