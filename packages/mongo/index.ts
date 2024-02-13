@@ -15,6 +15,9 @@ export * from './src/query.model.js';
 export * from './src/query.resolver.js';
 export * from './src/query.js';
 
+export * from './src/client/host.js';
+export * from './src/client/dns.js';
+export * from './src/client/connection.js';
 export * from './src/client/client.js';
 export * from './src/client/config.js';
 export * from './src/client/error.js';

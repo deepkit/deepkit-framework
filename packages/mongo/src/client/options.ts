@@ -21,6 +21,7 @@ export class ConnectionOptions {
     connectTimeoutMS: number = 10000;
     socketTimeoutMS: number = 36000;
 
+
     w?: string;
     wtimeoutMS?: number;
     journal?: string;
@@ -35,7 +36,8 @@ export class ConnectionOptions {
     readPreference: 'primary' | 'primaryPreferred' | 'secondary' | 'secondaryPreferred' | 'nearest' | 'unknown' = 'primary';
 
     maxStalenessSeconds?: number;
-    readPreferenceTags?: string;
+    readPreferenceTags?: string; //e.g. "dc:ny,rack:1"
+    hedge?: boolean;
 
     compressors?: 'snappy' | 'zlib' | 'zstd';
     zlibCompressionLevel?: number;
@@ -44,6 +46,7 @@ export class ConnectionOptions {
     authMechanism?: 'SCRAM-SHA-1' | 'SCRAM-SHA-256' | 'MONGODB-X509' | 'GSSAPI' | 'PLAIN';
     authMechanismProperties?: string;
     gssapiServiceName?: string;
+
 
     ssl?: boolean;
     tlsCertificateFile?: string;
@@ -59,6 +62,21 @@ export class ConnectionOptions {
     minPoolSize: number = 1;
     maxIdleTimeMS: number = 100;
     waitQueueTimeoutMS: number = 0;
+
+    protected parsedReadPreferenceTags?: { [name: string]: string }[];
+
+    getReadPreferenceTags(): { [name: string]: string }[] {
+        if (!this.parsedReadPreferenceTags) {
+            this.parsedReadPreferenceTags = [];
+            if (this.readPreferenceTags) {
+                for (const tag of this.readPreferenceTags.split(',')) {
+                    const [name, value] = tag.split(':');
+                    this.parsedReadPreferenceTags.push({ [name]: value });
+                }
+            }
+        }
+        return this.parsedReadPreferenceTags;
+    }
 
     getAuthMechanismProperties(): AuthMechanismProperties {
         const properties: AuthMechanismProperties = {};

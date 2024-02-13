@@ -1,15 +1,10 @@
-import { UUID } from '@deepkit/type';
+import { ReadPreferenceMessage, TransactionalMessage } from './command.js';
 
-export interface GetMoreMessage {
+export type GetMoreMessage = {
     getMore: bigint;
     $db: string;
     collection: string;
     batchSize?: number;
     maxTimeMS?: number;
     comment?: string;
-
-    lsid?: { id: UUID },
-    txnNumber?: number,
-    startTransaction?: boolean,
-    autocommit?: boolean,
-}
+} & TransactionalMessage & ReadPreferenceMessage;

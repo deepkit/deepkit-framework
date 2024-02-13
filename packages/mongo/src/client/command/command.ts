@@ -13,7 +13,19 @@ import { handleErrorResponse, MongoDatabaseError, MongoError } from '../error.js
 import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
-import { ReceiveType, resolveReceiveType, SerializationError, stringifyType, Type, typeOf, typeSettings, UnpopulatedCheck, ValidationError } from '@deepkit/type';
+import {
+    InlineRuntimeType,
+    ReceiveType,
+    resolveReceiveType,
+    SerializationError,
+    stringifyType,
+    Type,
+    typeOf,
+    typeSettings,
+    UnpopulatedCheck,
+    UUID,
+    ValidationError,
+} from '@deepkit/type';
 import { BSONDeserializer, deserializeBSONWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
 import { mongoBinarySerializer } from '../../mongo-serializer.js';
 
@@ -23,6 +35,25 @@ export interface BaseResponse {
     code?: number;
     codeName?: string;
     writeErrors?: Array<{ index: number, code: number, errmsg: string }>;
+}
+
+export interface TransactionalMessage {
+    lsid?: { id: UUID };
+    txnNumber?: bigint;
+    startTransaction?: boolean;
+    autocommit?: boolean;
+
+    abortTransaction?: 1;
+    commitTransaction?: 1;
+}
+
+export interface ReadPreferenceMessage {
+    $readPreference?: {
+        mode: string;
+        tags?: { [name: string]: string }[];
+        maxStalenessSeconds?: number;
+        hedge?: { enabled: boolean }
+    };
 }
 
 export abstract class Command<T> {
@@ -37,13 +68,19 @@ export abstract class Command<T> {
         this.sender(resolveReceiveType(messageType), message);
 
         return asyncOperation((resolve, reject) => {
-            this.current = { resolve, reject, responseType: responseType ? resolveReceiveType(responseType) : typeOf<BaseResponse>() };
+            this.current = {
+                resolve,
+                reject,
+                responseType: responseType ? resolveReceiveType(responseType) : typeOf<BaseResponse>(),
+            };
         });
     }
 
     abstract execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<T>;
 
-    abstract needsWritableHost(): boolean;
+    needsWritableHost(): boolean {
+        return false;
+    }
 
     handleResponse(response: Uint8Array): void {
         if (!this.current) throw new Error('Got handleResponse without active command');
@@ -87,19 +124,46 @@ export abstract class Command<T> {
     }
 }
 
-export function createCommand<Request extends {}, Response extends BaseResponse>(
-    request: Request,
-    options: Partial<{ needsWritableHost: boolean }> = {},
+interface CommandOptions {
+    // default false
+    needsWritableHost: boolean;
+
+    // default true
+    transactional: boolean;
+
+    // default true
+    readPreference: boolean;
+}
+
+export function createCommand<Request extends {[name: string]: any}, Response>(
+    request: Request | ((config: MongoClientConfig) => Request),
+    optionsIn: Partial<CommandOptions> = {},
     typeRequest?: ReceiveType<Request>,
     typeResponse?: ReceiveType<Response>,
-): Command<Response> {
+): Command<Response & BaseResponse> {
+    const options: CommandOptions = Object.assign(
+        { needsWritableHost: false, transactional: true, readPreference: true },
+        optionsIn,
+    );
+
+    typeRequest = resolveReceiveType(typeRequest);
+    type FullTypeRequest = InlineRuntimeType<typeof typeRequest> & TransactionalMessage & ReadPreferenceMessage;
+    typeRequest = typeOf<FullTypeRequest>();
+
+    typeResponse = resolveReceiveType(typeResponse);
+    type FullTypeResponse = InlineRuntimeType<typeof typeResponse> & BaseResponse;
+    typeResponse = typeOf<FullTypeResponse>();
+
     class DynamicCommand extends Command<Response> {
-        async execute(): Promise<Response> {
-            return this.sendAndWait(request, typeRequest, typeResponse);
+        async execute(config: MongoClientConfig, host, transaction?): Promise<Response & BaseResponse> {
+            const cmd = 'function' === typeof request ? request(config) : request;
+            if (options.transactional && transaction) transaction.applyTransaction(cmd);
+            if (options.readPreference) config.applyReadPreference(cmd as any);
+            return await this.sendAndWait(cmd, typeRequest, typeResponse as Type) as any;
         }
 
         needsWritableHost(): boolean {
-            return options.needsWritableHost || false;
+            return options.needsWritableHost;
         }
     }
 

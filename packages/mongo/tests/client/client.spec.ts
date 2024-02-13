@@ -8,7 +8,7 @@ import { cast, validatedDeserialize } from '@deepkit/type';
 import { createConnection } from 'net';
 import { fail } from 'assert';
 import { MongoConnectionError } from '../../src/client/error.js';
-import { BaseResponse, createCommand } from '../../index.js';
+import { createCommand } from '../../index.js';
 
 jest.setTimeout(60000);
 
@@ -70,10 +70,7 @@ test('custom command', async () => {
         $db: string;
     }
 
-    interface Response extends BaseResponse {
-        ismaster: boolean;
-    }
-    const command = createCommand<Message, Response>({isMaster: 1, $db: 'deepkit'});
+    const command = createCommand<Message, {ismaster: boolean}>({isMaster: 1, $db: 'deepkit'});
 
     const client = new MongoClient('mongodb://127.0.0.1/');
     const res = await client.execute(command);

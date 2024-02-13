@@ -8,14 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command } from './command.js';
-import { ReflectionClass, UUID } from '@deepkit/type';
+import { BaseResponse, Command, ReadPreferenceMessage, TransactionalMessage } from './command.js';
+import { ReflectionClass } from '@deepkit/type';
 
 interface FindAndModifyResponse extends BaseResponse {
     value: any;
 }
 
-interface findAndModifySchema {
+type findAndModifySchema = {
     findAndModify: string;
     $db: string;
     query: any;
@@ -23,11 +23,7 @@ interface findAndModifySchema {
     new: boolean;
     upsert: boolean;
     fields: Record<string, number>;
-    lsid?: { id: UUID };
-    txnNumber?: number;
-    autocommit?: boolean;
-    startTransaction?: boolean;
-}
+} & TransactionalMessage & ReadPreferenceMessage;
 
 export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Command<FindAndModifyResponse> {
     public upsert = false;
@@ -46,7 +42,7 @@ export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Comman
         const fields = {};
         for (const name of this.fields) fields[name] = 1;
 
-        const cmd: any = {
+        const cmd: findAndModifySchema = {
             findAndModify: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             query: this.query,
@@ -57,6 +53,7 @@ export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Comman
         };
 
         if (transaction) transaction.applyTransaction(cmd);
+        config.applyReadPreference(cmd);
 
         return await this.sendAndWait<findAndModifySchema, FindAndModifyResponse>(cmd);
     }

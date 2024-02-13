@@ -8,14 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command } from './command.js';
+import { BaseResponse, Command, ReadPreferenceMessage, TransactionalMessage } from './command.js';
 import { toFastProperties } from '@deepkit/core';
 import { DEEP_SORT } from '../../query.model.js';
-import { InlineRuntimeType, ReflectionClass, ReflectionKind, typeOf, TypeUnion, UUID } from '@deepkit/type';
+import { InlineRuntimeType, ReflectionClass, ReflectionKind, typeOf, TypeUnion } from '@deepkit/type';
 import { MongoError } from '../error.js';
 import { GetMoreMessage } from './getMore.js';
 
-interface FindSchema {
+type FindSchema = {
     find: string;
     $db: string;
     batchSize: number;
@@ -24,11 +24,7 @@ interface FindSchema {
     filter: any;
     projection?: any;
     sort?: any;
-    lsid?: { id: UUID },
-    txnNumber?: number,
-    startTransaction?: boolean,
-    autocommit?: boolean,
-}
+} & TransactionalMessage & ReadPreferenceMessage
 
 export class FindCommand<T> extends Command<T[]> {
     batchSize: number = 1_000_000;
@@ -55,6 +51,7 @@ export class FindCommand<T> extends Command<T[]> {
         };
 
         if (transaction) transaction.applyTransaction(cmd);
+        config.applyReadPreference(cmd);
 
         if (this.projection) cmd.projection = this.projection;
         if (this.sort) cmd.sort = this.sort;
@@ -132,13 +129,14 @@ export class FindCommand<T> extends Command<T[]> {
 
         let cursorId = res.cursor.id;
         while (cursorId) {
-            const nextCommand = {
+            const nextCommand: GetMoreMessage = {
                 getMore: cursorId,
                 $db: cmd.$db,
                 collection: cmd.find,
                 batchSize: cmd.batchSize,
             };
             if (transaction) transaction.applyTransaction(nextCommand);
+            config.applyReadPreference(nextCommand);
             const next = await this.sendAndWait<GetMoreMessage, Response>(nextCommand, undefined, specialisedResponse);
 
             if (next.cursor.nextBatch) {
@@ -148,9 +146,5 @@ export class FindCommand<T> extends Command<T[]> {
         }
 
         return result;
-    }
-
-    needsWritableHost(): boolean {
-        return false;
     }
 }

@@ -12,7 +12,7 @@ import { arrayRemoveItem, asyncOperation, formatError } from '@deepkit/core';
 import { Host } from './host.js';
 import { createConnection, Socket } from 'net';
 import { connect as createTLSConnection, TLSSocket } from 'tls';
-import { Command } from './command/command.js';
+import { Command, TransactionalMessage } from './command/command.js';
 import { stringifyType, Type, uuid } from '@deepkit/type';
 import { BSONBinarySerializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { HandshakeCommand } from './command/handshake.js';
@@ -49,6 +49,9 @@ export class MongoStats {
      * How many connection requests were queued because pool was full.
      */
     connectionsQueued: number = 0;
+
+    bytesReceived: number = 0;
+    bytesSent: number = 0;
 }
 
 export class MongoConnectionPool {
@@ -149,6 +152,10 @@ export class MongoConnectionPool {
             //onClose does not automatically reconnect. Only new commands re-establish connections.
         }, (connection) => {
             this.release(connection);
+        }, (bytesSent) => {
+            this.stats.bytesSent += bytesSent;
+        }, (bytesReceived) =>{
+            this.stats.bytesReceived += bytesReceived;
         });
         host.connections.push(connection);
         this.connections.push(connection);
@@ -233,7 +240,6 @@ export function readUint32LE(buffer: Uint8Array | ArrayBuffer, offset: number = 
     return buffer[offset] + (buffer[offset + 1] * 2 ** 8) + (buffer[offset + 2] * 2 ** 16) + (buffer[offset + 3] * 2 ** 24);
 }
 
-
 export class MongoDatabaseTransaction extends DatabaseTransaction {
     static txnNumber: bigint = 0n;
 
@@ -242,7 +248,7 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
     txnNumber: bigint = 0n;
     started: boolean = false;
 
-    applyTransaction(cmd: any) {
+    applyTransaction(cmd: TransactionalMessage) {
         if (!this.lsid) return;
         cmd.lsid = this.lsid;
         cmd.txnNumber = this.txnNumber;
@@ -303,6 +309,9 @@ export class MongoConnection {
     responseParser: ResponseParser;
     error?: Error;
 
+    bytesReceived: number = 0;
+    bytesSent: number = 0;
+
     protected boundSendMessage = this.sendMessage.bind(this);
 
     constructor(
@@ -312,6 +321,8 @@ export class MongoConnection {
         protected serializer: BSONBinarySerializer,
         protected onClose: (connection: MongoConnection) => void,
         protected onRelease: (connection: MongoConnection) => void,
+        protected onSent: (bytes: number) => void,
+        protected onReceived: (bytes: number) => void,
     ) {
         this.responseParser = new ResponseParser(this.onResponse.bind(this));
 
@@ -337,7 +348,11 @@ export class MongoConnection {
             }
 
             this.socket = createTLSConnection(options);
-            this.socket.on('data', (data) => this.responseParser.feed(data));
+            this.socket.on('data', (data) => {
+                this.bytesReceived += data.byteLength;
+                this.onReceived(data.byteLength);
+                this.responseParser.feed(data);
+            });
         } else {
             this.socket = createConnection({
                 host: host.hostname,
@@ -345,7 +360,11 @@ export class MongoConnection {
                 timeout: config.options.connectTimeoutMS,
             });
 
-            this.socket.on('data', (data) => this.responseParser.feed(data));
+            this.socket.on('data', (data) => {
+                this.bytesReceived += data.byteLength;
+                this.onReceived(data.byteLength);
+                this.responseParser.feed(data);
+            });
 
             // const socket = this.socket = turbo.connect(host.port, host.hostname);
             // // this.socket.setNoDelay(true);
@@ -478,6 +497,8 @@ export class MongoConnection {
             writer.writeInt32(messageLength);
 
             //detect backPressure
+            this.bytesSent += buffer.byteLength;
+            this.onSent(buffer.byteLength);
             this.socket.write(buffer);
         } catch (error) {
             console.log('failed sending message', message, 'for type', stringifyType(type));

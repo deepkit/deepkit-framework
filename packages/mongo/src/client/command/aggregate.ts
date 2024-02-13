@@ -9,23 +9,20 @@
  */
 
 import { toFastProperties } from '@deepkit/core';
-import { BaseResponse, Command } from './command.js';
-import { getTypeJitContainer, InlineRuntimeType, isType, ReflectionClass, Type, typeOf, UUID } from '@deepkit/type';
+import { BaseResponse, Command, ReadPreferenceMessage, TransactionalMessage } from './command.js';
+import { getTypeJitContainer, InlineRuntimeType, isType, ReflectionClass, Type, typeOf } from '@deepkit/type';
 import { MongoError } from '../error.js';
 import { GetMoreMessage } from './getMore.js';
+import { MongoClientConfig } from '../config.js';
 
-interface AggregateMessage {
+type AggregateMessage = {
     aggregate: string;
     $db: string;
     pipeline: any[],
     cursor: {
         batchSize: number,
     },
-    lsid?: { id: UUID },
-    txnNumber?: number,
-    startTransaction?: boolean,
-    autocommit?: boolean,
-}
+} & TransactionalMessage & ReadPreferenceMessage;
 
 export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
     partial: boolean = false;
@@ -39,17 +36,18 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
         super();
     }
 
-    async execute(config, host, transaction): Promise<R[]> {
-        const cmd = {
+    async execute(config: MongoClientConfig, host, transaction): Promise<R[]> {
+        const cmd: AggregateMessage = {
             aggregate: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             pipeline: this.pipeline,
             cursor: {
-                batchSize: this.batchSize
-            }
+                batchSize: this.batchSize,
+            },
         };
 
         if (transaction) transaction.applyTransaction(cmd);
+        config.applyReadPreference(cmd);
         let resultSchema = this.resultSchema || this.schema;
         if (resultSchema && !isType(resultSchema)) resultSchema = resultSchema.type;
 
@@ -95,13 +93,14 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
 
         let cursorId = res.cursor.id;
         while (cursorId) {
-            const nextCommand = {
+            const nextCommand: GetMoreMessage = {
                 getMore: cursorId,
                 $db: cmd.$db,
                 collection: cmd.aggregate,
                 batchSize: cmd.cursor.batchSize,
             };
             if (transaction) transaction.applyTransaction(nextCommand);
+            config.applyReadPreference(nextCommand);
             const next = await this.sendAndWait<GetMoreMessage, Response>(nextCommand, undefined, specialisedResponse);
 
             if (next.cursor.nextBatch) {
