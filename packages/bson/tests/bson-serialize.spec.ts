@@ -1,26 +1,13 @@
 import { expect, test } from '@jest/globals';
-import { getBSONSerializer, getBSONSizer, getValueSize, hexToByte, serializeBSONWithoutOptimiser, uuidStringToByte, wrapValue } from '../src/bson-serializer.js';
-import {
-    BinaryBigInt,
-    createReference,
-    Excluded,
-    hasCircularReference,
-    MongoId,
-    nodeBufferToArrayBuffer,
-    PrimaryKey,
-    Reference,
-    SignedBinaryBigInt,
-    typeOf,
-    uuid,
-    UUID,
-} from '@deepkit/type';
+import { getBSONSerializer, getBSONSizer, getValueSize, hexToByte, serializeBSONWithoutOptimiser, uuidStringToByte, wrapObjectId, wrapUUID, wrapValue } from '../src/bson-serializer.js';
+import { BinaryBigInt, createReference, Excluded, hasCircularReference, MongoId, nodeBufferToArrayBuffer, PrimaryKey, Reference, SignedBinaryBigInt, typeOf, uuid, UUID } from '@deepkit/type';
 import bson from 'bson';
 import { randomBytes } from 'crypto';
 import { BSON_BINARY_SUBTYPE_DEFAULT, BSONType } from '../src/utils.js';
 import { deserializeBSONWithoutOptimiser } from '../src/bson-parser.js';
 import { deserializeBSON, getBSONDeserializer } from '../src/bson-deserializer.js';
 
-const { Binary, calculateObjectSize, deserialize, Long, ObjectId: OfficialObjectId, serialize } = bson;
+const { Binary, calculateObjectSize, deserialize, Long, ObjectId: OfficialObjectId, UUID: OfficialUUID, serialize } = bson;
 
 test('hexToByte', () => {
     expect(hexToByte('00')).toBe(0);
@@ -1430,9 +1417,33 @@ test('undefined for required object', () => {
 });
 
 test('wrapValue', () => {
-    const objectId = wrapValue<MongoId>('507f191e810c19729de860ea');
-    const bson = serializeBSONWithoutOptimiser({v: objectId});
-    const back = deserialize(bson);
-    expect(back.v).toBeInstanceOf(OfficialObjectId);
-    expect(back.v.toHexString()).toBe('507f191e810c19729de860ea');
+    {
+        const objectId = wrapValue<MongoId>('507f191e810c19729de860ea');
+        const bson = serializeBSONWithoutOptimiser({ v: objectId });
+        const back = deserialize(bson);
+        expect(back.v).toBeInstanceOf(OfficialObjectId);
+        expect(back.v.toHexString()).toBe('507f191e810c19729de860ea');
+    }
+    {
+        const objectId = wrapValue<MongoId>('507f191e810c19729de860ea');
+        const serialize = getBSONSerializer<{v: any }>();
+        const bson = serialize({ v: objectId });
+        const back = deserialize(bson);
+        expect(back.v).toBeInstanceOf(OfficialObjectId);
+        expect(back.v.toHexString()).toBe('507f191e810c19729de860ea');
+    }
+    {
+        const objectId = wrapObjectId('507f191e810c19729de860ea');
+        const bson = serializeBSONWithoutOptimiser({ v: objectId });
+        const back = deserialize(bson);
+        expect(back.v).toBeInstanceOf(OfficialObjectId);
+        expect(back.v.toHexString()).toBe('507f191e810c19729de860ea');
+    }
+    {
+        const uuid1 = wrapUUID(uuid());
+        const bson = serializeBSONWithoutOptimiser({ v: uuid1 });
+        const back = deserialize(bson);
+        expect(back.v).toBeInstanceOf(OfficialUUID);
+        expect(back.v.toHexString()).toBe(uuid1.value);
+    }
 });

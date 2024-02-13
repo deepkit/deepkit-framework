@@ -36,6 +36,7 @@ import {
     isUUIDType,
     JitStack,
     memberNameToString,
+    MongoId,
     mongoIdAnnotation,
     NamingStrategy,
     ReceiveType,
@@ -57,10 +58,12 @@ import {
     TypeIndexSignature,
     TypeLiteral,
     TypeObjectLiteral,
+    typeOf,
     typeSettings,
     TypeTuple,
     UnpopulatedCheck,
     unpopulatedSymbol,
+    UUID,
     uuidAnnotation,
 } from '@deepkit/type';
 import {
@@ -90,7 +93,14 @@ import {
 } from './bson-deserializer-templates.js';
 import { seekElementSize } from './continuation.js';
 import { BSONError } from './model.js';
-import { BSON_BINARY_SUBTYPE_DEFAULT, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, isSerializable, TWO_PWR_32_DBL_N } from './utils.js';
+import {
+    BSON_BINARY_SUBTYPE_DEFAULT,
+    BSON_BINARY_SUBTYPE_UUID,
+    BSONType,
+    digitByteSize,
+    isSerializable,
+    TWO_PWR_32_DBL_N,
+} from './utils.js';
 
 export function createBuffer(size: number): Uint8Array {
     return 'undefined' !== typeof Buffer && 'function' === typeof Buffer.allocUnsafe ? Buffer.allocUnsafe(size) : new Uint8Array(size);
@@ -242,6 +252,18 @@ export class ValueWithBSONSerializer {
 
 export function wrapValue<T>(value: any, type?: ReceiveType<T>) {
     return new ValueWithBSONSerializer(value, resolveReceiveType(type));
+}
+
+const mongoIdType = typeOf<MongoId>();
+
+export function wrapObjectId(value: string) {
+    return new ValueWithBSONSerializer(value, mongoIdType);
+}
+
+const uuidIdType = typeOf<UUID>();
+
+export function wrapUUID(value: string) {
+    return new ValueWithBSONSerializer(value, uuidIdType);
 }
 
 export class Writer {
