@@ -7,11 +7,12 @@ import { Session, SessionState } from '../src/server/security.js';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { getClassName, sleep } from '@deepkit/core';
 import { ProgressTracker } from '@deepkit/core-rxjs';
-import { MemoryLogger } from '@deepkit/logger';
+import { Logger, MemoryLogger } from '@deepkit/logger';
 
 test('default name', () => {
     @rpc.controller()
-    class Controller {}
+    class Controller {
+    }
 
     const controller = new RpcController();
 
@@ -625,17 +626,17 @@ test('missing types log warning', async () => {
 
         @rpc.action()
         test4() {
-           return { a: '123' };
+            return { a: '123' };
         }
 
         @rpc.action()
         test5(): { a: string } {
-           return { a: '123' };
+            return { a: '123' };
         }
 
         @rpc.action()
         test6() {
-           return 123;
+            return 123;
         }
     }
 
@@ -679,4 +680,69 @@ test('missing types log warning', async () => {
     const result4 = await controller.test6();
     expect(result4).toEqual(123);
     expect(memoryLogger.getOutput()).not.toContain('RPC action Controller.test5 returns a number, but no specific type');
+});
+
+test('disable strict serialization', async () => {
+    @rpc.strictSerialization(false)
+    class Controller {
+        constructor(protected logger: Logger) {
+        }
+
+        @rpc.action()
+        test(): { value: string } {
+            return 123 as any;
+        }
+
+        @rpc.action().logValidationErrors(true)
+        test2(): { value: string } {
+            return 123 as any;
+        }
+
+        @rpc.action()
+        params1(value: { value: string }): void {
+            this.logger.log(`Got ${value}`);
+        }
+
+        @rpc.action().logValidationErrors(true)
+        params2(value: { value: string }): void {
+            this.logger.log(`Got ${value}`);
+        }
+    }
+
+    const memoryLogger = new MemoryLogger();
+    const kernel = new RpcKernel(undefined, memoryLogger);
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+
+    const controller = client.controller<Controller>('myController');
+
+    {
+        memoryLogger.clear();
+        const result = await controller.test2();
+        expect(result).toBe(123);
+        expect(memoryLogger.getOutput()).toContain('Action Controller.test2 return type serialization error');
+        expect(memoryLogger.getOutput()).toContain('Cannot convert 123 to {value: string}');
+    }
+
+    {
+        memoryLogger.clear();
+        const result = await controller.test();
+        expect(result).toBe(123);
+        expect(memoryLogger.getOutput()).not.toContain('Action Controller.test2 return type serialization error');
+    }
+
+    {
+        memoryLogger.clear();
+        await controller.params2(123 as any);
+        expect(memoryLogger.getOutput()).toContain('Got 123');
+        expect(memoryLogger.getOutput()).toContain('Validation error for arguments of Controller.params2');
+        expect(memoryLogger.getOutput()).toContain('INT to {value: string}');
+    }
+
+    {
+        memoryLogger.clear();
+        await controller.params1(123 as any);
+        expect(memoryLogger.getOutput()).toContain('Got 123');
+        expect(memoryLogger.getOutput()).not.toContain('Validation error for arguments');
+    }
 });

@@ -15,7 +15,7 @@ import {
     createPropertyDecoratorContext,
     mergeDecorator,
     PropertyDecoratorResult,
-    reflect
+    reflect,
 } from '@deepkit/type';
 import { ControllerDefinition } from './model.js';
 
@@ -26,6 +26,9 @@ export class RpcController {
     classType?: ClassType;
 
     definition?: ControllerDefinition<any>;
+
+    strictSerialization: boolean = true;
+    logValidationErrors: boolean = false;
 
     actions = new Map<string, RpcAction>();
 
@@ -42,6 +45,9 @@ export class RpcAction {
     category: string = '';
     description: string = '';
 
+    strictSerialization?: boolean;
+    logValidationErrors?: boolean;
+
     groups: string[] = [];
     data: { [name: string]: any } = {};
 }
@@ -55,6 +61,29 @@ class RpcClass {
         } else {
             this.t.definition = nameOrDefinition;
         }
+    }
+
+    /**
+     * Enables validation and fast serialization for this controller (default).
+     * This forces the data to be strictly checked and serialized according to the type.
+     *
+     * Disabling can be useful for cases where you have invalid runtime data, but still want to work with it.
+     * If the RPC action returns different data than specified in the return type,
+     * then it is ignored and serialized as is.
+     * If the client sends invalid data, it is ignored and deserialized as is.
+     *
+     * Useful in combination with `logValidationErrors()` to at least know where
+     * the invalid data comes from if strict validation is not enabled.
+     *
+     * Note this has serious performance implications if disabled, as the serialization and deserialization
+     * is much slower. If invalid data is passed, de-/serialization happens twice, if logValidationErrors is active.
+     */
+    strictSerialization(active: boolean = true) {
+        this.t.strictSerialization = active;
+    }
+
+    logValidationErrors(active: boolean = true) {
+        this.t.logValidationErrors = active;
     }
 
     addAction(name: string, action: RpcAction) {
@@ -93,6 +122,24 @@ class RpcProperty {
         this.t.groups.push(...groups);
     }
 
+    options(options: Partial<RpcAction>) {
+        Object.assign(this.t, options);
+    }
+
+    /**
+     * @see RpcClass.strictSerialization
+     */
+    strictSerialization(active: boolean = true) {
+        this.t.strictSerialization = active;
+    }
+
+    /**
+     * @see RpcClass.logValidationErrors
+     */
+    logValidationErrors(active: boolean = true) {
+        this.t.logValidationErrors = active;
+    }
+
     data(name: string, value: any) {
         this.t.data[name] = value;
     }
@@ -115,6 +162,12 @@ export function getActions<T>(target: ClassType<T>): Map<string, RpcAction> {
             existing.groups.push(...action.groups);
             Object.assign(existing.data, action.data);
         } else {
+            if (action.strictSerialization === undefined) {
+                action.strictSerialization = data.strictSerialization;
+            }
+            if (action.logValidationErrors === undefined) {
+                action.logValidationErrors = data.logValidationErrors;
+            }
             results.set(action.name, action);
         }
     }

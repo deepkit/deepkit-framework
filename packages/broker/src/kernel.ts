@@ -17,8 +17,9 @@ import {
     RpcKernelConnections,
     RpcMessage,
     RpcMessageBuilder,
-    RpcMessageRouteType
+    RpcMessageRouteType,
 } from '@deepkit/rpc';
+import { Logger } from '@deepkit/logger';
 import {
     brokerBusPublish,
     brokerBusResponseHandleMessage,
@@ -43,7 +44,7 @@ import {
     BrokerType,
     QueueMessage,
     QueueMessageProcessing,
-    QueueMessageState
+    QueueMessageState,
 } from './model.js';
 import cluster from 'cluster';
 import { closeSync, openSync, renameSync, writeSync } from 'fs';
@@ -64,11 +65,12 @@ export class BrokerConnection extends RpcKernelBaseConnection {
     protected replies = new Map<number, ((message: RpcMessage) => void)>();
 
     constructor(
+        logger: Logger,
         transportWriter: RpcConnectionWriter,
         protected connections: RpcKernelConnections,
         protected state: BrokerState,
     ) {
-        super(transportWriter, connections);
+        super(logger, transportWriter, connections);
     }
 
     public close(): void {
@@ -322,7 +324,7 @@ export class BrokerState {
             this.snapshotting = true;
             cluster.fork();
 
-            cluster.on('exit', (worker) => {
+            cluster.on('exit', (worker: any) => {
                 this.snapshotting = false;
             });
             return;
@@ -539,6 +541,6 @@ export class BrokerKernel extends RpcKernel {
     protected state: BrokerState = new BrokerState;
 
     createConnection(writer: RpcConnectionWriter): BrokerConnection {
-        return new BrokerConnection(writer, this.connections, this.state);
+        return new BrokerConnection(this.logger, writer, this.connections, this.state);
     }
 }

@@ -20,17 +20,31 @@ import { registerDebugHttpController } from './debug/http-debug.controller.js';
 import { http, HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
 import { InjectorContext, ProviderWithScope, Token } from '@deepkit/injector';
 import { BrokerConfig, FrameworkConfig } from './module.config.js';
-import { LoggerInterface } from '@deepkit/logger';
+import { Logger } from '@deepkit/logger';
 import { SessionHandler } from './session.js';
 import { RpcServer, WebWorkerFactory } from './worker.js';
 import { Stopwatch, StopwatchStore } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller.js';
 import { DatabaseListener } from './database/database-listener.js';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
-import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
+import {
+    MigrationCreateController,
+    MigrationDownCommand,
+    MigrationPendingCommand,
+    MigrationProvider,
+    MigrationUpCommand,
+} from '@deepkit/sql/commands';
 import { FileStopwatchStore } from './debug/stopwatch/store.js';
 import { DebugProfileFramesCommand } from './cli/debug-debug-frames.js';
-import { ConnectionWriter, rpcClass, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
+import {
+    ConnectionWriter,
+    rpcClass,
+    RpcKernel,
+    RpcKernelBaseConnection,
+    RpcKernelConnection,
+    RpcKernelSecurity,
+    SessionState,
+} from '@deepkit/rpc';
 import { DebugConfigController } from './cli/app-config.js';
 import { Zone } from './zone.js';
 import { DebugBrokerBus } from './debug/broker.js';
@@ -61,7 +75,7 @@ export class FrameworkModule extends createModule({
         { provide: DatabaseRegistry, useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic) },
         {
             provide: RpcKernel,
-            useFactory(rpcControllers: RpcControllers, injectorContext: InjectorContext, logger: LoggerInterface, stopwatch?: Stopwatch) {
+            useFactory(rpcControllers: RpcControllers, injectorContext: InjectorContext, logger: Logger, stopwatch?: Stopwatch) {
                 const classType = stopwatch ? RpcKernelWithStopwatch : RpcKernel;
                 const kernel: RpcKernel = new classType(injectorContext, logger.scoped('rpc'));
 

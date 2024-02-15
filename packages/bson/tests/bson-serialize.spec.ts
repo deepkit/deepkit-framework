@@ -1453,7 +1453,7 @@ test('utf16 surrogate pair', () => {
 
     {
         const bson1 = serialize({ v: comment });
-        const bson2 = Buffer.from(serializeBSONWithoutOptimiser({v: comment}));
+        const bson2 = Buffer.from(serializeBSONWithoutOptimiser({ v: comment }));
         expect(bson1.toString('hex')).toBe(bson2.toString('hex'));
 
         const back1 = deserialize(bson1);
@@ -1491,7 +1491,7 @@ test('utf16 surrogate pair', () => {
 
     {
         const o = {
-            comment: 'Hehe, yes. Baby’s first collar \uD83E\uDD2D'
+            comment: 'Hehe, yes. Baby’s first collar \uD83E\uDD2D',
         };
         const bson = serialize(o);
         const back1 = deserialize(bson);
@@ -1517,4 +1517,4 @@ test('null for optional', () => {
         const back3 = getBSONDeserializer<{ v?: string }>()(bson);
         expect(back3.v).toBe(undefined);
     }
-})
+});

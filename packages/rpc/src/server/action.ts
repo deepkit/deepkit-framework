@@ -62,6 +62,7 @@ import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
 
 export type ActionTypes = {
+    strictSerialization: boolean;
     actionCallSchema: TypeObjectLiteral, //with args as property
     parametersValidate: Guard<any>,
 
@@ -78,7 +79,7 @@ export type ActionTypes = {
 };
 
 function createNoTypeError(classType: ClassType, method: string) {
-    return new Error(`No observable type on RPC action ${getClassName(classType)}.${method} detected. Either no return type Observable<T> defined or wrong RxJS nominal type.`)
+    return new Error(`No observable type on RPC action ${getClassName(classType)}.${method} detected. Either no return type Observable<T> defined or wrong RxJS nominal type.`);
 }
 
 function createNoObservableWarning(classType: ClassType, method: string) {
@@ -90,7 +91,7 @@ function createNoTypeWarning(classType: ClassType, method: string, value: any) {
     return new Error(`RPC action ${getClassName(classType)}.${method} returns an object, but no specific type (e.g. { ${firstKey || 'v'}: T }) or 'any | unknown' type is defined. This might lead to slow performance.`);
 }
 
-function validV(type: Type, index = 0): boolean{
+function validV(type: Type, index = 0): boolean {
     if (type.kind !== ReflectionKind.objectLiteral) return false;
     const second = type.types[index];
     if (!second || second.kind !== ReflectionKind.propertySignature) return false;
@@ -98,6 +99,26 @@ function validV(type: Type, index = 0): boolean{
     if (second.type.kind === ReflectionKind.any || second.type.kind === ReflectionKind.unknown) return false;
     return true;
 }
+
+const anyType: Type = { kind: ReflectionKind.any };
+const anyBodyType: Type = {
+    kind: ReflectionKind.objectLiteral,
+    types: [
+        { kind: ReflectionKind.propertySignature, name: 'args', parent: Object as any, type: { kind: ReflectionKind.any } },
+    ]
+};
+const anyParametersType: Type = {
+    kind: ReflectionKind.tuple,
+    types: [{
+        kind: ReflectionKind.tupleMember,
+        parent: undefined as any,
+        type: {
+            kind: ReflectionKind.rest,
+            parent: undefined as any,
+            type: { kind: ReflectionKind.any },
+        },
+    }],
+};
 
 export class RpcServerAction {
     protected cachedActionsTypes: { [id: string]: ActionTypes } = {};
@@ -142,8 +163,8 @@ export class RpcServerAction {
 
         response.reply<rpcResponseActionType>(RpcTypes.ResponseActionType, {
             mode: types.mode,
-            type: serializeType(types.type),
-            parameters: serializeType(types.parameters),
+            type: serializeType(types.strictSerialization ? types.type : anyType),
+            parameters: serializeType(types.strictSerialization ? types.parameters : anyParametersType),
         });
     }
 
@@ -192,8 +213,8 @@ export class RpcServerAction {
         const actionCallSchema: TypeObjectLiteral = {
             kind: ReflectionKind.objectLiteral,
             types: [
-                { kind: ReflectionKind.propertySignature, name: 'args', parent: Object as any, type: parameters, }
-            ]
+                { kind: ReflectionKind.propertySignature, name: 'args', parent: Object as any, type: parameters },
+            ],
         };
 
         let unwrappedReturnType = methodReflection.getReturnType();
@@ -226,8 +247,8 @@ export class RpcServerAction {
                         name: 'v',
                         parent: Object as any,
                         optional: true,
-                        type: { kind: ReflectionKind.array, type: type }
-                    }]
+                        type: { kind: ReflectionKind.array, type: type },
+                    }],
                 };
 
                 collectionQueryModel = typeOf<CollectionQueryModelInterface<unknown>>([type]) as TypeObjectLiteral;
@@ -253,10 +274,11 @@ export class RpcServerAction {
                 parent: Object as any,
                 optional: true,
                 type: type,
-            }]
+            }],
         };
 
         types = this.cachedActionsTypes[cacheId] = {
+            strictSerialization: !!action.strictSerialization,
             parameters,
             actionCallSchema,
             resultSchema,
@@ -276,7 +298,7 @@ export class RpcServerAction {
                     parent: Object as any,
                     optional: true,
                     type: nextType || { kind: ReflectionKind.any },
-                }]
+                }],
             },
             collectionSchema,
             collectionQueryModel,
@@ -312,9 +334,9 @@ export class RpcServerAction {
                         sub.active = false;
                         if (sub.sub) sub.sub.unsubscribe();
                         response.reply<rpcActionObservableSubscribeId>(RpcTypes.ResponseActionObservableComplete, {
-                            id: body.id
+                            id: body.id,
                         });
-                    }
+                    },
                 };
                 observable.subscriptions[body.id] = sub;
 
@@ -322,14 +344,17 @@ export class RpcServerAction {
                     if (!sub.active) return;
                     response.reply(RpcTypes.ResponseActionObservableNext, {
                         id: body.id,
-                        v: next
+                        v: next,
                     }, types.observableNextSchema);
                 }, (error) => {
                     const extracted = rpcEncodeError(this.security.transformError(error));
-                    response.reply<rpcResponseActionObservableSubscriptionError>(RpcTypes.ResponseActionObservableError, { ...extracted, id: body.id });
+                    response.reply<rpcResponseActionObservableSubscriptionError>(RpcTypes.ResponseActionObservableError, {
+                        ...extracted,
+                        id: body.id,
+                    });
                 }, () => {
                     response.reply<rpcActionObservableSubscribeId>(RpcTypes.ResponseActionObservableComplete, {
-                        id: body.id
+                        id: body.id,
                     });
                 });
 
@@ -420,10 +445,24 @@ export class RpcServerAction {
         const types = await this.loadTypes(body.controller, body.method);
         let value: { args: any[] } = { args: [] };
 
+        response.strictSerialization = !!action.strictSerialization;
+        response.logValidationErrors = !!action.logValidationErrors;
+
         try {
             value = message.parseBody(types.actionCallSchema);
         } catch (error: any) {
-            return response.error(error);
+            if (!action.strictSerialization) {
+                if (action.logValidationErrors) {
+                    this.logger.warn(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}, using 'any' now.`, error);
+                }
+                try {
+                    value = message.parseBody(anyBodyType);
+                } catch (error: any) {
+                    return response.error(error);
+                }
+            } else {
+                return response.error(error);
+            }
         }
 
         const controllerClassType = this.injector.get(classType.controller, classType.module);
@@ -431,12 +470,16 @@ export class RpcServerAction {
             response.error(new Error(`No instance of ${getClassName(classType.controller)} found.`));
         }
         // const converted = types.parametersDeserialize(value.args);
-        const errors: ValidationErrorItem[] = [];
-        types.parametersValidate(value.args, { errors });
+        if (action.strictSerialization) {
+            const errors: ValidationErrorItem[] = [];
+            types.parametersValidate(value.args, { errors });
 
-        if (errors.length) {
-            return response.error(new ValidationError(errors));
+            if (errors.length) {
+                return response.error(new ValidationError(errors));
+            }
         }
+
+        response.errorLabel = `Action ${getClassName(classType.controller)}.${body.method} return type serialization error`;
 
         try {
             const result = await controllerClassType[body.method](...value.args);
@@ -469,7 +512,7 @@ export class RpcServerAction {
                             //a new RpcType to send only the IDs, which is not yet implemented.
                             composite.add(RpcTypes.ResponseActionCollectionAdd, { v: event.items }, types.collectionSchema);
                         } else if (event.type === 'remove') {
-                            composite.add<rpcResponseActionCollectionRemove>(RpcTypes.ResponseActionCollectionRemove, { ids: event.ids, });
+                            composite.add<rpcResponseActionCollectionRemove>(RpcTypes.ResponseActionCollectionRemove, { ids: event.ids });
                         } else if (event.type === 'update') {
                             composite.add(RpcTypes.ResponseActionCollectionUpdate, { v: event.items }, types.collectionSchema);
                         } else if (event.type === 'set') {
@@ -477,7 +520,7 @@ export class RpcServerAction {
                         } else if (event.type === 'state') {
                             composite.add<CollectionState>(RpcTypes.ResponseActionCollectionState, collection.state);
                         } else if (event.type === 'sort') {
-                            composite.add<rpcResponseActionCollectionSort>(RpcTypes.ResponseActionCollectionSort, { ids: event.ids, });
+                            composite.add<rpcResponseActionCollectionSort>(RpcTypes.ResponseActionCollectionSort, { ids: event.ids });
                         }
                     }
                     composite.send();
@@ -495,10 +538,16 @@ export class RpcServerAction {
                         unsubscribed = true;
                         eventsSub.unsubscribe();
                         collection.unsubscribe();
-                    }
+                    },
                 };
             } else if (isObservable(result)) {
-                this.observables[message.id] = { observable: result, subscriptions: {}, types, classType: classType.controller, method: body.method };
+                this.observables[message.id] = {
+                    observable: result,
+                    subscriptions: {},
+                    types,
+                    classType: classType.controller,
+                    method: body.method,
+                };
 
                 let type: ActionObservableTypes = ActionObservableTypes.observable;
                 if (isSubject(result)) {
@@ -517,18 +566,21 @@ export class RpcServerAction {
                         subscription: result.subscribe((next) => {
                             response.reply(RpcTypes.ResponseActionObservableNext, {
                                 id: message.id,
-                                v: next
+                                v: next,
                             }, types.observableNextSchema);
                         }, (error) => {
                             const extracted = rpcEncodeError(this.security.transformError(error));
-                            response.reply<rpcResponseActionObservableSubscriptionError>(RpcTypes.ResponseActionObservableError, { ...extracted, id: message.id });
+                            response.reply<rpcResponseActionObservableSubscriptionError>(RpcTypes.ResponseActionObservableError, {
+                                ...extracted,
+                                id: message.id,
+                            });
                         }, () => {
                             const v = this.observableSubjects[message.id];
                             if (v && v.completedByClient) return; //we don't send ResponseActionObservableComplete when the client issued unsubscribe
                             response.reply<rpcActionObservableSubscribeId>(RpcTypes.ResponseActionObservableComplete, {
-                                id: message.id
+                                id: message.id,
                             });
-                        })
+                        }),
                     };
                 }
 
