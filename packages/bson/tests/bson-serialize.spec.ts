@@ -1500,3 +1500,21 @@ test('utf16 surrogate pair', () => {
         expect(back2).toEqual(o);
     }
 });
+
+test('null for optional', () => {
+    {
+        const bson = serialize({ v: null });
+        const back = getBSONDeserializer<{ v?: string }>()(bson);
+        expect(back.v).toBe(undefined);
+    }
+    {
+        const bson = getBSONSerializer<{ v?: string }>()({ v: null });
+        const back = deserialize(bson);
+        // undefined is serialized as null
+        expect(back.v).toBe(null);
+        const back2 = deserializeBSONWithoutOptimiser(bson);
+        expect(back2.v).toBe(null);
+        const back3 = getBSONDeserializer<{ v?: string }>()(bson);
+        expect(back3.v).toBe(undefined);
+    }
+})

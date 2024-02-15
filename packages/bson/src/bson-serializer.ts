@@ -770,7 +770,7 @@ function handleObjectLiteral(
             ${nameWriter}
             if (${accessor} === unpopulatedSymbol) {
                 //don't do anything since not loaded
-            } else if (${optional} && ${accessor} === undefined) {
+            } else if (${optional} && (${accessor} === undefined || ${accessor} === null)) {
                 ${setUndefined}
             } else {
                 ${template}
