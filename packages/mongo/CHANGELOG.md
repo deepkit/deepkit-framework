@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.133](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.132...v1.0.1-alpha.133) (2024-02-15)
+
+### Features
+
+- **mongo:** add readPreference support ([6275c37](https://github.com/deepkit/deepkit-framework/commit/6275c377a557c5eda3d50b35f2b8ab5e868861dc))
+
 ## [1.0.1-alpha.132](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.131...v1.0.1-alpha.132) (2024-02-10)
 
 ### Features

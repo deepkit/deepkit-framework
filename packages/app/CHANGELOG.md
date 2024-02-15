@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.133](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.132...v1.0.1-alpha.133) (2024-02-15)
+
+### Features
+
+- **app:** allow array flags in object literal ([690927c](https://github.com/deepkit/deepkit-framework/commit/690927cc5015419e445a43df8b2729a9e496994b))
+
 ## [1.0.1-alpha.132](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.131...v1.0.1-alpha.132) (2024-02-10)
 
 **Note:** Version bump only for package @deepkit/app

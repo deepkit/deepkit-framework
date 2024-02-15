@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.133](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.132...v1.0.1-alpha.133) (2024-02-15)
+
+### Features
+
+- **rpc:** allow serialization of unknown Observable type ([0014074](https://github.com/deepkit/deepkit-framework/commit/00140743b3cec674f7eda89a034c46720c5c96ae))
+
 ## [1.0.1-alpha.132](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.131...v1.0.1-alpha.132) (2024-02-10)
 
 **Note:** Version bump only for package @deepkit/framework

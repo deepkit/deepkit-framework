@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.133](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.132...v1.0.1-alpha.133) (2024-02-15)
+
+### Bug Fixes
+
+- **bson:** fix surrogate pair decoding ([cb9f648](https://github.com/deepkit/deepkit-framework/commit/cb9f648cb587c6c0553fceaf0dc57d90ac34321c))
+
+### Features
+
+- **app:** allow array flags in object literal ([690927c](https://github.com/deepkit/deepkit-framework/commit/690927cc5015419e445a43df8b2729a9e496994b))
+- **bson:** export new wrapObjectId/wrapUUId for faster any serialization ([718839b](https://github.com/deepkit/deepkit-framework/commit/718839b00c404239c7b666fe1e5e2d8c2e084d99))
+- **mongo:** add readPreference support ([6275c37](https://github.com/deepkit/deepkit-framework/commit/6275c377a557c5eda3d50b35f2b8ab5e868861dc))
+- **rpc:** allow serialization of unknown Observable type ([0014074](https://github.com/deepkit/deepkit-framework/commit/00140743b3cec674f7eda89a034c46720c5c96ae))
+
 ## [1.0.1-alpha.132](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.131...v1.0.1-alpha.132) (2024-02-10)
 
 ### Bug Fixes
