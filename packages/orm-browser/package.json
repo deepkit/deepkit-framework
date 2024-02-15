@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/orm-browser",
-  "version": "1.0.1-alpha.133",
+  "version": "1.0.1-alpha.134",
   "description": "ORM Browser",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -36,19 +36,19 @@
     "@deepkit/type": "^1.0.1-alpha.43"
   },
   "dependencies": {
-    "@deepkit/orm-browser-gui": "^1.0.1-alpha.133"
+    "@deepkit/orm-browser-gui": "^1.0.1-alpha.134"
   },
   "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.133",
-    "@deepkit/broker": "^1.0.1-alpha.133",
-    "@deepkit/bson": "^1.0.1-alpha.133",
+    "@deepkit/app": "^1.0.1-alpha.134",
+    "@deepkit/broker": "^1.0.1-alpha.134",
+    "@deepkit/bson": "^1.0.1-alpha.134",
     "@deepkit/core": "^1.0.1-alpha.124",
-    "@deepkit/framework": "^1.0.1-alpha.133",
-    "@deepkit/http": "^1.0.1-alpha.133",
+    "@deepkit/framework": "^1.0.1-alpha.134",
+    "@deepkit/http": "^1.0.1-alpha.134",
     "@deepkit/injector": "^1.0.1-alpha.132",
     "@deepkit/logger": "^1.0.1-alpha.133",
     "@deepkit/orm": "^1.0.1-alpha.133",
-    "@deepkit/rpc": "^1.0.1-alpha.133",
+    "@deepkit/rpc": "^1.0.1-alpha.134",
     "@deepkit/type": "^1.0.1-alpha.132",
     "@types/node": "20.6.0",
     "rxjs": "~7.8.0"

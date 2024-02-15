@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.134](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.133...v1.0.1-alpha.134) (2024-02-15)
+
+### Features
+
+- **rpc:** use rpc.logValidationErrors also for strict serializer ([78f57e9](https://github.com/deepkit/deepkit-framework/commit/78f57e92dd457004644d2fa717e6550782a06d3c))
+
 ## [1.0.1-alpha.133](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.132...v1.0.1-alpha.133) (2024-02-15)
 
 ### Features

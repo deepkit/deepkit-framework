@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/mysql",
-  "version": "1.0.1-alpha.133",
+  "version": "1.0.1-alpha.134",
   "description": "deepkit/orm MySQL adapter.",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -37,7 +37,7 @@
     "@deepkit/core": "^1.0.1-alpha.124",
     "@deepkit/orm": "^1.0.1-alpha.133",
     "@deepkit/orm-integration": "^1.0.1-alpha.13",
-    "@deepkit/sql": "^1.0.1-alpha.133",
+    "@deepkit/sql": "^1.0.1-alpha.134",
     "@deepkit/stopwatch": "^1.0.1-alpha.132",
     "@deepkit/type": "^1.0.1-alpha.132"
   },
