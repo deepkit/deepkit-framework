@@ -17,10 +17,9 @@ import {
     InjectorContext,
     InjectorModule,
     isProvided,
-    provide,
     ProviderWithScope,
     resolveToken,
-    Token
+    Token,
 } from '@deepkit/injector';
 import { cli } from './command.js';
 import { WorkflowDefinition } from '@deepkit/workflow';
@@ -98,6 +97,10 @@ export class ServiceContainer {
         this.configLoaders.push(loader);
     }
 
+    /**
+     * Builds the whole module tree, processes all providers, controllers, and listeners.
+     * Makes InjectorContext available. Is usually automatically called when the injector is requested.
+     */
     public process() {
         if (this.injectorContext) return;
 

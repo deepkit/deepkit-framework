@@ -1,4 +1,4 @@
-import { assertType, entity, Positive, ReflectionClass, ReflectionKind } from '@deepkit/type';
+import { assertType, entity, Minimum, Positive, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { DirectClient } from '../src/client/client-direct.js';
 import { getActions, rpc, RpcController } from '../src/decorators.js';
@@ -680,6 +680,62 @@ test('missing types log warning', async () => {
     const result4 = await controller.test6();
     expect(result4).toEqual(123);
     expect(memoryLogger.getOutput()).not.toContain('RPC action Controller.test5 returns a number, but no specific type');
+});
+
+test('validation errors', async () => {
+    @rpc.logValidationErrors(true)
+    class Controller {
+        @rpc.action().logValidationErrors(false)
+        test1(value: number & Minimum<3>): any {
+            return value;
+        }
+
+        @rpc.action()
+        test2(value: number & Minimum<3>): any {
+            return value;
+        }
+
+        @rpc.action().logValidationErrors(true)
+        test3(value: number & Minimum<3>): any {
+            return value;
+        }
+
+        @rpc.action()
+        test4(value: number): { a: string } {
+            return 4 as any;
+        }
+    }
+
+    const memoryLogger = new MemoryLogger();
+    const kernel = new RpcKernel(undefined, memoryLogger);
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+
+    const controller = client.controller<Controller>('myController');
+
+    {
+        memoryLogger.clear();
+        await controller.test1(1).catch(() => true);
+        expect(memoryLogger.getOutput()).not.toContain('Validation error for arguments of Controller.test');
+    }
+
+    {
+        memoryLogger.clear();
+        await controller.test2(1).catch(() => true);
+        expect(memoryLogger.getOutput()).toContain('Validation error for arguments of Controller.test2');
+    }
+
+    {
+        memoryLogger.clear();
+        await controller.test3(1).catch(() => true);
+        expect(memoryLogger.getOutput()).toContain('Validation error for arguments of Controller.test3');
+    }
+
+    {
+        memoryLogger.clear();
+        await controller.test4(1).catch(() => true);
+        expect(memoryLogger.getOutput()).toContain('Action Controller.test4 return type serialization');
+    }
 });
 
 test('disable strict serialization', async () => {

@@ -82,6 +82,13 @@ class RpcClass {
         this.t.strictSerialization = active;
     }
 
+    /**
+     * Logs validation errors to the logger for invalid passed arguments or
+     * invalid return values. This also logs if serialization or deserialization
+     * failed due to invalid data.
+     *
+     * Per default disabled.
+     */
     logValidationErrors(active: boolean = true) {
         this.t.logValidationErrors = active;
     }

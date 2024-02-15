@@ -92,12 +92,6 @@ export class RpcActionClient {
         return asyncOperation<any>(async (resolve, reject) => {
             try {
                 const types = controller.getState(method)?.types || await this.loadActionTypes(controller, method, options);
-                // console.log('client types', types.parameterSchema.getProperty('args').getResolvedClassSchema().toString(), )
-
-                // const argsObject: any = {};
-                // for (let i = 0; i < args.length; i++) {
-                //     argsObject[types.parameters[i]] = args[i];
-                // }
 
                 let observable: Observable<any> | undefined;
                 let observableSubject: Subject<any> | undefined;

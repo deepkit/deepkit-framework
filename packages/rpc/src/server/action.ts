@@ -451,10 +451,10 @@ export class RpcServerAction {
         try {
             value = message.parseBody(types.actionCallSchema);
         } catch (error: any) {
+            if (action.logValidationErrors) {
+                this.logger.warn(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}, using 'any' now.`, error);
+            }
             if (!action.strictSerialization) {
-                if (action.logValidationErrors) {
-                    this.logger.warn(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}, using 'any' now.`, error);
-                }
                 try {
                     value = message.parseBody(anyBodyType);
                 } catch (error: any) {
@@ -475,7 +475,11 @@ export class RpcServerAction {
             types.parametersValidate(value.args, { errors });
 
             if (errors.length) {
-                return response.error(new ValidationError(errors));
+                const error = new ValidationError(errors);
+                if (action.logValidationErrors) {
+                    this.logger.warn(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}, using 'any' now.`, error);
+                }
+                return response.error(error);
             }
         }
 

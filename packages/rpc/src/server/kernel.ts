@@ -50,8 +50,11 @@ export class RpcCompositeMessage {
     protected messages: RpcCreateMessageDef<any>[] = [];
 
     public strictSerialization: boolean = false;
+    public logValidationErrors: boolean = false;
+    public errorLabel: string = 'Error in serialization';
 
     constructor(
+        protected logger: Logger,
         public type: number,
         protected id: number,
         protected writer: RpcConnectionWriter,
@@ -65,8 +68,15 @@ export class RpcCompositeMessage {
         if (!this.strictSerialization) {
             receiveType = anyType;
         }
-        this.messages.push({ type, schema: receiveType ? resolveReceiveType(receiveType) : undefined, body });
-        return this;
+        try {
+            this.messages.push({ type, schema: receiveType ? resolveReceiveType(receiveType) : undefined, body });
+            return this;
+        } catch (error) {
+            if (this.logValidationErrors) {
+                this.logger.warn(this.errorLabel, error);
+            }
+            throw error;
+        }
     }
 
     send() {
@@ -118,11 +128,13 @@ export class RpcMessageBuilder {
                         return createRpcMessage(this.id, type, data, this.routeType, schemaOrBody);
                     }
                 } catch (error) {
-                    if (!this.strictSerialization && this.logValidationErrors) {
+                    if (this.logValidationErrors) {
+                        this.logger.warn(this.errorLabel, error);
+                    }
+                    if (!this.strictSerialization) {
                         if (schemaOrBody === anyType) {
                             throw error;
                         }
-                        this.logger.warn(this.errorLabel, error);
                         schemaOrBody = anyType;
                     }
                 }
@@ -150,8 +162,10 @@ export class RpcMessageBuilder {
     }
 
     composite(type: number): RpcCompositeMessage {
-        const composite = new RpcCompositeMessage(type, this.id, this.writer, this.clientId, this.source);
+        const composite = new RpcCompositeMessage(this.logger, type, this.id, this.writer, this.clientId, this.source);
         composite.strictSerialization = this.strictSerialization;
+        composite.logValidationErrors = this.logValidationErrors;
+        composite.errorLabel = this.errorLabel;
         return composite;
     }
 }
