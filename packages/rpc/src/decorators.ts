@@ -64,19 +64,19 @@ class RpcClass {
     }
 
     /**
-     * Enables validation and fast serialization for this controller (default).
-     * This forces the data to be strictly checked and serialized according to the type.
+     * Per default strict serialization is enabled. This means that all types
+     * defined at the action arguments and return value are enforced.
      *
-     * Disabling can be useful for cases where you have invalid runtime data, but still want to work with it.
-     * If the RPC action returns different data than specified in the return type,
-     * then it is ignored and serialized as is.
-     * If the client sends invalid data, it is ignored and deserialized as is.
+     * If a different type is passed, an error is thrown. If strictSerialization is
+     * disabled, a `any` serializer is used and the action accepts and returns
+     * any type. No validation is performed.
      *
-     * Useful in combination with `logValidationErrors()` to at least know where
-     * the invalid data comes from if strict validation is not enabled.
+     * This is useful for development and debugging, but strict serialization should
+     * be enabled in production if all types are known and stable.
      *
-     * Note this has serious performance implications if disabled, as the serialization and deserialization
-     * is much slower. If invalid data is passed, de-/serialization happens twice, if logValidationErrors is active.
+     * DISABLE THIS ONLY IF YOU KNOW WHAT YOU ARE DOING AND YOU ARE SURE THAT YOU
+     * ARE CORRECTLY SANITIZING THE INPUTS OF YOUR RPC METHODS. OTHERWISE, YOU ARE
+     * OPENING YOUR SERVER TO SECURITY VULNERABILITIES.
      */
     strictSerialization(active: boolean = true) {
         this.t.strictSerialization = active;
@@ -88,6 +88,8 @@ class RpcClass {
      * failed due to invalid data.
      *
      * Per default disabled.
+     *
+     * The client receives the validation error as response in any case.
      */
     logValidationErrors(active: boolean = true) {
         this.t.logValidationErrors = active;

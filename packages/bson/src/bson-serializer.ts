@@ -92,7 +92,6 @@ import {
     deserializeUnion,
 } from './bson-deserializer-templates.js';
 import { seekElementSize } from './continuation.js';
-import { BSONError } from './model.js';
 import {
     BSON_BINARY_SUBTYPE_DEFAULT,
     BSON_BINARY_SUBTYPE_UUID,
@@ -747,8 +746,8 @@ function handleObjectLiteral(
 
         const template = executeTemplates(propertyState.fork(), member.type);
         if (!template) {
-            console.error('missing template for member', member.name, 'of', type);
-            throw new BSONError(`No template found for ${String(member.name)}: ${member.type.kind}`);
+            // console.error('missing template for member', member.name, 'of', member.type);
+            // throw new BSONError(`No template found for ${String(member.name)}: ${ReflectionKind[member.type.kind]}`);
         }
 
         let nameWriter = ``;

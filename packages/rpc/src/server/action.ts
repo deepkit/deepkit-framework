@@ -56,7 +56,7 @@ import {
     RpcTypes,
 } from '../model.js';
 import { rpcEncodeError, RpcMessage } from '../protocol.js';
-import { RpcKernelBaseConnection, RpcMessageBuilder } from './kernel.js';
+import { RpcCache, RpcKernelBaseConnection, RpcMessageBuilder } from './kernel.js';
 import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security.js';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
@@ -121,7 +121,6 @@ const anyParametersType: Type = {
 };
 
 export class RpcServerAction {
-    protected cachedActionsTypes: { [id: string]: ActionTypes } = {};
     protected observableSubjects: {
         [id: number]: {
             subject: Subject<any>,
@@ -148,6 +147,7 @@ export class RpcServerAction {
     } = {};
 
     constructor(
+        protected cache: RpcCache,
         protected connection: RpcKernelBaseConnection,
         protected controllers: Map<string, { controller: ClassType, module?: InjectorModule }>,
         protected injector: InjectorContext,
@@ -193,7 +193,7 @@ export class RpcServerAction {
 
     protected async loadTypes(controller: string, methodName: string): Promise<ActionTypes> {
         const cacheId = controller + '!' + methodName;
-        let types = this.cachedActionsTypes[cacheId];
+        let types = this.cache.actionsTypes[cacheId];
         if (types) return types;
 
         const classType = this.controllers.get(controller);
@@ -277,7 +277,7 @@ export class RpcServerAction {
             }],
         };
 
-        types = this.cachedActionsTypes[cacheId] = {
+        types = this.cache.actionsTypes[cacheId] = {
             strictSerialization: !!action.strictSerialization,
             parameters,
             actionCallSchema,
@@ -307,7 +307,7 @@ export class RpcServerAction {
         if (!types.type) {
             throw new Error(`No type detected for action ${controller}.${methodName}`);
         }
-        toFastProperties(this.cachedActionsTypes);
+        toFastProperties(this.cache.actionsTypes);
 
         return types;
     }
@@ -449,20 +449,12 @@ export class RpcServerAction {
         response.logValidationErrors = !!action.logValidationErrors;
 
         try {
-            value = message.parseBody(types.actionCallSchema);
+            value = message.parseBody(action.strictSerialization ? types.actionCallSchema : anyBodyType);
         } catch (error: any) {
             if (action.logValidationErrors) {
-                this.logger.warn(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}, using 'any' now.`, error);
+                this.logger.warn(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}`, error);
             }
-            if (!action.strictSerialization) {
-                try {
-                    value = message.parseBody(anyBodyType);
-                } catch (error: any) {
-                    return response.error(error);
-                }
-            } else {
-                return response.error(error);
-            }
+            return response.error(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}: ${error.message}`);
         }
 
         const controllerClassType = this.injector.get(classType.controller, classType.module);
@@ -470,16 +462,16 @@ export class RpcServerAction {
             response.error(new Error(`No instance of ${getClassName(classType.controller)} found.`));
         }
         // const converted = types.parametersDeserialize(value.args);
-        if (action.strictSerialization) {
-            const errors: ValidationErrorItem[] = [];
-            types.parametersValidate(value.args, { errors });
+        const errors: ValidationErrorItem[] = [];
+        types.parametersValidate(value.args, { errors });
 
-            if (errors.length) {
-                const error = new ValidationError(errors);
-                if (action.logValidationErrors) {
-                    this.logger.warn(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}, using 'any' now.`, error);
-                }
-                return response.error(error);
+        if (errors.length) {
+            const error = new ValidationError(errors);
+            if (action.logValidationErrors) {
+                this.logger.warn(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}, using 'any' now.`, error);
+            }
+            if (action.strictSerialization) {
+                return response.error(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}: ${error.message}`);
             }
         }
 

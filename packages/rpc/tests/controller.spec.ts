@@ -1,6 +1,6 @@
 import { assertType, entity, Minimum, Positive, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { DirectClient } from '../src/client/client-direct.js';
+import { DirectClient, RpcDirectClientAdapter } from '../src/client/client-direct.js';
 import { getActions, rpc, RpcController } from '../src/decorators.js';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
 import { Session, SessionState } from '../src/server/security.js';
@@ -8,6 +8,9 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { getClassName, sleep } from '@deepkit/core';
 import { ProgressTracker } from '@deepkit/core-rxjs';
 import { Logger, MemoryLogger } from '@deepkit/logger';
+import { RpcClient } from '../src/client/client.js';
+import { InjectorContext } from '@deepkit/injector';
+import { RpcControllerState } from '../src/client/action.js';
 
 test('default name', () => {
     @rpc.controller()
@@ -739,7 +742,7 @@ test('validation errors', async () => {
 });
 
 test('disable strict serialization', async () => {
-    @rpc.strictSerialization(false)
+    @rpc.logValidationErrors(true)
     class Controller {
         constructor(protected logger: Logger) {
         }
@@ -749,7 +752,7 @@ test('disable strict serialization', async () => {
             return 123 as any;
         }
 
-        @rpc.action().logValidationErrors(true)
+        @rpc.action().strictSerialization(false)
         test2(): { value: string } {
             return 123 as any;
         }
@@ -759,7 +762,7 @@ test('disable strict serialization', async () => {
             this.logger.log(`Got ${value}`);
         }
 
-        @rpc.action().logValidationErrors(true)
+        @rpc.action().strictSerialization(false)
         params2(value: { value: string }): void {
             this.logger.log(`Got ${value}`);
         }
@@ -768,37 +771,81 @@ test('disable strict serialization', async () => {
     const memoryLogger = new MemoryLogger();
     const kernel = new RpcKernel(undefined, memoryLogger);
     kernel.registerController(Controller, 'myController');
-    const client = new DirectClient(kernel);
 
+    class DirectClient2 extends RpcClient {
+        getActionClient() {
+            return this.actionClient;
+        }
+        constructor(rpcKernel: RpcKernel, injector?: InjectorContext) {
+            super(new RpcDirectClientAdapter(rpcKernel, injector));
+        }
+    }
+
+    const client = new DirectClient2(kernel);
+
+    const actionsClient = client.getActionClient();
+    const state = new RpcControllerState('myController');
+
+    {
+        memoryLogger.clear();
+        await expect(actionsClient.action(state, 'test', [])).rejects.toThrow('Cannot convert 123 to {value: string}');
+    }
+
+    {
+        memoryLogger.clear();
+        const res = await actionsClient.action(state, 'test2', []);
+        expect(res).toBe(123);
+    }
+
+    {
+        memoryLogger.clear();
+        // simulate a malicious client that sends wrong data
+        await actionsClient.loadActionTypes(state, 'params1');
+        state.getState('params1').types!.callSchema = { kind: ReflectionKind.any } as any;
+        await expect(actionsClient.action(state, 'params1', [123])).rejects.toThrow('Validation error for arguments of Controller.params1');
+        expect(memoryLogger.getOutput()).not.toContain('Got 123');
+    }
+
+    {
+        memoryLogger.clear();
+        const res = await actionsClient.action(state, 'params2', [123]);
+        expect(memoryLogger.getOutput()).toContain('Got 123');
+    }
+});
+
+test('Observable<Buffer>', async () => {
+    class Controller {
+        @rpc.action()
+        test1(): Observable<Buffer> {
+            return new Observable(observer => {
+                observer.next(Buffer.from([1, 2, 3]));
+                observer.complete();
+            });
+        }
+
+        @rpc.action()
+        test2(): Observable<Uint8Array> {
+            return new Observable(observer => {
+                observer.next(Buffer.from([1, 2, 3]));
+                observer.complete();
+            });
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
 
     {
-        memoryLogger.clear();
-        const result = await controller.test2();
-        expect(result).toBe(123);
-        expect(memoryLogger.getOutput()).toContain('Action Controller.test2 return type serialization error');
-        expect(memoryLogger.getOutput()).toContain('Cannot convert 123 to {value: string}');
+        const res = await controller.test1();
+        const buffer = await res.toPromise();
+        expect(buffer).toBeUndefined();
     }
-
     {
-        memoryLogger.clear();
-        const result = await controller.test();
-        expect(result).toBe(123);
-        expect(memoryLogger.getOutput()).not.toContain('Action Controller.test2 return type serialization error');
-    }
-
-    {
-        memoryLogger.clear();
-        await controller.params2(123 as any);
-        expect(memoryLogger.getOutput()).toContain('Got 123');
-        expect(memoryLogger.getOutput()).toContain('Validation error for arguments of Controller.params2');
-        expect(memoryLogger.getOutput()).toContain('INT to {value: string}');
-    }
-
-    {
-        memoryLogger.clear();
-        await controller.params1(123 as any);
-        expect(memoryLogger.getOutput()).toContain('Got 123');
-        expect(memoryLogger.getOutput()).not.toContain('Validation error for arguments');
+        const res = await controller.test2();
+        const buffer = await res.toPromise();
+        expect(buffer).toBeInstanceOf(Uint8Array);
+        expect(buffer!.toString()).toBe('1,2,3');
     }
 });
