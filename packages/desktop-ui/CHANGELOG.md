@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.136](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.135...v1.0.1-alpha.136) (2024-02-20)
+
+### Bug Fixes
+
+- **desktop-ui:** correctly publish package.json ([23f14ac](https://github.com/deepkit/deepkit-framework/commit/23f14aca049007bf18d16e2d4d6d01ca6079b5a4))
+
 ## [1.0.1-alpha.133](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.132...v1.0.1-alpha.133) (2024-02-15)
 
 **Note:** Version bump only for package @deepkit/desktop-ui
