@@ -34,7 +34,7 @@ import {
     ValidationError,
 } from '@deepkit/type';
 import { EventDispatcher } from '@deepkit/event';
-import { getInjectOptions, InjectorContext, InjectorModule } from '@deepkit/injector';
+import { getInjectOptions, InjectorContext, InjectorModule, ServiceNotFoundError } from '@deepkit/injector';
 import { ControllerConfig } from './service-container.js';
 import { LoggerInterface } from '@deepkit/logger';
 import { onAppError, onAppExecute, onAppExecuted, onAppShutdown } from './app.js';
@@ -588,6 +588,9 @@ export async function runCommand(
             try {
                 args.push(injector.get(injectToken || parameter.type));
             } catch (error) {
+                if (parameter.optional && error instanceof ServiceNotFoundError)  {
+                    continue;
+                }
                 handleConvertError(logger, parameter, parsedArgs[parameter.name], error);
                 return 1;
             }

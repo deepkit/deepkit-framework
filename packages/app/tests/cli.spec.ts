@@ -261,3 +261,15 @@ test('class option with defaults', async () => {
     expect((await app(['show-user'])).output).toContain('name=Peter, exclude=undefined');
     expect((await app(['show-user', '--exclude', 'a', '--exclude', 'b'])).output).toContain('name=Peter, exclude=a,b');
 });
+
+test('optional unknown provider', async () => {
+    class Subject {}
+
+    const app = simpleApp([
+        function test(logger: Logger, options?: Subject) {
+            logger.log(`Test`);
+        },
+    ]);
+
+    expect((await app(['test'])).output).toContain('Test');
+});
