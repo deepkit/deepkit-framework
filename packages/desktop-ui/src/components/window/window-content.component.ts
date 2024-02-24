@@ -8,7 +8,19 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, TemplateRef, ViewChild } from '@angular/core';
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    EventEmitter,
+    Input,
+    OnChanges,
+    Output,
+    SimpleChanges,
+    TemplateRef,
+    ViewChild,
+} from '@angular/core';
 import { Subject } from 'rxjs';
 import { WindowState } from './window-state';
 import { triggerResize } from '../../core/utils';
@@ -87,11 +99,16 @@ export class WindowContentComponent implements OnChanges, AfterViewInit {
         }
     }
 
+    unregisterSidebar(sidebar: WinSidebar) {
+        if (this.toolbar === sidebar) {
+            this.toolbar = undefined;
+            setTimeout(() => this.sidebarMoved(), 0);
+        }
+    }
+
     registerSidebar(sidebar: WinSidebar) {
         this.toolbar = sidebar;
-        setTimeout(() => {
-            this.sidebarMoved();
-        }, 0);
+        setTimeout(() => this.sidebarMoved(), 0);
     }
 
     sidebarMoved() {

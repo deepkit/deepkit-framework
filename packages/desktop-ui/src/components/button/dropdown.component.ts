@@ -26,7 +26,7 @@ import {
     SkipSelf,
     TemplateRef,
     ViewChild,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
 import { TemplatePortal } from '@angular/cdk/portal';
 import { Overlay, OverlayConfig, OverlayRef, PositionStrategy } from '@angular/cdk/overlay';
@@ -217,7 +217,6 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                         overlayY: 'top',
                     }
                 ]);
-            ;
         } else if (target === 'center') {
 
             position = overlay
