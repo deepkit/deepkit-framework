@@ -8,7 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ConnectionWriter, RpcConnectionWriter, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, SessionState } from '@deepkit/rpc';
+import {
+    ConnectionWriter,
+    RpcConnectionWriter,
+    RpcKernel,
+    RpcKernelBaseConnection,
+    RpcKernelConnection,
+    SessionState,
+} from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
 import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
@@ -172,14 +179,14 @@ export class WebMemoryWorkerFactory extends WebWorkerFactory {
 
 export function createRpcConnection(rootScopedContext: InjectorContext, rpcKernel: RpcKernel, writer: RpcConnectionWriter, request?: HttpRequest) {
     const injector = rootScopedContext.createChildScope('rpc');
-    const connection = rpcKernel.createConnection(writer, injector);
-
     injector.set(HttpRequest, request);
     injector.set(RpcInjectorContext, injector);
+    injector.set(ConnectionWriter, writer);
+
+    const connection = rpcKernel.createConnection(writer, injector);
     injector.set(SessionState, connection.sessionState);
     injector.set(RpcKernelConnection, connection);
     injector.set(RpcKernelBaseConnection, connection);
-    injector.set(ConnectionWriter, writer);
 
     return connection;
 }
