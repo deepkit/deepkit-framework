@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.137](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.136...v1.0.1-alpha.137) (2024-02-26)
+
+### Bug Fixes
+
+- **framework:** order of scoped services to allow injecting HttpRequest in RpcKernelSecurity ([9a5e300](https://github.com/deepkit/deepkit-framework/commit/9a5e300906feebb20a4b5169984e68e9fa14a057))
+
 ## [1.0.1-alpha.136](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.135...v1.0.1-alpha.136) (2024-02-20)
 
 **Note:** Version bump only for package @deepkit/framework

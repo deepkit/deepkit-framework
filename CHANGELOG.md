@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.137](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.136...v1.0.1-alpha.137) (2024-02-26)
+
+### Bug Fixes
+
+- **app:** allow to inject optional services ([52fd21f](https://github.com/deepkit/deepkit-framework/commit/52fd21ff2214a0fa87e314751f4e0a82a78fc908))
+- **desktop-ui:** correctly unregister destroyed sidebar ([8613ae4](https://github.com/deepkit/deepkit-framework/commit/8613ae495d9727df04a996dc5803d903b4a7b571))
+- **framework:** order of scoped services to allow injecting HttpRequest in RpcKernelSecurity ([9a5e300](https://github.com/deepkit/deepkit-framework/commit/9a5e300906feebb20a4b5169984e68e9fa14a057))
+- **type:** correctly type guard `null` in optional properties ([c0adcb0](https://github.com/deepkit/deepkit-framework/commit/c0adcb00ce100b4c01bc6a1d793396b806464f3c))
+
 ## [1.0.1-alpha.136](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.135...v1.0.1-alpha.136) (2024-02-20)
 
 ### Bug Fixes

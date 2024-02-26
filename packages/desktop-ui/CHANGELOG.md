@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.137](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.136...v1.0.1-alpha.137) (2024-02-26)
+
+### Bug Fixes
+
+- **desktop-ui:** correctly unregister destroyed sidebar ([8613ae4](https://github.com/deepkit/deepkit-framework/commit/8613ae495d9727df04a996dc5803d903b4a7b571))
+
 ## [1.0.1-alpha.136](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.135...v1.0.1-alpha.136) (2024-02-20)
 
 ### Bug Fixes
