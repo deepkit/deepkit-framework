@@ -6,7 +6,7 @@ import { eventDispatcher } from '@deepkit/event';
 import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest, HttpRequestParser } from '../src/model.js';
 import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
-import { Excluded, Group, integer, Maximum, metaAnnotation, MinLength, Positive, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
+import { Excluded, Group, integer, JSONEntity, Maximum, metaAnnotation, MinLength, Positive, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
 import { Readable } from 'stream';
 import { provide } from '@deepkit/injector';
 
@@ -441,7 +441,7 @@ test('router body before it gets parsed', async () => {
     const httpKernel = createHttpKernel([Controller], [Service], [
         httpWorkflow.onRequest.listen(async (event, service: Service) => {
             service.body = await event.request.readBodyText();
-        })
+        }),
     ]);
 
     expect((await httpKernel.request(HttpRequest.POST('/').json({ username: 'Peter' }))).json).toEqual(['Peter', '{"username":"Peter"}', '{"username":"Peter"}', '/']);
@@ -578,7 +578,7 @@ test('functional hooks', async () => {
     const httpKernel = createHttpKernel([], [], [
         httpWorkflow.onResponse.listen((event) => {
             event.result = { username: 'Peter' };
-        })
+        }),
     ]);
 
     const result = (await httpKernel.request(HttpRequest.GET('/'))).json;
@@ -627,8 +627,8 @@ test('inject request storage ClassType', async () => {
         {
             provide: User, scope: 'http', useFactory(request: HttpRequest) {
                 return request.store.user;
-            }
-        }
+            },
+        },
     ], [Listener]);
 
     expect((await httpKernel.request(HttpRequest.GET('/').headers({ authorization: 'yes' }))).json).toEqual({ isUser: true, username: 'bar' });
@@ -650,7 +650,7 @@ test('functional listener', async () => {
     const httpKernel = createHttpKernel([Controller], [], [
         httpWorkflow.onController.listen(event => {
             gotUrls.push(event.request.url || '');
-        })
+        }),
     ]);
 
     const response = await httpKernel.request(HttpRequest.GET('/hello'));
@@ -765,8 +765,8 @@ test('unions', async () => {
             {
                 'code': 'type',
                 'message': 'No value given',
-                'path': 'page'
-            }
+                'path': 'page',
+            },
         ],
     });
 });
@@ -950,7 +950,7 @@ test('BodyValidation', async () => {
     const httpKernel = createHttpKernel([Controller]);
     expect((await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
     expect((await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Pe' }))).json).toEqual({
-        errors: [{ code: 'minLength', message: 'Min length is 3', path: 'username', value: 'Pe' }], message: 'Validation error:\nusername(minLength): Min length is 3 caused by value \"Pe\"'
+        errors: [{ code: 'minLength', message: 'Min length is 3', path: 'username', value: 'Pe' }], message: 'Validation error:\nusername(minLength): Min length is 3 caused by value \"Pe\"',
     });
 
     expect((await httpKernel.request(HttpRequest.POST('/action2').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
@@ -980,7 +980,7 @@ test('unpopulated entity without type information', async () => {
                 if (typeSettings.unpopulatedCheck === UnpopulatedCheck.Throw) {
                     throw new Error(`Reference group was not populated. Use joinWith(), useJoinWith(), etc to populate the reference.`);
                 }
-            }
+            },
         });
     }
 
@@ -1085,7 +1085,7 @@ test('session', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller], [{
-        provide: HttpSession, scope: 'http'
+        provide: HttpSession, scope: 'http',
     }], [httpWorkflow.onRequest.listen(async (event) => {
         const auth = event.request.headers['auth'];
         if (auth) {
@@ -1109,7 +1109,7 @@ test('route listener parameters', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller], [{
-        provide: HttpSession, scope: 'http'
+        provide: HttpSession, scope: 'http',
     }], [httpWorkflow.onController.listen(async (event, session: HttpSession) => {
         expect(event.parameters.arguments).toEqual([2, 1, session]);
         expect(event.parameters.parameters).toEqual({ userId: 2, groupId: 1, session: session });
@@ -1180,7 +1180,7 @@ test('parameter in for listener', async () => {
             }
 
             session.groupId2 = groupId;
-        })
+        }),
     ]);
     expect((await httpKernel.request(HttpRequest.GET('/1/2'))).json).toEqual([2, 1]);
     expect((await httpKernel.request(HttpRequest.GET('/101/2').header('authorization', 'secretToken'))).json).toEqual([2, 101]);
@@ -1213,7 +1213,7 @@ test('query parameter in for listener', async () => {
             };
             if (!users[auth]) throw new HttpUnauthorizedError('Invalid auth token');
             session.userId = users[auth];
-        })
+        }),
     ]);
     expect((await httpKernel.request(HttpRequest.GET('/2?auth=secretToken1'))).json).toEqual([2, 1]);
     expect((await httpKernel.request(HttpRequest.GET('/3?auth=secretToken2'))).json).toEqual([3, 2]);
@@ -1237,7 +1237,7 @@ test('queries parameter in for listener', async () => {
         httpWorkflow.onController.listen(async (event, session: HttpSession, auth: HttpQueries<{ auth: string, userId: number }>) => {
             session.auth = auth.auth;
             session.userId = auth.userId;
-        })
+        }),
     ]);
     expect((await httpKernel.request(HttpRequest.GET('/?auth=secretToken1&userId=1'))).json).toEqual([1, 1, 'secretToken1']);
     expect((await httpKernel.request(HttpRequest.GET('/?userId=1'))).json.message).toEqual('Validation error:\nauth.auth(type): Not a string');
@@ -1713,4 +1713,70 @@ test('required fields in body should be required', async () => {
     });
     expect((await httpKernel.request(HttpRequest.POST('/').json({ b: 'asd' }))).json).toEqual([null, 'asd']);
     expect((await httpKernel.request(HttpRequest.POST('/').json({ a: 'a', b: 'asd' }))).json).toEqual(['a', 'asd']);
-})
+});
+
+test('http body deep optional union', async () => {
+    interface AdTitleAndBasicAttributes {
+        title: string;
+        body: string;
+        pictureUrl: string;
+        attributes: {
+            plotSurface?: number,
+            buildingSurface: number,
+            ges?: string,
+            energyRate?: string,
+        };
+    }
+
+    class ParcelSearchParams {
+        adUrl: string = '';
+        originalAd: AdTitleAndBasicAttributes | null = null;
+        ad: AdTitleAndBasicAttributes | null = null;
+
+        constructor() {
+        }
+    }
+
+    const data: JSONEntity<ParcelSearchParams> = {
+        'adUrl': 'https://leboncoin.fr/locations/1234567890.htm',
+        'originalAd': {
+            'title': 'Maison 4 pièces 92 m²',
+            'body': '',
+            'pictureUrl': 'https://someurl.com',
+            'attributes': {
+                'buildingSurface': 92,
+                'plotSurface': null,
+                'energyRate': 'D',
+                'ges': 'E',
+            },
+        },
+        'ad': null,
+    } as any;
+
+    class Controller {
+        @http.POST('/parcels')
+        async getPossibleParcels(body: HttpBody<{
+            input: ParcelSearchParams
+            ademeQuery: Array<string>
+        }>) {
+            expect(body.input).toEqual({
+                ...data,
+                originalAd: {
+                    ...data.originalAd,
+                    attributes: {
+                        ...data.originalAd!.attributes,
+                        plotSurface: undefined,
+                    },
+                },
+            });
+            expect(body.ademeQuery).toEqual(['a', 'b']);
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    const res = await httpKernel.request(HttpRequest.POST('/parcels').json({
+        input: data,
+        ademeQuery: ['a', 'b'],
+    }));
+    expect(res.statusCode).toBe(200);
+});

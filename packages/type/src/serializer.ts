@@ -77,7 +77,15 @@ import { resolveRuntimeType } from './reflection/processor.js';
 import { createReference, isReferenceHydrated, isReferenceInstance } from './reference.js';
 import { validate, ValidationError, ValidationErrorItem } from './validator.js';
 import { validators } from './validators.js';
-import { arrayBufferToBase64, base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core.js';
+import {
+    arrayBufferToBase64,
+    base64ToArrayBuffer,
+    base64ToTypedArray,
+    typedArrayToBase64,
+    typeSettings,
+    UnpopulatedCheck,
+    unpopulatedSymbol,
+} from './core.js';
 
 /**
  * Make sure to change the id when a custom naming strategy is implemented, since caches are based on it.
@@ -1348,7 +1356,9 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 
                 lines.push(`let ${checkValid} = false;` + template);
             } else {
-                const optionalCheck = member.optional ? `${propertyAccessor} !== undefined && ` : '';
+                const optionalCheck = member.optional
+                    ? `${propertyAccessor} !== undefined && ` + (!isNullable(member) ? `${propertyAccessor} !== null && ` : '')
+                    : '';
                 existing.push(readName);
 
                 state.setContext({ unpopulatedSymbol });
@@ -1620,8 +1630,13 @@ export function forwardMapToArray(type: TypeClass, state: TemplateState) {
 
 export function serializePropertyOrParameter(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
     if (isOptional(type)) {
+        const nullCheck = isNullable(type) ? `if (${state.accessor} === null) {
+                ${executeTemplates(state.fork(), { kind: ReflectionKind.null })}
+            } else ` : '';
+
         state.addCode(`
-            if (${state.accessor} === undefined) {
+            ${nullCheck}
+            if (${state.accessor} === undefined || ${state.accessor} === null) {
                 ${executeTemplates(state.fork(), { kind: ReflectionKind.undefined })}
             } else {
                 ${executeTemplates(state.fork(), type.type)}

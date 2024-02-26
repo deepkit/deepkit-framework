@@ -287,7 +287,7 @@ test('number', () => {
 test('null undefined and string', () => {
     expect(() => cast<string>(undefined)).toThrow('Validation error');
     expect(() => cast<string>(null)).toThrow('Validation error');
-    expect(cast<string>('')).toBe('')
+    expect(cast<string>('')).toBe('');
 });
 
 test('union string number', () => {
@@ -1198,4 +1198,25 @@ test('issue-415: serialize literal types in union', () => {
     expect(deserialize<Data>({ rotate: 180 }, { loosely: true }).rotate).toBe(180);
     expect(deserialize<Data>({ rotate: '180' }, { loosely: true }).rotate).toBe(180);
     expect(deserialize<Data>({ rotate: 123456 }, { loosely: true }).rotate).toBe(0);
+});
+
+test('union with optional property', () => {
+    type A = { type: 'a', value?: string } | null;
+
+    {
+        const a = deserialize<A>({ type: 'a' });
+        expect(a).toEqual({ type: 'a' });
+    }
+    {
+        const a = deserialize<A>({ type: 'a', value: 'b' });
+        expect(a).toEqual({ type: 'a', value: 'b' });
+    }
+    {
+        const a = deserialize<A>(null);
+        expect(a).toEqual(null);
+    }
+    {
+        const a = deserialize<A>({ type: 'a', value: null });
+        expect(a).toEqual({ type: 'a', value: undefined });
+    }
 });
