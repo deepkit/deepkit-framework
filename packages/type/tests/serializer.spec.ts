@@ -1220,3 +1220,54 @@ test('union with optional property', () => {
         expect(a).toEqual({ type: 'a', value: undefined });
     }
 });
+
+test("parcel search input deserialization", async () => {
+    class GeoLocation {
+        locality?: string;
+        postalCode?: string;
+
+        hasCoords() {
+            return true;
+        }
+    }
+
+    interface AdTitleAndBasicAttributes {
+        title: string;
+        attributes: {
+            plotSurface?: number,
+            buildingSurface: number,
+            ges?: string,
+            energyRate?: string,
+        };
+        location: GeoLocation,
+    }
+
+    class ParcelSearchParams {
+        ad: AdTitleAndBasicAttributes | null = null;
+    }
+
+    const data: any = {
+        "ad": {
+            "title": "Maison 4 pièces 92 m²",
+            "attributes": {
+                "buildingSurface": 92,
+                "energyRate": "D",
+                "ges": "E"
+            },
+            "location": {
+                "locality": "Paris",
+                "postalCode": "75000"
+            }
+        }
+    } as any;
+
+    const location = cast<GeoLocation>(data.ad.location);
+    expect(location).toBeInstanceOf(GeoLocation);
+    expect(location.locality).toBe("Paris");
+
+    const search = cast<ParcelSearchParams>(data);
+    expect(search.ad).not.toBeUndefined();
+    expect(search.ad!.location).toBeInstanceOf(GeoLocation);
+    expect(search?.ad?.attributes?.buildingSurface).toBe(92);
+    expect(search?.ad?.location.hasCoords()).toBeTruthy();
+});

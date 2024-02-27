@@ -1339,6 +1339,11 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 
             if (member.name === 'constructor') continue;
 
+            if (state.target === 'deserialize' && (member.kind === ReflectionKind.method || member.kind === ReflectionKind.methodSignature)) {
+                // methods can not be part of serialized data, so we skip them.
+                continue;
+            }
+
             const readName = member.kind === ReflectionKind.methodSignature || member.kind === ReflectionKind.method
                 ? getNameExpression(member.name, state)
                 : getNameExpression(state.isDeserialization ? state.namingStrategy.getPropertyName(member, state.registry.serializer.name) : memberNameToString(member.name), state);

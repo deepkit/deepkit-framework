@@ -1733,7 +1733,8 @@ test('http body deep optional union', async () => {
         originalAd: AdTitleAndBasicAttributes | null = null;
         ad: AdTitleAndBasicAttributes | null = null;
 
-        constructor() {
+        hasAd() {
+            return !!this.ad;
         }
     }
 
