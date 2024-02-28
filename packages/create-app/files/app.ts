@@ -1,6 +1,6 @@
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
-import { Logger, JSONTransport } from '@deepkit/logger';
+import { JSONTransport, Logger } from '@deepkit/logger';
 
 import { HelloWorldControllerCli } from './src/controller/hello-world.cli';
 import { HelloWorldControllerHttp } from './src/controller/hello-world.http';
@@ -24,7 +24,7 @@ new App({
     .setup((module, config: AppConfig) => {
         if (config.environment === 'production') {
             //enable logging JSON messages instead of formatted strings
-            module.setupGlobalProvider<Logger>().setTransport([new JSONTransport]);
+            module.configureProvider<Logger>(v => v.setTransport([new JSONTransport]));
 
             //disable debugging
             module.getImportedModuleByClass(FrameworkModule).configure({debug: false});
