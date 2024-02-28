@@ -83,7 +83,7 @@ function createNoTypeError(classType: ClassType, method: string) {
 }
 
 function createNoObservableWarning(classType: ClassType, method: string) {
-    return new Error(`RPC action ${getClassName(classType)}.${method} returns an Observable, but no specific type (e.g. Observable<T>) or 'any | unknown' type is defined. This might lead to unexpected behavior and slow performance.`);
+    return `RPC action ${getClassName(classType)}.${method} returns an Observable, but no specific type (e.g. Observable<T>) or 'any | unknown' type is defined. This might lead to unexpected behavior and slow performance.`;
 }
 
 function createNoTypeWarning(classType: ClassType, method: string, value: any) {
