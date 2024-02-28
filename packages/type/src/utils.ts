@@ -11,8 +11,8 @@
 import { stringify, v4 } from 'uuid';
 
 export class NoTypeReceived extends Error {
-    constructor() {
-        super('No type information received. Is deepkit/type correctly installed?');
+    constructor(message: string = 'No type information received. Circular import or no runtime type available.') {
+        super(message);
     }
 }
 

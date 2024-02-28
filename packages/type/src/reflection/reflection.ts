@@ -50,7 +50,16 @@ import {
     TypePropertySignature,
     TypeTemplateLiteral,
 } from './type.js';
-import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isArray, isClass, isPrototypeOfBase, stringifyValueWithType } from '@deepkit/core';
+import {
+    AbstractClassType,
+    arrayRemoveItem,
+    ClassType,
+    getClassName,
+    isArray,
+    isClass,
+    isPrototypeOfBase,
+    stringifyValueWithType,
+} from '@deepkit/core';
 import { Packed, resolvePacked, resolveRuntimeType } from './processor.js';
 import { NoTypeReceived } from '../utils.js';
 import { findCommonLiteral } from '../inheritance.js';
@@ -85,7 +94,10 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
             //n! represents a simple inline: [Op.inline, 0]
             //P7! represents a class reference: [Op.Frame, Op.classReference, 0] (Op.Frame seems unnecessary)
             typeFn = (type as any)[0] as Function;
-            type = typeFn() as Packed | Type | ClassType | AbstractClassType | ReflectionClass<any>;
+            type = typeFn() as Packed | Type | ClassType | AbstractClassType | ReflectionClass<any> | undefined;
+            if (!type) {
+                throw new Error(`No type resolved for ${typeFn.toString()}. Circular import or no runtime type available.`);
+            }
         }
     }
 
