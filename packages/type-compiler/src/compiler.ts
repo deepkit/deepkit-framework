@@ -72,7 +72,6 @@ import type {
     TypeReferenceNode,
     UnionTypeNode,
 } from 'typescript';
-
 import ts from 'typescript';
 
 import {
@@ -614,7 +613,6 @@ export class ReflectionTransformer implements CustomTransformer {
         if (sourceFile.scriptKind !== ScriptKind.TS && sourceFile.scriptKind !== ScriptKind.TSX) return sourceFile;
 
         if ((sourceFile as any).deepkitTransformed) return sourceFile;
-        (sourceFile as any).deepkitTransformed = true;
         this.embedAssignType = false;
         this.addImports = [];
 
@@ -1041,6 +1039,7 @@ export class ReflectionTransformer implements CustomTransformer {
         // console.log(createPrinter().printNode(EmitHint.SourceFile, this.sourceFile, this.sourceFile));
         const took = Date.now() - start;
         debug(`Transform file with reflection=${reflection.mode} took ${took}ms (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`);
+        (this.sourceFile as any).deepkitTransformed = true;
         return this.sourceFile;
     }
 
@@ -2713,7 +2712,6 @@ export class DeclarationTransformer extends ReflectionTransformer {
 
     transformSourceFile(sourceFile: SourceFile): SourceFile {
         if ((sourceFile as any).deepkitDeclarationTransformed) return sourceFile;
-        (sourceFile as any).deepkitDeclarationTransformed = true;
 
         this.sourceFile = sourceFile;
         this.addExports = [];
@@ -2762,6 +2760,8 @@ export class DeclarationTransformer extends ReflectionTransformer {
 
             this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...this.sourceFile.statements, ...exports]);
         }
+
+        (this.sourceFile as any).deepkitDeclarationTransformed = true;
 
         return this.sourceFile;
     }
