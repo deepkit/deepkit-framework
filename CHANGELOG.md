@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.139](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.138...v1.0.1-alpha.139) (2024-02-29)
+
+### Bug Fixes
+
+- **create-app:** adjust example app to new API changes ([d2b1c26](https://github.com/deepkit/deepkit-framework/commit/d2b1c260d557ab46f2ad5b467927e7fd5e1a88cd))
+- **rpc:** only print warning text, not error ([ed8cfe7](https://github.com/deepkit/deepkit-framework/commit/ed8cfe7733a36b79a8802afec9280f74d51a6b1b))
+- **type-compiler:** mark the right SourceFile object as processed ([38cfdf0](https://github.com/deepkit/deepkit-framework/commit/38cfdf06910cfbd01755805022f97ed6afa8dd4d))
+- **type:** better error message when fast path type resolution fails due to undefined symbols ([0ef082d](https://github.com/deepkit/deepkit-framework/commit/0ef082d4b474b7d36d7668cf21ad8a9922469189))
+
 ## [1.0.1-alpha.138](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.137...v1.0.1-alpha.138) (2024-02-27)
 
 ### Bug Fixes
