@@ -1,5 +1,17 @@
 import { expect } from '@jest/globals';
-import { AutoIncrement, BackReference, cast, DatabaseField, entity, isReferenceInstance, PrimaryKey, Reference, Unique, uuid, UUID } from '@deepkit/type';
+import {
+    AutoIncrement,
+    BackReference,
+    cast,
+    DatabaseField,
+    entity,
+    isReferenceInstance,
+    PrimaryKey,
+    Reference,
+    Unique,
+    uuid,
+    UUID,
+} from '@deepkit/type';
 import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
 import { DatabaseFactory } from './test.js';
 import { hydrateEntity, isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
@@ -901,6 +913,50 @@ export const variousTests = {
                 .filter({doc: {$ne: undefined}}).orderBy('id').find();
             expect(items.length).toBe(1);
             expect(items[0]).toMatchObject({ id: 2, doc: { name: 'Peter2' } });
+        }
+    },
+    async remapName(databaseFactory: DatabaseFactory) {
+        @entity.name('map_name_user')
+        class User {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            group?: Group & Reference & DatabaseField<{name: 'group_id'}>;
+
+            constructor(public username: string) {}
+        }
+
+        @entity.name('map_name_group')
+        class Group {
+            id: number & PrimaryKey & AutoIncrement = 0;
+            constructor(public name: string) {}
+        }
+
+        const database = await databaseFactory([User, Group]);
+        {
+            const group1 = new Group('admin');
+            const group2 = new Group('users');
+            const user = new User('peter');
+            user.group = group1;
+            await database.persist(user, group1, group2);
+        }
+
+        {
+            const user = await database.query(User).joinWith('group').filter({username: 'peter'}).findOne();
+            expect(user.group).toMatchObject({name: 'admin'});
+            const userGroup = await database.query(Group).filter({name: 'users'}).findOne();
+            user.group = userGroup;
+            await database.persist(user);
+        }
+
+        {
+            const user = await database.query(User).joinWith('group').filter({username: 'peter'}).findOne();
+            expect(user.group).toMatchObject({name: 'users'});
+        }
+
+        {
+            const userGroup = await database.query(Group).filter({name: 'users'}).findOne();
+            const user = await database.query(User).joinWith('group').filter({group: userGroup}).findOne();
+            expect(user).toMatchObject({username: 'peter'});
+            expect(user.group).toMatchObject({name: 'users'});
         }
     }
 };

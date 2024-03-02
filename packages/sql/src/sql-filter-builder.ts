@@ -9,21 +9,32 @@
  */
 
 import { isArray, isPlainObject } from '@deepkit/core';
-import { isBackReferenceType, isReferenceType, ReflectionClass, ReflectionKind, resolvePath, Serializer, Type } from '@deepkit/type';
-import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-platform.js';
+import {
+    isBackReferenceType,
+    isReferenceType,
+    ReflectionClass,
+    ReflectionKind,
+    resolvePath,
+    Serializer,
+    Type,
+} from '@deepkit/type';
+import { SqlPlaceholderStrategy } from './platform/default-platform.js';
+import { getPreparedEntity, PreparedAdapter, PreparedEntity } from './prepare.js';
 
 type Filter = { [name: string]: any };
 
 export class SQLFilterBuilder {
     public params: any[] = [];
+    protected entity: PreparedEntity;
 
     constructor(
+        protected adapter: PreparedAdapter,
         protected schema: ReflectionClass<any>,
         protected tableName: string,
         protected serializer: Serializer,
         public placeholderStrategy: SqlPlaceholderStrategy,
-        protected platform: DefaultPlatform,
     ) {
+        this.entity = getPreparedEntity(adapter, schema);
     }
 
     isNull() {
@@ -69,7 +80,7 @@ export class SQLFilterBuilder {
     }
 
     protected quoteIdWithTable(id: string): string {
-        return `${this.platform.getColumnAccessor(this.tableName, id)}`;
+        return `${this.adapter.platform.getColumnAccessor(this.tableName, this.entity.fieldMap[id]?.columnName || id)}`;
     }
 
     requiresJson(type: Type): boolean {
@@ -117,7 +128,7 @@ export class SQLFilterBuilder {
                         for (let item of value) {
                             params.push(this.placeholderStrategy.getPlaceholder());
 
-                            if ((fieldName.includes('.') && this.platform.deepColumnAccessorRequiresJsonString()) || !isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property)) {
+                            if ((fieldName.includes('.') && this.adapter.platform.deepColumnAccessorRequiresJsonString()) || !isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property)) {
                                 item = JSON.stringify(item);
                             }
                             this.params.push(this.bindValue(item));
@@ -127,7 +138,7 @@ export class SQLFilterBuilder {
                 } else {
                     rvalue = this.placeholderStrategy.getPlaceholder();
 
-                    if ((fieldName.includes('.') && this.platform.deepColumnAccessorRequiresJsonString()) || !isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property)) {
+                    if ((fieldName.includes('.') && this.adapter.platform.deepColumnAccessorRequiresJsonString()) || !isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property)) {
                         value = JSON.stringify(value);
                     }
                     this.params.push(this.bindValue(value));
@@ -154,7 +165,7 @@ export class SQLFilterBuilder {
             if (i === '$and') return this.conditionsArray(filter[i], 'AND');
             if (i === '$not') return `NOT ` + this.conditionsArray(filter[i], 'AND');
 
-            if (i === '$exists') sql.push(this.platform.quoteValue(this.schema.hasProperty(i)));
+            if (i === '$exists') sql.push(this.adapter.platform.quoteValue(this.schema.hasProperty(i)));
             else if (i[0] === '$') sql.push(this.condition(fieldName, filter[i], i.substring(1)));
             else if (filter[i] instanceof RegExp) sql.push(this.condition(i, filter[i], 'regex'));
             else sql.push(this.condition(i, filter[i], 'eq'));

@@ -8,9 +8,18 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, getParentClass, indent, isArray, isClass } from '@deepkit/core';
+import {
+    AbstractClassType,
+    arrayRemoveItem,
+    ClassType,
+    getClassName,
+    getParentClass,
+    indent,
+    isArray,
+    isClass,
+} from '@deepkit/core';
 import { TypeNumberBrand } from '@deepkit/type-spec';
-import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection.js';
+import { getProperty, ReceiveType, reflect, ReflectionClass, toSignature } from './reflection.js';
 import { isExtendable } from './extends.js';
 import { state } from './state.js';
 import { resolveRuntimeType } from './processor.js';
@@ -1877,6 +1886,14 @@ export type Unique<Options extends IndexOptions = {}> = TypeAnnotation<'index', 
 export type Index<Options extends IndexOptions = {}> = TypeAnnotation<'index', Options>;
 
 export interface DatabaseFieldOptions {
+    /**
+     * The name of the column in the database.
+     * e.g. `userName: string & DatabaseField<{name: 'user_name'}>`
+     *
+     * Can alternatively also be configured by using a different NamingStrategy.
+     */
+    name?: string;
+
     /**
      *
      * e.g. `field: string & MySQL<{type: 'VARCHAR(255)'}>`

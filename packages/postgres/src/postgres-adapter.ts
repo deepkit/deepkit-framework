@@ -48,7 +48,16 @@ import type { Pool, PoolClient, PoolConfig } from 'pg';
 import pg from 'pg';
 import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
-import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, ReflectionKind, ReflectionProperty, resolvePath } from '@deepkit/type';
+import {
+    Changes,
+    getPatchSerializeFunction,
+    getSerializeFunction,
+    ReceiveType,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    resolvePath,
+} from '@deepkit/type';
 
 /**
  * Converts a specific database error to a more specific error, if possible.
@@ -307,7 +316,7 @@ export class PostgresPersistence extends SQLPersistence {
         }
 
         for (const i of prepared.changedFields) {
-            const col = this.platform.quoteIdentifier(i);
+            const col = entity.fieldMap[i].columnNameEscaped;
             const colChanged = '_changed_' + i;
             if (prepared.aggregateSelects[i]) {
                 const select: string[] = [];
@@ -332,7 +341,7 @@ export class PostgresPersistence extends SQLPersistence {
             }
         }
 
-        const escapedValuesNames = valuesNames.map(v => this.platform.quoteIdentifier(v));
+        const escapedValuesNames = valuesNames.map(v => entity.fieldMap[v].columnNameEscaped);
 
         const sql = `
               WITH _b(${prepared.originPkField}, ${escapedValuesNames.join(', ')}) AS (
@@ -407,7 +416,7 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
         const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
 
-        const sqlBuilder = new SqlBuilder(this.platform);
+        const sqlBuilder = new SqlBuilder(this.adapter);
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const select = sqlBuilder.select(this.classSchema, model, { select: [`${tableName}.${pkField}`] });
 
@@ -513,7 +522,7 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
             }
         }
 
-        const sqlBuilder = new SqlBuilder(this.platform, selectParams);
+        const sqlBuilder = new SqlBuilder(this.adapter, selectParams);
         const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
 
         const sql = `
@@ -556,7 +565,7 @@ export class PostgresSQLDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQu
 export class PostgresSQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
     createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): PostgresSQLDatabaseQuery<T> {
         return new PostgresSQLDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
-            new PostgresSQLQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession),
+            new PostgresSQLQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession.adapter, this.databaseSession),
         );
     }
 }

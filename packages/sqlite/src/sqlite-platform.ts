@@ -13,6 +13,7 @@ import {
     DefaultPlatform,
     ForeignKey,
     isSet,
+    PreparedAdapter,
     Sql,
     Table,
     TableDiff,
@@ -21,7 +22,17 @@ import {
     typeResolvesToNumber,
     typeResolvesToString,
 } from '@deepkit/sql';
-import { isDateType, isIntegerType, isMapType, isSetType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
+import {
+    isDateType,
+    isMapType,
+    isSetType,
+    isUUIDType,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    Serializer,
+    Type,
+} from '@deepkit/type';
 import { SQLiteSchemaParser } from './sqlite-schema-parser.js';
 import { sqliteSerializer } from './sqlite-serializer.js';
 import { SQLiteFilterBuilder } from './sql-filter-builder.sqlite.js';
@@ -38,7 +49,8 @@ export function isJsonLike(type: Type): boolean {
 
 export class SQLitePlatform extends DefaultPlatform {
     protected override defaultSqlType = 'text';
-    protected override annotationId = 'sqlite';
+    public override annotationId = 'sqlite';
+
     override schemaParserType = SQLiteSchemaParser;
     protected override defaultNowExpression = `(datetime('now'))`;
 
@@ -73,8 +85,8 @@ export class SQLitePlatform extends DefaultPlatform {
         super.applyLimitAndOffset(sql, limit, offset);
     }
 
-    createSqlFilterBuilder(schema: ReflectionClass<any>, tableName: string): SQLiteFilterBuilder {
-        return new SQLiteFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this);
+    createSqlFilterBuilder(adapter: PreparedAdapter, schema: ReflectionClass<any>, tableName: string): SQLiteFilterBuilder {
+        return new SQLiteFilterBuilder(adapter, schema, tableName, this.serializer, new this.placeholderStrategy);
     }
 
     getDeepColumnAccessor(table: string, column: string, path: string) {

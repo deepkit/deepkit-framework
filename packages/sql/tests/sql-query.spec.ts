@@ -7,6 +7,7 @@ import { DefaultPlatform, SqlPlaceholderStrategy } from '../src/platform/default
 import { SchemaParser } from '../src/reverse/schema-parser.js';
 import { DatabaseModel } from '../src/schema/table.js';
 import { SqlBuilder } from '../src/sql-builder.js';
+import { PreparedAdapter } from '../src/prepare.js';
 
 function quoteId(value: string): string {
     return value;
@@ -24,6 +25,12 @@ class MyPlatform extends DefaultPlatform {
         super();
         this.addType(ReflectionKind.number, 'integer');
     }
+}
+
+const adapter: PreparedAdapter = {
+    getName: () => 'adapter',
+    platform: new MyPlatform(),
+    preparedEntities: new Map<ReflectionClass<any>, any>(),
 }
 
 test('splitDotPath', () => {
@@ -48,19 +55,19 @@ test('sql query', () => {
 test('select', () => {
     @entity.name('user-select')
     class User {
-        id: number = 0;
+        id: number & PrimaryKey = 0;
         username!: string;
     }
 
     {
-        const builder = new SqlBuilder(new MyPlatform());
+        const builder = new SqlBuilder(adapter);
         const model = new SQLQueryModel();
         const builtSQL = builder.select(ReflectionClass.from(User), model);
         expect(builtSQL.sql).toBe(`SELECT "user-select"."id", "user-select"."username" FROM "user-select"`);
     }
 
     {
-        const builder = new SqlBuilder(new MyPlatform());
+        const builder = new SqlBuilder(adapter);
         const model = new SQLQueryModel();
         model.sqlSelect = sql`count(*) as count`;
         const builtSQL = builder.select(ReflectionClass.from(User), model);
@@ -77,7 +84,7 @@ test('skip property', () => {
         anotherone: any & DatabaseField<{ skipMigration: true }> = '';
     }
 
-    const builder = new SqlBuilder(new MyPlatform());
+    const builder = new SqlBuilder(adapter);
     const model = new SQLQueryModel();
     model.adapterName = 'mongo';
     const builtSQL = builder.select(ReflectionClass.from(Entity), model);

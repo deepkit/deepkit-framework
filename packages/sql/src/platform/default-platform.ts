@@ -8,16 +8,36 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Column, ColumnDiff, DatabaseDiff, DatabaseModel, ForeignKey, IndexModel, Table, TableDiff } from '../schema/table.js';
+import {
+    Column,
+    ColumnDiff,
+    DatabaseDiff,
+    DatabaseModel,
+    ForeignKey,
+    IndexModel,
+    Table,
+    TableDiff,
+} from '../schema/table.js';
 import sqlstring from 'sqlstring';
 import { ClassType, isArray, isObject } from '@deepkit/core';
 import { sqlSerializer } from '../serializer/sql-serializer.js';
 import { parseType, SchemaParser } from '../reverse/schema-parser.js';
 import { SQLFilterBuilder } from '../sql-filter-builder.js';
 import { Sql } from '../sql-builder.js';
-import { binaryTypes, databaseAnnotation, isCustomTypeClass, isIntegerType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
+import {
+    binaryTypes,
+    databaseAnnotation,
+    isCustomTypeClass,
+    isIntegerType,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    Serializer,
+    Type,
+} from '@deepkit/type';
 import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
 import { splitDotPath } from '../sql-adapter.js';
+import { PreparedAdapter } from '../prepare.js';
 
 export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
@@ -83,14 +103,16 @@ export function noopSqlTypeCaster(placeholder: string): string {
 }
 
 export interface NamingStrategy {
-    getColumnName(property: ReflectionProperty): string;
+    getColumnName(property: ReflectionProperty, databaseAdapterAnnotationId: string): string;
 
     getTableName(reflectionClass: ReflectionClass<any>): string;
 }
 
 export class DefaultNamingStrategy implements NamingStrategy {
-    getColumnName(property: ReflectionProperty): string {
-        return property.getNameAsString();
+    getColumnName(property: ReflectionProperty, databaseAdapterAnnotationId: string): string {
+        const dbOptions = databaseAnnotation.getDatabase(property.type, databaseAdapterAnnotationId) || {};
+
+        return dbOptions?.name || property.getNameAsString();
     }
 
     getTableName(reflectionClass: ReflectionClass<any>): string {
@@ -128,7 +150,8 @@ export abstract class DefaultPlatform {
     /**
      * The ID used in annotation to get database related type information (like `type`, `default`, `defaultExpr`, ...) via databaseAnnotation.getDatabase.
      */
-    protected annotationId = '*';
+    public annotationId = '*';
+
     protected typeMapping = new Map<ReflectionKind | TypeMappingChecker, TypeMapping>();
     protected nativeTypeInformation = new Map<string, Partial<NativeTypeInformation>>();
 
@@ -143,8 +166,8 @@ export abstract class DefaultPlatform {
         if (offset) sql.append('OFFSET ' + this.quoteValue(offset));
     }
 
-    createSqlFilterBuilder(reflectionClass: ReflectionClass<any>, tableName: string): SQLFilterBuilder {
-        return new SQLFilterBuilder(reflectionClass, tableName, this.serializer, new this.placeholderStrategy, this);
+    createSqlFilterBuilder(adapter: PreparedAdapter, reflectionClass: ReflectionClass<any>, tableName: string): SQLFilterBuilder {
+        return new SQLFilterBuilder(adapter, reflectionClass, tableName, this.serializer, new this.placeholderStrategy);
     }
 
     getMigrationTableName() {
@@ -157,7 +180,7 @@ export abstract class DefaultPlatform {
     }
 
     getAggregateSelect(tableName: string, property: ReflectionProperty, func: string) {
-        return `${func}(${tableName}.${this.quoteIdentifier(property.getNameAsString())})`;
+        return `${func}(${tableName}.${this.quoteIdentifier(this.namingStrategy.getColumnName(property, this.annotationId))})`;
     }
 
     addBinaryType(sqlType: string, size?: number, scale?: number) {
@@ -360,7 +383,7 @@ export abstract class DefaultPlatform {
                 if (property.isBackReference()) continue;
                 if (property.isDatabaseMigrationSkipped(database.adapterName)) continue;
 
-                const column = table.addColumn(this.namingStrategy.getColumnName(property), property);
+                const column = table.addColumn(this.namingStrategy.getColumnName(property, this.annotationId), property);
                 const dbOptions = databaseAnnotation.getDatabase(property.type, this.annotationId) || {};
 
                 if (!property.isAutoIncrement()) {
@@ -398,7 +421,7 @@ export abstract class DefaultPlatform {
                     throw new Error(`Referenced entity ${foreignSchema.getClassName()} from ${schema.getClassName()}.${property.getNameAsString()} is not available`);
                 }
                 const foreignKey = table.addForeignKey('', foreignTable);
-                foreignKey.localColumns = [table.getColumn(property.getNameAsString())];
+                foreignKey.localColumns = [table.getColumn(this.namingStrategy.getColumnName(property, this.annotationId))];
                 foreignKey.foreignColumns = foreignTable.getPrimaryKeys();
                 if (reference.onDelete) foreignKey.onDelete = reference.onDelete;
                 if (reference.onUpdate) foreignKey.onUpdate = reference.onUpdate;

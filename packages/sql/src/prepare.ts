@@ -1,5 +1,5 @@
 import { ReflectionClass, resolvePath, resolveProperty, Type, TypeClass, TypeObjectLiteral } from '@deepkit/type';
-import type { SQLDatabaseAdapter } from './sql-adapter.js';
+import { DefaultPlatform } from './platform/default-platform.js';
 
 export type SqlTypeCast = (placeholder: string) => string;
 
@@ -18,7 +18,7 @@ export interface PreparedField {
 }
 
 export interface PreparedEntity {
-    adapter: SQLDatabaseAdapter;
+    platform: DefaultPlatform,
     type: TypeClass | TypeObjectLiteral;
     name: string;
     tableName: string;
@@ -30,7 +30,13 @@ export interface PreparedEntity {
     sqlTypeCaster: { [path: string]: SqlTypeCast };
 }
 
-export function getPreparedEntity(adapter: SQLDatabaseAdapter, entity: ReflectionClass<any>): PreparedEntity {
+export interface PreparedAdapter {
+    getName(): string;
+    platform: DefaultPlatform;
+    preparedEntities: Map<ReflectionClass<any>, PreparedEntity>;
+}
+
+export function getPreparedEntity(adapter: PreparedAdapter, entity: ReflectionClass<any>): PreparedEntity {
     let prepared = adapter.preparedEntities.get(entity);
     if (prepared) return prepared;
 
@@ -47,7 +53,7 @@ export function getPreparedEntity(adapter: SQLDatabaseAdapter, entity: Reflectio
         if (property.isBackReference()) continue;
         if (property.isDatabaseSkipped(adapter.getName())) continue;
 
-        const columnName = adapter.platform.namingStrategy.getColumnName(property);
+        const columnName = adapter.platform.namingStrategy.getColumnName(property, adapter.platform.annotationId);
         const columnNameEscaped = adapter.platform.quoteIdentifier(columnName);
         const columnEscapedWithTable = `${tableNameEscaped}.${columnNameEscaped}`;
         const type = property.type;
@@ -72,7 +78,7 @@ export function getPreparedEntity(adapter: SQLDatabaseAdapter, entity: Reflectio
 
     if (!primaryKey) throw new Error(`No primary key defined for ${name}.`);
 
-    prepared = { adapter, type, primaryKey, name, tableName, tableNameEscaped, fieldMap, fields, sqlTypeCaster };
+    prepared = { platform: adapter.platform, type, primaryKey, name, tableName, tableNameEscaped, fieldMap, fields, sqlTypeCaster };
     adapter.preparedEntities.set(entity, prepared);
     return prepared;
 }
@@ -81,5 +87,5 @@ export function getDeepTypeCaster(entity: PreparedEntity, path: string) {
     if (entity.sqlTypeCaster[path]) return entity.sqlTypeCaster[path];
 
     const forType = resolveProperty(resolvePath(path, entity.type));
-    return entity.sqlTypeCaster[path] = entity.adapter.platform.getSqlTypeCaster(forType);
+    return entity.sqlTypeCaster[path] = entity.platform.getSqlTypeCaster(forType);
 }

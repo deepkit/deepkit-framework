@@ -13,6 +13,7 @@ import { DefaultPlatform, SqlPlaceholderStrategy } from './platform/default-plat
 import { getPrimaryKeyHashGenerator, ReflectionClass, ReflectionProperty } from '@deepkit/type';
 import { DatabaseJoinModel, DatabaseQueryModel, OrmEntity } from '@deepkit/orm';
 import { getSqlFilter } from './filter.js';
+import { getPreparedEntity, PreparedAdapter } from './prepare.js';
 
 type ConvertedData = { hash: string, item: { [name: string]: any }, joined: { [name: string]: any }[] };
 type ConvertDataToDict = (row: any) => ConvertedData | undefined;
@@ -42,9 +43,11 @@ export class SqlBuilder {
     protected placeholderStrategy: SqlPlaceholderStrategy;
 
     public rootConverter?: ConvertDataToDict;
+    protected platform: DefaultPlatform;
 
-    constructor(protected platform: DefaultPlatform, public params: string[] = []) {
-        this.placeholderStrategy = new platform.placeholderStrategy();
+    constructor(protected adapter: PreparedAdapter, public params: string[] = []) {
+        this.platform = adapter.platform;
+        this.placeholderStrategy = new this.platform.placeholderStrategy();
         this.placeholderStrategy.offset = this.params.length;
     }
 
@@ -57,7 +60,7 @@ export class SqlBuilder {
 
         if (model.filter) {
             const filter = getSqlFilter(schema, model.filter, model.parameters, this.platform.serializer);
-            const builder = this.platform.createSqlFilterBuilder(schema, tableName);
+            const builder = this.platform.createSqlFilterBuilder(this.adapter, schema, tableName);
             builder.placeholderStrategy = placeholderStrategy;
             whereClause = builder.convert(filter);
             whereParams = builder.params;
@@ -84,7 +87,7 @@ export class SqlBuilder {
         if (!model.having) return;
 
         const filter = getSqlFilter(schema, model.having, model.parameters, this.platform.serializer);
-        const builder = this.platform.createSqlFilterBuilder(schema, tableName);
+        const builder = this.platform.createSqlFilterBuilder(this.adapter, schema, tableName);
         builder.placeholderStrategy.offset = sql.params.length;
         const whereClause = builder.convert(filter);
 
@@ -98,11 +101,12 @@ export class SqlBuilder {
     protected selectColumns(schema: ReflectionClass<any>, model: SQLQueryModel<any>) {
         const tableName = this.platform.getTableIdentifier(schema);
         const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();
+        const prepared = getPreparedEntity(this.adapter, schema);
 
         if (model.aggregate.size || model.groupBy.size || model.sqlSelect) {
             //we select only what is aggregated
             for (const name of model.groupBy.values()) {
-                this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(name));
+                this.sqlSelect.push(tableName + '.' + prepared.fieldMap[name]?.columnNameEscaped || this.platform.quoteIdentifier(name));
             }
             for (const [as, a] of model.aggregate.entries()) {
                 if (a.property.isBackReference()) continue;
@@ -121,17 +125,16 @@ export class SqlBuilder {
                 if (property.isDatabaseSkipped(model.adapterName)) continue;
                 if (model.isLazyLoaded(property.name)) continue;
 
-                this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(property.name));
+                this.sqlSelect.push(tableName + '.' + prepared.fieldMap[property.name].columnNameEscaped);
             }
         }
     }
 
     protected selectColumnsWithJoins(schema: ReflectionClass<any>, model: SQLQueryModel<any>, refName: string = '') {
         const result: { startIndex: number, fields: ReflectionProperty[] } = { startIndex: this.sqlSelect.length, fields: [] };
-
         const properties = model.select.size ? [...model.select.values()].map(name => schema.getProperty(name)) : schema.getProperties();
-        const tableName = this.platform.getTableIdentifier(schema);
         if (model.select.size && !model.select.has(schema.getPrimary().name)) properties.unshift(schema.getPrimary());
+        const prepared = getPreparedEntity(this.adapter, schema);
 
         for (const property of properties) {
             if (property.isBackReference()) continue;
@@ -142,9 +145,9 @@ export class SqlBuilder {
             const as = this.platform.quoteIdentifier(this.sqlSelect.length + '');
 
             if (refName) {
-                this.sqlSelect.push(this.platform.quoteIdentifier(refName) + '.' + this.platform.quoteIdentifier(property.name) + ' AS ' + as);
+                this.sqlSelect.push(this.platform.quoteIdentifier(refName) + '.' + prepared.fieldMap[property.name].columnNameEscaped + ' AS ' + as);
             } else {
-                this.sqlSelect.push(tableName + '.' + this.platform.quoteIdentifier(property.name) + ' AS ' + as);
+                this.sqlSelect.push(prepared.tableNameEscaped + '.' + prepared.fieldMap[property.name].columnNameEscaped + ' AS ' + as);
             }
         }
 
@@ -265,6 +268,9 @@ export class SqlBuilder {
         if (!model.joins.length) return;
 
         for (const join of model.joins) {
+            const originPrepared = getPreparedEntity(this.adapter, join.classSchema);
+            const joinPrepared = getPreparedEntity(this.adapter, join.query.classSchema);
+
             const tableName = this.platform.getTableIdentifier(join.query.classSchema);
             const joinName = this.platform.quoteIdentifier(prefix + '__' + join.propertySchema.name);
 
@@ -290,15 +296,19 @@ export class SqlBuilder {
 
                 const pivotName = this.platform.quoteIdentifier(prefix + '__p_' + join.propertySchema.name);
 
+                const pivotLeftPrepared = getPreparedEntity(this.adapter, pivotToRight.reflectionClass);
+
                 //first pivot table
                 sql.append(`${join.type.toUpperCase()} JOIN ${pivotTableName} AS ${pivotName} ON (`);
-                sql.append(`${pivotName}.${this.platform.quoteIdentifier(pivotToLeft.name)} = ${parentName}.${this.platform.quoteIdentifier(join.classSchema.getPrimary().name)}`);
+                sql.append(`${pivotName}.${pivotLeftPrepared.fieldMap[pivotToLeft.name].columnNameEscaped} = ${parentName}.${originPrepared.fieldMap[originPrepared.primaryKey.name].columnNameEscaped}`);
 
                 sql.append(`)`);
 
+                const pivotRightPrepared = getPreparedEntity(this.adapter, pivotToRight.reflectionClass);
+
                 //then right table
                 sql.append(`${join.type.toUpperCase()} JOIN ${tableName} AS ${joinName} ON (`);
-                sql.append(`${pivotName}.${this.platform.quoteIdentifier(pivotToRight.name)} = ${joinName}.${this.platform.quoteIdentifier(join.query.classSchema.getPrimary().name)}`);
+                sql.append(`${pivotName}.${pivotRightPrepared.fieldMap[pivotToRight.name].columnNameEscaped} = ${joinName}.${joinPrepared.fieldMap[joinPrepared.primaryKey.name].columnNameEscaped}`);
                 this.appendWhereSQL(sql, join.query.classSchema, join.query.model, joinName, 'AND');
                 sql.append(`)`);
 
@@ -314,9 +324,11 @@ export class SqlBuilder {
                     join.classSchema.getClassType(),
                     join.propertySchema,
                 );
-                sql.append(`${parentName}.${this.platform.quoteIdentifier(join.classSchema.getPrimary().name)} = ${joinName}.${this.platform.quoteIdentifier(backReference.name)}`);
+                const backPrepared = getPreparedEntity(this.adapter, backReference.reflectionClass);
+
+                sql.append(`${parentName}.${originPrepared.fieldMap[originPrepared.primaryKey.name].columnNameEscaped} = ${joinName}.${backPrepared.fieldMap[backReference.name].columnNameEscaped}`);
             } else {
-                sql.append(`${parentName}.${this.platform.quoteIdentifier(join.propertySchema.name)} = ${joinName}.${this.platform.quoteIdentifier(join.foreignPrimaryKey.name)}`);
+                sql.append(`${parentName}.${originPrepared.fieldMap[join.propertySchema.name].columnNameEscaped} = ${joinName}.${joinPrepared.fieldMap[joinPrepared.primaryKey.name].columnNameEscaped}`);
             }
             this.appendWhereSQL(sql, join.query.classSchema, join.query.model, joinName, 'AND');
 
@@ -326,10 +338,11 @@ export class SqlBuilder {
         }
     }
 
-    protected applyOrder(order: string[], model: SQLQueryModel<any>, tableName: string = '') {
+    protected applyOrder(order: string[], schema: ReflectionClass<any>, model: SQLQueryModel<any>, tableName: string = '') {
         if (model.sort) {
+            const prepared = getPreparedEntity(this.adapter, schema);
             for (const [name, sort] of Object.entries(model.sort)) {
-                order.push(`${tableName}.${this.platform.quoteIdentifier(name)} ${sort}`);
+                order.push(`${tableName}.${prepared.fieldMap[name]?.columnNameEscaped || this.platform.quoteIdentifier(name)} ${sort}`);
             }
         }
     }
@@ -357,7 +370,7 @@ export class SqlBuilder {
             sql.append(`(SELECT * FROM ${tableName}`);
             this.appendWhereSQL(sql, schema, model);
             const order: string[] = [];
-            this.applyOrder(order, model, tableName);
+            this.applyOrder(order, schema, model, tableName);
             if (order.length) sql.append(' ORDER BY ' + (order.join(', ')));
             this.platform.applyLimitAndOffset(sql, model.limit, model.skip);
             sql.append(`) as ${tableName}`);
@@ -370,8 +383,9 @@ export class SqlBuilder {
 
         if (model.groupBy.size) {
             const groupBy: string[] = [];
+            const prepared = getPreparedEntity(this.adapter, schema);
             for (const g of model.groupBy.values()) {
-                groupBy.push(`${tableName}.${this.platform.quoteIdentifier(g)}`);
+                groupBy.push(`${tableName}.${prepared.fieldMap[g]?.columnNameEscaped || this.platform.quoteIdentifier(g)}`);
             }
 
             sql.append('GROUP BY ' + groupBy.join(', '));
@@ -382,13 +396,14 @@ export class SqlBuilder {
         const order: string[] = [];
         if (!needsSubSelect) {
             //ORDER BY are handled as normal
-            this.applyOrder(order, model, tableName);
+            this.applyOrder(order, schema, model, tableName);
         }
 
         for (const join of this.joins) {
             if (!join.join.query.model.sort) continue;
+            const prepared = getPreparedEntity(this.adapter, join.join.query.classSchema);
             for (const [name, sort] of Object.entries(join.join.query.model.sort)) {
-                order.push(`${join.join.as}.${this.platform.quoteIdentifier(name)} ${sort}`);
+                order.push(`${join.join.as}.${prepared.fieldMap[name]?.columnNameEscaped || this.platform.quoteIdentifier(name)} ${sort}`);
             }
         }
         if (order.length) sql.append(' ORDER BY ' + (order.join(', ')));
@@ -401,13 +416,13 @@ export class SqlBuilder {
     }
 
     public update<T extends OrmEntity>(schema: ReflectionClass<any>, model: SQLQueryModel<T>, set: string[]): Sql {
-        const tableName = this.platform.getTableIdentifier(schema);
+        const prepared = getPreparedEntity(this.adapter, schema);
         const primaryKey = schema.getPrimary();
-        const select = this.select(schema, model, { select: [`${tableName}.${primaryKey.name}`] });
+        const select = this.select(schema, model, { select: [`${prepared.tableNameEscaped}.${prepared.fieldMap[primaryKey.name].columnNameEscaped}`] });
 
-        return new Sql(`UPDATE ${tableName}
+        return new Sql(`UPDATE ${prepared.tableNameEscaped}
                         SET ${set.join(', ')}
-                        WHERE ${this.platform.quoteIdentifier(primaryKey.name)} IN (SELECT * FROM (${select.sql}) as __)`, select.params);
+                        WHERE ${prepared.fieldMap[primaryKey.name].columnNameEscaped} IN (SELECT * FROM (${select.sql}) as __)`, select.params);
     }
 
     public select(

@@ -202,6 +202,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
         protected connectionPool: SQLConnectionPool,
         protected platform: DefaultPlatform,
         classSchema: ReflectionClass<T>,
+        protected adapter: SQLDatabaseAdapter,
         session: DatabaseSession<DatabaseAdapter>,
     ) {
         super(classSchema, session);
@@ -230,7 +231,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
 
     async count(model: SQLQueryModel<T>): Promise<number> {
         const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
-        const sqlBuilder = new SqlBuilder(this.platform);
+        const sqlBuilder = new SqlBuilder(this.adapter);
         const sql = sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
@@ -254,7 +255,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
         if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
 
         const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
-        const sqlBuilder = new SqlBuilder(this.platform);
+        const sqlBuilder = new SqlBuilder(this.adapter);
         const sql = sqlBuilder.build(this.classSchema, model, 'DELETE');
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
@@ -277,7 +278,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
 
     async find(model: SQLQueryModel<T>): Promise<T[]> {
         const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
-        const sqlBuilder = new SqlBuilder(this.platform);
+        const sqlBuilder = new SqlBuilder(this.adapter);
         const sql = sqlBuilder.select(this.classSchema, model);
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
@@ -330,7 +331,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
 
         const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const set = buildSetFromChanges(this.platform, this.classSchema, changes);
-        const sqlBuilder = new SqlBuilder(this.platform);
+        const sqlBuilder = new SqlBuilder(this.adapter);
         const sql = sqlBuilder.update(this.classSchema, model, set);
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
@@ -478,7 +479,7 @@ export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
 
     createQuery<T extends OrmEntity>(classType: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): SQLDatabaseQuery<T> {
         return new SQLDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,
-            new SQLQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession),
+            new SQLQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession.adapter, this.databaseSession),
         );
     }
 }
@@ -638,7 +639,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
     }
 
     createSelectSql(query: Query<any>): Sql {
-        const sqlBuilder = new SqlBuilder(this.platform);
+        const sqlBuilder = new SqlBuilder(this);
         return sqlBuilder.select(query.classSchema, query.model as any);
     }
 
@@ -942,7 +943,8 @@ export function prepareBatchUpdate(
                 if (!values[fieldName]) {
                     values[fieldName] = [];
                     valuesSet[fieldName] = [];
-                    setNames.push((options.setNamesWithTableName ? tableName + '.' : '') + `${platform.quoteIdentifier(fieldName)} = _b.${platform.quoteIdentifier(fieldName)}`);
+
+                    setNames.push((options.setNamesWithTableName ? tableName + '.' : '') + `${entity.fieldMap[fieldName].columnNameEscaped} = _b.${entity.fieldMap[fieldName].columnNameEscaped}`);
                 }
             }
         }

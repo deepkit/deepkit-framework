@@ -43,7 +43,14 @@ import {
     UniqueConstraintFailure,
 } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform.js';
-import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
+import {
+    Changes,
+    getPatchSerializeFunction,
+    getSerializeFunction,
+    ReceiveType,
+    ReflectionClass,
+    resolvePath,
+} from '@deepkit/type';
 import { AbstractClassType, asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 
@@ -269,7 +276,7 @@ export class MySQLPersistence extends SQLPersistence {
         const valuesNames: string[] = [];
         const valuesSetNames: string[] = [];
         for (const fieldName of prepared.changedFields) {
-            valuesNames.push(fieldName);
+            valuesNames.push(entity.fieldMap[fieldName].columnNameEscaped);
             valuesSetNames.push('_changed_' + fieldName);
         }
 
@@ -292,7 +299,7 @@ export class MySQLPersistence extends SQLPersistence {
         }
 
         for (const i of prepared.changedFields) {
-            const col = this.platform.quoteIdentifier(i);
+            const col = entity.fieldMap[i].columnNameEscaped;
             const colChanged = this.platform.quoteIdentifier('_changed_' + i);
             if (prepared.aggregateSelects[i]) {
                 const select: string[] = [];
@@ -404,7 +411,7 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
         const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
 
-        const sqlBuilder = new SqlBuilder(this.platform);
+        const sqlBuilder = new SqlBuilder(this.adapter);
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const select = sqlBuilder.select(this.classSchema, model, { select: [`${tableName}.${pkField}`] });
 
@@ -509,7 +516,7 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
             `;
         const selectVarsSQL = `SELECT ${selectVars.join(', ')};`;
 
-        const sqlBuilder = new SqlBuilder(this.platform, selectParams);
+        const sqlBuilder = new SqlBuilder(this.adapter, selectParams);
         const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
 
         const params = selectSQL.params;
@@ -551,7 +558,7 @@ export class MySQLDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T>
 export class MySQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
     createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): MySQLDatabaseQuery<T> {
         return new MySQLDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
-            new MySQLQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession),
+            new MySQLQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession.adapter, this.databaseSession),
         );
     }
 }

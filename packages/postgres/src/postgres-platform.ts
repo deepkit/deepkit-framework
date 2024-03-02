@@ -14,6 +14,7 @@ import {
     DefaultPlatform,
     IndexModel,
     isSet,
+    PreparedAdapter,
     SqlPlaceholderStrategy,
     Table,
     typeResolvesToBigInt,
@@ -23,7 +24,17 @@ import {
     typeResolvesToString,
 } from '@deepkit/sql';
 import { postgresSerializer } from './postgres-serializer.js';
-import { isDateType, isReferenceType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type, TypeNumberBrand } from '@deepkit/type';
+import {
+    isDateType,
+    isReferenceType,
+    isUUIDType,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    Serializer,
+    Type,
+    TypeNumberBrand,
+} from '@deepkit/type';
 import { PostgresSchemaParser } from './postgres-schema-parser.js';
 import { PostgreSQLFilterBuilder } from './sql-filter-builder.js';
 import { isArray, isObject } from '@deepkit/core';
@@ -67,7 +78,8 @@ export class PostgresPlaceholderStrategy extends SqlPlaceholderStrategy {
 
 export class PostgresPlatform extends DefaultPlatform {
     protected override defaultSqlType = 'text';
-    protected override annotationId = 'postgres';
+    public override annotationId = 'postgres';
+
     protected override defaultNowExpression = `now()`;
     public override readonly serializer: Serializer = postgresSerializer;
     override schemaParserType = PostgresSchemaParser;
@@ -118,8 +130,8 @@ export class PostgresPlatform extends DefaultPlatform {
         return super.getAggregateSelect(tableName, property, func);
     }
 
-    override createSqlFilterBuilder(schema: ReflectionClass<any>, tableName: string): PostgreSQLFilterBuilder {
-        return new PostgreSQLFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this);
+    override createSqlFilterBuilder(adapter: PreparedAdapter, schema: ReflectionClass<any>, tableName: string): PostgreSQLFilterBuilder {
+        return new PostgreSQLFilterBuilder(adapter, schema, tableName, this.serializer, new this.placeholderStrategy);
     }
 
     override getDeepColumnAccessor(table: string, column: string, path: string) {

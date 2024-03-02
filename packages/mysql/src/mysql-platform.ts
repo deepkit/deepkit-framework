@@ -10,13 +10,24 @@
 
 import { Pool } from 'mariadb';
 import { mySqlSerializer } from './mysql-serializer.js';
-import { isDateType, isReferenceType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type, TypeNumberBrand } from '@deepkit/type';
+import {
+    isDateType,
+    isReferenceType,
+    isUUIDType,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    Serializer,
+    Type,
+    TypeNumberBrand,
+} from '@deepkit/type';
 import {
     Column,
     DefaultPlatform,
     IndexModel,
     isSet,
     noopSqlTypeCaster,
+    PreparedAdapter,
     typeResolvesToBigInt,
     typeResolvesToBoolean,
     typeResolvesToInteger,
@@ -32,7 +43,8 @@ export function mysqlJsonTypeCaster(placeholder: string): string {
 
 export class MySQLPlatform extends DefaultPlatform {
     protected override defaultSqlType = 'longtext';
-    protected override annotationId = 'mysql';
+    public override annotationId = 'mysql';
+
     protected override defaultNowExpression = 'now()';
     override schemaParserType = MysqlSchemaParser;
 
@@ -72,8 +84,8 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addBinaryType('longblob');
     }
 
-    override createSqlFilterBuilder(schema: ReflectionClass<any>, tableName: string): MySQLSQLFilterBuilder {
-        return new MySQLSQLFilterBuilder(schema, tableName, this.serializer, new this.placeholderStrategy, this);
+    override createSqlFilterBuilder(adapter: PreparedAdapter, schema: ReflectionClass<any>, tableName: string): MySQLSQLFilterBuilder {
+        return new MySQLSQLFilterBuilder(adapter, schema, tableName, this.serializer, new this.placeholderStrategy);
     }
 
     override getSqlTypeCaster(type: Type): (placeholder: string) => string {

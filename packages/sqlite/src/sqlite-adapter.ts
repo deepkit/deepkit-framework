@@ -10,7 +10,6 @@
 
 import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';
 import {
-    DatabaseAdapter,
     DatabaseDeleteError,
     DatabaseError,
     DatabaseLogger,
@@ -43,7 +42,14 @@ import {
     SQLQueryResolver,
     SQLStatement,
 } from '@deepkit/sql';
-import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
+import {
+    Changes,
+    getPatchSerializeFunction,
+    getSerializeFunction,
+    ReceiveType,
+    ReflectionClass,
+    resolvePath,
+} from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
 import { SQLitePlatform } from './sqlite-platform.js';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
@@ -322,7 +328,7 @@ export class SQLitePersistence extends SQLPersistence {
         for (const fieldName of prepared.changedFields) {
             const index = j++;
             valuesNames.push(fieldName);
-            _rename.push(`column${index} as ${this.platform.quoteIdentifier(fieldName)}`);
+            _rename.push(`column${index} as ${entity.fieldMap[fieldName].columnNameEscaped}`);
             _renameSet.push(`column${index} as _changed_${fieldName}`);
             valuesSetNames.push('_changed_' + fieldName);
         }
@@ -346,7 +352,7 @@ export class SQLitePersistence extends SQLPersistence {
         }
 
         for (const i of prepared.changedFields) {
-            const col = this.platform.quoteIdentifier(i);
+            const col = entity.fieldMap[i].columnNameEscaped;
             const colChanged = this.platform.quoteIdentifier('_changed_' + i);
             if (prepared.aggregateSelects[i]) {
                 const select: string[] = [];
@@ -431,8 +437,8 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         protected connectionPool: SQLiteConnectionPool,
         protected platform: DefaultPlatform,
         classSchema: ReflectionClass<T>,
-        session: DatabaseSession<DatabaseAdapter>) {
-        super(connectionPool, platform, classSchema, session);
+        session: DatabaseSession<SQLDatabaseAdapter>) {
+        super(connectionPool, platform, classSchema, session.adapter, session);
     }
 
     override handleSpecificError(error: Error): Error {
@@ -445,7 +451,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         const primaryKey = this.classSchema.getPrimary();
         const pkName = primaryKey.name;
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
-        const sqlBuilder = new SqlBuilder(this.platform);
+        const sqlBuilder = new SqlBuilder(this.adapter);
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
         const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
@@ -536,7 +542,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
             select.unshift(this.platform.quoteIdentifier(primaryKey.name));
         }
 
-        const sqlBuilder = new SqlBuilder(this.platform, selectParams);
+        const sqlBuilder = new SqlBuilder(this.adapter, selectParams);
         const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
         if (!set.length) {
             throw new DatabaseError('SET is empty');
