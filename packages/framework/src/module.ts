@@ -11,7 +11,7 @@
 import { ClassType, isClass, isPrototypeOfBase, ProcessLocker } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
 import { join } from 'path';
-import { ApplicationServer, ApplicationServerListener } from './application-server.js';
+import { ApplicationServer, ApplicationServerListener, onServerShutdown } from './application-server.js';
 import { DebugRouterController } from './cli/debug-router.js';
 import { DebugDIController } from './cli/debug-di.js';
 import { ServerStartController } from './cli/server-start.js';
@@ -222,11 +222,13 @@ export class FrameworkModule extends createModule({
             // this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
         }
 
-        this.addListener(onAppShutdown.listen(async (
-            event, broker: DebugBrokerBus, store: StopwatchStore) => {
+        const disconnect = async (event: unknown, broker: DebugBrokerBus, store: StopwatchStore) => {
             await store.close();
             await broker.adapter.disconnect();
-        }));
+        }
+        this.addListener(onAppShutdown.listen(disconnect));
+        // Registering at onServerShutdown also so that ApplicationServer.close disconnects all connections.
+        this.addListener(onServerShutdown.listen(disconnect));
 
         this.addProvider(DebugBrokerBus);
         this.addProvider({ provide: StopwatchStore, useClass: FileStopwatchStore });
