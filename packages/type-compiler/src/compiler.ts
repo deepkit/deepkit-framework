@@ -2096,9 +2096,10 @@ export class ReflectionTransformer implements CustomTransformer {
                     program.pushOp(ReflectionOp.array);
                     return;
                 } else if (name === 'Function') {
-                    program.pushOp(ReflectionOp.frame);
-                    program.pushOp(ReflectionOp.any);
-                    program.pushOp(ReflectionOp.function, program.pushStack(''));
+                    program.pushFrame();
+                    const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.f.createIdentifier('Function')));
+                    program.pushOp(ReflectionOp.functionReference, index);
+                    program.popFrameImplicit();
                     return;
                 } else if (name === 'Set') {
                     if (type.typeArguments && type.typeArguments[0]) {

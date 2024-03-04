@@ -1865,6 +1865,10 @@ function applyPropertyDecorator(type: Type, data: TData) {
     }
 }
 
+function collapseFunctionToMethod(member: TypePropertySignature | TypeMethodSignature): member is TypePropertySignature & { type: TypeMethodSignature } {
+    return member.kind === ReflectionKind.propertySignature && member.type.kind === ReflectionKind.function && member.type.function !== Function;
+}
+
 function pushObjectLiteralTypes(
     type: TypeObjectLiteral,
     types: (TypeIndexSignature | TypePropertySignature | TypeMethodSignature | TypeObjectLiteral | TypeCallSignature)[],
@@ -1904,7 +1908,7 @@ function pushObjectLiteralTypes(
                 //note: is it possible to overwrite an index signature?
                 type.types.push(member);
             } else if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.methodSignature) {
-                const toAdd = member.kind === ReflectionKind.propertySignature && member.type.kind === ReflectionKind.function ? {
+                const toAdd = collapseFunctionToMethod(member) ? {
                     kind: ReflectionKind.methodSignature,
                     name: member.name,
                     optional: member.optional,

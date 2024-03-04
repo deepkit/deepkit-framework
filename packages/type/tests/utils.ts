@@ -1,5 +1,12 @@
-import { getTypeJitContainer, ParentLessType, ReflectionKind, Type } from '../src/reflection/type.js';
+import {
+    getTypeJitContainer,
+    ParentLessType,
+    ReflectionKind,
+    stringifyResolvedType,
+    Type,
+} from '../src/reflection/type.js';
 import { Processor, RuntimeStackEntry } from '../src/reflection/processor.js';
+import { ReceiveType, removeTypeName, resolveReceiveType } from '../src/reflection/reflection.js';
 import { expect } from '@jest/globals';
 import { ReflectionOp } from '@deepkit/type-spec';
 import { isArray, isObject } from '@deepkit/core';
@@ -18,6 +25,7 @@ function reflectionName(kind: ReflectionKind): string {
 }
 
 let visitStackId: number = 0;
+
 export function visitWithParent(type: Type, visitor: (type: Type, path: string, parent?: Type) => false | void, onCircular?: () => void, stack: number = visitStackId++, path: string = '', parent?: Type): void {
     const jit = getTypeJitContainer(type);
     if (jit.visitId === visitStackId) {
@@ -73,7 +81,7 @@ export function visitWithParent(type: Type, visitor: (type: Type, path: string, 
 
 export function expectType<E extends ParentLessType>(
     pack: ReflectionOp[] | { ops: ReflectionOp[], stack: RuntimeStackEntry[], inputs?: RuntimeStackEntry[] },
-    expectObject: E | number | string | boolean
+    expectObject: E | number | string | boolean,
 ): void {
     const type = Processor.get().run(isArray(pack) ? pack : pack.ops, isArray(pack) ? [] : pack.stack, isArray(pack) ? [] : pack.inputs);
 
@@ -88,10 +96,22 @@ export function expectType<E extends ParentLessType>(
     }
 }
 
+export function equalType<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {
+    const aType = removeTypeName(resolveReceiveType(a));
+    const bType = removeTypeName(resolveReceiveType(b));
+    expect(stringifyResolvedType(aType)).toBe(stringifyResolvedType(bType));
+    expectEqualType(aType, bType as any);
+}
+
 /**
  * Types can not be compared via toEqual since they contain circular references (.parent) and other stuff can not be easily assigned.
  */
-export function expectEqualType(actual: any, expected: any, options: { noTypeNames?: true, noOrigin?: true, excludes?: string[], stack?: any[] } = {}, path: string = ''): void {
+export function expectEqualType(actual: any, expected: any, options: {
+    noTypeNames?: true,
+    noOrigin?: true,
+    excludes?: string[],
+    stack?: any[]
+} = {}, path: string = ''): void {
     if (!options.stack) options.stack = [];
 
     if (options.stack.includes(expected)) {

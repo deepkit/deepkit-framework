@@ -103,6 +103,11 @@ test('extends fn', () => {
         { kind: ReflectionKind.function, return: { kind: ReflectionKind.literal, literal: true }, parameters: [] },
         { kind: ReflectionKind.function, return: { kind: ReflectionKind.boolean }, parameters: [] }
     )).toBe(true);
+
+    expect(isExtendable(
+        { kind: ReflectionKind.function, return: { kind: ReflectionKind.literal, literal: true }, parameters: [] },
+        { kind: ReflectionKind.function, function: Function, return: { kind: ReflectionKind.unknown }, parameters: [] }
+    )).toBe(true);
 });
 
 test('arg', () => {

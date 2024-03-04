@@ -8,19 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { test, expect } from '@jest/globals';
-import { ReceiveType, removeTypeName, resolveReceiveType, typeOf } from '../src/reflection/reflection.js';
-import { expectEqualType } from './utils.js';
-import { stringifyResolvedType, stringifyType } from '../src/reflection/type.js';
-import { createPromiseObjectLiteral } from '../src/reflection/extends.js';
-import { serializeType } from '../src/type-serialization.js';
-
-function equalType<A, B>(a?: ReceiveType<A>, b?: ReceiveType<B>) {
-    const aType = removeTypeName(resolveReceiveType(a));
-    const bType = removeTypeName(resolveReceiveType(b));
-    expect(stringifyResolvedType(aType)).toBe(stringifyResolvedType(bType));
-    expectEqualType(aType, bType as any);
-}
+import { test } from '@jest/globals';
+import { equalType } from './utils.js';
 
 test('Exclude', () => {
     equalType<Exclude<'a' | 'b' | 'c', 'b'>, 'a' | 'c'>();

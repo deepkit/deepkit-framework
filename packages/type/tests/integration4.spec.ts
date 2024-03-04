@@ -12,6 +12,7 @@ import { expect, test } from '@jest/globals';
 import { assertType, AutoIncrement, Group, groupAnnotation, PrimaryKey, ReflectionKind } from '../src/reflection/type.js';
 import { typeOf } from '../src/reflection/reflection.js';
 import { cast } from '../src/serializer-facade.js';
+import { equalType } from './utils.js';
 
 test('group from enum', () => {
     enum Groups {
@@ -142,4 +143,17 @@ test('union loosely', () => {
     expect(cast<a>({ date: '2020-08-05T00:00:00.000Z' })).toEqual({ date: new Date('2020-08-05T00:00:00.000Z') });
     expect(cast<a>({ id: 2 })).toEqual({ id: 2 });
     expect(cast<a>({ id: '3' })).toEqual({ id: 3 });
+});
+
+test('function conditions', () => {
+    type t1 = (() => any) extends Function ? true : false;
+    type t2 = ((a: string) => void) extends Function ? true : false;
+    type t3 = { a(a: string): void } extends { a: Function } ? true : false;
+    type t4 = { a(a: string): void } extends { a(): void } ? true : false;
+    console.log(typeOf<Function>());
+    console.log(typeOf<{ a: Function } >());
+    equalType<t1, true>();
+    equalType<t2, true>();
+    equalType<t3, true>();
+    equalType<t4, false>();
 });

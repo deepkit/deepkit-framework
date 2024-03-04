@@ -229,6 +229,15 @@ test('object literal', () => {
     expect(is<{ a: string, b: number }>({ a: 'a', b: 'asd' })).toEqual(false);
 });
 
+test('function', () => {
+    expect(is<(a: string) => void>((a: string): void => undefined)).toEqual(true);
+    expect(is<(a: string) => void>((a: string): string => 'asd')).toEqual(false);
+    expect(is<(a: string) => void>((a: string): number => 2)).toEqual(false);
+    expect(is<(a: string) => void>((a: string): any => 2)).toEqual(true);
+    expect(is<(a: string) => void>((a: any): number => 2)).toEqual(false);
+    expect(is<Function>((a: any): number => 2)).toEqual(true);
+});
+
 test('class', () => {
     class A {
         a!: string;

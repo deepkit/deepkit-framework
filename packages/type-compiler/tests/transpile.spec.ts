@@ -462,6 +462,15 @@ test('keep "use x" at top', () => {
     expect(res.app.startsWith('"use client";')).toBe(true);
 });
 
+test('Function', () => {
+    const res = transpile({
+        'app': `
+        type a = Function;
+        `
+    });
+    expect(res.app).toContain(`[() => Function, `);
+});
+
 test('inline type definitions should compile', () => {
     const res = transpile({
         'app': `

@@ -11,7 +11,8 @@
 import {
     addType,
     emptyObject,
-    flatten, getTypeJitContainer,
+    flatten,
+    getTypeJitContainer,
     indexAccess,
     isMember,
     isOptional,
@@ -23,17 +24,20 @@ import {
     stringifyType,
     Type,
     TypeAny,
+    TypeCallSignature,
+    TypeFunction,
     TypeInfer,
     TypeLiteral,
     TypeMethod,
     TypeMethodSignature,
     TypeNumber,
     TypeObjectLiteral,
-    TypeParameter, TypePromise,
+    TypeParameter,
+    TypePromise,
     TypeString,
     TypeTemplateLiteral,
     TypeTuple,
-    TypeUnion
+    TypeUnion,
 } from './type.js';
 import { isPrototypeOfBase } from '@deepkit/core';
 import { typeInfer } from './processor.js';
@@ -73,6 +77,25 @@ export function isExtendable(leftValue: AssignableType, rightValue: AssignableTy
     }
 
     return valid;
+}
+
+function isFunctionLike(type: Type) {
+    return type.kind === ReflectionKind.function || type.kind === ReflectionKind.method || type.kind === ReflectionKind.callSignature
+        || type.kind === ReflectionKind.methodSignature || type.kind === ReflectionKind.objectLiteral
+        || ((type.kind === ReflectionKind.property || type.kind === ReflectionKind.propertySignature) && type.type.kind === ReflectionKind.function);
+}
+
+function getFunctionLikeType(type: Type): TypeMethod | TypeMethodSignature | TypeFunction | TypeCallSignature | undefined {
+    if (type.kind === ReflectionKind.function || type.kind === ReflectionKind.method || type.kind === ReflectionKind.methodSignature) return type;
+    if (type.kind === ReflectionKind.objectLiteral) {
+        for (const member of resolveTypeMembers(type)) {
+            if (member.kind === ReflectionKind.callSignature) return member;
+        }
+    }
+    if (type.kind === ReflectionKind.property || type.kind === ReflectionKind.propertySignature) {
+        return type.type.kind === ReflectionKind.function ? getFunctionLikeType(type.type) : undefined;
+    }
+    return;
 }
 
 export function _isExtendable(left: Type, right: Type, extendStack: StackEntry[] = []): boolean {
@@ -194,29 +217,18 @@ export function _isExtendable(left: Type, right: Type, extendStack: StackEntry[]
             }
         }
 
-        if (left.kind === ReflectionKind.function && right.kind === ReflectionKind.function && left.function && left.function === right.function) return true;
+        if (isFunctionLike(left) && isFunctionLike(right)) {
+            const leftType = getFunctionLikeType(left);
+            const rightType = getFunctionLikeType(right);
+            if (leftType && rightType) {
+                if (rightType.kind === ReflectionKind.function && rightType.function === Function) return true;
+                if (leftType.kind === ReflectionKind.function && rightType.kind === ReflectionKind.function && leftType.function && leftType.function === rightType.function) return true;
 
-        if ((left.kind === ReflectionKind.function || left.kind === ReflectionKind.method || left.kind === ReflectionKind.methodSignature) &&
-            (right.kind === ReflectionKind.function || right.kind === ReflectionKind.method || right.kind === ReflectionKind.methodSignature || right.kind === ReflectionKind.objectLiteral)
-        ) {
-            if (right.kind === ReflectionKind.objectLiteral) {
-                for (const type of resolveTypeMembers(right)) {
-                    if (type.kind === ReflectionKind.callSignature) {
-                        if (_isExtendable(left, type, extendStack)) return true;
-                    }
-                }
-
-                return false;
-            }
-
-            if (right.kind === ReflectionKind.function || right.kind === ReflectionKind.methodSignature || right.kind === ReflectionKind.method) {
-                const returnValid = _isExtendable(left.return, right.return, extendStack);
+                const returnValid = _isExtendable(leftType.return, rightType.return, extendStack);
                 if (!returnValid) return false;
 
-                return isFunctionParameterExtendable(left, right, extendStack);
+                return isFunctionParameterExtendable(leftType, rightType, extendStack);
             }
-
-            return false;
         }
 
         if ((left.kind === ReflectionKind.propertySignature || left.kind === ReflectionKind.property) && (right.kind === ReflectionKind.propertySignature || right.kind === ReflectionKind.property)) {
