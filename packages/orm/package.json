@@ -5,13 +5,11 @@
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
-  "browser": "./dist/esm/browser.js",
   "types": "./dist/cjs/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/cjs/index.d.ts",
       "require": "./dist/cjs/index.js",
-      "browser": "./dist/esm/browser.js",
       "default": "./dist/esm/index.js"
     }
   },
