@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.141](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.140...v1.0.1-alpha.141) (2024-03-05)
+
+### Bug Fixes
+
+- **orm:** remove browser export ([58bb3c8](https://github.com/deepkit/deepkit-framework/commit/58bb3c864e6d4fb2794835e748cf5a950bf923af))
+- **rpc:** maintain strictSerialization option also in new observables ([273330b](https://github.com/deepkit/deepkit-framework/commit/273330b102c30f62895bd7d3b8b6d6762e080740))
+- **type:** handle `Function` correctly in type comparisons ([16f0c1d](https://github.com/deepkit/deepkit-framework/commit/16f0c1da4b6e2ce216c45681e1574bfe68c9044f))
+
 ## [1.0.1-alpha.140](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.139...v1.0.1-alpha.140) (2024-03-02)
 
 ### Bug Fixes
