@@ -318,6 +318,8 @@ export class RpcServerAction {
             case RpcTypes.ActionObservableSubscribe: {
                 const observable = this.observables[message.id];
                 if (!observable) return response.error(new Error('No observable found'));
+                response.strictSerialization = observable.types.strictSerialization;
+
                 const { types, classType, method } = observable;
                 const body = message.parseBody<rpcActionObservableSubscribeId>();
                 if (observable.subscriptions[body.id]) return response.error(new Error('Subscription already created'));
@@ -340,6 +342,7 @@ export class RpcServerAction {
                 };
                 observable.subscriptions[body.id] = sub;
 
+                response.errorLabel = `Observable ${getClassName(observable.classType)}.${observable.method} next serialization error`;
                 sub.sub = observable.observable.subscribe((next) => {
                     if (!sub.active) return;
                     response.reply(RpcTypes.ResponseActionObservableNext, {
@@ -414,6 +417,7 @@ export class RpcServerAction {
             case RpcTypes.ActionObservableProgressNext: { //ProgressTracker changes from client (e.g. stop signal)
                 const observable = this.observables[message.id];
                 if (!observable || !(observable.observable instanceof ProgressTracker)) return response.error(new Error('No observable ProgressTracker to sync found'));
+                response.strictSerialization = observable.types.strictSerialization;
                 observable.observable.next(message.parseBody<ProgressTrackerState[]>());
                 break;
             }
