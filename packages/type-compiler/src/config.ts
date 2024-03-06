@@ -158,6 +158,8 @@ function resolvePaths(baseDir: string, paths: any): void {
         if (path.startsWith('./') || path.includes('/')) {
             path = join(baseDir, path);
         }
+        // ensure backslashes are forward slashes
+        path = path.replace(/\\/g, '/');
         if (exclude) path = '!' + path;
         paths[i] = path;
     }
