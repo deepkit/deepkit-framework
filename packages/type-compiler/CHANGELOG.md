@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.142](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.141...v1.0.1-alpha.142) (2024-03-06)
+
+### Bug Fixes
+
+- **type-compiler:** support windows reflection pattern matching ([cec3146](https://github.com/deepkit/deepkit-framework/commit/cec3146612b7b950cbd47eb2850feb887b87fc82))
+
 ## [1.0.1-alpha.141](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.140...v1.0.1-alpha.141) (2024-03-05)
 
 ### Bug Fixes
