@@ -251,7 +251,7 @@ export class Injector implements InjectorInterface {
         throw new Error(`Invalid get<T> argument given ${token}`);
     }
 
-    set<T>(token: T, value: any, scope?: Scope): void {
+    set(token: ContainerToken, value: any, scope?: Scope): void {
         if (!this.setter) throw new Error('Injector was not built');
         this.setter(token, value, scope);
     }
@@ -914,7 +914,7 @@ export class InjectorContext {
         return this.getInjector(module || this.rootModule).instantiationCount(token, this.scope ? this.scope.name : scope);
     }
 
-    set<T>(token: T, value: any, module?: InjectorModule): void {
+    set(token: ContainerToken, value: any, module?: InjectorModule): void {
         return this.getInjector(module || this.rootModule).set(token, value, this.scope);
     }
 
