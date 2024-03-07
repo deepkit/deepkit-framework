@@ -914,8 +914,12 @@ export class InjectorContext {
         return this.getInjector(module || this.rootModule).instantiationCount(token, this.scope ? this.scope.name : scope);
     }
 
-    set(token: ContainerToken, value: any, module?: InjectorModule): void {
-        return this.getInjector(module || this.rootModule).set(token, value, this.scope);
+    set<T>(token: T, value: any, module?: InjectorModule): void {
+        return this.getInjector(module || this.rootModule).set(
+            getContainerToken(token),
+            value,
+            this.scope,
+        );
     }
 
     static forProviders(providers: ProviderWithScope[]) {
