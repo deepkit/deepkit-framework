@@ -321,7 +321,7 @@ export function isNumeric(s: string | number): boolean {
     return true;
 }
 
-export const isInteger: (obj: any) => obj is number = Number.isInteger as any || function (obj: any) {
+export const isInteger: (obj: any) => obj is number = Number.isInteger as any || function(obj: any) {
     return (obj % 1) === 0;
 };
 
@@ -828,21 +828,28 @@ export function forwardTypeArguments(x: any, y: any): void {
 }
 
 export function formatError(error: any): string {
-    if (error instanceof AggregateError) {
-        return error.errors.map(v => formatError(v)).join('\n');
+    if (error && error.name === 'AggregateError' && 'errors' in error) {
+        return `${error.stack || `AggregateError: ${error.message}`}\nErrors:\n${error.errors.map((v: any) => formatError(v)).join('\n')}`;
     }
 
     if (error instanceof Error) {
-        return `${getClassName(error)}: ${error.message}`;
+        let current: any = error.cause;
+        let errors: string[] = [error.stack || error.message || 'Error'];
+        while (current) {
+            errors.push(`cause by ${formatError(current)}`);
+            current = current.cause;
+        }
+        return errors.join('\n');
     }
 
+    if (error.stack) return error.stack;
     return String(error);
 }
 
 /**
  * Asserts that the given object is an instance of the given class.
  */
-export function assertInstanceOf<T>(object: any, constructor: { new (...args: any[]): T }): asserts object is T {
+export function assertInstanceOf<T>(object: any, constructor: { new(...args: any[]): T }): asserts object is T {
     if (!(object instanceof constructor)) {
         throw new Error(`Object ${getClassName(object)} is not an instance of the expected class ${getClassName(constructor)}`);
     }
