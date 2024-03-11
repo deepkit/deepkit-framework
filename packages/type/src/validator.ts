@@ -45,7 +45,7 @@ export type AfterDate<T extends number> = ValidatorMeta<'afterDate', [T]>;
 export type BeforeNow = ValidatorMeta<'beforeNow'>;
 export type AfterNow = ValidatorMeta<'afterNow'>;
 
-export const EMAIL_REGEX = /^\S+@\S+$/;
+export const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 export type Email = string & Pattern<typeof EMAIL_REGEX>;
 
 /**

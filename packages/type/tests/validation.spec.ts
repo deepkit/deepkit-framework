@@ -22,9 +22,10 @@ test('email', () => {
     expect(is<string & Email>('@')).toBe(false);
 
     expect(validate<Email>('peter@example.com')).toEqual([]);
-    expect(validate<Email>('nope')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+$ does not match`, value: 'nope' }]);
-    expect(validate<Email>('nope@')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+$ does not match`, value: 'nope@' }]);
-    expect(validate<Email>('@')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+$ does not match`, value: '@' }]);
+    expect(validate<Email>('nope')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+\\.\\S+$ does not match`, value: 'nope' }]);
+    expect(validate<Email>('nope@')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+\\.\\S+$ does not match`, value: 'nope@' }]);
+    expect(validate<Email>('nope@gmail')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+\\.\\S+$ does not match`, value: 'nope@gmail' }]);
+    expect(validate<Email>('@')).toEqual([{ path: '', code: 'pattern', message: `Pattern ^\\S+@\\S+\\.\\S+$ does not match`, value: '@' }]);
 });
 
 test('minLength', () => {
@@ -147,7 +148,8 @@ test('class', () => {
     expect(is<User>({ id: 0, logins: 0, username: 'Peter' })).toBe(true);
     expect(is<User>({ id: -1, logins: 0, username: 'Peter' })).toBe(false);
     expect(is<User>({ id: 0, logins: 0, username: 'AB' })).toBe(false);
-    expect(is<User>({ id: 0, logins: 0, username: 'Peter', email: 'abc@abc' })).toBe(true);
+    expect(is<User>({ id: 0, logins: 0, username: 'Peter', email: 'abc@abc.com' })).toBe(true);
+    expect(is<User>({ id: 0, logins: 0, username: 'Peter', email: 'abc@abc' })).toBe(false);
     expect(is<User>({ id: 0, logins: 0, username: 'Peter', email: 'abc' })).toBe(false);
 });
 
