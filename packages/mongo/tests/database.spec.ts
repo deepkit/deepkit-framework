@@ -134,12 +134,12 @@ test('errors connect', async () => {
         called = event;
     });
 
-    await expect(() => database.query(Test).findOne()).rejects.toThrow('MongoConnectionError: getaddrinfo ENOTFOUND invalid');
+    await expect(() => database.query(Test).findOne()).rejects.toThrow('Failed to connect: getaddrinfo ENOTFOUND invalid');
     await expect(() => database.query(Test).findOne()).rejects.toBeInstanceOf(MongoConnectionError);
 
     assertDefined(called);
     assertInstanceOf(called.error, MongoConnectionError);
-    expect(called.error.message).toBe('Failed to connect: MongoConnectionError: getaddrinfo ENOTFOUND invalid');
+    expect(called.error.message).toContain('Failed to connect: getaddrinfo ENOTFOUND invalid');
 });
 
 test('errors raw', async () => {

@@ -90,7 +90,7 @@ export class MongoConnectionPool {
                 await Promise.allSettled(promises);
             }
         } catch (error: any) {
-            throw new MongoConnectionError(`Failed to connect: ${formatError(error)}`);
+            throw new MongoConnectionError(`Failed to connect: ${formatError(error)}`, { cause: error });
         }
     }
 
@@ -516,7 +516,7 @@ export class MongoConnection {
             this.socket.on('error', (error) => {
                 this.connectingPromise = undefined;
                 this.status = MongoConnectionStatus.disconnected;
-                reject(new MongoConnectionError(formatError(error.message)));
+                reject(new MongoConnectionError(formatError(error.message), { cause: error }));
             });
 
             if (this.socket.destroyed) {

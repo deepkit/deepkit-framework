@@ -827,14 +827,14 @@ export function forwardTypeArguments(x: any, y: any): void {
     y.Ω = x.Ω;
 }
 
-export function formatError(error: any): string {
+export function formatError(error: any, withStack: boolean = false): string {
     if (error && error.name === 'AggregateError' && 'errors' in error) {
-        return `${error.stack || `AggregateError: ${error.message}`}\nErrors:\n${error.errors.map((v: any) => formatError(v)).join('\n')}`;
+        return `${(withStack && error.stack) || `AggregateError: ${error.message}`}\nErrors:\n${error.errors.map((v: any) => formatError(v)).join('\n')}`;
     }
 
     if (error instanceof Error) {
         let current: any = error.cause;
-        let errors: string[] = [error.stack || error.message || 'Error'];
+        let errors: string[] = [(withStack && error.stack) || error.message || 'Error'];
         while (current) {
             errors.push(`cause by ${formatError(current)}`);
             current = current.cause;
@@ -842,7 +842,7 @@ export function formatError(error: any): string {
         return errors.join('\n');
     }
 
-    if (error.stack) return error.stack;
+    if (withStack && error.stack) return error.stack;
     return String(error);
 }
 
