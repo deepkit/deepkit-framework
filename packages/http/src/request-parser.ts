@@ -1,5 +1,5 @@
 import { asyncOperation, ClassType, CompilerContext, getClassName, isObject } from '@deepkit/core';
-import { InjectorModule } from '@deepkit/injector';
+import { DependenciesUnmetError, InjectorModule } from '@deepkit/injector';
 import {
     assertType,
     findMember,
@@ -225,6 +225,7 @@ export function getRequestParserCodeForParameters(
         routeConfig?: RouteConfig,
     },
 ) {
+    compiler.set({ DependenciesUnmetError });
     let enableParseBody = false;
     let requiresAsyncParameters = false;
     const setParameters: string[] = [];
@@ -338,7 +339,8 @@ export function getRequestParserCodeForParameters(
             }
 
             let injector = '_injector';
-            const moduleVar = config.module ? ', ' + compiler.reserveConst(config.module, 'module') : '';
+            const moduleRawVar = config.module ? compiler.reserveConst(config.module, 'module') : 'undefined';
+            const moduleVar = config.module ? `, ${moduleRawVar}` : '';
 
             if (resolverType) {
                 requiresAsyncParameters = true;
@@ -374,12 +376,20 @@ export function getRequestParserCodeForParameters(
             }
 
             if (!parameter.isPartOfPath()) {
-                //todo: if injectorToken is a Type, then this will be very slow since Injector.createResolver is used all the time.
-                let injectorGet = `parameters.${parameter.parameter.name} = ${injector}.get(${injectorTokenVar});`;
-                if (parameter.parameter.isOptional()) {
-                    injectorGet = `try {parameters.${parameter.parameter.name} = ${injector}.get(${injectorTokenVar}); } catch (e) {}`;
+                const resolverVar = compiler.reserveVariable('resolver');
+                let injectorGet = `
+                if (!${resolverVar}) ${resolverVar} = ${injector}.resolve(${moduleRawVar}, ${injectorTokenVar});
+                parameters.${parameter.parameter.name} = ${resolverVar}(${injector}.scope);
+                `;
+                if (!parameter.parameter.isOptional()) {
+                    injectorGet += `
+                    if (!parameters.${parameter.parameter.name}) {
+                        throw new DependenciesUnmetError(
+                            \`Parameter \${${JSON.stringify(parameter.parameter.name)}} is required but provider returned undefined.\`,
+                        );
+                    }`;
                 }
-                setParameters.push(`if (!${parameterResolverFoundVar}) ${injectorGet}`);
+                setParameters.push(`if (!${parameterResolverFoundVar}) { ${injectorGet} }`);
             }
         }
     }

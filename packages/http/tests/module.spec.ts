@@ -1,11 +1,12 @@
-import { App } from '@deepkit/app';
+import { App, AppModule } from '@deepkit/app';
 import { expect, test } from '@jest/globals';
 import { HttpModule } from '../src/module.js';
 import { HttpKernel } from '../src/kernel.js';
 import { HttpRequest } from '../src/model.js';
 import { http } from '../src/decorator.js';
-import { httpWorkflow } from '../src/http.js';
+import { HttpUnauthorizedError, httpWorkflow } from '../src/http.js';
 import { HttpRouterRegistry, RouteConfig } from '../src/router.js';
+import { provide } from '@deepkit/injector';
 
 test('module basic functionality', async () => {
     class Controller {
@@ -116,12 +117,12 @@ test('dynamic route', async () => {
     app.configureProvider<HttpRouterRegistry>(router => {
         router.addRoute(new RouteConfig('name', ['GET'], '/users/:id', {
             type: 'function', fn: (id: number) => {
-                return {id};
+                return { id };
             },
         }));
 
         router.get('/users', () => {
-            return [{id: 1}, {id: 2}];
+            return [{ id: 1 }, { id: 2 }];
         });
     });
 
@@ -134,4 +135,44 @@ test('dynamic route', async () => {
     const response2 = await httpKernel.request(HttpRequest.GET('/users'));
     expect(response2.statusCode).toBe(200);
     expect(response2.json).toEqual([{ id: 1 }, { id: 2 }]);
+});
+
+test('encapsulated service in router methods', async () => {
+    class User {
+        constructor(public username: string) {
+        }
+    }
+
+    class MyController {
+        @http.GET('/me')
+        me(user: User) {
+            return user;
+        }
+    }
+
+    const myModule = new AppModule();
+    myModule.addController(MyController);
+    myModule.addProvider(provide<User>({ scope: 'http', useFactory: (req: HttpRequest) => req.store.user }));
+
+    myModule.addListener(httpWorkflow.onAuth.listen((event, request: HttpRequest) => {
+        if (!request.headers.authorization) throw new HttpUnauthorizedError();
+        request.store.user = new User('Peter:' + request.headers.authorization);
+    }));
+
+    const app = new App({
+        imports: [new HttpModule(), myModule],
+    });
+
+    const httpKernel = app.get(HttpKernel);
+
+    {
+        const response = await httpKernel.request(HttpRequest.GET('/me'));
+        expect(response.statusCode).toBe(401);
+    }
+
+    {
+        const response = await httpKernel.request(HttpRequest.GET('/me').header('authorization', '123'));
+        expect(response.statusCode).toBe(200);
+        expect(response.json).toEqual({ username: 'Peter:123' });
+    }
 });
