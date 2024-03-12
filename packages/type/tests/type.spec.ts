@@ -1206,6 +1206,18 @@ test('union and intersection filters', () => {
     expect(stringifyResolvedType(typeOf<{ a: string } & { b: number }>())).toBe(`{\n  a: string;\n  b: number;\n}`);
 });
 
+test('union expansion intersection', () => {
+    type U = { a: string } | { b: number };
+    type I = U & { c: boolean };
+    expect(stringifyResolvedType(typeOf<I>())).toBe(`{
+    a: string;
+    c: boolean;
+  } | {
+    b: number;
+    c: boolean;
+  }`);
+});
+
 test('index access on any', () => {
     {
         type Map2<T> = { [K in keyof T]: T[K] };

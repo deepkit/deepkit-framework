@@ -1339,6 +1339,9 @@ export class Processor {
         }
 
         function handleUnion(a: Type, unionType: TypeUnion): Type {
+            if (a.kind === ReflectionKind.objectLiteral || a.kind === ReflectionKind.class) {
+                return unboxUnion({ kind: ReflectionKind.union, types: unionType.types.map(v => collapse(v, a)).filter(v => v.kind !== ReflectionKind.never) });
+            }
             return unboxUnion({ kind: ReflectionKind.union, types: unionType.types.filter(v => isExtendable(v, a)) });
         }
 
