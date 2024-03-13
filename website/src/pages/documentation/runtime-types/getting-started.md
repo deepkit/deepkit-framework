@@ -33,20 +33,20 @@ Write your first code with runtime type information:
 _File: app.ts_
 
 ```typescript
-import { cast, MinLength, ReflectionClass } from '@deepkit/type';
+import { cast, MinLength, ReflectionClass, typeOf } from '@deepkit/type';
 
 interface User {
     username: string & MinLength<3>;
     birthDate?: Date;
 }
 
-const user = cast<User>(User, {
+const user = cast<User>({
     username: 'Peter',
     birthDate: '2010-10-10T00:00:00Z'
 });
 console.log(user);
 
-const reflection = ReflectionClass.from(User);
+const reflection = ReflectionClass.from(typeOf<User>());
 console.log(reflection.getProperty('username').type);
 ```
 
