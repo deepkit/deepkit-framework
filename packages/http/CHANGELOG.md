@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
+
+### Bug Fixes
+
+- **http:** parameter service injection into route methods with encapsulated modules ([9c98f8b](https://github.com/deepkit/deepkit-framework/commit/9c98f8b110078ab35882fece44f45fde34a4feeb))
+
 ## [1.0.1-alpha.142](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.141...v1.0.1-alpha.142) (2024-03-06)
 
 **Note:** Version bump only for package @deepkit/http

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
+
+### Bug Fixes
+
+- **type-compiler:** also parse tsx source files ([80464bf](https://github.com/deepkit/deepkit-framework/commit/80464bf2bd38477e7ce7898fde17b6d6738007f7)), closes [#560](https://github.com/deepkit/deepkit-framework/issues/560)
+
 ## [1.0.1-alpha.142](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.141...v1.0.1-alpha.142) (2024-03-06)
 
 ### Bug Fixes

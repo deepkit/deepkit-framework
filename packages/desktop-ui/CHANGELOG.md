@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
+
+### Features
+
+- **desktop-ui:** support queryParams in list route support ([6f33804](https://github.com/deepkit/deepkit-framework/commit/6f3380469c22d8c146367889c8afd55d8df15292))
+
 ## [1.0.1-alpha.142](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.141...v1.0.1-alpha.142) (2024-03-06)
 
 **Note:** Version bump only for package @deepkit/desktop-ui

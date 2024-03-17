@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
+
+### Bug Fixes
+
+- **type:** union expansions in intersections ([332b26e](https://github.com/deepkit/deepkit-framework/commit/332b26eb148d916d03f49fad0daaad083c24207a)), closes [#556](https://github.com/deepkit/deepkit-framework/issues/556)
+
 ## [1.0.1-alpha.142](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.141...v1.0.1-alpha.142) (2024-03-06)
 
 **Note:** Version bump only for package @deepkit/type

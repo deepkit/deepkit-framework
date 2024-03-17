@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
+
+### Features
+
+- **injector:** improve set method api ([#557](https://github.com/deepkit/deepkit-framework/issues/557)) ([eb92e58](https://github.com/deepkit/deepkit-framework/commit/eb92e58a44a25170f29150aae89b2dfad33a3495))
+
 ## [1.0.1-alpha.142](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.141...v1.0.1-alpha.142) (2024-03-06)
 
 **Note:** Version bump only for package @deepkit/injector

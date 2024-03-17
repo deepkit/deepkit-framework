@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
+
+### Bug Fixes
+
+- **core:** don't include stack in formatError per default ([1b603ee](https://github.com/deepkit/deepkit-framework/commit/1b603eef2938ab010fb6d83836894ad5a1c236af))
+- **type:** print Error cause chain in formatError ([c2a413a](https://github.com/deepkit/deepkit-framework/commit/c2a413aeb74155ddb29f1939b48e034f05d9ae60))
+
 ## [1.0.1-alpha.124](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.123...v1.0.1-alpha.124) (2024-02-04)
 
 ### Bug Fixes

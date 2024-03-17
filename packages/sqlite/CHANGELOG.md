@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
+
+### Features
+
+- **mysql, postgres:** add support for connection URLs ([2518670](https://github.com/deepkit/deepkit-framework/commit/25186701e3d6ea60ea232cbcc0c989e195df9edf))
+
 ## [1.0.1-alpha.142](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.141...v1.0.1-alpha.142) (2024-03-06)
 
 **Note:** Version bump only for package @deepkit/sqlite

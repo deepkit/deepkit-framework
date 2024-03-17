@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
+
+### Bug Fixes
+
+- **core:** don't include stack in formatError per default ([1b603ee](https://github.com/deepkit/deepkit-framework/commit/1b603eef2938ab010fb6d83836894ad5a1c236af))
+- **http:** parameter service injection into route methods with encapsulated modules ([9c98f8b](https://github.com/deepkit/deepkit-framework/commit/9c98f8b110078ab35882fece44f45fde34a4feeb))
+- **type-compiler:** also parse tsx source files ([80464bf](https://github.com/deepkit/deepkit-framework/commit/80464bf2bd38477e7ce7898fde17b6d6738007f7)), closes [#560](https://github.com/deepkit/deepkit-framework/issues/560)
+- **type:** print Error cause chain in formatError ([c2a413a](https://github.com/deepkit/deepkit-framework/commit/c2a413aeb74155ddb29f1939b48e034f05d9ae60))
+- **type:** union expansions in intersections ([332b26e](https://github.com/deepkit/deepkit-framework/commit/332b26eb148d916d03f49fad0daaad083c24207a)), closes [#556](https://github.com/deepkit/deepkit-framework/issues/556)
+
+### Features
+
+- **desktop-ui:** support queryParams in list route support ([6f33804](https://github.com/deepkit/deepkit-framework/commit/6f3380469c22d8c146367889c8afd55d8df15292))
+- **injector:** improve set method api ([#557](https://github.com/deepkit/deepkit-framework/issues/557)) ([eb92e58](https://github.com/deepkit/deepkit-framework/commit/eb92e58a44a25170f29150aae89b2dfad33a3495))
+- **mysql, postgres:** add support for connection URLs ([2518670](https://github.com/deepkit/deepkit-framework/commit/25186701e3d6ea60ea232cbcc0c989e195df9edf))
+
 ## [1.0.1-alpha.142](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.141...v1.0.1-alpha.142) (2024-03-06)
 
 ### Bug Fixes
