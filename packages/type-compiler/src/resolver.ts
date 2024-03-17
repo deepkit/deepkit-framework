@@ -80,8 +80,10 @@ export class Resolver {
         const result = this.resolveImpl(modulePath, sourceFile);
         if (!result) return;
 
-        // only .ts and .d.ts files are supported
-        if (!result.resolvedFileName.endsWith('.ts') && !result.resolvedFileName.endsWith('.d.ts')) {
+        // only .ts, .tsx and .d.ts files are supported
+        if (!result.resolvedFileName.endsWith('.ts')
+            && !result.resolvedFileName.endsWith('.tsx')
+            && !result.resolvedFileName.endsWith('.d.ts')) {
             return;
         }
 
