@@ -10,4 +10,5 @@
 
 export * from './src/sqlite-adapter.js';
 export * from './src/sqlite-platform.js';
+export * from './src/sqlite-schema-parser.js';
 export * from './src/sqlite-serializer.js';

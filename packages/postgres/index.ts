@@ -8,4 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+export * from './src/config.js';
 export * from './src/postgres-adapter.js';
+export * from './src/postgres-platform.js';
+export * from './src/postgres-schema-parser.js';
+export * from './src/postgres-serializer.js';

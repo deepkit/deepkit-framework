@@ -609,7 +609,9 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
 
     constructor(protected sqlitePath: string | ':memory:' = ':memory:') {
         super();
-
+        if (this.sqlitePath.startsWith('sqlite://')) {
+            this.sqlitePath = this.sqlitePath.substring('sqlite://'.length);
+        }
         this.connectionPool = new SQLiteConnectionPool(this.sqlitePath);
     }
 
