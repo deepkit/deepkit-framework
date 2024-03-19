@@ -2382,7 +2382,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     const searchArgument = (node: Node): Node => {
                         node = visitEachChild(node, searchArgument, this.context);
 
-                        if (isIdentifier(node) && node.escapedText === argumentName) {
+                        if (isTypeReferenceNode(node) && isIdentifier(node.typeName) && node.typeName.escapedText === argumentName) {
                             //transform to infer T
                             found = true;
                             node = this.f.createInferTypeNode(declaration);
