@@ -7,8 +7,6 @@ You are looking to change documentation? Go to ./src/pages/documentation
 Requires node v20.
 
 ```sh
-npm ci
-
 # frontend watcher
 npm run app:start
 
@@ -16,14 +14,15 @@ npm run app:start
 npm run server:watch 
 ```
 
+Or just `npm run dev`.
+
 ## SSR build
 
 ```
 npm run app:build
 npm run ssr:build
 npm run server
-``
-
+```
 
 ## Build Docker image
 

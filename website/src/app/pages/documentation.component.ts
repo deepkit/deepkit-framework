@@ -1,13 +1,13 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from "@angular/core";
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
-import { AppDescription, AppTitle } from "@app/app/components/title";
-import { ContentRenderComponent } from "@app/app/components/content-render.component";
-import { NgForOf, NgIf } from "@angular/common";
-import { FormsModule } from "@angular/forms";
-import { LoadingComponent } from "@app/app/components/loading";
-import { AskComponent } from "@app/app/components/ask.component";
-import { Subscription } from "rxjs";
-import { PlatformHelper } from "@app/app/utils";
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AppDescription, AppTitle } from '@app/app/components/title';
+import { ContentRenderComponent } from '@app/app/components/content-render.component';
+import { NgForOf, NgIf } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { LoadingComponent } from '@app/app/components/loading';
+import { AskComponent } from '@app/app/components/ask.component';
+import { Subscription } from 'rxjs';
+import { PlatformHelper } from '@app/app/utils';
 
 @Component({
     standalone: true,
@@ -37,10 +37,10 @@ import { PlatformHelper } from "@app/app/utils";
             <nav [class.showMenu]="showMenu" #nav (scrollend)="setScroll($event)">
                 <div style="margin-bottom: 25px;">
                     <a routerLinkActive="active" routerLink="/documentation/introduction">Introduction</a>
-                    <a routerLinkActive="active" routerLink="/documentation/questions">Questions & Answers</a>
+<!--                    <a routerLinkActive="active" routerLink="/documentation/questions">Questions & Answers</a>-->
                     <a routerLinkActive="active" routerLink="/documentation/examples">Examples</a>
                     <a href="https://discord.com/invite/PtfVf7B8UU" target="_blank">Join Discord</a>
-                    <a routerLinkActive="active" routerLink="/documentation/learn-typescript">Learn TypeScript</a>
+<!--                    <a routerLinkActive="active" routerLink="/documentation/learn-typescript">Learn TypeScript</a>-->
                 </div>
 
                 <div class="category">

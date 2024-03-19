@@ -3223,7 +3223,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/framework@npm:^1.0.1-alpha.0, @deepkit/framework@npm:^1.0.1-alpha.143, @deepkit/framework@npm:^1.0.1-alpha.144, @deepkit/framework@workspace:packages/framework":
+"@deepkit/framework@npm:^1.0.1-alpha.0, @deepkit/framework@npm:^1.0.1-alpha.144, @deepkit/framework@workspace:packages/framework":
   version: 0.0.0-use.local
   resolution: "@deepkit/framework@workspace:packages/framework"
   dependencies:
@@ -3350,7 +3350,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/mongo@npm:^1.0.1-alpha.0, @deepkit/mongo@npm:^1.0.1-alpha.143, @deepkit/mongo@workspace:packages/mongo":
+"@deepkit/mongo@npm:^1.0.1-alpha.0, @deepkit/mongo@npm:^1.0.1-alpha.144, @deepkit/mongo@workspace:packages/mongo":
   version: 0.0.0-use.local
   resolution: "@deepkit/mongo@workspace:packages/mongo"
   dependencies:
@@ -3531,7 +3531,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/postgres@npm:^1.0.1-alpha.143, @deepkit/postgres@workspace:packages/postgres":
+"@deepkit/postgres@npm:^1.0.1-alpha.144, @deepkit/postgres@workspace:packages/postgres":
   version: 0.0.0-use.local
   resolution: "@deepkit/postgres@workspace:packages/postgres"
   dependencies:
@@ -3603,7 +3603,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/sql@npm:^1.0.1-alpha.0, @deepkit/sql@npm:^1.0.1-alpha.143, @deepkit/sql@npm:^1.0.1-alpha.144, @deepkit/sql@workspace:packages/sql":
+"@deepkit/sql@npm:^1.0.1-alpha.0, @deepkit/sql@npm:^1.0.1-alpha.144, @deepkit/sql@workspace:packages/sql":
   version: 0.0.0-use.local
   resolution: "@deepkit/sql@workspace:packages/sql"
   dependencies:
@@ -23531,16 +23531,16 @@ __metadata:
     "@deepkit/desktop-ui": "npm:^1.0.1-alpha.143"
     "@deepkit/event": "npm:^1.0.1-alpha.143"
     "@deepkit/filesystem": "npm:^1.0.1-alpha.143"
-    "@deepkit/framework": "npm:^1.0.1-alpha.143"
+    "@deepkit/framework": "npm:^1.0.1-alpha.144"
     "@deepkit/http": "npm:^1.0.1-alpha.143"
     "@deepkit/injector": "npm:^1.0.1-alpha.143"
     "@deepkit/logger": "npm:^1.0.1-alpha.143"
-    "@deepkit/mongo": "npm:^1.0.1-alpha.143"
+    "@deepkit/mongo": "npm:^1.0.1-alpha.144"
     "@deepkit/orm": "npm:^1.0.1-alpha.143"
-    "@deepkit/postgres": "npm:^1.0.1-alpha.143"
+    "@deepkit/postgres": "npm:^1.0.1-alpha.144"
     "@deepkit/rpc": "npm:^1.0.1-alpha.143"
     "@deepkit/rpc-tcp": "npm:^1.0.1-alpha.143"
-    "@deepkit/sql": "npm:^1.0.1-alpha.143"
+    "@deepkit/sql": "npm:^1.0.1-alpha.144"
     "@deepkit/stopwatch": "npm:^1.0.1-alpha.143"
     "@deepkit/template": "npm:^1.0.1-alpha.143"
     "@deepkit/type": "npm:^1.0.1-alpha.143"
