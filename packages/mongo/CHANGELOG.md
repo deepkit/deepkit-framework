@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.144](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.143...v1.0.1-alpha.144) (2024-03-19)
+
+**Note:** Version bump only for package @deepkit/mongo
+
 ## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
 
 ### Bug Fixes

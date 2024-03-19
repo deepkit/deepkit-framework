@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.144](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.143...v1.0.1-alpha.144) (2024-03-19)
+
+### Bug Fixes
+
+- **postgres:** use DatabaseField<{type}> for type mapping if available ([107399a](https://github.com/deepkit/deepkit-framework/commit/107399aa2fcbe14307ff4ad49937275bdcef5493))
+- **website:** fix deps + builds ([4183580](https://github.com/deepkit/deepkit-framework/commit/4183580c1a17c23f20db0d12744dd33d14d9623d))
+
 ## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
 
 ### Bug Fixes
