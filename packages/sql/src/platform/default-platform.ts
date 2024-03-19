@@ -246,6 +246,11 @@ export abstract class DefaultPlatform {
 
     protected getTypeMapping(type: Type): TypeMapping | undefined {
         let mapping = undefined as TypeMapping | undefined;
+        const annotation = databaseAnnotation.getDatabase(type, this.annotationId);
+        if (annotation && annotation.type) {
+            return { sqlType: annotation.type };
+        }
+
         for (const [checker, m] of this.typeMapping.entries()) {
             if ('number' === typeof checker) {
                 if (checker === type.kind) mapping = m;
