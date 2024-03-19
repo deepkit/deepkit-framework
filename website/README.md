@@ -23,3 +23,13 @@ npm run app:build
 npm run ssr:build
 npm run server
 ``
+
+
+## Build Docker image
+
+
+```
+cd website/
+docker build -t website2 -f Dockerfile ../
+docker run -p 8080:8080 -e app_databaseHost=host.docker.internal website2
+```
