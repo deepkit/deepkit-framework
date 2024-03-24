@@ -24,17 +24,7 @@ import { sqlSerializer } from '../serializer/sql-serializer.js';
 import { parseType, SchemaParser } from '../reverse/schema-parser.js';
 import { SQLFilterBuilder } from '../sql-filter-builder.js';
 import { Sql } from '../sql-builder.js';
-import {
-    binaryTypes,
-    databaseAnnotation,
-    isCustomTypeClass,
-    isIntegerType,
-    ReflectionClass,
-    ReflectionKind,
-    ReflectionProperty,
-    Serializer,
-    Type,
-} from '@deepkit/type';
+import { binaryTypes, databaseAnnotation, isCustomTypeClass, isDateType, isIntegerType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
 import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
 import { splitDotPath } from '../sql-adapter.js';
 import { PreparedAdapter } from '../prepare.js';
@@ -96,6 +86,11 @@ export function typeResolvesToBoolean(type: Type): boolean {
     if (type.kind === ReflectionKind.union) return type.types.filter(isNonUndefined).every(typeResolvesToBoolean);
     if (type.kind === ReflectionKind.enum) return typeResolvesToBoolean(type.indexType);
     return false;
+}
+
+export function typeResolvesToDate(type: Type): boolean {
+    if (type.kind === ReflectionKind.union) return type.types.filter(isNonUndefined).every(isDateType);
+    return isDateType(type);
 }
 
 export function noopSqlTypeCaster(placeholder: string): string {

@@ -10,17 +10,7 @@
 
 import { Pool } from 'mariadb';
 import { mySqlSerializer } from './mysql-serializer.js';
-import {
-    isDateType,
-    isReferenceType,
-    isUUIDType,
-    ReflectionClass,
-    ReflectionKind,
-    ReflectionProperty,
-    Serializer,
-    Type,
-    TypeNumberBrand,
-} from '@deepkit/type';
+import { isReferenceType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type, TypeNumberBrand } from '@deepkit/type';
 import {
     Column,
     DefaultPlatform,
@@ -30,6 +20,7 @@ import {
     PreparedAdapter,
     typeResolvesToBigInt,
     typeResolvesToBoolean,
+    typeResolvesToDate,
     typeResolvesToInteger,
     typeResolvesToNumber,
     typeResolvesToString,
@@ -78,7 +69,7 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float64, 'double');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float, 'double');
 
-        this.addType(isDateType, 'datetime');
+        this.addType(typeResolvesToDate, 'datetime');
         this.addType(isUUIDType, 'binary', 16);
 
         this.addBinaryType('longblob');

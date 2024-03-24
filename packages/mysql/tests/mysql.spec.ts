@@ -324,21 +324,23 @@ test('unique constraint 1', async () => {
     }
 });
 
-test('string/null unions should not render as JSON', async () => {
+test('non-object null unions should not render as JSON', async () => {
     @entity.name('model6')
     class Model {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public name: string, public nickName: string | null = null) {}
+        constructor(public name: string, public nickName: string | null = null, public birthdate: Date | null = null) {}
     }
 
     const database = await databaseFactory([Model]);
     await database.persist(new Model('Peter'));
     await database.persist(new Model('Christopher', 'Chris'));
+    await database.persist(new Model('Thomas', 'Tom', new Date('1960-02-10T00:00:00Z')));
 
     const result = await database.query(Model).orderBy('id', 'asc').find();
     expect(result).toMatchObject([
         {name: 'Peter', nickName: null},
-        {name: 'Christopher', nickName: 'Chris'}
+        {name: 'Christopher', nickName: 'Chris'},
+        {name: 'Thomas', nickName: 'Tom', birthdate: new Date('1960-02-10T00:00:00Z')},
     ]);
 });
