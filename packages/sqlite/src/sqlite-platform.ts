@@ -18,6 +18,7 @@ import {
     Table,
     TableDiff,
     typeResolvesToBoolean,
+    typeResolvesToDate,
     typeResolvesToInteger,
     typeResolvesToNumber,
     typeResolvesToString,
@@ -62,7 +63,7 @@ export class SQLitePlatform extends DefaultPlatform {
         this.addType(() => true, 'text');
 
         this.addType(isUUIDType, 'blob');
-        this.addType(isDateType, 'text');
+        this.addType(typeResolvesToDate, 'text');
 
         this.addType(typeResolvesToString, 'text');
         this.addType(typeResolvesToInteger, 'integer');

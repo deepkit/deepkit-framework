@@ -19,13 +19,13 @@ import {
     Table,
     typeResolvesToBigInt,
     typeResolvesToBoolean,
+    typeResolvesToDate,
     typeResolvesToInteger,
     typeResolvesToNumber,
     typeResolvesToString,
 } from '@deepkit/sql';
 import { postgresSerializer } from './postgres-serializer.js';
 import {
-    isDateType,
     isReferenceType,
     isUUIDType,
     ReflectionClass,
@@ -109,7 +109,7 @@ export class PostgresPlatform extends DefaultPlatform {
 
         this.addType(isUUIDType, 'uuid');
         this.addBinaryType('bytea');
-        this.addType(isDateType, 'timestamp');
+        this.addType(typeResolvesToDate, 'timestamp');
     }
 
     override getSqlTypeCaster(type: Type): (placeholder: string) => string {
