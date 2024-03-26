@@ -28,7 +28,14 @@ import { getClassState, getInstanceState, getNormalizedPrimaryKey, IdentityMap }
 import { getClassSchemaInstancePairs } from './utils.js';
 import { HydratorFn } from './formatter.js';
 import { getReference } from './reference.js';
-import { DatabaseErrorInsertEvent, DatabaseErrorUpdateEvent, onDatabaseError, UnitOfWorkCommitEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event.js';
+import {
+    DatabaseErrorInsertEvent,
+    DatabaseErrorUpdateEvent,
+    onDatabaseError,
+    UnitOfWorkCommitEvent,
+    UnitOfWorkEvent,
+    UnitOfWorkUpdateEvent,
+} from './event.js';
 import { DatabaseLogger } from './logger.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { EventDispatcher, EventDispatcherInterface, EventToken } from '@deepkit/event';
@@ -540,44 +547,38 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
             this.currentPersistence = this.adapter.createPersistence(this);
         }
 
-        if (!this.rounds.length) {
-            //we create a new round
-            this.enterNewRound();
-        }
+        try {
+            if (!this.rounds.length) {
+                //we create a new round
+                this.enterNewRound();
+            }
 
-        //make sure all stuff in the identity-map is known
-        const round = this.getCurrentRound();
-        if (this.withIdentityMap) {
-            for (const map of this.identityMap.registry.values()) {
-                for (const item of map.values()) {
-                    round.add(item.ref);
+            //make sure all stuff in the identity-map is known
+            const round = this.getCurrentRound();
+            if (this.withIdentityMap) {
+                for (const map of this.identityMap.registry.values()) {
+                    for (const item of map.values()) {
+                        round.add(item.ref);
+                    }
                 }
             }
-        }
 
-        if (this.eventDispatcher.hasListeners(DatabaseSession.onCommitPre)) {
-            const event = new UnitOfWorkCommitEvent(this);
-            await this.eventDispatcher.dispatch(DatabaseSession.onCommitPre, event);
-            if (event.stopped) return;
-        }
-
-        //we need to iterate via for i, because hooks might add additional rounds dynamically
-        for (let i = 0; i < this.rounds.length; i++) {
-            const round = this.rounds[i];
-            if (round.isCommitted() || round.isInCommit()) continue;
-
-            try {
-                await round.commit(this.currentPersistence);
-            } catch (error) {
-                this.rounds = [];
-                this.currentPersistence.release();
-                this.currentPersistence = undefined;
-                throw error;
+            if (this.eventDispatcher.hasListeners(DatabaseSession.onCommitPre)) {
+                const event = new UnitOfWorkCommitEvent(this);
+                await this.eventDispatcher.dispatch(DatabaseSession.onCommitPre, event);
+                if (event.stopped) return;
             }
-        }
 
-        this.currentPersistence.release();
-        this.currentPersistence = undefined;
-        this.rounds = [];
+            //we need to iterate via for i, because hooks might add additional rounds dynamically
+            for (let i = 0; i < this.rounds.length; i++) {
+                const round = this.rounds[i];
+                if (round.isCommitted() || round.isInCommit()) continue;
+                await round.commit(this.currentPersistence);
+            }
+        } finally {
+            this.currentPersistence.release();
+            this.currentPersistence = undefined;
+            this.rounds = [];
+        }
     }
 }
