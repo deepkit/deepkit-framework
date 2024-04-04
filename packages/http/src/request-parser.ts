@@ -40,14 +40,17 @@ function parseBody(
                 reject(err);
             } else {
                 for (const [name, file] of Object.entries(files) as any) {
-                    if (file.size === 0) continue;
+                    if (!file.filepath || 'string' !== typeof file.filepath) continue;
+                    if (!file.size || 'number' !== typeof file.size) continue;
+                    if (file.lastModifiedDate && !(file.lastModifiedDate instanceof Date)) continue;
+
                     foundFiles[name] = {
                         validator: UploadedFileSymbol,
                         size: file.size,
                         path: file.filepath,
-                        name: file.originalFilename,
-                        type: file.mimetype,
-                        lastModifiedDate: file.lastModifiedDate,
+                        name: file.originalFilename || null,
+                        type: file.mimetype || null,
+                        lastModifiedDate: file.lastModifiedDate || null,
                     };
                 }
                 const body = { ...fields, ...foundFiles };
