@@ -1,21 +1,50 @@
-# docker run -d --rm --name bench-postgres -d -e POSTGRES_PASSWORD=password -e POSTGRES_HOST_AUTH_METHOD=trust -p 127.0.0.1:5432:5432 postgres:13.4
+volumes:
+  postgres-data:
+  traefik-acme:
 
 services:
-  website:
-    build:
-      context: ../
-      dockerfile: Dockerfile
+  traefik:
+    image: traefik:v2.11
+    restart: always
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+#      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+#      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=marc@marcjschmidt.de"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
-      - "8080:8008"
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - traefik-acme:/letsencrypt
+
+  website:
+    image: deepkit/website:latest
+    restart: always
     environment:
-      DATABASE_URL: postgres://postgres:password@localhost:5433/deepkit-website
+      app_databaseHost: postgres
+      app_databaseName: postgres
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.website.rule=Host(`deepkit.io`)"
+      - "traefik.http.routers.website.entrypoints=websecure"
+      - "traefik.http.routers.website.tls.certresolver=myresolver"
     depends_on:
       - postgres
 
   postgres:
+    restart: always
     image: postgres:13.4
-    ports:
-      - "5433:5432"
+    shm_size: 128mb
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: deepkit-website
