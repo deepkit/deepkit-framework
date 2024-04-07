@@ -1,5 +1,5 @@
 import { FilesystemAdapter, FilesystemError, FilesystemFile, FileVisibility, Reporter } from '@deepkit/filesystem';
-import { pathDirectory } from '@deepkit/core';
+import { pathDirectory, pathNormalize } from '@deepkit/core';
 import {
     CopyObjectCommand,
     DeleteObjectsCommand,
@@ -7,13 +7,12 @@ import {
     GetObjectCommand,
     HeadObjectCommand,
     ListObjectsCommand,
+    ObjectCannedACL,
     PutObjectAclCommand,
     PutObjectCommand,
     S3Client,
     S3ClientConfigType,
-    ObjectCannedACL
 } from '@aws-sdk/client-s3';
-import { normalizePath } from 'typedoc';
 
 export interface FilesystemAwsS3Options extends S3ClientConfigType {
     bucket: string;
@@ -54,8 +53,8 @@ export class FilesystemAwsS3Adapter implements FilesystemAdapter {
     }
 
     protected getRemotePath(path: string) {
-        path = normalizePath(path);
-        const base = this.options.path ? (normalizePath(this.options.path).slice(0) + '/') : '';
+        path = pathNormalize(path);
+        const base = this.options.path ? (pathNormalize(this.options.path).slice(0) + '/') : '';
         if (path === '/') return base;
         let remotePath = this.options.path ? base : '';
         remotePath += path === '/' ? '' : path.slice(1);
@@ -69,7 +68,7 @@ export class FilesystemAwsS3Adapter implements FilesystemAdapter {
 
     protected pathMapToVirtual(path: string): string {
         //remove this.options.path from path
-        const base = this.options.path ? (normalizePath(this.options.path).slice(0) + '/') : '';
+        const base = this.options.path ? (pathNormalize(this.options.path).slice(0) + '/') : '';
         return path.slice(base.length);
     }
 
