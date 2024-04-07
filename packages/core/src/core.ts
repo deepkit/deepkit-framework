@@ -723,6 +723,10 @@ export function isIterable(value: any): boolean {
     return isArray(value) || value instanceof Set || value instanceof Map;
 }
 
+export function iterableSize(value: Array<unknown> | Set<unknown> | Map<unknown, unknown>): number {
+    return isArray(value) ? value.length : value.size || 0;
+}
+
 /**
  * Returns __filename, works in both cjs and esm.
  */

@@ -797,3 +797,27 @@ test('array with mongoid', () => {
         references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }]
     });
 });
+
+test('Map part of union', () => {
+    type T1 = null | Map<Date, number>;
+    type T2 = null | { tags: Map<Date, number> };
+
+    expect(roundTrip<T1>(null)).toBe(null);
+    expect(roundTrip<T2>(null)).toBe(null);
+
+    {
+        const date = new Date;
+        const map = new Map<Date, number>([[date, 1]]);
+        expect(serializeToJson<T1>(map)).toEqual([[date.toJSON(), 1]]);
+        expect(roundTrip<T1>(map)).toEqual(map);
+        expect(roundTrip<T2>({ tags: map })).toEqual({ tags: map });
+    }
+
+    // empty map
+    {
+        const map = new Map<Date, number>();
+        expect(serializeToJson<T1>(map)).toEqual([]);
+        expect(roundTrip<T1>(map)).toEqual(map);
+        expect(roundTrip<T2>({ tags: map })).toEqual({ tags: map });
+    }
+});
