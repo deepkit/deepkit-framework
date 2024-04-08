@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.145](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.144...v1.0.1-alpha.145) (2024-04-08)
+
+### Bug Fixes
+
+- **orm:** make sure persistence is always closed on flush ([015d90a](https://github.com/deepkit/deepkit-framework/commit/015d90af15503c4159e4810cb6f862349a4599f1))
+
 ## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
 
 **Note:** Version bump only for package @deepkit/orm

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.145](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.144...v1.0.1-alpha.145) (2024-04-08)
+
+### Bug Fixes
+
+- **sql:** dates should be nullable without casting as JSON ([#553](https://github.com/deepkit/deepkit-framework/issues/553)) ([d34b1a3](https://github.com/deepkit/deepkit-framework/commit/d34b1a30ad9371f01eb806ac37f2861754ce9959))
+
 ## [1.0.1-alpha.144](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.143...v1.0.1-alpha.144) (2024-03-19)
 
 **Note:** Version bump only for package @deepkit/mysql

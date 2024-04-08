@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.145](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.144...v1.0.1-alpha.145) (2024-04-08)
+
+### Bug Fixes
+
+- **http:** make sure invalid formidable files are skipped ([d1ff09b](https://github.com/deepkit/deepkit-framework/commit/d1ff09ba17e82891b25c192dec7bdf2d9b921f24))
+
 ## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
 
 ### Bug Fixes

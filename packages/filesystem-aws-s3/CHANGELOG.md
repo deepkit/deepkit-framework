@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.145](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.144...v1.0.1-alpha.145) (2024-04-08)
+
+### Bug Fixes
+
+- **filesystem-aws-s3:** use correct path normalize function ([58042a9](https://github.com/deepkit/deepkit-framework/commit/58042a99dc1f25d92effb766842fea199568f8f6))
+
 ## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
 
 **Note:** Version bump only for package @deepkit/filesystem-aws-s3

@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.145](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.144...v1.0.1-alpha.145) (2024-04-08)
+
+### Bug Fixes
+
+- **filesystem-aws-s3:** use correct path normalize function ([58042a9](https://github.com/deepkit/deepkit-framework/commit/58042a99dc1f25d92effb766842fea199568f8f6))
+- **http:** make sure invalid formidable files are skipped ([d1ff09b](https://github.com/deepkit/deepkit-framework/commit/d1ff09ba17e82891b25c192dec7bdf2d9b921f24))
+- **orm:** make sure persistence is always closed on flush ([015d90a](https://github.com/deepkit/deepkit-framework/commit/015d90af15503c4159e4810cb6f862349a4599f1))
+- **sql:** dates should be nullable without casting as JSON ([#553](https://github.com/deepkit/deepkit-framework/issues/553)) ([d34b1a3](https://github.com/deepkit/deepkit-framework/commit/d34b1a30ad9371f01eb806ac37f2861754ce9959))
+- **sql:** resolve `Date|null` to date type ([ab12802](https://github.com/deepkit/deepkit-framework/commit/ab12802c307d9dcf17925526dd5dcf87c87e8899))
+- type guard handing of empty Map/Set ([da4cf82](https://github.com/deepkit/deepkit-framework/commit/da4cf8242a317157f8b02c67d2b5754fb8f29381))
+- **website:** fix ssr, remove some pages ([51b9b36](https://github.com/deepkit/deepkit-framework/commit/51b9b3681f46faf368c429302e127cf8c279d18d))
+
 ## [1.0.1-alpha.144](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.143...v1.0.1-alpha.144) (2024-03-19)
 
 ### Bug Fixes

@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/mongo",
-  "version": "1.0.1-alpha.144",
+  "version": "1.0.1-alpha.145",
   "description": "Deepkit ORM MongoDB adapter",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -33,11 +33,11 @@
     "saslprep": "^1.0.3"
   },
   "devDependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.143",
-    "@deepkit/core": "^1.0.1-alpha.143",
-    "@deepkit/orm": "^1.0.1-alpha.143",
+    "@deepkit/bson": "^1.0.1-alpha.145",
+    "@deepkit/core": "^1.0.1-alpha.145",
+    "@deepkit/orm": "^1.0.1-alpha.145",
     "@deepkit/orm-integration": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.143",
+    "@deepkit/type": "^1.0.1-alpha.145",
     "@types/mongodb": "3.5.25",
     "@types/node": "20.6.0",
     "mongodb": "3.6.0"
