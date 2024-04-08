@@ -489,6 +489,8 @@ export class RpcServerAction {
         response.errorLabel = `Action ${getClassName(classType.controller)}.${body.method} return type serialization error`;
 
         try {
+            // In some environments, we get "TypeError: Spread syntax requires ...iterable[Symbol.iterator] to be a function"
+            // so we use `apply` instead of `method(...value.args)`
             const method = controllerInstance[body.method] as Function;
             const result = await method.apply(controllerInstance, value.args);
 
