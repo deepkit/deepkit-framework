@@ -260,9 +260,7 @@ export function isObjectLiteral(obj: any): obj is { [key: string]: any } {
 /**
  * @public
  */
-export function isArray(obj: any): obj is any[] {
-    return Array.isArray(obj);
-}
+export const isArray: (obj: any) => obj is any[] = Array.isArray;
 
 /**
  * @public
