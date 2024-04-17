@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.146](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.145...v1.0.1-alpha.146) (2024-04-17)
+
+### Bug Fixes
+
+- **type-compiler:** esm import of micromatch ([5606d74](https://github.com/deepkit/deepkit-framework/commit/5606d7404ad4ff1e94c5c12cbf94a532e9ae41ce))
+
 ## [1.0.1-alpha.145](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.144...v1.0.1-alpha.145) (2024-04-08)
 
 ### Bug Fixes
