@@ -61,7 +61,7 @@ export class MyTransport implements LoggerTransport {
 
 new App()
     .setup((module, config) => {
-        module.setupProvider(Logger).addTransport(new MyTransport);
+        module.configureProvider<Logger>(v => v.addTransport(new MyTransport));
     })
     .run();
 ```
@@ -73,7 +73,7 @@ import { Logger } from '@deepkit/logger';
 
 new App()
 .setup((module, config) => {
-    module.setupProvider(Logger).setTransport([new MyTransport]);
+    module.configureProvider<Logger>(v => v.setTransport([new MyTransport]));
 })
 .run();
 ```
@@ -83,7 +83,7 @@ import { Logger, JSONTransport } from '@deepkit/logger';
 
 new App()
     .setup((module, config) => {
-        module.setupProvider(Logger).setTransport([new JSONTransport]);
+        module.configureProvider<Logger>(v => v.setTransport([new JSONTransport]));
     })
     .run();
 ```

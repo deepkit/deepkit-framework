@@ -196,11 +196,11 @@ The design of `@deepkit/injector` precludes the use of asynchronous providers wi
 
 To initialize something asynchronously, this initialization should be moved to the application server bootstrap,  because there the events can be asynchronous. Alternatively, an initialization can be triggered manually.
 
-## Setup Calls
+## Configure Providers
 
-Setup calls allow to manipulate the result of a provider. This is useful for example to use another dependency injection variant, the method injection.
+Configuration callbacks allow to manipulate the result of a provider. This is useful for example to use another dependency injection variant, the method injection.
 
-Setup calls can only be used with the module API or the app API and are registered above the module.
+They can only be used with the module API or the app API and are registered above the module.
 
 ```typescript
 class UserRepository  {
@@ -213,10 +213,12 @@ class UserRepository  {
 const rootModule = new InjectorModule([UserRepository])
      .addImport(lowLevelModule);
 
-rootModule.setupProvider(UserRepository).setDatabase(db);
+rootModule.configureProvider<UserRepository>(v => {
+  v.setDatabase(db);
+});
 ```
 
-The `setupProvider` method thereby returns a proxy object of UserRepository on which its methods can be called. It should be noted that these method calls are merely placed in a queue and are not executed at this time. Accordingly, no return value is returned.
+The `configureProvider` receives in the callback as the first parameter `v` the UserRepository instance on which its methods can be called.
 
 In addition to method calls, properties can also be set.
 
@@ -228,14 +230,16 @@ class UserRepository  {
 const rootModule = new InjectorModule([UserRepository])
      .addImport(lowLevelModule);
 
-rootModule.setupProvider(UserRepository).db = db;
+rootModule.configureProvider<UserRepository>(v => {
+  v.db = new Database();
+});
 ```
 
-This assignment is also simply placed in a queue.
+All the callbacks are placed into a queue and executed in the order they were defined.
 
-The calls or the assignments in the queue are then executed on the actual result of the provider as soon as this is created. That is with a ClassProvider these are applied to the class instance, as soon as the instance is created, with a FactoryProvider on the result of the Factory, and with a ValueProvider on the Provider.
+The calls in the queue are then executed on the actual result of the provider as soon as the provider is created. That is with a ClassProvider these are applied to the class instance, as soon as the instance is created, with a FactoryProvider on the result of the Factory, and with a ValueProvider on the Provider.
 
-To reference not only static values, but also other providers, the function `injectorReference` can be used. This function returns a reference to a provider, which is also requested by the DI container when the setup calls are executed.
+To reference not only static values, but also other providers, arbitary dependencies can be injected into the callback, by just defining them as arguments. Make sure these dependencies are known in the provider scope.
 
 ```typescript
 class Database {}
@@ -245,13 +249,64 @@ class UserRepository  {
 }
 
 const rootModule = new InjectorModule([UserRepository, Database])
-rootModule.setupProvider(UserRepository).db = injectorReference(Database);
+rootModule.configureProvider<UserRepository>((v, db: Database) => {
+  v.db = db;
+});
 ```
 
-*Abstractions/Interfaces*
+## Nominal types
 
-Setup calls can also be assigned to an interface.
+Note that the passed type to `configureProvider`, like in the last example `UserRepository`, is not resolved using structural type checking, but by nominal types. This means for example two classes/interfaces with the same structure but different identity are not compatible. The same is true for `get<T>` calls or when a dependency is resolved. 
+
+This differentiates to the way TypeScript type checking works, which is based on structural type checking. This design decision was made to avoid accidental misconfigurations (e.g. requesting an empty class, which is structurally compatible to any class) and to make the code more robust.
+
+
+In the following example the `User1` and `User2` classes are structurally compatible, but not nominally. This means requesting `User1` will not resolve `User2` and vice versa.
 
 ```typescript
-rootModule.setupProvider<DatabaseInterface>().logging = logger;
+
+class User1 {
+    name: string = '';
+}
+
+class User2 {
+    name: string = '';
+}
+
+new App({
+    providers: [User1, User2]
+});
+```
+
+Extending classes and implementing interfaces establishes a nominal relationship.
+
+```typescript
+class UserBase {
+    name: string = '';
+}
+
+class User extends UserBase {
+}
+
+const app = new App({
+    providers: [User2]
+});
+
+app.get(UserBase); //returns User
+```
+
+```typescript
+interface UserInterface {
+    name: string;
+}
+
+class User implements UserInterface {
+    name: string = '';
+}
+
+const app = new App({
+    providers: [User]
+});
+
+app.get<UserInterface>(); //returns User
 ```
