@@ -39,7 +39,14 @@ function parseBody(
             if (err) {
                 reject(err);
             } else {
-                for (const [name, file] of Object.entries(files) as any) {
+                const fileEntries = Object.entries(files);
+
+                // formidable turns JSON arrays into numerically keyed objects, so we convert them back
+                if ('0' in fields && fileEntries.length === 0 && Object.keys(fields).every((key, idx) => parseInt(key) === idx)) {
+                    return resolve(Object.values(fields));
+                }
+
+                for (const [name, file] of fileEntries as any) {
                     if (!file.filepath || 'string' !== typeof file.filepath) continue;
                     if (!file.size || 'number' !== typeof file.size) continue;
                     if (file.lastModifiedDate && !(file.lastModifiedDate instanceof Date)) continue;
