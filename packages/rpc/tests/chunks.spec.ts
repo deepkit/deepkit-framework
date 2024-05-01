@@ -4,6 +4,19 @@ import { DirectClient } from '../src/client/client-direct.js';
 import { rpc } from '../src/decorators.js';
 import { RpcKernel } from '../src/server/kernel.js';
 import { ClientProgress } from '../src/writer.js';
+import { RpcBufferReader } from '../src/protocol.js';
+
+test('buffer read does not do copy', async () => {
+    const data = Buffer.from('hello world');
+    data.writeUint32LE(data.length, 0);
+    let received: Uint8Array | undefined = undefined;
+
+    new RpcBufferReader((p) => {
+        received = p;
+    }).feed(data);
+
+    expect(received!.buffer === data.buffer).toBe(true);
+});
 
 test('chunks', async () => {
     @rpc.controller('test')
