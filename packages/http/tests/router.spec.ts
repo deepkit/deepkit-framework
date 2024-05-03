@@ -945,6 +945,15 @@ test('BodyValidation', async () => {
 
             throw new HttpBadRequestError('Invalid: ' + user.error.getErrorMessageForPath('username'));
         }
+
+        @http.POST('/action4')
+        action4(users: HttpBodyValidation<AddUserDto[]>): User[] {
+            if (users.valid()) {
+                return users.value;
+            }
+
+            throw new HttpBadRequestError('Invalid: ' + users.error.getErrorMessageForPath('0.username'));
+        }
     }
 
     const httpKernel = createHttpKernel([Controller]);
@@ -958,6 +967,9 @@ test('BodyValidation', async () => {
 
     expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
     expect((await httpKernel.request(HttpRequest.POST('/action3').json({ username: 'Pe' }))).json.message).toEqual('Invalid: username(minLength): Min length is 3 caused by value "Pe"');
+
+    expect((await httpKernel.request(HttpRequest.POST('/action4').json([{ username: 'Peter' }]))).json).toEqual([{ username: 'Peter' }]);
+    expect((await httpKernel.request(HttpRequest.POST('/action4').json([{ username: 'Pe' }]))).json.message).toEqual('Invalid: 0.username(minLength): Min length is 3 caused by value "Pe"');
 });
 
 test('unpopulated entity without type information', async () => {
