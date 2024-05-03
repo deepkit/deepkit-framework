@@ -10,7 +10,17 @@
 
 import { Pool } from 'mariadb';
 import { mySqlSerializer } from './mysql-serializer.js';
-import { isReferenceType, isUUIDType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type, TypeNumberBrand } from '@deepkit/type';
+import {
+    isAutoIncrementType,
+    isReferenceType,
+    isUUIDType,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    Serializer,
+    Type,
+    TypeNumberBrand,
+} from '@deepkit/type';
 import {
     Column,
     DefaultPlatform,
@@ -51,6 +61,7 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addType(() => true, 'json');
 
         this.addType(typeResolvesToNumber, 'double');
+        this.addType(isAutoIncrementType, 'int');
         this.addType(typeResolvesToInteger, 'integer');
         this.addType(typeResolvesToBigInt, 'bigint');
         this.addType(typeResolvesToBoolean, 'tinyint', 1);
