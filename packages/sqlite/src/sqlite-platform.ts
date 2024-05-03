@@ -94,6 +94,10 @@ export class SQLitePlatform extends DefaultPlatform {
         return `${table ? table + '.' : ''}${this.quoteIdentifier(column)}->${this.quoteValue(path)}`;
     }
 
+    supportsAggregatedAlterTable(): boolean {
+        return false;
+    }
+
     getModifyTableDDL(diff: TableDiff, options: MigrateOptions): string[] {
         let changeViaMigrationTableNeeded =
             false
