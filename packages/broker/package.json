@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/broker",
-  "version": "1.0.1-alpha.147",
+  "version": "1.0.1-alpha.148",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -36,12 +36,12 @@
     "rxjs": "*"
   },
   "devDependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.147",
+    "@deepkit/bson": "^1.0.1-alpha.148",
     "@deepkit/core": "^1.0.1-alpha.147",
     "@deepkit/core-rxjs": "^1.0.1-alpha.147",
-    "@deepkit/event": "^1.0.1-alpha.147",
-    "@deepkit/rpc": "^1.0.1-alpha.147",
-    "@deepkit/type": "^1.0.1-alpha.147"
+    "@deepkit/event": "^1.0.1-alpha.148",
+    "@deepkit/rpc": "^1.0.1-alpha.148",
+    "@deepkit/type": "^1.0.1-alpha.148"
   },
   "jest": {
     "testEnvironment": "node",

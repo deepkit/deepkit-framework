@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.148](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.147...v1.0.1-alpha.148) (2024-05-04)
+
+### Features
+
+- **type:** new TemplateState.touch and isTypeClassOf ([cdf3272](https://github.com/deepkit/deepkit-framework/commit/cdf3272e05f63487c9e0da7776aa232ba1fe88b5))
+- **type:** support lower/mixed case as identifier for enum values ([ce0166e](https://github.com/deepkit/deepkit-framework/commit/ce0166e5d76bc5d55a50114bd43bfaa68dbeac18))
+- **type:** support mixed case enum member in union resolver ([96dd2d8](https://github.com/deepkit/deepkit-framework/commit/96dd2d864c2a0436cb5d78bada58ff82681d3045))
+
 ## [1.0.1-alpha.147](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.146...v1.0.1-alpha.147) (2024-05-04)
 
 ### Bug Fixes
