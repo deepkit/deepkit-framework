@@ -1019,6 +1019,22 @@ test('naming strategy camel case', () => {
     }
 });
 
+test('enum mixed case', () => {
+    enum Units {
+        MILLIGRAM = 'm',
+        GRAM = 'g',
+        KILOGRAM = 'k',
+    }
+
+    expect(cast<Units>('milligram')).toBe('m');
+    expect(cast<Units>('milligram')).toBe(Units.MILLIGRAM);
+
+    expect(cast<Units>('MilliGRAM')).toBe(Units.MILLIGRAM);
+
+    expect(cast<Units>('gram')).toBe('g');
+    expect(cast<Units>('gram')).toBe(Units.GRAM);
+});
+
 test('enum union', () => {
     enum StatEnginePowerUnit {
         Hp = 'hp',

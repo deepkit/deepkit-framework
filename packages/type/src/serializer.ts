@@ -1977,7 +1977,15 @@ export class Serializer {
         this.serializeRegistry.register(ReflectionKind.enum, (type, state) => state.addSetter(state.accessor));
         this.deserializeRegistry.register(ReflectionKind.enum, (type, state) => {
             const valuesVar = state.setVariable('values', type.values);
+            const lowercaseNames = state.setVariable('lowercaseNames', Object.keys(type.enum).map(v => v.toLowerCase()));
+            const allLowercased = Object.keys(type.enum).every(v => v.toLowerCase() === v);
+            const enumValues = state.setVariable('enumValues', type.values);
+            const allowLowercase = allLowercased ? '' : `
+                ${state.accessor} = ${enumValues}[${lowercaseNames}.indexOf(String(${state.accessor}).toLowerCase())] ?? ${state.accessor};
+            `;
+
             state.addCodeForSetter(`
+                ${allowLowercase}
                 ${state.setter} = ${state.accessor};
                 if (${valuesVar}.indexOf(${state.accessor}) === -1) ${state.throwCode('enum', `'No valid value of ' + ${valuesVar}.join(', ')`)}
             `);
