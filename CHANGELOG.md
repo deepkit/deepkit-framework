@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.147](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.146...v1.0.1-alpha.147) (2024-05-04)
+
+### Bug Fixes
+
+- **http:** support for JSON array payloads ([#564](https://github.com/deepkit/deepkit-framework/issues/564)) ([feeeaa6](https://github.com/deepkit/deepkit-framework/commit/feeeaa6ef9f76d67f85b25f4d243b27ceb00360b))
+- **mysql:** ensure `number & AutoIncrement` is always `int` ([69feb17](https://github.com/deepkit/deepkit-framework/commit/69feb17276f0f23ef32a331b36fa58ce0b001ae5))
+- **sqlite:** make sure ALTER TABLE are not aggregated ([74ef2eb](https://github.com/deepkit/deepkit-framework/commit/74ef2eb340924306dcd59b4d913d0eb32f88757f))
+- **type:** make sure handled constructor properties are not set twice ([2e82eb6](https://github.com/deepkit/deepkit-framework/commit/2e82eb6fe6bb8b519b8f170334740ee9f7f988be))
+- **type:** resolve global classes as shallow TypeClass ([d976024](https://github.com/deepkit/deepkit-framework/commit/d97602409b1e8c1d63839e2d1b75d16a0ccd4cfd))
+- **website:** docs about DI configureProvider and nominal tyoes ([e5dafb4](https://github.com/deepkit/deepkit-framework/commit/e5dafb47126411e8b369aa78cead32e02b4ee7c9))
+
 ## [1.0.1-alpha.146](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.145...v1.0.1-alpha.146) (2024-04-17)
 
 ### Bug Fixes

@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/stopwatch",
-  "version": "1.0.1-alpha.146",
+  "version": "1.0.1-alpha.147",
   "description": "Deepkit Stopwatch",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -27,8 +27,8 @@
     "@deepkit/type": "^1.0.1-alpha.13"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.145",
-    "@deepkit/type": "^1.0.1-alpha.146"
+    "@deepkit/core": "^1.0.1-alpha.147",
+    "@deepkit/type": "^1.0.1-alpha.147"
   },
   "jest": {
     "testEnvironment": "node",
