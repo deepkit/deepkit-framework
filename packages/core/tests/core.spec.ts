@@ -16,6 +16,7 @@ import {
     isClassInstance,
     isConstructable,
     isFunction,
+    isGlobalClass,
     isIterable,
     isNumeric,
     isObject,
@@ -604,3 +605,18 @@ test('iterableSize', () => {
     expect(iterableSize(new Set([1, 2, 3]) as any)).toBe(3);
 });
 
+test('isGlobalClass', () => {
+    expect(isGlobalClass(undefined)).toBe(false);
+    expect(isGlobalClass({})).toBe(false);
+
+    expect(isGlobalClass(Date)).toBe(true);
+    expect(isGlobalClass(Array)).toBe(true);
+    expect(isGlobalClass(TextDecoder)).toBe(true);
+
+    class MyError extends Error {
+    }
+    expect(isGlobalClass(Error)).toBe(true);
+    expect(isGlobalClass(MyError)).toBe(false);
+
+    expect(isGlobalClass(Uint8Array)).toBe(true);
+});

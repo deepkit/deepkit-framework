@@ -57,6 +57,7 @@ import {
     getClassName,
     isArray,
     isClass,
+    isGlobalClass,
     isPrototypeOfBase,
     stringifyValueWithType,
 } from '@deepkit/core';
@@ -104,10 +105,10 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
     if (type instanceof ReflectionClass) return type.type;
     if (isArray(type) && type.__type) return type.__type;
     if (isType(type)) return type as Type;
-    if (isClass(type)) {
+    if (isClass(type) || isGlobalClass(type)) {
         if (!('__type' in type)) {
             if ((type as any).__cached_type) return (type as any).__cached_type;
-            // disabled reflection for this class, so we return empty TypeClass
+            // disabled reflection for this class, so we return shallow TypeClass
             return (type as any).__cached_type = { kind: ReflectionKind.class, classType: type as any, types: [] } as any;
         }
         return resolveRuntimeType(type) as Type;

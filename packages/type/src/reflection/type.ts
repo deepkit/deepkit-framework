@@ -18,6 +18,7 @@ import {
     indent,
     isArray,
     isClass,
+    isGlobalClass,
 } from '@deepkit/core';
 import { TypeNumberBrand } from '@deepkit/type-spec';
 import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection.js';
@@ -2285,13 +2286,7 @@ export const binaryTypes: ClassType[] = [
  */
 export function isGlobalTypeClass(type: Type): type is TypeClass {
     if (type.kind !== ReflectionKind.class) return false;
-    if ('undefined' !== typeof window) {
-        return (window as any)[getClassName(type.classType)] === type.classType;
-    }
-    if ('undefined' !== typeof global) {
-        return (global as any)[getClassName(type.classType)] === type.classType;
-    }
-    return false;
+    return isGlobalClass(type.classType);
 }
 
 /**

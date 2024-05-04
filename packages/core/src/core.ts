@@ -233,6 +233,21 @@ export function isClass(obj: any): obj is AbstractClassType {
     return false;
 }
 
+declare var global: any;
+declare var window: any;
+
+export function isGlobalClass(obj: any): obj is AbstractClassType {
+    if ('function' !== typeof obj) return false;
+
+    if ('undefined' !== typeof window) {
+        return (window as any)[getClassName(obj)] === obj;
+    }
+    if ('undefined' !== typeof global) {
+        return (global as any)[getClassName(obj)] === obj;
+    }
+    return false;
+}
+
 /**
  * Returns true for real objects: object literals ({}) or class instances (new MyClass).
  *
