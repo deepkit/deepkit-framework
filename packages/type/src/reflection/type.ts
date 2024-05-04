@@ -2332,6 +2332,22 @@ export function getDeepConstructorProperties(type: TypeClass): TypeParameter[] {
     return res;
 }
 
+/**
+ * Returns the index to `type.values` if the given value is part of the enum, exactly or case-insensitive.
+ * Returns -1 if not found.
+ */
+export function getEnumValueIndexMatcher(type: TypeEnum): (value: string | number | undefined | null) => number {
+    const lowerCaseValues = Object.keys(type.enum).map(v => String(v).toLowerCase());
+    return (value): number => {
+        const exactMatch = type.values.indexOf(value);
+        if (exactMatch !== -1) return exactMatch;
+        const lowerCaseMatch = lowerCaseValues.indexOf(String(value).toLowerCase());
+        if (lowerCaseMatch !== -1) return lowerCaseMatch;
+
+        return -1;
+    };
+}
+
 interface StringifyTypeOptions {
     //show type alias names
     showNames: boolean;

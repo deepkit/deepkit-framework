@@ -1033,6 +1033,10 @@ test('enum mixed case', () => {
 
     expect(cast<Units>('gram')).toBe('g');
     expect(cast<Units>('gram')).toBe(Units.GRAM);
+
+    expect(cast<number | Units>('GRAM')).toBe(Units.GRAM);
+    expect(cast<number | Units>(23)).toBe(23);
+    expect(cast<number | Units>('Gram')).toBe(Units.GRAM);
 });
 
 test('enum union', () => {
