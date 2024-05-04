@@ -532,6 +532,26 @@ export class TemplateState {
     }
 
     /**
+     * Allows to add a custom code that is executed on the current `this.accessor` value.
+     *
+     * @example
+     * ```typescript
+     * serializer.deserializeRegistry.addDecorator(
+     *     isCustomTypeClass,
+     *     (type, state) => {
+     *         state.touch((value) => {
+     *              if ('onLoad' in value) value.onLoad();
+     *         });
+     *     }
+     * );
+     * ```
+     */
+    touch(callback: (value: any) => void) {
+        const touch = this.setVariable('touch', callback);
+        this.addCode(`${touch}(${this.setter});`);
+    }
+
+    /**
      * Stop executing next templates.
      */
     stop() {

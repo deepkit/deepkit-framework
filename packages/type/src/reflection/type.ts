@@ -2297,6 +2297,20 @@ export function isCustomTypeClass(type: Type): type is TypeClass {
 }
 
 /**
+ * Returns a type predicate that checks if the given type is a class and is of the given classType.
+ * If withInheritance is true, it also checks if the type is a subclass of the given classType.
+ */
+export function isTypeClassOf(classType: ClassType, withInheritance: boolean = true): (type: Type) => boolean {
+    if (!withInheritance) return (type: Type) => type.kind === ReflectionKind.class && type.classType === classType;
+
+    return (type: Type) => {
+        if (type.kind !== ReflectionKind.class) return false;
+        const chain = getInheritanceChain(type.classType);
+        return chain.includes(classType);
+    };
+}
+
+/**
  * Returns the members of a class or object literal.
  */
 export function resolveTypeMembers(type: TypeClass | TypeObjectLiteral): (TypeProperty | TypePropertySignature | TypeMethodSignature | TypeMethod | TypeIndexSignature | TypeCallSignature)[] {
