@@ -1068,3 +1068,40 @@ test('Map part of union', () => {
         expect(roundTrip<T2>({ tags: map })).toEqual({ tags: map });
     }
 });
+
+test('constructor property not assigned as property', () => {
+    //when a constructor property is assigned, it must be set via the constructor only
+    class Base {
+        constructor(public id: string) {
+        }
+    }
+
+    class Store {
+        id: string = '';
+    }
+
+    class Derived extends Base {
+        constructor(public store: Store) {
+            super(store.id.split(':')[0]);
+        }
+    }
+
+    const clazz = ReflectionClass.from(Derived);
+    expect(clazz.getConstructorOrUndefined()?.getParameter('store').isProperty()).toBe(true);
+    const parentConstructor = clazz.parent!.getConstructorOrUndefined();
+    expect(parentConstructor!.getParameter('id').isProperty()).toBe(true);
+
+    const store = new Store;
+    store.id = 'foo:bar';
+    const derived = new Derived(store);
+    expect(derived.id).toBe('foo');
+
+    const json = serializeToJson<Derived>(derived);
+    expect(json).toEqual({ id: 'foo', store: { id: 'foo:bar' } });
+
+    const back = deserializeFromJson<Derived>({
+        id: 'unrelated',
+        store: { id: 'foo:bar' },
+    });
+    expect(back).toEqual(derived);
+});

@@ -5,7 +5,7 @@ import { cast, cloneClass, serialize } from '../src/serializer-facade.js';
 import { createReference } from '../src/reference.js';
 import { unpopulatedSymbol } from '../src/core.js';
 
-(BigInt.prototype as any).toJSON = function () {
+(BigInt.prototype as any).toJSON = function() {
     return this.toString();
 };
 
@@ -244,7 +244,7 @@ test('model 1', () => {
             filter: undefined,
             skip: undefined,
             limit: undefined,
-            sort: undefined
+            sort: undefined,
         };
         expect(roundTrip<Model>(model as any)).toEqual(model);
     }
@@ -357,7 +357,7 @@ test('relation 2', () => {
                 name: 'Marc 1',
                 id: 3,
                 version: 0,
-            })
+            }),
         ];
 
         expect(roundTrip<User[]>(items)).toEqual(items);
@@ -436,7 +436,7 @@ test('partial returns the model at second level', () => {
 
     expect(roundTrip<Partial<Model>>({ id: 23, config: config } as any)).toEqual({
         id: 23,
-        config: { big: false, color: 'red' }
+        config: { big: false, color: 'red' },
     });
     expect(roundTrip<Partial<Model>>({ id: 23, config: config } as any).config).toBeInstanceOf(Config);
 });
@@ -587,7 +587,7 @@ test('omit circular reference 1', () => {
         another?: Model;
 
         constructor(
-            public id: number = 0
+            public id: number = 0,
         ) {
         }
     }
@@ -790,11 +790,11 @@ test('array with mongoid', () => {
     }
 
     expect(deserializeFromJson<Model>({ references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }] })).toEqual({
-        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }]
+        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }],
     });
 
     expect(serializeToJson<Model>({ references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }] })).toEqual({
-        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }]
+        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }],
     });
 });
 
@@ -820,4 +820,41 @@ test('Map part of union', () => {
         expect(roundTrip<T1>(map)).toEqual(map);
         expect(roundTrip<T2>({ tags: map })).toEqual({ tags: map });
     }
+});
+
+test('constructor property not assigned as property', () => {
+    //when a constructor property is assigned, it must be set via the constructor only
+    class Base {
+        constructor(public id: string) {
+        }
+    }
+
+    class Store {
+        id: string = '';
+    }
+
+    class Derived extends Base {
+        constructor(public store: Store) {
+            super(store.id.split(':')[0]);
+        }
+    }
+
+    const clazz = ReflectionClass.from(Derived);
+    expect(clazz.getConstructorOrUndefined()?.getParameter('store').isProperty()).toBe(true);
+    const parentConstructor = clazz.parent!.getConstructorOrUndefined();
+    expect(parentConstructor!.getParameter('id').isProperty()).toBe(true);
+
+    const store = new Store;
+    store.id = 'foo:bar';
+    const derived = new Derived(store);
+    expect(derived.id).toBe('foo');
+
+    const json = serializeToJson<Derived>(derived);
+    expect(json).toEqual({ id: 'foo', store: { id: 'foo:bar' } });
+
+    const back = deserializeFromJson<Derived>({
+        id: 'unrelated',
+        store: { id: 'foo:bar' },
+    });
+    expect(back).toEqual(derived);
 });

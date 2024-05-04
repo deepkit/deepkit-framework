@@ -698,6 +698,15 @@ export function getParentClass(classType: ClassType): ClassType | undefined {
     return parent;
 }
 
+export function getInheritanceChain(classType: ClassType): ClassType[] {
+    const chain: ClassType[] = [classType];
+    let current = classType;
+    while (current = getParentClass(current) as ClassType) {
+        chain.push(current);
+    }
+    return chain;
+}
+
 declare var v8debug: any;
 
 export function inDebugMode() {

@@ -13,13 +13,14 @@ import {
     arrayRemoveItem,
     ClassType,
     getClassName,
+    getInheritanceChain,
     getParentClass,
     indent,
     isArray,
     isClass,
 } from '@deepkit/core';
 import { TypeNumberBrand } from '@deepkit/type-spec';
-import { getProperty, ReceiveType, reflect, ReflectionClass, toSignature } from './reflection.js';
+import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection.js';
 import { isExtendable } from './extends.js';
 import { state } from './state.js';
 import { resolveRuntimeType } from './processor.js';
@@ -2313,6 +2314,27 @@ export function stringifyResolvedType(type: Type): string {
 
 export function stringifyShortResolvedType(type: Type, stateIn: Partial<StringifyTypeOptions> = {}): string {
     return stringifyType(type, { ...stateIn, showNames: false, showFullDefinition: false, });
+}
+
+/**
+ * Returns all (including inherited) constructor properties of a class.
+ */
+export function getDeepConstructorProperties(type: TypeClass): TypeParameter[] {
+    const chain = getInheritanceChain(type.classType);
+    const res: TypeParameter[] = [];
+    for (const classType of chain) {
+        const type = resolveReceiveType(classType) as TypeClass;
+        if (type.kind !== ReflectionKind.class) continue;
+        const constructor = findMember('constructor', type.types);
+        if (!constructor || constructor.kind !== ReflectionKind.method) continue;
+        for (const param of constructor.parameters) {
+            if (param.kind !== ReflectionKind.parameter) continue;
+            if (param.readonly === true || param.visibility !== undefined) {
+                res.push(param);
+            }
+        }
+    }
+    return res;
 }
 
 interface StringifyTypeOptions {

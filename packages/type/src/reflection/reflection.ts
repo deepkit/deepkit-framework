@@ -383,6 +383,23 @@ export class ReflectionParameter {
     isPrivate(): boolean {
         return this.parameter.visibility === ReflectionVisibility.private;
     }
+
+    isReadonly(): boolean {
+        return this.parameter.readonly === true;
+    }
+
+    /**
+     * True if the parameter becomes a property in the class.
+     * This is the case for parameters in constructors with visibility or readonly.
+     *
+     * ```typescript
+     * class User {
+     *    constructor(public name: string) {}
+     * }
+     */
+    isProperty(): boolean {
+        return this.parameter.readonly === true || this.parameter.visibility !== undefined;
+    }
 }
 
 /**

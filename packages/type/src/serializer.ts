@@ -37,6 +37,7 @@ import {
     excludedAnnotation,
     FindType,
     getConstructorProperties,
+    getDeepConstructorProperties,
     getTypeJitContainer,
     getTypeObjectLiteralFromTypeClass,
     groupAnnotation,
@@ -1147,9 +1148,10 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         const clazz = ReflectionClass.from(type.classType);
         const constructor = clazz.getConstructorOrUndefined();
         if (!clazz.disableConstructor && constructor) {
+            handledPropertiesInConstructor.push(...getDeepConstructorProperties(type).map(v => String(v.name)));
             const parameters = constructor.getParameters();
             for (const parameter of parameters) {
-                if (parameter.getVisibility() === undefined) {
+                if (!parameter.isProperty()) {
                     constructorArguments.push('undefined');
                     continue;
                 }
@@ -1160,7 +1162,6 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 if (property.isSerializerExcluded(state.registry.serializer.name)) {
                     continue;
                 }
-                handledPropertiesInConstructor.push(parameter.getName());
                 const argumentName = state.compilerContext.reserveVariable('c_' + parameter.getName());
 
                 const readName = getNameExpression(state.namingStrategy.getPropertyName(property.property, state.registry.serializer.name), state);
