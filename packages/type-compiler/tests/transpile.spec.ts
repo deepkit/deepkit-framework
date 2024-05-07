@@ -509,3 +509,30 @@ test('class typeName', () => {
     console.log(res.app);
     expect(res.app).toContain(`'StreamApiResponseClass'`);
 });
+
+test('resolve type ref', () => {
+    const res = transpile({
+        'app': `
+    class Guest {}
+    class Vehicle {
+        constructor(public Guest: Guest) {
+        }
+    }
+        `
+    });
+    console.log(res.app);
+    expect(res.app).toContain(`() => Guest, 'Guest'`);
+});
+
+test('resolve type ref2', () => {
+    const res = transpile({
+        'app': `
+    class Guest {}
+    class Vehicle {
+        public Guest: Guest;
+    }
+        `
+    });
+    console.log(res.app);
+    expect(res.app).toContain(`() => Guest, 'Guest'`);
+});

@@ -1895,8 +1895,23 @@ export class ReflectionTransformer implements CustomTransformer {
             if (isNodeWithLocals(current) && current.locals) {
                 const found = current.locals.get(typeName.escapedText);
                 if (found && found.declarations && found.declarations[0]) {
-                    declaration = found.declarations[0];
-                    break;
+                    /**
+                     * Discard parameters, since they can not be referenced from inside
+                     *
+                     * ```typescript
+                     * type B = string;
+                     * function a(B: B) {}
+                     *
+                     * class A {
+                     *    constructor(B: B) {}
+                     * }
+                     * ```
+                     *
+                     */
+                    if (!isParameter(found.declarations[0])) {
+                        declaration = found.declarations[0];
+                        break;
+                    }
                 }
             }
 
@@ -2622,7 +2637,6 @@ export class ReflectionTransformer implements CustomTransformer {
      * => function name() {}; name.__type = 34;
      */
     protected decorateFunctionDeclaration(declaration: FunctionDeclaration) {
-
         const encodedType = this.getTypeOfType(declaration);
         if (!encodedType) return declaration;
 

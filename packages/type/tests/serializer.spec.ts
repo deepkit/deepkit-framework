@@ -27,6 +27,7 @@ import {
     Reference,
     ReflectionKind,
     SignedBinaryBigInt,
+    stringifyResolvedType,
     Type,
     TypeProperty,
     TypePropertySignature,
@@ -1372,4 +1373,20 @@ test("parcel search input deserialization", async () => {
     expect(search.ad!.location).toBeInstanceOf(GeoLocation);
     expect(search?.ad?.attributes?.buildingSurface).toBe(92);
     expect(search?.ad?.location.hasCoords()).toBeTruthy();
+});
+
+test('skip parameter name resolving', () => {
+    class Guest {
+        constructor(public id: number) {
+        }
+    }
+
+    class Vehicle {
+        constructor(public Guest: Guest) {
+        }
+    }
+
+    console.log(stringifyResolvedType(typeOf<Vehicle>()));
+
+    expect(cast<Vehicle>({ Guest: { id: '1' } })).toEqual(new Vehicle(new Guest(1)));
 });
