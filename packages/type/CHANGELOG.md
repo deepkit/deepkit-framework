@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.149](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.148...v1.0.1-alpha.149) (2024-05-07)
+
+### Bug Fixes
+
+- **type-compiler:** make sure type reference resolving skips parameter names ([16ba17d](https://github.com/deepkit/deepkit-framework/commit/16ba17d728cb6f66db7ff3463ee05a893986b29b)), closes [#566](https://github.com/deepkit/deepkit-framework/issues/566)
+
 ## [1.0.1-alpha.148](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.147...v1.0.1-alpha.148) (2024-05-04)
 
 ### Features
