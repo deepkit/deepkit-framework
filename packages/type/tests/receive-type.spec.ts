@@ -108,3 +108,21 @@ test('function with ReceiveType return expression', () => {
     expect(validateString('hello')).toBe(true);
     expect(validateString(2)).toBe(false);
 });
+
+test('ReceiveType forward to type passing', () => {
+    function typeOf2<T>(type?: ReceiveType<T>) {
+        console.log('typeOf2', type);
+        return resolveReceiveType(type);
+    }
+
+    function mySerialize<T>(type?: ReceiveType<T>) {
+        console.log('mySerialize', type);
+        return typeOf2<T>();
+    }
+
+    console.log('typeOf2', typeOf2.toString());
+    console.log('mySerialize', mySerialize.toString());
+
+    const type = mySerialize<string>();
+    expect(type).toMatchObject({ kind: ReflectionKind.string });
+});

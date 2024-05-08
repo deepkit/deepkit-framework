@@ -57,6 +57,7 @@ import {
     getClassName,
     isArray,
     isClass,
+    isFunction,
     isGlobalClass,
     isPrototypeOfBase,
     stringifyValueWithType,
@@ -94,10 +95,10 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
         if (type[type.length - 1] === 'n!' || type[type.length - 1] === 'P7!') {
             //n! represents a simple inline: [Op.inline, 0]
             //P7! represents a class reference: [Op.Frame, Op.classReference, 0] (Op.Frame seems unnecessary)
-            typeFn = (type as any)[0] as Function;
-            type = typeFn() as Packed | Type | ClassType | AbstractClassType | ReflectionClass<any> | undefined;
+            typeFn = (type as any)[0] as Function | any;
+            type = (isFunction(typeFn) ? typeFn() : typeFn) as Packed | Type | ClassType | AbstractClassType | ReflectionClass<any> | undefined;
             if (!type) {
-                throw new Error(`No type resolved for ${typeFn.toString()}. Circular import or no runtime type available.`);
+                throw new Error(`No type resolved for ${String(typeFn)}. Circular import or no runtime type available.`);
             }
         }
     }

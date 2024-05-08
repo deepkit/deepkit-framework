@@ -551,3 +551,18 @@ export const typeValidation = <T>(type?: ReceiveType<T>): ValidatorFn => (contro
     console.log(res.app);
     expect(res.app).toContain(`exports.typeValidation.Ω = undefined; return __assignType((control) =>`);
 });
+
+test('ReceiveType forward to type passing', () => {
+    const res = transpile({
+        'app': `
+        function typeOf2<T>(type?: ReceiveType<T>) {
+            return resolveReceiveType(type);
+        }
+
+        function mySerialize<T>(type?: ReceiveType<T>) {
+            return typeOf2<T>();
+        }
+        `
+    });
+    console.log(res.app);
+});

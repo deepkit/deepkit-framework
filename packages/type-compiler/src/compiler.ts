@@ -192,6 +192,7 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.inline]: { params: 1 },
     [ReflectionOp.inlineCall]: { params: 2 },
     [ReflectionOp.loads]: { params: 2 },
+    [ReflectionOp.extends]: { params: 0 },
     [ReflectionOp.infer]: { params: 2 },
     [ReflectionOp.defaultValue]: { params: 1 },
     [ReflectionOp.parameter]: { params: 1 },
@@ -2431,23 +2432,29 @@ export class ReflectionTransformer implements CustomTransformer {
                     //todo: intersection start
                 }
 
-                for (const foundUser of foundUsers) {
-                    program.pushConditionalFrame();
+                const isReceiveType = foundUsers.find(v => isTypeReferenceNode(v.type) && isIdentifier(v.type.typeName) && getIdentifierName(v.type.typeName) === 'ReceiveType');
+                if (isReceiveType) {
+                    // If it's used in ReceiveType<T>, then we can just use T directly without trying to infer it from ReceiveType<T> itself
+                    program.pushOp(ReflectionOp.inline, program.pushStack(isReceiveType.parameterName));
+                } else {
+                    for (const foundUser of foundUsers) {
+                        program.pushConditionalFrame();
 
-                    program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, foundUser.parameterName)));
-                    this.extractPackStructOfType(foundUser.type, program);
-                    program.pushOp(ReflectionOp.extends);
+                        program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, foundUser.parameterName)));
+                        this.extractPackStructOfType(foundUser.type, program);
+                        program.pushOp(ReflectionOp.extends);
 
-                    const found = program.findVariable(getIdentifierName(declaration.name));
-                    if (found) {
-                        this.extractPackStructOfType(declaration.name, program);
-                    } else {
-                        //type parameter was never found in X of `Y extends X` (no `infer X` was created), probably due to a not supported parameter type expression.
-                        program.pushOp(ReflectionOp.any);
+                        const found = program.findVariable(getIdentifierName(declaration.name));
+                        if (found) {
+                            this.extractPackStructOfType(declaration.name, program);
+                        } else {
+                            //type parameter was never found in X of `Y extends X` (no `infer X` was created), probably due to a not supported parameter type expression.
+                            program.pushOp(ReflectionOp.any);
+                        }
+                        this.extractPackStructOfType({ kind: SyntaxKind.NeverKeyword } as TypeNode, program);
+                        program.pushOp(ReflectionOp.condition);
+                        program.popFrameImplicit();
                     }
-                    this.extractPackStructOfType({ kind: SyntaxKind.NeverKeyword } as TypeNode, program);
-                    program.pushOp(ReflectionOp.condition);
-                    program.popFrameImplicit();
                 }
 
                 if (foundUsers.length > 1) {
