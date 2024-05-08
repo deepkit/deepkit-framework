@@ -536,3 +536,18 @@ test('resolve type ref2', () => {
     console.log(res.app);
     expect(res.app).toContain(`() => Guest, 'Guest'`);
 });
+
+test('ReceiveType arrow function', () => {
+    const res = transpile({
+        'app': `
+export const typeValidation = <T>(type?: ReceiveType<T>): ValidatorFn => (control: AbstractControl) => {
+        type = resolveReceiveType(type);
+        const errors = validate<T>(control.value)
+        console.log(errors)
+        return errors.length ? {validation: errors[0]} : null
+}
+        `
+    });
+    console.log(res.app);
+    expect(res.app).toContain(`exports.typeValidation.Ω = undefined; return __assignType((control) =>`);
+});

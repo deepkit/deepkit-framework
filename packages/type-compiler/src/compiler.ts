@@ -95,13 +95,13 @@ import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { debug, debug2 } from './debug.js';
 import { ConfigResolver, getConfigResolver, MatchResult, ReflectionConfig, ReflectionConfigCache, reflectionModeMatcher, ResolvedConfig } from './config.js';
 
-
 const {
     visitEachChild,
     visitNode,
     isPropertyAssignment,
     isArrayTypeNode,
     isArrowFunction,
+    isBlock,
     isCallExpression,
     isCallSignatureDeclaration,
     isClassDeclaration,
@@ -111,6 +111,7 @@ const {
     isConstructSignatureDeclaration,
     isEnumDeclaration,
     isExportDeclaration,
+    isExpression,
     isExpressionWithTypeArguments,
     isFunctionDeclaration,
     isFunctionExpression,
@@ -1105,7 +1106,16 @@ export class ReflectionTransformer implements CustomTransformer {
             this.f.createToken(ts.SyntaxKind.EqualsToken),
             this.f.createIdentifier('undefined'),
         ));
-        const body = node.body ? this.f.updateBlock(node.body as Block, [reset, ...(node.body as Block).statements]) : undefined;
+
+        // convert expression into statements array
+        let body = node.body && isBlock(node.body) ? node.body : undefined;
+        let bodyStatements: Statement[] = node.body && isBlock(node.body) ? [...node.body.statements] : [];
+        if (node.body) {
+            if (isExpression(node.body)) {
+                bodyStatements = [this.f.createReturnStatement(node.body)];
+            }
+            body = this.f.updateBlock(node.body as Block, [reset, ...bodyStatements]);
+        }
 
         if (isArrowFunction(node)) {
             return this.f.updateArrowFunction(node, node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, body as ConciseBody) as T;

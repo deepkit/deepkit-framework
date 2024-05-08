@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { ReceiveType, resolveReceiveType, typeOf } from '../src/reflection/reflection.js';
 import { ReflectionKind, Type } from '../src/reflection/type.js';
-import { ReflectionOp } from '@deepkit/type-spec';
+import { validates } from '../src/validator.js';
 
 test('typeOf', () => {
     const type = typeOf<string>();
@@ -96,4 +96,15 @@ test('class constructor multiple', () => {
     const aString = new A<string, number>();
     expect(aString.type1).toMatchObject({ kind: ReflectionKind.string });
     expect(aString.type2).toMatchObject({ kind: ReflectionKind.number });
+});
+
+test('function with ReceiveType return expression', () => {
+    const typeValidation = <T>(type?: ReceiveType<T>) => (value: any) => {
+        type = resolveReceiveType(type);
+        return validates(value, type);
+    }
+
+    const validateString = typeValidation<string>();
+    expect(validateString('hello')).toBe(true);
+    expect(validateString(2)).toBe(false);
 });
