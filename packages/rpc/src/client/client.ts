@@ -616,7 +616,7 @@ export class RpcClient extends RpcBaseClient {
                             return this.transporter.bufferedAmount();
                         }
                     });
-                    // Import to disable since transporter.send chunks already,
+                    // Important to disable since transporter.send chunks already,
                     // otherwise data is chunked twice and protocol breaks.
                     c.writerOptions.chunkSize = 0;
                     if (!(c instanceof RpcKernelConnection)) throw new Error('Expected RpcKernelConnection from clientKernel.createConnection');
