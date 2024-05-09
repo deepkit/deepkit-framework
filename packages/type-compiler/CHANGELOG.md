@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.150](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.149...v1.0.1-alpha.150) (2024-05-09)
+
+### Bug Fixes
+
+- **type-compiler:** support ReceiveType in arrow function with body expression ([3c66064](https://github.com/deepkit/deepkit-framework/commit/3c660640ba5ef7ac447d31b59abaf4f37bd341de))
+
+### Features
+
+- **type-compiler:** allow to use T from ReceiveType<T> in function body as type reference ([4d24c8b](https://github.com/deepkit/deepkit-framework/commit/4d24c8b33197e163ba75eb9483349d269502dc76)), closes [#565](https://github.com/deepkit/deepkit-framework/issues/565)
+
 ## [1.0.1-alpha.149](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.148...v1.0.1-alpha.149) (2024-05-07)
 
 ### Bug Fixes

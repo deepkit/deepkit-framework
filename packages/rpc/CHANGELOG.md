@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.150](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.149...v1.0.1-alpha.150) (2024-05-09)
+
+### Bug Fixes
+
+- **rpc:** ensure data is not chunked twice in server->client controllers ([6c59f9b](https://github.com/deepkit/deepkit-framework/commit/6c59f9bda5830dc11f85b555e7ecd618e10708f8))
+
 ## [1.0.1-alpha.149](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.148...v1.0.1-alpha.149) (2024-05-07)
 
 **Note:** Version bump only for package @deepkit/rpc
