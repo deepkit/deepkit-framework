@@ -5,6 +5,7 @@ import { rpc } from '../src/decorators.js';
 import { RpcKernel } from '../src/server/kernel.js';
 import { ClientProgress } from '../src/writer.js';
 import { RpcBufferReader } from '../src/protocol.js';
+import { asyncOperation } from '@deepkit/core';
 
 test('buffer read does not do copy', async () => {
     const data = Buffer.from('hello world');
@@ -106,4 +107,34 @@ test('chunks', async () => {
         expect(progress.upload.done).toBe(true);
         expect(progress.upload.progress).toBe(1);
     }
+});
+
+test('back controller', async () => {
+    @rpc.controller('test')
+    class TestController {
+        @rpc.action()
+        uploadBig(file: Uint8Array): number {
+            return file.length;
+        }
+
+        @rpc.action()
+        downloadBig(size: number): Uint8Array {
+            return Buffer.alloc(size);
+        }
+    }
+
+    const kernel = new RpcKernel();
+
+    const res = await asyncOperation<Uint8Array>(async (resolve) => {
+        kernel.onConnection(async (connection) => {
+            const ctrl = connection.controller<TestController>('test');
+            const res = await ctrl.downloadBig(105_000);
+            resolve(res);
+        });
+
+        const client = new DirectClient(kernel);
+        client.registerController(TestController, 'test');
+        await client.connect();
+    });
+    expect(res.byteLength).toBe(105_000);
 });

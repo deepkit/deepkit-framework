@@ -11,8 +11,23 @@
 import { asyncOperation, ClassType, formatError, sleep } from '@deepkit/core';
 import { ReceiveType, resolveReceiveType } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { ControllerDefinition, rpcAuthenticate, rpcClientId, rpcPeerDeregister, rpcPeerRegister, rpcResponseAuthenticate, RpcTypes } from '../model.js';
-import { createRpcMessage, createRpcMessagePeer, ErroredRpcMessage, RpcMessage, RpcMessageReader, RpcMessageRouteType } from '../protocol.js';
+import {
+    ControllerDefinition,
+    rpcAuthenticate,
+    rpcClientId,
+    rpcPeerDeregister,
+    rpcPeerRegister,
+    rpcResponseAuthenticate,
+    RpcTypes,
+} from '../model.js';
+import {
+    createRpcMessage,
+    createRpcMessagePeer,
+    ErroredRpcMessage,
+    RpcMessage,
+    RpcMessageReader,
+    RpcMessageRouteType,
+} from '../protocol.js';
 import { RpcKernel, RpcKernelConnection } from '../server/kernel.js';
 import { ClientProgress, RpcMessageWriter, RpcMessageWriterOptions, SingleProgress } from '../writer.js';
 import { RpcActionClient, RpcControllerState } from './action.js';
@@ -601,6 +616,9 @@ export class RpcClient extends RpcBaseClient {
                             return this.transporter.bufferedAmount();
                         }
                     });
+                    // Import to disable since transporter.send chunks already,
+                    // otherwise data is chunked twice and protocol breaks.
+                    c.writerOptions.chunkSize = 0;
                     if (!(c instanceof RpcKernelConnection)) throw new Error('Expected RpcKernelConnection from clientKernel.createConnection');
                     this.clientKernelConnection = c;
                 }

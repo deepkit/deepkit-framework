@@ -111,18 +111,20 @@ test('function with ReceiveType return expression', () => {
 
 test('ReceiveType forward to type passing', () => {
     function typeOf2<T>(type?: ReceiveType<T>) {
-        console.log('typeOf2', type);
         return resolveReceiveType(type);
     }
 
     function mySerialize<T>(type?: ReceiveType<T>) {
-        console.log('mySerialize', type);
         return typeOf2<T>();
     }
 
-    console.log('typeOf2', typeOf2.toString());
-    console.log('mySerialize', mySerialize.toString());
+    function mySerialize2<T>(type?: ReceiveType<T>) {
+        return typeOf2<T[]>();
+    }
 
     const type = mySerialize<string>();
     expect(type).toMatchObject({ kind: ReflectionKind.string });
+
+    const type2 = mySerialize2<string>();
+    expect(type2).toMatchObject({ kind: ReflectionKind.array, type: { kind: ReflectionKind.string } });
 });
