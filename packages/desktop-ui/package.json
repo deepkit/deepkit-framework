@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/desktop-ui",
-  "version": "1.0.1-alpha.150",
+  "version": "1.0.1-alpha.151",
   "description": "Library for desktop UI widgets in Angular 10+",
   "keywords": [
     "Desktop",
@@ -57,8 +57,8 @@
     "@angular/router": "^17.1.0",
     "@deepkit/core": "^1.0.1-alpha.147",
     "@deepkit/core-rxjs": "^1.0.1-alpha.147",
-    "@deepkit/event": "^1.0.1-alpha.150",
-    "@deepkit/type": "^1.0.1-alpha.150",
+    "@deepkit/event": "^1.0.1-alpha.151",
+    "@deepkit/type": "^1.0.1-alpha.151",
     "@types/fs-extra": "^8.0.1",
     "@types/node": "20.6.0",
     "fs-extra": "^8.1.0",
