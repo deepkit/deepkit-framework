@@ -1502,7 +1502,6 @@ export function typeGuardArray(elementType: Type, state: TemplateState) {
             ${v} = iterableSize(${state.accessor}) === 0;
             for (const ${item} of ${state.accessor}) {
                 ${executeTemplates(state.fork(v, item).extendPath(new RuntimeCode(i)), elementType)}
-                if (!${v}) break;
                 ${i}++;
             }
          } else if (${state.isValidation()}) {
