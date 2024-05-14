@@ -1,11 +1,11 @@
 // import algoliasearch, { SearchClient } from 'algoliasearch';
 // import { AppConfig } from "@app/server/config";
-import { findParentPath } from "@deepkit/app";
+import { findParentPath } from '@deepkit/app';
 import glob from 'tiny-glob';
-import { bodyToString, CommunityMessage, DocPageContent, Page, projectMap } from "@app/common/models";
-import { PageProcessor } from "@app/server/page-processor";
-import { Database } from "@deepkit/orm";
-import { sql } from "@deepkit/sql";
+import { bodyToString, CommunityMessage, DocPageContent, Page, projectMap } from '@app/common/models';
+import { PageProcessor } from '@app/server/page-processor';
+import { Database } from '@deepkit/orm';
+import { sql } from '@deepkit/sql';
 
 function createIndexEntriesForPage(page: Page, rootPath: string = ''): DocPageContent[] {
     const entries: DocPageContent[] = [];
@@ -107,7 +107,7 @@ ORDER BY rank DESC;
         await this.database.query(DocPageContent).deleteMany();
 
         //go through all .md files in src/pages
-        const pagesDir = findParentPath('src/pages');
+        const pagesDir = findParentPath('src/pages', process.cwd());
         if (!pagesDir) throw new Error('Could not find pages directory');
 
         const files = await glob('**/*.md', { cwd: pagesDir });

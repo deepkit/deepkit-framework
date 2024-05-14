@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { isCustomTypeClass, isGlobalTypeClass, stringifyResolvedType, stringifyType } from '../src/reflection/type.js';
+import { isCustomTypeClass, isGlobalTypeClass, isTypeClassOf, stringifyResolvedType, stringifyType } from '../src/reflection/type.js';
 import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
 
 test('index access inheritance', () => {
@@ -78,4 +78,32 @@ test('isGlobalTypeClass', () => {
 
     expect(isGlobalTypeClass(reflection.getProperty('created').type)).toBe(true);
     expect(isCustomTypeClass(reflection.getProperty('created').type)).toBe(false);
+});
+
+test('isTypeClassOf', () => {
+    class Base {
+
+    }
+    class Base2 extends Base {
+
+    }
+
+    class Derived extends Base {
+
+    }
+    class Derived2 extends Base2 {
+
+    }
+
+    expect(isTypeClassOf(Base)(typeOf<Base>())).toBe(true);
+    expect(isTypeClassOf(Base)(typeOf<Base2>())).toBe(true);
+
+    expect(isTypeClassOf(Base2)(typeOf<Base2>())).toBe(true);
+    expect(isTypeClassOf(Base2)(typeOf<Base>())).toBe(false);
+
+    expect(isTypeClassOf(Base)(typeOf<Derived>())).toBe(true);
+    expect(isTypeClassOf(Base)(typeOf<Derived2>())).toBe(true);
+
+    expect(isTypeClassOf(Base2)(typeOf<Derived>())).toBe(false);
+    expect(isTypeClassOf(Base2)(typeOf<Derived2>())).toBe(true);
 });

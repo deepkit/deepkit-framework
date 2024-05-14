@@ -8,7 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
+import {
+    deserializeBSONWithoutOptimiser,
+    getBSONDeserializer,
+    getBSONSerializer,
+    getBSONSizer,
+    Writer,
+} from '@deepkit/bson';
 import { ClassType } from '@deepkit/core';
 import { rpcChunk, rpcError, RpcTypes } from './model.js';
 import type { SingleProgress } from './writer.js';
@@ -468,7 +474,7 @@ export class RpcMessageReader {
 
     protected gotMessage(buffer: Uint8Array) {
         const message = readRpcMessage(buffer);
-        // console.log('reader got', message.id, RpcTypes[message.type], message.bodySize, buffer.byteLength);
+        // console.log('reader got', message.id, RpcTypes[message.type], {routeType: message.routeType, bodySize: message.bodySize, byteLength: buffer.byteLength});
 
         if (message.type === RpcTypes.ChunkAck) {
             const ack = this.chunkAcks.get(message.id);
@@ -498,7 +504,8 @@ export class RpcMessageReader {
                     newBuffer.set(buffer, offset);
                     offset += buffer.byteLength;
                 }
-                this.onMessage(readRpcMessage(newBuffer));
+                const packedMessage = readRpcMessage(newBuffer);
+                this.onMessage(packedMessage);
             }
         } else {
             const progress = this.progress.get(message.id);

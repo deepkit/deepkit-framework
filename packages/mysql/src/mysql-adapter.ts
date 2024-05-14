@@ -53,6 +53,7 @@ import {
 } from '@deepkit/type';
 import { AbstractClassType, asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import { parseConnectionString } from './config.js';
 
 /**
  * Converts a specific database error to a more specific error, if possible.
@@ -564,24 +565,32 @@ export class MySQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
 }
 
 export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
-    protected pool = createPool({
-        multipleStatements: true,
-        maxAllowedPacket: 16_000_000,
-
-        // https://github.com/mariadb-corporation/mariadb-connector-nodejs/blob/master/documentation/callback-api.md#migrating-from-2x-or-mysqlmysql2-to-3x
-        insertIdAsNumber: true,
-        decimalAsNumber: true,
-        bigIntAsNumber: true,
-
-        ...this.options
-    });
-    public connectionPool = new MySQLConnectionPool(this.pool);
-    public platform = new MySQLPlatform(this.pool);
+    protected options: PoolConfig;
+    protected pool: Pool;
+    public connectionPool: MySQLConnectionPool;
+    public platform: MySQLPlatform;
 
     constructor(
-        protected options: PoolConfig = {},
+        options: PoolConfig | string = {},
+        additional: Partial<PoolConfig> = {},
     ) {
         super();
+
+        const defaults: PoolConfig = {
+            multipleStatements: true,
+            maxAllowedPacket: 16_000_000,
+            // https://github.com/mariadb-corporation/mariadb-connector-nodejs/blob/master/documentation/callback-api.md#migrating-from-2x-or-mysqlmysql2-to-3x
+            insertIdAsNumber: true,
+            decimalAsNumber: true,
+            bigIntAsNumber: true,
+        }
+
+        options = typeof options === 'string' ? parseConnectionString(options) : options;
+        this.options = Object.assign(defaults, options, additional);
+
+        this.pool = createPool(this.options);
+        this.connectionPool = new MySQLConnectionPool(this.pool);
+        this.platform = new MySQLPlatform(this.pool);
     }
 
     getName(): string {

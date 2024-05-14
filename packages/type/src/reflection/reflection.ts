@@ -57,6 +57,8 @@ import {
     getClassName,
     isArray,
     isClass,
+    isFunction,
+    isGlobalClass,
     isPrototypeOfBase,
     stringifyValueWithType,
 } from '@deepkit/core';
@@ -93,10 +95,10 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
         if (type[type.length - 1] === 'n!' || type[type.length - 1] === 'P7!') {
             //n! represents a simple inline: [Op.inline, 0]
             //P7! represents a class reference: [Op.Frame, Op.classReference, 0] (Op.Frame seems unnecessary)
-            typeFn = (type as any)[0] as Function;
-            type = typeFn() as Packed | Type | ClassType | AbstractClassType | ReflectionClass<any> | undefined;
+            typeFn = (type as any)[0] as Function | any;
+            type = (isFunction(typeFn) ? typeFn() : typeFn) as Packed | Type | ClassType | AbstractClassType | ReflectionClass<any> | undefined;
             if (!type) {
-                throw new Error(`No type resolved for ${typeFn.toString()}. Circular import or no runtime type available.`);
+                throw new Error(`No type resolved for ${String(typeFn)}. Circular import or no runtime type available.`);
             }
         }
     }
@@ -104,10 +106,10 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
     if (type instanceof ReflectionClass) return type.type;
     if (isArray(type) && type.__type) return type.__type;
     if (isType(type)) return type as Type;
-    if (isClass(type)) {
+    if (isClass(type) || isGlobalClass(type)) {
         if (!('__type' in type)) {
             if ((type as any).__cached_type) return (type as any).__cached_type;
-            // disabled reflection for this class, so we return empty TypeClass
+            // disabled reflection for this class, so we return shallow TypeClass
             return (type as any).__cached_type = { kind: ReflectionKind.class, classType: type as any, types: [] } as any;
         }
         return resolveRuntimeType(type) as Type;
@@ -382,6 +384,23 @@ export class ReflectionParameter {
 
     isPrivate(): boolean {
         return this.parameter.visibility === ReflectionVisibility.private;
+    }
+
+    isReadonly(): boolean {
+        return this.parameter.readonly === true;
+    }
+
+    /**
+     * True if the parameter becomes a property in the class.
+     * This is the case for parameters in constructors with visibility or readonly.
+     *
+     * ```typescript
+     * class User {
+     *    constructor(public name: string) {}
+     * }
+     */
+    isProperty(): boolean {
+        return this.parameter.readonly === true || this.parameter.visibility !== undefined;
     }
 }
 

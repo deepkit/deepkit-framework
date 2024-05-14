@@ -396,7 +396,7 @@ export class MyModule extends createModule({
         //calls additional setup methods. 
         //In this case call 'method1' with given arguments when 
         //Service is instantiated by the dependency injection container.
-        this.setupProvider(Service).method1(this.config.value);
+        this.configureProvider<Service>(v => v.method1(this.config.value));
     }
 
     //executed for each found provider in all modules
@@ -414,7 +414,7 @@ export class MyModule extends createModule({
     }
 
     //executed when all modules have been processed.
-    //Last chance to setup providers via module.setupProvider/module.setupGlobalProvider based on
+    //Last chance to setup providers via module.configureProvider based on
     //information processed in process/processProvider. 
     postProcess() {
         

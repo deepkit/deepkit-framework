@@ -19,6 +19,7 @@
     "types": []
   },
   "reflection": [
+    "src/config.ts",
     "tests/**/*.ts"
   ],
   "include": [

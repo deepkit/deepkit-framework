@@ -3,6 +3,44 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.150](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.149...v1.0.1-alpha.150) (2024-05-09)
+
+**Note:** Version bump only for package @deepkit/mysql
+
+## [1.0.1-alpha.149](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.148...v1.0.1-alpha.149) (2024-05-07)
+
+**Note:** Version bump only for package @deepkit/mysql
+
+## [1.0.1-alpha.148](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.147...v1.0.1-alpha.148) (2024-05-04)
+
+**Note:** Version bump only for package @deepkit/mysql
+
+## [1.0.1-alpha.147](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.146...v1.0.1-alpha.147) (2024-05-04)
+
+### Bug Fixes
+
+- **mysql:** ensure `number & AutoIncrement` is always `int` ([69feb17](https://github.com/deepkit/deepkit-framework/commit/69feb17276f0f23ef32a331b36fa58ce0b001ae5))
+
+## [1.0.1-alpha.146](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.145...v1.0.1-alpha.146) (2024-04-17)
+
+**Note:** Version bump only for package @deepkit/mysql
+
+## [1.0.1-alpha.145](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.144...v1.0.1-alpha.145) (2024-04-08)
+
+### Bug Fixes
+
+- **sql:** dates should be nullable without casting as JSON ([#553](https://github.com/deepkit/deepkit-framework/issues/553)) ([d34b1a3](https://github.com/deepkit/deepkit-framework/commit/d34b1a30ad9371f01eb806ac37f2861754ce9959))
+
+## [1.0.1-alpha.144](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.143...v1.0.1-alpha.144) (2024-03-19)
+
+**Note:** Version bump only for package @deepkit/mysql
+
+## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
+
+### Features
+
+- **mysql, postgres:** add support for connection URLs ([2518670](https://github.com/deepkit/deepkit-framework/commit/25186701e3d6ea60ea232cbcc0c989e195df9edf))
+
 ## [1.0.1-alpha.142](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.141...v1.0.1-alpha.142) (2024-03-06)
 
 **Note:** Version bump only for package @deepkit/mysql

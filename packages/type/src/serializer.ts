@@ -21,6 +21,7 @@ import {
     isNumeric,
     isObject,
     isObjectLiteral,
+    iterableSize,
     stringifyValueWithType,
     toFastProperties,
 } from '@deepkit/core';
@@ -36,6 +37,8 @@ import {
     excludedAnnotation,
     FindType,
     getConstructorProperties,
+    getDeepConstructorProperties,
+    getEnumValueIndexMatcher,
     getTypeJitContainer,
     getTypeObjectLiteralFromTypeClass,
     groupAnnotation,
@@ -526,6 +529,26 @@ export class TemplateState {
     convert(callback: (value: any) => any) {
         const converter = this.setVariable('convert', callback);
         this.addSetter(`${converter}(${this.accessor})`);
+    }
+
+    /**
+     * Allows to add a custom code that is executed on the current `this.accessor` value.
+     *
+     * @example
+     * ```typescript
+     * serializer.deserializeRegistry.addDecorator(
+     *     isCustomTypeClass,
+     *     (type, state) => {
+     *         state.touch((value) => {
+     *              if ('onLoad' in value) value.onLoad();
+     *         });
+     *     }
+     * );
+     * ```
+     */
+    touch(callback: (value: any) => void) {
+        const touch = this.setVariable('touch', callback);
+        this.addCode(`${touch}(${this.setter});`);
     }
 
     /**
@@ -1146,9 +1169,10 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
         const clazz = ReflectionClass.from(type.classType);
         const constructor = clazz.getConstructorOrUndefined();
         if (!clazz.disableConstructor && constructor) {
+            handledPropertiesInConstructor.push(...getDeepConstructorProperties(type).map(v => String(v.name)));
             const parameters = constructor.getParameters();
             for (const parameter of parameters) {
-                if (parameter.getVisibility() === undefined) {
+                if (!parameter.isProperty()) {
                     constructorArguments.push('undefined');
                     continue;
                 }
@@ -1159,7 +1183,6 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
                 if (property.isSerializerExcluded(state.registry.serializer.name)) {
                     continue;
                 }
-                handledPropertiesInConstructor.push(parameter.getName());
                 const argumentName = state.compilerContext.reserveVariable('c_' + parameter.getName());
 
                 const readName = getNameExpression(state.namingStrategy.getPropertyName(property.property, state.registry.serializer.name), state);
@@ -1467,7 +1490,7 @@ export function serializeArray(type: TypeArray, state: TemplateState) {
 }
 
 export function typeGuardArray(elementType: Type, state: TemplateState) {
-    state.setContext({ isIterable });
+    state.setContext({ isIterable, iterableSize });
     const v = state.compilerContext.reserveName('v');
     const i = state.compilerContext.reserveName('i');
     const item = state.compilerContext.reserveName('item');
@@ -1476,7 +1499,7 @@ export function typeGuardArray(elementType: Type, state: TemplateState) {
          let ${v} = false;
          let ${i} = 0;
          if (isIterable(${state.accessor})) {
-            ${v} = ${state.accessor}.length === 0;
+            ${v} = iterableSize(${state.accessor}) === 0;
             for (const ${item} of ${state.accessor}) {
                 ${executeTemplates(state.fork(v, item).extendPath(new RuntimeCode(i)), elementType)}
                 if (!${v}) break;
@@ -1975,9 +1998,10 @@ export class Serializer {
         this.serializeRegistry.register(ReflectionKind.enum, (type, state) => state.addSetter(state.accessor));
         this.deserializeRegistry.register(ReflectionKind.enum, (type, state) => {
             const valuesVar = state.setVariable('values', type.values);
+            const matcher = state.setVariable('enumMatcher', getEnumValueIndexMatcher(type));
             state.addCodeForSetter(`
-                ${state.setter} = ${state.accessor};
-                if (${valuesVar}.indexOf(${state.accessor}) === -1) ${state.throwCode('enum', `'No valid value of ' + ${valuesVar}.join(', ')`)}
+                ${state.setter} = ${valuesVar}[${matcher}(${state.accessor})];
+                if (${valuesVar}.indexOf(${state.setter}) === -1) ${state.throwCode('enum', `'No valid value of ' + ${valuesVar}.join(', ')`)}
             `);
         });
 
@@ -2209,8 +2233,8 @@ export class Serializer {
 
         this.typeGuards.register(1, ReflectionKind.promise, (type, state) => executeTemplates(state, type.type));
         this.typeGuards.register(1, ReflectionKind.enum, (type, state) => {
-            const values = state.setVariable('values', type.values);
-            state.addSetterAndReportErrorIfInvalid('type', 'Invalid enum member', `${values}.indexOf(${state.accessor}) >= 0`);
+            const matcher = state.setVariable('enumMatcher', getEnumValueIndexMatcher(type));
+            state.addSetterAndReportErrorIfInvalid('type', 'Invalid enum member', `${matcher}(${state.accessor}) >= 0`);
         });
         this.typeGuards.register(1, ReflectionKind.array, (type, state) => typeGuardArray(type.type, state));
         this.typeGuards.register(1, ReflectionKind.tuple, typeGuardTuple);

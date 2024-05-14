@@ -1,4 +1,16 @@
-import { ApplicationRef, EventEmitter, importProvidersFrom, inject, Injectable, Injector, ModuleWithProviders, NgModule, NgZone, Optional, RendererFactory2 } from '@angular/core';
+import {
+    ApplicationRef,
+    EventEmitter,
+    importProvidersFrom,
+    inject,
+    Injectable,
+    Injector,
+    ModuleWithProviders,
+    NgModule,
+    NgZone,
+    Optional,
+    RendererFactory2,
+} from '@angular/core';
 import { clearTick, nextTick } from '@deepkit/core';
 import { ActivationEnd, NavigationEnd, Router } from '@angular/router';
 
@@ -119,7 +131,7 @@ NgZone.assertNotInAngularZone = () => undefined;
 export class AsyncNgZone implements NgZone {
     hasPendingMicrotasks = false;
     hasPendingMacrotasks = false;
-    isStable = true;
+    isStable = false;
     readonly onUnstable = new EventEmitter<any>();
 
     // this triggers applicationRef.tick()

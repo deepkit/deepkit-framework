@@ -233,6 +233,21 @@ export function isClass(obj: any): obj is AbstractClassType {
     return false;
 }
 
+declare var global: any;
+declare var window: any;
+
+export function isGlobalClass(obj: any): obj is AbstractClassType {
+    if ('function' !== typeof obj) return false;
+
+    if ('undefined' !== typeof window) {
+        return (window as any)[getClassName(obj)] === obj;
+    }
+    if ('undefined' !== typeof global) {
+        return (global as any)[getClassName(obj)] === obj;
+    }
+    return false;
+}
+
 /**
  * Returns true for real objects: object literals ({}) or class instances (new MyClass).
  *
@@ -260,9 +275,7 @@ export function isObjectLiteral(obj: any): obj is { [key: string]: any } {
 /**
  * @public
  */
-export function isArray(obj: any): obj is any[] {
-    return Array.isArray(obj);
-}
+export const isArray: (obj: any) => obj is any[] = Array.isArray;
 
 /**
  * @public
@@ -700,6 +713,15 @@ export function getParentClass(classType: ClassType): ClassType | undefined {
     return parent;
 }
 
+export function getInheritanceChain(classType: ClassType): ClassType[] {
+    const chain: ClassType[] = [classType];
+    let current = classType;
+    while (current = getParentClass(current) as ClassType) {
+        chain.push(current);
+    }
+    return chain;
+}
+
 declare var v8debug: any;
 
 export function inDebugMode() {
@@ -721,6 +743,10 @@ export function createDynamicClass(name: string, base?: ClassType): ClassType {
 
 export function isIterable(value: any): boolean {
     return isArray(value) || value instanceof Set || value instanceof Map;
+}
+
+export function iterableSize(value: Array<unknown> | Set<unknown> | Map<unknown, unknown>): number {
+    return isArray(value) ? value.length : value.size || 0;
 }
 
 /**

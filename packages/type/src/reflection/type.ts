@@ -13,13 +13,15 @@ import {
     arrayRemoveItem,
     ClassType,
     getClassName,
+    getInheritanceChain,
     getParentClass,
     indent,
     isArray,
     isClass,
+    isGlobalClass,
 } from '@deepkit/core';
 import { TypeNumberBrand } from '@deepkit/type-spec';
-import { getProperty, ReceiveType, reflect, ReflectionClass, toSignature } from './reflection.js';
+import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection.js';
 import { isExtendable } from './extends.js';
 import { state } from './state.js';
 import { resolveRuntimeType } from './processor.js';
@@ -2284,13 +2286,7 @@ export const binaryTypes: ClassType[] = [
  */
 export function isGlobalTypeClass(type: Type): type is TypeClass {
     if (type.kind !== ReflectionKind.class) return false;
-    if ('undefined' !== typeof window) {
-        return (window as any)[getClassName(type.classType)] === type.classType;
-    }
-    if ('undefined' !== typeof global) {
-        return (global as any)[getClassName(type.classType)] === type.classType;
-    }
-    return false;
+    return isGlobalClass(type.classType);
 }
 
 /**
@@ -2298,6 +2294,20 @@ export function isGlobalTypeClass(type: Type): type is TypeClass {
  */
 export function isCustomTypeClass(type: Type): type is TypeClass {
     return type.kind === ReflectionKind.class && !isGlobalTypeClass(type);
+}
+
+/**
+ * Returns a type predicate that checks if the given type is a class and is of the given classType.
+ * If withInheritance is true, it also checks if the type is a subclass of the given classType.
+ */
+export function isTypeClassOf(classType: ClassType, withInheritance: boolean = true): (type: Type) => boolean {
+    if (!withInheritance) return (type: Type) => type.kind === ReflectionKind.class && type.classType === classType;
+
+    return (type: Type) => {
+        if (type.kind !== ReflectionKind.class) return false;
+        const chain = getInheritanceChain(type.classType);
+        return chain.includes(classType);
+    };
 }
 
 /**
@@ -2313,6 +2323,43 @@ export function stringifyResolvedType(type: Type): string {
 
 export function stringifyShortResolvedType(type: Type, stateIn: Partial<StringifyTypeOptions> = {}): string {
     return stringifyType(type, { ...stateIn, showNames: false, showFullDefinition: false, });
+}
+
+/**
+ * Returns all (including inherited) constructor properties of a class.
+ */
+export function getDeepConstructorProperties(type: TypeClass): TypeParameter[] {
+    const chain = getInheritanceChain(type.classType);
+    const res: TypeParameter[] = [];
+    for (const classType of chain) {
+        const type = resolveReceiveType(classType) as TypeClass;
+        if (type.kind !== ReflectionKind.class) continue;
+        const constructor = findMember('constructor', type.types);
+        if (!constructor || constructor.kind !== ReflectionKind.method) continue;
+        for (const param of constructor.parameters) {
+            if (param.kind !== ReflectionKind.parameter) continue;
+            if (param.readonly === true || param.visibility !== undefined) {
+                res.push(param);
+            }
+        }
+    }
+    return res;
+}
+
+/**
+ * Returns the index to `type.values` if the given value is part of the enum, exactly or case-insensitive.
+ * Returns -1 if not found.
+ */
+export function getEnumValueIndexMatcher(type: TypeEnum): (value: string | number | undefined | null) => number {
+    const lowerCaseValues = Object.keys(type.enum).map(v => String(v).toLowerCase());
+    return (value): number => {
+        const exactMatch = type.values.indexOf(value);
+        if (exactMatch !== -1) return exactMatch;
+        const lowerCaseMatch = lowerCaseValues.indexOf(String(value).toLowerCase());
+        if (lowerCaseMatch !== -1) return lowerCaseMatch;
+
+        return -1;
+    };
 }
 
 interface StringifyTypeOptions {

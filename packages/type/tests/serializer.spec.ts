@@ -19,17 +19,20 @@ import {
     Group,
     int8,
     integer,
+    isCustomTypeClass,
+    isTypeClassOf,
     MapName,
     metaAnnotation,
     PrimaryKey,
     Reference,
     ReflectionKind,
     SignedBinaryBigInt,
+    stringifyResolvedType,
     Type,
     TypeProperty,
     TypePropertySignature,
 } from '../src/reflection/type.js';
-import { createSerializeFunction, getSerializeFunction, NamingStrategy, serializer, underscoreNamingStrategy } from '../src/serializer.js';
+import { createSerializeFunction, getSerializeFunction, NamingStrategy, Serializer, serializer, underscoreNamingStrategy } from '../src/serializer.js';
 import { cast, deserialize, patch, serialize } from '../src/serializer-facade.js';
 import { getClassName } from '@deepkit/core';
 import { entity, t } from '../src/decorator.js';
@@ -1019,6 +1022,106 @@ test('naming strategy camel case', () => {
     }
 });
 
+test('enum mixed case', () => {
+    enum Units {
+        MILLIGRAM = 'm',
+        GRAM = 'g',
+        KILOGRAM = 'k',
+    }
+
+    expect(cast<Units>('milligram')).toBe('m');
+    expect(cast<Units>('milligram')).toBe(Units.MILLIGRAM);
+
+    expect(cast<Units>('MilliGRAM')).toBe(Units.MILLIGRAM);
+
+    expect(cast<Units>('gram')).toBe('g');
+    expect(cast<Units>('gram')).toBe(Units.GRAM);
+
+    expect(cast<number | Units>('GRAM')).toBe(Units.GRAM);
+    expect(cast<number | Units>(23)).toBe(23);
+    expect(cast<number | Units>('Gram')).toBe(Units.GRAM);
+});
+
+test('onLoad call', () => {
+    class Target {
+        id: number = 0;
+        loaded = false;
+
+        onLoad(): void {
+            this.loaded = true;
+        }
+    }
+
+    const serializer = new class extends Serializer {
+        override registerSerializers() {
+            super.registerSerializers();
+            this.deserializeRegistry.addDecorator(
+                (type: Type) => type.kind === ReflectionKind.class && type.classType === Target,
+                (type, state) => {
+                    state.addCode(`${state.setter}.onLoad();`);
+                }
+            )
+        }
+    }
+
+    const target = cast<Target>({id: 1}, undefined, serializer);
+    expect(target.loaded).toBe(true);
+});
+
+test('onLoad call2', () => {
+    class Target {
+        id: number = 0;
+        loaded = false;
+
+        onLoad(): void {
+            this.loaded = true;
+        }
+    }
+
+    const serializer = new class extends Serializer {
+        override registerSerializers() {
+            super.registerSerializers();
+            this.deserializeRegistry.addDecorator(
+                isTypeClassOf(Target),
+                (type, state) => {
+                    state.touch((target: Target) => target.onLoad())
+                }
+            )
+        }
+    }
+
+    const target = cast<Target>({id: 1}, undefined, serializer);
+    expect(target.loaded).toBe(true);
+});
+
+test('onLoad call3', () => {
+    class Target {
+        id: number = 0;
+        loaded = false;
+
+        onLoad(): void {
+            this.loaded = true;
+        }
+    }
+
+    const serializer = new class extends Serializer {
+        override registerSerializers() {
+            super.registerSerializers();
+            this.deserializeRegistry.addDecorator(
+                isCustomTypeClass,
+                (type, state) => {
+                    state.touch((value) => {
+                        if ('onLoad' in value) value.onLoad();
+                    });
+                }
+            );
+        }
+    }
+
+    const target = cast<Target>({id: 1}, undefined, serializer);
+    expect(target.loaded).toBe(true);
+});
+
 test('enum union', () => {
     enum StatEnginePowerUnit {
         Hp = 'hp',
@@ -1270,4 +1373,20 @@ test("parcel search input deserialization", async () => {
     expect(search.ad!.location).toBeInstanceOf(GeoLocation);
     expect(search?.ad?.attributes?.buildingSurface).toBe(92);
     expect(search?.ad?.location.hasCoords()).toBeTruthy();
+});
+
+test('skip parameter name resolving', () => {
+    class Guest {
+        constructor(public id: number) {
+        }
+    }
+
+    class Vehicle {
+        constructor(public Guest: Guest) {
+        }
+    }
+
+    console.log(stringifyResolvedType(typeOf<Vehicle>()));
+
+    expect(cast<Vehicle>({ Guest: { id: '1' } })).toEqual(new Vehicle(new Guest(1)));
 });

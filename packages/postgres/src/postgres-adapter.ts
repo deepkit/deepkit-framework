@@ -58,6 +58,7 @@ import {
     ReflectionProperty,
     resolvePath,
 } from '@deepkit/type';
+import { parseConnectionString } from './config.js';
 
 /**
  * Converts a specific database error to a more specific error, if possible.
@@ -571,13 +572,19 @@ export class PostgresSQLDatabaseQueryFactory extends SQLDatabaseQueryFactory {
 }
 
 export class PostgresDatabaseAdapter extends SQLDatabaseAdapter {
-    protected pool = new pg.Pool(this.options);
-    public connectionPool = new PostgresConnectionPool(this.pool);
+    protected options: PoolConfig;
+    protected pool: pg.Pool;
+    public connectionPool : PostgresConnectionPool;
     public platform = new PostgresPlatform();
     closed = false;
 
-    constructor(protected options: PoolConfig) {
+    constructor(options: PoolConfig | string, additional: Partial<PoolConfig> = {}) {
         super();
+        const defaults: PoolConfig = {};
+        options = 'string' === typeof options ? parseConnectionString(options) : options;
+        this.options = Object.assign(defaults, options, additional);
+        this.pool = new pg.Pool(this.options);
+        this.connectionPool = new PostgresConnectionPool(this.pool);
 
         pg.types.setTypeParser(1700, parseFloat);
         pg.types.setTypeParser(20, parseInt);

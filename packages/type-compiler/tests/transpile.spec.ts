@@ -509,3 +509,60 @@ test('class typeName', () => {
     console.log(res.app);
     expect(res.app).toContain(`'StreamApiResponseClass'`);
 });
+
+test('resolve type ref', () => {
+    const res = transpile({
+        'app': `
+    class Guest {}
+    class Vehicle {
+        constructor(public Guest: Guest) {
+        }
+    }
+        `
+    });
+    console.log(res.app);
+    expect(res.app).toContain(`() => Guest, 'Guest'`);
+});
+
+test('resolve type ref2', () => {
+    const res = transpile({
+        'app': `
+    class Guest {}
+    class Vehicle {
+        public Guest: Guest;
+    }
+        `
+    });
+    console.log(res.app);
+    expect(res.app).toContain(`() => Guest, 'Guest'`);
+});
+
+test('ReceiveType arrow function', () => {
+    const res = transpile({
+        'app': `
+export const typeValidation = <T>(type?: ReceiveType<T>): ValidatorFn => (control: AbstractControl) => {
+        type = resolveReceiveType(type);
+        const errors = validate<T>(control.value)
+        console.log(errors)
+        return errors.length ? {validation: errors[0]} : null
+}
+        `
+    });
+    console.log(res.app);
+    expect(res.app).toContain(`exports.typeValidation.Ω = undefined; return __assignType((control) =>`);
+});
+
+test('ReceiveType forward to type passing', () => {
+    const res = transpile({
+        'app': `
+        function typeOf2<T>(type?: ReceiveType<T>) {
+            return resolveReceiveType(type);
+        }
+
+        function mySerialize<T>(type?: ReceiveType<T>) {
+            return typeOf2<T>();
+        }
+        `
+    });
+    console.log(res.app);
+});

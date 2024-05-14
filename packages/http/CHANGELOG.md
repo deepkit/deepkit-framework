@@ -3,6 +3,40 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.150](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.149...v1.0.1-alpha.150) (2024-05-09)
+
+**Note:** Version bump only for package @deepkit/http
+
+## [1.0.1-alpha.149](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.148...v1.0.1-alpha.149) (2024-05-07)
+
+**Note:** Version bump only for package @deepkit/http
+
+## [1.0.1-alpha.148](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.147...v1.0.1-alpha.148) (2024-05-04)
+
+**Note:** Version bump only for package @deepkit/http
+
+## [1.0.1-alpha.147](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.146...v1.0.1-alpha.147) (2024-05-04)
+
+### Bug Fixes
+
+- **http:** support for JSON array payloads ([#564](https://github.com/deepkit/deepkit-framework/issues/564)) ([feeeaa6](https://github.com/deepkit/deepkit-framework/commit/feeeaa6ef9f76d67f85b25f4d243b27ceb00360b))
+
+## [1.0.1-alpha.146](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.145...v1.0.1-alpha.146) (2024-04-17)
+
+**Note:** Version bump only for package @deepkit/http
+
+## [1.0.1-alpha.145](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.144...v1.0.1-alpha.145) (2024-04-08)
+
+### Bug Fixes
+
+- **http:** make sure invalid formidable files are skipped ([d1ff09b](https://github.com/deepkit/deepkit-framework/commit/d1ff09ba17e82891b25c192dec7bdf2d9b921f24))
+
+## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
+
+### Bug Fixes
+
+- **http:** parameter service injection into route methods with encapsulated modules ([9c98f8b](https://github.com/deepkit/deepkit-framework/commit/9c98f8b110078ab35882fece44f45fde34a4feeb))
+
 ## [1.0.1-alpha.142](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.141...v1.0.1-alpha.142) (2024-03-06)
 
 **Note:** Version bump only for package @deepkit/http

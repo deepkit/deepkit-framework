@@ -211,13 +211,24 @@ export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] 
     });
 }
 
-export function isRouteActive(route: { routerLink?: string | UrlTree | any[]; routerLinkExact?: boolean; router?: Router, activatedRoute?: ActivatedRoute }): boolean {
+interface RouteLike {
+    routerLink?: string | UrlTree | any[];
+    routerLinkExact?: boolean;
+    router?: Router,
+    activatedRoute?: ActivatedRoute;
+    queryParams?: { [name: string]: any };
+}
+
+export function isRouteActive(route: RouteLike): boolean {
     if (!route.router) return false;
 
     if ('string' === typeof route.routerLink) {
         return route.router.isActive(route.routerLink, route.routerLinkExact === true);
     } else if (Array.isArray(route.routerLink)) {
-        return route.router.isActive(route.router.createUrlTree(route.routerLink, { relativeTo: route.activatedRoute }), route.routerLinkExact === true);
+        return route.router.isActive(route.router.createUrlTree(route.routerLink, {
+            queryParams: route.queryParams,
+            relativeTo: route.activatedRoute,
+        }), route.routerLinkExact === true);
     } else {
         return route.router.isActive(route.routerLink!, route.routerLinkExact === true);
     }

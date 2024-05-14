@@ -16,17 +16,20 @@ import {
     isClassInstance,
     isConstructable,
     isFunction,
+    isGlobalClass,
+    isIterable,
     isNumeric,
     isObject,
     isPlainObject,
     isPromise,
     isPrototypeOfBase,
     isUndefined,
-    range,
+    iterableSize,
     rangeArray,
     setPathValue,
     sleep,
-    stringifyValueWithType, zip
+    stringifyValueWithType,
+    zip,
 } from '../src/core.js';
 
 class SimpleClass {
@@ -580,4 +583,40 @@ test('zip', () => {
     expect(zip([1, 2, 3], ['a', 'b'])).toEqual([[1, 'a'], [2, 'b']]);
     expect(zip([1, 2], ['a', 'b', 'c'])).toEqual([[1, 'a'], [2, 'b']]);
     expect(zip([1, 2, 3], ['a', 'b', 'c'], [true, false, true])).toEqual([[1, 'a', true], [2, 'b', false], [3, 'c', true]]);
+});
+
+test('isIterable', () => {
+    expect(isIterable([])).toBe(true);
+    expect(isIterable({})).toBe(false);
+    expect(isIterable(new Map())).toBe(true);
+    expect(isIterable(new Set())).toBe(true);
+    expect(isIterable(new WeakMap())).toBe(false);
+    expect(isIterable(new WeakSet())).toBe(false);
+    expect(isIterable(new Uint8Array())).toBe(false);
+    expect(isIterable(new Error())).toBe(false);
+});
+
+test('iterableSize', () => {
+    expect(iterableSize([])).toBe(0);
+    expect(iterableSize([1, 2, 3])).toBe(3);
+    expect(iterableSize(new Map())).toBe(0);
+    expect(iterableSize(new Map([[1, 2], [3, 4]]) as any)).toBe(2);
+    expect(iterableSize(new Set())).toBe(0);
+    expect(iterableSize(new Set([1, 2, 3]) as any)).toBe(3);
+});
+
+test('isGlobalClass', () => {
+    expect(isGlobalClass(undefined)).toBe(false);
+    expect(isGlobalClass({})).toBe(false);
+
+    expect(isGlobalClass(Date)).toBe(true);
+    expect(isGlobalClass(Array)).toBe(true);
+    expect(isGlobalClass(TextDecoder)).toBe(true);
+
+    class MyError extends Error {
+    }
+    expect(isGlobalClass(Error)).toBe(true);
+    expect(isGlobalClass(MyError)).toBe(false);
+
+    expect(isGlobalClass(Uint8Array)).toBe(true);
 });

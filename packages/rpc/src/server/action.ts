@@ -12,6 +12,7 @@ import {
     ClassType,
     collectForMicrotask,
     getClassName,
+    isArray,
     isPlainObject,
     isPrototypeOfBase,
     toFastProperties,
@@ -461,10 +462,16 @@ export class RpcServerAction {
             return response.error(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}: ${error.message}`);
         }
 
-        const controllerClassType = this.injector.get(classType.controller, classType.module);
-        if (!controllerClassType) {
+        const controllerInstance = this.injector.get(classType.controller, classType.module);
+        if (!controllerInstance) {
             response.error(new Error(`No instance of ${getClassName(classType.controller)} found.`));
         }
+
+        if (!isArray(value.args)) {
+            this.logger.error(`Invalid arguments for ${getClassName(classType.controller)}.${body.method} - expected array but got`, value.args);
+            return response.error(`Invalid arguments for ${getClassName(classType.controller)}.${body.method} - expected array.`);
+        }
+
         // const converted = types.parametersDeserialize(value.args);
         const errors: ValidationErrorItem[] = [];
         types.parametersValidate(value.args, { errors });
@@ -482,7 +489,10 @@ export class RpcServerAction {
         response.errorLabel = `Action ${getClassName(classType.controller)}.${body.method} return type serialization error`;
 
         try {
-            const result = await controllerClassType[body.method](...value.args);
+            // In some environments, we get "TypeError: Spread syntax requires ...iterable[Symbol.iterator] to be a function"
+            // so we use `apply` instead of `method(...value.args)`
+            const method = controllerInstance[body.method] as Function;
+            const result = await method.apply(controllerInstance, value.args);
 
             if (isEntitySubject(result)) {
                 response.reply(RpcTypes.ResponseEntity, { v: result.value }, types.resultSchema);

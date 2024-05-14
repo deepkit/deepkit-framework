@@ -129,12 +129,15 @@ export class RpcMessageWriter implements RpcConnectionWriter {
         this.writer.close();
     }
 
+    /**
+     * Writes a message buffer to the connection and chunks if necessary.
+     */
     write(buffer: Uint8Array, progress?: SingleProgress): void {
         this.writeFull(buffer, progress).catch(error => console.log('RpcMessageWriter writeAsync error', error));
     }
 
     async writeFull(buffer: Uint8Array, progress?: SingleProgress): Promise<void> {
-        if (buffer.byteLength >= this.options.chunkSize) {
+        if (this.options.chunkSize && buffer.byteLength >= this.options.chunkSize) {
             //split up
             const chunkId = this.chunkId++;
             const message = readRpcMessage(buffer); //we need the original message-id, so the chunks are correctly assigned in Progress tracker

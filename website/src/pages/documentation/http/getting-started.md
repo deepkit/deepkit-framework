@@ -49,22 +49,6 @@ router.get('/', () => {
 app.run();
 ```
 
-The router registry can also be obtained in Event Listener or in the bootstrap, so that based on modules, configurations and other providers various routes are registered.
-
-```typescript
-import { App } from '@deepkit/app';
-import { FrameworkModule } from '@deepkit/framework';
-
-const app = new App({
-    bootstrap: (router: HttpRouterRegistry) => {
-        router.get('/', () => {
-            return "Hello World!";
-        });
-    },
-    imports: [new FrameworkModule]
-});
-```
-
 Once modules are used, functional routes can also be provided dynamically by modules.
 
 ```typescript
@@ -74,10 +58,10 @@ import { HttpRouterRegistry } from '@deepkit/http';
 
 class MyModule extends createModule({}) {
     override process() {
-        const router = this.setupGlobalProvider(HttpRouterRegistry);
-
-        router.get('/', () => {
+        this.configureProvider<HttpRouterRegistry>(router => {
+          router.get('/', () => {
             return "Hello World!";
+          });
         });
     }
 }
@@ -125,9 +109,10 @@ class MyPage {
     }
 }
 
-class MyModule extends createModule({
-    controllers: [MyPage]
-}) {
+class MyModule extends createModule({}) {
+  override process() {
+    this.addController(MyPage);
+  }
 }
 
 const app = new App({

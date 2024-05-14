@@ -61,6 +61,9 @@ export class RpcMessageSubject {
         return this;
     }
 
+    /**
+     * Waits for the Ack message from the server, then closes the subject.
+     */
     async ackThenClose(): Promise<undefined> {
         return asyncOperation<undefined>((resolve, reject) => {
             this.onReply((next) => {
@@ -80,6 +83,9 @@ export class RpcMessageSubject {
         });
     }
 
+    /**
+     * Wait for next message to arrive.
+     */
     async waitNextMessage<T>(): Promise<RpcMessage> {
         return asyncOperation<any>((resolve, reject) => {
             this.onReply((next) => {
@@ -89,6 +95,9 @@ export class RpcMessageSubject {
         });
     }
 
+    /**
+     * Wait for next message with body parse.
+     */
     async waitNext<T>(type: number, schema?: ReceiveType<T>): Promise<T> {
         return asyncOperation<any>((resolve, reject) => {
             this.onReply((next) => {
@@ -107,6 +116,9 @@ export class RpcMessageSubject {
         });
     }
 
+    /**
+     * Waits for the first message of a specific type, then closes the subject.
+     */
     async firstThenClose<T = RpcMessage>(type: number, schema?: ReceiveType<T>): Promise<T> {
         return await asyncOperation<any>((resolve, reject) => {
             this.onReply((next) => {

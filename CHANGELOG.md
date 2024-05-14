@@ -3,6 +3,83 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.150](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.149...v1.0.1-alpha.150) (2024-05-09)
+
+### Bug Fixes
+
+- **rpc:** ensure data is not chunked twice in server->client controllers ([6c59f9b](https://github.com/deepkit/deepkit-framework/commit/6c59f9bda5830dc11f85b555e7ecd618e10708f8))
+- **type-compiler:** support ReceiveType in arrow function with body expression ([3c66064](https://github.com/deepkit/deepkit-framework/commit/3c660640ba5ef7ac447d31b59abaf4f37bd341de))
+
+### Features
+
+- **type-compiler:** allow to use T from ReceiveType<T> in function body as type reference ([4d24c8b](https://github.com/deepkit/deepkit-framework/commit/4d24c8b33197e163ba75eb9483349d269502dc76)), closes [#565](https://github.com/deepkit/deepkit-framework/issues/565)
+
+## [1.0.1-alpha.149](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.148...v1.0.1-alpha.149) (2024-05-07)
+
+### Bug Fixes
+
+- **type-compiler:** make sure type reference resolving skips parameter names ([16ba17d](https://github.com/deepkit/deepkit-framework/commit/16ba17d728cb6f66db7ff3463ee05a893986b29b)), closes [#566](https://github.com/deepkit/deepkit-framework/issues/566)
+
+## [1.0.1-alpha.148](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.147...v1.0.1-alpha.148) (2024-05-04)
+
+### Features
+
+- **type:** new TemplateState.touch and isTypeClassOf ([cdf3272](https://github.com/deepkit/deepkit-framework/commit/cdf3272e05f63487c9e0da7776aa232ba1fe88b5))
+- **type:** support lower/mixed case as identifier for enum values ([ce0166e](https://github.com/deepkit/deepkit-framework/commit/ce0166e5d76bc5d55a50114bd43bfaa68dbeac18))
+- **type:** support mixed case enum member in union resolver ([96dd2d8](https://github.com/deepkit/deepkit-framework/commit/96dd2d864c2a0436cb5d78bada58ff82681d3045))
+
+## [1.0.1-alpha.147](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.146...v1.0.1-alpha.147) (2024-05-04)
+
+### Bug Fixes
+
+- **http:** support for JSON array payloads ([#564](https://github.com/deepkit/deepkit-framework/issues/564)) ([feeeaa6](https://github.com/deepkit/deepkit-framework/commit/feeeaa6ef9f76d67f85b25f4d243b27ceb00360b))
+- **mysql:** ensure `number & AutoIncrement` is always `int` ([69feb17](https://github.com/deepkit/deepkit-framework/commit/69feb17276f0f23ef32a331b36fa58ce0b001ae5))
+- **sqlite:** make sure ALTER TABLE are not aggregated ([74ef2eb](https://github.com/deepkit/deepkit-framework/commit/74ef2eb340924306dcd59b4d913d0eb32f88757f))
+- **type:** make sure handled constructor properties are not set twice ([2e82eb6](https://github.com/deepkit/deepkit-framework/commit/2e82eb6fe6bb8b519b8f170334740ee9f7f988be))
+- **type:** resolve global classes as shallow TypeClass ([d976024](https://github.com/deepkit/deepkit-framework/commit/d97602409b1e8c1d63839e2d1b75d16a0ccd4cfd))
+- **website:** docs about DI configureProvider and nominal tyoes ([e5dafb4](https://github.com/deepkit/deepkit-framework/commit/e5dafb47126411e8b369aa78cead32e02b4ee7c9))
+
+## [1.0.1-alpha.146](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.145...v1.0.1-alpha.146) (2024-04-17)
+
+### Bug Fixes
+
+- **type-compiler:** esm import of micromatch ([5606d74](https://github.com/deepkit/deepkit-framework/commit/5606d7404ad4ff1e94c5c12cbf94a532e9ae41ce))
+
+## [1.0.1-alpha.145](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.144...v1.0.1-alpha.145) (2024-04-08)
+
+### Bug Fixes
+
+- **filesystem-aws-s3:** use correct path normalize function ([58042a9](https://github.com/deepkit/deepkit-framework/commit/58042a99dc1f25d92effb766842fea199568f8f6))
+- **http:** make sure invalid formidable files are skipped ([d1ff09b](https://github.com/deepkit/deepkit-framework/commit/d1ff09ba17e82891b25c192dec7bdf2d9b921f24))
+- **orm:** make sure persistence is always closed on flush ([015d90a](https://github.com/deepkit/deepkit-framework/commit/015d90af15503c4159e4810cb6f862349a4599f1))
+- **sql:** dates should be nullable without casting as JSON ([#553](https://github.com/deepkit/deepkit-framework/issues/553)) ([d34b1a3](https://github.com/deepkit/deepkit-framework/commit/d34b1a30ad9371f01eb806ac37f2861754ce9959))
+- **sql:** resolve `Date|null` to date type ([ab12802](https://github.com/deepkit/deepkit-framework/commit/ab12802c307d9dcf17925526dd5dcf87c87e8899))
+- type guard handing of empty Map/Set ([da4cf82](https://github.com/deepkit/deepkit-framework/commit/da4cf8242a317157f8b02c67d2b5754fb8f29381))
+- **website:** fix ssr, remove some pages ([51b9b36](https://github.com/deepkit/deepkit-framework/commit/51b9b3681f46faf368c429302e127cf8c279d18d))
+
+## [1.0.1-alpha.144](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.143...v1.0.1-alpha.144) (2024-03-19)
+
+### Bug Fixes
+
+- **postgres:** use DatabaseField<{type}> for type mapping if available ([107399a](https://github.com/deepkit/deepkit-framework/commit/107399aa2fcbe14307ff4ad49937275bdcef5493))
+- **website:** fix deps + builds ([4183580](https://github.com/deepkit/deepkit-framework/commit/4183580c1a17c23f20db0d12744dd33d14d9623d))
+
+## [1.0.1-alpha.143](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.142...v1.0.1-alpha.143) (2024-03-17)
+
+### Bug Fixes
+
+- **core:** don't include stack in formatError per default ([1b603ee](https://github.com/deepkit/deepkit-framework/commit/1b603eef2938ab010fb6d83836894ad5a1c236af))
+- **http:** parameter service injection into route methods with encapsulated modules ([9c98f8b](https://github.com/deepkit/deepkit-framework/commit/9c98f8b110078ab35882fece44f45fde34a4feeb))
+- **type-compiler:** also parse tsx source files ([80464bf](https://github.com/deepkit/deepkit-framework/commit/80464bf2bd38477e7ce7898fde17b6d6738007f7)), closes [#560](https://github.com/deepkit/deepkit-framework/issues/560)
+- **type:** print Error cause chain in formatError ([c2a413a](https://github.com/deepkit/deepkit-framework/commit/c2a413aeb74155ddb29f1939b48e034f05d9ae60))
+- **type:** union expansions in intersections ([332b26e](https://github.com/deepkit/deepkit-framework/commit/332b26eb148d916d03f49fad0daaad083c24207a)), closes [#556](https://github.com/deepkit/deepkit-framework/issues/556)
+
+### Features
+
+- **desktop-ui:** support queryParams in list route support ([6f33804](https://github.com/deepkit/deepkit-framework/commit/6f3380469c22d8c146367889c8afd55d8df15292))
+- **injector:** improve set method api ([#557](https://github.com/deepkit/deepkit-framework/issues/557)) ([eb92e58](https://github.com/deepkit/deepkit-framework/commit/eb92e58a44a25170f29150aae89b2dfad33a3495))
+- **mysql, postgres:** add support for connection URLs ([2518670](https://github.com/deepkit/deepkit-framework/commit/25186701e3d6ea60ea232cbcc0c989e195df9edf))
+
 ## [1.0.1-alpha.142](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.141...v1.0.1-alpha.142) (2024-03-06)
 
 ### Bug Fixes

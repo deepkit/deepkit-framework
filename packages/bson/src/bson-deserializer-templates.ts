@@ -9,6 +9,7 @@ import {
     excludedAnnotation,
     executeTemplates,
     extendTemplateLiteral,
+    getDeepConstructorProperties,
     getIndexCheck,
     getNameExpression,
     getStaticDefaultCodeForProperty,
@@ -778,6 +779,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
     if (type.kind === ReflectionKind.class && type.classType !== Object) {
         const reflection = ReflectionClass.from(type.classType);
         const constructor = reflection.getConstructorOrUndefined();
+
         if (constructor && constructor.parameters.length) {
             const constructorArguments: string[] = [];
             for (const parameter of constructor.getParameters()) {
@@ -785,8 +787,12 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
                 constructorArguments.push(parameter.getVisibility() === undefined ? 'undefined' : `${object}[${name}]`);
             }
 
+            const constructorProperties = getDeepConstructorProperties(type).map(v => String(v.name));
+            const resetDefaultSets = constructorProperties.map(v => `delete ${object}.${v};`);
+
             createClassInstance = `
                 ${state.setter} = new ${state.compilerContext.reserveConst(type.classType, 'classType')}(${constructorArguments.join(', ')});
+                ${resetDefaultSets.join('\n')}
                 Object.assign(${state.setter}, ${object});
             `;
         } else {

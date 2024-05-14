@@ -11,7 +11,7 @@
 import { Pool } from 'mariadb';
 import { mySqlSerializer } from './mysql-serializer.js';
 import {
-    isDateType,
+    isAutoIncrementType,
     isReferenceType,
     isUUIDType,
     ReflectionClass,
@@ -30,6 +30,7 @@ import {
     PreparedAdapter,
     typeResolvesToBigInt,
     typeResolvesToBoolean,
+    typeResolvesToDate,
     typeResolvesToInteger,
     typeResolvesToNumber,
     typeResolvesToString,
@@ -60,6 +61,7 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addType(() => true, 'json');
 
         this.addType(typeResolvesToNumber, 'double');
+        this.addType(isAutoIncrementType, 'int');
         this.addType(typeResolvesToInteger, 'integer');
         this.addType(typeResolvesToBigInt, 'bigint');
         this.addType(typeResolvesToBoolean, 'tinyint', 1);
@@ -78,7 +80,7 @@ export class MySQLPlatform extends DefaultPlatform {
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float64, 'double');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float, 'double');
 
-        this.addType(isDateType, 'datetime');
+        this.addType(typeResolvesToDate, 'datetime');
         this.addType(isUUIDType, 'binary', 16);
 
         this.addBinaryType('longblob');

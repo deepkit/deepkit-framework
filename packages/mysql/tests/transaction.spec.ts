@@ -36,4 +36,6 @@ test('transaction', async () => {
         //in another connection we now have the changes
         expect(await database.query(User).filter({ username: 'user1 changed' }).has()).toBe(true);
     }
+
+    database.disconnect();
 });

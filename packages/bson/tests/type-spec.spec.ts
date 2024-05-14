@@ -21,7 +21,7 @@ import {
     Type,
     typeOf,
     TypePropertySignature,
-    UUID
+    UUID,
 } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { deserializeBSON } from '../src/bson-deserializer.js';
@@ -1046,4 +1046,62 @@ test('array with mongoid', () => {
     expect(serializeToJson<Model>({ references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }] })).toEqual({
         references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }]
     });
+});
+
+test('Map part of union', () => {
+    type T1 = null | Map<Date, number>;
+    type T2 = null | { tags: Map<Date, number> };
+
+    expect(roundTrip<T1>(null)).toBe(null);
+    expect(roundTrip<T2>(null)).toBe(null);
+
+    {
+        const date = new Date;
+        const map = new Map<Date, number>([[date, 1]]);
+        expect(roundTrip<T1>(map)).toEqual(map);
+        expect(roundTrip<T2>({ tags: map })).toEqual({ tags: map });
+    }
+
+    {
+        const map = new Map<Date, number>();
+        expect(roundTrip<T1>(map)).toEqual(map);
+        expect(roundTrip<T2>({ tags: map })).toEqual({ tags: map });
+    }
+});
+
+test('constructor property not assigned as property', () => {
+    //when a constructor property is assigned, it must be set via the constructor only
+    class Base {
+        constructor(public id: string) {
+        }
+    }
+
+    class Store {
+        id: string = '';
+    }
+
+    class Derived extends Base {
+        constructor(public store: Store) {
+            super(store.id.split(':')[0]);
+        }
+    }
+
+    const clazz = ReflectionClass.from(Derived);
+    expect(clazz.getConstructorOrUndefined()?.getParameter('store').isProperty()).toBe(true);
+    const parentConstructor = clazz.parent!.getConstructorOrUndefined();
+    expect(parentConstructor!.getParameter('id').isProperty()).toBe(true);
+
+    const store = new Store;
+    store.id = 'foo:bar';
+    const derived = new Derived(store);
+    expect(derived.id).toBe('foo');
+
+    const json = serializeToJson<Derived>(derived);
+    expect(json).toEqual({ id: 'foo', store: { id: 'foo:bar' } });
+
+    const back = deserializeFromJson<Derived>({
+        id: 'unrelated',
+        store: { id: 'foo:bar' },
+    });
+    expect(back).toEqual(derived);
 });
