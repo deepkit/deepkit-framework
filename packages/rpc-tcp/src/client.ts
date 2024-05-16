@@ -30,6 +30,7 @@ export class RpcTcpClientAdapter implements ClientTransportAdapter {
         });
 
         socket.on('error', (error: any) => {
+            error = error instanceof Error ? error : new Error(String(error));
             connection.onError(error);
         });
 

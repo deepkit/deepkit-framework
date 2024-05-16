@@ -71,7 +71,7 @@ export interface TransportConnectionHooks {
 
     onData(buffer: Uint8Array, bytes?: number): void;
 
-    onError(error: any): void;
+    onError(error: Error): void;
 }
 
 export interface ClientTransportAdapter {
@@ -88,7 +88,7 @@ export interface WritableClient {
             connectionId?: number,
             peerId?: string,
             timeout?: number
-        }
+        },
     ): RpcMessageSubject;
 }
 
@@ -122,11 +122,26 @@ export class RpcClientTransporter {
     public id?: Uint8Array;
 
     /**
-     * true when the connection fully established (after authentication)
+     * When the connection is established (including handshake and authentication).
      */
     public readonly connection = new BehaviorSubject<boolean>(false);
+
+    /**
+     * When the connection was reconnected. This is not called for the very first connection.
+     */
     public readonly reconnected = new Subject<number>();
+
+    /**
+     * When the connection was disconnected (due to error or close).
+     * This increases the connectionId by one.
+     */
     public readonly disconnected = new Subject<number>();
+
+    /**
+     * Triggered for any onError call from the transporter.
+     * Right after this event, onDisconnect is called (and thus connection.next(false) and disconnected.next()).
+     */
+    public readonly errored = new Subject<{ connectionId: number, error: Error }>();
 
     public reader = new RpcMessageReader(
         (v) => this.onMessage(v),
@@ -134,7 +149,7 @@ export class RpcClientTransporter {
             if (this.writer) {
                 this.writer.write(createRpcMessage(id, RpcTypes.ChunkAck));
             }
-        }
+        },
     );
 
     public constructor(
@@ -159,7 +174,14 @@ export class RpcClientTransporter {
         return this.connected;
     }
 
-    protected onError() {
+    protected onError(error: Error) {
+        if (this.connected) {
+            // We do not want to call errored if we are not yet connected,
+            // since errors thrown while in connection process are forwarded
+            // to the connection promise (and thus are thrown in connect()
+            // or in any rpc action).
+            this.errored.next({ connectionId: this.connectionId, error });
+        }
         this.onDisconnect();
     }
 
@@ -256,8 +278,8 @@ export class RpcClientTransporter {
                         resolve(undefined);
                     },
 
-                    onError: (error: Event) => {
-                        this.onError();
+                    onError: (error: Error) => {
+                        this.onError(error);
                         reject(new OfflineError(`Could not connect: ${formatError(error)}`));
                     },
 
@@ -315,7 +337,10 @@ export class RpcClientPeer {
 
     }
 
-    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: { timeout?: number, dontWaitForConnection?: true } = {}): RemoteController<T> {
+    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: {
+        timeout?: number,
+        dontWaitForConnection?: true
+    } = {}): RemoteController<T> {
         const controller = new RpcControllerState('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path);
         controller.peerId = this.peerId;
 
@@ -324,7 +349,7 @@ export class RpcClientPeer {
                 return (...args: any[]) => {
                     return this.actionClient.action(controller, propertyName as string, args, options);
                 };
-            }
+            },
         }) as any as RemoteController<T>;
     }
 
@@ -335,8 +360,12 @@ export class RpcClientPeer {
 
 
 export type RpcEventMessage = { id: number, date: Date, type: number, body: any };
-export type RpcClientEventIncomingMessage = { event: 'incoming', composite: boolean, messages: RpcEventMessage[] } & RpcEventMessage;
-export type RpcClientEventOutgoingMessage = { event: 'outgoing', composite: boolean, messages: RpcEventMessage[] } & RpcEventMessage;
+export type RpcClientEventIncomingMessage =
+    { event: 'incoming', composite: boolean, messages: RpcEventMessage[] }
+    & RpcEventMessage;
+export type RpcClientEventOutgoingMessage =
+    { event: 'outgoing', composite: boolean, messages: RpcEventMessage[] }
+    & RpcEventMessage;
 
 export type RpcClientEvent = RpcClientEventIncomingMessage | RpcClientEventOutgoingMessage;
 
@@ -355,7 +384,7 @@ export class RpcBaseClient implements WritableClient {
     public events = new Subject<RpcClientEvent>();
 
     constructor(
-        protected transport: ClientTransportAdapter
+        protected transport: ClientTransportAdapter,
     ) {
         this.transporter = new RpcClientTransporter(this.transport);
         this.transporter.onMessage = this.onMessage.bind(this);
@@ -443,7 +472,7 @@ export class RpcBaseClient implements WritableClient {
             connectionId?: number,
             peerId?: string,
             timeout?: number
-        } = {}
+        } = {},
     ): RpcMessageSubject {
         const resolvedSchema = schema ? resolveReceiveType(schema) : undefined;
         if (body && !schema) throw new Error('Body given, but not type');
@@ -452,7 +481,7 @@ export class RpcBaseClient implements WritableClient {
         const dontWaitForConnection = !!options.dontWaitForConnection;
         // const timeout = options && options.timeout ? options.timeout : 0;
 
-        const continuation = <T>(type: number, body?: T, schema?: ReceiveType<T>,) => {
+        const continuation = <T>(type: number, body?: T, schema?: ReceiveType<T>) => {
             if (connectionId === this.transporter.connectionId) {
                 //send a message with the same id. Don't use sendMessage() again as this would lead to a memory leak
                 // and a new id generated. We want to use the same id.
@@ -460,7 +489,7 @@ export class RpcBaseClient implements WritableClient {
                     this.events.next({
                         event: 'outgoing',
                         date: new Date,
-                        id, type, body, messages: [], composite: false
+                        id, type, body, messages: [], composite: false,
                     });
                 }
                 const message = createRpcMessage(id, type, body, undefined, schema);
@@ -488,7 +517,7 @@ export class RpcBaseClient implements WritableClient {
                 this.events.next({
                     event: 'outgoing',
                     date: new Date,
-                    id, type, body, messages: [], composite: false
+                    id, type, body, messages: [], composite: false,
                 });
             }
 
@@ -505,14 +534,14 @@ export class RpcBaseClient implements WritableClient {
                         this.events.next({
                             event: 'outgoing',
                             date: new Date,
-                            id, type, body, messages: [], composite: false
+                            id, type, body, messages: [], composite: false,
                         });
                     }
                     this.transporter.send(message, progress?.upload);
                 },
                 (e) => {
                     subject.next(new ErroredRpcMessage(id, e));
-                }
+                },
             );
         }
 
@@ -586,7 +615,7 @@ export class RpcClient extends RpcBaseClient {
                     write: (answer: Uint8Array) => {
                         //should we modify the package?
                         this.transporter.send(answer);
-                    }
+                    },
                 };
 
                 //todo: set up timeout for idle detection. Make the timeout configurable
@@ -614,7 +643,7 @@ export class RpcClient extends RpcBaseClient {
                         },
                         bufferedAmount: () => {
                             return this.transporter.bufferedAmount();
-                        }
+                        },
                     });
                     // Important to disable since transporter.send chunks already,
                     // otherwise data is chunked twice and protocol breaks.
@@ -667,7 +696,7 @@ export class RpcClient extends RpcBaseClient {
             deregister: async () => {
                 await this.sendMessage<rpcPeerDeregister>(RpcTypes.PeerDeregister, { id }).firstThenClose(RpcTypes.Ack);
                 this.registeredAsPeer = undefined;
-            }
+            },
         };
     }
 
@@ -689,7 +718,11 @@ export class RpcClient extends RpcBaseClient {
         return peer;
     }
 
-    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: { timeout?: number, dontWaitForConnection?: true, typeReuseDisabled?: boolean } = {}): RemoteController<T> {
+    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: {
+        timeout?: number,
+        dontWaitForConnection?: true,
+        typeReuseDisabled?: boolean
+    } = {}): RemoteController<T> {
         const controller = new RpcControllerState('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path);
 
         options = options || {};
@@ -702,7 +735,7 @@ export class RpcClient extends RpcBaseClient {
                 return (...args: any[]) => {
                     return this.actionClient.action(controller, propertyName as string, args, options);
                 };
-            }
+            },
         }) as any as RemoteController<T>;
     }
 

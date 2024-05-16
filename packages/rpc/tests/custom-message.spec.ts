@@ -56,13 +56,13 @@ test('back controller', async () => {
 
     const client = new DirectClient(kernel);
 
-    // This wait for the server's Ack
+    // This waits for the server's Ack
     const answer = await client
         .sendMessage(MyTypes.QueryAndAnswer)
         .firstThenClose<{ v: string }>(MyTypes.Answer);
     expect(answer.v).toBe('42 is the answer');
 
-    // This wait for the server's Ack
+    // This waits for the server's Ack
     await client
         .sendMessage<{v: string}>(MyTypes.BroadcastWithAck, {v: 'Hi1'})
         .ackThenClose();
