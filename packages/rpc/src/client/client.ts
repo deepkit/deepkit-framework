@@ -175,13 +175,7 @@ export class RpcClientTransporter {
     }
 
     protected onError(error: Error) {
-        if (this.connected) {
-            // We do not want to call errored if we are not yet connected,
-            // since errors thrown while in connection process are forwarded
-            // to the connection promise (and thus are thrown in connect()
-            // or in any rpc action).
-            this.errored.next({ connectionId: this.connectionId, error });
-        }
+        this.errored.next({ connectionId: this.connectionId, error });
         this.onDisconnect();
     }
 

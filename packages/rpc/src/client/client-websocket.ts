@@ -103,7 +103,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
         socket.onclose = (event) => {
             if (errored) {
                 const reason = `code ${event.code} reason ${event.reason || 'unknown'}`;
-                const message = connected ? `abnormal error` : `Could not connect: ${reason}`;
+                const message = connected ? `abnormal error: ${reason}` : `Could not connect: ${reason}`;
                 connection.onError(new Error(message));
             } else {
                 connection.onClose();
