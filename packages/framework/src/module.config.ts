@@ -13,7 +13,7 @@ const isWindows = 'undefined' !== typeof process ? process.platform === 'win32' 
 
 export class BrokerConfig {
     /**
-     * @description If startOnBootstrap is true, the broker server stats at this address. Unix socket path or host:port combination
+     * @description If startOnBootstrap is true, the broker server starts at this address. Unix socket path or host:port combination
      */
     listen: string = isWindows ? 'localhost:8811' : 'var/broker.sock';
 

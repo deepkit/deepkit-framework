@@ -4,6 +4,7 @@ import { BrokerMemoryAdapter } from '../src/adapters/memory-adapter.js';
 import { sleep } from '@deepkit/core';
 import { BrokerCache } from '../src/broker-cache.js';
 import { QueueMessageProcessing } from '../src/model.js';
+import { BrokerKeyValue } from '../src/broker-key-value.js';
 
 jest.setTimeout(10000);
 
@@ -19,6 +20,40 @@ afterEach(() => {
 });
 
 type User = { id: number, username: string, created: Date };
+
+test('key-value 1', async () => {
+    const keyValue = new BrokerKeyValue(await adapterFactory());
+
+    const item = keyValue.item<number>('key1');
+    expect(await item.get()).toBe(undefined);
+    await item.set(23);
+    expect(await item.get()).toBe(23);
+
+    expect(await keyValue.get<number>('key1')).toBe(23);
+    await keyValue.set<number>('key1', 24);
+    expect(await item.get()).toBe(24);
+});
+
+test('key-value 2', async () => {
+    const keyValue = new BrokerKeyValue(await adapterFactory());
+
+    const item = keyValue.item<number>('key1');
+    expect(await item.increment(2)).toBe(2);
+    expect(await item.increment(2)).toBe(4);
+    expect(await item.increment(-2)).toBe(2);
+});
+
+test('key-value 3', async () => {
+    const keyValue = new BrokerKeyValue(await adapterFactory());
+
+    const item = keyValue.item<number>('key1');
+    expect(await item.increment(0)).toBe(0);
+    expect(await item.increment(5)).toBe(5);
+    expect(await item.increment(-2)).toBe(3);
+
+    await item.remove();
+    expect(await item.increment(0)).toBe(0);
+});
 
 test('cache2', async () => {
     const cache = new BrokerCache(await adapterFactory());

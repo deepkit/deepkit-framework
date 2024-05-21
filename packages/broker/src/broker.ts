@@ -3,6 +3,7 @@ import { EventToken } from '@deepkit/event';
 import { parseTime } from './utils.js';
 import { BrokerAdapterCache } from './broker-cache.js';
 import { QueueMessageProcessing } from './model.js';
+import { BrokerAdapterKeyValue } from './broker-key-value.js';
 
 export interface BrokerTimeOptions {
     /**
@@ -138,14 +139,6 @@ export interface BrokerAdapterQueue extends BrokerAdapterBase {
      * Produce a message to a queue.
      */
     produce(name: string, message: any, type: Type, options?: BrokerAdapterQueueProduceOptionsResolved): Promise<void>;
-}
-
-export interface BrokerAdapterKeyValue extends BrokerAdapterBase {
-    get(key: string, type: Type): Promise<any>;
-
-    set(key: string, value: any, type: Type): Promise<any>;
-
-    increment(key: string, value: any): Promise<number>;
 }
 
 export const onBrokerLock = new EventToken('broker.lock');

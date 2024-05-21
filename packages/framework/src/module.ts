@@ -58,7 +58,7 @@ import { MediaController } from './debug/media.controller.js';
 import { DebugHttpController } from './debug/debug-http.controller.js';
 import { BrokerServer } from './broker/broker.js';
 import { BrokerListener } from './broker/listener.js';
-import { BrokerBus, BrokerCache, BrokerDeepkitAdapter, BrokerLock, BrokerQueue } from '@deepkit/broker';
+import { BrokerBus, BrokerCache, BrokerDeepkitAdapter, BrokerKeyValue, BrokerLock, BrokerQueue } from '@deepkit/broker';
 import { getBrokerServers } from './broker.js';
 
 export class FrameworkModule extends createModule({
@@ -99,6 +99,7 @@ export class FrameworkModule extends createModule({
         { provide: BrokerLock, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerLock(adapter) },
         { provide: BrokerQueue, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerQueue(adapter) },
         { provide: BrokerBus, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerBus(adapter) },
+        { provide: BrokerKeyValue, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerKeyValue(adapter) },
 
         //move to HttpModule?
         { provide: SessionHandler, scope: 'http' },

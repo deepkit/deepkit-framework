@@ -108,11 +108,12 @@ import { PlatformHelper } from '@app/app/utils';
                 <div class="category">
                     <div class="category-title">Broker</div>
                     <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/broker">Getting started</a>
-                    <a routerLinkActive="active" routerLink="/documentation/broker/examples">Examples</a>
+<!--                    <a routerLinkActive="active" routerLink="/documentation/broker/examples">Examples</a>-->
                     <a routerLinkActive="active" routerLink="/documentation/broker/cache">Cache</a>
                     <a routerLinkActive="active" routerLink="/documentation/broker/message-bus">Message Bus</a>
                     <a routerLinkActive="active" routerLink="/documentation/broker/message-queue">Message Queue</a>
                     <a routerLinkActive="active" routerLink="/documentation/broker/atomic-locks">Atomic Locks</a>
+                    <a routerLinkActive="active" routerLink="/documentation/broker/key-value">Key Value</a>
                 </div>
 
                 <div class="category">
