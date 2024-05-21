@@ -1,23 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { schemaMigrationRoundTrip } from '@deepkit/sql';
-import {
-    AutoIncrement,
-    Entity,
-    float32,
-    int16,
-    int32,
-    int8,
-    integer,
-    Postgres,
-    PrimaryKey,
-    Reference,
-    ReflectionClass,
-    typeOf,
-    uint16,
-    uint32,
-    uint8,
-    Unique
-} from '@deepkit/type';
+import { AutoIncrement, DatabaseField, Entity, float32, int16, int32, int8, integer, Postgres, PrimaryKey, Reference, ReflectionClass, typeOf, uint16, uint32, uint8, Unique, Vector } from '@deepkit/type';
 import { PostgresDatabaseAdapter } from '../src/postgres-adapter.js';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 
@@ -108,11 +91,12 @@ interface User extends Entity<{ name: 'user' }> {
 
 interface Post extends Entity<{ name: 'post' }> {
     id: number & AutoIncrement & PrimaryKey;
-    user: User & Reference,
-    created: Date,
-    slag: string & Unique,
-    title: string,
-    content: string,
+    user: User & Reference;
+    created: Date;
+    slag: string & Unique;
+    title: string & DatabaseField<{type: 'varchar(255)'}>;
+    content: string;
+    embedding: Vector<3>;
 }
 
 test('postgres', async () => {

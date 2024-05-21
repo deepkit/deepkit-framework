@@ -27,7 +27,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json",
+    "performance": "node -r ts-node/register tests/performance.ts"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -55,7 +56,8 @@
     "@deepkit/logger": "^1.0.1-alpha.151",
     "@deepkit/orm": "^1.0.1-alpha.151",
     "@deepkit/stopwatch": "^1.0.1-alpha.151",
-    "@deepkit/type": "^1.0.1-alpha.151"
+    "@deepkit/type": "^1.0.1-alpha.151",
+    "mitata": "^0.1.11"
   },
   "jest": {
     "runner": "../../jest-serial-runner.js",

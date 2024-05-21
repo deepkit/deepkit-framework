@@ -1,5 +1,6 @@
 import { ReflectionClass, resolvePath, resolveProperty, Type, TypeClass, TypeObjectLiteral } from '@deepkit/type';
 import { DefaultPlatform } from './platform/default-platform.js';
+import { SqlBuilderRegistry } from './sql-builder-registry.js';
 
 export type SqlTypeCast = (placeholder: string) => string;
 
@@ -32,6 +33,7 @@ export interface PreparedEntity {
 
 export interface PreparedAdapter {
     getName(): string;
+    builderRegistry: SqlBuilderRegistry;
     platform: DefaultPlatform;
     preparedEntities: Map<ReflectionClass<any>, PreparedEntity>;
 }

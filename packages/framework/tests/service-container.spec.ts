@@ -112,7 +112,7 @@ test('database integration', async () => {
     const app = new App({
         providers: [MyDatabase],
         listeners: [
-            Query.onFetch.listen(event => {
+            Query.onFind.listen(event => {
                 onFetch.push(event);
             })
         ],

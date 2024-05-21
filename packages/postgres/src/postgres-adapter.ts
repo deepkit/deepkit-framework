@@ -120,7 +120,7 @@ export class PostgresStatement extends SQLStatement {
             });
             return res.rows;
         } catch (error: any) {
-            error = ensureDatabaseError(error);
+            error = ensureDatabaseError(error, `Query: ${this.sql}\nParams: ${params}`);
             this.logger.failedQuery(error, this.sql, params);
             throw error;
         } finally {
@@ -523,7 +523,7 @@ export class PostgresSQLQueryResolver<T extends OrmEntity> extends SQLQueryResol
             }
         }
 
-        const sqlBuilder = new SqlBuilder(this.adapter, selectParams);
+        const sqlBuilder = new SqlBuilder(this.adapter, selectParams.length);
         const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
 
         const sql = `

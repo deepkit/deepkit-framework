@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { AutoIncrement, DatabaseField, entity, Index, PrimaryKey, Reference, ReflectionClass, ReflectionKind, Unique } from '@deepkit/type';
+import { AutoIncrement, DatabaseField, entity, Index, isDateType, PrimaryKey, Reference, ReflectionClass, ReflectionKind, typeOf, Unique } from '@deepkit/type';
 import { DatabaseComparator, DatabaseModel, IndexModel, TableComparator } from '../src/schema/table.js';
 import { DefaultPlatform } from '../src/platform/default-platform.js';
 import { SchemaParser } from '../src/reverse/schema-parser.js';
@@ -36,6 +36,7 @@ class MyPlatform extends DefaultPlatform {
     constructor() {
         super();
         this.addType(ReflectionKind.number, 'integer');
+        this.addType(isDateType, 'date');
     }
 }
 
@@ -71,6 +72,27 @@ test('migration basic', async () => {
     expect(tablePost.foreignKeys[0].foreign).toBe(tableUser);
     expect(tablePost.foreignKeys[0].localColumns[0].name).toBe('user');
     expect(tablePost.foreignKeys[0].foreignColumns[0].name).toBe('id');
+});
+
+test('changed column', async () => {
+    const platform = new MyPlatform();
+
+    interface User {
+        id: number & PrimaryKey;
+        created: number;
+    }
+
+    interface User2 {
+        id: number & PrimaryKey;
+        created: Date;
+    }
+
+    const db1 = platform.createTables(DatabaseEntityRegistry.from([typeOf<User>()]));
+    const db2 = platform.createTables(DatabaseEntityRegistry.from([typeOf<User2>()]));
+    const diff = TableComparator.computeDiff(db1[0], db2[0]);
+
+    const sql = platform.getModifyTableDDL(diff!, new MigrateOptions());
+    expect(sql).toContain('ALTER TABLE "User2" MODIFY "created" date NOT NULL');
 });
 
 test('add and remove column', async () => {

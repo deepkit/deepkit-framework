@@ -1,4 +1,4 @@
-import { AutoIncrement, cast, entity, PrimaryKey, Unique } from '@deepkit/type';
+import { AutoIncrement, cast, entity, getVectorTypeOptions, PrimaryKey, ReflectionClass, Unique, Vector } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import pg from 'pg';
 import { databaseFactory } from './factory.js';
@@ -15,7 +15,7 @@ test('count', async () => {
     pg.types.setTypeParser(1700, parseFloat);
     pg.types.setTypeParser(20, BigInt);
 
-    (BigInt.prototype as any).toJSON = function () {
+    (BigInt.prototype as any).toJSON = function() {
         return this.toString();
     };
 
@@ -187,7 +187,9 @@ test('json field and query', async () => {
 test('unique constraint 1', async () => {
     class Model {
         id: number & PrimaryKey & AutoIncrement = 0;
-        constructor(public username: string & Unique = '') {}
+
+        constructor(public username: string & Unique = '') {
+        }
     }
 
     const database = await databaseFactory([Model]);
@@ -201,7 +203,7 @@ test('unique constraint 1', async () => {
         await expect(database.persist(m1)).rejects.toBeInstanceOf(UniqueConstraintFailure);
 
         try {
-            await database.persist(m1)
+            await database.persist(m1);
         } catch (error: any) {
             assertInstanceOf(error, UniqueConstraintFailure);
             assertInstanceOf(error.cause, DatabaseInsertError);
@@ -219,15 +221,110 @@ test('unique constraint 1', async () => {
     }
 
     {
-        const m = await database.query(Model).filter({username: 'paul'}).findOne();
+        const m = await database.query(Model).filter({ username: 'paul' }).findOne();
         m.username = 'peter';
         await expect(database.persist(m)).rejects.toThrow('Key (username)=(peter) already exists');
         await expect(database.persist(m)).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
 
     {
-        const p = database.query(Model).filter({username: 'paul'}).patchOne({username: 'peter'});
+        const p = database.query(Model).filter({ username: 'paul' }).patchOne({ username: 'peter' });
         await expect(p).rejects.toThrow('Key (username)=(peter) already exists');
         await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
+});
+
+test('vector embeddings', async () => {
+    @entity.name('vector_sentences')
+    class Sentences {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        sentence: string = '';
+        embedding: Vector<3> = [];
+    }
+
+    const reflection = ReflectionClass.from(Sentences);
+    const embedding = reflection.getProperty('embedding');
+    console.log(getVectorTypeOptions(embedding.type));
+
+    const database = await databaseFactory([Sentences]);
+
+    const s1 = new Sentences;
+    s1.sentence = 'hello';
+    s1.embedding = [0, 0.5, 2];
+    await database.persist(s1);
+
+    const query = database.query(Sentences);
+
+    type ModelQuery<T> = {
+        [P in keyof T]?: string;
+    };
+
+    const q: ModelQuery<Sentences> = {} as any;
+
+    // count(q.sentence);
+    // sum(q.sentence);
+    //
+    // sort(l2Distance(q.embedding, [1, 2, 3]), 'asc');
+
+    const eq = (a: any, b: any): any => {};
+    const lt = (a: any, b: any): any => {};
+    const gt = (a: any, b: any): any => {};
+    const where = (a: any): any => {};
+    const select = <T>(a: (m: ModelQuery<T>) => any): any => {};
+    const groupBy = (...a: any[]): any => {};
+    const orderBy = (...a: any[]): any => {};
+    const count = (a: any): any => {};
+    const l2Distance = (a: any, b: any): any => {};
+
+    const join = (a: any, b: any): any => {};
+
+    select<Sentences>(m => {
+        where(eq(m.sentence, 'hello'));
+        return [m.id, m.sentence, count(m.sentence)];
+    });
+
+    const sentenceQuery = [123, 123, 123];
+    select<Sentences>(m => {
+        where(`${l2Distance(m.embedding, sentenceQuery)} > 0.5`);
+
+        // WHERE
+        //    embedding <=> ${sentenceQuery} > 0.5 AND group = 'abc'
+        // ORDER BY embedding <=> ${sentenceQuery}${asd ? ',' + asd : ''}
+
+        // where(lt(l2Distance(m.embedding, [1, 2, 3]), 0.5));
+        orderBy(l2Distance(m.embedding, sentenceQuery));
+        return [m.id, m.sentence, l2Distance(m.embedding, sentenceQuery)];
+    });
+
+    select<Sentences>(m => {
+        groupBy(m.sentence);
+        return [count(m.id)];
+    });
+
+    interface Group {
+        id: number;
+        name: string;
+    }
+
+    interface User {
+        id: number;
+        name: string;
+        groups: Group[];
+    }
+
+    select<User>(m => {
+        join(m.groups, g => {
+            return [g.id, g.name];
+        });
+        return [m.id, m.name, m.groups];
+    });
+
+    const rows = await database.query(Sentences)
+        .select(count(Sentences))
+        .filter({ embedding: { $l2Distance: { query: [2, 3, 4], filter: { $eq: 3.774917217635375 } } } })
+        .orderBy()
+        .find();
+
+    expect(rows).toHaveLength(1);
+    console.log(rows);
 });

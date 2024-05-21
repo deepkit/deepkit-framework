@@ -9,9 +9,9 @@
     "noImplicitAny": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "moduleResolution": "node",
+    "moduleResolution": "Node16",
     "target": "es2020",
-    "module": "CommonJS",
+    "module": "node16",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
@@ -24,13 +24,11 @@
   "include": [
     "benchmarks",
     "src",
+    "tests",
     "main.ts",
     "browser.ts",
     "commands.ts",
     "index.ts"
-  ],
-  "exclude": [
-    "tests"
   ],
   "references": [
     {

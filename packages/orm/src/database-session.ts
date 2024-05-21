@@ -11,7 +11,7 @@
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter.js';
 import { DatabaseEntityRegistry } from './database-adapter.js';
 import { DatabaseValidationError, OrmEntity } from './type.js';
-import { AbstractClassType, ClassType, CustomError, forwardTypeArguments } from '@deepkit/core';
+import { AbstractClassType, ClassType, CustomError } from '@deepkit/core';
 import {
     getPrimaryKeyExtractor,
     isReferenceInstance,
@@ -346,12 +346,13 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
         }
 
         this.query = query as any;
+        // this.query = {} as any;
 
-        const factory = this.adapter.rawFactory(this);
-        this.raw = (...args: any[]) => {
-            forwardTypeArguments(this.raw, factory.create);
-            return factory.create(...args);
-        };
+        // const factory = this.adapter.rawFactory(this);
+        // this.raw = (...args: any[]) => {
+        //     forwardTypeArguments(this.raw, factory.create);
+        //     return factory.create(...args);
+        // };
     }
 
     /**
@@ -556,8 +557,8 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
             //make sure all stuff in the identity-map is known
             const round = this.getCurrentRound();
             if (this.withIdentityMap) {
-                for (const map of this.identityMap.registry.values()) {
-                    for (const item of map.values()) {
+                for (const map of Object.values(this.identityMap.registry)) {
+                    for (const item of Object.values(map)) {
                         round.add(item.ref);
                     }
                 }

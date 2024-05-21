@@ -19,12 +19,23 @@ import {
     TableDiff,
 } from '../schema/table.js';
 import sqlstring from 'sqlstring';
-import { ClassType, isArray, isObject } from '@deepkit/core';
+import { arrayRemoveItem, ClassType, isArray, isObject } from '@deepkit/core';
 import { sqlSerializer } from '../serializer/sql-serializer.js';
 import { parseType, SchemaParser } from '../reverse/schema-parser.js';
 import { SQLFilterBuilder } from '../sql-filter-builder.js';
 import { Sql } from '../sql-builder.js';
-import { binaryTypes, databaseAnnotation, isCustomTypeClass, isDateType, isIntegerType, ReflectionClass, ReflectionKind, ReflectionProperty, Serializer, Type } from '@deepkit/type';
+import {
+    binaryTypes,
+    databaseAnnotation,
+    isCustomTypeClass,
+    isDateType,
+    isIntegerType,
+    ReflectionClass,
+    ReflectionKind,
+    ReflectionProperty,
+    Serializer,
+    Type,
+} from '@deepkit/type';
 import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
 import { splitDotPath } from '../sql-adapter.js';
 import { PreparedAdapter } from '../prepare.js';
@@ -147,7 +158,7 @@ export abstract class DefaultPlatform {
      */
     public annotationId = '*';
 
-    protected typeMapping = new Map<ReflectionKind | TypeMappingChecker, TypeMapping>();
+    protected typeMapping = new Map<ReflectionKind | TypeMappingChecker, TypeMapping | ((type: Type) => TypeMapping)>();
     protected nativeTypeInformation = new Map<string, Partial<NativeTypeInformation>>();
 
     public abstract schemaParserType: ClassType<SchemaParser>;
@@ -187,7 +198,11 @@ export abstract class DefaultPlatform {
     /**
      * Last matching check wins.
      */
-    addType(kind: ReflectionKind | TypeMappingChecker, sqlType: string, size?: number, scale?: number, unsigned?: boolean) {
+    addType(kind: ReflectionKind | TypeMappingChecker, sqlType: string | ((type: Type) => TypeMapping), size?: number, scale?: number, unsigned?: boolean) {
+        if ('function' === typeof sqlType) {
+            this.typeMapping.set(kind, sqlType);
+            return;
+        }
         this.typeMapping.set(kind, { sqlType, size, scale, unsigned });
     }
 
@@ -230,6 +245,43 @@ export abstract class DefaultPlatform {
 
     }
 
+    protected sameColumnTypeGroups: string[][] = [
+    ];
+
+    /**
+     * A DatabaseDiff contains all detected changes between two Database models.
+     * This difference doesn't reflect whether there is a real difference in the database.
+     * For example, type 'varchar' => 'character varying' is not a real difference in PostgreSQL.
+     * So this needs to be normalized in the secondLevelDiff method.
+     */
+    secondLevelDatabaseDiff(diff?: DatabaseDiff) {
+        if (!diff) return;
+
+        for (const tableDiff of diff.modifiedTables.slice()) {
+            this.secondLevelTableDiff(tableDiff);
+            if (tableDiff.empty()) {
+                arrayRemoveItem(diff.modifiedTables, tableDiff);
+            }
+        }
+    }
+
+    secondLevelTableDiff(tableDiff?: TableDiff) {
+        if (!tableDiff) return;
+        for (const columnDiff of tableDiff.modifiedColumns.slice()) {
+            const type = columnDiff.changedProperties.get('type');
+            if (!type) continue;
+            for (const group of this.sameColumnTypeGroups) {
+                if (group.includes(type.from) && group.includes(type.to)) {
+                    columnDiff.changedProperties.delete('type');
+                }
+            }
+
+            if (columnDiff.empty()) {
+                arrayRemoveItem(tableDiff.modifiedColumns, columnDiff);
+            }
+        }
+    }
+
     getEntityFields(schema: ReflectionClass<any>): ReflectionProperty[] {
         const fields: ReflectionProperty[] = [];
         for (const property of schema.getProperties()) {
@@ -248,9 +300,11 @@ export abstract class DefaultPlatform {
 
         for (const [checker, m] of this.typeMapping.entries()) {
             if ('number' === typeof checker) {
-                if (checker === type.kind) mapping = m;
+                if (checker === type.kind) {
+                    mapping = 'function' === typeof m ? m(type) : m;
+                }
             } else {
-                if (checker(type)) mapping = m;
+                if (checker(type)) mapping = 'function' === typeof m ? m(type) : m;
             }
         }
         return mapping;

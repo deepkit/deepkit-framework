@@ -20,6 +20,7 @@ import {
 } from '@deepkit/type';
 import { SqlPlaceholderStrategy } from './platform/default-platform.js';
 import { getPreparedEntity, PreparedAdapter, PreparedEntity } from './prepare.js';
+import { BaseQuerySelector } from '@deepkit/orm';
 
 type Filter = { [name: string]: any };
 
@@ -68,6 +69,22 @@ export class SQLFilterBuilder {
         return value;
     }
 
+    protected conditionVectorSearch(
+        fieldName: string,
+        i: '$l2Distance' | '$innerProduct' | '$cosineDistance',
+        obj: { query: number[]; filter: BaseQuerySelector<number>; }
+    ): string {
+
+        let cmp = '<->';
+        if (i === '$l2Distance') cmp = '<->';
+        else if (i === '$innerProduct') cmp = '<#>';
+        else if (i === '$cosineDistance') cmp = '<=>';
+
+        const rvalue = this.placeholderStrategy.getPlaceholder();
+        this.params.push(this.bindValue(JSON.stringify(obj.query)));
+        return this.conditions(obj.filter, `(${this.quoteIdWithTable(fieldName)} ${cmp} ${rvalue})`);
+    }
+
     protected conditionsArray(filters: Filter[], join: 'AND' | 'OR'): string {
         const sql: string[] = [];
 
@@ -92,6 +109,8 @@ export class SQLFilterBuilder {
             throw new Error('No comparison operators at root level allowed');
         }
 
+        const fieldNameExpressions = fieldName.startsWith('(');
+
         if (isPlainObject(value)) {
             return this.conditions(value, fieldName);
         }
@@ -108,6 +127,7 @@ export class SQLFilterBuilder {
         else if (comparison === 'in') cmpSign = 'IN';
         else if (comparison === 'nin') cmpSign = 'NOT IN';
         else if (comparison === 'like') cmpSign = 'LIKE';
+
         else if (comparison === 'regex') return this.regexpComparator(this.quoteIdWithTable(fieldName), value);
         else throw new Error(`Comparator ${comparison} not supported.`);
 
@@ -120,7 +140,7 @@ export class SQLFilterBuilder {
                 cmpSign = cmpSign === '!=' ? this.isNotNull() : this.isNull();
                 rvalue = '';
             } else {
-                const property = resolvePath(fieldName, this.schema.type);
+                const property = fieldNameExpressions ? undefined : resolvePath(fieldName, this.schema.type);
 
                 if (comparison === 'in' || comparison === 'nin') {
                     if (isArray(value)) {
@@ -128,7 +148,7 @@ export class SQLFilterBuilder {
                         for (let item of value) {
                             params.push(this.placeholderStrategy.getPlaceholder());
 
-                            if ((fieldName.includes('.') && this.adapter.platform.deepColumnAccessorRequiresJsonString()) || !isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property)) {
+                            if (!fieldNameExpressions && (fieldName.includes('.') && this.adapter.platform.deepColumnAccessorRequiresJsonString()) || (property && (!isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property)))) {
                                 item = JSON.stringify(item);
                             }
                             this.params.push(this.bindValue(item));
@@ -137,8 +157,7 @@ export class SQLFilterBuilder {
                     }
                 } else {
                     rvalue = this.placeholderStrategy.getPlaceholder();
-
-                    if ((fieldName.includes('.') && this.adapter.platform.deepColumnAccessorRequiresJsonString()) || !isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property)) {
+                    if (!fieldNameExpressions && (fieldName.includes('.') && this.adapter.platform.deepColumnAccessorRequiresJsonString()) || (property && (!isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property)))) {
                         value = JSON.stringify(value);
                     }
                     this.params.push(this.bindValue(value));
@@ -146,7 +165,9 @@ export class SQLFilterBuilder {
             }
         }
 
-        return `${this.quoteIdWithTable(fieldName)} ${cmpSign} ${rvalue}`;
+        const quotedFieldName = fieldNameExpressions ? fieldName : this.quoteIdWithTable(fieldName);
+
+        return `${quotedFieldName} ${cmpSign} ${rvalue}`;
     }
 
     protected splitDeepFieldPath(path: string): [column: string, path: string] {
@@ -161,9 +182,17 @@ export class SQLFilterBuilder {
         for (const i in filter) {
             if (!filter.hasOwnProperty(i)) continue;
 
+            //todo: vector stuff needs to be placed here
+            // can we generalize this? so that we can register arbitrary new comparison operators?
+            // think also about how to return the vector score, how to sort by it, etc.
+
             if (i === '$or') return this.conditionsArray(filter[i], 'OR');
             if (i === '$and') return this.conditionsArray(filter[i], 'AND');
             if (i === '$not') return `NOT ` + this.conditionsArray(filter[i], 'AND');
+
+            if (fieldName && (i === '$l2Distance' || i === '$innerProduct' || i === '$cosineDistance')) {
+                return this.conditionVectorSearch(fieldName, i, filter[i]);
+            }
 
             if (i === '$exists') sql.push(this.adapter.platform.quoteValue(this.schema.hasProperty(i)));
             else if (i[0] === '$') sql.push(this.condition(fieldName, filter[i], i.substring(1)));

@@ -162,7 +162,7 @@ export class SoftDeletePlugin implements DatabasePlugin {
             throw new Error(`Entity ${schema.getClassName()} has no ${deletedAtName} property. Please define one as type '${deletedAtName}: t.date.optional'`);
         }
 
-        function queryFilter(event: { classSchema: ReflectionClass<any>, query: Query<any> }) {
+        function queryFilter(event: { classSchema: ReflectionClass<any>, query: any }) {
             //this is for each query method: count, find, findOne(), etc.
 
             //we don't change SoftDeleteQuery instances as they operate on the raw records without filter
@@ -174,7 +174,7 @@ export class SoftDeletePlugin implements DatabasePlugin {
             event.query = event.query.filterField(deletedAtName, undefined);
         }
 
-        const queryFetch = this.getDatabase().listen(Query.onFetch, queryFilter);
+        const queryFetch = this.getDatabase().listen(Query.onFind, queryFilter);
         const queryPatch = this.getDatabase().listen(Query.onPatchPre, queryFilter);
 
         const queryDelete = this.getDatabase().listen(Query.onDeletePre, async event => {

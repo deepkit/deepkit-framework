@@ -132,18 +132,38 @@ export class PostgresSchemaParser extends SchemaParser {
 
     protected async addColumns(table: Table) {
         const rows = await this.connection.execAndReturnAll(`
-        SELECT
-            column_name, data_type, column_default, is_nullable,
-            numeric_precision, numeric_scale, character_maximum_length
-        FROM information_schema.columns
-        WHERE
+SELECT
+    cols.column_name,
+    cols.data_type,
+    typ.typname,
+    cols.column_default,
+    cols.is_nullable,
+    cols.numeric_precision,
+    cols.numeric_scale,
+    cols.character_maximum_length,
+    attr.atttypmod
+FROM
+    information_schema.columns cols
+JOIN
+    pg_catalog.pg_class cls ON cls.relname = cols.table_name
+JOIN
+    pg_catalog.pg_namespace nsp ON nsp.oid = cls.relnamespace AND nsp.nspname = cols.table_schema
+JOIN
+    pg_catalog.pg_attribute attr ON attr.attrelid = cls.oid AND attr.attname = cols.column_name
+JOIN
+    pg_catalog.pg_type typ ON attr.atttypid = typ.oid
+WHERE
             table_schema = '${table.schemaName || 'public'}' AND table_name = '${table.getName()}'
         `);
 
         for (const row of rows) {
             const column = table.addColumn(row.column_name);
-            parseType(column, row.data_type);
-            const size = row.character_maximum_length || row.numeric_precision;
+            let typeName = row.data_type;
+            if (typeName === 'USER-DEFINED') typeName = row.typname;
+            parseType(column, typeName);
+            let size = row.character_maximum_length || row.numeric_precision;
+            if (null === size && row.atttypmod !== -1) size = row.atttypmod;
+
             const scale = row.numeric_scale;
             if (size && column.type && size !== this.defaultPrecisions[column.type]) {
                 column.size = size;
@@ -155,7 +175,7 @@ export class PostgresSchemaParser extends SchemaParser {
 
             this.mapDefault(row.column_default, column);
 
-            if (row.data_type.includes('SERIAL')) {
+            if (typeName.includes('SERIAL')) {
                 column.isAutoIncrement = true;
             }
         }

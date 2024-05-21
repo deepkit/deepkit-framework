@@ -533,7 +533,9 @@ export type Widen<T> =
                 : T extends boolean ? boolean
                     : T extends symbol ? symbol : T;
 
-export type FindType<T extends Type, LOOKUP extends ReflectionKind> = T extends { kind: infer K } ? K extends LOOKUP ? T : never : never;
+export type FindType<T extends Type, LOOKUP extends ReflectionKind> = T extends {
+    kind: infer K
+} ? K extends LOOKUP ? T : never : never;
 
 /**
  * Merge dynamic runtime types with static types. In the type-system resolves as any, in runtime as the correct type.
@@ -578,8 +580,14 @@ export function isPropertyMemberType(type: Type): type is TypePropertySignature 
  *
  * If a non-property parameter is in the constructor, the type is given instead, e.g. `constructor(public title: string, anotherOne:number)` => [TypeProperty, TypeNumber]
  */
-export function getConstructorProperties(type: TypeClass | TypeObjectLiteral): { parameters: (TypeProperty | Type)[], properties: TypeProperty[] } {
-    const result: { parameters: (TypeProperty | Type)[], properties: TypeProperty[] } = { parameters: [], properties: [] };
+export function getConstructorProperties(type: TypeClass | TypeObjectLiteral): {
+    parameters: (TypeProperty | Type)[],
+    properties: TypeProperty[]
+} {
+    const result: { parameters: (TypeProperty | Type)[], properties: TypeProperty[] } = {
+        parameters: [],
+        properties: [],
+    };
     if (type.kind === ReflectionKind.objectLiteral) return result;
     const constructor = findMember('constructor', resolveTypeMembers(type)) as TypeMethod | undefined;
     if (!constructor) return result;
@@ -924,7 +932,7 @@ export function unboxUnion(union: TypeUnion): Type {
 }
 
 export function findMember(
-    index: string | number | symbol | TypeTemplateLiteral, types: Type[]
+    index: string | number | symbol | TypeTemplateLiteral, types: Type[],
 ): TypePropertySignature | TypeMethodSignature | TypeMethod | TypeProperty | TypeIndexSignature | undefined {
     const indexType = typeof index;
 
@@ -996,7 +1004,10 @@ export class CartesianProduct {
 
     toGroup(type: Type): Type[] {
         if (type.kind === ReflectionKind.boolean) {
-            return [{ kind: ReflectionKind.literal, literal: 'false' }, { kind: ReflectionKind.literal, literal: 'true' }];
+            return [{ kind: ReflectionKind.literal, literal: 'false' }, {
+                kind: ReflectionKind.literal,
+                literal: 'true',
+            }];
         } else if (type.kind === ReflectionKind.null) {
             return [{ kind: ReflectionKind.literal, literal: 'null' }];
         } else if (type.kind === ReflectionKind.undefined) {
@@ -1103,7 +1114,10 @@ export function indexAccess(container: Type, index: Type): Type {
             if (restPosition === -1 || index.literal < restPosition) {
                 const sub = container.types[index.literal];
                 if (!sub) return { kind: ReflectionKind.undefined };
-                if (sub.optional) return { kind: ReflectionKind.union, types: [sub.type, { kind: ReflectionKind.undefined }] };
+                if (sub.optional) return {
+                    kind: ReflectionKind.union,
+                    types: [sub.type, { kind: ReflectionKind.undefined }],
+                };
                 return sub.type;
             }
 
@@ -1362,7 +1376,11 @@ export function getMember(type: TypeObjectLiteral | TypeClass, memberName: numbe
 
 export function getTypeObjectLiteralFromTypeClass<T extends Type>(type: T): T extends TypeClass ? TypeObjectLiteral : T {
     if (type.kind === ReflectionKind.class) {
-        const objectLiteral: TypeObjectLiteral = { kind: ReflectionKind.objectLiteral, id: state.nominalId++, types: [] };
+        const objectLiteral: TypeObjectLiteral = {
+            kind: ReflectionKind.objectLiteral,
+            id: state.nominalId++,
+            types: [],
+        };
         for (const member of type.types) {
             if (member.kind === ReflectionKind.indexSignature) {
                 objectLiteral.types.push(member);
@@ -1641,6 +1659,11 @@ export type BinaryBigInt = bigint & TypeAnnotation<'binaryBigInt'>;
  */
 export type SignedBinaryBigInt = bigint & TypeAnnotation<'signedBinaryBigInt'>;
 
+/**
+ * Vector type to store vector data.
+ */
+export type Vector<Dimensions extends number> = number[] & { __meta?: never & ['vector', Dimensions] };
+
 export interface BackReferenceOptions {
     /**
      * Necessary for normalised many-to-many relations. This defines the class of the pivot table/collection.
@@ -1660,7 +1683,9 @@ export type BackReference<Options extends BackReferenceOptions = {}> = TypeAnnot
 export type EmbeddedMeta<Options> = TypeAnnotation<'embedded', Options>;
 export type Embedded<T, Options extends { prefix?: string } = {}> = T & EmbeddedMeta<Options>;
 
-export type MapName<Alias extends string, ForSerializer extends string = ''> = { __meta?: never & ['mapName', Alias, ForSerializer] };
+export type MapName<Alias extends string, ForSerializer extends string = ''> = {
+    __meta?: never & ['mapName', Alias, ForSerializer]
+};
 
 export const referenceAnnotation = new AnnotationDefinition<ReferenceOptions>('reference');
 export const entityAnnotation = new class extends AnnotationDefinition<EntityOptions> {
@@ -1740,6 +1765,18 @@ export function isBackReferenceType(type: Type): boolean {
     return backReferenceAnnotation.getFirst(resolveProperty(type)) !== undefined;
 }
 
+export function isVectorType(type: Type): boolean {
+    return !!metaAnnotation.getForName(type, 'vector');
+}
+
+export function getVectorTypeOptions(type: Type): [dimensions: number] {
+    const vector = metaAnnotation.getForName(type, 'vector');
+    if (!vector || !vector[0] || vector[0].kind !== ReflectionKind.literal || 'number' !== typeof vector[0].literal) {
+        throw new Error('Type has no vector annotation');
+    }
+    return [vector[0].literal];
+}
+
 export function resolveProperty(type: Type): Type {
     if (type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.property) {
         type = type.type;
@@ -1751,6 +1788,18 @@ export function getBackReferenceType(type: Type): BackReferenceOptionsResolved {
     const options = backReferenceAnnotation.getFirst(type);
     if (!options) throw new Error('No back reference');
     return options;
+}
+
+export function isBackReference(type: Type): boolean {
+    return backReferenceAnnotation.getFirst(type) !== undefined;
+}
+
+export function isReference(type: Type): boolean {
+    return referenceAnnotation.getFirst(type) !== undefined;
+}
+
+export function isDatabaseSkipped(type: Type, database: string): boolean {
+    return databaseAnnotation.getDatabase(type, database)?.skip === true;
 }
 
 export function isDateType(type: Type): boolean {
@@ -1941,7 +1990,9 @@ export interface PostgresOptions extends DatabaseFieldOptions {
 export interface SqliteOptions extends DatabaseFieldOptions {
 }
 
-type Database<Name extends string, Options extends { [name: string]: any }> = { __meta?: never & ['database', Name, Options] };
+type Database<Name extends string, Options extends { [name: string]: any }> = {
+    __meta?: never & ['database', Name, Options]
+};
 export type MySQL<Options extends MySQLOptions> = Database<'mysql', Options>;
 export type Postgres<Options extends PostgresOptions> = Database<'postgres', Options>;
 export type SQLite<Options extends SqliteOptions> = Database<'sqlite', Options>;
@@ -1982,7 +2033,10 @@ export const metaAnnotation = new class extends AnnotationDefinition<{ name: str
     }
 }('meta');
 export const indexAnnotation = new AnnotationDefinition<IndexOptions>('index');
-export const databaseAnnotation = new class extends AnnotationDefinition<{ name: string, options: { [name: string]: any } }> {
+export const databaseAnnotation = new class extends AnnotationDefinition<{
+    name: string,
+    options: { [name: string]: any }
+}> {
     getDatabase<T extends DatabaseFieldOptions>(type: Type, name: string): T | undefined {
         let options: T | undefined = undefined;
         for (const annotation of this.getAnnotations(type)) {
@@ -1998,6 +2052,8 @@ export const databaseAnnotation = new class extends AnnotationDefinition<{ name:
 export function registerTypeDecorator(decorator: TypeDecorator) {
     typeDecorators.push(decorator);
 }
+
+export type ParsedAnnotationMeta = { id: string, params: Type[] };
 
 /**
  * Type annotations are object literals with a single optional __meta in it
@@ -2017,7 +2073,7 @@ export function registerTypeDecorator(decorator: TypeDecorator) {
  * type lowLevel2<T> = { __meta?: never & ['myAnnotation', T] }
  * ```
  */
-export function getAnnotationMeta(type: TypeObjectLiteral): { id: string, params: Type[] } | undefined {
+export function getAnnotationMeta(type: TypeObjectLiteral): ParsedAnnotationMeta | undefined {
     const meta = getProperty(type, '__meta');
     if (!meta || !meta.optional) return;
     let tuple: TypeTuple | undefined = undefined;
@@ -2197,7 +2253,7 @@ export const typeDecorators: TypeDecorator[] = [
                 return true;
             }
         }
-    }
+    },
 ];
 
 export function typeToObject(type?: Type, state: { stack: Type[] } = { stack: [] }): any {
@@ -2322,7 +2378,7 @@ export function stringifyResolvedType(type: Type): string {
 }
 
 export function stringifyShortResolvedType(type: Type, stateIn: Partial<StringifyTypeOptions> = {}): string {
-    return stringifyType(type, { ...stateIn, showNames: false, showFullDefinition: false, });
+    return stringifyType(type, { ...stateIn, showNames: false, showFullDefinition: false });
 }
 
 /**
@@ -2385,7 +2441,7 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
         showDescription: false,
         showHeritage: false,
         showFullDefinition: false,
-        ...stateIn
+        ...stateIn,
     };
     const stack: { type?: Type, defaultValue?: any, before?: string, after?: string, depth?: number }[] = [];
     stack.push({ type, defaultValue: state.defaultValues, depth: 1 });
@@ -2608,7 +2664,11 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                                 if (type.extendsArguments && type.extendsArguments.length) {
                                     stack.push({ before: '>' });
                                     for (let i = type.extendsArguments.length - 1; i >= 0; i--) {
-                                        stack.push({ type: type.extendsArguments[i], before: i === 0 ? undefined : ', ', depth: depth + 1 });
+                                        stack.push({
+                                            type: type.extendsArguments[i],
+                                            before: i === 0 ? undefined : ', ',
+                                            depth: depth + 1,
+                                        });
                                     }
                                     stack.push({ before: '<' });
                                 }
@@ -2624,7 +2684,11 @@ export function stringifyType(type: Type, stateIn: Partial<StringifyTypeOptions>
                     if ((!state.showFullDefinition || type.types.length === 0) && typeArguments && typeArguments.length) {
                         stack.push({ before: '>' });
                         for (let i = typeArguments.length - 1; i >= 0; i--) {
-                            stack.push({ type: typeArguments[i], before: i === 0 ? undefined : ', ', depth: depth + 1 });
+                            stack.push({
+                                type: typeArguments[i],
+                                before: i === 0 ? undefined : ', ',
+                                depth: depth + 1,
+                            });
                         }
                         stack.push({ before: '<' });
                     }

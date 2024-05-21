@@ -17,7 +17,7 @@ import {
     getSimplePrimaryKeyHashGenerator,
     JSONPartial,
     PrimaryKeyFields,
-    ReflectionClass
+    ReflectionClass,
 } from '@deepkit/type';
 import { OrmEntity } from './type.js';
 import { getClassTypeFromInstance, isObject, toFastProperties } from '@deepkit/core';
@@ -174,23 +174,24 @@ export function getInstanceState<T extends OrmEntity>(classState: ClassState<T>,
 }
 
 export type PKHash = string;
+
 type Store = {
     ref: any,
     stale: boolean
 };
 
 export class IdentityMap {
-    registry = new Map<ReflectionClass<any>, Map<PKHash, Store>>();
+    registry: {[nominalId: number]: {[hash: PKHash]: Store}} = {};
 
     deleteMany<T>(classSchema: ReflectionClass<T>, pks: Partial<T>[]) {
         const store = this.getStore(classSchema);
         const state = getClassState(classSchema);
         for (const pk of pks) {
             const pkHash = state.primaryKeyHashGenerator(pk);
-            let item = store.get(pkHash);
+            let item = store[pkHash];
 
             if (item) {
-                store.delete(pkHash);
+                delete store[pkHash];
                 getInstanceState(state, item.ref).markAsDeleted();
             }
         }
@@ -202,16 +203,16 @@ export class IdentityMap {
 
         for (const pk of pks) {
             const pkHash = state.simplePrimaryKeyHashGenerator(pk);
-            let item = store.get(pkHash);
+            let item = store[pkHash];
             if (item) {
-                store.delete(pkHash);
+                delete store[pkHash];
                 getInstanceState(state, item.ref).markAsDeleted();
             }
         }
     }
 
     clear<T>() {
-        this.registry.clear();
+        this.registry = {};
     }
 
     isKnown<T extends OrmEntity>(item: T): boolean {
@@ -221,7 +222,7 @@ export class IdentityMap {
 
         const pkHash = getInstanceState(state, item).getLastKnownPKHash();
 
-        return store.has(pkHash);
+        return !!store[pkHash];
     }
 
     storeMany<T>(classSchema: ReflectionClass<T>, items: T[]) {
@@ -231,7 +232,7 @@ export class IdentityMap {
 
         for (const item of items) {
             const pkHash = state.primaryKeyHashGenerator(item);
-            store.set(pkHash, { ref: item, stale: false });
+            store[pkHash] = { ref: item, stale: false };
             getInstanceState(state as ClassState<any>, item).markAsPersisted();
         }
     }
@@ -242,18 +243,17 @@ export class IdentityMap {
 
     getByHash<T>(classSchema: ReflectionClass<T>, pk: PKHash): T | undefined {
         const store = this.getStore(classSchema);
-
-        return store.has(pk) ? store.get(pk)!.ref : undefined;
+        return store[pk]?.ref;
     }
 
-    protected getStore(classSchema: ReflectionClass<any>): Map<PKHash, Store> {
-        const store = this.registry.get(classSchema);
+    protected getStore(classSchema: ReflectionClass<any>): {[hash: PKHash]: Store} {
+        const store = this.registry[classSchema.type.id!];
         if (store) {
             return store;
         }
 
-        const newStore = new Map();
-        this.registry.set(classSchema, newStore);
+        const newStore = {};
+        this.registry[classSchema.type.id!] = newStore;
         return newStore;
     }
 }

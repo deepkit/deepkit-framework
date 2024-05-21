@@ -27,7 +27,9 @@ export async function schemaMigrationRoundTrip(types: (Type | ClassType | Reflec
         for (const type of types) {
             const s = ReflectionClass.from(type);
             const diff = TableComparator.computeDiff(originDatabaseModel.getTable(s.getCollectionName()), readDatabaseModel.getTable(s.getCollectionName()));
-            if (diff) {
+            adapter.platform.secondLevelTableDiff(diff);
+
+            if (diff && !diff.empty()) {
                 console.log('diff', s.getClassName(), diff.toString());
                 throw new Error(`Diff detected ${s.getClassName()}\n${diff.toString()}`);
             }

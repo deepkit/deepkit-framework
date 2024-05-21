@@ -8,7 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AbstractClassType, ClassType, forwardTypeArguments, getClassName, getClassTypeFromInstance } from '@deepkit/core';
+import {
+    AbstractClassType,
+    ClassType,
+    forwardTypeArguments,
+    getClassName,
+    getClassTypeFromInstance,
+} from '@deepkit/core';
 import {
     entityAnnotation,
     EntityOptions,
@@ -19,7 +25,7 @@ import {
     ReflectionClass,
     ReflectionKind,
     resolveReceiveType,
-    Type
+    Type,
 } from '@deepkit/type';
 import { DatabaseAdapter, DatabaseEntityRegistry, MigrateOptions } from './database-adapter.js';
 import { DatabaseSession } from './database-session.js';
@@ -32,6 +38,7 @@ import { Stopwatch } from '@deepkit/stopwatch';
 import { getClassState, getInstanceState, getNormalizedPrimaryKey } from './identity-map.js';
 import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
 import { DatabasePlugin, DatabasePluginRegistry } from './plugin/plugin.js';
+import { Query2 } from './select.js';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -173,6 +180,12 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         }
     }
 
+    from<T extends OrmEntity>(type?: ReceiveType<T>) {
+        const session = this.createSession();
+        if (!this.adapter.createQuery2Resolver) throw new Error('Adapter has no createQuery2Resolver method');
+        return new Query2(ReflectionClass.fromType(resolveReceiveType(type)), session, this.adapter.createQuery2Resolver(session));
+    }
+
     registerPlugin(...plugins: DatabasePlugin[]): void {
         for (const plugin of plugins) {
             this.pluginRegistry.add(plugin);
@@ -182,8 +195,6 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     static createClass<T extends DatabaseAdapter>(name: string, adapter: T, schemas: (ClassType | ReflectionClass<any>)[] = []): ClassType<Database<T>> {
         class C extends Database<T> {
-            bla!: string;
-
             constructor() {
                 super(adapter, schemas);
                 this.name = name;

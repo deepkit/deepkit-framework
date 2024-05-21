@@ -85,7 +85,8 @@ export class MigrationCreateController extends BaseCommand implements Command {
                 db.disconnect();
 
                 const databaseDiff = DatabaseComparator.computeDiff(parsedDatabaseModel, databaseModel);
-                if (!databaseDiff) {
+                db.adapter.platform.secondLevelDatabaseDiff(databaseDiff);
+                if (!databaseDiff || databaseDiff.empty()) {
                     this.logger.error(db.name, `No database differences for ${db.name} found.`);
                     continue;
                 }
@@ -98,6 +99,7 @@ export class MigrationCreateController extends BaseCommand implements Command {
                     }
 
                     const reverseDatabaseDiff = DatabaseComparator.computeDiff(databaseModel, parsedDatabaseModel);
+                    db.adapter.platform.secondLevelDatabaseDiff(reverseDatabaseDiff);
                     downSql = reverseDatabaseDiff ? db.adapter.platform.getModifyDatabaseDDL(reverseDatabaseDiff, options) : [];
                 }
             }

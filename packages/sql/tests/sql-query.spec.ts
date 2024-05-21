@@ -1,37 +1,14 @@
 import { expect, test } from '@jest/globals';
-import { DatabaseField, entity, PrimaryKey, ReflectionClass, ReflectionKind, serializer } from '@deepkit/type';
+import { DatabaseField, entity, PrimaryKey, ReflectionClass, serializer } from '@deepkit/type';
 import { SQLFilterBuilder } from '../src/sql-filter-builder.js';
-import { escape } from 'sqlstring';
-import { splitDotPath, sql, SQLQueryModel } from '../src/sql-adapter.js';
-import { DefaultPlatform, SqlPlaceholderStrategy } from '../src/platform/default-platform.js';
-import { SchemaParser } from '../src/reverse/schema-parser.js';
-import { DatabaseModel } from '../src/schema/table.js';
+import { splitDotPath, sql } from '../src/sql-adapter.js';
+import { SqlPlaceholderStrategy } from '../src/platform/default-platform.js';
 import { SqlBuilder } from '../src/sql-builder.js';
+import { adapter, MyPlatform } from './my-platform.js';
 import { PreparedAdapter } from '../src/prepare.js';
+import { SqlBuilderRegistry } from '../src/sql-builder-registry.js';
+import { count, from } from '@deepkit/orm';
 
-function quoteId(value: string): string {
-    return value;
-}
-
-class MySchemaParser extends SchemaParser {
-    async parse(database: DatabaseModel, limitTableNames?: string[]) {
-    }
-}
-
-class MyPlatform extends DefaultPlatform {
-    schemaParserType = MySchemaParser;
-
-    constructor() {
-        super();
-        this.addType(ReflectionKind.number, 'integer');
-    }
-}
-
-const adapter: PreparedAdapter = {
-    getName: () => 'adapter',
-    platform: new MyPlatform(),
-    preparedEntities: new Map<ReflectionClass<any>, any>(),
-}
 
 test('splitDotPath', () => {
     expect(splitDotPath('addresses.zip')).toEqual(['addresses', 'zip']);
@@ -61,18 +38,19 @@ test('select', () => {
 
     {
         const builder = new SqlBuilder(adapter);
-        const model = new SQLQueryModel();
-        const builtSQL = builder.select(ReflectionClass.from(User), model);
+        const model = from<User>().select();
+        const builtSQL = builder.select(model.state);
         expect(builtSQL.sql).toBe(`SELECT "user-select"."id", "user-select"."username" FROM "user-select"`);
     }
 
     {
         const builder = new SqlBuilder(adapter);
-        const model = new SQLQueryModel();
-        model.sqlSelect = sql`count(*) as count`;
-        const builtSQL = builder.select(ReflectionClass.from(User), model);
+        const model = from<User>().select(user => {
+            return [count('*')];
+        });
+        const builtSQL = builder.select(model.state);
         expect(builtSQL.sql).toBe(`SELECT count(*) as count FROM "user-select"`);
-        expect(model.isPartial()).toBe(true);
+        // expect(model.isPartial()).toBe(true);
     }
 });
 
@@ -85,30 +63,32 @@ test('skip property', () => {
     }
 
     const builder = new SqlBuilder(adapter);
-    const model = new SQLQueryModel();
-    model.adapterName = 'mongo';
-    const builtSQL = builder.select(ReflectionClass.from(Entity), model);
+    const model = from<Entity>().select();
+    // model.adapterName = 'mongo';
+    const builtSQL = builder.select(model.state);
     expect(builtSQL.sql).toBe(`SELECT "Entity"."id", "Entity"."firstName", "Entity"."anotherone" FROM "Entity"`);
 });
 
 test('QueryToSql', () => {
     class User {
-        id!: number;
+        id!: number & PrimaryKey;
         username!: string;
         password!: string;
         disabled!: boolean;
         created!: Date;
     }
 
-    const queryToSql = new SQLFilterBuilder(ReflectionClass.from(User), quoteId('user'), serializer, new SqlPlaceholderStrategy(), new class extends DefaultPlatform {
-        schemaParserType = MySchemaParser;
-        quoteIdentifier(id: string): string {
-            return quoteId(id);
-        }
-        quoteValue(value: any): string {
-            return escape(value);
-        }
-    });
+    const platform = new MyPlatform;
+
+    const preparedAdapter: PreparedAdapter = {
+        getName() {
+            return 'adapter';
+        },
+        platform: platform,
+        preparedEntities: new Map(),
+        builderRegistry: new SqlBuilderRegistry()
+    }
+    const queryToSql = new SQLFilterBuilder(preparedAdapter, ReflectionClass.from(User), platform.quoteIdentifier('user'), serializer, new SqlPlaceholderStrategy());
 
     expect(queryToSql.convert({ id: 123 })).toBe(`user.id = ?`);
     expect(queryToSql.convert({ id: '$id' })).toBe(`user.id = user.id`);

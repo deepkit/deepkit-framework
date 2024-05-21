@@ -9,14 +9,13 @@
  */
 
 import { ClassType, CompilerContext, CustomError, isClass, isFunction } from '@deepkit/core';
-import { injectedFunction } from '@deepkit/injector';
-import { InjectorContext, InjectorModule } from '@deepkit/injector';
+import { injectedFunction, InjectorContext, InjectorModule } from '@deepkit/injector';
 import {
     ClassDecoratorResult,
     createClassDecoratorContext,
     createPropertyDecoratorContext,
     PropertyDecoratorResult,
-    ReflectionClass
+    ReflectionClass,
 } from '@deepkit/type';
 
 export type EventListenerCallback<T> = (event: T, ...args: any[]) => any | Promise<any>;
@@ -344,7 +343,7 @@ export class EventDispatcher implements EventDispatcherInterface {
  * but cheap in creating event dispatchers.
  */
 export class ForkedEventDispatcher implements EventDispatcherInterface {
-    protected listenerMap = new Map<EventToken<any>, { entries: EventListenerContainerEntry[], sorted: boolean }>();
+    protected listenerMap?: Map<EventToken<any>, { entries: EventListenerContainerEntry[], sorted: boolean }>;
 
     constructor(protected parent: EventDispatcherInterface, protected injector: InjectorContext) {
     }
@@ -353,7 +352,7 @@ export class ForkedEventDispatcher implements EventDispatcherInterface {
         await this.parent.dispatch(eventToken, eventIn, injector);
         const event = resolveEvent(eventToken, eventIn);
 
-        const listeners = this.listenerMap.get(eventToken);
+        const listeners = this.listenerMap?.get(eventToken);
         if (!listeners) return;
 
         if (!listeners.sorted) {
@@ -385,9 +384,10 @@ export class ForkedEventDispatcher implements EventDispatcherInterface {
     }
 
     public getListeners(eventToken: EventToken<any>): { entries: EventListenerContainerEntry[], sorted: boolean } {
-        let listeners = this.listenerMap.get(eventToken);
+        let listeners = this.listenerMap?.get(eventToken);
         if (!listeners) {
             listeners = { entries: [], sorted: true };
+            if (!this.listenerMap) this.listenerMap = new Map();
             this.listenerMap.set(eventToken, listeners);
         }
         return listeners;
@@ -408,7 +408,7 @@ export class ForkedEventDispatcher implements EventDispatcherInterface {
     }
 
     hasListeners(eventToken: EventToken<any>): boolean {
-        if (this.listenerMap.has(eventToken)) return true;
+        if (this.listenerMap?.has(eventToken)) return true;
         return this.parent.hasListeners(eventToken);
     }
 

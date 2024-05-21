@@ -21,6 +21,7 @@ export * from './src/memory-db.js';
 export * from './src/type.js';
 export * from './src/logger.js';
 export * from './src/event.js';
+export * from './src/select.js';
 export * from './src/reference.js';
 export * from './src/plugin/plugin.js';
 export * from './src/plugin/soft-delete-plugin.js';

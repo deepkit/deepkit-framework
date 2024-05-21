@@ -314,6 +314,10 @@ export class ColumnDiff {
     ) {
     }
 
+    empty() {
+        return this.changedProperties.size === 0;
+    }
+
     valueOf() {
         const res: string[] = [];
         for (const [key, value] of this.changedProperties.entries()) {
@@ -332,6 +336,7 @@ export class ColumnComparator {
     static compareColumns(from: Column, to: Column) {
         const changedProperties = new Map<keyof Column, ColumnPropertyDiff>();
 
+        if (from.type !== to.type) changedProperties.set('type', new ColumnPropertyDiff(from.type, to.type));
         if (from.scale !== to.scale) changedProperties.set('scale', new ColumnPropertyDiff(from.scale, to.scale));
         if (from.size !== to.size) changedProperties.set('size', new ColumnPropertyDiff(from.size, to.size));
         if (from.unsigned !== to.unsigned) changedProperties.set('unsigned', new ColumnPropertyDiff(from.unsigned, to.unsigned));
@@ -393,6 +398,22 @@ export class TableDiff {
     public removedFKs: ForeignKey[] = [];
 
     constructor(public from: Table, public to: Table) {
+    }
+
+    empty() {
+        return this.addedColumns.length === 0
+            && this.removedColumns.length === 0
+            && this.modifiedColumns.length === 0
+            && this.renamedColumns.length === 0
+            && this.addedPKColumns.length === 0
+            && this.removedPKColumns.length === 0
+            && this.renamedPKColumns.length === 0
+            && this.addedIndices.length === 0
+            && this.removedIndices.length === 0
+            && this.modifiedIndices.length === 0
+            && this.addedFKs.length === 0
+            && this.modifiedFKs.length === 0
+            && this.removedFKs.length === 0;
     }
 
     hasModifiedPk(): boolean {
@@ -667,6 +688,13 @@ export class DatabaseDiff {
     constructor(
         public from: DatabaseModel, public to: DatabaseModel
     ) {
+    }
+
+    empty() {
+        return this.addedTables.length === 0
+            && this.removedTables.length === 0
+            && this.modifiedTables.length === 0
+            && this.renamedTables.length === 0;
     }
 
     removeTable(name: string, schema?: string) {

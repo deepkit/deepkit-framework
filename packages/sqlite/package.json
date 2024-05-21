@@ -18,7 +18,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json",
+    "performance": "node -r ts-node/register tests/performance.ts"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",

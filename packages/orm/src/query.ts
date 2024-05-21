@@ -25,7 +25,13 @@ import {
 } from '@deepkit/type';
 import { DatabaseAdapter } from './database-adapter.js';
 import { DatabaseSession } from './database-session.js';
-import { DatabaseErrorEvent, onDatabaseError, QueryDatabaseDeleteEvent, QueryDatabaseEvent, QueryDatabasePatchEvent } from './event.js';
+import {
+    DatabaseErrorEvent,
+    onDatabaseError,
+    QueryDatabaseDeleteEvent,
+    QueryDatabaseEvent,
+    QueryDatabasePatchEvent,
+} from './event.js';
 import { DeleteResult, OrmEntity, PatchResult } from './type.js';
 import { FieldName, FlattenIfArray, Replace, Resolve } from './utils.js';
 import { FrameCategory } from '@deepkit/stopwatch';
@@ -47,8 +53,7 @@ export interface DatabaseJoinModel<T extends OrmEntity> {
     foreignPrimaryKey: ReflectionProperty,
 }
 
-export type QuerySelector<T> = {
-    // Comparison
+export type BaseQuerySelector<T> = {
     $eq?: T;
     $gt?: T;
     $gte?: T;
@@ -58,6 +63,14 @@ export type QuerySelector<T> = {
     $ne?: T;
     $nin?: T[];
     $like?: T;
+}
+
+export type QuerySelector<T> = BaseQuerySelector<T> & {
+    // vector search
+    $l2Distance?: { query: number[]; filter: BaseQuerySelector<number>; };
+    $innerProduct?: { query: number[]; filter: BaseQuerySelector<number>; };
+    $cosineDistance?: { query: number[]; filter: BaseQuerySelector<number>; };
+
     // Logical
     $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
     $regex?: T extends string ? (RegExp | string) : never;
@@ -674,7 +687,7 @@ export type Methods<T> = { [K in keyof T]: K extends keyof Query<any> ? never : 
 export class Query<T extends OrmEntity> extends BaseQuery<T> {
     protected lifts: ClassType[] = [];
 
-    public static readonly onFetch: EventToken<QueryDatabaseEvent<any>> = new EventToken('orm.query.fetch');
+    public static readonly onFind: EventToken<QueryDatabaseEvent<any>> = new EventToken('orm.query.fetch');
 
     public static readonly onDeletePre: EventToken<QueryDatabaseDeleteEvent<any>> = new EventToken('orm.query.delete.pre');
     public static readonly onDeletePost: EventToken<QueryDatabaseDeleteEvent<any>> = new EventToken('orm.query.delete.post');
@@ -764,11 +777,11 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     }
 
     protected async callOnFetchEvent(query: Query<any>): Promise<this> {
-        const hasEvents = this.session.eventDispatcher.hasListeners(Query.onFetch);
+        const hasEvents = this.session.eventDispatcher.hasListeners(Query.onFind);
         if (!hasEvents) return query as this;
 
         const event = new QueryDatabaseEvent(this.session, this.classSchema, query);
-        await this.session.eventDispatcher.dispatch(Query.onFetch, event);
+        await this.session.eventDispatcher.dispatch(Query.onFind, event);
         return event.query as any;
     }
 
@@ -988,9 +1001,9 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
                 if (event.stopped) return patchResult;
             }
 
-            for (const field of event.returning) {
-                if (!event.query.model.returning.includes(field)) event.query.model.returning.push(field);
-            }
+            // for (const field of event.returning) {
+            //     if (!event.query.model.returning.includes(field)) event.query.model.returning.push(field);
+            // }
 
             //whe need to use event.query in case someone overwrite it
             query = this.onQueryResolve(query);

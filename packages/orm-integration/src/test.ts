@@ -1,5 +1,5 @@
 import { Database, DatabaseAdapter, DatabasePlugin } from '@deepkit/orm';
-import { AbstractClassType } from '@deepkit/core';
+import { AbstractClassType, formatError } from '@deepkit/core';
 import { ReflectionClass, Type } from '@deepkit/type';
 
 export type DatabaseFactory<T extends DatabaseAdapter = DatabaseAdapter> = (entities?: (Type | ReflectionClass<any> | AbstractClassType)[], plugins?: DatabasePlugin[]) => Promise<Database<T>>;
@@ -15,6 +15,9 @@ export async function executeTest(test: (factory: DatabaseFactory) => any, facto
 
     try {
         await test(collectedFactory);
+    } catch (error) {
+        console.log(formatError(error));
+        throw error;
     } finally {
         for (const db of databases) {
             db.disconnect(true);

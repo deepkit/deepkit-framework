@@ -11,13 +11,13 @@ be registered on sessions.
 import { Query, Database } from '@deepkit/orm';
 
 const database = new Database(...);
-database.listen(Query.onFetch, async (event) => {
+database.listen(Query.onFind, async (event) => {
 });
 
 const session = database.createSession();
 
 //will only be executed for this particular session
-session.eventDispatcher.listen(Query.onFetch, async (event) => {
+session.eventDispatcher.listen(Query.onFind, async (event) => {
 });
 ```
 
@@ -33,9 +33,9 @@ import { Query, Database } from '@deepkit/orm';
 
 const database = new Database(...);
 
-const unsubscribe = database.listen(Query.onFetch, async event => {
-    //overwrite the query of the user, so something else is executed.
-    event.query = event.query.filterField('fieldName', 123);
+const unsubscribe = database.listen(Query.onFind, async event => {
+  //overwrite the query of the user, so something else is executed.
+  event.query = event.query.filterField('fieldName', 123);
 });
 
 //to delete the hook call unsubscribe

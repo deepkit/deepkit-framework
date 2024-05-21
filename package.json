@@ -94,5 +94,9 @@
       "packages/topsort"
     ]
   },
-  "packageManager": "yarn@4.0.2"
+  "packageManager": "yarn@4.0.2",
+  "dependencies": {
+    "mitata": "^0.1.11",
+    "tsx": "^4.7.1"
+  }
 }

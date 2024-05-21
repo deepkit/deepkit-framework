@@ -9,10 +9,29 @@
  */
 
 import { OrmEntity } from './type.js';
-import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, getClassTypeFromInstance, isClass, stringifyValueWithType } from '@deepkit/core';
-import { is, isSameType, ItemChanges, PrimaryKeyFields, ReceiveType, ReflectionClass, ReflectionKind, stringifyType, Type } from '@deepkit/type';
+import {
+    AbstractClassType,
+    arrayRemoveItem,
+    ClassType,
+    getClassName,
+    getClassTypeFromInstance,
+    isClass,
+    stringifyValueWithType,
+} from '@deepkit/core';
+import {
+    is,
+    isSameType,
+    ItemChanges,
+    PrimaryKeyFields,
+    ReceiveType,
+    ReflectionClass,
+    ReflectionKind,
+    stringifyType,
+    Type,
+} from '@deepkit/type';
 import { Query } from './query.js';
 import { DatabaseSession, DatabaseTransaction } from './database-session.js';
+import { Query2Resolver } from './select.js';
 
 export abstract class DatabaseAdapterQueryFactory {
     abstract createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): Query<T>;
@@ -92,6 +111,8 @@ export class MigrateOptions {
  */
 export abstract class DatabaseAdapter {
     abstract queryFactory(session: DatabaseSession<this>): DatabaseAdapterQueryFactory;
+
+    createQuery2Resolver?(session: DatabaseSession<this>): Query2Resolver<any>;
 
     rawFactory(session: DatabaseSession<this>): RawFactory<any> {
         return new RawFactory();

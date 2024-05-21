@@ -16,7 +16,11 @@ import { DatabaseQueryModel } from './query.js';
 export interface OrmEntity {
 }
 
-export type PatchResult<T> = { modified: number, returning: { [name in keyof T & string]?: T[name][] }, primaryKeys: PrimaryKeyType<T>[] };
+export type PatchResult<T> = {
+    modified: number,
+    returning: { [name in keyof T & string]?: T[name][] },
+    primaryKeys: PrimaryKeyType<T>[]
+};
 export type DeleteResult<T> = { modified: number, primaryKeys: PrimaryKeyFields<T>[] };
 
 export class DatabaseError extends CustomError {
@@ -25,11 +29,11 @@ export class DatabaseError extends CustomError {
 /**
  * Wraps whatever error into a DatabaseError, if it's not already a DatabaseError.
  */
-export function ensureDatabaseError(error: Error | string): Error {
-    if ('string' === typeof error) return new DatabaseError(error);
+export function ensureDatabaseError(error: Error | string, additional?: string): Error {
+    if ('string' === typeof error) return new DatabaseError(error + (additional ? '\n' + additional : ''));
     if (error instanceof DatabaseError) return error;
 
-    return new DatabaseError(error.message, { cause: error });
+    return new DatabaseError(error.message + (additional ? '\n' + additional : ''), { cause: error });
 }
 
 export class DatabaseInsertError extends DatabaseError {

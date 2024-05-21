@@ -25,7 +25,7 @@ import {
     Serializer,
     typeSettings,
     UnpopulatedCheck,
-    unpopulatedSymbol
+    unpopulatedSymbol,
 } from '@deepkit/type';
 import { DatabaseQueryModel } from './query.js';
 import { capitalize, ClassType } from '@deepkit/core';
@@ -230,7 +230,7 @@ export class Formatter {
             if (item) {
                 const fromDatabase = getInstanceState(classState, item).isFromDatabase();
 
-                //if its proxy a unhydrated proxy then we update property values
+                //if its proxy an unhydrated proxy then we update property values
                 if (fromDatabase && !isReferenceHydrated(item)) {
                     //we automatically hydrate proxy object once someone fetches them from the database.
                     //or we update a stale instance

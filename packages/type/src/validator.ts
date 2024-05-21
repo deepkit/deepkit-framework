@@ -21,8 +21,46 @@ export type MaxLength<Length extends number> = ValidatorMeta<'maxLength', [Lengt
 export type Includes<T extends string | number | boolean> = ValidatorMeta<'includes', [T]>;
 export type Excludes<T extends string | number | boolean> = ValidatorMeta<'excludes', [T]>;
 
+/**
+ * Checks if the value is minimum the given number.
+ * The value can be equal to the number. Use ExclusiveMinimum to exclude the number.
+ *
+ * @example
+ * ```typescript
+ * class MyModel {
+ *    id: number & Minimum<1>;
+ * }
+ * ```
+ */
 export type Minimum<T extends number | bigint> = ValidatorMeta<'minimum', [T]>;
+
+/**
+ * Checks if the value is maximum the given number.
+ * The value can be equal to the number. Use ExclusiveMaximum to exclude the number.
+ *
+ * @example
+ * ```typescript
+ * class MyModel {
+ *   id: number & Maximum<100>;
+ * }
+ * ```
+ */
 export type Maximum<T extends number | bigint> = ValidatorMeta<'maximum', [T]>;
+
+/**
+ * Checks if the value is minimum and maximum the given number.
+ * The value can be equal to the number. Use ExclusiveMinimum and ExclusiveMaximum to exclude the number.
+ *
+ * @example
+ * ```typescript
+ * class MyModel {
+ *  id: number & MinMax<1, 100>;
+ * }
+ * ```
+ */
+export type MinMax<From extends number | bigint, To extends number | bigint> = Minimum<From> & Maximum<To>;
+
+export type MinMaxLength<Min extends number, Max extends number> = MinLength<Min> & MaxLength<Max>;
 
 /**
  Includes 0. Use PositiveNoZero to exclude 0.

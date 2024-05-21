@@ -10,9 +10,24 @@
 
 import { DatabaseSession, DatabaseTransaction } from './database-session.js';
 import { DatabaseQueryModel, GenericQueryResolver, Query } from './query.js';
-import { Changes, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath, serialize, Serializer } from '@deepkit/type';
+import {
+    Changes,
+    getSerializeFunction,
+    ReceiveType,
+    ReflectionClass,
+    resolvePath,
+    serialize,
+    Serializer,
+} from '@deepkit/type';
 import { AbstractClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabasePersistence, DatabasePersistenceChangeSet, MigrateOptions } from './database-adapter.js';
+import {
+    DatabaseAdapter,
+    DatabaseAdapterQueryFactory,
+    DatabaseEntityRegistry,
+    DatabasePersistence,
+    DatabasePersistenceChangeSet,
+    MigrateOptions,
+} from './database-adapter.js';
 import { DeleteResult, OrmEntity, PatchResult } from './type.js';
 import { findQueryList } from './utils.js';
 import { convertQueryFilter } from './query-filter.js';
@@ -126,108 +141,115 @@ const remove = <T>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<
     }
 };
 
+class Resolver<T extends object, ADAPTER extends DatabaseAdapter> extends GenericQueryResolver<T, ADAPTER> {
+    constructor(
+        protected classSchema: ReflectionClass<T>,
+        protected session: DatabaseSession<ADAPTER>,
+    ) {
+        super(classSchema, session);
+    }
+
+    get adapter() {
+        return this.session.adapter as any as MemoryDatabaseAdapter;
+    }
+
+    protected createFormatter(withIdentityMap: boolean = false) {
+        return new Formatter(
+            this.classSchema,
+            memorySerializer,
+            this.session.getHydrator(),
+            withIdentityMap ? this.session.identityMap : undefined
+        );
+    }
+
+    async count(model: DatabaseQueryModel<T>): Promise<number> {
+        if (this.session.logger.logger) {
+            this.session.logger.logger.log('count', model.filter);
+        }
+        const items = find(this.adapter, this.classSchema, model);
+        return items.length;
+    }
+
+    async delete(model: DatabaseQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
+        if (this.session.logger.logger) {
+            this.session.logger.logger.log('delete', model.filter);
+        }
+        const items = find(this.adapter, this.classSchema, model);
+        for (const item of items) {
+            deleteResult.primaryKeys.push(item);
+        }
+        remove(this.adapter, this.classSchema, items);
+    }
+
+    async find(model: DatabaseQueryModel<T>): Promise<T[]> {
+        const items = find(this.adapter, this.classSchema, model);
+        if (this.session.logger.logger) {
+            this.session.logger.logger.log('find', model.filter);
+        }
+        const formatter = this.createFormatter(model.withIdentityMap);
+        return items.map(v => formatter.hydrate(model, v));
+    }
+
+    async findOneOrUndefined(model: DatabaseQueryModel<T>): Promise<T | undefined> {
+        const items = find(this.adapter, this.classSchema, model);
+
+        if (items[0]) return this.createFormatter(model.withIdentityMap).hydrate(model, items[0]);
+        return undefined;
+    }
+
+    async has(model: DatabaseQueryModel<T>): Promise<boolean> {
+        const items = find(this.adapter, this.classSchema, model);
+        return items.length > 0;
+    }
+
+    async patch(model: DatabaseQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
+        const items = find(this.adapter, this.classSchema, model);
+        const store = this.adapter.getStore(this.classSchema);
+        const primaryKey = this.classSchema.getPrimary().name as keyof T;
+        const serializer = getSerializeFunction(this.classSchema.type, memorySerializer.serializeRegistry);
+
+        patchResult.modified = items.length;
+        for (const item of items) {
+
+            if (changes.$inc) {
+                for (const [path, v] of Object.entries(changes.$inc)) {
+                    setPathValue(item, path, getPathValue(item, path) + v);
+                }
+            }
+
+            if (changes.$unset) {
+                for (const path of Object.keys(changes.$unset)) {
+                    deletePathValue(item, path);
+                }
+            }
+
+            if (changes.$set) {
+                for (const [path, v] of Object.entries(changes.$set)) {
+                    setPathValue(item, path, v);
+                }
+            }
+
+            if (model.returning) {
+                for (const f of model.returning) {
+                    if (!patchResult.returning[f]) patchResult.returning[f] = [];
+                    const v = patchResult.returning[f];
+                    if (v) v.push(item[f]);
+                }
+            }
+
+            patchResult.primaryKeys.push(item);
+            store.items.set(item[primaryKey] as any, serializer(item));
+        }
+    }
+}
+
+
 export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
     constructor(protected adapter: MemoryDatabaseAdapter, protected databaseSession: DatabaseSession<any>) {
         super();
     }
 
     createQuery<T extends OrmEntity>(classType?: ReceiveType<T> | AbstractClassType<T> | ReflectionClass<T>): MemoryQuery<T> {
-        const schema = ReflectionClass.from(classType);
-        const adapter = this.adapter;
-
-        class Resolver extends GenericQueryResolver<T> {
-
-            protected createFormatter(withIdentityMap: boolean = false) {
-                return new Formatter(
-                    this.classSchema,
-                    memorySerializer,
-                    this.session.getHydrator(),
-                    withIdentityMap ? this.session.identityMap : undefined
-                );
-            }
-
-            async count(model: DatabaseQueryModel<T>): Promise<number> {
-                if (this.session.logger.logger) {
-                    this.session.logger.logger.log('count', model.filter);
-                }
-                const items = find(adapter, schema, model);
-                return items.length;
-            }
-
-            async delete(model: DatabaseQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
-                if (this.session.logger.logger) {
-                    this.session.logger.logger.log('delete', model.filter);
-                }
-                const items = find(adapter, schema, model);
-                for (const item of items) {
-                    deleteResult.primaryKeys.push(item);
-                }
-                remove(adapter, schema, items);
-            }
-
-            async find(model: DatabaseQueryModel<T>): Promise<T[]> {
-                const items = find(adapter, schema, model);
-                if (this.session.logger.logger) {
-                    this.session.logger.logger.log('find', model.filter);
-                }
-                const formatter = this.createFormatter(model.withIdentityMap);
-                return items.map(v => formatter.hydrate(model, v));
-            }
-
-            async findOneOrUndefined(model: DatabaseQueryModel<T>): Promise<T | undefined> {
-                const items = find(adapter, schema, model);
-
-                if (items[0]) return this.createFormatter(model.withIdentityMap).hydrate(model, items[0]);
-                return undefined;
-            }
-
-            async has(model: DatabaseQueryModel<T>): Promise<boolean> {
-                const items = find(adapter, schema, model);
-                return items.length > 0;
-            }
-
-            async patch(model: DatabaseQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
-                const items = find(adapter, schema, model);
-                const store = adapter.getStore(schema);
-                const primaryKey = schema.getPrimary().name as keyof T;
-                const serializer = getSerializeFunction(schema.type, memorySerializer.serializeRegistry);
-
-                patchResult.modified = items.length;
-                for (const item of items) {
-
-                    if (changes.$inc) {
-                        for (const [path, v] of Object.entries(changes.$inc)) {
-                            setPathValue(item, path, getPathValue(item, path) + v);
-                        }
-                    }
-
-                    if (changes.$unset) {
-                        for (const path of Object.keys(changes.$unset)) {
-                            deletePathValue(item, path);
-                        }
-                    }
-
-                    if (changes.$set) {
-                        for (const [path, v] of Object.entries(changes.$set)) {
-                            setPathValue(item, path, v);
-                        }
-                    }
-
-                    if (model.returning) {
-                        for (const f of model.returning) {
-                            if (!patchResult.returning[f]) patchResult.returning[f] = [];
-                            const v = patchResult.returning[f];
-                            if (v) v.push(item[f]);
-                        }
-                    }
-
-                    patchResult.primaryKeys.push(item);
-                    store.items.set(item[primaryKey] as any, serializer(item));
-                }
-            }
-        }
-
-
         return new MemoryQuery(ReflectionClass.from(classType), this.databaseSession, new Resolver(ReflectionClass.from(classType), this.databaseSession));
     }
 }

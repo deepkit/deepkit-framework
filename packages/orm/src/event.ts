@@ -14,7 +14,6 @@ import type { Changes } from '@deepkit/type';
 import { PrimaryKeyType, ReflectionClass } from '@deepkit/type';
 import type { DatabasePersistenceChangeSet } from './database-adapter.js';
 import type { DatabaseSession } from './database-session.js';
-import type { Query } from './query.js';
 import type { DeleteResult, PatchResult } from './type.js';
 import { OrmEntity } from './type.js';
 
@@ -79,7 +78,8 @@ export class QueryDatabaseEvent<T extends OrmEntity> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
-        public query: Query<T>,
+        // public query: Query2<T>,
+        public query: any, //TODO change back
     ) {
         super();
     }
@@ -94,7 +94,8 @@ export class DatabaseErrorEvent extends DatabaseEvent {
         public readonly error: Error,
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema?: ReflectionClass<any>,
-        public readonly query?: Query<any>,
+        // public readonly query?: Query2<any>,
+        public readonly query?: any, //TODO change back
     ) {
         super();
     }
@@ -127,7 +128,8 @@ export class QueryDatabaseDeleteEvent<T extends OrmEntity> extends DatabaseEvent
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
-        public query: Query<T>,
+        // public query: Query2<T>,
+        public query: any, //TODO change back
         public readonly deleteResult: DeleteResult<T>,
     ) {
         super();
@@ -139,12 +141,11 @@ export class QueryDatabaseDeleteEvent<T extends OrmEntity> extends DatabaseEvent
 }
 
 export class QueryDatabasePatchEvent<T extends object> extends DatabaseEvent {
-    public returning: (keyof T & string)[] = [];
-
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
-        public query: Query<T>,
+        // public query: Query2<T>,
+        public query: any, //TODO change back
         public readonly patch: Changes<T>,
         public readonly patchResult: PatchResult<T>,
     ) {
@@ -155,3 +156,11 @@ export class QueryDatabasePatchEvent<T extends object> extends DatabaseEvent {
         return this.classSchema.isSchemaOf(classType);
     }
 }
+
+export const onFind: EventToken<QueryDatabaseEvent<any>> = new EventToken('orm.select.find');
+
+export const onDeletePre: EventToken<QueryDatabaseDeleteEvent<any>> = new EventToken('orm.select.delete.pre');
+export const onDeletePost: EventToken<QueryDatabaseDeleteEvent<any>> = new EventToken('orm.select.delete.post');
+
+export const onPatchPre: EventToken<QueryDatabasePatchEvent<any>> = new EventToken('orm.select.patch.pre');
+export const onPatchPost: EventToken<QueryDatabasePatchEvent<any>> = new EventToken('orm.select.patch.post');

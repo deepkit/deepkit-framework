@@ -37,6 +37,7 @@ import {
     RawFactory,
     Replace,
     Resolve,
+    SelectorState,
     SORT_ORDER,
 } from '@deepkit/orm';
 import { AbstractClassType, ClassType, isArray, isClass } from '@deepkit/core';
@@ -59,6 +60,8 @@ import { SqlFormatter } from './sql-formatter.js';
 import { DatabaseComparator, DatabaseModel } from './schema/table.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { getPreparedEntity, PreparedEntity, PreparedField } from './prepare.js';
+import { SQLQuery2Resolver } from './select.js';
+import { SqlBuilderRegistry } from './sql-builder-registry.js';
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends OrmEntity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
@@ -232,7 +235,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
     async count(model: SQLQueryModel<T>): Promise<number> {
         const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const sqlBuilder = new SqlBuilder(this.adapter);
-        const sql = sqlBuilder.build(this.classSchema, model, 'SELECT COUNT(*) as count');
+        const sql = sqlBuilder.buildSql(model, 'SELECT COUNT(*) as count');
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
         const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
@@ -256,7 +259,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
 
         const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const sqlBuilder = new SqlBuilder(this.adapter);
-        const sql = sqlBuilder.build(this.classSchema, model, 'DELETE');
+        const sql = sqlBuilder.buildSql(model, 'DELETE');
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
         const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
@@ -291,7 +294,8 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
             rows = await connection.execAndReturnAll(sql.sql, sql.params);
         } catch (error: any) {
             error = this.handleSpecificError(error);
-            throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error}`, { cause: error });
+            console.log(sql.sql, sql.params)
+            throw new DatabaseError(`Could not query ${this.classSchema.getClassName()} due to SQL error ${error.message}`, { cause: error });
         } finally {
             connection.release();
         }
@@ -477,7 +481,7 @@ export class SQLDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
         super();
     }
 
-    createQuery<T extends OrmEntity>(classType: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): SQLDatabaseQuery<T> {
+    createQuery<T extends OrmEntity>(classType?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): SQLDatabaseQuery<T> {
         return new SQLDatabaseQuery(ReflectionClass.from(classType), this.databaseSession,
             new SQLQueryResolver(this.connectionPool, this.platform, ReflectionClass.from(classType), this.databaseSession.adapter, this.databaseSession),
         );
@@ -622,8 +626,14 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
 
     abstract getSchemaName(): string;
 
+    builderRegistry: SqlBuilderRegistry = new SqlBuilderRegistry;
+
     rawFactory(session: DatabaseSession<this>): SqlRawFactory {
         return new SqlRawFactory(session, this.connectionPool, this.platform);
+    }
+
+    createQuery2Resolver(model: SelectorState, session: DatabaseSession<this>) {
+        return new SQLQuery2Resolver(model, session, this.connectionPool);
     }
 
     async getInsertBatchSize(schema: ReflectionClass<any>): Promise<number> {
@@ -657,7 +667,11 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter {
             this.platform.createTables(entityRegistry, database);
             const DDLs = this.platform.getAddTablesDDL(database);
             for (const sql of DDLs) {
-                await connection.run(sql);
+                try {
+                    await connection.run(sql);
+                } catch (error) {
+                    throw new DatabaseError(`Could not create table: ${error}\n${sql}`, { cause: error });
+                }
             }
         } finally {
             connection.release();

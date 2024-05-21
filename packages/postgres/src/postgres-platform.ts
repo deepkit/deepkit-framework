@@ -26,8 +26,11 @@ import {
 } from '@deepkit/sql';
 import { postgresSerializer } from './postgres-serializer.js';
 import {
+    getVectorTypeOptions,
+    isAutoIncrementType,
     isReferenceType,
     isUUIDType,
+    isVectorType,
     ReflectionClass,
     ReflectionKind,
     ReflectionProperty,
@@ -86,6 +89,12 @@ export class PostgresPlatform extends DefaultPlatform {
 
     override placeholderStrategy = PostgresPlaceholderStrategy;
 
+
+    protected sameColumnTypeGroups: string[][] = [
+        ['varchar', 'character varying', 'character', 'char', 'text'],
+        ['timestamp', 'timestamp without time zone'],
+    ];
+
     constructor() {
         super();
         this.addType(() => true, 'jsonb'); //default everything is jsonb
@@ -109,7 +118,20 @@ export class PostgresPlatform extends DefaultPlatform {
 
         this.addType(isUUIDType, 'uuid');
         this.addBinaryType('bytea');
+        this.addType(isAutoIncrementType, 'integer');
+
+        this.addType(isVectorType, (type: Type) => ({
+            sqlType: 'vector',
+            size: getVectorTypeOptions(type)[0],
+        }));
         this.addType(typeResolvesToDate, 'timestamp');
+    }
+
+    override setColumnType(column: Column, typeProperty: ReflectionProperty) {
+        super.setColumnType(column, typeProperty);
+        if (isVectorType(typeProperty.type)) {
+            column.defaultValue = undefined;
+        }
     }
 
     override getSqlTypeCaster(type: Type): (placeholder: string) => string {
@@ -212,7 +234,7 @@ export class PostgresPlatform extends DefaultPlatform {
             }
         }
 
-        return lines.join(';\n')
+        return lines.join(';\n');
     }
 
     getDefaultExpression(column: Column): string {
