@@ -9,12 +9,11 @@
  */
 
 import {
-    ConnectionWriter,
-    RpcConnectionWriter,
     RpcKernel,
     RpcKernelBaseConnection,
     RpcKernelConnection,
     SessionState,
+    TransportConnection,
 } from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
@@ -105,7 +104,7 @@ export interface RpcServerListener {
 }
 
 export interface RpcServerCreateConnection {
-    (writer: RpcConnectionWriter, request?: HttpRequest): RpcKernelBaseConnection;
+    (transport: TransportConnection, request?: HttpRequest): RpcKernelBaseConnection;
 }
 
 export interface RpcServerOptions {
@@ -177,13 +176,12 @@ export class WebMemoryWorkerFactory extends WebWorkerFactory {
     }
 }
 
-export function createRpcConnection(rootScopedContext: InjectorContext, rpcKernel: RpcKernel, writer: RpcConnectionWriter, request?: HttpRequest) {
+export function createRpcConnection(rootScopedContext: InjectorContext, rpcKernel: RpcKernel, transport: TransportConnection, request?: HttpRequest) {
     const injector = rootScopedContext.createChildScope('rpc');
     injector.set(HttpRequest, request);
     injector.set(RpcInjectorContext, injector);
-    injector.set(ConnectionWriter, writer);
 
-    const connection = rpcKernel.createConnection(writer, injector);
+    const connection = rpcKernel.createConnection(transport, injector);
     injector.set(SessionState, connection.sessionState);
     injector.set(RpcKernelConnection, connection);
     injector.set(RpcKernelBaseConnection, connection);
@@ -298,21 +296,21 @@ export class WebWorker {
 
     private startRpc() {
         if (this.server) {
-            this.rpcListener = this.rpcServer.start({ server: this.server }, (writer: RpcConnectionWriter, request?: HttpRequest) => {
+            this.rpcListener = this.rpcServer.start({ server: this.server }, (transport, request?: HttpRequest) => {
                 if (this.shuttingDown) {
-                    writer.close();
+                    transport.close();
                     throw new Error('Server is shutting down');
                 }
-                return createRpcConnection(this.injectorContext, this.rpcKernel, writer, request);
+                return createRpcConnection(this.injectorContext, this.rpcKernel, transport, request);
             });
         }
         if (this.servers) {
-            this.rpcListener = this.rpcServer.start({ server: this.servers }, (writer: RpcConnectionWriter, request?: HttpRequest) => {
+            this.rpcListener = this.rpcServer.start({ server: this.servers }, (transport, request?: HttpRequest) => {
                 if (this.shuttingDown) {
-                    writer.close();
+                    transport.close();
                     throw new Error('Server is shutting down');
                 }
-                return createRpcConnection(this.injectorContext, this.rpcKernel, writer, request);
+                return createRpcConnection(this.injectorContext, this.rpcKernel, transport, request);
             });
         }
     }

@@ -24,12 +24,6 @@ export interface IdVersionInterface extends IdInterface {
     version: number;
 }
 
-export class ConnectionWriter {
-    write(buffer: Uint8Array) {
-
-    }
-}
-
 export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
     public readonly appendSubject = new Subject<T>();
     protected nextChange?: Subject<void>;

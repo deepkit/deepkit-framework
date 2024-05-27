@@ -17,8 +17,16 @@ import {
 } from '@deepkit/bson';
 import { ClassType } from '@deepkit/core';
 import { rpcChunk, rpcError, RpcTypes } from './model.js';
-import type { SingleProgress } from './writer.js';
-import { deserialize, ReceiveType, ReflectionClass, serialize, Type, typeSettings } from '@deepkit/type';
+import type { SingleProgress } from './progress.js';
+import {
+    deserialize,
+    ReceiveType,
+    ReflectionClass,
+    resolveReceiveType,
+    serialize,
+    Type,
+    typeSettings,
+} from '@deepkit/type';
 
 export const enum RpcMessageRouteType {
     client = 0,
@@ -88,8 +96,8 @@ export class RpcMessage {
         public composite: boolean,
         public type: number,
         public routeType: RpcMessageRouteType,
-        public bodyOffset: number,
-        public bodySize: number,
+        public bodyOffset: number = 0,
+        public bodySize: number = 0,
         public buffer?: Uint8Array,
     ) {
     }
@@ -103,7 +111,10 @@ export class RpcMessage {
             body: this.bodySize ? this.parseGenericBody() : undefined,
             messages: this.composite ? this.getBodies().map(message => {
                 return {
-                    id: message.id, type: message.type, date: new Date, body: message.bodySize ? message.parseGenericBody() : undefined,
+                    id: message.id,
+                    type: message.type,
+                    date: new Date,
+                    body: message.bodySize ? message.parseGenericBody() : undefined,
                 };
             }) : [],
         };
@@ -201,7 +212,7 @@ export class ErroredRpcMessage extends RpcMessage {
     }
 }
 
-export function readRpcMessage(buffer: Uint8Array): RpcMessage {
+export function readBinaryRpcMessage(buffer: Uint8Array): RpcMessage {
     const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     const size = view.getUint32(0, true);
     if (size !== buffer.byteLength) throw new Error(`Message buffer size wrong. Message size=${size}, buffer size=${buffer.byteLength}`);
@@ -237,10 +248,21 @@ export function createRpcCompositeMessage<T>(
     type: number,
     messages: RpcCreateMessageDef<any>[],
     routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client,
-): Uint8Array {
+): RpcMessageDefinition {
+    return {
+        id,
+        type,
+        routeType,
+        composite: messages,
+    };
+}
+
+export function serializeBinaryRpcCompositeMessage(message: RpcMessageDefinition): Uint8Array {
+    if (!message.composite) throw new Error('No messages set');
+
     let bodySize = 0;
-    for (const message of messages) {
-        bodySize += 4 + 1 + (message.schema && message.body ? getBSONSizer(undefined, message.schema)(message.body) : 0);
+    for (const sub of message.composite) {
+        bodySize += 4 + 1 + (sub.schema && sub.body ? getBSONSizer(undefined, sub.schema)(sub.body) : 0);
     }
 
     //<size> <version> <messageId> <routeType>[routeData] <isComposite> <type> <body...>
@@ -249,35 +271,50 @@ export function createRpcCompositeMessage<T>(
     const writer = new Writer(createBuffer(messageSize));
     writer.writeUint32(messageSize);
     writer.writeByte(1); //version
-    writer.writeUint32(id);
+    writer.writeUint32(message.id);
 
-    writer.writeByte(routeType);
+    writer.writeByte(message.routeType);
     writer.writeByte(1);
-    writer.writeByte(type);
+    writer.writeByte(message.type);
 
-    for (const message of messages) {
-        writer.writeUint32(message.schema && message.body ? getBSONSizer(undefined, message.schema)(message.body) : 0);
-        writer.writeByte(message.type); //type
+    for (const sub of message.composite) {
+        writer.writeUint32(sub.schema && sub.body ? getBSONSizer(undefined, sub.schema)(sub.body) : 0);
+        writer.writeByte(sub.type); //type
 
-        if (message.schema && message.body) {
+        if (sub.schema && sub.body) {
             //BSON object contain already their size at the beginning
-            getBSONSerializer(undefined, message.schema)(message.body, { writer });
+            getBSONSerializer(undefined, sub.schema)(sub.body, { writer });
         }
     }
 
     return writer.buffer;
 }
 
-export function createRpcCompositeMessageSourceDest<T>(
+export function createRpcCompositeMessageSourceDest(
     id: number,
     source: Uint8Array,
     destination: Uint8Array,
     type: number,
     messages: RpcCreateMessageDef<any>[],
-): Uint8Array {
+): RpcMessageDefinition {
+    return {
+        id,
+        type,
+        routeType: RpcMessageRouteType.sourceDest,
+        composite: messages,
+        source,
+        destination,
+    };
+}
+
+export function serializeBinaryRpcCompositeMessageSourceDest(message: RpcMessageDefinition): Uint8Array {
+    if (!message.composite) throw new Error('No messages set');
+    if (!message.source) throw new Error('No source set');
+    if (!message.destination) throw new Error('No destination set');
+
     let bodySize = 0;
-    for (const message of messages) {
-        bodySize += 4 + 1 + (message.schema && message.body ? getBSONSizer(undefined, message.schema)(message.body) : 0);
+    for (const sub of message.composite) {
+        bodySize += 4 + 1 + (sub.schema && sub.body ? getBSONSizer(undefined, sub.schema)(sub.body) : 0);
     }
 
     //<size> <version> <messageId> <routeType>[routeData] <composite> <type> <body...>
@@ -286,27 +323,41 @@ export function createRpcCompositeMessageSourceDest<T>(
     const writer = new Writer(createBuffer(messageSize));
     writer.writeUint32(messageSize);
     writer.writeByte(1); //version
-    writer.writeUint32(id);
+    writer.writeUint32(message.id);
 
     writer.writeByte(RpcMessageRouteType.sourceDest);
-    if (source.byteLength !== 16) throw new Error(`Source invalid byteLength of ${source.byteLength}`);
-    if (destination.byteLength !== 16) throw new Error(`Destination invalid byteLength of ${destination.byteLength}`);
-    writer.writeBuffer(source);
-    writer.writeBuffer(destination);
+    if (message.source.byteLength !== 16) throw new Error(`Source invalid byteLength of ${message.source.byteLength}`);
+    if (message.destination.byteLength !== 16) throw new Error(`Destination invalid byteLength of ${message.destination.byteLength}`);
+    writer.writeBuffer(message.source);
+    writer.writeBuffer(message.destination);
     writer.writeByte(1); //composite=true
-    writer.writeByte(type);
+    writer.writeByte(message.type);
 
-    for (const message of messages) {
-        writer.writeUint32(message.schema && message.body ? getBSONSizer(undefined, message.schema)(message.body) : 0);
-        writer.writeByte(message.type); //type
+    for (const sub of message.composite) {
+        writer.writeUint32(sub.schema && sub.body ? getBSONSizer(undefined, sub.schema)(sub.body) : 0);
+        writer.writeByte(sub.type); //type
 
-        if (message.schema && message.body) {
+        if (sub.schema && sub.body) {
             //BSON object contain already their size at the beginning
-            getBSONSerializer(undefined, message.schema)(message.body, { writer });
+            getBSONSerializer(undefined, sub.schema)(sub.body, { writer });
         }
     }
 
     return writer.buffer;
+}
+
+export interface RpcMessageDefinition {
+    id: number;
+    type: number;
+    routeType: RpcMessageRouteType;
+    composite?: RpcCreateMessageDef<any>[];
+    peerId?: string;
+    source?: Uint8Array;
+    destination?: Uint8Array;
+    body?: {
+        type: Type;
+        body: any;
+    };
 }
 
 export function createRpcMessage<T>(
@@ -314,48 +365,57 @@ export function createRpcMessage<T>(
     body?: T,
     routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client,
     schema?: ReceiveType<T>,
-): Uint8Array {
-    const bodySize = schema && body ? getBSONSizer(undefined, schema)(body) : 0;
-    //<size> <version> <messageId> <routeType>[routeData] <composite> <type> <body...>
-    const messageSize = 4 + 1 + 4 + 1 + 1 + 1 + bodySize;
+): RpcMessageDefinition {
+    return {
+        id,
+        type,
+        routeType,
+        body: body && {
+            type: resolveReceiveType(schema),
+            body,
+        },
+    };
 
-    const writer = new Writer(createBuffer(messageSize));
-    writer.writeUint32(messageSize);
-    writer.writeByte(1); //version
-    writer.writeUint32(id);
-
-    writer.writeByte(routeType);
-    writer.writeByte(0); //composite=false
-    writer.writeByte(type);
-
-    if (schema && body) {
-        const offset = writer.offset;
-        const serializer = getBSONSerializer(undefined, schema);
-        serializer(body, { writer });
-    }
-
-    return writer.buffer;
 }
 
-export function createRpcMessageForBody<T>(
-    id: number, type: number,
-    body: Uint8Array,
-    routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client,
-): Uint8Array {
-    const bodySize = body.byteLength;
+export function serializeBinaryRpcMessage(message: RpcMessageDefinition): Uint8Array {
+    if (message.composite) {
+        if (message.routeType === RpcMessageRouteType.sourceDest) {
+            return serializeBinaryRpcCompositeMessageSourceDest(message);
+        }
+        return serializeBinaryRpcCompositeMessage(message);
+    }
+
+    if (message.routeType === RpcMessageRouteType.peer) {
+        return serializeBinaryRpcMessagePeer(message);
+    }
+
+    if (message.routeType === RpcMessageRouteType.sourceDest) {
+        return serializeBinaryRpcMessageSourceDest(message);
+    }
+
+    return serializeBinaryRpcMessageSingleBody(message);
+}
+
+export function serializeBinaryRpcMessageSingleBody(message: RpcMessageDefinition): Uint8Array {
+    const bodySize = message.body ? getBSONSizer(undefined, message.body.type)(message.body.body) : 0;
     //<size> <version> <messageId> <routeType>[routeData] <composite> <type> <body...>
     const messageSize = 4 + 1 + 4 + 1 + 1 + 1 + bodySize;
 
     const writer = new Writer(createBuffer(messageSize));
     writer.writeUint32(messageSize);
     writer.writeByte(1); //version
-    writer.writeUint32(id);
+    writer.writeUint32(message.id);
 
-    writer.writeByte(routeType);
+    writer.writeByte(message.routeType);
     writer.writeByte(0); //composite=false
-    writer.writeByte(type);
+    writer.writeByte(message.type);
 
-    writer.writeBuffer(body);
+    if (message.body) {
+        const offset = writer.offset;
+        const serializer = getBSONSerializer(undefined, message.body.type);
+        serializer(message.body.body, { writer });
+    }
 
     return writer.buffer;
 }
@@ -366,56 +426,91 @@ export function createRpcMessagePeer<T>(
     peerId: string,
     body?: T,
     schema?: ReceiveType<T>,
-): Uint8Array {
-    const bodySize = schema && body ? getBSONSizer(undefined, schema)(body) : 0;
+): RpcMessageDefinition {
+    return {
+        id,
+        type,
+        routeType: RpcMessageRouteType.peer,
+        source,
+        peerId,
+        body: body && {
+            type: resolveReceiveType(schema),
+            body,
+        },
+    };
+}
+
+export function serializeBinaryRpcMessagePeer(message: RpcMessageDefinition): Uint8Array {
+    if (!message.peerId) throw new Error('No peerId set');
+    if (!message.source) throw new Error('No source set');
+
+    const bodySize = message.body ? getBSONSizer(undefined, message.body.type)(message.body.body) : 0;
     //<size> <version> <messageId> <routeType>[routeData] <composite> <type> <body...>
-    const messageSize = 4 + 1 + 4 + 1 + (16 + peerId.length + 1) + 1 + 1 + bodySize;
+    const messageSize = 4 + 1 + 4 + 1 + (16 + message.peerId.length + 1) + 1 + 1 + bodySize;
 
     const writer = new Writer(createBuffer(messageSize));
     writer.writeUint32(messageSize);
     writer.writeByte(1); //version
-    writer.writeUint32(id);
+    writer.writeUint32(message.id);
 
     writer.writeByte(RpcMessageRouteType.peer);
-    if (source.byteLength !== 16) throw new Error(`Source invalid byteLength of ${source.byteLength}`);
-    writer.writeBuffer(source);
-    writer.writeAsciiString(peerId);
+    if (message.source.byteLength !== 16) throw new Error(`Source invalid byteLength of ${message.source.byteLength}`);
+    writer.writeBuffer(message.source);
+    writer.writeAsciiString(message.peerId);
     writer.writeNull();
 
     writer.writeByte(0); //composite=false
-    writer.writeByte(type);
+    writer.writeByte(message.type);
 
-    if (schema && body) getBSONSerializer(undefined, schema)(body, { writer });
+    if (message.body) getBSONSerializer(undefined, message.body.type)(message.body.body, { writer });
 
     return writer.buffer;
 }
 
 export function createRpcMessageSourceDest<T>(
-    id: number, type: number,
+    id: number,
+    type: number,
     source: Uint8Array,
     destination: Uint8Array,
     body?: T,
     schema?: ReceiveType<T>,
-): Uint8Array {
-    const bodySize = schema && body ? getBSONSizer(undefined, schema)(body) : 0;
+): RpcMessageDefinition {
+    return {
+        id,
+        type,
+        routeType: RpcMessageRouteType.sourceDest,
+        source,
+        destination,
+        body: body && {
+            type: resolveReceiveType(schema),
+            body,
+        },
+    };
+}
+
+export function serializeBinaryRpcMessageSourceDest(message: RpcMessageDefinition): Uint8Array {
+    if (!message.source) throw new Error('No source set');
+    if (!message.destination) throw new Error('No destination set');
+
+    const bodySize = message.body ? getBSONSizer(undefined, message.body.type)(message.body.body) : 0;
     //<size> <version> <messageId> <routeType>[routeData] <composite> <type> <body...>
     const messageSize = 4 + 1 + 4 + 1 + (16 + 16) + 1 + 1 + bodySize;
 
     const writer = new Writer(createBuffer(messageSize));
     writer.writeUint32(messageSize);
     writer.writeByte(1); //version
-    writer.writeUint32(id);
+    writer.writeUint32(message.id);
 
     writer.writeByte(RpcMessageRouteType.sourceDest);
-    if (source.byteLength !== 16) throw new Error(`Source invalid byteLength of ${source.byteLength}`);
-    if (destination.byteLength !== 16) throw new Error(`Destination invalid byteLength of ${destination.byteLength}`);
-    writer.writeBuffer(source);
-    writer.writeBuffer(destination);
+    if (message.source.byteLength !== 16) throw new Error(`Source invalid byteLength of ${message.source.byteLength}`);
+    if (message.destination.byteLength !== 16) throw new Error(`Destination invalid byteLength of ${message.destination.byteLength}`);
+    writer.writeBuffer(message.source);
+    writer.writeBuffer(message.destination);
 
     writer.writeByte(0); //composite=false
-    writer.writeByte(type);
+    writer.writeByte(message.type);
 
-    if (schema && body) getBSONSerializer(undefined, schema)(body, { writer });
+    if (message.body) getBSONSerializer(undefined, message.body.type)(message.body.body, { writer });
 
     return writer.buffer;
 }
@@ -448,11 +543,11 @@ export function createRpcMessageSourceDestForBody<T>(
     return writer.buffer;
 }
 
-export class RpcMessageReader {
+export class RpcBinaryMessageReader {
     protected chunks = new Map<number, { loaded: number, buffers: Uint8Array[] }>();
     protected progress = new Map<number, SingleProgress>();
     protected chunkAcks = new Map<number, Function>();
-    protected bufferReader = new RpcBufferReader(this.gotMessage.bind(this));
+    protected bufferReader = new RpcBinaryBufferReader(this.gotMessage.bind(this));
 
     constructor(
         protected readonly onMessage: (response: RpcMessage) => void,
@@ -473,7 +568,7 @@ export class RpcMessageReader {
     }
 
     protected gotMessage(buffer: Uint8Array) {
-        const message = readRpcMessage(buffer);
+        const message = readBinaryRpcMessage(buffer);
         // console.log('reader got', message.id, RpcTypes[message.type], {routeType: message.routeType, bodySize: message.bodySize, byteLength: buffer.byteLength});
 
         if (message.type === RpcTypes.ChunkAck) {
@@ -504,7 +599,7 @@ export class RpcMessageReader {
                     newBuffer.set(buffer, offset);
                     offset += buffer.byteLength;
                 }
-                const packedMessage = readRpcMessage(newBuffer);
+                const packedMessage = readBinaryRpcMessage(newBuffer);
                 this.onMessage(packedMessage);
             }
         } else {
@@ -522,7 +617,7 @@ export function readUint32LE(buffer: Uint8Array, offset: number = 0): number {
     return buffer[offset] + (buffer[offset + 1] * 2 ** 8) + (buffer[offset + 2] * 2 ** 16) + (buffer[offset + 3] * 2 ** 24);
 }
 
-export class RpcBufferReader {
+export class RpcBinaryBufferReader {
     protected currentMessage?: Uint8Array;
     protected currentMessageSize: number = 0;
 

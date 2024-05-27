@@ -93,6 +93,10 @@ export interface brokerInvalidateCacheMessage {
     ttl: number;
 }
 
+export interface brokerResponseGet {
+    v?: Uint8Array,
+}
+
 export interface brokerResponseGetCache {
     v?: Uint8Array,
     ttl?: number,

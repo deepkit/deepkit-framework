@@ -111,6 +111,12 @@ export class FrameworkConfig {
 
     debug: boolean = false;
 
+    /**
+     * @description If set, allows to call RPC methods via HTTP. The value is the base URL for the RPC calls.
+     * Use e.g. `/rpc/v1`
+     */
+    httpRpcBasePath: string = '';
+
     debugUrl: string = '_debug';
 
     /**

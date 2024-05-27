@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import { Progress, RpcMessageWriter, RpcMessageWriterOptions } from '../src/writer.js';
 import { DirectClient } from '../src/client/client-direct.js';
 import { rpc } from '../src/decorators.js';
 import {
@@ -8,17 +7,21 @@ import {
     createRpcMessage,
     createRpcMessagePeer,
     createRpcMessageSourceDest,
-    readRpcMessage,
+    readBinaryRpcMessage,
     readUint32LE,
-    RpcBufferReader,
+    RpcBinaryBufferReader,
+    RpcBinaryMessageReader,
     RpcMessage,
-    RpcMessageReader,
-    RpcMessageRouteType
+    RpcMessageRouteType,
+    serializeBinaryRpcMessage,
 } from '../src/protocol.js';
 import { RpcKernel } from '../src/server/kernel.js';
 import { RpcTypes } from '../src/model.js';
 import { Writer } from '@deepkit/bson';
 import { typeOf } from '@deepkit/type';
+import { RpcBinaryWriter, TransportBinaryMessageChunkWriter, TransportOptions } from '../src/transport.js';
+import { Progress } from '../src/progress.js';
+import { RpcKernelSecurity } from '../src/server/security.js';
 
 test('readUint32LE', () => {
     {
@@ -40,12 +43,12 @@ test('readUint32LE', () => {
 
 test('protocol basics', () => {
     interface schema {
-        name: string
+        name: string;
     }
 
     {
         const message = createRpcMessage(1024, 123);
-        const parsed = readRpcMessage(message);
+        const parsed = readBinaryRpcMessage(serializeBinaryRpcMessage(message));
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(123);
         expect(parsed.composite).toBe(false);
@@ -56,7 +59,7 @@ test('protocol basics', () => {
 
     {
         const message = createRpcMessage<schema>(1024, 130, { name: 'foo' });
-        const parsed = readRpcMessage(message);
+        const parsed = readBinaryRpcMessage(serializeBinaryRpcMessage(message));
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(130);
         expect(parsed.composite).toBe(false);
@@ -67,7 +70,7 @@ test('protocol basics', () => {
 
     {
         const message = createRpcMessage<schema>(1024, 130, { name: 'foo' }, RpcMessageRouteType.server);
-        const parsed = readRpcMessage(message);
+        const parsed = readBinaryRpcMessage(serializeBinaryRpcMessage(message));
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(130);
         expect(parsed.composite).toBe(false);
@@ -78,7 +81,7 @@ test('protocol basics', () => {
         const peerSource = Buffer.alloc(16);
         peerSource[0] = 22;
         const message = createRpcMessagePeer<schema>(1024, 130, peerSource, 'myPeer', { name: 'foo' });
-        const parsed = readRpcMessage(message);
+        const parsed = readBinaryRpcMessage(serializeBinaryRpcMessage(message));
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(130);
         expect(parsed.composite).toBe(false);
@@ -94,7 +97,7 @@ test('protocol basics', () => {
         const destination = Buffer.alloc(16);
         destination[0] = 20;
         const message = createRpcMessageSourceDest<schema>(1024, 130, source, destination, { name: 'foo' });
-        const parsed = readRpcMessage(message);
+        const parsed = readBinaryRpcMessage(serializeBinaryRpcMessage(message));
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(130);
         expect(parsed.composite).toBe(false);
@@ -113,7 +116,7 @@ test('protocol composite', () => {
     {
         const message = createRpcCompositeMessage(1024, 33, [{ type: 4, schema: typeOf<schema>(), body: { name: 'foo' } }]);
 
-        const parsed = readRpcMessage(message);
+        const parsed = readBinaryRpcMessage(serializeBinaryRpcMessage(message));
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(33);
         expect(parsed.composite).toBe(true);
@@ -131,7 +134,7 @@ test('protocol composite', () => {
     {
         const message = createRpcCompositeMessage(1024, 5, [{ type: 4 }, { type: 5, schema: typeOf<schema>(), body: { name: 'foo' } }]);
 
-        const parsed = readRpcMessage(message);
+        const parsed = readBinaryRpcMessage(serializeBinaryRpcMessage(message));
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(5);
         expect(parsed.composite).toBe(true);
@@ -153,10 +156,10 @@ test('protocol composite', () => {
         const message = createRpcCompositeMessage(1024, 6, [{ type: 4, schema: typeOf<schema>(), body: { name: 'foo' } }, {
             type: 12,
             schema: typeOf<schema>(),
-            body: { name: 'bar' }
+            body: { name: 'bar' },
         }]);
 
-        const parsed = readRpcMessage(message);
+        const parsed = readBinaryRpcMessage(serializeBinaryRpcMessage(message));
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(6);
         expect(parsed.composite).toBe(true);
@@ -179,10 +182,10 @@ test('protocol composite', () => {
         const message = createRpcCompositeMessageSourceDest(1024, source, destination, 55, [{
             type: 4,
             schema: typeOf<schema>(),
-            body: { name: 'foo' }
+            body: { name: 'foo' },
         }, { type: 12, schema: typeOf<schema>(), body: { name: 'bar' } }]);
 
-        const parsed = readRpcMessage(message);
+        const parsed = readBinaryRpcMessage(serializeBinaryRpcMessage(message));
         expect(parsed.id).toBe(1024);
         expect(parsed.type).toBe(55);
         expect(parsed.composite).toBe(true);
@@ -236,7 +239,18 @@ test('rpc kernel', async () => {
 });
 
 test('rpc peer', async () => {
-    const kernel = new RpcKernel();
+
+    class MyRpcSecurity extends RpcKernelSecurity {
+        async isAllowedToSendToPeer() {
+            return true;
+        }
+        async isAllowedToRegisterAsPeer() {
+            return true;
+        }
+    }
+    const kernel = new RpcKernel([
+        { provide: RpcKernelSecurity, useClass: MyRpcSecurity, scope: 'rpc' },
+    ]);
 
     const client1 = new DirectClient(kernel);
 
@@ -259,7 +273,7 @@ test('rpc peer', async () => {
 
 test('message reader', async () => {
     const messages: Buffer[] = [];
-    const reader = new RpcBufferReader(Array.prototype.push.bind(messages));
+    const reader = new RpcBinaryBufferReader(Array.prototype.push.bind(messages));
 
     let buffer: any;
 
@@ -381,31 +395,31 @@ test('message reader', async () => {
 
 test('message chunks', async () => {
     const messages: RpcMessage[] = [];
-    const reader = new RpcMessageReader(v => messages.push(v));
+    const reader = new RpcBinaryMessageReader(v => messages.push(v));
+
     interface schema {
         v: string;
     }
+
     const bigString = 'x'.repeat(1_000_000); //1mb
 
     const buffers: Uint8Array[] = [];
-    const writer = new RpcMessageWriter({
-        write(b) {
-            buffers.push(b);
-            reader.feed(createRpcMessage(2, RpcTypes.ChunkAck)); //confirm chunk, this is done automatically in the kernel
-            reader.feed(b); //echo back
-        },
-        close() {}
-    }, reader, new RpcMessageWriterOptions);
+    const binaryWriter: RpcBinaryWriter = (b) => {
+        buffers.push(b);
+        reader.feed(serializeBinaryRpcMessage(createRpcMessage(2, RpcTypes.ChunkAck))); //confirm chunk, this is done automatically in the kernel
+        reader.feed(b); //echo back
+    };
+    const writer = new TransportBinaryMessageChunkWriter(reader, new TransportOptions());
 
-    const message = createRpcMessage<schema>(2, RpcTypes.ResponseActionSimple, { v: bigString });
-    await writer.writeFull(message);
+    const message = serializeBinaryRpcMessage(createRpcMessage<schema>(2, RpcTypes.ResponseActionSimple, { v: bigString }));
+    await writer.writeFull(binaryWriter, message);
     expect(buffers.length).toBe(11); //total size is 1_000_025, chunk is 100k, so we have 11 packages
 
-    expect(readRpcMessage(buffers[0]).id).toBe(2);
-    expect(readRpcMessage(buffers[0]).type).toBe(RpcTypes.Chunk);
+    expect(readBinaryRpcMessage(buffers[0]).id).toBe(2);
+    expect(readBinaryRpcMessage(buffers[0]).type).toBe(RpcTypes.Chunk);
 
-    expect(readRpcMessage(buffers[10]).id).toBe(2);
-    expect(readRpcMessage(buffers[10]).type).toBe(RpcTypes.Chunk);
+    expect(readBinaryRpcMessage(buffers[10]).id).toBe(2);
+    expect(readBinaryRpcMessage(buffers[10]).type).toBe(RpcTypes.Chunk);
 
     expect(messages.length).toBe(1);
     const lastReceivedMessage = messages[0];
@@ -418,25 +432,24 @@ test('message chunks', async () => {
 
 test('message progress', async () => {
     const messages: RpcMessage[] = [];
-    const reader = new RpcMessageReader(v => messages.push(v));
+    const reader = new RpcBinaryMessageReader(v => messages.push(v));
+
     interface schema {
         v: string;
     }
+
     const bigString = 'x'.repeat(1_000_000); //1mb
 
-    const writer = new RpcMessageWriter({
-        write(b) {
-            reader.feed(createRpcMessage(2, RpcTypes.ChunkAck)); //confirm chunk, this is done automatically in the kernel
-            reader.feed(b); //echo
-        },
-        close() {
-        }
-    }, reader, new RpcMessageWriterOptions);
+    const binaryWriter: RpcBinaryWriter = (b) => {
+        reader.feed(serializeBinaryRpcMessage(createRpcMessage(2, RpcTypes.ChunkAck))); //confirm chunk, this is done automatically in the kernel
+        reader.feed(b); //echo
+    };
+    const writer = new TransportBinaryMessageChunkWriter(reader, new TransportOptions);
 
-    const message = createRpcMessage<schema>(2, RpcTypes.ResponseActionSimple, { v: bigString });
+    const message = serializeBinaryRpcMessage(createRpcMessage<schema>(2, RpcTypes.ResponseActionSimple, { v: bigString }));
     const progress = new Progress();
     reader.registerProgress(2, progress.download);
-    await writer.writeFull(message, progress.upload);
+    await writer.writeFull(binaryWriter, message, progress.upload);
 
     await progress.upload.finished;
     expect(progress.upload.done).toBe(true);

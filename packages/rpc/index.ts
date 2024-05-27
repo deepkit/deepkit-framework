@@ -21,4 +21,5 @@ export * from './src/collection.js';
 export * from './src/decorators.js';
 export * from './src/model.js';
 export * from './src/protocol.js';
-export * from './src/writer.js';
+export * from './src/progress.js';
+export * from './src/transport.js';

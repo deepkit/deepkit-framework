@@ -24,14 +24,22 @@ import {
     createRpcMessage,
     createRpcMessagePeer,
     ErroredRpcMessage,
+    RpcBinaryMessageReader,
     RpcMessage,
-    RpcMessageReader,
+    RpcMessageDefinition,
     RpcMessageRouteType,
 } from '../protocol.js';
 import { RpcKernel, RpcKernelConnection } from '../server/kernel.js';
-import { ClientProgress, RpcMessageWriter, RpcMessageWriterOptions, SingleProgress } from '../writer.js';
+import { ClientProgress, SingleProgress } from '../progress.js';
 import { RpcActionClient, RpcControllerState } from './action.js';
 import { RpcMessageSubject } from './message-subject.js';
+import {
+    createWriter,
+    TransportClientConnection,
+    TransportConnection,
+    TransportMessageWriter,
+    TransportOptions,
+} from '../transport.js';
 
 export class OfflineError extends Error {
     constructor(message: string = 'Offline') {
@@ -54,28 +62,20 @@ export interface ObservableDisconnect {
 
 export type DisconnectableObservable<T> = Observable<T> & ObservableDisconnect;
 
-export interface TransportConnection {
-    send(message: Uint8Array): void;
-
-    bufferedAmount?(): number;
-
-    clientAddress?(): string;
-
-    close(): void;
-}
-
-export interface TransportConnectionHooks {
-    onConnected(transportConnection: TransportConnection): void;
-
-    onClose(): void;
-
-    onData(buffer: Uint8Array, bytes?: number): void;
-
-    onError(error: Error): void;
-}
-
 export interface ClientTransportAdapter {
-    connect(connection: TransportConnectionHooks): Promise<void> | void;
+    connect(connection: TransportClientConnection): Promise<void> | void;
+
+    /**
+     * Whether ClientId call is needed to get a client id.
+     * This is disabled for http adapter.
+     */
+    supportsPeers?(): boolean;
+
+    /**
+     * Whether Authentication call is needed to authenticate the client.
+     * This is disabled for http adapter (Authorization header is used).
+     */
+    supportsAuthentication?(): boolean;
 }
 
 export interface WritableClient {
@@ -116,8 +116,8 @@ export class RpcClientTransporter {
     protected connectionPromise?: Promise<void>;
 
     protected connected = false;
-    protected writer?: RpcMessageWriter;
-    public writerOptions: RpcMessageWriterOptions = new RpcMessageWriterOptions;
+    protected writer?: TransportMessageWriter;
+    public writerOptions: TransportOptions = new TransportOptions();
 
     public id?: Uint8Array;
 
@@ -143,12 +143,10 @@ export class RpcClientTransporter {
      */
     public readonly errored = new Subject<{ connectionId: number, error: Error }>();
 
-    public reader = new RpcMessageReader(
+    public reader = new RpcBinaryMessageReader(
         (v) => this.onMessage(v),
         (id) => {
-            if (this.writer) {
-                this.writer.write(createRpcMessage(id, RpcTypes.ChunkAck));
-            }
+            this.writer!(createRpcMessage(id, RpcTypes.ChunkAck), this.writerOptions);
         },
     );
 
@@ -207,7 +205,7 @@ export class RpcClientTransporter {
         return undefined;
     }
 
-    public async onAuthenticate(): Promise<void> {
+    public async onAuthenticate(token?: any): Promise<void> {
     }
 
     public onMessage(message: RpcMessage) {
@@ -226,7 +224,7 @@ export class RpcClientTransporter {
         this.onDisconnect();
     }
 
-    protected async doConnect(): Promise<void> {
+    protected async doConnect(token?: any): Promise<void> {
         this.connectionTries++;
 
         if (this.transportConnection) {
@@ -237,29 +235,22 @@ export class RpcClientTransporter {
         return asyncOperation<void>(async (resolve, reject) => {
             try {
                 await this.transport.connect({
+                    token,
+
                     onClose: () => {
                         this.onDisconnect();
                     },
 
                     onConnected: async (transport: TransportConnection) => {
                         this.transportConnection = transport;
-                        this.writer = new RpcMessageWriter({
-                            write(v) {
-                                transport.send(v);
-                            },
-                            close() {
-                                transport.close();
-                            },
-                            clientAddress: transport.clientAddress ? () => transport.clientAddress!() : undefined,
-                            bufferedAmount: transport.bufferedAmount ? () => transport.bufferedAmount!() : undefined,
-                        }, this.reader, this.writerOptions);
+                        this.writer = createWriter(transport, this.writerOptions, this.reader);
 
                         this.connected = false;
                         this.connectionTries = 0;
 
                         try {
                             this.id = await this.onHandshake();
-                            await this.onAuthenticate();
+                            await this.onAuthenticate(token);
                         } catch (error) {
                             this.connected = false;
                             this.connectionTries = 0;
@@ -277,7 +268,11 @@ export class RpcClientTransporter {
                         reject(new OfflineError(`Could not connect: ${formatError(error)}`));
                     },
 
-                    onData: (buffer: Uint8Array, bytes?: number) => {
+                    read: (message: RpcMessage) => {
+                        this.onMessage(message);
+                    },
+
+                    readBinary: (buffer: Uint8Array, bytes?: number) => {
                         this.reader.feed(buffer, bytes);
                     },
                 });
@@ -290,7 +285,7 @@ export class RpcClientTransporter {
     /**
      * Simply connect with login using the token, without auto re-connect.
      */
-    public async connect(): Promise<void> {
+    public async connect(token?: any): Promise<void> {
         while (this.connectionPromise) {
             await this.connectionPromise;
             await sleep(0.01);
@@ -300,7 +295,7 @@ export class RpcClientTransporter {
             return;
         }
 
-        this.connectionPromise = this.doConnect();
+        this.connectionPromise = this.doConnect(token);
 
         try {
             await this.connectionPromise;
@@ -309,13 +304,13 @@ export class RpcClientTransporter {
         }
     }
 
-    public send(message: Uint8Array, progress?: SingleProgress) {
+    public send(message: RpcMessageDefinition, progress?: SingleProgress) {
         if (this.writer === undefined) {
             throw new Error('Transport connection not created yet');
         }
 
         try {
-            this.writer.write(message, progress);
+            this.writer(message, this.writerOptions, progress);
         } catch (error: any) {
             throw new OfflineError(error);
         }
@@ -403,17 +398,18 @@ export class RpcBaseClient implements WritableClient {
      * If you use controllers in this callback, make sure to use dontWaitForConnection=true, otherwise you get an endless loop.
      *
      * ```typescript
-     * async onAuthenticate(): Promise<void> {
+     * async onAuthenticate(token?: any): Promise<void> {
      *     const auth = this.controller<AuthController>('auth', {dontWaitForConnection: true});
      *     const result = auth.login('username', 'password');
      *     if (!result) throw new AuthenticationError('Authentication failed);
      * }
      * ```
      */
-    protected async onAuthenticate(): Promise<void> {
-        if (!this.token.has()) return;
+    protected async onAuthenticate(token?: any): Promise<void> {
+        if (undefined === token) return;
+        if (this.transport.supportsPeers && !this.transport.supportsPeers()) return;
 
-        const reply: RpcMessage = await this.sendMessage<rpcAuthenticate>(RpcTypes.Authenticate, { token: this.token.get()! }, undefined, { dontWaitForConnection: true })
+        const reply: RpcMessage = await this.sendMessage<rpcAuthenticate>(RpcTypes.Authenticate, { token }, undefined, { dontWaitForConnection: true })
             .waitNextMessage();
 
         if (reply.isError()) throw reply.getError();
@@ -517,7 +513,7 @@ export class RpcBaseClient implements WritableClient {
 
             this.transporter.send(message, progress?.upload);
         } else {
-            this.transporter.connect().then(
+            this.connect().then(
                 () => {
                     //this.getId() only now available
                     const message = options && options.peerId
@@ -543,7 +539,7 @@ export class RpcBaseClient implements WritableClient {
     }
 
     async connect(): Promise<this> {
-        await this.transporter.connect();
+        await this.transporter.connect(this.token.get());
         return this;
     }
 
@@ -577,8 +573,9 @@ export class RpcClient extends RpcBaseClient {
 
     protected peerConnections = new Map<string, RpcClientPeer>();
 
-    protected async onHandshake(): Promise<Uint8Array> {
+    protected async onHandshake(): Promise<Uint8Array | undefined> {
         this.clientKernelConnection = undefined;
+        if (this.transport.supportsPeers && !this.transport.supportsPeers()) return;
 
         const reply = await this.sendMessage(RpcTypes.ClientId, undefined, undefined, { dontWaitForConnection: true })
             .firstThenClose<rpcClientId>(RpcTypes.ClientIdResponse);
@@ -606,7 +603,7 @@ export class RpcClient extends RpcBaseClient {
                         if (connection) connection.close();
                         this.peerKernelConnection.delete(peerId);
                     },
-                    write: (answer: Uint8Array) => {
+                    write: (answer: RpcMessageDefinition) => {
                         //should we modify the package?
                         this.transporter.send(answer);
                     },
@@ -626,7 +623,7 @@ export class RpcClient extends RpcBaseClient {
             if (message.routeType === RpcMessageRouteType.server && this.clientKernel) {
                 if (!this.clientKernelConnection) {
                     const c = this.clientKernel.createConnection({
-                        write: (answer: Uint8Array) => {
+                        write: (answer: RpcMessageDefinition) => {
                             this.transporter.send(answer);
                         },
                         close: () => {
@@ -641,7 +638,7 @@ export class RpcClient extends RpcBaseClient {
                     });
                     // Important to disable since transporter.send chunks already,
                     // otherwise data is chunked twice and protocol breaks.
-                    c.writerOptions.chunkSize = 0;
+                    c.transportOptions.chunkSize = 0;
                     if (!(c instanceof RpcKernelConnection)) throw new Error('Expected RpcKernelConnection from clientKernel.createConnection');
                     this.clientKernelConnection = c;
                 }

@@ -11,13 +11,13 @@
 import { arrayRemoveItem, ProcessLock, ProcessLocker } from '@deepkit/core';
 import {
     createRpcMessage,
-    RpcConnectionWriter,
     RpcKernel,
     RpcKernelBaseConnection,
     RpcKernelConnections,
     RpcMessage,
     RpcMessageBuilder,
     RpcMessageRouteType,
+    TransportConnection,
 } from '@deepkit/rpc';
 import { Logger } from '@deepkit/logger';
 import {
@@ -36,6 +36,7 @@ import {
     BrokerQueuePublish,
     BrokerQueueResponseHandleMessage,
     BrokerQueueSubscribe,
+    brokerResponseGet,
     brokerResponseGetCache,
     brokerResponseGetCacheMeta,
     brokerResponseIncrement,
@@ -67,11 +68,11 @@ export class BrokerConnection extends RpcKernelBaseConnection {
 
     constructor(
         logger: Logger,
-        transportWriter: RpcConnectionWriter,
+        transportConnection: TransportConnection,
         protected connections: RpcKernelConnections,
         protected state: BrokerState,
     ) {
-        super(logger, transportWriter, connections);
+        super(logger, transportConnection, connections);
     }
 
     public close(): void {
@@ -261,7 +262,7 @@ export class BrokerConnection extends RpcKernelBaseConnection {
                     );
 
                     for (const connection of this.state.invalidationCacheMessageConnections) {
-                        connection.writer.write(message);
+                        connection.write(message);
                     }
                 }
                 response.ack();
@@ -288,7 +289,7 @@ export class BrokerConnection extends RpcKernelBaseConnection {
             case BrokerType.Get: {
                 const body = message.parseBody<brokerGet>();
                 const v = this.state.getKey(body.n);
-                response.replyBinary(BrokerType.ResponseGet, v);
+                response.reply<brokerResponseGet>(BrokerType.ResponseGet, { v });
                 break;
             }
             case BrokerType.EnableInvalidationCacheMessages: {
@@ -430,7 +431,7 @@ export class BrokerState {
         );
 
         for (const connection of subscriptions) {
-            connection.writer.write(message);
+            connection.write(message);
         }
     }
 
@@ -491,7 +492,7 @@ export class BrokerState {
             m.tries++;
             m.state = QueueMessageState.inFlight;
             m.lastError = undefined;
-            consumer.con.writer.write(createRpcMessage<BrokerQueueResponseHandleMessage>(
+            consumer.con.write(createRpcMessage<BrokerQueueResponseHandleMessage>(
                 0, BrokerType.QueueResponseHandleMessage,
                 { c: body.c, v: body.v, id: m.id }, RpcMessageRouteType.server,
             ));
@@ -568,7 +569,7 @@ export class BrokerState {
 export class BrokerKernel extends RpcKernel {
     protected state: BrokerState = new BrokerState;
 
-    createConnection(writer: RpcConnectionWriter): BrokerConnection {
-        return new BrokerConnection(this.logger, writer, this.connections, this.state);
+    createConnection(transport: TransportConnection): BrokerConnection {
+        return new BrokerConnection(this.logger, transport, this.connections, this.state);
     }
 }

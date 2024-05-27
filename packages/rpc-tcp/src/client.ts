@@ -1,5 +1,5 @@
 import { parseHost } from '@deepkit/core';
-import { ClientTransportAdapter, TransportConnectionHooks } from '@deepkit/rpc';
+import { ClientTransportAdapter, TransportClientConnection } from '@deepkit/rpc';
 import { connect } from 'net';
 
 /*
@@ -14,7 +14,7 @@ export class RpcTcpClientAdapter implements ClientTransportAdapter {
         this.host = parseHost(host);
     }
 
-    public async connect(connection: TransportConnectionHooks) {
+    public async connect(connection: TransportClientConnection) {
         const port = this.host.port || 8811;
         const socket = this.host.isUnixSocket ? connect({ path: this.host.unixSocket }) : connect({
             port: port,
@@ -22,11 +22,11 @@ export class RpcTcpClientAdapter implements ClientTransportAdapter {
         });
 
         socket.on('data', (data: Uint8Array) => {
-            connection.onData(data);
+            connection.readBinary(data);
         });
 
         socket.on('close', () => {
-            connection.onClose();
+            connection.onClose('socket closed');
         });
 
         socket.on('error', (error: any) => {
@@ -46,7 +46,7 @@ export class RpcTcpClientAdapter implements ClientTransportAdapter {
                 close() {
                     socket.end();
                 },
-                send(message) {
+                writeBinary(message) {
                     socket.write(message);
                 }
             });

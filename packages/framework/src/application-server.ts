@@ -347,15 +347,15 @@ export class ApplicationServer {
         return new RpcClient({
             connect(connection) {
                 const kernelConnection = createRpcConnection(context, rpcKernel, {
-                    write: (buffer) => connection.onData(buffer),
-                    close: () => connection.onClose(),
+                    writeBinary: (buffer) => connection.readBinary(buffer),
+                    close: () => connection.onClose('closed'),
                 });
 
                 connection.onConnected({
                     close() {
                         kernelConnection.close();
                     },
-                    send(message) {
+                    writeBinary(message: Uint8Array) {
                         queueMicrotask(() => {
                             kernelConnection.feed(message);
                         });

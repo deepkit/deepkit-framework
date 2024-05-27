@@ -1,5 +1,5 @@
 import { asyncOperation, ParsedHost, parseHost } from '@deepkit/core';
-import { RpcKernel } from '@deepkit/rpc';
+import { RpcKernel, RpcMessageDefinition } from '@deepkit/rpc';
 import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import { createServer, Server, Socket } from 'net';
 import type { ServerOptions as WebSocketServerOptions } from 'ws';
@@ -39,8 +39,8 @@ export class RpcTcpServer {
 
             this.server.on('connection', (socket: Socket) => {
                 const connection = this.kernel?.createConnection({
-                    write(b: Uint8Array) {
-                        socket.write(b);
+                    write(b: RpcMessageDefinition) {
+                        connection!.sendBinary(b, (data) => socket.write(data));
                     },
                     clientAddress(): string {
                         return socket.remoteAddress || '';
@@ -104,8 +104,8 @@ export class RpcWebSocketServer {
 
         this.server.on('connection', (ws, req: IncomingMessage) => {
             const connection = this.kernel?.createConnection({
-                write(b) {
-                    ws.send(b);
+                writeBinary(message) {
+                    ws.send(message);
                 },
                 close() {
                     ws.close();

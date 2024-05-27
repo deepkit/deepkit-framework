@@ -1,18 +1,19 @@
 import { expect, test } from '@jest/globals';
 import { RpcKernel } from '../src/server/kernel.js';
-import { RpcClient, TransportConnectionHooks } from '../src/client/client.js';
+import { RpcClient } from '../src/client/client.js';
+import { TransportClientConnection } from '../src/transport.js';
 
 test('connect', async () => {
     const kernel = new RpcKernel();
 
-    const connections: TransportConnectionHooks[] = [];
+    const connections: TransportClientConnection[] = [];
 
     const client = new RpcClient({
-        connect(connection: TransportConnectionHooks) {
+        connect(connection: TransportClientConnection) {
             const kernelConnection = kernel.createConnection({
-                write: (buffer) => connection.onData(buffer),
+                writeBinary: (buffer) => connection.readBinary(buffer),
                 close: () => {
-                    connection.onClose();
+                    connection.onClose('');
                 },
             });
 
@@ -28,7 +29,7 @@ test('connect', async () => {
                 close() {
                     kernelConnection.close();
                 },
-                send(buffer) {
+                writeBinary(buffer) {
                     kernelConnection.feed(buffer);
                 },
             });

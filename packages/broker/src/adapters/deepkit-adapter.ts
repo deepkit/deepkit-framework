@@ -22,6 +22,7 @@ import {
     BrokerQueueResponseHandleMessage,
     BrokerQueueSubscribe,
     BrokerQueueUnsubscribe,
+    brokerResponseGet,
     brokerResponseGetCache,
     brokerResponseGetCacheMeta,
     brokerResponseIncrement,
@@ -227,11 +228,12 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
     }
 
     async get(key: string, type: Type): Promise<any> {
-        const first: RpcMessage = await this.pool.getConnection('key/' + key)
-            .sendMessage<brokerGet>(BrokerType.Get, { n: key }).firstThenClose(BrokerType.ResponseGet);
-        if (first.buffer && first.buffer.byteLength > first.bodyOffset) {
+        const first = await this.pool.getConnection('key/' + key)
+            .sendMessage<brokerGet>(BrokerType.Get, { n: key })
+            .firstThenClose<brokerResponseGet>(BrokerType.ResponseGet);
+        if (first.v) {
             const serializer = getSerializer(type);
-            return serializer.decode(first.buffer, first.bodyOffset);
+            return serializer.decode(first.v, 0);
         }
     }
 

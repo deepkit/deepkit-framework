@@ -27,7 +27,7 @@ import {
     WrappedV,
 } from '../model.js';
 import { rpcDecodeError, RpcMessage } from '../protocol.js';
-import { ClientProgress } from '../writer.js';
+import { ClientProgress } from '../progress.js';
 import type { WritableClient } from './client.js';
 import { EntityState, EntitySubjectStore } from './entity-state.js';
 import { assertType, deserializeType, ReflectionKind, Type, TypeObjectLiteral, typeOf } from '@deepkit/type';
