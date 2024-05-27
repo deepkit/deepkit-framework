@@ -150,7 +150,7 @@ export class RpcMessageBuilder {
             if (this.logValidationErrors) {
                 this.logger.warn(this.errorLabel, error);
             }
-            throw new Error(this.errorLabel + ': ' + error.message);
+            throw new Error(this.errorLabel + ': ' + error.message, {cause: error});
         }
     }
 

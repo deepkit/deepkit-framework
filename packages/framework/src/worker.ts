@@ -123,8 +123,8 @@ export class RpcServer implements RpcServerInterface {
 
         server.on('connection', (ws, req: HttpRequest) => {
             const connection = createRpcConnection({
-                write(b) {
-                    ws.send(b);
+                writeBinary(message) {
+                    ws.send(message);
                 },
                 close() {
                     ws.close();

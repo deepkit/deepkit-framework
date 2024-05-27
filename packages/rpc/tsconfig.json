@@ -14,6 +14,11 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
+    "lib": [
+      "es2021",
+      "es2022.error",
+      "dom"
+    ],
     "types": [
       "dot-prop",
       "fs-extra",

@@ -9,7 +9,7 @@
  */
 
 import { asyncOperation, ClassType, formatError, sleep } from '@deepkit/core';
-import { ReceiveType, resolveReceiveType } from '@deepkit/type';
+import { ReceiveType, resolveReceiveType, ValidationError } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import {
     ControllerDefinition,
@@ -42,9 +42,6 @@ import {
 } from '../transport.js';
 
 export class OfflineError extends Error {
-    constructor(message: string = 'Offline') {
-        super(message);
-    }
 }
 
 type PromisifyFn<T extends ((...args: any[]) => any)> = (...args: Parameters<T>) => ReturnType<T> extends Promise<any> ? ReturnType<T> : Promise<ReturnType<T>>;
@@ -265,7 +262,7 @@ export class RpcClientTransporter {
 
                     onError: (error: Error) => {
                         this.onError(error);
-                        reject(new OfflineError(`Could not connect: ${formatError(error)}`));
+                        reject(new OfflineError(`Could not connect: ${formatError(error)}`, {cause: error}));
                     },
 
                     read: (message: RpcMessage) => {
@@ -312,7 +309,8 @@ export class RpcClientTransporter {
         try {
             this.writer(message, this.writerOptions, progress);
         } catch (error: any) {
-            throw new OfflineError(error);
+            if (error instanceof ValidationError) throw error;
+            throw new OfflineError(error, {cause: error});
         }
     }
 }
@@ -446,7 +444,6 @@ export class RpcBaseClient implements WritableClient {
         } else {
             const callback = this.replies.get(message.id);
             if (!callback) {
-                console.log(message.debug());
                 throw new Error('No callback for ' + message.id);
             }
             if (callback) callback(message);
