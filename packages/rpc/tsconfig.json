@@ -17,7 +17,8 @@
     "lib": [
       "es2021",
       "es2022.error",
-      "dom"
+      "dom",
+      "dom.iterable"
     ],
     "types": [
       "dot-prop",

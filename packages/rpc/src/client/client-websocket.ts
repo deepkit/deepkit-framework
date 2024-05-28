@@ -52,7 +52,7 @@ export function createRpcWebSocketClientProvider(baseUrl: string = typeof locati
     [name: number]: number
 } = { 4200: 8080 }) {
     return {
-        provide: RpcWebSocketClient,
+        provide: RpcClient,
         useFactory: () => new RpcWebSocketClient(webSocketFromBaseUrl(baseUrl, portMapping))
     };
 }

@@ -12,6 +12,7 @@ export * from './src/client/action.js';
 export * from './src/client/client-direct.js';
 export * from './src/client/client-websocket.js';
 export * from './src/client/client.js';
+export * from './src/client/http.js';
 export * from './src/client/message-subject.js';
 export * from './src/client/entity-state.js';
 export * from './src/server/action.js';

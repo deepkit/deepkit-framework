@@ -1,12 +1,57 @@
-import { ClientTransportAdapter } from './client.js';
+import { ClientTransportAdapter, RpcClient } from './client.js';
 import { TransportClientConnection } from '../transport.js';
 import { RpcMessageDefinition } from '../protocol.js';
 import { RpcTypes } from '../model.js';
 import { HttpRpcMessage } from '../server/http.js';
 import { serialize } from '@deepkit/type';
 
+export interface RpcHttpResponseInterface {
+    status: number;
+    headers: { [name: string]: string };
+    body?: any;
+}
+
+export interface RpcHttpInterface {
+    fetch(url: string, options: {
+        headers: { [name: string]: string },
+        method: string,
+        body: any
+    }): Promise<RpcHttpResponseInterface>;
+}
+
+export class RpcHttpFetch implements RpcHttpInterface {
+    async fetch(url: string, options: {
+        headers: { [name: string]: string },
+        method: string,
+        body: any
+    }): Promise<RpcHttpResponseInterface> {
+        const res = await fetch(url, options);
+
+        return {
+            status: res.status,
+            headers: Object.fromEntries(res.headers.entries()),
+            body: await res.json(),
+        };
+    }
+}
+
+export function createRpcHttpClientProvider(
+    baseUrl: string = typeof location !== 'undefined' ? location.origin : 'http://localhost',
+    headers: { [name: string]: string } = {},
+    http?: RpcHttpInterface,
+) {
+    return {
+        provide: RpcClient,
+        useFactory: () => new RpcClient(new RpcHttpClientAdapter(baseUrl, headers, http)),
+    };
+}
+
 export class RpcHttpClientAdapter implements ClientTransportAdapter {
-    constructor(public url: string, public headers: { [name: string]: string } = {}) {
+    constructor(
+        public url: string,
+        public headers: { [name: string]: string } = {},
+        public http: RpcHttpInterface = new RpcHttpFetch(),
+    ) {
         this.url = url.endsWith('/') ? url.slice(0, -1) : url;
     }
 
@@ -44,7 +89,7 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
                     const allPrimitive = messageBody.args.every(v => ['string', 'number', 'boolean', 'bigint'].includes(typeof v));
                     if (allPrimitive) {
                         for (const a of messageBody.args) {
-                            qs.push('arg=' + encodeURIComponent(JSON.stringify(a)));
+                            qs.push('arg=' + encodeURIComponent(String(a)));
                         }
                         method = 'GET';
                     } else {
@@ -55,22 +100,22 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
                     throw new Error('Unsupported message type ' + message.type + ' for Http adapter');
                 }
 
-                const res = await fetch(this.url + '/' + path + '?' + qs.join('&'), {
+                const res = await this.http.fetch(this.url + '/' + path + '?' + qs.join('&'), {
                     headers: Object.assign({
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'Authorization': String(connection.token)
+                        'Authorization': String(connection.token),
                     }, this.headers),
                     method,
                     body,
                 });
 
-                const type = Number(res.headers.get('X-Message-Type'));
-                const composite = 'true' === res.headers.get('X-Message-Composite');
-                const routeType = Number(res.headers.get('X-Message-RouteType'));
-                let json = await res.json();
+                const type = Number(res.headers['x-message-type']);
+                const composite = 'true' === res.headers['x-message-composite'];
+                const routeType = Number(res.headers['x-message-routetype']);
+                let json = res.body;
                 if (type === RpcTypes.ResponseActionSimple) {
-                    json = {v: json};
+                    json = { v: json };
                 }
                 connection.read(new HttpRpcMessage(message.id, composite, type, routeType, {}, json));
             },
