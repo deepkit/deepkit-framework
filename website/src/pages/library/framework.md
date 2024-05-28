@@ -21,13 +21,6 @@ category: framework
 
 <feature class="center">
 
-## Routes
-
-Write HTTP routes with class methods or simple async functions.
-
-```typescript
-```
-
 </feature>
 
 

@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AppDescription, AppTitle } from '@app/app/components/title';
 import { ContentRenderComponent } from '@app/app/components/content-render.component';
@@ -25,6 +25,7 @@ import { PlatformHelper } from '@app/app/utils';
         RouterOutlet
     ],
     styleUrls: ['./documentation.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <div class="page">
             <div class="content-wrapper">

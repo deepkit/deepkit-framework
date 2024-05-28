@@ -455,6 +455,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@angular/cdk@npm:^18.0.0":
+  version: 18.0.0
+  resolution: "@angular/cdk@npm:18.0.0"
+  dependencies:
+    parse5: "npm:^7.1.2"
+    tslib: "npm:^2.3.0"
+  peerDependencies:
+    "@angular/common": ^18.0.0 || ^19.0.0
+    "@angular/core": ^18.0.0 || ^19.0.0
+    rxjs: ^6.5.3 || ^7.4.0
+  dependenciesMeta:
+    parse5:
+      optional: true
+  checksum: 06a76a89e7fa971a81fcfb607ac0a8ed47d7011f32067132bed871c0db01e4b915c2994a3b05ffcc9e79487c8ddcdc21d22b0d3df3db11b14e53a9effd751798
+  languageName: node
+  linkType: hard
+
 "@angular/cli@npm:^17.1.0":
   version: 17.1.0
   resolution: "@angular/cli@npm:17.1.0"
@@ -20978,6 +20995,38 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ngx-markdown@npm:^18.0.0":
+  version: 18.0.0
+  resolution: "ngx-markdown@npm:18.0.0"
+  dependencies:
+    clipboard: "npm:^2.0.11"
+    emoji-toolkit: "npm:^8.0.0"
+    katex: "npm:^0.16.0"
+    mermaid: "npm:^10.6.0"
+    prismjs: "npm:^1.28.0"
+    tslib: "npm:^2.3.0"
+  peerDependencies:
+    "@angular/common": ^18.0.0
+    "@angular/core": ^18.0.0
+    "@angular/platform-browser": ^18.0.0
+    marked: ">= 9.0.0 < 13.0.0"
+    rxjs: ^6.5.3 || ^7.4.0
+    zone.js: ~0.14.0
+  dependenciesMeta:
+    clipboard:
+      optional: true
+    emoji-toolkit:
+      optional: true
+    katex:
+      optional: true
+    mermaid:
+      optional: true
+    prismjs:
+      optional: true
+  checksum: 2f2d31e6644ee24a8d836a01f9e89786c34da542fcdb2fc843efca5004d92bff59e81b9acdd3f0075368332fccaf6da591bdf0f1c1534fbef79bf0949b3ddf63
+  languageName: node
+  linkType: hard
+
 "nice-napi@npm:^1.0.2":
   version: 1.0.2
   resolution: "nice-napi@npm:1.0.2"
@@ -27314,7 +27363,7 @@ __metadata:
   dependencies:
     "@angular-devkit/build-angular": "npm:^18.0.1"
     "@angular/animations": "npm:^18.0.0"
-    "@angular/cdk": "npm:^17.1.0"
+    "@angular/cdk": "npm:^18.0.0"
     "@angular/cli": "npm:~18.0.1"
     "@angular/common": "npm:^18.0.0"
     "@angular/compiler": "npm:^18.0.0"
@@ -27357,7 +27406,7 @@ __metadata:
     gray-matter: "npm:^4.0.3"
     jest: "npm:^29.7.0"
     marked: "npm:^9.0.0"
-    ngx-markdown: "npm:^17.1.1"
+    ngx-markdown: "npm:^18.0.0"
     openai: "npm:^4.24.7"
     plotly.js-dist-min: "npm:^2.27.0"
     prismjs: "npm:^1.29.0"

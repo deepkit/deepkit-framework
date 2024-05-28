@@ -8,6 +8,10 @@ html {
 //@import "./assets/montserrat/stylesheet.css";
 @import "./style-code";
 
+html {
+  scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+}
+
 body {
     font-family: 'Muli', "Helvetica Neue", sans-serif;
     padding: 0;
@@ -46,7 +50,6 @@ body {
     //--color-link-hover: #0062b6;
 
     box-sizing: border-box;
-    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
 
     &::-webkit-scrollbar {
         height: 11px;
@@ -556,10 +559,6 @@ pre.console {
 
         h3, h4 {
             font-weight: bold;
-        }
-
-        .text, p {
-            text-align: justify;
         }
     }
 }

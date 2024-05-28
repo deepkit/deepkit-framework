@@ -1,24 +1,41 @@
-import { ApplicationConfig } from '@angular/core';
-import { provideRouter, withInMemoryScrolling, withRouterConfig } from '@angular/router';
-
+import { ApplicationConfig, provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { routes } from './app.routes';
-import { withZoneModule } from "@app/app/zone";
-import { createRpcWebSocketClientProvider } from "@deepkit/rpc";
-import { ControllerClient } from "@app/app/client";
-import { provideClientHydration } from "@angular/platform-browser";
+import { RpcClient, RpcHttpClientAdapter, RpcHttpHeaderNames } from '@deepkit/rpc';
+import { ControllerClient, RpcAngularHttpAdapter } from '@app/app/client';
+import { provideClientHydration, withHttpTransferCacheOptions } from '@angular/platform-browser';
 import { AppMetaStack } from '@app/app/components/title';
-import { PlatformHelper } from "@app/app/utils";
-import { PageResponse } from "@app/app/page-response";
+import { PlatformHelper } from '@app/app/utils';
+import { PageResponse } from '@app/app/page-response';
+import { provideHttpClient, withFetch } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
     providers: [
+        provideExperimentalZonelessChangeDetection(),
         AppMetaStack,
         PageResponse,
         PlatformHelper,
-        provideClientHydration(),
-        provideRouter(routes, withRouterConfig({}), withInMemoryScrolling({ anchorScrolling: 'enabled', scrollPositionRestoration: 'enabled' })),
-        withZoneModule(),
+        provideRouter(routes, withInMemoryScrolling({
+            anchorScrolling: 'enabled',
+            scrollPositionRestoration: 'enabled',
+        })),
+        provideClientHydration(withHttpTransferCacheOptions({
+            includeHeaders: RpcHttpHeaderNames,
+            includePostRequests: true,
+            filter: () => true,
+        })),
+        provideHttpClient(withFetch(), ),
+
         ControllerClient,
-        createRpcWebSocketClientProvider(),
-    ]
+        {
+            provide: 'baseUrl',
+            useValue: '',
+        },
+        RpcAngularHttpAdapter,
+        {
+            provide: RpcClient,
+            deps: [RpcAngularHttpAdapter],
+            useFactory: (http: RpcAngularHttpAdapter) => new RpcClient(new RpcHttpClientAdapter('api/v1', {}, http)),
+        },
+    ],
 };

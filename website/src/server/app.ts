@@ -71,6 +71,7 @@ const app = new App({
     imports: [
         new FrameworkModule({
             migrateOnStartup: true, //yolo
+            httpRpcBasePath: 'api/v1'
         }),
     ],
 });

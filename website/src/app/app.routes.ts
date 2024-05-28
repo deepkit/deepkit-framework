@@ -1,19 +1,19 @@
 import { Route, Routes } from '@angular/router';
-import { StartpageComponent } from "@app/app/pages/startpage.component";
-import { DocumentationComponent } from "@app/app/pages/documentation.component";
-import { EmptyComponent } from "@app/app/pages/empty.component";
-import { CommunityQuestionsComponent } from "@app/app/pages/documentation/community-questions.component";
-import { DocumentationPageComponent } from "@app/app/pages/documentation/page.component";
-import { CommunityQuestionComponent } from "@app/app/pages/documentation/community-question.component";
-import { LibrariesComponent } from "@app/app/pages/libraries/libraries.component";
-import { EnterpriseComponent } from "@app/app/pages/enterprise.component";
-import { LibraryComponent } from "@app/app/pages/libraries/library.component";
-import { ExamplesComponent } from "@app/app/pages/documentation/examples.component";
-import { ExampleComponent } from "@app/app/pages/documentation/example.component";
-import { DocuSearchComponent } from "@app/app/pages/documentation/search.component";
-import { CommunityComponent } from "@app/app/pages/community.component";
-import { StaticPageComponent } from "@app/app/pages/static-page.component";
-import { NotFoundComponent } from "@app/app/pages/not-found.component";
+import { StartpageComponent } from '@app/app/pages/startpage.component';
+import { DocumentationComponent } from '@app/app/pages/documentation.component';
+import { EmptyComponent } from '@app/app/pages/empty.component';
+import { CommunityQuestionsComponent } from '@app/app/pages/documentation/community-questions.component';
+import { DocumentationPageComponent } from '@app/app/pages/documentation/page.component';
+import { CommunityQuestionComponent } from '@app/app/pages/documentation/community-question.component';
+import { LibrariesComponent } from '@app/app/pages/libraries/libraries.component';
+import { EnterpriseComponent } from '@app/app/pages/enterprise.component';
+import { LibraryComponent } from '@app/app/pages/libraries/library.component';
+import { ExamplesComponent } from '@app/app/pages/documentation/examples.component';
+import { ExampleComponent } from '@app/app/pages/documentation/example.component';
+import { DocuSearchComponent } from '@app/app/pages/documentation/search.component';
+import { CommunityComponent } from '@app/app/pages/community.component';
+import { StaticPageComponent } from '@app/app/pages/static-page.component';
+import { NotFoundComponent } from '@app/app/pages/not-found.component';
 
 function redirect(from: string, to: string): Route {
     return {
@@ -52,7 +52,7 @@ export const routes: Routes = [
         children: [
             {
                 path: 'questions', component: EmptyComponent, children: [
-                    { path: 'post/:id', component: CommunityQuestionComponent },
+                    { path: 'post/:slug', component: CommunityQuestionComponent },
                     { path: '**', component: CommunityQuestionsComponent },
                 ]
             },
