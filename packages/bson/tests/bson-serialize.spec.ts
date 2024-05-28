@@ -1518,3 +1518,22 @@ test('null for optional', () => {
         expect(back3.v).toBe(undefined);
     }
 });
+
+test('NaN roundtrip to 0', () => {
+    {
+        // official behaviour is to serialize NaN to NaN
+        const bson = serialize({ v: NaN });
+        const back = deserialize(bson);
+        expect(back.v).toBe(NaN);
+    }
+    {
+        const bson = serialize({ v: NaN });
+        const back = deserializeBSONWithoutOptimiser(bson);
+        expect(back.v).toBe(0);
+    }
+    {
+        const bson = serialize({ v: NaN });
+        const back = getBSONDeserializer<{ v: number }>()(bson);
+        expect(back.v).toBe(0);
+    }
+});

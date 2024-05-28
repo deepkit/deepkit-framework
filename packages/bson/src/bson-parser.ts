@@ -312,7 +312,9 @@ export class BaseParser {
 
     eatDouble(): number {
         this.offset += 8;
-        return this.dataView.getFloat64(this.offset - 8, true);
+        const value = this.dataView.getFloat64(this.offset - 8, true);
+        if (isNaN(value)) return 0;
+        return value;
     }
 
     /**
