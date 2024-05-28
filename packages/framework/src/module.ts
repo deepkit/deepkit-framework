@@ -235,7 +235,8 @@ export class FrameworkModule extends createModule({
                 constructor(protected rpcKernel: RpcKernel) {
                 }
 
-                @http.ANY(':controller/:method')
+                @http.GET(':controller/:method')
+                @http.POST(':controller/:method')
                 async handle(
                     controller: HttpRegExp<string, '.*'>,
                     method: string,

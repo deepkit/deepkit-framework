@@ -76,8 +76,8 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
                 if (message.type === RpcTypes.ActionType) {
                     if (!message.body) throw new Error('No body given');
                     const body = message.body.body as { controller: string, method: string, };
-                    path = body.controller + '/' + encodeURIComponent(body.method);
-                    method = 'OPTIONS';
+                    path = body.controller + '/' + encodeURIComponent(body.method) + '.type';
+                    method = 'GET';
                 } else if (message.type === RpcTypes.Action) {
                     if (!message.body) throw new Error('No body given');
                     const messageBody = serialize(message.body.body, undefined, undefined, undefined, message.body.type) as {
@@ -104,7 +104,9 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
                     headers: Object.assign({
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'Authorization': String(connection.token),
+                        ...(connection.token != undefined) ? {
+                            'Authorization': String(connection.token),
+                        } : {},
                     }, this.headers),
                     method,
                     body,
@@ -130,3 +132,6 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
         });
     }
 }
+
+
+export const RpcHttpHeaderNames = ['x-message-type', 'x-message-composite', 'x-message-routetype'];

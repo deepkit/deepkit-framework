@@ -442,10 +442,16 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
 
             const urlPath = url.pathname.substring(basePath.length);
             const lastSlash = urlPath.lastIndexOf('/');
-            const base: any = {
+            const base: {controller: string, method: string, args?: any[]} = {
                 controller: urlPath.substring(0, lastSlash),
                 method: decodeURIComponent(urlPath.substring(lastSlash + 1)),
             };
+
+            let type = false
+            if (base.method.endsWith('.type')) {
+                base.method = base.method.substring(0, base.method.length - 5);
+                type = true;
+            }
 
             if (request.headers['Authorization']) {
                 const auth = String(request.headers['Authorization']);
@@ -454,7 +460,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
                 this.sessionState.setSession(session);
             }
 
-            if (request.method === 'OPTIONS') {
+            if (type) {
                 await this.actionHandler.handleActionTypes(
                     new HttpRpcMessage(1, false, RpcTypes.ActionType, RpcMessageRouteType.client, request.headers, base),
                     messageResponse,
