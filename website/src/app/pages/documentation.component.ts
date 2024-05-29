@@ -76,6 +76,7 @@ import { PlatformHelper } from '@app/app/utils';
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/reflection">Reflection</a>
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/serialization">Serialization</a>
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/validation">Validation</a>
+                    <a routerLinkActive="active" routerLink="/documentation/runtime-types/extend">Extend</a>
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/custom-serializer">Custom serializer</a>
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/external-types">External Types</a>
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/bytecode">Bytecode</a>
