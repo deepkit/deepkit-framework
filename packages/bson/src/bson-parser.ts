@@ -81,7 +81,7 @@ export class BaseParser {
             case BSONType.ARRAY:
                 return parseArray(this);
             default:
-                throw new SerializationError('Unsupported BSON type ' + elementType, '');
+                throw new SerializationError('Unsupported BSON type ' + elementType);
         }
     }
 

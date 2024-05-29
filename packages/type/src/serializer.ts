@@ -232,6 +232,8 @@ export function createSerializeFunction(type: Type, registry: TemplateRegistry, 
     compiler.context.set('typeSettings', typeSettings);
     compiler.context.set('UnpopulatedCheck', UnpopulatedCheck);
     compiler.context.set('UnpopulatedCheckReturnSymbol', UnpopulatedCheck.ReturnSymbol);
+    compiler.context.set('SerializationError', SerializationError);
+    compiler.context.set('ValidationErrorItem', ValidationErrorItem);
 
     const code = `
         var result;
@@ -285,7 +287,7 @@ export function createTypeGuardFunction(type: Type, stateIn?: Partial<TemplateSt
 }
 
 export class SerializationError extends CustomError {
-    constructor(public originalMessage: string, public path: string) {
+    constructor(public originalMessage: string, public code: string = '', public path: string = '') {
         super(`Serialization failed. ${!path ? '' : (path && path.startsWith('.') ? path.slice(1) : path) + ': '}` + originalMessage);
     }
 }
@@ -522,13 +524,31 @@ export class TemplateState {
      * @example
      * ```typescript
      * serializer.deserializeRegistry.registerClass(Date, (type, state) => {
-     *     state.convert((v) => new Date(v));
+     *     // make sure to check `v` as it is any!
+     *     state.convert((v: any) => {
+     *         if ('number' !== typeof v) throw new SerializationError('Expected number');
+     *         return new Date(v);
+     *     });
+     * });
+     *
+     * serializer.serializeRegistry.registerClass(Date, (type, state) => {
+     *     // in serialization `v` is always the specific type
+     *     state.convert((v: Date) => v.getTime());
      * });
      * ```
      */
     convert(callback: (value: any) => any) {
         const converter = this.setVariable('convert', callback);
-        this.addSetter(`${converter}(${this.accessor})`);
+        this.addCodeForSetter(`
+        try {
+            ${this.setter} = ${converter}(${this.accessor});
+        } catch (error) {
+            if (error instanceof SerializationError) {
+                error.path = ${collapsePath(this.path)} + (error.path ? '.' + error.path : '');
+            }
+            throw error;
+        }
+        `);
     }
 
     /**
