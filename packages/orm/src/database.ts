@@ -8,7 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AbstractClassType, ClassType, forwardTypeArguments, getClassName, getClassTypeFromInstance } from '@deepkit/core';
+import {
+    AbstractClassType,
+    ClassType,
+    forwardTypeArguments,
+    getClassName,
+    getClassTypeFromInstance,
+} from '@deepkit/core';
 import {
     entityAnnotation,
     EntityOptions,
@@ -19,7 +25,7 @@ import {
     ReflectionClass,
     ReflectionKind,
     resolveReceiveType,
-    Type
+    Type,
 } from '@deepkit/type';
 import { DatabaseAdapter, DatabaseEntityRegistry, MigrateOptions } from './database-adapter.js';
 import { DatabaseSession } from './database-session.js';
@@ -89,6 +95,7 @@ function setupVirtualForeignKey(database: Database, virtualForeignKeyConstraint:
         await virtualForeignKeyConstraint.onQueryDelete(event);
     });
 }
+
 /**
  * Database abstraction. Use createSession() to create a work session with transaction support.
  *
@@ -142,7 +149,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     constructor(
         public readonly adapter: ADAPTER,
-        schemas: (Type | ClassType | ReflectionClass<any>)[] = []
+        schemas: (Type | ClassType | ReflectionClass<any>)[] = [],
     ) {
         this.entityRegistry.add(...schemas);
         if (Database.registry) Database.registry.push(this);
@@ -354,6 +361,16 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     }
 
     /**
+     * Same as persist(), but allows to specify the type that should be used for the given items.
+     */
+    public async persistAs<T extends OrmEntity>(items: T[], type?: ReceiveType<T>) {
+        const session = this.createSession();
+        session.withIdentityMap = false;
+        session.addAs(items, ReflectionClass.from(type));
+        await session.commit();
+    }
+
+    /**
      * Simple direct remove. The persistence layer (batch) removes all given items.
      * This is different to createSession()+remove() in a way that `DatabaseSession.remove` adds the given items to the queue
      * (which is then committed using commit()) while this `database.remove` just simply removes the given items immediately,
@@ -365,6 +382,16 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         const session = this.createSession();
         session.withIdentityMap = false;
         session.remove(...items);
+        await session.commit();
+    }
+
+    /**
+     * Same as remove(), but allows to specify the type that should be used for the given items.
+     */
+    public async removeAs<T extends OrmEntity>(items: T[], type?: ReceiveType<T>) {
+        const session = this.createSession();
+        session.withIdentityMap = false;
+        session.removeAs(items, ReflectionClass.from(type));
         await session.commit();
     }
 }

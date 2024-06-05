@@ -9,8 +9,26 @@
  */
 
 import { OrmEntity } from './type.js';
-import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, getClassTypeFromInstance, isClass, stringifyValueWithType } from '@deepkit/core';
-import { is, isSameType, ItemChanges, PrimaryKeyFields, ReceiveType, ReflectionClass, ReflectionKind, stringifyType, Type } from '@deepkit/type';
+import {
+    AbstractClassType,
+    arrayRemoveItem,
+    ClassType,
+    getClassName,
+    getClassTypeFromInstance,
+    isClass,
+    stringifyValueWithType,
+} from '@deepkit/core';
+import {
+    is,
+    isSameType,
+    ItemChanges,
+    PrimaryKeyFields,
+    ReceiveType,
+    ReflectionClass,
+    ReflectionKind,
+    stringifyType,
+    Type,
+} from '@deepkit/type';
 import { Query } from './query.js';
 import { DatabaseSession, DatabaseTransaction } from './database-session.js';
 
@@ -161,7 +179,7 @@ export class DatabaseEntityRegistry {
             }
 
         } else {
-            //its a regular class
+            //it's a regular class
             return ReflectionClass.from(getClassTypeFromInstance(item));
         }
 

@@ -47,10 +47,14 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     protected addQueue = new Set<OrmEntity>();
     protected removeQueue = new Set<OrmEntity>();
 
+    protected addQueueResolved: [ReflectionClass<any>, OrmEntity][] = [];
+    protected removeQueueResolved: [ReflectionClass<any>, OrmEntity][] = [];
+
     protected inCommit: boolean = false;
     protected committed: boolean = false;
 
     constructor(
+        protected round: number = 0,
         protected session: DatabaseSession<any>,
         protected eventDispatcher: EventDispatcherInterface,
         public logger: DatabaseLogger,
@@ -67,59 +71,83 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         return this.committed;
     }
 
-    public add(...items: OrmEntity[]): void {
+    public add(items: Iterable<OrmEntity>, classSchema?: ReflectionClass<any>): void {
         if (this.isInCommit()) throw new Error('Already in commit. Can not change queues.');
-
-        for (const item of items) {
-            if (this.removeQueue.has(item)) continue;
-            if (this.addQueue.has(item)) continue;
-
-            this.addQueue.add(item);
-
-            for (const dep of this.getReferenceDependencies(item)) {
-                this.add(dep);
-            }
-        }
-    }
-
-    protected getReferenceDependencies<T extends OrmEntity>(item: T): OrmEntity[] {
-        const result: OrmEntity[] = [];
-        const classSchema = this.session.entityRegistry.getFromInstance(item);
 
         const old = typeSettings.unpopulatedCheck;
         typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
         try {
-            for (const reference of classSchema.getReferences()) {
-                if (reference.isBackReference()) continue;
+            for (const item of items) {
+                if (this.removeQueue.has(item)) continue;
+                if (this.addQueue.has(item)) continue;
 
-                //todo, check if join was populated. will throw otherwise
-                const v = item[reference.getNameAsString() as keyof T] as any;
-                if (v == undefined) continue;
+                this.addQueue.add(item);
 
-                // if (reference.isArray) {
-                //     if (isArray(v)) {
-                //         for (const i of v) {
-                //             if (isReference(v)) continue;
-                //             if (i instanceof reference.getResolvedClassType()) result.push(i);
-                //         }
-                //     }
-                // } else {
-                if (!isReferenceInstance(v)) result.push(v);
-                // }
+                const thisClassSchema = classSchema || this.session.entityRegistry.getFromInstance(item);
+                this.addQueueResolved.push([thisClassSchema, item]);
+
+                for (const [schema, dep] of this.getReferenceDependenciesWithSchema(thisClassSchema, item)) {
+                    this.add([dep], schema);
+                }
             }
         } finally {
             typeSettings.unpopulatedCheck = old;
+        }
+    }
+
+    protected getReferenceDependenciesWithSchema<T extends OrmEntity>(classSchema: ReflectionClass<any>, item: T): [ReflectionClass<any>, OrmEntity][] {
+        const result: [ReflectionClass<any>, OrmEntity][] = [];
+
+        for (const reference of classSchema.getReferences()) {
+            if (reference.isBackReference()) continue;
+            const v = item[reference.getNameAsString() as keyof T] as any;
+            if (v == undefined) continue;
+            if (!isReferenceInstance(v)) result.push([reference.getResolvedReflectionClass(), v]);
         }
 
         return result;
     }
 
-    public remove(...items: OrmEntity[]) {
+    protected getReferenceDependencies<T extends OrmEntity>(classSchema: ReflectionClass<any>, item: T): OrmEntity[] {
+        const result: OrmEntity[] = [];
+
+        for (const reference of classSchema.getReferences()) {
+            if (reference.isBackReference()) continue;
+            const v = item[reference.getNameAsString() as keyof T] as any;
+            if (v == undefined) continue;
+
+            // if (reference.isArray) {
+            //     if (isArray(v)) {
+            //         for (const i of v) {
+            //             if (isReference(v)) continue;
+            //             if (i instanceof reference.getResolvedClassType()) result.push(i);
+            //         }
+            //     }
+            // } else {
+            if (!isReferenceInstance(v)) result.push(v);
+            // }
+        }
+
+        return result;
+    }
+
+    public remove(items: OrmEntity[], schema?: ReflectionClass<any>) {
         if (this.isInCommit()) throw new Error('Already in commit. Can not change queues.');
+
+        const removeAdded: OrmEntity[] = [];
 
         for (const item of items) {
             this.removeQueue.add(item);
-            this.addQueue.delete(item);
+            this.removeQueueResolved.push([schema || this.session.entityRegistry.getFromInstance(item), item]);
+
+            if (this.addQueue.has(item)) {
+                this.addQueue.delete(item);
+                removeAdded.push(item);
+            }
+        }
+
+        if (removeAdded.length) {
+            this.addQueueResolved = this.addQueueResolved.filter(v => !removeAdded.includes(v[1]));
         }
     }
 
@@ -138,7 +166,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     }
 
     protected async doDelete(persistence: DatabasePersistence) {
-        for (const [classSchema, items] of getClassSchemaInstancePairs(this.removeQueue.values())) {
+        for (const [classSchema, items] of getClassSchemaInstancePairs(this.removeQueueResolved)) {
             if (this.eventDispatcher.hasListeners(DatabaseSession.onDeletePre)) {
                 const event = new UnitOfWorkEvent(classSchema, this.session, items);
                 await this.eventDispatcher.dispatch(DatabaseSession.onDeletePre, event);
@@ -163,9 +191,8 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         typeSettings.unpopulatedCheck = UnpopulatedCheck.None;
 
         try {
-            for (const item of this.addQueue.values()) {
-                const classSchema = this.session.entityRegistry.getFromInstance(item);
-                sorter.add(item, classSchema, this.getReferenceDependencies(item));
+            for (const [classSchema, item] of this.addQueueResolved) {
+                sorter.add(item, classSchema, this.getReferenceDependencies(classSchema, item));
             }
 
             sorter.sort();
@@ -291,6 +318,7 @@ export abstract class DatabaseTransaction {
 
 export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     public readonly id = SESSION_IDS++;
+    public round: number = 0;
     public withIdentityMap = true;
 
     /**
@@ -468,7 +496,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
     }
 
     protected enterNewRound() {
-        this.rounds.push(new DatabaseSessionRound(this, this.eventDispatcher, this.logger, this.withIdentityMap ? this.identityMap : undefined));
+        this.rounds.push(new DatabaseSessionRound(this.round++, this, this.eventDispatcher, this.logger, this.withIdentityMap ? this.identityMap : undefined));
     }
 
     /**
@@ -481,19 +509,44 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
             this.enterNewRound();
         }
 
-        this.getCurrentRound().add(...items);
+        this.getCurrentRound().add(items);
     }
 
     /**
-     * Adds a item to the remove queue. Use session.commit() to remove queued items from the database all at once.
+     * Adds a single or multiple items for a particular type to the to add/update queue. Use session.commit() to persist all queued items to the database.
+     *
+     * This works like Git: you add files, and later commit all in one batch.
+     */
+    public addAs<T extends OrmEntity>(items: T[], type?: ReceiveType<T> | ReflectionClass<any>) {
+        if (this.getCurrentRound().isInCommit()) {
+            this.enterNewRound();
+        }
+
+        this.getCurrentRound().add(items, ReflectionClass.from(type));
+    }
+
+    /**
+     * Adds item to the remove queue. Use session.commit() to remove queued items from the database all at once.
      */
     public remove(...items: OrmEntity[]) {
         if (this.getCurrentRound().isInCommit()) {
             this.enterNewRound();
         }
 
-        this.getCurrentRound().remove(...items);
+        this.getCurrentRound().remove(items);
     }
+
+    /**
+     * Adds item to the remove queue for a particular type. Use session.commit() to remove queued items from the database all at once.
+     */
+    public removeAs<T extends OrmEntity>(items: T[], type?: ReceiveType<T> | ReflectionClass<any>) {
+        if (this.getCurrentRound().isInCommit()) {
+            this.enterNewRound();
+        }
+
+        this.getCurrentRound().remove(items, ReflectionClass.from(type));
+    }
+
 
     /**
      * Resets all scheduled changes (add() and remove() calls).
@@ -558,7 +611,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
             if (this.withIdentityMap) {
                 for (const map of this.identityMap.registry.values()) {
                     for (const item of map.values()) {
-                        round.add(item.ref);
+                        round.add([item.ref]);
                     }
                 }
             }

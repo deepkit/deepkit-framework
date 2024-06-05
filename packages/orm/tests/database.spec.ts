@@ -48,3 +48,32 @@ test('memory-db', async () => {
     await database.query(s).deleteMany();
     expect(await (await database.query(s).find()).length).toBe(0);
 });
+
+test('persistAs', async () => {
+    interface X {
+        id: number & PrimaryKey;
+        name: string;
+    }
+
+    interface Y {
+        id: number & PrimaryKey;
+        name: string;
+    }
+
+    const database = new Database(new MemoryDatabaseAdapter());
+    database.register<X>({ name: 'x' });
+    database.register<Y>({ name: 'y' });
+
+    await database.persistAs<X>([{ id: 1, name: 'Peter' }, { id: 2, name: 'Peter2' }]);
+    await database.persistAs<X>([{ id: 3, name: 'Peter3' }]);
+    await database.persistAs<Y>([{ id: 1, name: 'John' }]);
+
+    expect(await database.query<X>().count()).toBe(3);
+    expect(await database.query<Y>().count()).toBe(1);
+
+    await database.removeAs<X>([{ id: 1, name: 'Peter' }]);
+    expect(await database.query<X>().count()).toBe(2);
+
+    await database.removeAs<Y>([{ id: 1, name: 'John' }]);
+    expect(await database.query<Y>().count()).toBe(0);
+});

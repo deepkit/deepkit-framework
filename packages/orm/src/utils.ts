@@ -13,16 +13,14 @@ import { OrmEntity } from './type.js';
 import sift from 'sift';
 import { FilterQuery } from './query.js';
 import { getInstanceStateFromItem } from './identity-map.js';
-import { getClassTypeFromInstance } from '@deepkit/core';
 
 export type FlattenIfArray<T> = T extends Array<any> ? T[0] : T;
 export type FieldName<T> = keyof T & string;
 
-export function getClassSchemaInstancePairs<T extends OrmEntity>(items: Iterable<T>): Map<ReflectionClass<any>, T[]> {
+export function getClassSchemaInstancePairs<T extends OrmEntity>(items: Iterable<[ReflectionClass<any>, T]>): Map<ReflectionClass<any>, T[]> {
     const map = new Map<ReflectionClass<any>, T[]>();
 
-    for (const item of items) {
-        const classSchema = ReflectionClass.from(getClassTypeFromInstance(item));
+    for (const [classSchema, item] of items) {
         let items = map.get(classSchema);
         if (!items) {
             items = [];

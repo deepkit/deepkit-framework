@@ -572,6 +572,8 @@ export class ReflectionProperty {
 
     symbol: symbol;
 
+    protected cachedResolvedReflectionClass?: ReflectionClass<any>;
+
     constructor(
         public property: TypeProperty | TypePropertySignature,
         public reflectionClass: ReflectionClass<any>,
@@ -684,7 +686,7 @@ export class ReflectionProperty {
         if (this.type.kind !== ReflectionKind.class && this.type.kind !== ReflectionKind.objectLiteral) {
             throw new Error(`Could not resolve reflection class since ${this.name} is not a class|object but of type ${stringifyType(this.type)}`);
         }
-        return resolveClassType(this.getType());
+        return this.cachedResolvedReflectionClass ||= resolveClassType(this.getType());
     }
 
     /**
