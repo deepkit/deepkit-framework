@@ -1,7 +1,7 @@
 import { Component, Input, OnChanges, OnInit, signal } from '@angular/core';
 import { highlight, languages } from 'prismjs';
 import { ControllerClient } from '@app/app/client';
-import { waitForInit } from '@app/app/utils.js';
+import { waitForInit } from '@app/app/utils';
 import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-jsx';
 import 'prismjs/components/prism-tsx';

@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ControllerClient } from '@app/app/client';
 import { projectMap, UiCodeExample } from '@app/common/models';
 import { LoadingComponent } from '@app/app/components/loading';
-import { waitForInit } from '@app/app/utils.js';
+import { waitForInit } from '@app/app/utils';
 
 
 @Component({

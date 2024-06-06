@@ -10,7 +10,7 @@ import { ErrorComponent } from '@app/app/components/error.component';
 import { AppTitle } from '@app/app/components/title';
 import { LoadingComponent } from '@app/app/components/loading';
 import { PageResponse } from '@app/app/page-response';
-import { waitForInit } from '@app/app/utils.js';
+import { waitForInit } from '@app/app/utils';
 
 @Component({
     standalone: true,

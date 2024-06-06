@@ -19,6 +19,9 @@
     "build": "concurrently npm:app:build npm:ssr:build npm:server:build",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
+  "installConfig": {
+    "hoistingLimits": "workspaces"
+  },
   "private": true,
   "dependencies": {
     "@angular/ssr": "^18.0.1",

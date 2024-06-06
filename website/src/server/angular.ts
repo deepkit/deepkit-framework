@@ -33,7 +33,7 @@ export class AngularListener {
         const dir = findParentPath('dist/app/', __dirname);
         if (!dir) throw new Error('Could not find dist/app/server folder');
 
-        const serverModule = (await import(join(dir, 'server/main.server.mjs'))) as {
+        const serverModule = (await import(join(dir, 'server/main.js'))) as {
             CommonEngine: typeof CommonEngine,
             bootstrap: (baseUrl: string) => any,
         };

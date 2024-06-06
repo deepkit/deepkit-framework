@@ -4,7 +4,7 @@ import { DatePipe, KeyValuePipe } from '@angular/common';
 import { ControllerClient } from '@app/app/client';
 import { CommunityQuestionListItem, projectMap } from '@app/common/models';
 import { ContentRenderComponent } from '@app/app/components/content-render.component';
-import { waitForInit } from '@app/app/utils.js';
+import { waitForInit } from '@app/app/utils';
 
 @Component({
     standalone: true,

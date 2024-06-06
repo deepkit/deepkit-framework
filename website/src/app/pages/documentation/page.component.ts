@@ -8,7 +8,7 @@ import { NgForOf, NgIf, ViewportScroller } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ControllerClient } from '@app/app/client';
 import { PageResponse } from '@app/app/page-response';
-import { waitForInit } from '@app/app/utils.js';
+import { waitForInit } from '@app/app/utils';
 
 @Component({
     standalone: true,

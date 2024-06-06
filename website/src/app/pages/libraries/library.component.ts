@@ -6,7 +6,7 @@ import { AppDescription, AppTitle } from '@app/app/components/title';
 import { ContentRenderComponent } from '@app/app/components/content-render.component';
 import { LoadingComponent } from '@app/app/components/loading';
 import { PageResponse } from '@app/app/page-response';
-import { waitForInit } from '@app/app/utils.js';
+import { waitForInit } from '@app/app/utils';
 
 @Component({
     standalone: true,

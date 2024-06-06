@@ -7,7 +7,7 @@ import { projectMap, UiCodeExample } from '@app/common/models';
 import { LoadingComponent } from '@app/app/components/loading';
 import { ContentRenderComponent } from '@app/app/components/content-render.component';
 import { PageResponse } from '@app/app/page-response';
-import { waitForInit } from '@app/app/utils.js';
+import { waitForInit } from '@app/app/utils';
 
 
 @Component({
