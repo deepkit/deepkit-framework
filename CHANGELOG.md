@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.153](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.152...v1.0.1-alpha.153) (2024-06-06)
+
+### Bug Fixes
+
+- **app:** don't force package.json to exist for finding env files ([f478e96](https://github.com/deepkit/deepkit-framework/commit/f478e966103fbfde1289fdfbebe2b235bf19875f))
+- **bson:** make sure NaN is deserialized as 0 ([7b19397](https://github.com/deepkit/deepkit-framework/commit/7b193977a35fceac4402829d0709d909e3ef6f8e))
+- **orm:** correctly resolve reference class schemas ([e193325](https://github.com/deepkit/deepkit-framework/commit/e193325b561563f0207403103cd8caf859228cc2))
+- **rpc:** add interface for fetch ([6035736](https://github.com/deepkit/deepkit-framework/commit/60357366ec1db553789909889bf3489dea17a269))
+- **rpc:** http adapter wrong authorization + remove OPTIONS method ([3ff8955](https://github.com/deepkit/deepkit-framework/commit/3ff89556961864ceffea188e33e0af0404cd44b3))
+- **rpc:** make sure Error is chained and ValidationError correctly handled ([5c49778](https://github.com/deepkit/deepkit-framework/commit/5c49778da68baaab6e7d9588acb03af7d891bf3a))
+- **website:** angular 18 fixes ([4307a5d](https://github.com/deepkit/deepkit-framework/commit/4307a5dbdadcbfed5d09b9b5907a3b76f75f0022))
+
+### Features
+
+- **broker:** new BrokerKeyValue and broker documentation ([1f53bc8](https://github.com/deepkit/deepkit-framework/commit/1f53bc8962c5186c2be16953eeae2b9187c11877))
+- **orm:** support passing type to Database.persistAs/Database.removeAs, DatabaseSession.addAs ([6679aba](https://github.com/deepkit/deepkit-framework/commit/6679aba8517b46575b92edaa3a9f59ea90f9f762)), closes [#571](https://github.com/deepkit/deepkit-framework/issues/571)
+- **rpc:** add http transport ([3b2c6cc](https://github.com/deepkit/deepkit-framework/commit/3b2c6cc6c75d70e3b6bfac7d53e3e7606696baf4))
+- **type:** automatically assign .path to SerializationError in TemplateState.convert() errors ([1e8d61d](https://github.com/deepkit/deepkit-framework/commit/1e8d61d38e7310360c834605887c96fb33d0d4ac))
+- **type:** automatically assign .path to SerializationError in TemplateState.convert() errors ([23781a1](https://github.com/deepkit/deepkit-framework/commit/23781a1949d445d769cfc3704c25bc69a27c7350))
+- **website:** improve broker docs ([1ff9600](https://github.com/deepkit/deepkit-framework/commit/1ff960054404c5bb2105471168fd21ea4f6c9f5a))
+- **website:** migrated to Angular v18 SSR + Signals ([322817f](https://github.com/deepkit/deepkit-framework/commit/322817fd60a86ea2d4806e721a860642ec02d9ad))
+- **website:** update angular to v18 ([4dcc38c](https://github.com/deepkit/deepkit-framework/commit/4dcc38cac90614282ea2610bfab8586f7e923d5f))
+
 ## [1.0.1-alpha.152](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.151...v1.0.1-alpha.152) (2024-05-16)
 
 ### Features
