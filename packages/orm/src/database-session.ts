@@ -14,11 +14,15 @@ import { DatabaseValidationError, OrmEntity } from './type.js';
 import { AbstractClassType, ClassType, CustomError, forwardTypeArguments } from '@deepkit/core';
 import {
     getPrimaryKeyExtractor,
+    getTypeJitContainer,
     isReferenceInstance,
     markAsHydrated,
     PrimaryKeyFields,
     ReceiveType,
     ReflectionClass,
+    ReflectionKind,
+    stringifyType,
+    Type,
     typeSettings,
     UnpopulatedCheck,
     validate,
@@ -40,6 +44,20 @@ import { DatabaseLogger } from './logger.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { EventDispatcher, EventDispatcherInterface, EventToken } from '@deepkit/event';
 import { DatabasePluginRegistry } from './plugin/plugin.js';
+
+function resolveReferenceToEntity(type: Type, entityRegistry: DatabaseEntityRegistry): ReflectionClass<any> {
+    if (type.kind === ReflectionKind.class) {
+        return getTypeJitContainer(type).resolveReferenceEntity ||= ReflectionClass.from(type.classType);
+    }
+
+    // object literals have no reference to the nominal type,
+    // so we look it up in the EntityRegistry
+    if (type.kind === ReflectionKind.objectLiteral) {
+        return getTypeJitContainer(type).resolveReferenceEntity ||= entityRegistry.get(type);
+    }
+
+    throw new Error(`Could not resolve reference to entity for ${stringifyType(type)}`);
+}
 
 let SESSION_IDS = 0;
 
@@ -102,7 +120,9 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
             if (reference.isBackReference()) continue;
             const v = item[reference.getNameAsString() as keyof T] as any;
             if (v == undefined) continue;
-            if (!isReferenceInstance(v)) result.push([reference.getResolvedReflectionClass(), v]);
+            if (!isReferenceInstance(v)) {
+                result.push([resolveReferenceToEntity(reference.type, this.session.entityRegistry), v]);
+            }
         }
 
         return result;

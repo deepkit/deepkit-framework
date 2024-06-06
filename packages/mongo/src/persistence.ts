@@ -26,7 +26,7 @@ import { InsertCommand } from './client/command/insert.js';
 import { UpdateCommand } from './client/command/update.js';
 import { DeleteCommand } from './client/command/delete.js';
 import { FindAndModifyCommand } from './client/command/findAndModify.js';
-import { empty } from '@deepkit/core';
+import { empty, formatError } from '@deepkit/core';
 import { FindCommand } from './client/command/find.js';
 import { MongoConnection } from './client/connection.js';
 import { getPartialSerializeFunction, ReflectionClass } from '@deepkit/type';
@@ -139,7 +139,7 @@ export class MongoPersistence extends DatabasePersistence {
             error = new DatabaseInsertError(
                 classSchema,
                 items as OrmEntity[],
-                `Could not insert ${classSchema.getClassName()} into database`,
+                `Could not insert ${classSchema.getClassName()} into database: ${formatError(error)}`,
                 { cause: error },
             );
             throw this.handleSpecificError(error);

@@ -110,7 +110,11 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
         if (!('__type' in type)) {
             if ((type as any).__cached_type) return (type as any).__cached_type;
             // disabled reflection for this class, so we return shallow TypeClass
-            return (type as any).__cached_type = { kind: ReflectionKind.class, classType: type as any, types: [] } as any;
+            return (type as any).__cached_type = {
+                kind: ReflectionKind.class,
+                classType: type as any,
+                types: [],
+            } as any;
         }
         return resolveRuntimeType(type) as Type;
     }
@@ -262,7 +266,11 @@ export function visit(type: Type, visitor: (type: Type, path: string) => false |
             case ReflectionKind.class:
             case ReflectionKind.intersection:
             case ReflectionKind.templateLiteral:
-                for (const member of type.types) stack.push({ type: member, depth: entry.depth + 1, path: extendPath(entry.path, member) });
+                for (const member of type.types) stack.push({
+                    type: member,
+                    depth: entry.depth + 1,
+                    path: extendPath(entry.path, member),
+                });
                 break;
             case ReflectionKind.string:
             case ReflectionKind.number:
@@ -276,7 +284,11 @@ export function visit(type: Type, visitor: (type: Type, path: string) => false |
             case ReflectionKind.method:
             case ReflectionKind.methodSignature:
                 stack.push({ type: type.return, depth: entry.depth + 1, path: entry.path });
-                for (const member of type.parameters) stack.push({ type: member, depth: entry.depth + 1, path: extendPath(entry.path, member) });
+                for (const member of type.parameters) stack.push({
+                    type: member,
+                    depth: entry.depth + 1,
+                    path: extendPath(entry.path, member),
+                });
                 break;
             case ReflectionKind.propertySignature:
             case ReflectionKind.property:
@@ -425,7 +437,12 @@ export class ReflectionFunction {
 
         if (!('__type' in fn)) {
             //functions without any types have no __type attached
-            return new ReflectionFunction({ kind: ReflectionKind.function, function: fn, return: { kind: ReflectionKind.any }, parameters: [] });
+            return new ReflectionFunction({
+                kind: ReflectionKind.function,
+                function: fn,
+                return: { kind: ReflectionKind.any },
+                parameters: [],
+            });
         }
 
         const type = reflect(fn);

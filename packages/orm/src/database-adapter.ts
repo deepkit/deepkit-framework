@@ -199,8 +199,13 @@ export class DatabaseEntityRegistry {
             throw new Error(`Only TypeClass|TypeObjectLiteral expected, but got kind ${type.kind}`);
         }
 
+        // exact matches or nominal type match have priority
         for (const entity of this.entities) {
             if (entity.type === type) return entity;
+            if (entity.type.id === type.id) return entity;
+        }
+
+        for (const entity of this.entities) {
             if (type.kind === ReflectionKind.class && entity.type.kind === ReflectionKind.class) {
                 if (type.classType === entity.type.classType) {
                     //if both don't use generic, return directly
