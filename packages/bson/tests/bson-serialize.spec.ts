@@ -1537,3 +1537,45 @@ test('NaN roundtrip to 0', () => {
         expect(back.v).toBe(0);
     }
 });
+
+test('utf8', () => {
+    const messages = {
+        '— feel free to": "— それまでご自由に': '— feel free to": "— それまでご自由に',
+        'Schoolismの1年間のサブスクリプションを勝つチャンスを得るために、ツアーを必ず完全に終了してください！ 体験は約10分で完了します': 'Schoolismの1年間のサブスクリプションを勝つチャンスを得るために、ツアーを必ず完全に終了してください！ 体験は約10分で完了します',
+    }
+
+    for (const [_, msg] of Object.entries(messages)) {
+        {
+            const bson = serialize({ msg });
+            const back = deserialize(bson);
+            expect(back.msg).toBe(msg);
+        }
+
+        {
+            const bson = serialize({ msg });
+            const back = deserializeBSONWithoutOptimiser(bson);
+            expect(back.msg).toBe(msg);
+        }
+
+        {
+            const bson = getBSONSerializer<{ msg: string }>()({ msg });
+            const back = deserializeBSONWithoutOptimiser(bson);
+            expect(back.msg).toBe(msg);
+        }
+        {
+            const bson = getBSONSerializer<{ msg: string }>()({ msg });
+            const back = getBSONDeserializer<{ msg: string }>()(bson);
+            expect(back.msg).toBe(msg);
+        }
+        {
+            const bson = getBSONSerializer<[string, string]>()([_, msg]);
+            const back = getBSONDeserializer<[string, string]>()(bson);
+            expect(back).toEqual([_, msg]);
+        }
+        {
+            const bson = getBSONSerializer<{ [name: string]: string }>()({ [_]: msg });
+            const back = getBSONDeserializer<{ [name: string]: string }>()(bson);
+            expect(back).toEqual({ [_]: msg });
+        }
+    }
+});

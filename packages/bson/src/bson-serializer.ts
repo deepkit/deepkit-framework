@@ -806,7 +806,7 @@ function handleObjectLiteral(
             if (target === 'serialization') {
                 nameWriter = `
                     state.writer.prepareWriteType();
-                    state.writer.writeAsciiString(${i});
+                    state.writer.writeString(${i});
                     state.writer.writeByte(0);
                 `;
             } else if (target === 'sizer') {
@@ -865,7 +865,7 @@ function propertyNameWrite(propertyName?: string | RuntimeCode) {
     if (propertyName) {
         if (propertyName instanceof RuntimeCode) {
             return `
-               state.writer.writeAsciiString(${propertyName.code});
+               state.writer.writeString(${propertyName.code});
                state.writer.writeByte(0);
             `;
         } else {
