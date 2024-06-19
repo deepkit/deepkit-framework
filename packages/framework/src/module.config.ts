@@ -7,7 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { HttpParserOptions } from '@deepkit/http';
+import { HttpConfig, HttpParserOptions } from '@deepkit/http';
 
 const isWindows = 'undefined' !== typeof process ? process.platform === 'win32' : false;
 
@@ -40,8 +40,6 @@ export class FrameworkConfig {
      * @description If for ssl: true the certificate and key should be automatically generated.
      */
     selfSigned?: boolean;
-
-    keepAliveTimeout?: number;
 
     path: string = '/';
 
@@ -157,4 +155,10 @@ export class FrameworkConfig {
     migrationDir: string = 'migrations';
 
     broker: BrokerConfig = new BrokerConfig;
+
+    /**
+     * Will be forwarded to HttpModule.
+     * @see HttpConfig
+     */
+    http: HttpConfig = new HttpConfig;
 }

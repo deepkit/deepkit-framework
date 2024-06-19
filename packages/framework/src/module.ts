@@ -191,7 +191,7 @@ export class FrameworkModule extends createModule({
             this.addListener(HttpLogger);
         }
 
-        this.getImportedModuleByClass(HttpModule).configure({ parser: this.config.httpParse });
+        this.getImportedModuleByClass(HttpModule).configure({ ...this.config.http, parser: this.config.httpParse });
 
         if (this.config.publicDir) {
             const localPublicDir = join(process.cwd(), this.config.publicDir);
@@ -230,6 +230,7 @@ export class FrameworkModule extends createModule({
 
         if (this.config.httpRpcBasePath) {
             const rpcBaseUrl = this.config.httpRpcBasePath;
+
             @http.controller(rpcBaseUrl)
             class HttpRpcController {
                 constructor(protected rpcKernel: RpcKernel) {
@@ -262,6 +263,7 @@ export class FrameworkModule extends createModule({
                     return response;
                 }
             }
+
             this.addController(HttpRpcController);
         }
 

@@ -21,7 +21,7 @@ import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions
 import ws from 'ws';
 import selfsigned from 'selfsigned';
 
-import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
+import { HttpConfig, HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
 import { InjectorContext } from '@deepkit/injector';
 import { RpcControllers, RpcInjectorContext } from './rpc.js';
 import { SecureContextOptions, TlsOptions } from 'tls';
@@ -58,10 +58,7 @@ export interface WebServerOptions {
      */
     httpsPort?: number;
 
-    /**
-     * HTTP Keep alive timeout.
-     */
-    keepAliveTimeout?: number;
+    http: HttpConfig;
 
     /**
      * When external server should be used. If this is set, all other options are ignored.
@@ -242,6 +239,16 @@ export class WebWorker {
         return this.httpKernel.handleRequest(request, response);
     }
 
+    applyServerSettings(server: Server) {
+        const config = this.options.http;
+        if ('undefined' !== typeof config.timeout) server.timeout = config.timeout;
+        if ('undefined' !== typeof config.requestTimeout) server.requestTimeout = config.requestTimeout;
+        if ('undefined' !== typeof config.headersTimeout) server.headersTimeout = config.headersTimeout;
+        if ('undefined' !== typeof config.maxHeadersCount) server.maxHeadersCount = config.maxHeadersCount;
+        if ('undefined' !== typeof config.keepAliveTimeout) server.keepAliveTimeout = config.keepAliveTimeout;
+        if ('undefined' !== typeof config.maxRequestsPerSocket) server.maxRequestsPerSocket = config.maxRequestsPerSocket;
+    }
+
     start() {
         if (this.options.server) {
             this.server = this.options.server as Server;
@@ -277,8 +284,8 @@ export class WebWorker {
                     Object.assign({ IncomingMessage: HttpRequest, ServerResponse: HttpResponse as any, }, options),
                     this.handleRequest as any
                 );
+                this.servers.requestTimeout
                 this.servers.listen(this.options.httpsPort || this.options.port, this.options.host);
-                if (this.options.keepAliveTimeout) this.servers.keepAliveTimeout = this.options.keepAliveTimeout;
             }
 
             const startHttpServer = !this.servers || (this.servers && this.options.httpsPort);
@@ -287,10 +294,13 @@ export class WebWorker {
                     { IncomingMessage: HttpRequest, ServerResponse: HttpResponse as any },
                     this.handleRequest as any
                 );
-                if (this.options.keepAliveTimeout) this.server.keepAliveTimeout = this.options.keepAliveTimeout;
                 this.server.listen(this.options.port, this.options.host);
             }
         }
+
+        if (this.servers) this.applyServerSettings(this.servers);
+        if (this.server) this.applyServerSettings(this.server);
+
         this.startRpc();
     }
 
@@ -335,10 +345,10 @@ export class WebWorker {
                     await sleep(0.1);
                 }
             }
-            if (this.rpcListener) await this.rpcListener.close();
-            if (this.server) this.server.close();
-            if (this.servers) this.servers.close();
         }
+        if (this.rpcListener) await this.rpcListener.close();
+        if (this.server) this.server.close();
+        if (this.servers) this.servers.close();
     }
 }
 
