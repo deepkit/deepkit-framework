@@ -7,31 +7,31 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+/** @reflection never */
 import { DatabaseSession, DatabaseTransaction } from './database-session.js';
-import { DatabaseQueryModel, GenericQueryResolver, Query } from './query.js';
-import {
-    Changes,
-    getSerializeFunction,
-    ReceiveType,
-    ReflectionClass,
-    resolvePath,
-    serialize,
-    Serializer,
-} from '@deepkit/type';
-import { AbstractClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
+import { Changes, getSerializeFunction, ReflectionClass, Serializer } from '@deepkit/type';
+import { deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
 import {
     DatabaseAdapter,
-    DatabaseAdapterQueryFactory,
     DatabaseEntityRegistry,
     DatabasePersistence,
     DatabasePersistenceChangeSet,
     MigrateOptions,
 } from './database-adapter.js';
 import { DeleteResult, OrmEntity, PatchResult } from './type.js';
-import { findQueryList } from './utils.js';
-import { convertQueryFilter } from './query-filter.js';
 import { Formatter } from './formatter.js';
+import {
+    and,
+    eq,
+    isOp,
+    isProperty,
+    OpExpression,
+    opTag,
+    SelectorProperty,
+    SelectorResolver,
+    SelectorState,
+    where,
+} from './select.js';
 
 type SimpleStore<T> = { items: Map<any, T>, autoIncrement: number };
 
@@ -40,30 +40,6 @@ class MemorySerializer extends Serializer {
 }
 
 const memorySerializer = new MemorySerializer();
-
-// memorySerializer.fromClass.register('undefined', (property: PropertySchema, state: CompilerState) => {
-//     //mongo does not support 'undefined' as column type, so we convert automatically to null
-//     state.addSetter(`null`);
-// });
-//
-// memorySerializer.toClass.register('undefined', (property: PropertySchema, state: CompilerState) => {
-//     //mongo does not support 'undefined' as column type, so we store always null. depending on the property definition
-//     //we convert back to undefined or keep it null
-//     if (property.isOptional) return state.addSetter(`undefined`);
-//     if (property.isNullable) return state.addSetter(`null`);
-// });
-//
-// memorySerializer.fromClass.register('null', (property: PropertySchema, state: CompilerState) => {
-//     //mongo does not support 'undefined' as column type, so we convert automatically to null
-//     state.addSetter(`null`);
-// });
-//
-// memorySerializer.toClass.register('null', (property: PropertySchema, state: CompilerState) => {
-//     //mongo does not support 'undefined' as column type, so we store always null. depending on the property definition
-//     //we convert back to undefined or keep it null
-//     if (property.isOptional) return state.addSetter(`undefined`);
-//     if (property.isNullable) return state.addSetter(`null`);
-// });
 
 function sortAsc(a: any, b: any) {
     if (a > b) return +1;
@@ -77,57 +53,74 @@ function sortDesc(a: any, b: any) {
     return 0;
 }
 
-function sort(items: any[], field: string, sortFn: typeof sortAsc | typeof sortAsc): void {
+type Accessor = (record: any) => any;
+export type MemoryOpRegistry = { [tag: symbol]: (expression: OpExpression) => Accessor };
+
+export const memoryOps: MemoryOpRegistry = {
+    [eq.id](expression: OpExpression) {
+        const [a, b] = expression.args.map(e => buildAccessor(e));
+        return (record: any) => a(record) === b(record);
+    },
+    [and.id](expression: OpExpression) {
+        const lines = expression.args.map(e => buildAccessor(e));
+        return (record: any) => lines.every(v => v(record));
+    },
+    [where.id](expression: OpExpression) {
+        const lines = expression.args.map(e => buildAccessor(e));
+        return (record: any) => lines.every(v => v(record));
+    },
+};
+
+function buildAccessor(op: OpExpression | SelectorProperty | unknown): Accessor {
+    if (isOp(op)) {
+        const fn = memoryOps[op[opTag].id];
+        if (!fn) throw new Error(`No memory op registered for ${op[opTag].id.toString()}`);
+        return fn(op);
+    }
+
+    if (isProperty(op)) {
+        return (record: any) => {
+            //todo: handle if selector of joined table
+            // and deep json path
+            return record[op.name];
+        };
+    }
+
+    return () => op;
+}
+
+function sort(items: any[], accessor: Accessor, sortFn: typeof sortAsc | typeof sortAsc): void {
     items.sort((a, b) => {
-        return sortFn(a[field], b[field]);
+        return sortFn(accessor(a), accessor(b));
     });
 }
 
-export class MemoryQuery<T extends OrmEntity> extends Query<T> {
-    protected isMemory = true;
-
-    isMemoryDb() {
-        return this.isMemory;
-    }
+function filterWhere<T>(items: T[], where: OpExpression): T[] {
+    const accessor = buildAccessor(where);
+    console.log('accessor', accessor.toString());
+    return items.filter(v => !!accessor(v));
 }
 
-const find = <T extends OrmEntity>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<any>, model: DatabaseQueryModel<T>): T[] => {
+const find = <T extends OrmEntity>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<any>, model: SelectorState<T>): T[] => {
     const rawItems = [...adapter.getStore(classSchema).items.values()];
-    const serializer = getSerializeFunction(classSchema.type, memorySerializer.deserializeRegistry);
-    const items = rawItems.map(v => serializer(v));
+    const deserializer = getSerializeFunction(classSchema.type, memorySerializer.deserializeRegistry);
+    const items = rawItems.map(v => deserializer(v));
 
-    if (model.filter) {
-        model.filter = convertQueryFilter(classSchema, model.filter, (convertClassType: ReflectionClass<any>, path: string, value: any) => {
-            //this is important to convert relations to its foreignKey value
-            return serialize(value, undefined, memorySerializer, undefined, resolvePath(path, classSchema.type));
-        }, {}, {
-            $parameter: (name, value) => {
-                if (undefined === model.parameters[value]) {
-                    throw new Error(`Parameter ${value} not defined in ${classSchema.getClassName()} query.`);
-                }
-                return model.parameters[value];
-            }
-        });
-    }
+    console.log(items);
+    let filtered = model.where ? filterWhere(items, model.where) : items;
 
-    let filtered = model.filter ? findQueryList<T>(items, model.filter) : items;
-
-    if (model.hasJoins()) {
-        console.log('MemoryDatabaseAdapter does not support joins. Please use another lightweight adapter like SQLite.');
-    }
-
-    if (model.sort) {
-        for (const [name, direction] of Object.entries(model.sort)) {
-            sort(filtered, name, direction === 'asc' ? sortAsc : sortDesc);
+    if (model.orderBy) {
+        for (const order of model.orderBy) {
+            sort(filtered, buildAccessor(order.a), order.direction === 'asc' ? sortAsc : sortDesc);
         }
     }
 
-    if (model.skip && model.limit) {
-        filtered = filtered.slice(model.skip, model.skip + model.limit);
+    if (model.offset && model.limit) {
+        filtered = filtered.slice(model.offset, model.offset + model.limit);
     } else if (model.limit) {
         filtered = filtered.slice(0, model.limit);
-    } else if (model.skip) {
-        filtered = filtered.slice(model.skip);
+    } else if (model.offset) {
+        filtered = filtered.slice(model.offset);
     }
     return filtered;
 };
@@ -141,72 +134,56 @@ const remove = <T>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<
     }
 };
 
-class Resolver<T extends object, ADAPTER extends DatabaseAdapter> extends GenericQueryResolver<T, ADAPTER> {
-    constructor(
-        protected classSchema: ReflectionClass<T>,
-        protected session: DatabaseSession<ADAPTER>,
-    ) {
-        super(classSchema, session);
-    }
-
+class Resolver<T extends object> extends SelectorResolver<T> {
     get adapter() {
         return this.session.adapter as any as MemoryDatabaseAdapter;
     }
 
-    protected createFormatter(withIdentityMap: boolean = false) {
+    protected createFormatter(state: SelectorState<T>, withIdentityMap: boolean = false) {
         return new Formatter(
-            this.classSchema,
+            state.schema,
             memorySerializer,
             this.session.getHydrator(),
-            withIdentityMap ? this.session.identityMap : undefined
+            withIdentityMap ? this.session.identityMap : undefined,
         );
     }
 
-    async count(model: DatabaseQueryModel<T>): Promise<number> {
-        if (this.session.logger.logger) {
-            this.session.logger.logger.log('count', model.filter);
-        }
-        const items = find(this.adapter, this.classSchema, model);
+    async count(state: SelectorState<T>): Promise<number> {
+        const items = find(this.adapter, state.schema, state);
         return items.length;
     }
 
-    async delete(model: DatabaseQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
-        if (this.session.logger.logger) {
-            this.session.logger.logger.log('delete', model.filter);
-        }
-        const items = find(this.adapter, this.classSchema, model);
+    async delete(state: SelectorState<T>, deleteResult: DeleteResult<T>): Promise<void> {
+        const items = find(this.adapter, state.schema, state);
         for (const item of items) {
             deleteResult.primaryKeys.push(item);
         }
-        remove(this.adapter, this.classSchema, items);
+        remove(this.adapter, state.schema, items);
     }
 
-    async find(model: DatabaseQueryModel<T>): Promise<T[]> {
-        const items = find(this.adapter, this.classSchema, model);
-        if (this.session.logger.logger) {
-            this.session.logger.logger.log('find', model.filter);
-        }
-        const formatter = this.createFormatter(model.withIdentityMap);
-        return items.map(v => formatter.hydrate(model, v));
+    async find(state: SelectorState<T>): Promise<T[]> {
+        const items = find(this.adapter, state.schema, state);
+        const formatter = this.createFormatter(state);
+        return items.map(v => formatter.hydrate(state, v));
     }
 
-    async findOneOrUndefined(model: DatabaseQueryModel<T>): Promise<T | undefined> {
-        const items = find(this.adapter, this.classSchema, model);
+    async findOneOrUndefined(state: SelectorState<T>): Promise<T | undefined> {
+        const items = find(this.adapter, state.schema, state);
 
-        if (items[0]) return this.createFormatter(model.withIdentityMap).hydrate(model, items[0]);
+        if (items[0]) return this.createFormatter(state).hydrate(state, items[0]);
         return undefined;
     }
 
-    async has(model: DatabaseQueryModel<T>): Promise<boolean> {
-        const items = find(this.adapter, this.classSchema, model);
+    async has(state: SelectorState<T>): Promise<boolean> {
+        const items = find(this.adapter, state.schema, state);
         return items.length > 0;
     }
 
-    async patch(model: DatabaseQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
-        const items = find(this.adapter, this.classSchema, model);
-        const store = this.adapter.getStore(this.classSchema);
-        const primaryKey = this.classSchema.getPrimary().name as keyof T;
-        const serializer = getSerializeFunction(this.classSchema.type, memorySerializer.serializeRegistry);
+    async patch(state: SelectorState<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
+        const items = find(this.adapter, state.schema, state);
+        const store = this.adapter.getStore(state.schema);
+        const primaryKey = state.schema.getPrimary().name as keyof T;
+        const serializer = getSerializeFunction(state.schema.type, memorySerializer.serializeRegistry);
 
         patchResult.modified = items.length;
         for (const item of items) {
@@ -229,28 +206,18 @@ class Resolver<T extends object, ADAPTER extends DatabaseAdapter> extends Generi
                 }
             }
 
-            if (model.returning) {
-                for (const f of model.returning) {
-                    if (!patchResult.returning[f]) patchResult.returning[f] = [];
-                    const v = patchResult.returning[f];
-                    if (v) v.push(item[f]);
-                }
-            }
+            // todo add returning support
+            // if (model.returning) {
+            //     for (const f of model.returning) {
+            //         if (!patchResult.returning[f]) patchResult.returning[f] = [];
+            //         const v = patchResult.returning[f];
+            //         if (v) v.push(item[f]);
+            //     }
+            // }
 
             patchResult.primaryKeys.push(item);
             store.items.set(item[primaryKey] as any, serializer(item));
         }
-    }
-}
-
-
-export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
-    constructor(protected adapter: MemoryDatabaseAdapter, protected databaseSession: DatabaseSession<any>) {
-        super();
-    }
-
-    createQuery<T extends OrmEntity>(classType?: ReceiveType<T> | AbstractClassType<T> | ReflectionClass<T>): MemoryQuery<T> {
-        return new MemoryQuery(ReflectionClass.from(classType), this.databaseSession, new Resolver(ReflectionClass.from(classType), this.databaseSession));
     }
 }
 
@@ -310,9 +277,13 @@ export class MemoryPersistence extends DatabasePersistence {
 }
 
 export class MemoryDatabaseAdapter extends DatabaseAdapter {
-    protected store = new Map<ReflectionClass<any>, SimpleStore<any>>();
+    protected store = new Map<number, SimpleStore<any>>();
 
     async migrate(options: MigrateOptions, entityRegistry: DatabaseEntityRegistry) {
+    }
+
+    createSelectorResolver<T extends OrmEntity>(session: DatabaseSession<this>): SelectorResolver<T> {
+        return new Resolver<T>(session);
     }
 
     isNativeForeignKeyConstraintSupported(): boolean {
@@ -324,10 +295,11 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
     }
 
     getStore<T>(classSchema: ReflectionClass<T>): SimpleStore<T> {
-        let store = this.store.get(classSchema);
+        const id = classSchema.type.id || 0;
+        let store = this.store.get(id);
         if (!store) {
             store = { items: new Map, autoIncrement: 0 };
-            this.store.set(classSchema, store);
+            this.store.set(id, store);
         }
         return store;
     }
@@ -345,9 +317,5 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
 
     getSchemaName(): string {
         return '';
-    }
-
-    queryFactory(databaseSession: DatabaseSession<this>): MemoryQueryFactory {
-        return new MemoryQueryFactory(this, databaseSession);
     }
 }

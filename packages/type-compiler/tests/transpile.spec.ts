@@ -550,6 +550,7 @@ export const typeValidation = <T>(type?: ReceiveType<T>): ValidatorFn => (contro
     });
     console.log(res.app);
     expect(res.app).toContain(`exports.typeValidation.Ω = undefined; return __assignType((control) =>`);
+    expect(res.app).toContain(`__type0 || (__type0 = [`);
 });
 
 test('ReceiveType forward to type passing', () => {

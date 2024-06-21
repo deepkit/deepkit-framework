@@ -1,20 +1,20 @@
-import { DatabaseSession, DeleteResult, PatchResult, Query2Resolver, SelectorState } from '@deepkit/orm';
+import { DatabaseSession, DeleteResult, PatchResult, SelectorResolver, SelectorState } from '@deepkit/orm';
 import { castFunction, Changes, ReflectionClass } from '@deepkit/type';
 import { SQLConnectionPool, SQLDatabaseAdapter } from './sql-adapter.js';
 import { isArray } from '@deepkit/core';
 import { SqlFormatter } from './sql-formatter.js';
 import { SqlBuilder } from './sql-builder.js';
 
-export class SQLQuery2Resolver<T extends object> extends Query2Resolver<T> {
+export class SQLQuery2Resolver<T extends object> extends SelectorResolver<T> {
     classSchema: ReflectionClass<T>;
 
     constructor(
-        protected model: SelectorState,
+        protected state: SelectorState,
         protected session: DatabaseSession<SQLDatabaseAdapter>,
         protected connectionPool: SQLConnectionPool,
     ) {
-        super(model, session);
-        this.classSchema = this.model.schema;
+        super(state, session);
+        this.classSchema = this.state.schema;
     }
 
     count(model: SelectorState): Promise<number> {

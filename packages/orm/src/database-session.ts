@@ -11,13 +11,12 @@
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter.js';
 import { DatabaseEntityRegistry } from './database-adapter.js';
 import { DatabaseValidationError, OrmEntity } from './type.js';
-import { AbstractClassType, ClassType, CustomError } from '@deepkit/core';
+import { ClassType, CustomError, isFunction } from '@deepkit/core';
 import {
     getPrimaryKeyExtractor,
     isReferenceInstance,
     markAsHydrated,
     PrimaryKeyFields,
-    ReceiveType,
     ReflectionClass,
     typeSettings,
     UnpopulatedCheck,
@@ -40,6 +39,7 @@ import { DatabaseLogger } from './logger.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { EventDispatcher, EventDispatcherInterface, EventToken } from '@deepkit/event';
 import { DatabasePluginRegistry } from './plugin/plugin.js';
+import { query, Query2, SelectorInferredState, SelectorRefs } from './select.js';
 
 let SESSION_IDS = 0;
 
@@ -307,9 +307,9 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
     /**
      * Creates a new DatabaseQuery instance which can be used to query and manipulate data.
      */
-    public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
-
-    public readonly raw!: ReturnType<this['adapter']['rawFactory']>['create'];
+        // public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
+        //
+        // public readonly raw!: ReturnType<this['adapter']['rawFactory']>['create'];
 
     protected rounds: DatabaseSessionRound<ADAPTER>[] = [];
 
@@ -336,16 +336,16 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
         public logger: DatabaseLogger = new DatabaseLogger,
         public stopwatch?: Stopwatch,
     ) {
-        const queryFactory = this.adapter.queryFactory(this);
-
-        //we cannot use arrow functions, since they can't have ReceiveType<T>
-        function query<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
-            const result = queryFactory.createQuery(type);
-            result.model.adapterName = adapter.getName();
-            return result;
-        }
-
-        this.query = query as any;
+        // const queryFactory = this.adapter.queryFactory(this);
+        //
+        // //we cannot use arrow functions, since they can't have ReceiveType<T>
+        // function query<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
+        //     const result = queryFactory.createQuery(type);
+        //     result.model.adapterName = adapter.getName();
+        //     return result;
+        // }
+        //
+        // this.query = query as any;
         // this.query = {} as any;
 
         // const factory = this.adapter.rawFactory(this);
@@ -353,6 +353,12 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
         //     forwardTypeArguments(this.raw, factory.create);
         //     return factory.create(...args);
         // };
+    }
+
+    query2<const R extends any, T extends object, Q extends SelectorInferredState<T, R> | ((main: SelectorRefs<T>, ...args: SelectorRefs<unknown>[]) => R | undefined)>(cbOrQ?: Q): Query2<T, R> {
+        if (!cbOrQ) throw new Error('Query2 needs a callback or query object');
+        const state: SelectorInferredState<any, any> = isFunction(cbOrQ) ? query(cbOrQ) : cbOrQ;
+        return new Query2(state.state, this, this.adapter.createSelectorResolver(this));
     }
 
     /**
@@ -518,21 +524,21 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
         const classSchema = this.entityRegistry.getFromInstance(item);
         const pk = getPrimaryKeyExtractor(classSchema)(item);
 
-        const itemDB = await this.query(classSchema).filter(pk).findOne();
-
-        for (const property of classSchema.getProperties()) {
-            if (property.isPrimaryKey()) continue;
-            if (property.isReference() || property.isBackReference()) continue;
-
-            //we set only not overwritten values
-            if (!item.hasOwnProperty(property.symbol)) {
-                Object.defineProperty(item, property.symbol, {
-                    enumerable: false,
-                    configurable: true,
-                    value: itemDB[property.getNameAsString() as keyof T],
-                });
-            }
-        }
+        // const itemDB = await this.query(classSchema).filter(pk).findOne();
+        //
+        // for (const property of classSchema.getProperties()) {
+        //     if (property.isPrimaryKey()) continue;
+        //     if (property.isReference() || property.isBackReference()) continue;
+        //
+        //     //we set only not overwritten values
+        //     if (!item.hasOwnProperty(property.symbol)) {
+        //         Object.defineProperty(item, property.symbol, {
+        //             enumerable: false,
+        //             configurable: true,
+        //             value: itemDB[property.getNameAsString() as keyof T],
+        //         });
+        //     }
+        // }
 
         markAsHydrated(item);
     }

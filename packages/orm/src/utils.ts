@@ -10,8 +10,6 @@
 
 import { Changes, getSerializeFunction, PrimaryKeyFields, ReflectionClass, TemplateRegistry } from '@deepkit/type';
 import { OrmEntity } from './type.js';
-import sift from 'sift';
-import { FilterQuery } from './query.js';
 import { getInstanceStateFromItem } from './identity-map.js';
 import { getClassTypeFromInstance } from '@deepkit/core';
 
@@ -32,17 +30,6 @@ export function getClassSchemaInstancePairs<T extends OrmEntity>(items: Iterable
     }
 
     return map;
-}
-
-
-export function findQuerySatisfied<T extends { [index: string]: any }>(target: T, query: FilterQuery<T>): boolean {
-    //get rid of "Excessive stack depth comparing types 'any' and 'SiftQuery<T[]>'."
-    return (sift as any)(query as any, [target] as any[]).length > 0;
-}
-
-export function findQueryList<T extends { [index: string]: any }>(items: T[], query: FilterQuery<T>): T[] {
-    //get rid of "Excessive stack depth comparing types 'any' and 'SiftQuery<T[]>'."
-    return (sift as any)(query as any, items as any[]);
 }
 
 export type Placeholder<T> = () => T;

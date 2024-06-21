@@ -84,10 +84,11 @@ import { SerializedTypes, serializeType } from '../type-serialization.js';
  */
 export type ReceiveType<T> = Packed | Type | ClassType<T>;
 
-export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractClassType | ReflectionClass<any>): Type {
+export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractClassType | ReflectionClass<any> | Function): Type {
     if (!type) throw new NoTypeReceived();
     if (isType(type)) return type as Type;
     let typeFn: Function | undefined = undefined;
+    if (isFunction(type) && (type as any).__type) type = (type as any).__type as [];
 
     if (isArray(type)) {
         if (type.__type) return type.__type;
@@ -114,6 +115,9 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
             return (type as any).__cached_type = { kind: ReflectionKind.class, classType: type as any, types: [] } as any;
         }
         return resolveRuntimeType(type) as Type;
+    }
+    if (isFunction(type)) {
+        return (type as any).__cached_type = { kind: ReflectionKind.function, function: type as any, return: { kind: ReflectionKind.any }, parameters: [] } as any;
     }
     return resolvePacked(type, undefined, { reuseCached: true });
 }

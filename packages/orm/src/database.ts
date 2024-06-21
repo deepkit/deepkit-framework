@@ -8,13 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    AbstractClassType,
-    ClassType,
-    forwardTypeArguments,
-    getClassName,
-    getClassTypeFromInstance,
-} from '@deepkit/core';
+import { AbstractClassType, ClassType, getClassName, getClassTypeFromInstance } from '@deepkit/core';
 import {
     entityAnnotation,
     EntityOptions,
@@ -38,7 +32,7 @@ import { Stopwatch } from '@deepkit/stopwatch';
 import { getClassState, getInstanceState, getNormalizedPrimaryKey } from './identity-map.js';
 import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
 import { DatabasePlugin, DatabasePluginRegistry } from './plugin/plugin.js';
-import { Query2 } from './select.js';
+import { Query2, SelectorInferredState, SelectorRefs } from './select.js';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -135,9 +129,9 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * await session.commit(); //only necessary when you changed items received by this session
      * ```
      */
-    public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
-
-    public readonly raw: ReturnType<this['adapter']['rawFactory']>['create'];
+    // public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
+    //
+    // public readonly raw: ReturnType<this['adapter']['rawFactory']>['create'];
 
     protected virtualForeignKeyConstraint: VirtualForeignKeyConstraint = new VirtualForeignKeyConstraint(this);
 
@@ -154,24 +148,24 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         this.entityRegistry.add(...schemas);
         if (Database.registry) Database.registry.push(this);
 
-        const self = this;
+        // const self = this;
 
-        //we cannot use arrow functions, since they can't have ReceiveType<T>
-        function query<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
-            const session = self.createSession();
-            session.withIdentityMap = false;
-            return session.query(type);
-        }
+        // //we cannot use arrow functions, since they can't have ReceiveType<T>
+        // function query<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
+        //     const session = self.createSession();
+        //     session.withIdentityMap = false;
+        //     return session.query(type);
+        // }
 
-        this.query = query;
-
-        this.raw = (...args: any[]) => {
-            const session = this.createSession();
-            session.withIdentityMap = false;
-            if (!session.raw) throw new Error('Adapter has no raw mode');
-            forwardTypeArguments(this.raw, session.raw);
-            return session.raw(...args);
-        };
+        // this.query = query;
+        //
+        // this.raw = (...args: any[]) => {
+        //     const session = this.createSession();
+        //     session.withIdentityMap = false;
+        //     if (!session.raw) throw new Error('Adapter has no raw mode');
+        //     forwardTypeArguments(this.raw, session.raw);
+        //     return session.raw(...args);
+        // };
 
         this.registerEntity(...schemas);
 
@@ -180,10 +174,14 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         }
     }
 
-    from<T extends OrmEntity>(type?: ReceiveType<T>) {
+    query<T extends any>(...args: any[]): any {
+        throw new Error('Deprecated');
+    }
+
+    query2<const R extends any, T extends object, Q extends SelectorInferredState<T, R> | ((main: SelectorRefs<T>, ...args: SelectorRefs<unknown>[]) => R | undefined)>(cbOrQ?: Q): Query2<T, R> {
         const session = this.createSession();
-        if (!this.adapter.createQuery2Resolver) throw new Error('Adapter has no createQuery2Resolver method');
-        return new Query2(ReflectionClass.fromType(resolveReceiveType(type)), session, this.adapter.createQuery2Resolver(session));
+        session.withIdentityMap = false;
+        return session.query2(cbOrQ as any);
     }
 
     registerPlugin(...plugins: DatabasePlugin[]): void {

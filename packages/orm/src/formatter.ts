@@ -20,18 +20,17 @@ import {
     markAsHydrated,
     ReflectionClass,
     ReflectionProperty,
-    resolveForeignReflectionClass,
     SerializeFunction,
     Serializer,
     typeSettings,
     UnpopulatedCheck,
     unpopulatedSymbol,
 } from '@deepkit/type';
-import { DatabaseQueryModel } from './query.js';
 import { capitalize, ClassType } from '@deepkit/core';
 import { ClassState, getClassState, getInstanceState, IdentityMap, PKHash } from './identity-map.js';
 import { getReference } from './reference.js';
 import { OrmEntity } from './type.js';
+import { selectorIsPartial, SelectorState } from './select.js';
 
 export type HydratorFn = (item: any) => Promise<void>;
 
@@ -77,8 +76,8 @@ export class Formatter {
         return this.instancePools.get(classType)!;
     }
 
-    public hydrate<T extends OrmEntity>(model: DatabaseQueryModel<T, any, any>, dbRecord: DBRecord): any {
-        return this.hydrateModel(model, this.rootClassSchema, dbRecord);
+    public hydrate<T extends OrmEntity>(state: SelectorState<T>, dbRecord: DBRecord): any {
+        return this.hydrateModel(state, this.rootClassSchema, dbRecord);
     }
 
     protected makeInvalidReference(
@@ -182,10 +181,10 @@ export class Formatter {
         return ref;
     }
 
-    protected hydrateModel(model: DatabaseQueryModel<any, any, any>, classSchema: ReflectionClass<any>, dbRecord: DBRecord) {
+    protected hydrateModel(model: SelectorState<any>, classSchema: ReflectionClass<any>, dbRecord: DBRecord) {
         let pool: Map<PKHash, any> | undefined = undefined;
         let pkHash: any = undefined;
-        const partial = model.isPartial();
+        const partial = selectorIsPartial(model);
         const classState = classSchema === this.rootClassSchema ? this.rootClassState : getClassState(classSchema);
 
         const singleTableInheritanceMap = classSchema.getAssignedSingleTableInheritanceSubClassesByIdentifier();
@@ -283,54 +282,54 @@ export class Formatter {
         return converted;
     }
 
-    protected assignJoins(model: DatabaseQueryModel<any, any, any>, classSchema: ReflectionClass<any>, dbRecord: DBRecord, item: any): { [name: string]: true } {
+    protected assignJoins(model: SelectorState<any>, classSchema: ReflectionClass<any>, dbRecord: DBRecord, item: any): { [name: string]: true } {
         const handledRelation: { [name: string]: true } = {};
 
-        for (const join of model.joins) {
-            handledRelation[join.propertySchema.name] = true;
-            const refName = join.as || join.propertySchema.name;
-
-            //When the item is NOT from the database or property was overwritten, we don't overwrite it again.
-            if (item.hasOwnProperty(join.propertySchema.symbol)) {
-                continue;
-            }
-
-            if (join.populate) {
-                const hasValue = dbRecord[refName] !== undefined && dbRecord[refName] !== null;
-                if (join.propertySchema.isBackReference() && join.propertySchema.isArray()) {
-                    if (hasValue) {
-                        item[join.propertySchema.name] = dbRecord[refName].map((item: any) => {
-                            return this.hydrateModel(join.query.model, resolveForeignReflectionClass(join.propertySchema), item);
-                        });
-                    } else if (!item[join.propertySchema.name]) {
-                        item[join.propertySchema.name] = [];
-                    }
-                } else if (hasValue) {
-                    item[join.propertySchema.name] = this.hydrateModel(
-                        join.query.model, resolveForeignReflectionClass(join.propertySchema), dbRecord[refName]
-                    );
-                } else {
-                    item[join.propertySchema.name] = undefined;
-                }
-            } else {
-                //not populated
-                if (join.propertySchema.isReference()) {
-                    const reference = this.getReference(classSchema, dbRecord, join.propertySchema, model.isPartial());
-                    if (reference) item[join.propertySchema.name] = reference;
-                } else {
-                    //unpopulated backReferences are inaccessible
-                    if (!model.isPartial()) {
-                        this.makeInvalidReference(item, classSchema, join.propertySchema);
-                    }
-                }
-            }
-        }
+        // for (const join of model.joins) {
+        //     handledRelation[join.propertySchema.name] = true;
+        //     const refName = join.as || join.propertySchema.name;
+        //
+        //     //When the item is NOT from the database or property was overwritten, we don't overwrite it again.
+        //     if (item.hasOwnProperty(join.propertySchema.symbol)) {
+        //         continue;
+        //     }
+        //
+        //     if (join.populate) {
+        //         const hasValue = dbRecord[refName] !== undefined && dbRecord[refName] !== null;
+        //         if (join.propertySchema.isBackReference() && join.propertySchema.isArray()) {
+        //             if (hasValue) {
+        //                 item[join.propertySchema.name] = dbRecord[refName].map((item: any) => {
+        //                     return this.hydrateModel(join.query.model, resolveForeignReflectionClass(join.propertySchema), item);
+        //                 });
+        //             } else if (!item[join.propertySchema.name]) {
+        //                 item[join.propertySchema.name] = [];
+        //             }
+        //         } else if (hasValue) {
+        //             item[join.propertySchema.name] = this.hydrateModel(
+        //                 join.query.model, resolveForeignReflectionClass(join.propertySchema), dbRecord[refName]
+        //             );
+        //         } else {
+        //             item[join.propertySchema.name] = undefined;
+        //         }
+        //     } else {
+        //         //not populated
+        //         if (join.propertySchema.isReference()) {
+        //             const reference = this.getReference(classSchema, dbRecord, join.propertySchema, model.isPartial());
+        //             if (reference) item[join.propertySchema.name] = reference;
+        //         } else {
+        //             //unpopulated backReferences are inaccessible
+        //             if (!model.isPartial()) {
+        //                 this.makeInvalidReference(item, classSchema, join.propertySchema);
+        //             }
+        //         }
+        //     }
+        // }
 
         return handledRelation;
     }
 
-    protected createObject(model: DatabaseQueryModel<any, any, any>, classState: ClassState, classSchema: ReflectionClass<any>, dbRecord: DBRecord) {
-        const partial = model.isPartial();
+    protected createObject(model: SelectorState<any>, classState: ClassState, classSchema: ReflectionClass<any>, dbRecord: DBRecord) {
+        const partial = selectorIsPartial(model);
 
         const converted = classSchema === this.rootClassSchema
             ? (partial ? this.partialDeserialize(dbRecord) : this.deserialize(dbRecord))
@@ -340,36 +339,36 @@ export class Formatter {
             if (model.withChangeDetection) getInstanceState(classState, converted).markAsFromDatabase();
         }
 
-        if (!partial && model.lazyLoad.size) {
-            for (const lazy of model.lazyLoad.values()) {
-                const property = classSchema.getProperty(lazy);
+        // if (!partial && model.lazyLoad.size) {
+        //     for (const lazy of model.lazyLoad.values()) {
+        //         const property = classSchema.getProperty(lazy);
+        //
+        //         //relations should be handled in getReferences()
+        //         if (property.isReference() || property.isBackReference()) continue;
+        //
+        //         this.makeInvalidReference(converted, classSchema, property, 'lazy');
+        //     }
+        //
+        //     getInstanceState(getClassState(classSchema), converted).hydrator = this.hydrator;
+        // }
 
-                //relations should be handled in getReferences()
-                if (property.isReference() || property.isBackReference()) continue;
-
-                this.makeInvalidReference(converted, classSchema, property, 'lazy');
-            }
-
-            getInstanceState(getClassState(classSchema), converted).hydrator = this.hydrator;
-        }
-
-        if (classSchema.getReferences().length > 0) {
-            const handledRelation = model.joins.length ? this.assignJoins(model, classSchema, dbRecord, converted) : undefined;
-
-            //all non-populated owning references will be just proxy references
-            for (const property of classSchema.getReferences()) {
-                if (model.select.size && !model.select.has(property.name)) continue;
-                if (handledRelation && handledRelation[property.name]) continue;
-                if (property.isReference()) {
-                    converted[property.name] = this.getReference(classSchema, dbRecord, property, partial);
-                } else {
-                    //unpopulated backReferences are inaccessible
-                    if (!partial) {
-                        this.makeInvalidReference(converted, classSchema, property);
-                    }
-                }
-            }
-        }
+        // if (classSchema.getReferences().length > 0) {
+        //     const handledRelation = model.joins.length ? this.assignJoins(model, classSchema, dbRecord, converted) : undefined;
+        //
+        //     //all non-populated owning references will be just proxy references
+        //     for (const property of classSchema.getReferences()) {
+        //         if (model.select.size && !model.select.has(property.name)) continue;
+        //         if (handledRelation && handledRelation[property.name]) continue;
+        //         if (property.isReference()) {
+        //             converted[property.name] = this.getReference(classSchema, dbRecord, property, partial);
+        //         } else {
+        //             //unpopulated backReferences are inaccessible
+        //             if (!partial) {
+        //                 this.makeInvalidReference(converted, classSchema, property);
+        //             }
+        //         }
+        //     }
+        // }
 
         return converted;
     }

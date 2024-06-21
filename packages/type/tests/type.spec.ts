@@ -6,6 +6,7 @@ import {
     Excluded,
     excludedAnnotation,
     findMember,
+    getTypeJitContainer,
     Group,
     groupAnnotation,
     indexAccess,
@@ -1584,6 +1585,50 @@ test('function extends non-empty object literal', () => {
 
     type isFunction = Function extends ObjectLiteral ? true : false;
     expect(stringifyResolvedType(typeOf<isFunction>())).toBe('false');
+});
+
+test('function caches type', () => {
+    function a(b: string): number {
+        return 0;
+    }
+
+    const type2 = resolveReceiveType(a);
+    const type3 = resolveReceiveType(a);
+    expect(type2 === type3).toBe(true);
+});
+
+test('function factory caches type', () => {
+    function factory() {
+        return function a(b: string): number {
+            return 0;
+        }
+    }
+
+    const a = factory();
+    const b = factory();
+    const type2 = resolveReceiveType(a);
+    const type3 = resolveReceiveType(b);
+
+    expect(type2 === type3).toBe(true);
+});
+
+test('function callback caches type', () => {
+    // this is import for database.query() to have actual cache
+    function query(cb: Function): Type {
+        return resolveReceiveType(cb);
+    }
+
+    function factory() {
+        return query((a: string): number => {
+            return 0;
+        });
+    }
+
+    const type2 = factory();
+    const type3 = factory();
+
+    expect(type2 === type3).toBe(true);
+    expect(getTypeJitContainer(type2) === getTypeJitContainer(type3)).toBe(true);
 });
 
 test('issue-429: invalid function detection', () => {

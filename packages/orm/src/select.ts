@@ -1,5 +1,5 @@
-/** @reflection never */
 import {
+    assertType,
     Changes,
     ChangesInterface,
     DeepPartial,
@@ -7,7 +7,6 @@ import {
     getTypeJitContainer,
     PrimaryKeyFields,
     PrimaryKeyType,
-    ReceiveType,
     ReflectionClass,
     ReflectionKind,
     resolveReceiveType,
@@ -32,31 +31,38 @@ import { DatabaseSession } from './database-session.js';
 import { FieldName } from './utils.js';
 import { FrameCategory } from '@deepkit/stopwatch';
 import { ItemNotFound } from './query.js';
-import { DatabaseAdapter } from './database-adapter.js';
 
-let graphId = 10;
-type Graph = { id: number, nodes: { [id: number]: Graph }, cache?: { [name: string]: any } };
+let treeId = 10;
+type ExpressionTree = { id: number, nodes: { [id: number]: ExpressionTree }, cache?: { [name: string]: any } };
 
-export type SelectorProperty<T> = {
+/** @reflection never */
+export type SelectorProperty<T = unknown> = {
     [propertyTag]: 'property';
     model: SelectorState;
     name: string;
     // as?: string;
-    graph: Graph,
+    tree: ExpressionTree,
     property: TypeProperty | TypePropertySignature;
     toString(): string;
 }
 
 export type SelectorRefs<T> = {
-    [P in keyof T]: SelectorProperty<T[P]>;
+    [P in keyof T]-?: SelectorProperty<T[P]>;
 } & { $$fields: SelectorProperty<any>[] };
 
 export interface SelectStateExpression {
     kind: string;
 }
 
+export function selectorIsPartial(state: SelectorState): boolean {
+    return state.select.length > 0;
+}
+
 export type SelectorState<R = unknown> = {
     params: any[];
+    /**
+     * The main origin schema (first position of query() call).
+     */
     schema: ReflectionClass<any>;
     fields: SelectorRefs<any>;
     as?: string;
@@ -65,13 +71,14 @@ export type SelectorState<R = unknown> = {
     //join
     // TODO: this is not cacheable/deterministic
     // or how should we determine whether select, where, joins, offset, limit, etc is all the same
-    // -> solution: just build a new graph tree, where.graph[joins[0].graph.id], ...
+    // -> solution: just build a new expression tree, where.tree[joins[0].tree.id], ...
     where?: OpExpression;
     joins?: SelectorState[];
 
     lazyLoaded?: SelectorProperty<unknown>[];
 
     groupBy?: (SelectorProperty<unknown> | OpExpression)[];
+    orderBy?: { a: OpExpression | SelectorProperty<unknown>, direction: 'asc' | 'desc' }[];
 
     offset?: number;
     limit?: number;
@@ -80,6 +87,7 @@ export type SelectorState<R = unknown> = {
 
     previous?: SelectorState;
     withIdentityMap?: boolean;
+    withChangeDetection?: boolean;
 }
 
 let state: SelectorState | undefined;
@@ -114,14 +122,16 @@ export const limit = (limit?: number): any => {
     state.limit = limit;
 };
 
-export const orderBy = (a: any, direction: 'asc' | 'desc' = 'asc'): any => {
-//     ensureState(state);
-//     state.orderBy.push({ kind: 'order', a, direction });
+export const orderBy = (a: OpExpression | SelectorProperty<unknown>, direction: 'asc' | 'desc' = 'asc'): any => {
+    ensureState(state);
+    state.orderBy = state.orderBy || [];
+    state.orderBy.push({ a, direction });
 };
-//
-export const groupBy = (a: any): any => {
-//     ensureState(state);
-//     state.groupBy.push({ kind: 'group', by: a });
+
+export const groupBy = (expression: OpExpression | SelectorProperty<unknown>): any => {
+    ensureState(state);
+    state.groupBy = state.groupBy || [];
+    state.groupBy.push(expression);
 };
 
 export const inArray = makeOp('inArray', (expression, args: any[]) => {
@@ -170,47 +180,47 @@ export function isOp(value: any): value is OpExpression {
 }
 
 
-function getGraph(...args: any[]) {
-    let graph: Graph | undefined;
+function getTree(...args: any[]) {
+    let tree: ExpressionTree | undefined;
     for (const arg of args) {
         if (isProperty(arg) || isOp(arg)) {
-            if (graph) {
-                const a = graph.nodes[arg.graph.id];
+            if (tree) {
+                const a = tree.nodes[arg.tree.id];
                 if (a) {
-                    graph = a;
+                    tree = a;
                 } else {
-                    graph = graph.nodes[arg.graph.id] = arg.graph;
+                    tree = tree.nodes[arg.tree.id] = arg.tree;
                 }
             } else {
-                graph = arg.graph;
+                tree = arg.tree;
             }
         } else {
-            if (graph) {
-                const a = graph.nodes[0];
+            if (tree) {
+                const a = tree.nodes[0];
                 if (a) {
-                    graph = a;
+                    tree = a;
                 } else {
-                    graph = graph.nodes[0] = { id: graphId++, nodes: {} };
+                    tree = tree.nodes[0] = { id: treeId++, nodes: {} };
                 }
             }
         }
     }
-    return graph;
+    return tree;
 }
 
-export type OpExpression = { [opTag]: Op, graph: Graph, args: any[] };
+export type OpExpression = { [opTag]: Op, tree: ExpressionTree, args: (OpExpression | SelectorProperty | unknown)[] };
 export type Op = ((...args: any[]) => OpExpression) & { id: symbol };
 
 function makeOp(name: string, cb: (expression: OpExpression, args: any[]) => any): Op {
-    const opGraph: Graph = { id: graphId++, nodes: {} };
+    const opTree: ExpressionTree = { id: treeId++, nodes: {} };
     const id = Symbol('op:' + name);
 
     /**
      * @reflection never
      */
     function operation(...args: any[]) {
-        const graph = getGraph(...args) || opGraph;
-        const opExpression = { [opTag]: operation, graph, args };
+        const tree = getTree(...args) || opTree;
+        const opExpression = { [opTag]: operation, tree, args };
         cb(opExpression, args);
         return opExpression;
     }
@@ -236,13 +246,13 @@ export const where = makeOp('where', (expression, args: any[]) => {
     }
 });
 
-export const or = makeOp('or', (graph, args: any[]) => {
+export const or = makeOp('or', (exp, args: any[]) => {
 });
 
-export const and = makeOp('and', (graph, args: any[]) => {
+export const and = makeOp('and', (exp, args: any[]) => {
 });
 
-export const joinOp = makeOp('join', (graph, args: any[]) => {
+export const joinOp = makeOp('join', (exp, args: any[]) => {
     ensureState(state);
     if (state.joins) {
         state.joins.push(state);
@@ -260,11 +270,11 @@ function resolveReferencedSchema(property: TypePropertySignature | TypeProperty)
     return type;
 }
 
-export const asOp = makeOp('as', (graph, args: any[]) => {
+export const asOp = makeOp('as', (exp, args: any[]) => {
 });
 
-export function as<T extends SelectorState | OpExpression>(a: T, name: string): T {
-    if (isOp(a)) {
+export function as<T extends SelectorState | OpExpression | SelectorProperty<any>>(a: T, name: string): T {
+    if (isOp(a) || isProperty(a)) {
         return asOp(a, [name]) as T;
     } else {
         a.as = name;
@@ -278,8 +288,8 @@ export const join = <K>(a: SelectorProperty<K>, cb?: (m: SelectorRefs<K extends 
     const s = state = createModel(foreignType);
     try {
         if (cb) {
-            const graph = cb(s.fields as any);
-            joinOp(graph);
+            const tree = cb(s.fields as any);
+            joinOp(tree);
         }
         return s.fields as any;
     } finally {
@@ -293,19 +303,29 @@ export interface SelectorInferredState<Model, Result> {
     state: SelectorState<Model>;
 }
 
-export interface From<T> {
-    select<const R extends any>(cb?: (m: SelectorRefs<T>) => R): SelectorInferredState<T, ResolveSelect<R extends void ? T : R>>;
+export function query<const R extends any, T>(cb: (main: SelectorRefs<T>, ...args: SelectorRefs<unknown>[]) => R | undefined): SelectorInferredState<T, ResolveSelect<R extends void ? T : R>> {
+    const fnType = resolveReceiveType(cb);
+    assertType(fnType, ReflectionKind.function);
+    const selectorRefs = fnType.parameters.map(v => {
+        const arg = v.type.originTypes?.[0].typeArguments?.[0];
+        return createModel(arg || v.type);
+    });
+    if (selectorRefs.length === 0) {
+        throw new Error('No main selector found in query callback');
+    }
+    let previous = state;
+    const nextSelect = selectorRefs[0];
+    state = nextSelect;
+    const args = selectorRefs.map(v => v.fields);
+    try {
+        (cb as any)(...args);
+    } finally {
+        state = previous;
+    }
+    return { state: nextSelect };
 }
 
-export const from = <T>(type?: ReceiveType<T>): From<T> => {
-    return {
-        select<R>(cb?: (m: SelectorRefs<T>) => R) {
-            const state = createModel(resolveReceiveType(type));
-            if (cb) applySelect(cb, state);
-            return {state};
-        }
-    }
-}
+export type Select<T> = SelectorRefs<T>;
 
 export const applySelect = <T>(a: (m: SelectorRefs<T>) => any, nextSelect: SelectorState<T>) => {
     let previous = state;
@@ -345,8 +365,8 @@ export function createModel(type: Type): SelectorState {
             [propertyTag]: 'property',
             model,
             property: member,
-            graph: {
-                id: graphId++,
+            tree: {
+                id: treeId++,
                 nodes: {},
             },
             name: String(member.name),
@@ -358,10 +378,9 @@ export function createModel(type: Type): SelectorState {
     return jit.query2Model = model;
 }
 
-export abstract class Query2Resolver<T extends object> {
+export abstract class SelectorResolver<T extends object> {
     constructor(
-        protected model: SelectorState,
-        protected session: DatabaseSession<DatabaseAdapter>,
+        protected session: DatabaseSession,
     ) {
     }
 
@@ -376,12 +395,15 @@ export abstract class Query2Resolver<T extends object> {
     abstract patch(model: SelectorState, value: Changes<T>, patchResult: PatchResult<T>): Promise<void>;
 }
 
-export class Query2<T extends object> {
+export class Query2<T extends object, R = any> {
+    classSchema: ReflectionClass<any>;
+
     constructor(
-        public classSchema: ReflectionClass<any>,
+        public state: SelectorState<T>,
         protected session: DatabaseSession<any>,
-        protected resolver: Query2Resolver<any>,
+        protected resolver: SelectorResolver<any>,
     ) {
+        this.classSchema = state.schema;
     }
 
     createResolver() {
@@ -426,7 +448,6 @@ export class Query2<T extends object> {
      */
     public async count(fromHas: boolean = false): Promise<number> {
         let query: Query2<any> | undefined = undefined;
-
         const frame = this.session
             .stopwatch?.start((fromHas ? 'Has:' : 'Count:') + this.classSchema.getClassName(), FrameCategory.database);
 
@@ -438,7 +459,7 @@ export class Query2<T extends object> {
             const eventFrame = this.session.stopwatch?.start('Events');
             query = this.onQueryResolve(await this.callOnFetchEvent(this));
             eventFrame?.end();
-            return await this.resolver.count(query.model);
+            return await this.resolver.count(query.state);
         } catch (error: any) {
             await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, query?.classSchema, query));
             throw error;
@@ -453,8 +474,6 @@ export class Query2<T extends object> {
      * @throws DatabaseError
      */
     public async find<R>(selector?: SelectorInferredState<T, R>): Promise<R[]> {
-        const state = selector ? selector.state : createModel(this.classSchema.type);
-
         const frame = this.session
             .stopwatch?.start('Find:' + this.classSchema.getClassName(), FrameCategory.database);
 
@@ -468,7 +487,7 @@ export class Query2<T extends object> {
             const eventFrame = this.session.stopwatch?.start('Events');
             query = this.onQueryResolve(await this.callOnFetchEvent(this));
             eventFrame?.end();
-            return await query.resolver.find(state) as R[];
+            return await query.resolver.find(query.state) as R[];
         } catch (error: any) {
             await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, query?.classSchema, query));
             throw error;
@@ -494,7 +513,7 @@ export class Query2<T extends object> {
             const eventFrame = this.session.stopwatch?.start('Events');
             query = this.onQueryResolve(await this.callOnFetchEvent(this));
             eventFrame?.end();
-            return await query.resolver.findOneOrUndefined(query.model);
+            return await query.resolver.findOneOrUndefined(query.state);
         } catch (error: any) {
             await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, query?.classSchema, query));
             throw error;
@@ -550,7 +569,7 @@ export class Query2<T extends object> {
         try {
             if (!hasEvents) {
                 query = this.onQueryResolve(query);
-                await this.resolver.delete(query.model, deleteResult);
+                await this.resolver.delete(query.state, deleteResult);
                 this.session.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
                 return deleteResult;
             }
@@ -636,7 +655,7 @@ export class Query2<T extends object> {
             const hasEvents = this.session.eventDispatcher.hasListeners(onPatchPre) || this.session.eventDispatcher.hasListeners(onPatchPost);
             if (!hasEvents) {
                 query = this.onQueryResolve(query);
-                await this.resolver.patch(query.model, changes, patchResult);
+                await this.resolver.patch(query.state, changes, patchResult);
                 return patchResult;
             }
 
@@ -656,7 +675,7 @@ export class Query2<T extends object> {
             query = this.onQueryResolve(query);
             await event.query.resolver.patch(event.query.model, changes, patchResult);
 
-            if (query.model.withIdentityMap) {
+            if (query.state.withIdentityMap) {
                 const pkHashGenerator = getSimplePrimaryKeyHashGenerator(this.classSchema);
                 for (let i = 0; i < patchResult.primaryKeys.length; i++) {
                     const item = this.session.identityMap.getByHash(this.classSchema, pkHashGenerator(patchResult.primaryKeys[i]));
@@ -698,7 +717,9 @@ export class Query2<T extends object> {
     }
 
     protected patchModel<T extends OrmEntity>(patch: Partial<SelectorState>): Query2<T> {
-        return new Query2<T>(Object.assign({}, this.model, patch), this.session, this.resolver as any);
+        //todo
+        return this as any;
+        // return new Query2<T>(Object.assign({}, this.state, patch), this.session, this.resolver as any);
     }
 
     /**
@@ -740,7 +761,7 @@ export class Query2<T extends object> {
      * @throws DatabaseError
      */
     public async findField<K extends FieldName<T>>(name: K): Promise<T[K][]> {
-        const query = this.patchModel({ select: [this.model.fields[name]] });
+        const query = this.patchModel({ select: [this.state.fields[name]] });
         const items = await query.find() as T[];
         return items.map(v => v[name]);
     }
@@ -756,7 +777,7 @@ export class Query2<T extends object> {
      * @throws DatabaseError
      */
     public async findOneField<K extends FieldName<T>>(name: K): Promise<T[K]> {
-        const query = this.patchModel({ select: [this.model.fields[name]] });
+        const query = this.patchModel({ select: [this.state.fields[name]] });
         const item = await query.findOne() as T;
         return item[name];
     }
@@ -767,7 +788,7 @@ export class Query2<T extends object> {
      * @throws DatabaseError
      */
     public async findOneFieldOrUndefined<K extends FieldName<T>>(name: K): Promise<T[K] | undefined> {
-        const query = this.patchModel({ select: [this.model.fields[name]] });
+        const query = this.patchModel({ select: [this.state.fields[name]] });
         const item = await query.findOneOrUndefined() as T;
         if (item) return item[name];
         return;

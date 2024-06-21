@@ -526,6 +526,8 @@ export class ReflectionTransformer implements CustomTransformer {
     protected tempResultIdentifier?: Identifier;
     protected parseConfigHost: ParseConfigHost;
 
+    protected rootScopedVariables: string[] = [];
+
     constructor(
         protected context: TransformationContext,
         protected cache: Cache = new Cache,
@@ -534,7 +536,7 @@ export class ReflectionTransformer implements CustomTransformer {
         this.nodeConverter = new NodeConverter(this.f);
         // It is important to not have undefined values like {paths: undefined} because it would override the read tsconfig.json.
         // Important to create a copy since we will modify it.
-        this.compilerOptions = {...filterUndefined(context.getCompilerOptions())};
+        this.compilerOptions = { ...filterUndefined(context.getCompilerOptions()) };
         // compilerHost has no internal cache and is cheap to build, so no cache needed.
         // Resolver loads SourceFile which has cache implemented.
         this.host = createCompilerHost(this.compilerOptions);
@@ -562,8 +564,8 @@ export class ReflectionTransformer implements CustomTransformer {
             const mode = reflectionModeMatcher(config, path);
             return { mode, tsConfigPath: '' };
         };
-        const configResolver: ResolvedConfig = {...config, path: '', mergeStrategy: 'replace', compilerOptions: this.compilerOptions};
-        this.overriddenConfigResolver = {config: configResolver, match};
+        const configResolver: ResolvedConfig = { ...config, path: '', mergeStrategy: 'replace', compilerOptions: this.compilerOptions };
+        this.overriddenConfigResolver = { config: configResolver, match };
         return this;
     }
 
@@ -629,7 +631,7 @@ export class ReflectionTransformer implements CustomTransformer {
         Object.assign(this.compilerOptions, configResolver.config.compilerOptions);
 
         if (reflection.mode === 'never') {
-            debug(`Transform file with reflection=${reflection.mode} took ${Date.now()-start}ms (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`);
+            debug(`Transform file with reflection=${reflection.mode} took ${Date.now() - start}ms (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`);
             return sourceFile;
         }
 
@@ -1013,6 +1015,23 @@ export class ReflectionTransformer implements CustomTransformer {
                     this.f.createVariableDeclarationList(
                         [this.f.createVariableDeclaration(
                             this.tempResultIdentifier,
+                            undefined,
+                            undefined,
+                            undefined,
+                        )],
+                        ts.NodeFlags.None,
+                    ),
+                ),
+            );
+        }
+
+        for (const varName of this.rootScopedVariables) {
+            newTopStatements.push(
+                this.f.createVariableStatement(
+                    undefined,
+                    this.f.createVariableDeclarationList(
+                        [this.f.createVariableDeclaration(
+                            this.f.createIdentifier(varName),
                             undefined,
                             undefined,
                             undefined,
@@ -2550,10 +2569,11 @@ export class ReflectionTransformer implements CustomTransformer {
                                             const importOrExport = declaration.parent.parent.parent;
                                             const found = this.resolveImportSpecifier(
                                                 element.propertyName ? element.propertyName.escapedText : declarationName,
-                                                importOrExport, sourceFile
+                                                importOrExport, sourceFile,
                                             );
                                             if (found) return found;
-                                        } else if (declaration) {}
+                                        } else if (declaration) {
+                                        }
                                         return declaration;
                                     }
                                 }
@@ -2693,19 +2713,35 @@ export class ReflectionTransformer implements CustomTransformer {
     /**
      * Object.assign(fn, {__type: []}) is much slower than a custom implementation like
      *
-     * assignType(fn, [])
+     * ```
+     * var __type42;
+     * assignType(fn, __type42 || (__type42 = [34]));
+     * ```
      *
      * where we embed assignType() at the beginning of the type.
+     *
+     * This also adds a unique root scoped variable so that second argument
+     * is cached
      */
     protected wrapWithAssignType(fn: Expression, type: Expression) {
         this.embedAssignType = true;
+        const __typeName = '__type' + this.rootScopedVariables.length;
+        this.rootScopedVariables.push(__typeName);
+
+        const secondArgExpression = this.f.createBinaryExpression(
+            this.f.createIdentifier(__typeName),
+            SyntaxKind.BarBarToken,
+            this.f.createParenthesizedExpression(this.f.createAssignment(
+                this.f.createIdentifier(__typeName), type,
+            )),
+        );
 
         return this.f.createCallExpression(
             this.f.createIdentifier('__assignType'),
             undefined,
             [
                 fn,
-                type,
+                secondArgExpression,
             ],
         );
     }

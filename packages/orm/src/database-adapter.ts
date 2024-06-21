@@ -31,7 +31,7 @@ import {
 } from '@deepkit/type';
 import { Query } from './query.js';
 import { DatabaseSession, DatabaseTransaction } from './database-session.js';
-import { Query2Resolver } from './select.js';
+import { SelectorResolver } from './select.js';
 
 export abstract class DatabaseAdapterQueryFactory {
     abstract createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): Query<T>;
@@ -110,13 +110,15 @@ export class MigrateOptions {
  * You can specify a more specialized adapter like MysqlDatabaseAdapter/MongoDatabaseAdapter with special API for MySQL/Mongo.
  */
 export abstract class DatabaseAdapter {
-    abstract queryFactory(session: DatabaseSession<this>): DatabaseAdapterQueryFactory;
+    // abstract queryFactory(session: DatabaseSession<this>): DatabaseAdapterQueryFactory;
+    //
+    // createQuery2Resolver?(session: DatabaseSession<this>): Query2Resolver<any>;
+    //
+    // rawFactory(session: DatabaseSession<this>): RawFactory<any> {
+    //     return new RawFactory();
+    // };
 
-    createQuery2Resolver?(session: DatabaseSession<this>): Query2Resolver<any>;
-
-    rawFactory(session: DatabaseSession<this>): RawFactory<any> {
-        return new RawFactory();
-    };
+    abstract createSelectorResolver<T extends OrmEntity>(session: DatabaseSession<this>): SelectorResolver<T>;
 
     abstract createPersistence(session: DatabaseSession<this>): DatabasePersistence;
 

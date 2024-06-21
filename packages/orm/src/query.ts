@@ -650,6 +650,9 @@ export class BaseQuery<T extends OrmEntity> {
     }
 }
 
+/**
+ * @deprecated use SelectorResolver instead
+ */
 export abstract class GenericQueryResolver<T extends object, ADAPTER extends DatabaseAdapter = DatabaseAdapter, MODEL extends DatabaseQueryModel<T> = DatabaseQueryModel<T>> {
     constructor(
         protected classSchema: ReflectionClass<T>,

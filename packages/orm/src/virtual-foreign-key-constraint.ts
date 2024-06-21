@@ -8,7 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import type { QueryDatabaseDeleteEvent, QueryDatabasePatchEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event.js';
+import type {
+    QueryDatabaseDeleteEvent,
+    QueryDatabasePatchEvent,
+    UnitOfWorkEvent,
+    UnitOfWorkUpdateEvent,
+} from './event.js';
 import type { Database } from './database.js';
 import { ReflectionClass, ReflectionProperty } from '@deepkit/type';
 
@@ -50,15 +55,16 @@ export class VirtualForeignKeyConstraint {
         if (!event.deleteResult.primaryKeys.length) return;
 
         for (const { classSchema, property } of references) {
-            const query = event.databaseSession.query(classSchema).filter({ [property.name]: { $in: event.deleteResult.primaryKeys } });
-            const options = property.getReference()!;
-            if (options.onDelete === undefined || options.onDelete === 'CASCADE') {
-                await query.deleteMany();
-            } else if (options.onDelete === 'SET NULL') {
-                await query.patchMany({ [property.name]: null });
-            } else if (options.onDelete === 'SET DEFAULT') {
-                await query.patchMany({ [property.name]: property.getDefaultValue() });
-            }
+            //todo
+            // const query = event.databaseSession.query(classSchema).filter({ [property.name]: { $in: event.deleteResult.primaryKeys } });
+            // const options = property.getReference()!;
+            // if (options.onDelete === undefined || options.onDelete === 'CASCADE') {
+            //     await query.deleteMany();
+            // } else if (options.onDelete === 'SET NULL') {
+            //     await query.patchMany({ [property.name]: null });
+            // } else if (options.onDelete === 'SET DEFAULT') {
+            //     await query.patchMany({ [property.name]: property.getDefaultValue() });
+            // }
         }
     }
 
@@ -71,16 +77,17 @@ export class VirtualForeignKeyConstraint {
         for (const { classSchema, property } of references) {
             if (!event.patch.has(property.name)) continue;
 
-            const query = event.databaseSession.query(classSchema).filter({ [property.name]: { $in: event.patchResult.primaryKeys } });
-            const options = property.getReference()!;
-
-            if (options.onDelete === undefined || options.onDelete === 'CASCADE') {
-                await query.patchMany({ [property.name]: event.patch.$set[primaryKeyName] });
-            } else if (options.onDelete === 'SET NULL') {
-                await query.patchMany({ [property.name]: null });
-            } else if (options.onDelete === 'SET DEFAULT') {
-                await query.patchMany({ [property.name]: property.getDefaultValue() });
-            }
+            //todo
+            // const query = event.databaseSession.query(classSchema).filter({ [property.name]: { $in: event.patchResult.primaryKeys } });
+            // const options = property.getReference()!;
+            //
+            // if (options.onDelete === undefined || options.onDelete === 'CASCADE') {
+            //     await query.patchMany({ [property.name]: event.patch.$set[primaryKeyName] });
+            // } else if (options.onDelete === 'SET NULL') {
+            //     await query.patchMany({ [property.name]: null });
+            // } else if (options.onDelete === 'SET DEFAULT') {
+            //     await query.patchMany({ [property.name]: property.getDefaultValue() });
+            // }
         }
     }
 
@@ -88,19 +95,20 @@ export class VirtualForeignKeyConstraint {
         const references = this.resolveReferencesTo(event.classSchema);
         if (!references.length) return;
 
-        for (const { classSchema, property } of references) {
-            const query = event.databaseSession.query(classSchema).filter({ [property.name]: { $in: event.items } });
-            const options = property.getReference()!;
-
-            if (options.onDelete === undefined || options.onDelete === 'CASCADE') {
-                await query.deleteMany();
-            } else if (options.onDelete === 'SET NULL') {
-                await query.patchMany({ [property.name]: null });
-            } else if (options.onDelete === 'SET DEFAULT') {
-                await query.patchMany({ [property.name]: property.getDefaultValue() });
-            }
-            //RESTRICT needs to be handled in Pre
-        }
+        //todo
+        // for (const { classSchema, property } of references) {
+        //     const query = event.databaseSession.query(classSchema).filter({ [property.name]: { $in: event.items } });
+        //     const options = property.getReference()!;
+        //
+        //     if (options.onDelete === undefined || options.onDelete === 'CASCADE') {
+        //         await query.deleteMany();
+        //     } else if (options.onDelete === 'SET NULL') {
+        //         await query.patchMany({ [property.name]: null });
+        //     } else if (options.onDelete === 'SET DEFAULT') {
+        //         await query.patchMany({ [property.name]: property.getDefaultValue() });
+        //     }
+        //     //RESTRICT needs to be handled in Pre
+        // }
     }
 
     async onUoWUpdate(event: UnitOfWorkUpdateEvent<any>) {
@@ -119,20 +127,21 @@ export class VirtualForeignKeyConstraint {
             }
         }
 
-        for (const { classSchema, property } of references) {
-            for (const { oldPK, newPK } of primaryKeys) {
-                const query = await event.databaseSession.query(classSchema).filter({ [property.name]: oldPK });
-                const options = property.getReference()!;
-
-                if (options.onDelete === undefined || options.onDelete === 'CASCADE') {
-                    await query.patchMany({ [property.name]: newPK });
-                } else if (options.onDelete === 'SET NULL') {
-                    await query.patchMany({ [property.name]: null });
-                } else if (options.onDelete === 'SET DEFAULT') {
-                    await query.patchMany({ [property.name]: property.getDefaultValue() });
-                }
-            }
-            //RESTRICT needs to be handled in Pre
-        }
+        //todo
+        // for (const { classSchema, property } of references) {
+        //     for (const { oldPK, newPK } of primaryKeys) {
+        //         const query = await event.databaseSession.query(classSchema).filter({ [property.name]: oldPK });
+        //         const options = property.getReference()!;
+        //
+        //         if (options.onDelete === undefined || options.onDelete === 'CASCADE') {
+        //             await query.patchMany({ [property.name]: newPK });
+        //         } else if (options.onDelete === 'SET NULL') {
+        //             await query.patchMany({ [property.name]: null });
+        //         } else if (options.onDelete === 'SET DEFAULT') {
+        //             await query.patchMany({ [property.name]: property.getDefaultValue() });
+        //         }
+        //     }
+        //     //RESTRICT needs to be handled in Pre
+        // }
     }
 }
