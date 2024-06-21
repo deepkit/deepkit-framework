@@ -1,7 +1,7 @@
 import { expect, jest, test } from '@jest/globals';
 import { Email, MaxLength, MinLength, Positive, Validate, validate, validates, ValidatorError } from '../src/validator.js';
 import { assert, is } from '../src/typeguard.js';
-import { AutoIncrement, Excluded, Group, integer, PrimaryKey, Type, Unique } from '../src/reflection/type.js';
+import { assertType, AutoIncrement, Excluded, Group, integer, PrimaryKey, ReflectionKind, Type, Unique, validationAnnotation } from '../src/reflection/type.js';
 import { t } from '../src/decorator.js';
 import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
 import { cast, castFunction, validatedDeserialize } from '../src/serializer-facade.js';
@@ -45,6 +45,11 @@ test('custom validator pre defined', () => {
         };
     }
 
+    const t = typeOf<typeof startsWith>();
+    assertType(t, ReflectionKind.function);
+    expect(t.name).toBe('startsWith');
+    expect(t.function).toBe(startsWith);
+
     const startsWithA = startsWith('a');
     type MyType = string & Validate<typeof startsWithA>;
 
@@ -73,14 +78,40 @@ test('multiple custom validators with identical signatures', () => {
     const validator1: (value: any) => void = jest.fn();
     const validator2: (value: any) => void = jest.fn();
 
+    (validator1 as any).name1 = 'validator1';
+    (validator2 as any).name1 = 'validator2';
+
+    const t1 = typeOf<typeof validator1>();
+    const t2 = typeOf<typeof validator2>();
+
+    assertType(t1, ReflectionKind.function);
+    assertType(t2, ReflectionKind.function);
+
+    expect(t1.function).not.toBe(undefined);
+    expect(t1.function !== t2.function).toBe(true);
+
+    const v1 = typeOf<string & Validate<typeof validator1>>();
+    const v2 = typeOf<string & Validate<typeof validator2>>();
+
+    const v1A = validationAnnotation.getAnnotations(v1)[0];
+    assertType(v1A.args[0], ReflectionKind.function);
+    expect(v1A.args[0].function === validator1).toBe(true);
+
+    const v2A = validationAnnotation.getAnnotations(v2)[0];
+    assertType(v2A.args[0], ReflectionKind.function);
+    expect(v2A.args[0].function === validator2).toBe(true);
+
+    type TypeA = string;
+    type TypeB = string;
+
     type MyType = {
-        a: string & Validate<typeof validator1>;
-        b: string & Validate<typeof validator2>;
+        a: TypeA & Validate<typeof validator1>;
+        b: TypeB & Validate<typeof validator2>;
     }
 
     expect(is<MyType>({ a: 'a', b: 'b' })).toEqual(true);
-    expect(validator1).toHaveBeenCalledTimes(1);
     expect(validator2).toHaveBeenCalledTimes(1);
+    expect(validator1).toHaveBeenCalledTimes(1);
 });
 
 test('decorator validator', () => {

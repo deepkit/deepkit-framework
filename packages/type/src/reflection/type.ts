@@ -320,7 +320,12 @@ export interface TypeFunction extends TypeAnnotations {
     parent?: Type;
     name?: number | string | symbol,
     description?: string;
-    function?: Function; //reference to the real function if available
+    /**
+     * Reference to the real function if available.
+     * This is only available in `typeof xy` and decorator scenarios,
+     * to avoid memory leaks or blocking garbage collection.
+     */
+    function?: Function;
     parameters: TypeParameter[];
     return: Type;
 }
@@ -2304,7 +2309,7 @@ export function typeToObject(type?: Type, state: { stack: Type[] } = { stack: []
             case ReflectionKind.intersection:
                 return typeToObject(type.types[0]);
             case ReflectionKind.function:
-                return type.function;
+                return () => {};
             case ReflectionKind.array:
                 return [typeToObject(type.type)];
             case ReflectionKind.tuple:

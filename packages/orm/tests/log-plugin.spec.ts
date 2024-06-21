@@ -2,7 +2,7 @@ import { AutoIncrement, deserialize, entity, PrimaryKey } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { Database } from '../src/database.js';
 import { MemoryDatabaseAdapter } from '../src/memory-db.js';
-import { LogPlugin, LogQuery, LogSession, LogType } from '../src/plugin/log-plugin.js';
+import { LogPlugin, LogSession, LogType, setLogAuthor } from '../src/plugin/log-plugin.js';
 
 test('log query', async () => {
     @entity.name('logUser1')
@@ -34,7 +34,7 @@ test('log query', async () => {
         ]);
     }
 
-    await database.query(User).filter({ id: 1 }).patchOne({ username: 'Peter2' });
+    await database.singleQuery(User).filter({ id: 1 }).patchOne({ username: 'Peter2' });
 
     {
         const logEntries = await database.query(userLogEntity).find();
@@ -63,7 +63,9 @@ test('log query', async () => {
         ]);
     }
 
-    await database.query(User).lift(LogQuery).byLogAuthor('Foo').deleteMany();
+    await database.singleQuery(User, user => {
+        setLogAuthor('Foo');
+    }).deleteMany();
 
     {
         const logEntries = await database.query(userLogEntity).find();

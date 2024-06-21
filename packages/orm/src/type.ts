@@ -11,7 +11,7 @@
 import { Changes, PrimaryKeyFields, PrimaryKeyType, ReflectionClass, ValidationErrorItem } from '@deepkit/type';
 import { CustomError } from '@deepkit/core';
 import { DatabasePersistenceChangeSet } from './database-adapter.js';
-import { DatabaseQueryModel } from './query.js';
+import { SelectorState } from './select.js';
 
 export interface OrmEntity {
 }
@@ -59,7 +59,7 @@ export class DatabaseUpdateError extends DatabaseError {
 export class DatabasePatchError extends DatabaseError {
     constructor(
         public readonly entity: ReflectionClass<any>,
-        public readonly query: DatabaseQueryModel<any>,
+        public readonly query: SelectorState,
         public readonly changeSets: Changes<any>,
         ...args: ConstructorParameters<typeof Error>
     ) {
@@ -68,7 +68,7 @@ export class DatabasePatchError extends DatabaseError {
 }
 
 export class DatabaseDeleteError extends DatabaseError {
-    public readonly query?: DatabaseQueryModel<any>;
+    public readonly query?: SelectorState;
     public readonly items?: OrmEntity[];
 
     constructor(

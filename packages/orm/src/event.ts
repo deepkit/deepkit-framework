@@ -16,6 +16,10 @@ import type { DatabasePersistenceChangeSet } from './database-adapter.js';
 import type { DatabaseSession } from './database-session.js';
 import type { DeleteResult, PatchResult } from './type.js';
 import { OrmEntity } from './type.js';
+import { SelectorState } from './select.js';
+
+export class ItemNotFound extends Error {
+}
 
 export class DatabaseEvent extends BaseEvent {
     stopped = false;
@@ -78,8 +82,7 @@ export class QueryDatabaseEvent<T extends OrmEntity> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
-        // public query: Query2<T>,
-        public query: any, //TODO change back
+        public readonly query: SelectorState,
     ) {
         super();
     }
@@ -94,8 +97,7 @@ export class DatabaseErrorEvent extends DatabaseEvent {
         public readonly error: Error,
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema?: ReflectionClass<any>,
-        // public readonly query?: Query2<any>,
-        public readonly query?: any, //TODO change back
+        public readonly query?: SelectorState,
     ) {
         super();
     }
@@ -123,13 +125,11 @@ export class DatabaseErrorUpdateEvent extends DatabaseErrorEvent {
  */
 export const onDatabaseError = new EventToken<DatabaseErrorEvent>('database.error');
 
-
 export class QueryDatabaseDeleteEvent<T extends OrmEntity> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
-        // public query: Query2<T>,
-        public query: any, //TODO change back
+        public readonly query: SelectorState,
         public readonly deleteResult: DeleteResult<T>,
     ) {
         super();
@@ -144,8 +144,7 @@ export class QueryDatabasePatchEvent<T extends object> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
-        // public query: Query2<T>,
-        public query: any, //TODO change back
+        public readonly query: SelectorState,
         public readonly patch: Changes<T>,
         public readonly patchResult: PatchResult<T>,
     ) {

@@ -106,7 +106,7 @@ test('extends fn', () => {
 
     expect(isExtendable(
         { kind: ReflectionKind.function, return: { kind: ReflectionKind.literal, literal: true }, parameters: [] },
-        { kind: ReflectionKind.function, function: Function, return: { kind: ReflectionKind.unknown }, parameters: [] }
+        { kind: ReflectionKind.function, return: { kind: ReflectionKind.unknown }, parameters: [] }
     )).toBe(true);
 });
 

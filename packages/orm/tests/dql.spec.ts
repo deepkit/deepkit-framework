@@ -107,21 +107,6 @@ test('ideal world', async () => {
     // const res2 = await db.delete(userQuery);
 });
 
-test('memory db', async () => {
-    const db = new Database(new MemoryDatabaseAdapter());
-    db.register<User>();
-
-    const user1: User = { id: 1, name: 'Peter', birthday: new Date() };
-    const user2: User = { id: 2, name: 'John', birthday: new Date() };
-    const user3: User = { id: 3, name: 'Jane', birthday: new Date() };
-    await db.persist(user1, user2, user3);
-
-    const user = await db.query2((user: Select<User>) => {
-        where(eq(user.name, 'John'));
-    }).findOne();
-    expect(user.name).toBe('John');
-});
-
 test('vector search', () => {
     interface Sentence {
         id: number & AutoIncrement & PrimaryKey;
@@ -149,12 +134,12 @@ test('vector search', () => {
     // });
 });
 
-function bench(title: string, cb: () => void) {
+async function bench(title: string, cb: () => void) {
     const start = Date.now();
     const count = 100_000;
 
     for (let i = 0; i < count; i++) {
-        cb();
+        await cb();
     }
 
     const took = Date.now() - start;
@@ -180,9 +165,6 @@ test('graph', () => {
     const b = query((m: Select<User>) => {
         where(eq(m.name, 'Peter2'));
     });
-
-    console.log(a.state.params, b.state.where);
-    console.log(b.state.params, a.state.where);
 
     expect(a.state.where!.tree === b.state.where!.tree).toBe(true);
 
@@ -226,14 +208,57 @@ test('tree', () => {
         where(eq(m.name, 'Peter2'));
     });
 
-    console.log(a.state.params, b.state.where);
-    console.log(b.state.params, a.state.where);
+    const c = query((m: Select<User>) => {
+    });
+
+    console.log(a.state.params, a.state.where);
+    console.log(b.state.params, b.state.where);
+    console.log(c.state.params, c.state.where);
 
     expect(a.state.where!.tree === b.state.where!.tree).toBe(true);
 });
 
-test('performance', () => {
-    bench('select', () => {
+test('memory db', async () => {
+    const db = new Database(new MemoryDatabaseAdapter());
+    db.register<User>();
+
+    const user1: User = { id: 1, name: 'Peter', birthday: new Date() };
+    const user2: User = { id: 2, name: 'John', birthday: new Date() };
+    const user3: User = { id: 3, name: 'Jane', birthday: new Date() };
+    await db.persist(user1, user2, user3);
+
+    {
+        const user1 = await db.query2((user: Select<User>) => {
+            where(eq(user.name, 'John'));
+        }).findOne();
+        expect(user1.name).toBe('John');
+
+        const user2 = await db.query2((user: Select<User>) => {
+            where(eq(user.name, 'Jane'));
+        }).findOne();
+        expect(user2.name).toBe('Jane');
+    }
+});
+
+test('performance memory-db', async () => {
+    const db = new Database(new MemoryDatabaseAdapter());
+    db.register<User>();
+
+    const user1: User = { id: 1, name: 'Peter', birthday: new Date() };
+    const user2: User = { id: 2, name: 'John', birthday: new Date() };
+    const user3: User = { id: 3, name: 'Jane', birthday: new Date() };
+    await db.persist(user1, user2, user3);
+
+    await bench('select', async () => {
+        const res = await db.query2((user: Select<User>) => {
+            where(eq(user.name, 'John'));
+        }).find();
+        if (res.length !== 1) throw new Error('Invalid result');
+    });
+});
+
+test('performance state', async () => {
+    await bench('select', () => {
         query((user: Select<User>) => {
             join(user.group, group => {
                 where(eq(group.name, 'Admin'));
@@ -248,10 +273,10 @@ test('performance', () => {
     //
     // });
 
-    bench('database', () => {
-        database.query<User>()
-            .select('id', 'name')
-            .useJoin('group').filter({ name: 'Admin' }).end()
-            .filter({ name: 'Peter' });
-    });
+    // bench('database', () => {
+    //     database.query<User>()
+    //         .select('id', 'name')
+    //         .useJoin('group').filter({ name: 'Admin' }).end()
+    //         .filter({ name: 'Peter' });
+    // });
 });

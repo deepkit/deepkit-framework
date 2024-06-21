@@ -1451,9 +1451,9 @@ test('function returns self reference', () => {
 
     const type = reflect(Option);
     assertType(type, ReflectionKind.function);
-    expect(type.function).toBe(Option);
+    expect(type.name).toBe('Option');
     assertType(type.return, ReflectionKind.function);
-    expect(type.return.function).toBe(Option);
+    expect(type.return.name).toBe('Option');
 });
 
 test('no runtime types', () => {
@@ -1482,7 +1482,7 @@ test('arrow function returns self reference', () => {
 
     const type = reflect(Option);
     assertType(type, ReflectionKind.function);
-    expect(type.function).toBe(Option);
+    expect(type.name).toBe(undefined);
 
     //we need to find out why TS does resolve Option<T> in arrow function to the class and not the variable
     assertType(type.return, ReflectionKind.class);

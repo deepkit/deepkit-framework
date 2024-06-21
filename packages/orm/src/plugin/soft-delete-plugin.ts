@@ -13,10 +13,11 @@ import { EventDispatcherUnsubscribe } from '@deepkit/event';
 import { DatabaseSession } from '../database-session.js';
 import { Database } from '../database.js';
 import { DatabaseAdapter } from '../database-adapter.js';
-import { Query } from '../query.js';
 import { OrmEntity } from '../type.js';
 import { ReflectionClass } from '@deepkit/type';
 import { DatabasePlugin } from './plugin.js';
+import { onDeletePre, onFind, onPatchPre } from '../event.js';
+import { applySelect, currentState, eq, notEqual, Select, SelectorState, where } from '../select.js';
 
 interface SoftDeleteEntity extends OrmEntity {
     deletedAt?: Date;
@@ -60,60 +61,45 @@ export class SoftDeleteSession {
     }
 }
 
-export class SoftDeleteQuery<T extends SoftDeleteEntity> extends Query<T> {
-    includeSoftDeleted: boolean = false;
-    setDeletedBy?: T['deletedBy'];
+interface SoftDeleteData {
+    includeSoftDeleted?: boolean;
+    // softDeleteIncludeHardDelete?: boolean;
+    deletedBy?: any;
+    enableHardDelete?: boolean;
+}
 
-    clone(): this {
-        const c = super.clone();
-        c.includeSoftDeleted = this.includeSoftDeleted;
-        c.setDeletedBy = this.setDeletedBy;
-        return c;
-    }
+function getSoftDeleteData(state: SelectorState): SoftDeleteData {
+    return state.data.softDelete ||= {};
+}
 
-    /**
-     * Enables fetching, updating, and deleting of soft-deleted records.
-     */
-    withSoftDeleted(): this {
-        const m = this.clone();
-        m.includeSoftDeleted = true;
-        return m;
-    }
+/**
+ * Includes soft=deleted records additional to the normal records.
+ */
+export function includeSoftDeleted() {
+    getSoftDeleteData(currentState()).includeSoftDeleted = true;
+}
 
-    /**
-     * Includes only soft deleted records.
-     */
-    isSoftDeleted(): this {
-        const m = this.clone();
-        m.includeSoftDeleted = true;
-        return m.filterField('deletedAt', { $ne: undefined });
-    }
+/**
+ * Includes only soft-deleted records. (normal records are excluded)
+ */
+export function includeOnlySoftDeleted(model: Select<{ deletedAt: Date }>) {
+    includeSoftDeleted();
+    where(notEqual(model.deletedAt, undefined));
+}
 
-    deletedBy(value: T['deletedBy']): this {
-        const c = this.clone();
-        c.setDeletedBy = value;
-        return c;
-    }
+export function setDeletedBy(deletedBy: string) {
+    getSoftDeleteData(currentState()).deletedBy = deletedBy;
+}
 
-    async restoreOne() {
-        const patch = { [deletedAtName]: undefined } as Partial<T>;
-        if (this.classSchema.hasProperty('deletedBy')) patch['deletedBy'] = undefined;
-        await this.withSoftDeleted().patchOne(patch);
-    }
+//todo: how to handle this?
+export function restoreOne() {
+}
 
-    async restoreMany() {
-        const patch = { [deletedAtName]: undefined } as Partial<T>;
-        if (this.classSchema.hasProperty('deletedBy')) patch['deletedBy'] = undefined;
-        await this.withSoftDeleted().patchMany(patch);
-    }
+export function restoreMany() {
+}
 
-    async hardDeleteOne() {
-        await this.withSoftDeleted().deleteOne();
-    }
-
-    async hardDeleteMany() {
-        await this.withSoftDeleted().deleteMany();
-    }
+export function enableHardDelete() {
+    getSoftDeleteData(currentState()).enableHardDelete = true;
 }
 
 export class SoftDeletePlugin implements DatabasePlugin {
@@ -165,33 +151,37 @@ export class SoftDeletePlugin implements DatabasePlugin {
         function queryFilter(event: { classSchema: ReflectionClass<any>, query: any }) {
             //this is for each query method: count, find, findOne(), etc.
 
-            //we don't change SoftDeleteQuery instances as they operate on the raw records without filter
-            if (Query.is(event.query, SoftDeleteQuery) && event.query.includeSoftDeleted === true) return;
+            //when includeSoftDeleted is set, we don't want to filter out the deleted records
+            if (getSoftDeleteData(event.query).includeSoftDeleted) return;
 
             if (event.classSchema !== schema) return; //do nothing
 
             //attach the filter to exclude deleted records
+            applySelect(event.query, (q: Select<{ [deletedAtName]: any }>) => {
+                where(eq(q[deletedAtName], undefined));
+            });
             event.query = event.query.filterField(deletedAtName, undefined);
         }
 
-        const queryFetch = this.getDatabase().listen(Query.onFind, queryFilter);
-        const queryPatch = this.getDatabase().listen(Query.onPatchPre, queryFilter);
+        const queryFetch = this.getDatabase().listen(onFind, queryFilter);
+        const queryPatch = this.getDatabase().listen(onPatchPre, queryFilter);
 
-        const queryDelete = this.getDatabase().listen(Query.onDeletePre, async event => {
+        const queryDelete = this.getDatabase().listen(onDeletePre, async event => {
             if (event.classSchema !== schema) return; //do nothing
 
-            //we don't change SoftDeleteQuery instances as they operate on the raw records without filter
-            if (Query.is(event.query, SoftDeleteQuery) && event.query.includeSoftDeleted === true) return;
+            //when includeSoftDeleted is set, we don't want to filter out the deleted records
+            if (getSoftDeleteData(event.query).includeSoftDeleted) return;
 
             //stop actual query delete query
             event.stop();
 
             const patch = { [deletedAtName]: new Date } as Partial<T>;
-            if (hasDeletedBy && Query.is(event.query, SoftDeleteQuery) && event.query.setDeletedBy !== undefined) {
-                patch.deletedBy = event.query.setDeletedBy;
+            const deletedBy = getSoftDeleteData(event.query).deletedBy;
+            if (hasDeletedBy && deletedBy !== undefined) {
+                patch.deletedBy = deletedBy;
             }
 
-            await event.query.patchMany(patch);
+            await event.databaseSession.query2(event.query).patchMany(patch);
         });
 
         const uowDelete = this.getDatabase().listen(DatabaseSession.onDeletePre, async event => {

@@ -48,7 +48,7 @@ import {
     TypeNumber,
     TypeObjectLiteral,
     TypeTuple,
-    Unique
+    Unique,
 } from '../src/reflection/type.js';
 import { TypeNumberBrand } from '@deepkit/type-spec';
 import { validate, ValidatorError } from '../src/validator.js';
@@ -485,7 +485,6 @@ test('function', () => {
     expectEqualType(type, {
         kind: ReflectionKind.function,
         name: 'pad',
-        function: pad,
         parameters: [
             { kind: ReflectionKind.parameter, name: 'text', type: { kind: ReflectionKind.string } },
             { kind: ReflectionKind.parameter, name: 'size', type: { kind: ReflectionKind.number } },

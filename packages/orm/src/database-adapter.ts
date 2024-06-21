@@ -10,7 +10,6 @@
 
 import { OrmEntity } from './type.js';
 import {
-    AbstractClassType,
     arrayRemoveItem,
     ClassType,
     getClassName,
@@ -23,19 +22,13 @@ import {
     isSameType,
     ItemChanges,
     PrimaryKeyFields,
-    ReceiveType,
     ReflectionClass,
     ReflectionKind,
     stringifyType,
     Type,
 } from '@deepkit/type';
-import { Query } from './query.js';
 import { DatabaseSession, DatabaseTransaction } from './database-session.js';
 import { SelectorResolver } from './select.js';
-
-export abstract class DatabaseAdapterQueryFactory {
-    abstract createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): Query<T>;
-}
 
 export interface DatabasePersistenceChangeSet<T extends object> {
     changes: ItemChanges<T>;

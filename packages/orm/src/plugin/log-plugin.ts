@@ -11,10 +11,18 @@
 import { ClassType } from '@deepkit/core';
 import { DatabaseSession } from '../database-session.js';
 import { Database } from '../database.js';
-import { Query } from '../query.js';
-import { AutoIncrement, entity, InlineRuntimeType, PrimaryKey, PrimaryKeyFields, ReflectionClass, ResetAnnotation } from '@deepkit/type';
+import {
+    AutoIncrement,
+    entity,
+    InlineRuntimeType,
+    PrimaryKey,
+    PrimaryKeyFields,
+    ReflectionClass,
+    ResetAnnotation,
+} from '@deepkit/type';
 import { DatabasePlugin } from './plugin.js';
-import { OrmEntity } from '../type.js';
+import { onDeletePost, onPatchPost } from '../event.js';
+import { currentState } from '../select.js';
 
 export enum LogType {
     Added,
@@ -60,19 +68,8 @@ export class LogSession {
     }
 }
 
-export class LogQuery<T extends OrmEntity> extends Query<T> {
-    logAuthor?: any;
-
-    byLogAuthor(author?: any): this {
-        this.logAuthor = author;
-        return this;
-    }
-
-    clone(): this {
-        const c = super.clone();
-        c.logAuthor = this.logAuthor;
-        return c;
-    }
+export function setLogAuthor(author: string) {
+    currentState().data.logAuthor = author;
 }
 
 interface LoginPluginOptions {
@@ -154,25 +151,25 @@ export class LogPlugin implements DatabasePlugin {
             }
         }
 
-        database.listen(Query.onDeletePost, async event => {
+        database.listen(onDeletePost, async event => {
             if (!this.isIncluded(event.classSchema)) return;
             if (this.options.disableDelete) return;
 
             for (const primaryKey of event.deleteResult.primaryKeys) {
                 const log = this.createLog(event.databaseSession, LogType.Deleted, event.classSchema, primaryKey);
-                if (Query.is(event.query, LogQuery)) log.author = event.query.logAuthor as any;
+                log.author = event.query.data.logAuthor || '';
                 event.databaseSession.add(log);
             }
             await event.databaseSession.commit();
         });
 
-        database.listen(Query.onPatchPost, async event => {
+        database.listen(onPatchPost, async event => {
             if (!this.isIncluded(event.classSchema)) return;
             if (this.options.disableUpdate) return;
 
             for (const primaryKey of event.patchResult.primaryKeys) {
                 const log = this.createLog(event.databaseSession, LogType.Updated, event.classSchema, primaryKey);
-                if (Query.is(event.query, LogQuery)) log.author = event.query.logAuthor as any;
+                log.author = event.query.data.logAuthor || '';
                 log.changedFields = event.patch.fieldNames;
                 event.databaseSession.add(log);
             }

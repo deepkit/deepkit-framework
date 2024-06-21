@@ -24,7 +24,6 @@ import {
 import { DatabaseAdapter, DatabaseEntityRegistry, MigrateOptions } from './database-adapter.js';
 import { DatabaseSession } from './database-session.js';
 import { DatabaseLogger } from './logger.js';
-import { Query } from './query.js';
 import { getReference } from './reference.js';
 import { OrmEntity } from './type.js';
 import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint.js';
@@ -32,7 +31,8 @@ import { Stopwatch } from '@deepkit/stopwatch';
 import { getClassState, getInstanceState, getNormalizedPrimaryKey } from './identity-map.js';
 import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
 import { DatabasePlugin, DatabasePluginRegistry } from './plugin/plugin.js';
-import { Query2, SelectorInferredState, SelectorRefs } from './select.js';
+import { Query2, SelectorInferredState, SelectorRefs, singleQuery } from './select.js';
+import { onDeletePost, onPatchPost } from './event.js';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -83,13 +83,14 @@ function setupVirtualForeignKey(database: Database, virtualForeignKeyConstraint:
     database.listen(DatabaseSession.onUpdatePost, async (event) => {
         await virtualForeignKeyConstraint.onUoWUpdate(event);
     });
-    database.listen(Query.onPatchPost, async (event) => {
+    database.listen(onPatchPost, async (event) => {
         await virtualForeignKeyConstraint.onQueryPatch(event);
     });
-    database.listen(Query.onDeletePost, async (event) => {
+    database.listen(onDeletePost, async (event) => {
         await virtualForeignKeyConstraint.onQueryDelete(event);
     });
 }
+
 /**
  * Database abstraction. Use createSession() to create a work session with transaction support.
  *
@@ -129,9 +130,9 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * await session.commit(); //only necessary when you changed items received by this session
      * ```
      */
-    // public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
-    //
-    // public readonly raw: ReturnType<this['adapter']['rawFactory']>['create'];
+        // public readonly query: ReturnType<this['adapter']['queryFactory']>['createQuery'];
+        //
+        // public readonly raw: ReturnType<this['adapter']['rawFactory']>['create'];
 
     protected virtualForeignKeyConstraint: VirtualForeignKeyConstraint = new VirtualForeignKeyConstraint(this);
 
@@ -143,7 +144,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     constructor(
         public readonly adapter: ADAPTER,
-        schemas: (Type | ClassType | ReflectionClass<any>)[] = []
+        schemas: (Type | ClassType | ReflectionClass<any>)[] = [],
     ) {
         this.entityRegistry.add(...schemas);
         if (Database.registry) Database.registry.push(this);
@@ -176,6 +177,12 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     query<T extends any>(...args: any[]): any {
         throw new Error('Deprecated');
+    }
+
+    singleQuery<const R extends any, T extends object>(classType: ClassType<T>, cb?: (main: SelectorRefs<T>) => R | undefined): Query2<T, R> {
+        const session = this.createSession();
+        session.withIdentityMap = false;
+        return session.query2(singleQuery(classType, cb));
     }
 
     query2<const R extends any, T extends object, Q extends SelectorInferredState<T, R> | ((main: SelectorRefs<T>, ...args: SelectorRefs<unknown>[]) => R | undefined)>(cbOrQ?: Q): Query2<T, R> {
@@ -419,9 +426,10 @@ export class ActiveRecord {
         await db.remove(this);
     }
 
-    public static query<T extends typeof ActiveRecord>(this: T): Query<InstanceType<T>> {
-        return this.getDatabase().query(this);
-    }
+    // todo implement query2
+    // public static query<T extends typeof ActiveRecord>(this: T): Query<InstanceType<T>> {
+    //     return this.getDatabase().query(this);
+    // }
 
     public static reference<T extends typeof ActiveRecord>(this: T, primaryKey: any | PrimaryKeyFields<InstanceType<T>>): InstanceType<T> {
         return this.getDatabase().getReference(this, primaryKey) as InstanceType<T>;

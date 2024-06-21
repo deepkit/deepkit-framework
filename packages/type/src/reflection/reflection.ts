@@ -117,7 +117,7 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
         return resolveRuntimeType(type) as Type;
     }
     if (isFunction(type)) {
-        return (type as any).__cached_type = { kind: ReflectionKind.function, function: type as any, return: { kind: ReflectionKind.any }, parameters: [] } as any;
+        return (type as any).__cached_type = { kind: ReflectionKind.function, return: { kind: ReflectionKind.any }, parameters: [] } as any;
     }
     return resolvePacked(type, undefined, { reuseCached: true });
 }
@@ -550,7 +550,7 @@ export function resolveClassType(type: Type): ReflectionClass<any> {
         throw new Error(`Cant resolve ReflectionClass of type ${type.kind} since its not a class or object literal`);
     }
 
-    return ReflectionClass.fromType(type);
+    return ReflectionClass.from(type);
 }
 
 /**
@@ -973,13 +973,6 @@ export class ReflectionClass<T> {
             this.collectionName = parent.collectionName;
             this.databaseSchemaName = parent.databaseSchemaName;
             this.description = parent.description;
-
-            for (const member of parent.getProperties()) {
-                this.registerProperty(member.clone(this));
-            }
-            for (const member of parent.getMethods()) {
-                this.registerMethod(member.clone(this));
-            }
         }
 
         for (const member of type.types) {
@@ -1295,39 +1288,35 @@ export class ReflectionClass<T> {
         const jit = getTypeJitContainer(type);
         if (jit.reflectionClass) return jit.reflectionClass;
 
-        jit.reflectionClass = new ReflectionClass(type);
+        let parentReflectionClass: ReflectionClass<any> | undefined;
+
+        if (type.kind === ReflectionKind.class) {
+            const parentProto = Object.getPrototypeOf(type.classType.prototype);
+            parentReflectionClass = parentProto && parentProto.constructor !== Object ? ReflectionClass.from(parentProto, type.extendsArguments) : undefined;
+        }
+
+        jit.reflectionClass = new ReflectionClass(type, parentReflectionClass);
         return jit.reflectionClass;
     }
 
-    static from<T>(classTypeIn?: ReceiveType<T> | AbstractClassType<T> | TypeClass | TypeObjectLiteral | ReflectionClass<any>): ReflectionClass<T> {
+    static from<T>(classTypeIn?: ReceiveType<T> | AbstractClassType<T> | TypeClass | TypeObjectLiteral | ReflectionClass<any>, args: any[] = []): ReflectionClass<T> {
         if (!classTypeIn) throw new Error(`No type given in ReflectionClass.from<T>`);
         if (isArray(classTypeIn)) classTypeIn = resolveReceiveType(classTypeIn);
+
         if (classTypeIn instanceof ReflectionClass) return classTypeIn;
+        if (isType(classTypeIn)) return ReflectionClass.fromType(classTypeIn);
 
-        if (isType(classTypeIn)) {
-            if (classTypeIn.kind === ReflectionKind.objectLiteral || classTypeIn.kind === ReflectionKind.class) {
-                const jit = getTypeJitContainer(classTypeIn);
-                if (jit.reflectionClass) return jit.reflectionClass;
-                return jit.reflectionClass = new ReflectionClass<T>(classTypeIn);
-            }
-            throw new Error(`TypeClass or TypeObjectLiteral expected, not ${ReflectionKind[classTypeIn.kind]}`);
-        }
-
-        const classType = isType(classTypeIn)
-            ? (classTypeIn as TypeClass).classType
-            : (classTypeIn as any)['prototype']
-                ? classTypeIn as ClassType<T>
-                : classTypeIn.constructor as ClassType<T>;
+        const classType = isType(classTypeIn) ? (classTypeIn as TypeClass).classType : (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
 
         if (!classType.prototype.hasOwnProperty(reflectionClassSymbol)) {
             Object.defineProperty(classType.prototype, reflectionClassSymbol, { writable: true, enumerable: false });
         }
 
-        if (classType.prototype[reflectionClassSymbol]) {
+        if (classType.prototype[reflectionClassSymbol] && args.length === 0) {
             return classType.prototype[reflectionClassSymbol];
         }
 
-        const type = isType(classTypeIn) ? classTypeIn as TypeClass : ('__type' in classType ? resolveRuntimeType(classType) : {
+        const type = isType(classTypeIn) ? classTypeIn as TypeClass : ('__type' in classType ? resolveRuntimeType(classType, args) : {
             kind: ReflectionKind.class,
             classType,
             types: [],
@@ -1337,12 +1326,17 @@ export class ReflectionClass<T> {
             throw new Error(`Given class is not a class but kind ${ReflectionKind[type.kind]}. classType: ${stringifyValueWithType(classType)}`);
         }
 
+
         const parentProto = Object.getPrototypeOf(classType.prototype);
-        const parentReflectionClass: ReflectionClass<T> | undefined = parentProto && parentProto.constructor !== Object ? ReflectionClass.from(parentProto) : undefined;
+        const parentReflectionClass: ReflectionClass<T> | undefined = parentProto && parentProto.constructor !== Object ? ReflectionClass.from(parentProto, type.extendsArguments) : undefined;
 
         const reflectionClass = new ReflectionClass(type, parentReflectionClass);
-        classType.prototype[reflectionClassSymbol] = reflectionClass;
-        return reflectionClass;
+        if (args.length === 0) {
+            classType.prototype[reflectionClassSymbol] = reflectionClass;
+            return reflectionClass;
+        } else {
+            return reflectionClass;
+        }
     }
 
     getIndexSignatures() {

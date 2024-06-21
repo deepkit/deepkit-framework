@@ -14,8 +14,6 @@ export * from './src/database-session.js';
 export * from './src/database-registry.js';
 export * from './src/identity-map.js';
 export * from './src/formatter.js';
-export * from './src/query.js';
-export * from './src/query-filter.js';
 export * from './src/utils.js';
 export * from './src/memory-db.js';
 export * from './src/type.js';

@@ -39,7 +39,7 @@ import { DatabaseLogger } from './logger.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { EventDispatcher, EventDispatcherInterface, EventToken } from '@deepkit/event';
 import { DatabasePluginRegistry } from './plugin/plugin.js';
-import { query, Query2, SelectorInferredState, SelectorRefs } from './select.js';
+import { query, Query2, SelectorInferredState, SelectorRefs, SelectorState, singleQuery } from './select.js';
 
 let SESSION_IDS = 0;
 
@@ -355,9 +355,13 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
         // };
     }
 
-    query2<const R extends any, T extends object, Q extends SelectorInferredState<T, R> | ((main: SelectorRefs<T>, ...args: SelectorRefs<unknown>[]) => R | undefined)>(cbOrQ?: Q): Query2<T, R> {
+    singleQuery<const R extends any, T extends object>(classType: ClassType<T>, cb?: (main: SelectorRefs<T>) => R | undefined): Query2<T, R> {
+        return this.query2(singleQuery(classType, cb));
+    }
+
+    query2<const R extends any, T extends object, Q extends SelectorInferredState<T, R> | SelectorState<T> | ((main: SelectorRefs<T>, ...args: SelectorRefs<unknown>[]) => R | undefined)>(cbOrQ?: Q): Query2<T, R> {
         if (!cbOrQ) throw new Error('Query2 needs a callback or query object');
-        const state: SelectorInferredState<any, any> = isFunction(cbOrQ) ? query(cbOrQ) : cbOrQ;
+        const state: SelectorInferredState<any, any> = isFunction(cbOrQ) ? query(cbOrQ) : 'state' in cbOrQ ? cbOrQ : { state: cbOrQ };
         return new Query2(state.state, this, this.adapter.createSelectorResolver(this));
     }
 

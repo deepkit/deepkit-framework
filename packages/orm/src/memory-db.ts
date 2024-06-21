@@ -53,25 +53,25 @@ function sortDesc(a: any, b: any) {
     return 0;
 }
 
-type Accessor = (record: any) => any;
+type Accessor = (record: any, params: any[]) => any;
 export type MemoryOpRegistry = { [tag: symbol]: (expression: OpExpression) => Accessor };
 
 export const memoryOps: MemoryOpRegistry = {
     [eq.id](expression: OpExpression) {
         const [a, b] = expression.args.map(e => buildAccessor(e));
-        return (record: any) => a(record) === b(record);
+        return (record: any, params: any[]) => a(record, params) === b(record, params);
     },
     [and.id](expression: OpExpression) {
         const lines = expression.args.map(e => buildAccessor(e));
-        return (record: any) => lines.every(v => v(record));
+        return (record: any, params: any[]) => lines.every(v => v(record, params));
     },
     [where.id](expression: OpExpression) {
         const lines = expression.args.map(e => buildAccessor(e));
-        return (record: any) => lines.every(v => v(record));
+        return (record: any, params: any[]) => lines.every(v => v(record, params));
     },
 };
 
-function buildAccessor(op: OpExpression | SelectorProperty | unknown): Accessor {
+function buildAccessor(op: OpExpression | SelectorProperty | number): Accessor {
     if (isOp(op)) {
         const fn = memoryOps[op[opTag].id];
         if (!fn) throw new Error(`No memory op registered for ${op[opTag].id.toString()}`);
@@ -79,50 +79,64 @@ function buildAccessor(op: OpExpression | SelectorProperty | unknown): Accessor 
     }
 
     if (isProperty(op)) {
-        return (record: any) => {
+        return (record: any, params: any[]) => {
             //todo: handle if selector of joined table
             // and deep json path
             return record[op.name];
         };
     }
 
-    return () => op;
+    return (record: any, params: any[]) => {
+        return params[op];
+    }
 }
 
-function sort(items: any[], accessor: Accessor, sortFn: typeof sortAsc | typeof sortAsc): void {
-    items.sort((a, b) => {
-        return sortFn(accessor(a), accessor(b));
-    });
-}
+export type MemoryFinder<T> = (records: T[], params: any[]) => T[];
 
-function filterWhere<T>(items: T[], where: OpExpression): T[] {
-    const accessor = buildAccessor(where);
-    console.log('accessor', accessor.toString());
-    return items.filter(v => !!accessor(v));
+export function buildFinder<T>(model: SelectorState<T>, cache: { [id: string]: MemoryFinder<any> }): MemoryFinder<T> {
+    const cacheId = model.schema.type.id + '_' + model.where?.tree.id + '_' + model.orderBy?.map(v => v.a.tree.id).join(':');
+    let finder = cache[cacheId];
+    if (finder) return finder;
+
+    const whereCheck = model.where ? buildAccessor(model.where) : () => true;
+    const offset = model.offset || 0;
+    const limit = model.limit;
+    const limitCheck: (m: number) => boolean = 'undefined' === typeof limit ? () => false : ((m) => m >= limit);
+
+    const orderBy = model.orderBy ? model.orderBy.map(v => {
+        const accessor = buildAccessor(v.a);
+        const direction = v.direction === 'asc' ? sortAsc : sortDesc;
+        return (records: T[], params: any[]) => records.sort((a, b) => direction(accessor(a, params), accessor(b, params)));
+    }) : [];
+
+    finder = (records: T[], params: any[]) => {
+        const filtered: T[] = [];
+        let matched = 0;
+        for (const record of records) {
+            if (limitCheck(matched)) break;
+            if (whereCheck(record, params)) {
+                matched++;
+                if (matched <= offset) continue;
+                filtered.push(record);
+            }
+        }
+
+        for (const order of orderBy) {
+            order(filtered, params);
+        }
+
+        return filtered;
+    };
+
+    return cache[cacheId] = finder;
 }
 
 const find = <T extends OrmEntity>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<any>, model: SelectorState<T>): T[] => {
     const rawItems = [...adapter.getStore(classSchema).items.values()];
     const deserializer = getSerializeFunction(classSchema.type, memorySerializer.deserializeRegistry);
     const items = rawItems.map(v => deserializer(v));
-
-    console.log(items);
-    let filtered = model.where ? filterWhere(items, model.where) : items;
-
-    if (model.orderBy) {
-        for (const order of model.orderBy) {
-            sort(filtered, buildAccessor(order.a), order.direction === 'asc' ? sortAsc : sortDesc);
-        }
-    }
-
-    if (model.offset && model.limit) {
-        filtered = filtered.slice(model.offset, model.offset + model.limit);
-    } else if (model.limit) {
-        filtered = filtered.slice(0, model.limit);
-    } else if (model.offset) {
-        filtered = filtered.slice(model.offset);
-    }
-    return filtered;
+    const finder = buildFinder(model, adapter.finderCache);
+    return finder(items, model.params);
 };
 
 const remove = <T>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<T>, toDelete: T[]) => {
@@ -136,7 +150,7 @@ const remove = <T>(adapter: MemoryDatabaseAdapter, classSchema: ReflectionClass<
 
 class Resolver<T extends object> extends SelectorResolver<T> {
     get adapter() {
-        return this.session.adapter as any as MemoryDatabaseAdapter;
+        return this.session.adapter as MemoryDatabaseAdapter;
     }
 
     protected createFormatter(state: SelectorState<T>, withIdentityMap: boolean = false) {
@@ -278,6 +292,7 @@ export class MemoryPersistence extends DatabasePersistence {
 
 export class MemoryDatabaseAdapter extends DatabaseAdapter {
     protected store = new Map<number, SimpleStore<any>>();
+    finderCache: { [id: string]: MemoryFinder<any> } = {};
 
     async migrate(options: MigrateOptions, entityRegistry: DatabaseEntityRegistry) {
     }

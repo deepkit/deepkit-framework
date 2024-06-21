@@ -182,6 +182,7 @@ interface Program {
     //used in inline-only programs like `typeOf<MyAlias>()` where we want the type of (cached) MyAlias and not a new reference.
     directReturn?: boolean;
     object?: ClassType | Function | Packed | any;
+    keepReference?: boolean;
 }
 
 function assignResult<T extends Type>(ref: Type, result: T, assignParents: boolean): T {
@@ -230,6 +231,7 @@ function createProgram(options: Partial<Program>, inputs?: RuntimeStackEntry[]):
         // typeParameters: [],
         // previous: undefined,
         object: options.object,
+        keepReference: options.keepReference,
     };
 
     if (options.initialStack) for (let i = 0; i < options.initialStack.length; i++) {
@@ -307,6 +309,8 @@ export interface ReflectOptions {
      */
     reuseCached?: boolean;
 
+    keepReference?: boolean;
+
     inline?: boolean;
 
     typeName?: string;
@@ -363,7 +367,7 @@ export class Processor {
                 //functions without any type annotations do not have the overhead of an assigned __type
                 return {
                     kind: ReflectionKind.function,
-                    function: object, name: object.name,
+                    name: object.name,
                     parameters: [], return: { kind: ReflectionKind.any },
                 };
             }
@@ -417,7 +421,7 @@ export class Processor {
 
         // process.stdout.write(`${options.reuseCached} Cache miss ${stringifyValueWithType(object)}(...${inputs.length})\n`);
         const pack = packed.__unpack ||= unpack(packed);
-        const program = createProgram({ ops: pack.ops, initialStack: pack.stack, object }, inputs);
+        const program = createProgram({ ops: pack.ops, initialStack: pack.stack, object, keepReference: options.keepReference }, inputs);
         const type = this.runProgram(program);
         type.typeName ||= options.typeName;
 
@@ -476,7 +480,7 @@ export class Processor {
         programLoop:
             while (this.program.active) {
                 const program = this.program;
-                // process.stdout.write(`jump to program: ${stringifyValueWithType(program.object)}\n`);
+                // process.stdout.write(`jump to program: ${stringifyValueWithType(program.object)} (keepReference=${program.keepReference})\n`);
                 for (; program.program < program.end; program.program++) {
                     const op = program.ops[program.program];
 
@@ -706,7 +710,7 @@ export class Processor {
                                 if (op === ReflectionOp.classReference) {
                                     this.pushType({ kind: ReflectionKind.class, classType: classOrFunction, typeArguments: inputs, types: [] });
                                 } else if (op === ReflectionOp.functionReference) {
-                                    this.pushType({ kind: ReflectionKind.function, function: classOrFunction, parameters: [], return: { kind: ReflectionKind.unknown } });
+                                    this.pushType({ kind: ReflectionKind.function, function: classOrFunction, name: classOrFunction.name || undefined, parameters: [], return: { kind: ReflectionKind.unknown } });
                                 }
                             } else {
                                 //when it's just a simple reference resolution like typeOf<Class>() then enable cache re-use (so always the same type is returned)
@@ -1267,8 +1271,11 @@ export class Processor {
                             result.classType = program.object;
                             applyClassDecorators(result);
                         }
-                        if (result.kind === ReflectionKind.function && !result.function) {
-                            result.function = program.object;
+                        if (result.kind === ReflectionKind.function) {
+                            if (!result.name && program.object.name) result.name = program.object.name;
+                            if (program.keepReference) {
+                                result.function = program.object;
+                            }
                         }
                     }
                     if (!program.directReturn) {
@@ -1774,7 +1781,7 @@ export function typeInfer(value: any): Type {
             //with emitted types: function or class
             //don't use resolveRuntimeType since we don't allow cache here
             // console.log('typeInfer of', value.name);
-            return Processor.get().reflect(value, undefined, { inline: true }) as Type;
+            return Processor.get().reflect(value, undefined, { inline: true, keepReference: true }) as Type;
         }
 
         if (isClass(value)) {
@@ -1782,7 +1789,7 @@ export function typeInfer(value: any): Type {
             return { kind: ReflectionKind.class, classType: value as ClassType, types: [] };
         }
 
-        return { kind: ReflectionKind.function, function: value, name: value.name, return: { kind: ReflectionKind.any }, parameters: [] };
+        return { kind: ReflectionKind.function, function: value, name: value.name || undefined, return: { kind: ReflectionKind.any }, parameters: [] };
     } else if (isArray(value)) {
         return { kind: ReflectionKind.array, type: typeInferFromContainer(value) };
     } else if ('object' === typeof value) {
