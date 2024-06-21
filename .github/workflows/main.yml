@@ -73,6 +73,7 @@ jobs:
             packages/injector/ \
             packages/logger/ \
             packages/template/ \
+            packages/sql/ \
             packages/stopwatch/ \
             packages/workflow/ \
             packages/type/
