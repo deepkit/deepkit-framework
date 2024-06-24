@@ -33,6 +33,8 @@ export interface PreparedEntity {
 
 export interface PreparedAdapter {
     getName(): string;
+
+    cache: { [name: string]: any };
     builderRegistry: SqlBuilderRegistry;
     platform: DefaultPlatform;
     preparedEntities: Map<ReflectionClass<any>, PreparedEntity>;
@@ -80,7 +82,17 @@ export function getPreparedEntity(adapter: PreparedAdapter, entity: ReflectionCl
 
     if (!primaryKey) throw new Error(`No primary key defined for ${name}.`);
 
-    prepared = { platform: adapter.platform, type, primaryKey, name, tableName, tableNameEscaped, fieldMap, fields, sqlTypeCaster };
+    prepared = {
+        platform: adapter.platform,
+        type,
+        primaryKey,
+        name,
+        tableName,
+        tableNameEscaped,
+        fieldMap,
+        fields,
+        sqlTypeCaster,
+    };
     adapter.preparedEntities.set(entity, prepared);
     return prepared;
 }

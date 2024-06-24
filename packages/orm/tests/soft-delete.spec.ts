@@ -3,7 +3,7 @@ import { expect, test } from '@jest/globals';
 import { getInstanceStateFromItem } from '../src/identity-map.js';
 import { Database } from '../src/database.js';
 import { MemoryDatabaseAdapter } from '../src/memory-db.js';
-import { enableHardDelete, includeOnlySoftDeleted, includeSoftDeleted, setDeletedBy, SoftDeletePlugin, SoftDeleteSession } from '../src/plugin/soft-delete-plugin.js';
+import { includeOnlySoftDeleted, includeSoftDeleted, restoreMany, restoreOne, setDeletedBy, SoftDeletePlugin, SoftDeleteSession } from '../src/plugin/soft-delete-plugin.js';
 
 test('soft-delete query', async () => {
     class User {
@@ -19,6 +19,7 @@ test('soft-delete query', async () => {
     const memory = new MemoryDatabaseAdapter();
     const database = new Database(memory, [User]);
     database.registerPlugin(new SoftDeletePlugin);
+    database.logger.enableLogging();
 
     await database.persist(deserialize<User>({ id: 1, username: 'Peter' }));
     await database.persist(deserialize<User>({ id: 2, username: 'Joe' }));
@@ -49,12 +50,12 @@ test('soft-delete query', async () => {
     expect(deleted2.deletedBy).toBe('me');
 
     // how to restore?
-    await database.singleQuery(User).lift(SoftDeleteQuery).filter({ id: 1 }).restoreOne();
+    await restoreOne(database.singleQuery(User).filter({ id: 1 }));
 
     expect(await database.singleQuery(User).count()).toBe(2);
     expect(await database.singleQuery(User, user=> includeSoftDeleted()).count()).toBe(3);
 
-    await database.singleQuery(User).lift(SoftDeleteQuery).restoreMany();
+    await restoreMany(database.singleQuery(User));
     expect(await database.singleQuery(User).count()).toBe(3);
     expect(await database.singleQuery(User, user=> includeSoftDeleted()).count()).toBe(3);
 
@@ -65,7 +66,7 @@ test('soft-delete query', async () => {
 
     //hard delete everything
     await database.singleQuery(User, user => {
-        enableHardDelete();
+        includeSoftDeleted();
     }).deleteMany();
     expect(await database.singleQuery(User).count()).toBe(0);
     expect(await database.singleQuery(User, user=> includeSoftDeleted()).count()).toBe(0);
@@ -87,6 +88,7 @@ test('soft-delete session', async () => {
     const memory = new MemoryDatabaseAdapter();
     const database = new Database(memory, [User]);
     database.registerPlugin(new SoftDeletePlugin);
+    database.logger.enableLogging();
 
     const session = database.createSession();
     const peter = new User('peter');
@@ -99,7 +101,9 @@ test('soft-delete session', async () => {
     expect(await database.singleQuery(User).count()).toBe(3);
 
     {
-        const peterDB = await session.singleQuery(User).filter({ id: 1 }).findOne();
+        const peterDB: User = (await session.singleQuery(User).filter({ id: 1 }).find())[0];
+        expect(getInstanceStateFromItem(peterDB).isKnownInDatabase()).toBe(true);
+        expect(getInstanceStateFromItem(peterDB).isFromDatabase()).toBe(true);
         session.remove(peterDB);
         await session.commit();
         expect(getInstanceStateFromItem(peterDB).isKnownInDatabase()).toBe(true);

@@ -103,14 +103,6 @@ export class MigrateOptions {
  * You can specify a more specialized adapter like MysqlDatabaseAdapter/MongoDatabaseAdapter with special API for MySQL/Mongo.
  */
 export abstract class DatabaseAdapter {
-    // abstract queryFactory(session: DatabaseSession<this>): DatabaseAdapterQueryFactory;
-    //
-    // createQuery2Resolver?(session: DatabaseSession<this>): Query2Resolver<any>;
-    //
-    // rawFactory(session: DatabaseSession<this>): RawFactory<any> {
-    //     return new RawFactory();
-    // };
-
     abstract createSelectorResolver<T extends OrmEntity>(session: DatabaseSession<this>): SelectorResolver<T>;
 
     abstract createPersistence(session: DatabaseSession<this>): DatabasePersistence;

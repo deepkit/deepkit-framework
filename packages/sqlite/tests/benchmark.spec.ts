@@ -1,7 +1,6 @@
 import { test } from '@jest/globals';
 import { AutoIncrement, PrimaryKey } from '@deepkit/type';
 import { databaseFactory } from './factory.js';
-import { Formatter } from '@deepkit/orm';
 
 export class DeepkitModel {
     public id: number & PrimaryKey & AutoIncrement = 0;
@@ -56,24 +55,24 @@ test('bench', async () => {
 
     let statement: any;
     let formatter: any;
-    await bench('fetch select', async () => {
-        const query = database.select<DeepkitModel>(m => {
-        });
-        const sql = emitSql(database.adapter, query.model);
-        if (!statement) {
-            const connection = await database.adapter.connectionPool.getConnection();
-            statement = await connection.prepare(sql.sql);
-        }
-        formatter ||= new Formatter(
-            query.classSchema,
-            database.adapter.platform.serializer,
-            session.getHydrator(),
-            undefined,
-        );
-        const rows = await statement.all(sql.params);
-        const objects = rows.map(row => (formatter as any).deserialize(row));
-
-        // statement.release();
-        // connection.release();
-    });
+    // await bench('fetch select', async () => {
+    //     const query = database.select<DeepkitModel>(m => {
+    //     });
+    //     const sql = emitSql(database.adapter, query.model);
+    //     if (!statement) {
+    //         const connection = await database.adapter.connectionPool.getConnection();
+    //         statement = await connection.prepare(sql.sql);
+    //     }
+    //     formatter ||= new Formatter(
+    //         query.classSchema,
+    //         database.adapter.platform.serializer,
+    //         session.getHydrator(),
+    //         undefined,
+    //     );
+    //     const rows = await statement.all(sql.params);
+    //     const objects = rows.map(row => (formatter as any).deserialize(row));
+    //
+    //     // statement.release();
+    //     // connection.release();
+    // });
 });

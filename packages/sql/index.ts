@@ -10,7 +10,6 @@
 
 export * from './src/sql-builder.js';
 export * from './src/sql-adapter.js';
-export * from './src/sql-filter-builder.js';
 
 export * from './src/migration/migration.js';
 export * from './src/migration/migration-provider.js';

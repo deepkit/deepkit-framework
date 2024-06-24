@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';
+import { asyncOperation, empty } from '@deepkit/core';
 import {
     DatabaseDeleteError,
     DatabaseError,
@@ -23,6 +23,7 @@ import {
     OrmEntity,
     PatchResult,
     primaryKeyObjectConverter,
+    SelectorState,
     UniqueConstraintFailure,
 } from '@deepkit/orm';
 import {
@@ -35,21 +36,11 @@ import {
     SQLConnection,
     SQLConnectionPool,
     SQLDatabaseAdapter,
-    SQLDatabaseQuery,
-    SQLDatabaseQueryFactory,
     SQLPersistence,
-    SQLQueryModel,
     SQLQueryResolver,
     SQLStatement,
 } from '@deepkit/sql';
-import {
-    Changes,
-    getPatchSerializeFunction,
-    getSerializeFunction,
-    ReceiveType,
-    ReflectionClass,
-    resolvePath,
-} from '@deepkit/type';
+import { Changes, getPatchSerializeFunction, getSerializeFunction, ReflectionClass, resolvePath } from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
 import { SQLitePlatform } from './sqlite-platform.js';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
@@ -436,25 +427,24 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
     constructor(
         protected connectionPool: SQLiteConnectionPool,
         protected platform: DefaultPlatform,
-        classSchema: ReflectionClass<T>,
         session: DatabaseSession<SQLDatabaseAdapter>) {
-        super(connectionPool, platform, classSchema, session.adapter, session);
+        super(connectionPool, platform, session.adapter, session);
     }
 
     override handleSpecificError(error: Error): Error {
         return handleSpecificError(this.session, error);
     }
 
-    async delete(model: SQLQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
+    async delete(model: SelectorState<T>, deleteResult: DeleteResult<T>): Promise<void> {
         // if (model.hasJoins()) throw new Error('Delete with joins not supported. Fetch first the ids then delete.');
         const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
-        const primaryKey = this.classSchema.getPrimary();
+        const primaryKey = model.schema.getPrimary();
         const pkName = primaryKey.name;
         const pkField = this.platform.quoteIdentifier(primaryKey.name);
         const sqlBuilder = new SqlBuilder(this.adapter);
-        const tableName = this.platform.getTableIdentifier(this.classSchema);
-        const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
-        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
+        const tableName = this.platform.getTableIdentifier(model.schema);
+        const select = sqlBuilder.select(model, { select: [pkField] });
+        const primaryKeyConverted = primaryKeyObjectConverter(model.schema, this.platform.serializer.deserializeRegistry);
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
         const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
@@ -474,7 +464,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
                 deleteResult.primaryKeys.push(primaryKeyConverted(row[pkName]));
             }
         } catch (error: any) {
-            error = new DatabaseDeleteError(this.classSchema, `Could not delete ${this.classSchema.getClassName()} in database`, { cause: error });
+            error = new DatabaseDeleteError(model.schema, `Could not delete ${model.schema.getClassName()} in database`, { cause: error });
             error.query = model;
             error = this.handleSpecificError(error);
         } finally {
@@ -482,18 +472,18 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         }
     }
 
-    async patch(model: SQLQueryModel<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
+    async patch(model: SelectorState<T>, changes: Changes<T>, patchResult: PatchResult<T>): Promise<void> {
         const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const select: string[] = [];
         const selectParams: any[] = [];
-        const tableName = this.platform.getTableIdentifier(this.classSchema);
-        const primaryKey = this.classSchema.getPrimary();
-        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
+        const tableName = this.platform.getTableIdentifier(model.schema);
+        const primaryKey = model.schema.getPrimary();
+        const primaryKeyConverted = primaryKeyObjectConverter(model.schema, this.platform.serializer.deserializeRegistry);
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
-        const patchSerialize = getPatchSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
+        const patchSerialize = getPatchSerializeFunction(model.schema.type, this.platform.serializer.serializeRegistry);
         const $set = changes.$set ? patchSerialize(changes.$set, undefined, { normalizeArrayIndex: true }) : undefined;
 
         if ($set) for (const i in $set) {
@@ -509,15 +499,16 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
             select.push(`NULL as ${this.platform.quoteIdentifier(i)}`);
         }
 
-        for (const i of model.returning) {
-            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.deserializeRegistry) };
-            select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
-        }
+        //todo add
+        // for (const i of model.returning) {
+        //     aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, model.schema.type), this.platform.serializer.deserializeRegistry) };
+        //     select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
+        // }
 
         if (changes.$inc) for (const i in changes.$inc) {
             if (!changes.$inc.hasOwnProperty(i)) continue;
             fieldsSet[i] = 1;
-            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
+            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, model.schema.type), this.platform.serializer.serializeRegistry) };
 
             select.push(`(${this.platform.getColumnAccessor('', i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`);
         }
@@ -543,7 +534,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         }
 
         const sqlBuilder = new SqlBuilder(this.adapter, selectParams);
-        const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
+        const selectSQL = sqlBuilder.select(model, { select });
         if (!set.length) {
             throw new DatabaseError('SET is empty');
         }
@@ -580,26 +571,11 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
                 }
             }
         } catch (error: any) {
-            error = new DatabasePatchError(this.classSchema, model, changes, `Could not patch ${this.classSchema.getClassName()} in database`, { cause: error });
+            error = new DatabasePatchError(model.schema, model, changes, `Could not patch ${model.schema.getClassName()} in database`, { cause: error });
             throw this.handleSpecificError(error);
         } finally {
             connection.release();
         }
-    }
-}
-
-export class SQLiteDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T> {
-}
-
-export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
-    constructor(protected connectionPool: SQLiteConnectionPool, platform: DefaultPlatform, databaseSession: DatabaseSession<any>) {
-        super(connectionPool, platform, databaseSession);
-    }
-
-    createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): SQLiteDatabaseQuery<T> {
-        return new SQLiteDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
-            new SQLiteQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession)
-        );
     }
 }
 
@@ -613,6 +589,10 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
             this.sqlitePath = this.sqlitePath.substring('sqlite://'.length);
         }
         this.connectionPool = new SQLiteConnectionPool(this.sqlitePath);
+    }
+
+    createSelectorResolver(session: DatabaseSession<this>): SQLQueryResolver<any> {
+        return new SQLiteQueryResolver(this.connectionPool, this.platform, session);
     }
 
     async getInsertBatchSize(schema: ReflectionClass<any>): Promise<number> {
@@ -633,10 +613,6 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
 
     createPersistence(session: DatabaseSession<any>): SQLPersistence {
         return new SQLitePersistence(this.platform, this.connectionPool, session);
-    }
-
-    queryFactory(databaseSession: DatabaseSession<any>): SQLiteDatabaseQueryFactory {
-        return new SQLiteDatabaseQueryFactory(this.connectionPool, this.platform, databaseSession);
     }
 
     disconnect(force?: boolean): void {

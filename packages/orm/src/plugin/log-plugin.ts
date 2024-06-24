@@ -145,6 +145,7 @@ export class LogPlugin implements DatabasePlugin {
     onRegister(database: Database<any>): void {
         if (this.entities.size === 0) {
             for (const entity of database.entityRegistry.all()) {
+                if (undefined === entity.type.id) continue;
                 if (entity.data[IsLogEntity]) continue;
                 this.entities.add(entity);
                 database.entityRegistry.add(this.getLogEntity(entity));
@@ -157,7 +158,7 @@ export class LogPlugin implements DatabasePlugin {
 
             for (const primaryKey of event.deleteResult.primaryKeys) {
                 const log = this.createLog(event.databaseSession, LogType.Deleted, event.classSchema, primaryKey);
-                log.author = event.query.data.logAuthor || '';
+                log.author = event.query.state.data.logAuthor || '';
                 event.databaseSession.add(log);
             }
             await event.databaseSession.commit();
@@ -169,7 +170,7 @@ export class LogPlugin implements DatabasePlugin {
 
             for (const primaryKey of event.patchResult.primaryKeys) {
                 const log = this.createLog(event.databaseSession, LogType.Updated, event.classSchema, primaryKey);
-                log.author = event.query.data.logAuthor || '';
+                log.author = event.query.state.data.logAuthor || '';
                 log.changedFields = event.patch.fieldNames;
                 event.databaseSession.add(log);
             }

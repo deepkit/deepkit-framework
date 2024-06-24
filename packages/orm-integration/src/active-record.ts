@@ -5,6 +5,7 @@ import { Tag } from './active-record/tag.js';
 import { BookTag } from './active-record/book-tag.js';
 import { Group } from './bookstore/group.js';
 import { DatabaseFactory } from './test.js';
+import { join } from '@deepkit/orm';
 
 export const activeRecordTests = {
     async basics(databaseFactory: DatabaseFactory) {
@@ -43,7 +44,7 @@ export const activeRecordTests = {
         expect(await database.query(User).count()).toBe(2);
 
         {
-            const books = await Book.query().useInnerJoinWith('author').innerJoinWith('groups').end().find();
+            const books = await Book.query(m => [m, join(m.author), join(m.author.groups)]).find();
             expect(books.length).toBe(1); //because user1 has no group assigned
             const book1Db = books[0];
             expect(book1Db.author.name).toBe('peter');
@@ -54,7 +55,7 @@ export const activeRecordTests = {
 
         {
             await database.persist(new UserGroup(user2, group1));
-            const books = await Book.query().useInnerJoinWith('author').innerJoinWith('groups').end().find();
+            const books = await Book.query(m => [m, m.author, m.author.groups]).find();
             expect(books.length).toBe(2); //because user1 has now a group
             const book1Db = books[0];
             expect(book1Db.title).toBe('My book');
@@ -82,7 +83,7 @@ export const activeRecordTests = {
         await tagAssignment.save();
 
         {
-            const books = await Book.query().joinWith('tags').find();
+            const books = await Book.query(m => [m, join(m.tags)]).find();
             expect(books.length).toBe(1);
             const book1DB = books[0];
             expect(book1DB.author.id).toBe(user1.id);
@@ -95,7 +96,7 @@ export const activeRecordTests = {
         await new BookTag(book1, tagHot).save();
 
         {
-            const books = await Book.query().joinWith('tags').find();
+            const books = await Book.query(m => [m, m.tags]).find();
             expect(books.length).toBe(1);
             const book1DB = books[0];
             expect(book1DB.author.id).toBe(user1.id);

@@ -16,7 +16,7 @@ import type { DatabasePersistenceChangeSet } from './database-adapter.js';
 import type { DatabaseSession } from './database-session.js';
 import type { DeleteResult, PatchResult } from './type.js';
 import { OrmEntity } from './type.js';
-import { SelectorState } from './select.js';
+import { Query2 } from './select.js';
 
 export class ItemNotFound extends Error {
 }
@@ -82,7 +82,7 @@ export class QueryDatabaseEvent<T extends OrmEntity> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
-        public readonly query: SelectorState,
+        public readonly query: Query2<object>,
     ) {
         super();
     }
@@ -97,7 +97,7 @@ export class DatabaseErrorEvent extends DatabaseEvent {
         public readonly error: Error,
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema?: ReflectionClass<any>,
-        public readonly query?: SelectorState,
+        public readonly query?: Query2<object>,
     ) {
         super();
     }
@@ -129,7 +129,7 @@ export class QueryDatabaseDeleteEvent<T extends OrmEntity> extends DatabaseEvent
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
-        public readonly query: SelectorState,
+        public readonly query: Query2<object>,
         public readonly deleteResult: DeleteResult<T>,
     ) {
         super();
@@ -144,7 +144,7 @@ export class QueryDatabasePatchEvent<T extends object> extends DatabaseEvent {
     constructor(
         public readonly databaseSession: DatabaseSession<any>,
         public readonly classSchema: ReflectionClass<T>,
-        public readonly query: SelectorState,
+        public readonly query: Query2<object>,
         public readonly patch: Changes<T>,
         public readonly patchResult: PatchResult<T>,
     ) {

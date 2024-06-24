@@ -6,12 +6,11 @@ import {
     getSimplePrimaryKeyHashGenerator,
     PrimaryKeyFields,
     PrimaryKeyType,
+    ReceiveType,
     ReflectionClass,
     ReflectionKind,
     resolveReceiveType,
     Type,
-    TypeClass,
-    TypeObjectLiteral,
     TypeProperty,
     TypePropertySignature,
 } from '@deepkit/type';
@@ -32,24 +31,30 @@ import {
 import { DatabaseSession } from './database-session.js';
 import { FieldName } from './utils.js';
 import { FrameCategory } from '@deepkit/stopwatch';
-import { ClassType } from '@deepkit/core';
+import { ClassType, CompilerContext } from '@deepkit/core';
 
 let treeId = 10;
-type ExpressionTree = { id: number, nodes: { [id: number]: ExpressionTree }, cache?: { [name: string]: any } };
+export type ExpressionTree = { id: number, nodes: { [id: number]: ExpressionTree }, cache?: { [name: string]: any } };
+export type Expression = OpExpression | SelectorProperty<any> | number;
+export type From<T> = Type & { __from: T };
+
+export function from<T>(type?: ReceiveType<T>): From<T> {
+    return resolveReceiveType(type) as From<T>;
+}
 
 /** @reflection never */
 export type SelectorProperty<T = unknown> = {
-    [propertyTag]: 'property';
-    // model: SelectorState;
-    name: string;
-    // as?: string;
-    tree: ExpressionTree,
-    property: TypeProperty | TypePropertySignature;
-    toString(): string;
+    [treeTag]: ExpressionTree;
+    [propertyTag]: {
+        model: SelectorState;
+        name: string;
+        // as?: string;
+        property: TypeProperty | TypePropertySignature;
+    },
 }
 
-export type SelectorRefs<T> = {
-    [P in keyof T]-?: SelectorProperty<T[P]>;
+export type SelectorRefs<T> = unknown extends T ? any : {
+    [P in keyof T]-?: SelectorProperty<T[P]> & (T[P] extends object ? Select<T[P]> : {});
 } & { $$fields: SelectorProperty<any>[] };
 
 export interface SelectStateExpression {
@@ -58,6 +63,52 @@ export interface SelectStateExpression {
 
 export function selectorIsPartial(state: SelectorState): boolean {
     return state.select.length > 0;
+}
+
+export function stringifyExpression(expression: Expression, params: any[]): string {
+    if (isProperty(expression)) {
+        return expression[propertyTag].name;
+    } else if (isOp(expression)) {
+        return expression[opTag].id.description + '(' + expression.args.map(v => stringifyExpression(v, params)).join(', ') + ')';
+    } else {
+        const param = params[expression];
+        if ('undefined' === typeof param) return 'undefined';
+        return JSON.stringify(param);
+        // return '$' + String(expression);
+    }
+}
+
+export function stringifySelector(state: SelectorState): string {
+    const parts: string[] = [];
+    parts.push('SELECT');
+    if (state.select.length === 0) {
+        parts.push('*');
+    } else {
+        parts.push(state.select.map(v => stringifyExpression(v, state.params)).join(', '));
+    }
+    parts.push('FROM');
+    parts.push(state.schema.getClassName());
+    if (state.where) {
+        parts.push('WHERE');
+        parts.push(stringifyExpression(state.where, state.params));
+    }
+    if (state.orderBy?.length) {
+        parts.push('ORDER BY');
+        parts.push(state.orderBy.map(v => stringifyExpression(v.a, state.params) + ' ' + v.direction).join(', '));
+    }
+    if (state.groupBy?.length) {
+        parts.push('GROUP BY');
+        parts.push(state.groupBy.map(v => stringifyExpression(v, state.params)).join(', '));
+    }
+    if (state.limit) {
+        parts.push('LIMIT');
+        parts.push(String(state.limit));
+    }
+    if (state.offset) {
+        parts.push('OFFSET');
+        parts.push(String(state.offset));
+    }
+    return parts.join(' ');
 }
 
 export type SelectorState<R = unknown> = {
@@ -178,6 +229,7 @@ export const count = makeOp('count', (expression, args: any[]) => {
 
 });
 
+export const treeTag = Symbol('tree');
 export const propertyTag = Symbol('property');
 export const opTag = Symbol('op');
 
@@ -189,53 +241,49 @@ export function isOp(value: any): value is OpExpression {
     return 'object' === typeof value && opTag in value;
 }
 
-
-function getTree(args: any[]) {
-    let tree: ExpressionTree | undefined;
+/**
+ * Constructs a static expression tree based on arguments and an operation.
+ */
+function getTree(tree: ExpressionTree, args: any[]) {
     const params = state!.params;
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
         if (isProperty(arg) || isOp(arg)) {
-            if (tree) {
-                const a = tree.nodes[arg.tree.id];
-                if (a) {
-                    tree = a;
-                } else {
-                    tree = tree.nodes[arg.tree.id] = arg.tree;
-                }
-            } else {
-                tree = arg.tree;
-            }
+            tree = tree.nodes[arg[treeTag].id] ||= { id: treeId++, nodes: {} };
         } else {
             const paramIndex = params.length;
             params.push(arg);
             args[i] = paramIndex;
-            if (tree) {
-                const a = tree.nodes[0];
-                if (a) {
-                    tree = a;
-                } else {
-                    tree = tree.nodes[0] = { id: treeId++, nodes: {} };
-                }
-            }
+            tree = tree.nodes[0] ||= { id: treeId++, nodes: {} };
         }
     }
     return tree;
 }
 
-export type OpExpression = { [opTag]: Op, tree: ExpressionTree, args: (OpExpression | SelectorProperty | number)[] };
+export type OpExpression = {
+    [opTag]: Op,
+    [treeTag]: ExpressionTree,
+    args: (OpExpression | SelectorProperty | number)[]
+};
 export type Op = ((...args: any[]) => OpExpression) & { id: symbol };
+
+export function getStateCacheId(state: SelectorState): string {
+    const cacheId = state.schema.type.id + '_' + state.where?.[treeTag].id + '_' + state.orderBy?.map(v => v.a[treeTag].id).join(':');
+    //todo select also
+    // todo join also
+    return cacheId;
+}
 
 function makeOp(name: string, cb: (expression: OpExpression, args: any[]) => any): Op {
     const opTree: ExpressionTree = { id: treeId++, nodes: {} };
-    const id = Symbol('op:' + name);
+    const id = Symbol(name);
 
     /**
      * @reflection never
      */
     function operation(...args: any[]) {
-        const tree = getTree(args) || opTree;
-        const opExpression = { [opTag]: operation, tree, args };
+        const tree = getTree(opTree, args);
+        const opExpression = { [opTag]: operation, [treeTag]: tree, args };
         cb(opExpression, args);
         return opExpression;
     }
@@ -284,6 +332,7 @@ export const and = makeOp('and', (exp, args: any[]) => {
 
 export const joinOp = makeOp('join', (exp, args: any[]) => {
     ensureState(state);
+    //todo this must not be a join, but a expression chain so that tree is correct
     if (state.joins) {
         state.joins.push(state);
     } else {
@@ -314,7 +363,7 @@ export function as<T extends SelectorState | OpExpression | SelectorProperty<any
 
 export const join = <K>(a: SelectorProperty<K>, cb?: (m: SelectorRefs<K extends Array<infer K2> ? K2 : K>) => any): SelectorRefs<K> => {
     ensureState(state);
-    const foreignType = resolveReferencedSchema(a.property);
+    const foreignType = resolveReferencedSchema(a[propertyTag].property);
     const s = state = createModel(foreignType);
     try {
         if (cb) {
@@ -356,7 +405,7 @@ export function query<const R extends any, T>(cb: (main: SelectorRefs<T>, ...arg
     return { state: nextSelect };
 }
 
-export function singleQuery<const R extends any, T>(classType: ClassType<T> | Type, cb?: (main: SelectorRefs<T>) => R | undefined): SelectorInferredState<T, ResolveSelect<R extends void ? T : R>> {
+export function singleQuery<const R extends any, T>(classType: ClassType<T> | Type | From<T>, cb?: (main: SelectorRefs<T>) => R | undefined): SelectorInferredState<T, ResolveSelect<R extends void ? T : R>> {
     const type = resolveReceiveType(classType);
     const state = createModel(type);
     if (cb) applySelect(state, cb);
@@ -376,7 +425,7 @@ export const applySelect = <T>(nextSelect: SelectorState<T>, a: (m: SelectorRefs
     return nextSelect;
 };
 
-const selectorStateCache: { [id: number]: { schema: ReflectionClass<any>, fields: SelectorRefs<any> } } = {};
+const stateFactoryCache: { [id: number]: (state?: SelectorState) => SelectorState } = {};
 
 export function createModel(type: Type): SelectorState {
     const id = type.id;
@@ -386,46 +435,68 @@ export function createModel(type: Type): SelectorState {
         throw new Error('Type only supports object literals and classes');
     }
 
-    let query2Model = selectorStateCache[id];
+    let query2Model = stateFactoryCache[id];
     if (!query2Model) {
-        selectorStateCache[id] = query2Model = {
+        const compiler = new CompilerContext();
+        const fields: string[] = [];
+        const assignModel: string[] = [];
+
+        compiler.set({
+            propertyTag: propertyTag,
+            treeTag: treeTag,
             schema: ReflectionClass.fromType(type),
-            fields: createFields(type),
-        };
-    }
+        });
 
-    return {
-        schema: query2Model.schema,
-        fields: query2Model.fields,
-        params: [],
-        select: [],
-        data: {},
-        previous: state,
-    };
-}
-
-export function createFields(type: TypeClass | TypeObjectLiteral) {
-    const fields: SelectorRefs<any> = {
-        $$fields: [],
-    } as any;
-
-    for (const member of type.types) {
-        if (member.kind !== ReflectionKind.propertySignature && member.kind !== ReflectionKind.property) continue;
-        const ref = {
-            [propertyTag]: 'property',
-            // model,
-            property: member,
-            tree: {
+        for (const member of type.types) {
+            if (member.kind !== ReflectionKind.propertySignature && member.kind !== ReflectionKind.property) continue;
+            const name = String(member.name);
+            const treeForProp = compiler.reserveVariable('tree_' + name, {
                 id: treeId++,
                 nodes: {},
+            });
+
+            let subModel: string = '';
+            let deeperType: Type | undefined;
+            if (member.type.kind === ReflectionKind.array) {
+                deeperType = member.type.type;
+            } else if (member.type.kind === ReflectionKind.union) {
+                //??????
+            } else if (member.type.kind === ReflectionKind.class || member.type.kind === ReflectionKind.objectLiteral) {
+                deeperType = member.type;
+            }
+
+            if (deeperType && (deeperType.kind === ReflectionKind.class || deeperType.kind === ReflectionKind.objectLiteral)) {
+                subModel = compiler.reserveVariable('subModel_' + name, () => createModel(deeperType!));
+            }
+
+            fields.push(`${name}: {
+                [propertyTag]: {
+                    property: ${compiler.reserveVariable('property', member)},
+                    name: '${name}'
+                },
+                [treeTag]: ${treeForProp},
+                ${subModel ? `...${subModel}.fields,` : ''}
             },
-            name: String(member.name),
-        } satisfies SelectorProperty<any>;
-        fields.$$fields.push(ref);
-        (fields as any)[member.name] = ref;
+            `);
+
+            assignModel.push(`fields.${name}[propertyTag].model = res;`);
+        }
+
+        const code = `
+            return function(previous) {
+                const fields = {
+                    ${fields.join('\n')}
+                };
+                const res = { schema, fields, params: [], select: [], data: {}, previous };
+                ${assignModel.join('\n')}
+                return res;
+            }
+        `;
+
+        stateFactoryCache[id] = query2Model = compiler.build(code)();
     }
 
-    return fields;
+    return query2Model(state);
 }
 
 export abstract class SelectorResolver<T extends object> {
@@ -456,24 +527,33 @@ export class Query2<T extends object, R = any> {
         this.classSchema = state.schema;
     }
 
+    apply(cb: (m: SelectorRefs<T>) => any): this {
+        applySelect(this.state, cb);
+        return this;
+    }
+
     filter(filter: Partial<T>): this {
-        applySelect(this.state, () => {
-            for (const i in filter) {
-                where(eq(this.state.fields[i], filter[i]));
-            }
+        applySelect(this.state, (v) => {
+            const args = Object.entries(filter).map(([name, value]) => eq(v[name as keyof T], value));
+            where(...args);
         });
         return this;
     }
 
-    protected async callOnFetchEvent(state: SelectorState): Promise<void> {
+    disableIdentityMap(): this {
+        this.state.withIdentityMap = false;
+        return this;
+    }
+
+    protected async callOnFetchEvent(query: Query2<object>): Promise<void> {
         const hasEvents = this.session.eventDispatcher.hasListeners(onFind);
         if (!hasEvents) return;
 
-        const event = new QueryDatabaseEvent(this.session, this.classSchema, state);
+        const event = new QueryDatabaseEvent(this.session, this.classSchema, query);
         await this.session.eventDispatcher.dispatch(onFind, event);
     }
 
-    protected onQueryResolve(state: SelectorState): void {
+    protected onQueryResolve(query: Query2<object>): void {
         //TODO implement
         // if (query.classSchema.singleTableInheritance && query.classSchema.parent) {
         //     const discriminant = query.classSchema.parent.getSingleTableInheritanceDiscriminantName();
@@ -509,12 +589,12 @@ export class Query2<T extends object, R = any> {
                 className: this.classSchema.getClassName(),
             });
             const eventFrame = this.session.stopwatch?.start('Events');
-            await this.callOnFetchEvent(this.state);
-            this.onQueryResolve(this.state);
+            await this.callOnFetchEvent(this);
+            this.onQueryResolve(this);
             eventFrame?.end();
             return await this.resolver.count(this.state);
         } catch (error: any) {
-            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, this.state.schema, this.state));
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, this.state.schema, this));
             throw error;
         } finally {
             frame?.end();
@@ -526,7 +606,7 @@ export class Query2<T extends object, R = any> {
      *
      * @throws DatabaseError
      */
-    public async find<R>(selector?: SelectorInferredState<T, R>): Promise<R[]> {
+    public async find(): Promise<T[]> {
         const frame = this.session
             .stopwatch?.start('Find:' + this.classSchema.getClassName(), FrameCategory.database);
 
@@ -536,12 +616,12 @@ export class Query2<T extends object, R = any> {
                 className: this.classSchema.getClassName(),
             });
             const eventFrame = this.session.stopwatch?.start('Events');
-            await this.callOnFetchEvent(this.state);
-            this.onQueryResolve(this.state);
+            await this.callOnFetchEvent(this);
+            this.onQueryResolve(this);
             eventFrame?.end();
-            return await this.resolver.find(this.state) as R[];
+            return await this.resolver.find(this.state) as T[];
         } catch (error: any) {
-            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, this.state.schema, this.state));
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, this.state.schema, this));
             throw error;
         } finally {
             frame?.end();
@@ -561,12 +641,12 @@ export class Query2<T extends object, R = any> {
                 className: this.classSchema.getClassName(),
             });
             const eventFrame = this.session.stopwatch?.start('Events');
-            await this.callOnFetchEvent(this.state);
-            this.onQueryResolve(this.state);
+            await this.callOnFetchEvent(this);
+            this.onQueryResolve(this);
             eventFrame?.end();
             return await this.resolver.findOneOrUndefined(this.state);
         } catch (error: any) {
-            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, this.state.schema, this.state));
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, this.state.schema, this));
             throw error;
         } finally {
             frame?.end();
@@ -590,7 +670,7 @@ export class Query2<T extends object, R = any> {
      * @throws DatabaseDeleteError
      */
     public async deleteMany(): Promise<DeleteResult<T>> {
-        return await this.delete(this) as any;
+        return await this.delete(this as Query2<any>);
     }
 
     /**
@@ -600,7 +680,7 @@ export class Query2<T extends object, R = any> {
      */
     public async deleteOne(): Promise<DeleteResult<T>> {
         const query = this.patchModel({ limit: 1 });
-        return await this.delete(query);
+        return await this.delete(query as Query2<any>);
     }
 
     protected async delete(query: Query2<any>): Promise<DeleteResult<T>> {
@@ -619,13 +699,13 @@ export class Query2<T extends object, R = any> {
 
         try {
             if (!hasEvents) {
-                this.onQueryResolve(query.state);
+                this.onQueryResolve(query);
                 await this.resolver.delete(query.state, deleteResult);
                 this.session.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
                 return deleteResult;
             }
 
-            const event = new QueryDatabaseDeleteEvent<T>(this.session, this.classSchema, query.state, deleteResult);
+            const event = new QueryDatabaseDeleteEvent<T>(this.session, this.classSchema, query, deleteResult);
 
             if (this.session.eventDispatcher.hasListeners(onDeletePre)) {
                 const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events') : undefined;
@@ -634,9 +714,9 @@ export class Query2<T extends object, R = any> {
                 if (event.stopped) return deleteResult;
             }
 
-            //we need to use event.query in case someone overwrite it
+            //we need to use event.query in case someone overwrites it
             this.onQueryResolve(event.query);
-            await this.resolver.delete(event.query, deleteResult);
+            await this.resolver.delete(event.query.state, deleteResult);
             this.session.identityMap.deleteManyBySimplePK(this.classSchema, deleteResult.primaryKeys);
 
             if (deleteResult.primaryKeys.length && this.session.eventDispatcher.hasListeners(onDeletePost)) {
@@ -648,7 +728,7 @@ export class Query2<T extends object, R = any> {
 
             return deleteResult;
         } catch (error: any) {
-            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, query.classSchema, query.state));
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, query.classSchema, query));
             throw error;
         } finally {
             if (frame) frame.end();
@@ -662,7 +742,7 @@ export class Query2<T extends object, R = any> {
      * @throws UniqueConstraintFailure
      */
     public async patchMany(patch: ChangesInterface<T> | DeepPartial<T>): Promise<PatchResult<T>> {
-        return await this.patch(this, patch);
+        return await this.patch(this as Query2<any>, patch);
     }
 
     /**
@@ -673,7 +753,7 @@ export class Query2<T extends object, R = any> {
      */
     public async patchOne(patch: ChangesInterface<T> | DeepPartial<T>): Promise<PatchResult<T>> {
         const query = this.patchModel({ limit: 1 });
-        return await this.patch(query, patch);
+        return await this.patch(query as Query2<any>, patch);
     }
 
     protected async patch(query: Query2<any>, patch: DeepPartial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
@@ -705,12 +785,12 @@ export class Query2<T extends object, R = any> {
 
             const hasEvents = this.session.eventDispatcher.hasListeners(onPatchPre) || this.session.eventDispatcher.hasListeners(onPatchPost);
             if (!hasEvents) {
-                this.onQueryResolve(query.state);
+                this.onQueryResolve(query);
                 await this.resolver.patch(query.state, changes, patchResult);
                 return patchResult;
             }
 
-            const event = new QueryDatabasePatchEvent<T>(this.session, this.classSchema, query.state, changes, patchResult);
+            const event = new QueryDatabasePatchEvent<T>(this.session, this.classSchema, query, changes, patchResult);
             if (this.session.eventDispatcher.hasListeners(onPatchPre)) {
                 const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events') : undefined;
                 await this.session.eventDispatcher.dispatch(onPatchPre, event);
@@ -723,7 +803,7 @@ export class Query2<T extends object, R = any> {
             // }
 
             //whe need to use event.query in case someone overwrite it
-            this.onQueryResolve(query.state);
+            this.onQueryResolve(query);
             await this.resolver.patch(query.state, changes, patchResult);
 
             if (query.state.withIdentityMap) {
@@ -751,7 +831,7 @@ export class Query2<T extends object, R = any> {
 
             return patchResult;
         } catch (error: any) {
-            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, query.classSchema, query.state));
+            await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, query.classSchema, query));
             throw error;
         } finally {
             if (frame) frame.end();
@@ -768,9 +848,7 @@ export class Query2<T extends object, R = any> {
     }
 
     protected patchModel<T extends OrmEntity>(patch: Partial<SelectorState>): Query2<T> {
-        //todo
-        return this as any;
-        // return new Query2<T>(Object.assign({}, this.state, patch), this.session, this.resolver as any);
+        return new Query2<T>(Object.assign({}, this.state, patch), this.session, this.resolver as any);
     }
 
     /**

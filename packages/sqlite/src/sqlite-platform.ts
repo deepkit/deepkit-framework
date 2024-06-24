@@ -13,7 +13,6 @@ import {
     DefaultPlatform,
     ForeignKey,
     isSet,
-    PreparedAdapter,
     Sql,
     Table,
     TableDiff,
@@ -28,7 +27,6 @@ import {
     isMapType,
     isSetType,
     isUUIDType,
-    ReflectionClass,
     ReflectionKind,
     ReflectionProperty,
     Serializer,
@@ -36,7 +34,6 @@ import {
 } from '@deepkit/type';
 import { SQLiteSchemaParser } from './sqlite-schema-parser.js';
 import { sqliteSerializer } from './sqlite-serializer.js';
-import { SQLiteFilterBuilder } from './sql-filter-builder.sqlite.js';
 import { isArray, isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring-sqlite';
 import { MigrateOptions } from '@deepkit/orm';
@@ -84,10 +81,6 @@ export class SQLitePlatform extends DefaultPlatform {
         }
 
         super.applyLimitAndOffset(sql, limit, offset);
-    }
-
-    createSqlFilterBuilder(adapter: PreparedAdapter, schema: ReflectionClass<any>, tableName: string): SQLiteFilterBuilder {
-        return new SQLiteFilterBuilder(adapter, schema, tableName, this.serializer, new this.placeholderStrategy);
     }
 
     getDeepColumnAccessor(table: string, column: string, path: string) {

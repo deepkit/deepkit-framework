@@ -274,7 +274,7 @@ export class Formatter {
         const converted = this.createObject(model, classState, classSchema, dbRecord);
 
         if (!partial) {
-            if (model.withChangeDetection) getInstanceState(classState, converted).markAsPersisted();
+            if (model.withChangeDetection !== false) getInstanceState(classState, converted).markAsPersisted();
             if (pool) pool.set(pkHash, converted);
             if (this.identityMap) this.identityMap.store(classSchema, converted);
         }
@@ -336,7 +336,7 @@ export class Formatter {
             : (partial ? getPartialSerializeFunction(classSchema.type, this.serializer.deserializeRegistry)(dbRecord) : getSerializeFunction(classSchema.type, this.serializer.deserializeRegistry)(dbRecord));
 
         if (!partial) {
-            if (model.withChangeDetection) getInstanceState(classState, converted).markAsFromDatabase();
+            if (model.withChangeDetection !== false) getInstanceState(classState, converted).markAsFromDatabase();
         }
 
         // if (!partial && model.lazyLoad.size) {

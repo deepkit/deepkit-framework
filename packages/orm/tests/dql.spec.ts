@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { as, count, eq, groupBy, inArray, join, l2Distance, lower, lt, or, orderBy, query, Select, SelectorRefs, where } from '../src/select.js';
+import { applySelect, as, count, eq, ExpressionTree, groupBy, inArray, join, l2Distance, lower, lt, or, orderBy, query, Select, SelectorRefs, stringifySelector, treeTag, where } from '../src/select.js';
 import { Database } from '../src/database.js';
 import { AutoIncrement, BackReference, PrimaryKey, Reference, Vector } from '@deepkit/type';
 import { MemoryDatabaseAdapter } from '../src/memory-db.js';
@@ -166,7 +166,7 @@ test('graph', () => {
         where(eq(m.name, 'Peter2'));
     });
 
-    expect(a.state.where!.tree === b.state.where!.tree).toBe(true);
+    expect(a.state.where![treeTag] === b.state.where![treeTag]).toBe(true);
 
     function filterByAge(model: Select<{ birthday: Date }>, age: number) {
         const target = new Date();
@@ -211,11 +211,67 @@ test('tree', () => {
     const c = query((m: Select<User>) => {
     });
 
-    console.log(a.state.params, a.state.where);
-    console.log(b.state.params, b.state.where);
-    console.log(c.state.params, c.state.where);
+    // console.log(a.state.params, a.state.where);
+    // console.log(b.state.params, b.state.where);
+    // console.log(c.state.params, c.state.where);
 
-    expect(a.state.where!.tree === b.state.where!.tree).toBe(true);
+    expect(a.state.where![treeTag] === b.state.where![treeTag]).toBe(true);
+});
+
+test('tree2', () => {
+    const a = query((m: Select<User>) => {
+        where(eq(m.id, m.birthday));
+    });
+    console.log('a', a.state.where![treeTag], stringifySelector(a.state));
+
+    const b = query((m: Select<User>) => {
+        where(eq(m.name, m.birthday));
+    });
+
+    console.log('b', b.state.where![treeTag], stringifySelector(b.state));
+
+    expect(a.state.where![treeTag] === b.state.where![treeTag]).toBe(false);
+
+    applySelect(b.state, (m: Select<User>) => {
+        where(eq(m.id, m.birthday));
+    });
+
+    const c = query((m: Select<User>) => {
+        where(eq(m.id, m.birthday));
+    });
+
+    expect(a.state.where![treeTag] === b.state.where![treeTag]).toBe(false);
+    expect(a.state.where![treeTag] === c.state.where![treeTag]).toBe(true);
+
+    console.log('b', b.state.where![treeTag], stringifySelector(b.state));
+});
+
+function whereTree(cb: (user: Select<User>) => void): ExpressionTree {
+    const user = query((user: Select<User>) => {
+        cb(user);
+    });
+    if (!user.state.where) throw new Error('No where clause');
+    return user.state.where[treeTag];
+}
+
+test('tree3', () => {
+    const a = whereTree(m => where(eq(m.id, 1)));
+    const b = whereTree(m => where(eq(m.id, 1)));
+    const c = whereTree(m => where(eq(m.id, 2)));
+    const d = whereTree(m => where(eq(m.id, m.id)));
+    const e = whereTree(m => where(eq(m.id, m.id)));
+
+    const f1 = whereTree(m => where(eq(m.id, m.birthday)));
+    const f2 = whereTree(m => where(eq(m.birthday, b.id)));
+
+    expect(a === b).toBe(true);
+    expect(a === c).toBe(true);
+
+    expect(a === d).toBe(false);
+    expect(a === e).toBe(false);
+    expect(d === d).toBe(true);
+
+    expect(f1 === f2).toBe(false);
 });
 
 test('memory db', async () => {
@@ -249,7 +305,7 @@ test('performance memory-db', async () => {
     const user3: User = { id: 3, name: 'Jane', birthday: new Date() };
     await db.persist(user1, user2, user3);
 
-    await bench('select', async () => {
+    await bench('select find', async () => {
         const res = await db.query2((user: Select<User>) => {
             where(eq(user.name, 'John'));
         }).find();
@@ -258,7 +314,7 @@ test('performance memory-db', async () => {
 });
 
 test('performance state', async () => {
-    await bench('select', () => {
+    await bench('select query', () => {
         query((user: Select<User>) => {
             join(user.group, group => {
                 where(eq(group.name, 'Admin'));

@@ -1,10 +1,10 @@
-import { and, eq, OpExpression, opTag, SelectorProperty, where } from '@deepkit/orm';
+import { and, eq, OpExpression, opTag, propertyTag, SelectorProperty, where } from '@deepkit/orm';
 import { getPreparedEntity, PreparedAdapter } from './prepare.js';
 
 export interface SqlBuilderState {
-    addParam(value: any): string;
+    addParam(index: number): string;
     adapter: PreparedAdapter;
-    build(expression: any): string;
+    build(expression: OpExpression | SelectorProperty | number): string;
 }
 
 export class SqlBuilderRegistry {
@@ -24,9 +24,9 @@ export class SqlBuilderRegistry {
     };
 
     field(state: SqlBuilderState, field: SelectorProperty<unknown>) {
-        const prepared = getPreparedEntity(state.adapter, field.model.schema);
-        const tableName = state.adapter.platform.quoteIdentifier(field.model.as || prepared.tableName);
-        return state.adapter.platform.quoteIdentifier(tableName + '.' + prepared.fieldMap[field.name].columnName);
+        const prepared = getPreparedEntity(state.adapter, field[propertyTag].model.schema);
+        const tableName = state.adapter.platform.quoteIdentifier(field[propertyTag].model.as || prepared.tableName);
+        return tableName + '.' + prepared.fieldMap[field[propertyTag].name].columnNameEscaped;
     }
 
     op(builder: SqlBuilderState, expression: OpExpression) {

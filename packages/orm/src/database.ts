@@ -31,7 +31,7 @@ import { Stopwatch } from '@deepkit/stopwatch';
 import { getClassState, getInstanceState, getNormalizedPrimaryKey } from './identity-map.js';
 import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
 import { DatabasePlugin, DatabasePluginRegistry } from './plugin/plugin.js';
-import { Query2, SelectorInferredState, SelectorRefs, singleQuery } from './select.js';
+import { From, Query2, Select, SelectorInferredState, SelectorRefs, singleQuery } from './select.js';
 import { onDeletePost, onPatchPost } from './event.js';
 
 /**
@@ -175,11 +175,11 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         }
     }
 
-    query<T extends any>(...args: any[]): any {
+    query(...args: any[]): any {
         throw new Error('Deprecated');
     }
 
-    singleQuery<const R extends any, T extends object>(classType: ClassType<T>, cb?: (main: SelectorRefs<T>) => R | undefined): Query2<T, R> {
+    singleQuery<const R extends any, T extends object>(classType: ClassType<T> | From<T>, cb?: (main: SelectorRefs<T>) => R | undefined): Query2<T, R> {
         const session = this.createSession();
         session.withIdentityMap = false;
         return session.query2(singleQuery(classType, cb));
@@ -426,10 +426,9 @@ export class ActiveRecord {
         await db.remove(this);
     }
 
-    // todo implement query2
-    // public static query<T extends typeof ActiveRecord>(this: T): Query<InstanceType<T>> {
-    //     return this.getDatabase().query(this);
-    // }
+    public static query<T extends typeof ActiveRecord, const R extends any>(this: T, cb?: (model: Select<InstanceType<T>>) => R | undefined): Query2<InstanceType<T>, R> {
+        return this.getDatabase().singleQuery((this as any).constructor, cb) as any;
+    }
 
     public static reference<T extends typeof ActiveRecord>(this: T, primaryKey: any | PrimaryKeyFields<InstanceType<T>>): InstanceType<T> {
         return this.getDatabase().getReference(this, primaryKey) as InstanceType<T>;

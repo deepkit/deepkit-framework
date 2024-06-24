@@ -245,6 +245,8 @@ export class SQLQueryResolver<T extends object> extends SelectorResolver<T> {
         }
     }
 
+    protected lastPreparedStatement?: SQLStatement;
+
     async find(model: SelectorState<T>): Promise<T[]> {
         const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
         const sqlBuilder = new SqlBuilder(this.adapter);
@@ -257,11 +259,18 @@ export class SQLQueryResolver<T extends object> extends SelectorResolver<T> {
 
         let rows: any[] = [];
         try {
-            rows = await connection.execAndReturnAll(sql.sql, sql.params);
+            // todo: find a way to cache prepared statements. this is just a test for best case scenario:
+            let stmt = this.adapter.cache.lastPreparedStatement;
+            if (!stmt) {
+                this.adapter.cache.lastPreparedStatement = stmt = await connection.prepare(sql.sql);
+            }
+
+            rows = await stmt.all(sql.params);
+            // rows = await connection.execAndReturnAll(sql.sql, sql.params);
         } catch (error: any) {
-            error = this.handleSpecificError(error);
-            console.log(sql.sql, sql.params);
-            throw new DatabaseError(`Could not query ${model.schema.getClassName()} due to SQL error ${error.message}`, { cause: error });
+        //     error = this.handleSpecificError(error);
+        //     console.log(sql.sql, sql.params);
+        //     throw new DatabaseError(`Could not query ${model.schema.getClassName()} due to SQL error ${error.message}`, { cause: error });
         } finally {
             connection.release();
         }
@@ -274,13 +283,15 @@ export class SQLQueryResolver<T extends object> extends SelectorResolver<T> {
         //     if (formatterFrame) formatterFrame.end();
         //     return results;
         // }
-        const formatter = this.createFormatter(model);
-        if (model.joins?.length) {
-            const converted = sqlBuilder.convertRows(model.schema, model, rows);
-            for (const row of converted) results.push(formatter.hydrate(model, row));
-        } else {
-            for (const row of rows) results.push(formatter.hydrate(model, row));
-        }
+        // const formatter = this.createFormatter(model);
+        // if (model.joins?.length) {
+        //     const converted = sqlBuilder.convertRows(model.schema, model, rows);
+        //     for (const row of converted) results.push(formatter.hydrate(model, row));
+        // } else {
+        //     for (const row of rows) results.push(formatter.hydrate(model, row));
+        // }
+        for (const row of rows) results.push(row);
+
         if (formatterFrame) formatterFrame.end();
 
         return results;
@@ -457,6 +468,8 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter implements Prep
 
     public preparedEntities = new Map<ReflectionClass<any>, PreparedEntity>();
     public builderRegistry: SqlBuilderRegistry = new SqlBuilderRegistry;
+
+    public cache: {[name: string]: any} = {};
 
     abstract createPersistence(databaseSession: DatabaseSession<this>): SQLPersistence;
 

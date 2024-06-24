@@ -1,8 +1,20 @@
 import { expect } from '@jest/globals';
-import { assertType, AutoIncrement, BackReference, cast, entity, PrimaryKey, Reference, ReflectionClass, ReflectionKind, UUID, uuid } from '@deepkit/type';
+import {
+    assertType,
+    AutoIncrement,
+    BackReference,
+    cast,
+    entity,
+    PrimaryKey,
+    Reference,
+    ReflectionClass,
+    ReflectionKind,
+    UUID,
+    uuid,
+} from '@deepkit/type';
 import { User, UserGroup } from './bookstore/user.js';
 import { UserCredentials } from './bookstore/user-credentials.js';
-import { atomicChange, DatabaseSession, getInstanceStateFromItem, Query } from '@deepkit/orm';
+import { atomicChange, DatabaseSession, getInstanceStateFromItem, onPatchPost, onPatchPre } from '@deepkit/orm';
 import { isArray } from '@deepkit/core';
 import { Group } from './bookstore/group.js';
 import { DatabaseFactory } from './test.js';
@@ -662,12 +674,12 @@ export const bookstoreTests = {
                 }
             });
 
-            database.listen(Query.onPatchPre, event => {
+            database.listen(onPatchPre, event => {
                 if (event.isSchemaOf(User)) {
                     event.patch.increase('version', 1);
                 }
             });
-            database.listen(Query.onPatchPost, event => {
+            database.listen(onPatchPost, event => {
                 if (event.isSchemaOf(User)) {
                     expect(isArray(event.patchResult.returning['version'])).toBe(true);
                     expect(event.patchResult.returning['version']![0]).toBeGreaterThan(0);

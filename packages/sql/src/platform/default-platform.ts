@@ -22,7 +22,6 @@ import sqlstring from 'sqlstring';
 import { arrayRemoveItem, ClassType, isArray, isObject } from '@deepkit/core';
 import { sqlSerializer } from '../serializer/sql-serializer.js';
 import { parseType, SchemaParser } from '../reverse/schema-parser.js';
-import { SQLFilterBuilder } from '../sql-filter-builder.js';
 import { Sql } from '../sql-builder.js';
 import {
     binaryTypes,
@@ -38,7 +37,6 @@ import {
 } from '@deepkit/type';
 import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
 import { splitDotPath } from '../sql-adapter.js';
-import { PreparedAdapter } from '../prepare.js';
 
 export function isSet(v: any): boolean {
     return v !== '' && v !== undefined && v !== null;
@@ -170,10 +168,6 @@ export abstract class DefaultPlatform {
     applyLimitAndOffset(sql: Sql, limit?: number, offset?: number): void {
         if (limit !== undefined) sql.append('LIMIT ' + this.quoteValue(limit));
         if (offset) sql.append('OFFSET ' + this.quoteValue(offset));
-    }
-
-    createSqlFilterBuilder(adapter: PreparedAdapter, reflectionClass: ReflectionClass<any>, tableName: string): SQLFilterBuilder {
-        return new SQLFilterBuilder(adapter, reflectionClass, tableName, this.serializer, new this.placeholderStrategy);
     }
 
     getMigrationTableName() {

@@ -973,6 +973,13 @@ export class ReflectionClass<T> {
             this.collectionName = parent.collectionName;
             this.databaseSchemaName = parent.databaseSchemaName;
             this.description = parent.description;
+
+            for (const member of parent.getProperties()) {
+                this.registerProperty(member.clone(this));
+            }
+            for (const member of parent.getMethods()) {
+                this.registerMethod(member.clone(this));
+            }
         }
 
         for (const member of type.types) {
@@ -1326,11 +1333,11 @@ export class ReflectionClass<T> {
             throw new Error(`Given class is not a class but kind ${ReflectionKind[type.kind]}. classType: ${stringifyValueWithType(classType)}`);
         }
 
-
         const parentProto = Object.getPrototypeOf(classType.prototype);
         const parentReflectionClass: ReflectionClass<T> | undefined = parentProto && parentProto.constructor !== Object ? ReflectionClass.from(parentProto, type.extendsArguments) : undefined;
 
         const reflectionClass = new ReflectionClass(type, parentReflectionClass);
+        getTypeJitContainer(type).reflectionClass = reflectionClass;
         if (args.length === 0) {
             classType.prototype[reflectionClassSymbol] = reflectionClass;
             return reflectionClass;

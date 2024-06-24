@@ -16,6 +16,7 @@ test('log query', async () => {
     const memory = new MemoryDatabaseAdapter();
     const database = new Database(memory, [User]);
     database.registerPlugin(new LogPlugin);
+    database.logger.enableLogging();
 
     const plugin = database.pluginRegistry.getPlugin(LogPlugin);
     const userLogEntity = plugin.getLogEntity(User);
@@ -25,7 +26,7 @@ test('log query', async () => {
     await database.persist(deserialize<User>({ id: 3, username: 'Lizz' }));
 
     {
-        const logEntries = await database.query(userLogEntity).find();
+        const logEntries = await database.singleQuery(userLogEntity).find();
         expect(logEntries).toHaveLength(3);
         expect(logEntries).toMatchObject([
             { id: 1, type: LogType.Added, reference: 1 },
@@ -37,7 +38,8 @@ test('log query', async () => {
     await database.singleQuery(User).filter({ id: 1 }).patchOne({ username: 'Peter2' });
 
     {
-        const logEntries = await database.query(userLogEntity).find();
+        const logEntries = await database.singleQuery(userLogEntity).find();
+        console.log('logEntries', logEntries);
         expect(logEntries).toHaveLength(4);
         expect(logEntries).toMatchObject([
             { id: 1, type: LogType.Added, reference: 1 },
@@ -47,10 +49,10 @@ test('log query', async () => {
         ]);
     }
 
-    await database.query(User).patchMany({ username: '' });
+    await database.singleQuery(User).patchMany({ username: '' });
 
     {
-        const logEntries = await database.query(userLogEntity).find();
+        const logEntries = await database.singleQuery(userLogEntity).find();
         expect(logEntries).toHaveLength(7);
         expect(logEntries).toMatchObject([
             { id: 1, type: LogType.Added, reference: 1 },
@@ -68,7 +70,7 @@ test('log query', async () => {
     }).deleteMany();
 
     {
-        const logEntries = await database.query(userLogEntity).find();
+        const logEntries = await database.singleQuery(userLogEntity).find();
         expect(logEntries).toHaveLength(10);
         expect(logEntries).toMatchObject([
             { id: 1, type: LogType.Added, reference: 1 },
@@ -104,13 +106,13 @@ test('log session', async () => {
     const lizz = new User('Lizz');
     session.add(peter, joe, lizz);
     await session.commit();
-    expect(await database.query(User).count()).toBe(3);
+    expect(await database.singleQuery(User).count()).toBe(3);
 
     const plugin = database.pluginRegistry.getPlugin(LogPlugin);
     const userLogEntity = plugin.getLogEntity(User);
 
     {
-        const logEntries = await database.query(userLogEntity).find();
+        const logEntries = await database.singleQuery(userLogEntity).find();
         expect(logEntries).toHaveLength(3);
         expect(logEntries).toMatchObject([
             { id: 1, type: LogType.Added, reference: 1 },
@@ -120,11 +122,11 @@ test('log session', async () => {
     }
 
     {
-        const peter = await database.query(User).filter({ id: 1 }).findOne();
+        const peter = await database.singleQuery(User).filter({ id: 1 }).findOne();
         peter.username = 'Peter2';
         await database.persist(peter);
 
-        const logEntries = await database.query(userLogEntity).find();
+        const logEntries = await database.singleQuery(userLogEntity).find();
         expect(logEntries).toHaveLength(4);
         expect(logEntries).toMatchObject([
             { id: 1, type: LogType.Added, reference: 1 },
@@ -135,13 +137,13 @@ test('log session', async () => {
     }
 
     {
-        const peter = await database.query(User).filter({ id: 1 }).findOne();
+        const peter = await database.singleQuery(User).filter({ id: 1 }).findOne();
         const session = database.createSession();
         session.remove(peter);
         session.from(LogSession).setAuthor('Foo');
         await session.commit();
 
-        const logEntries = await database.query(userLogEntity).find();
+        const logEntries = await database.singleQuery(userLogEntity).find();
         expect(logEntries).toHaveLength(5);
         expect(logEntries).toMatchObject([
             { id: 1, type: LogType.Added, reference: 1 },

@@ -39,7 +39,7 @@ import { DatabaseLogger } from './logger.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { EventDispatcher, EventDispatcherInterface, EventToken } from '@deepkit/event';
 import { DatabasePluginRegistry } from './plugin/plugin.js';
-import { query, Query2, SelectorInferredState, SelectorRefs, SelectorState, singleQuery } from './select.js';
+import { From, query, Query2, SelectorInferredState, SelectorRefs, SelectorState, singleQuery } from './select.js';
 
 let SESSION_IDS = 0;
 
@@ -336,33 +336,20 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
         public logger: DatabaseLogger = new DatabaseLogger,
         public stopwatch?: Stopwatch,
     ) {
-        // const queryFactory = this.adapter.queryFactory(this);
-        //
-        // //we cannot use arrow functions, since they can't have ReceiveType<T>
-        // function query<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
-        //     const result = queryFactory.createQuery(type);
-        //     result.model.adapterName = adapter.getName();
-        //     return result;
-        // }
-        //
-        // this.query = query as any;
-        // this.query = {} as any;
-
-        // const factory = this.adapter.rawFactory(this);
-        // this.raw = (...args: any[]) => {
-        //     forwardTypeArguments(this.raw, factory.create);
-        //     return factory.create(...args);
-        // };
     }
 
-    singleQuery<const R extends any, T extends object>(classType: ClassType<T>, cb?: (main: SelectorRefs<T>) => R | undefined): Query2<T, R> {
+    query(...args: any[]): any {
+        throw new Error('Deprecated');
+    }
+
+    singleQuery<const R extends any, T extends object>(classType: ClassType<T> | From<T>, cb?: (main: SelectorRefs<T>) => R | undefined): Query2<T, R> {
         return this.query2(singleQuery(classType, cb));
     }
 
     query2<const R extends any, T extends object, Q extends SelectorInferredState<T, R> | SelectorState<T> | ((main: SelectorRefs<T>, ...args: SelectorRefs<unknown>[]) => R | undefined)>(cbOrQ?: Q): Query2<T, R> {
         if (!cbOrQ) throw new Error('Query2 needs a callback or query object');
         const state: SelectorInferredState<any, any> = isFunction(cbOrQ) ? query(cbOrQ) : 'state' in cbOrQ ? cbOrQ : { state: cbOrQ };
-        return new Query2(state.state, this, this.adapter.createSelectorResolver(this));
+        return new Query2(state.state, this, this.adapter.createSelectorResolver(this)) as Query2<T, R>;
     }
 
     /**

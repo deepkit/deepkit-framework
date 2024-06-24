@@ -1,7 +1,6 @@
-import { Database, eq, join, where } from '@deepkit/orm';
-import { adapter, MyAdapter } from './my-platform.js';
-import { SqlBuilder } from '../src/sql-builder.js';
-import { AutoIncrement, BackReference, PrimaryKey, Reference, ReflectionClass } from '@deepkit/type';
+import { Database, eq, join, Select, where } from '@deepkit/orm';
+import { MyAdapter } from './my-platform.js';
+import { AutoIncrement, BackReference, PrimaryKey, Reference } from '@deepkit/type';
 import { dynamicImport } from '@deepkit/core';
 
 interface Role {
@@ -36,14 +35,14 @@ async function main() {
     const mitata = await dynamicImport('mitata');
 
     // User without group
-    const query1 = await database.from<User>().find(user => {
+    const query1 = await database.query2((user: Select<User>) => {
         join(user.group, group => {
             where(eq(group.name, 'Admin'));
         });
     }).find();
 
     // User with group
-    const query2 = database.from<User>().select(user => {
+    const query2 = database.query2((user: Select<User>) => {
         join(user.group, group => {
             where(eq(group.name, 'Admin'));
         });
@@ -51,7 +50,7 @@ async function main() {
     });
 
     //User with group name
-    const query3 = database.from<User>().find(user => {
+    const query3 = database.query2((user: Select<User>) => {
         join(user.group, group => {
             where(eq(group.name, 'Admin'));
         });
@@ -59,17 +58,17 @@ async function main() {
     });
 
     //User with group and roles
-    const query4 = database.from<User>().select(user => {
+    const query4 = database.query2((user: Select<User>) => {
         join(user.group, group => {
             where(eq(group.name, 'Admin'));
         });
         join(user.group);
-        return [user, user.group, user.group.roles]; //creates implicit join
+        // return [user, user.group, user.group.roles]; //creates implicit join
     });
 
     mitata.group({ name: 'query' }, () => {
         mitata.bench('select', () => {
-            const query = database.from<User>().select(user => {
+            const query = database.query2((user: Select<User>) => {
                 const group = join(user.group, group => {
                     where(eq(group.name, 'asd'));
                 });
@@ -82,18 +81,18 @@ async function main() {
                 return [user, group];
             });
 
-            const sql = emitSql(adapter, query.model);
+            // const sql = emitSql(adapter, query.model);
             // console.log(sql, emitter.params);
         });
 
-        mitata.bench('query', () => {
-            const query = database.query<User>()
-                .useJoin('group').filter({ name: 'asd' }).end()
-                .filter({ name: 'Peter1' });
-            const builder = new SqlBuilder(adapter);
-            const builtSQL = builder.build(ReflectionClass.from<User>(), query.model, 'SELECT');
-            // expect(builtSQL.sql).toBe(`SELECT "User"."id", "User"."name", "User"."age", "User"."group" FROM "User"`);
-        });
+        // mitata.bench('query', () => {
+        //     const query = database.query<User>()
+        //         .useJoin('group').filter({ name: 'asd' }).end()
+        //         .filter({ name: 'Peter1' });
+        //     const builder = new SqlBuilder(adapter);
+        //     const builtSQL = builder.buildSql(ReflectionClass.from<User>(), query.model, 'SELECT');
+        //     // expect(builtSQL.sql).toBe(`SELECT "User"."id", "User"."name", "User"."age", "User"."group" FROM "User"`);
+        // });
     });
 
     await mitata.run();

@@ -17,15 +17,15 @@ import {
     ReflectionProperty,
 } from '@deepkit/type';
 import {
-    DatabaseQueryModel,
+    getStateCacheId,
     isOp,
     isProperty,
     OpExpression,
     opTag,
+    propertyTag,
     SelectorProperty,
     SelectorState,
 } from '@deepkit/orm';
-import { getSqlFilter } from './filter.js';
 import { PreparedAdapter } from './prepare.js';
 import { SqlBuilderState } from './sql-builder-registry.js';
 
@@ -34,7 +34,7 @@ type ConvertDataToDict = (row: any) => ConvertedData | undefined;
 
 function isSelected(model: SelectorState, name: string): boolean {
     for (const select of model.select) {
-        if (isProperty(select) && select.name === name) return true;
+        if (isProperty(select) && select[propertyTag].name === name) return true;
     }
     return false;
 }
@@ -43,7 +43,7 @@ type Selection = (SelectorProperty<unknown> | OpExpression)[];
 
 function isInSelection(selection: Selection, name: string): boolean {
     for (const select of selection) {
-        if (isProperty(select) && select.name === name) return true;
+        if (isProperty(select) && select[propertyTag].name === name) return true;
     }
     return false;
 }
@@ -156,7 +156,7 @@ export class SqlBuilder implements SqlBuilderState {
     protected getColumnName(names: { [name: string]: number }, arg: any): string {
         if (isProperty(arg)) {
             // return arg.as || arg.name;
-            return arg.name;
+            return arg[propertyTag].name;
         }
 
         if (isOp(arg)) {
@@ -174,7 +174,7 @@ export class SqlBuilder implements SqlBuilderState {
         return this.addParam(arg);
     }
 
-    build(arg: any): string {
+    build(arg: OpExpression | SelectorProperty | number): string {
         if (arg === undefined) return '';
 
         if (isProperty(arg)) {
@@ -189,8 +189,8 @@ export class SqlBuilder implements SqlBuilderState {
         return this.addParam(arg);
     }
 
-    addParam(value: any) {
-        this.params.push(value);
+    addParam(value: number) {
+        // this.params.push(this.params[value]);
         return this.placeholderStrategy.getPlaceholder();
     }
 
@@ -204,20 +204,20 @@ export class SqlBuilder implements SqlBuilderState {
         }
     }
 
-    protected appendHavingSQL(sql: Sql, schema: ReflectionClass<any>, model: DatabaseQueryModel<any>, tableName: string) {
-        if (!model.having) return;
-
-        const filter = getSqlFilter(schema, model.having, model.parameters, this.platform.serializer);
-        const builder = this.platform.createSqlFilterBuilder(this.adapter, schema, tableName);
-        builder.placeholderStrategy.offset = sql.params.length;
-        const whereClause = builder.convert(filter);
-
-        if (whereClause) {
-            sql.append('HAVING');
-            sql.params.push(...builder.params);
-            sql.append(whereClause);
-        }
-    }
+    // protected appendHavingSQL(sql: Sql, schema: ReflectionClass<any>, model: DatabaseQueryModel<any>, tableName: string) {
+    //     if (!model.having) return;
+    //
+    //     const filter = getSqlFilter(schema, model.having, model.parameters, this.platform.serializer);
+    //     const builder = this.platform.createSqlFilterBuilder(this.adapter, schema, tableName);
+    //     builder.placeholderStrategy.offset = sql.params.length;
+    //     const whereClause = builder.convert(filter);
+    //
+    //     if (whereClause) {
+    //         sql.append('HAVING');
+    //         sql.params.push(...builder.params);
+    //         sql.append(whereClause);
+    //     }
+    // }
 
     protected selectColumns(model: SelectorState) {
         const result: { startIndex: number, fields: string[] } = {
@@ -225,15 +225,15 @@ export class SqlBuilder implements SqlBuilderState {
             fields: [],
         };
 
-        const selection: Selection = model.select.length ? model.select : model.fields.$$fields;
+        const selection: Selection = model.select.length ? model.select : Object.values(model.fields);
         const names: { [name: string]: number } = {};
 
         for (const field of selection) {
             if (isOp(field)) {
                 this.sqlSelect.push(this.build(field));
             } else {
-                if (isBackReference(field.property.type)) continue;
-                if (isDatabaseSkipped(field.property.type, this.adapter.getName())) continue;
+                if (isBackReference(field[propertyTag].property.type)) continue;
+                if (isDatabaseSkipped(field[propertyTag].property.type, this.adapter.getName())) continue;
                 if (isLazyLoaded(model, field)) continue;
                 this.sqlSelect.push(this.build(field));
             }
@@ -574,7 +574,13 @@ export class SqlBuilder implements SqlBuilderState {
         model: SelectorState,
         options: { select?: string[] } = {},
     ): Sql {
+        const cacheId = getStateCacheId(model);
+        let sql = this.adapter.cache[cacheId];
+        if (sql) return sql;
+
         const manualSelect = options.select && options.select.length ? options.select : undefined;
+
+        this.params = model.params.slice();
 
         if (!manualSelect) {
             // if (model.joins?.length) {
@@ -585,7 +591,7 @@ export class SqlBuilder implements SqlBuilderState {
             // }
         }
 
-        const sql = this.buildSql(model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '));
+        sql = this.buildSql(model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '));
 
         if (this.platform.supportsSelectFor()) {
             switch (model.for) {
@@ -600,6 +606,6 @@ export class SqlBuilder implements SqlBuilderState {
             }
         }
 
-        return sql;
+        return this.adapter.cache[cacheId] = sql;
     }
 }

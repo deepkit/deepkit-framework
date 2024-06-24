@@ -1,4 +1,4 @@
-import { Database, eq, join, where } from '@deepkit/orm';
+import { Database, eq, from, join, where } from '@deepkit/orm';
 import { AutoIncrement, BackReference, PrimaryKey, Reference } from '@deepkit/type';
 import { dynamicImport } from '@deepkit/core';
 import { SQLiteDatabaseAdapter } from '../src/sqlite-adapter.js';
@@ -49,7 +49,7 @@ async function main() {
 
     mitata.group({ name: 'query' }, () => {
         mitata.bench('new', async () => {
-            const query = database.select<User>(m => {
+            const query = database.singleQuery(from<User>(), m => {
                 join(m.group, group => {
                     where(eq(group.name, 'asd'));
                 });
@@ -58,12 +58,12 @@ async function main() {
             await query.find();
         });
 
-        mitata.bench('old', async () => {
-            const query = database.query<User>()
-                .useJoin('group').filter({ name: 'asd' }).end()
-                .filter({ name: 'Peter1' });
-            await query.find();
-        });
+        // mitata.bench('old', async () => {
+        //     const query = database.query()
+        //         .useJoin('group').filter({ name: 'asd' }).end()
+        //         .filter({ name: 'Peter1' });
+        //     await query.find();
+        // });
     });
 
     await mitata.run();

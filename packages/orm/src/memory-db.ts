@@ -9,7 +9,7 @@
  */
 /** @reflection never */
 import { DatabaseSession, DatabaseTransaction } from './database-session.js';
-import { Changes, getSerializeFunction, ReflectionClass, Serializer } from '@deepkit/type';
+import { Changes, genericEqual, getSerializeFunction, ReflectionClass, Serializer } from '@deepkit/type';
 import { deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
 import {
     DatabaseAdapter,
@@ -23,13 +23,18 @@ import { Formatter } from './formatter.js';
 import {
     and,
     eq,
+    getStateCacheId,
     isOp,
     isProperty,
+    not,
+    notEqual,
     OpExpression,
     opTag,
+    propertyTag,
     SelectorProperty,
     SelectorResolver,
     SelectorState,
+    stringifySelector,
     where,
 } from './select.js';
 
@@ -57,9 +62,21 @@ type Accessor = (record: any, params: any[]) => any;
 export type MemoryOpRegistry = { [tag: symbol]: (expression: OpExpression) => Accessor };
 
 export const memoryOps: MemoryOpRegistry = {
+    [not.id](expression: OpExpression) {
+        const [a] = expression.args.map(e => buildAccessor(e));
+        return (record: any, params: any[]) => !a(record, params);
+    },
     [eq.id](expression: OpExpression) {
         const [a, b] = expression.args.map(e => buildAccessor(e));
-        return (record: any, params: any[]) => a(record, params) === b(record, params);
+        return (record: any, params: any[]) => {
+            const av = a(record, params);
+            const bv = b(record, params);
+            return genericEqual(av, bv);
+        }
+    },
+    [notEqual.id](expression: OpExpression) {
+        const [a, b] = expression.args.map(e => buildAccessor(e));
+        return (record: any, params: any[]) => a(record, params) !== b(record, params);
     },
     [and.id](expression: OpExpression) {
         const lines = expression.args.map(e => buildAccessor(e));
@@ -82,19 +99,19 @@ function buildAccessor(op: OpExpression | SelectorProperty | number): Accessor {
         return (record: any, params: any[]) => {
             //todo: handle if selector of joined table
             // and deep json path
-            return record[op.name];
+            return record[op[propertyTag].name];
         };
     }
 
     return (record: any, params: any[]) => {
         return params[op];
-    }
+    };
 }
 
 export type MemoryFinder<T> = (records: T[], params: any[]) => T[];
 
 export function buildFinder<T>(model: SelectorState<T>, cache: { [id: string]: MemoryFinder<any> }): MemoryFinder<T> {
-    const cacheId = model.schema.type.id + '_' + model.where?.tree.id + '_' + model.orderBy?.map(v => v.a.tree.id).join(':');
+    const cacheId = getStateCacheId(model);
     let finder = cache[cacheId];
     if (finder) return finder;
 
@@ -163,11 +180,17 @@ class Resolver<T extends object> extends SelectorResolver<T> {
     }
 
     async count(state: SelectorState<T>): Promise<number> {
+        if (this.session.logger.logger) {
+            this.session.logger.logger.log('count', stringifySelector(state));
+        }
         const items = find(this.adapter, state.schema, state);
         return items.length;
     }
 
     async delete(state: SelectorState<T>, deleteResult: DeleteResult<T>): Promise<void> {
+        if (this.session.logger.logger) {
+            this.session.logger.logger.log('delete', stringifySelector(state));
+        }
         const items = find(this.adapter, state.schema, state);
         for (const item of items) {
             deleteResult.primaryKeys.push(item);
@@ -176,12 +199,18 @@ class Resolver<T extends object> extends SelectorResolver<T> {
     }
 
     async find(state: SelectorState<T>): Promise<T[]> {
+        if (this.session.logger.logger) {
+            this.session.logger.logger.log('find', stringifySelector(state));
+        }
         const items = find(this.adapter, state.schema, state);
         const formatter = this.createFormatter(state);
         return items.map(v => formatter.hydrate(state, v));
     }
 
     async findOneOrUndefined(state: SelectorState<T>): Promise<T | undefined> {
+        if (this.session.logger.logger) {
+            this.session.logger.logger.log('findOne', stringifySelector(state));
+        }
         const items = find(this.adapter, state.schema, state);
 
         if (items[0]) return this.createFormatter(state).hydrate(state, items[0]);
@@ -189,6 +218,9 @@ class Resolver<T extends object> extends SelectorResolver<T> {
     }
 
     async has(state: SelectorState<T>): Promise<boolean> {
+        if (this.session.logger.logger) {
+            this.session.logger.logger.log('has', stringifySelector(state));
+        }
         const items = find(this.adapter, state.schema, state);
         return items.length > 0;
     }
@@ -198,10 +230,11 @@ class Resolver<T extends object> extends SelectorResolver<T> {
         const store = this.adapter.getStore(state.schema);
         const primaryKey = state.schema.getPrimary().name as keyof T;
         const serializer = getSerializeFunction(state.schema.type, memorySerializer.serializeRegistry);
-
+        if (this.session.logger.logger) {
+            this.session.logger.logger.log('patch', stringifySelector(state), items.length, changes);
+        }
         patchResult.modified = items.length;
         for (const item of items) {
-
             if (changes.$inc) {
                 for (const [path, v] of Object.entries(changes.$inc)) {
                     setPathValue(item, path, getPathValue(item, path) + v);
@@ -230,7 +263,8 @@ class Resolver<T extends object> extends SelectorResolver<T> {
             // }
 
             patchResult.primaryKeys.push(item);
-            store.items.set(item[primaryKey] as any, serializer(item));
+            const serialized = serializer(item);
+            store.items.set(serialized[primaryKey], serialized);
         }
     }
 }
@@ -247,12 +281,16 @@ export class MemoryDatabaseTransaction extends DatabaseTransaction {
 }
 
 export class MemoryPersistence extends DatabasePersistence {
-    constructor(private adapter: MemoryDatabaseAdapter) {
+    constructor(private adapter: MemoryDatabaseAdapter, private session: DatabaseSession<MemoryDatabaseAdapter>) {
         super();
     }
 
     async remove<T extends OrmEntity>(classSchema: ReflectionClass<T>, items: T[]): Promise<void> {
         const store = this.adapter.getStore(classSchema);
+
+        if (this.session.logger.logger) {
+            this.session.logger.logger.log('remove', items);
+        }
 
         const primaryKey = classSchema.getPrimary().name as keyof T;
         for (const item of items) {
@@ -264,6 +302,10 @@ export class MemoryPersistence extends DatabasePersistence {
         const store = this.adapter.getStore(classSchema);
         const serializer = getSerializeFunction(classSchema.type, memorySerializer.serializeRegistry);
         const autoIncrement = classSchema.getAutoIncrement();
+
+        if (this.session.logger.logger) {
+            this.session.logger.logger.log('insert', items);
+        }
 
         const primaryKey = classSchema.getPrimary().name as keyof T;
         for (const item of items) {
@@ -279,6 +321,10 @@ export class MemoryPersistence extends DatabasePersistence {
         const store = this.adapter.getStore(classSchema);
         const serializer = getSerializeFunction(classSchema.type, memorySerializer.serializeRegistry);
         const primaryKey = classSchema.getPrimary().name as keyof T;
+
+        if (this.session.logger.logger) {
+            this.session.logger.logger.log('update', changeSets.map(v => v.primaryKey), changeSets.map(v => v.changes));
+        }
 
         for (const changeSet of changeSets) {
             store.items.set(changeSet.item[primaryKey] as any, serializer(changeSet.item));
@@ -319,8 +365,8 @@ export class MemoryDatabaseAdapter extends DatabaseAdapter {
         return store;
     }
 
-    createPersistence(): DatabasePersistence {
-        return new MemoryPersistence(this);
+    createPersistence(session: DatabaseSession<this>): DatabasePersistence {
+        return new MemoryPersistence(this, session);
     }
 
     disconnect(force?: boolean): void {

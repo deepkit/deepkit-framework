@@ -17,7 +17,7 @@ import { OrmEntity } from '../type.js';
 import { ReflectionClass } from '@deepkit/type';
 import { DatabasePlugin } from './plugin.js';
 import { onDeletePre, onFind, onPatchPre } from '../event.js';
-import { applySelect, currentState, eq, notEqual, Select, SelectorState, where } from '../select.js';
+import { currentState, eq, notEqual, Query2, Select, SelectorState, where } from '../select.js';
 
 interface SoftDeleteEntity extends OrmEntity {
     deletedAt?: Date;
@@ -91,11 +91,21 @@ export function setDeletedBy(deletedBy: string) {
     getSoftDeleteData(currentState()).deletedBy = deletedBy;
 }
 
-//todo: how to handle this?
-export function restoreOne() {
+export function restore(query: Query2<any>) {
+    const patch: { [name: string]: any } = { [deletedAtName]: undefined };
+    if (query.classSchema.hasProperty('deletedBy')) patch['deletedBy'] = undefined;
+    query.apply((model) => {
+        includeSoftDeleted();
+    });
+    return patch;
 }
 
-export function restoreMany() {
+export async function restoreOne(query: Query2<any>) {
+    return await query.patchOne(restore(query));
+}
+
+export async function restoreMany(query: Query2<any>) {
+    return await query.patchMany(restore(query));
 }
 
 export function enableHardDelete() {
@@ -148,19 +158,18 @@ export class SoftDeletePlugin implements DatabasePlugin {
             throw new Error(`Entity ${schema.getClassName()} has no ${deletedAtName} property. Please define one as type '${deletedAtName}: t.date.optional'`);
         }
 
-        function queryFilter(event: { classSchema: ReflectionClass<any>, query: any }) {
+        function queryFilter(event: { classSchema: ReflectionClass<any>, query: Query2<any> }) {
             //this is for each query method: count, find, findOne(), etc.
 
             //when includeSoftDeleted is set, we don't want to filter out the deleted records
-            if (getSoftDeleteData(event.query).includeSoftDeleted) return;
+            if (getSoftDeleteData(event.query.state).includeSoftDeleted) return;
 
             if (event.classSchema !== schema) return; //do nothing
 
             //attach the filter to exclude deleted records
-            applySelect(event.query, (q: Select<{ [deletedAtName]: any }>) => {
+            event.query.apply((q: Select<{ [deletedAtName]: any }>) => {
                 where(eq(q[deletedAtName], undefined));
             });
-            event.query = event.query.filterField(deletedAtName, undefined);
         }
 
         const queryFetch = this.getDatabase().listen(onFind, queryFilter);
@@ -170,13 +179,13 @@ export class SoftDeletePlugin implements DatabasePlugin {
             if (event.classSchema !== schema) return; //do nothing
 
             //when includeSoftDeleted is set, we don't want to filter out the deleted records
-            if (getSoftDeleteData(event.query).includeSoftDeleted) return;
+            if (getSoftDeleteData(event.query.state).includeSoftDeleted) return;
 
             //stop actual query delete query
             event.stop();
 
             const patch = { [deletedAtName]: new Date } as Partial<T>;
-            const deletedBy = getSoftDeleteData(event.query).deletedBy;
+            const deletedBy = getSoftDeleteData(event.query.state).deletedBy;
             if (hasDeletedBy && deletedBy !== undefined) {
                 patch.deletedBy = deletedBy;
             }

@@ -56,6 +56,8 @@ export function genericEqual(a: any, b: any): boolean {
     if (aIsObject) return bIsObject ? genericEqualObject(a, b) : false;
     if (aIsObject) return bIsObject ? genericEqualObject(a, b) : false;
 
+    if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime();
+
     return a === b;
 }
 

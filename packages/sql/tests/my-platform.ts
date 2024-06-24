@@ -8,8 +8,8 @@ import {
     SQLConnection,
     SQLConnectionPool,
     SQLDatabaseAdapter,
-    SQLDatabaseQueryFactory,
     SQLPersistence,
+    SQLQueryResolver,
 } from '../src/sql-adapter.js';
 import { DatabaseLogger, DatabaseSession, DatabaseTransaction, SelectorState } from '@deepkit/orm';
 import { Stopwatch } from '@deepkit/stopwatch';
@@ -43,6 +43,10 @@ export class MyAdapter extends SQLDatabaseAdapter {
     connectionPool: SQLConnectionPool = new MyConnectionPool();
     platform: DefaultPlatform = new MyPlatform();
 
+    createSelectorResolver(session: DatabaseSession<SQLDatabaseAdapter>): any {
+        return new SQLQueryResolver(this.connectionPool, this.platform, this, session);
+    }
+
     createPersistence(databaseSession: DatabaseSession<this>): SQLPersistence {
         throw new Error('Method not implemented.');
     }
@@ -53,10 +57,6 @@ export class MyAdapter extends SQLDatabaseAdapter {
 
     getSchemaName(): string {
         return 'public';
-    }
-
-    queryFactory(databaseSession: DatabaseSession<this>) {
-        return new SQLDatabaseQueryFactory(this.connectionPool, this.platform, databaseSession);
     }
 
     createTransaction(session: DatabaseSession<this>): DatabaseTransaction {
@@ -73,7 +73,8 @@ export class MyAdapter extends SQLDatabaseAdapter {
 
 export const adapter: PreparedAdapter = {
     getName: () => 'adapter',
+    cache: {},
     platform: new MyPlatform(),
     preparedEntities: new Map<ReflectionClass<any>, any>(),
-    builderRegistry: new SqlBuilderRegistry()
+    builderRegistry: new SqlBuilderRegistry(),
 };

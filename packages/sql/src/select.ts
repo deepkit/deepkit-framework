@@ -1,20 +1,16 @@
 import { DatabaseSession, DeleteResult, PatchResult, SelectorResolver, SelectorState } from '@deepkit/orm';
-import { castFunction, Changes, ReflectionClass } from '@deepkit/type';
+import { castFunction, Changes } from '@deepkit/type';
 import { SQLConnectionPool, SQLDatabaseAdapter } from './sql-adapter.js';
 import { isArray } from '@deepkit/core';
 import { SqlFormatter } from './sql-formatter.js';
 import { SqlBuilder } from './sql-builder.js';
 
 export class SQLQuery2Resolver<T extends object> extends SelectorResolver<T> {
-    classSchema: ReflectionClass<T>;
-
     constructor(
-        protected state: SelectorState,
         protected session: DatabaseSession<SQLDatabaseAdapter>,
         protected connectionPool: SQLConnectionPool,
     ) {
-        super(state, session);
-        this.classSchema = this.state.schema;
+        super(session);
     }
 
     count(model: SelectorState): Promise<number> {
@@ -25,9 +21,9 @@ export class SQLQuery2Resolver<T extends object> extends SelectorResolver<T> {
         return Promise.resolve(undefined);
     }
 
-    protected createFormatter(withIdentityMap: boolean = false) {
+    protected createFormatter(state: SelectorState<T>, withIdentityMap: boolean = false) {
         return new SqlFormatter(
-            this.classSchema,
+            state.schema,
             this.session.adapter.platform.serializer,
             this.session.getHydrator(),
             withIdentityMap ? this.session.identityMap : undefined,
@@ -37,7 +33,7 @@ export class SQLQuery2Resolver<T extends object> extends SelectorResolver<T> {
     async find(model: SelectorState): Promise<T[]> {
         const builder = new SqlBuilder(this.session.adapter);
         const sql = builder.buildSql(model, 'SELECT');
-        const formatter = this.createFormatter(model.withIdentityMap);
+        const formatter = this.createFormatter(model);
 
         const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
 

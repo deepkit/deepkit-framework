@@ -1,4 +1,4 @@
-import { LogPlugin, LogType, LogQuery, LogSession } from '@deepkit/orm';
+import { LogPlugin, LogSession, LogType, setLogAuthor } from '@deepkit/orm';
 import { AutoIncrement, deserialize, entity, PrimaryKey } from '@deepkit/type';
 import { DatabaseFactory } from './test.js';
 import { expect } from '@jest/globals';
@@ -64,7 +64,9 @@ export const logPluginTests = {
             ]);
         }
 
-        const deleteMany = await database.query(User).lift(LogQuery).byLogAuthor('Foo').deleteMany();
+        const deleteMany = await database.singleQuery(User, m => {
+            setLogAuthor('Foo');
+        }).deleteMany();
 
         {
             const logEntries = await database.query(userLogEntity).find();
