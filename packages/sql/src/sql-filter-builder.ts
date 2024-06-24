@@ -20,6 +20,7 @@ import {
 } from '@deepkit/type';
 import { SqlPlaceholderStrategy } from './platform/default-platform.js';
 import { getPreparedEntity, PreparedAdapter, PreparedEntity } from './prepare.js';
+import { SqlReference } from './sql-builder.js';
 
 type Filter = { [name: string]: any };
 
@@ -111,10 +112,9 @@ export class SQLFilterBuilder {
         else if (comparison === 'regex') return this.regexpComparator(this.quoteIdWithTable(fieldName), value);
         else throw new Error(`Comparator ${comparison} not supported.`);
 
-        const referenceValue = 'string' === typeof value && value[0] === '$';
         let rvalue = '';
-        if (referenceValue) {
-            rvalue = `${this.quoteIdWithTable(value.substr(1))}`;
+        if (value instanceof SqlReference) {
+            rvalue = `${this.quoteIdWithTable(value.field)}`;
         } else {
             if (value === undefined || value === null) {
                 cmpSign = cmpSign === '!=' ? this.isNotNull() : this.isNull();
