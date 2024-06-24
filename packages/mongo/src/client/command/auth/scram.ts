@@ -15,6 +15,7 @@ import { BaseResponse, Command } from '../command.js';
 import { MongoError } from '../../error.js';
 // @ts-ignore
 import saslprep from 'saslprep';
+import { base64ToUint8Array } from '@deepkit/core';
 
 interface SaslStartCommand {
     saslStart: 1;
@@ -66,7 +67,7 @@ function passwordDigest(u: string, p: string) {
     return md5.digest('hex');
 }
 
-function HI(data: string, salt: Buffer, iterations: number, cryptoAlgorithm: string) {
+function HI(data: string, salt: Uint8Array, iterations: number, cryptoAlgorithm: string) {
     if (cryptoAlgorithm !== 'sha1' && cryptoAlgorithm !== 'sha256') {
         throw new MongoError(`Invalid crypto algorithm ${cryptoAlgorithm}`);
     }
@@ -116,7 +117,7 @@ export abstract class ScramAuth implements MongoAuth {
         const withoutProof = `c=biws,r=${payloadStart.r}`;
         const saltedPassword = HI(
             processedPassword,
-            Buffer.from(payloadStart.s, 'base64'),
+            base64ToUint8Array(payloadStart.s),
             payloadStart.i,
             this.cryptoMethod
         );

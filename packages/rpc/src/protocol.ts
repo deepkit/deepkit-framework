@@ -15,7 +15,7 @@ import {
     getBSONSizer,
     Writer,
 } from '@deepkit/bson';
-import { ClassType } from '@deepkit/core';
+import { bufferConcat, ClassType, createBuffer } from '@deepkit/core';
 import { rpcChunk, rpcError, RpcTypes } from './model.js';
 import type { SingleProgress } from './progress.js';
 import {
@@ -234,9 +234,6 @@ export function readBinaryRpcMessage(buffer: Uint8Array): RpcMessage {
 
     return new RpcMessage(id, composite, type, routeType, offset, size - offset, buffer);
 }
-
-export const createBuffer: (size: number) => Uint8Array = 'undefined' !== typeof Buffer && 'function' === typeof Buffer.allocUnsafe ? Buffer.allocUnsafe : (size) => new Uint8Array(size);
-
 export interface RpcCreateMessageDef<T> {
     type: number;
     schema?: Type;
@@ -593,12 +590,7 @@ export class RpcBinaryMessageReader {
                 this.progress.delete(message.id);
                 this.chunks.delete(body.id);
                 this.chunkAcks.delete(body.id);
-                let offset = 0;
-                const newBuffer = createBuffer(body.total);
-                for (const buffer of chunks.buffers) {
-                    newBuffer.set(buffer, offset);
-                    offset += buffer.byteLength;
-                }
+                const newBuffer = bufferConcat(chunks.buffers, body.total);
                 const packedMessage = readBinaryRpcMessage(newBuffer);
                 this.onMessage(packedMessage);
             }
@@ -642,7 +634,7 @@ export class RpcBinaryBufferReader {
             this.currentMessage = data.byteLength === bytes ? data : data.slice(0, bytes);
             this.currentMessageSize = readUint32LE(data);
         } else {
-            this.currentMessage = Buffer.concat([this.currentMessage, data.byteLength === bytes ? data : data.slice(0, bytes)]);
+            this.currentMessage = bufferConcat([this.currentMessage, data.byteLength === bytes ? data : data.slice(0, bytes)]);
             if (!this.currentMessageSize) {
                 if (this.currentMessage.byteLength < 4) {
                     //not enough data to read the header. Wait for next onData

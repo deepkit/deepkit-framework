@@ -1,5 +1,6 @@
 import { RpcMessage, RpcMessageRouteType } from '../protocol.js';
 import { cast, ReceiveType, resolveReceiveType } from '@deepkit/type';
+import { base64ToUint8Array } from '@deepkit/core';
 
 export interface RpcHttpRequest {
     headers: { [name: string]: undefined | string | string[] };
@@ -10,7 +11,9 @@ export interface RpcHttpRequest {
 
 export interface RpcHttpResponse {
     setHeader(name: string, value: number | string): this;
+
     writeHead(statusCode: number): this;
+
     end(data?: Uint8Array | string): void;
 }
 
@@ -31,11 +34,11 @@ export class HttpRpcMessage extends RpcMessage {
     }
 
     getSource(): Uint8Array {
-        return Buffer.from(String(this.headers['X-Source']));
+        return base64ToUint8Array(String(this.headers['X-Source']));
     }
 
     getDestination(): Uint8Array {
-        return Buffer.from(String(this.headers['X-Destination']));
+        return base64ToUint8Array(String(this.headers['X-Destination']));
     }
 
     getError(): Error {
@@ -53,7 +56,7 @@ export class HttpRpcMessage extends RpcMessage {
     parseBody<T>(type?: ReceiveType<T>): T {
         const json = this.getJson();
         if (!json) {
-            throw new Error('No body found')
+            throw new Error('No body found');
         }
         return cast(json, undefined, undefined, undefined, resolveReceiveType(type));
     }

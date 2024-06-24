@@ -191,7 +191,7 @@ export class FrameworkModule extends createModule({
             this.addListener(HttpLogger);
         }
 
-        this.getImportedModuleByClass(HttpModule).configure({ ...this.config.http, parser: this.config.httpParse });
+        this.getImportedModuleByClass(HttpModule).configure(this.config.http);
 
         if (this.config.publicDir) {
             const localPublicDir = join(process.cwd(), this.config.publicDir);

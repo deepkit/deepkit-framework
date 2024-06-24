@@ -1,4 +1,3 @@
-import { App } from '@deepkit/app';
 import { FrameworkModule } from '../src/module.js';
 import { expect, test } from '@jest/globals';
 import { HttpBody, HttpKernel, HttpRequest, HttpRouterRegistry } from '@deepkit/http';
@@ -25,8 +24,10 @@ test('functional http app', async () => {
 test('http parse config', async () => {
     const test = createTestingApp({
         imports: [new FrameworkModule({
-            httpParse: {
-                maxFields: 1
+            http: {
+                parser: {
+                    maxFields: 1
+                }
             }
         })]
     });

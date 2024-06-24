@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, isObject } from '@deepkit/core';
+import { bufferConcat, ClassType, isObject } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
 import { arrayBufferTo, entity } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
@@ -121,7 +121,7 @@ export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
         if (this.nextOnAppend) {
             if (value instanceof Uint8Array) {
                 if (this.value instanceof Uint8Array) {
-                    this.next(Buffer.concat([this.value as any, value as any]) as any);
+                    this.next(bufferConcat([this.value as any, value as any]) as any);
                 } else {
                     this.next(value as any);
                 }
