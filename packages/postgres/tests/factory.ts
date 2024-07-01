@@ -4,7 +4,7 @@ import { PostgresDatabaseAdapter } from '../src/postgres-adapter.js';
 import { formatError } from '@deepkit/core';
 
 export const databaseFactory: DatabaseFactory<PostgresDatabaseAdapter> = async (entities, plugins): Promise<Database<PostgresDatabaseAdapter>> => {
-    const adapter = new PostgresDatabaseAdapter({host: 'localhost', database: 'postgres', user: 'postgres'});
+    const adapter = new PostgresDatabaseAdapter('postgres://postgres@localhost:5432/postgres');
 
     try {
         const database = new Database(adapter);

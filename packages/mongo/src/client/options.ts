@@ -27,7 +27,7 @@ export class ConnectionOptions {
     journal?: string;
 
     appName?: string;
-    retryWrites: boolean = true;
+    retryWrites: boolean = false;
     retryReads: boolean = true;
 
     readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';

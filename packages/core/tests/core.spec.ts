@@ -620,3 +620,20 @@ test('isGlobalClass', () => {
 
     expect(isGlobalClass(Uint8Array)).toBe(true);
 });
+
+test('typed array offset', () => {
+    const a = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(a.byteOffset).toBe(0);
+    expect(a.length).toBe(10);
+    expect(a[0]).toBe(1);
+
+    const b=  new Uint8Array(a.buffer, 1);
+    expect(b.byteOffset).toBe(1);
+    expect(b.length).toBe(9);
+    expect(b[0]).toBe(2);
+
+    const c = new Uint8Array(b.buffer, b.byteOffset + 1);
+    expect(c.byteOffset).toBe(2);
+    expect(c.length).toBe(8);
+    expect(c[0]).toBe(3);
+});

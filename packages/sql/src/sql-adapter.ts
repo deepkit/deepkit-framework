@@ -23,6 +23,7 @@ import {
     DatabaseUpdateError,
     DeleteResult,
     filter,
+    getStateCacheId,
     MigrateOptions,
     orderBy,
     OrmEntity,
@@ -31,7 +32,7 @@ import {
     SelectorResolver,
     SelectorState,
 } from '@deepkit/orm';
-import { isClass } from '@deepkit/core';
+import { formatError, isClass } from '@deepkit/core';
 import {
     Changes,
     entity,
@@ -47,6 +48,7 @@ import { DatabaseComparator, DatabaseModel } from './schema/table.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { getPreparedEntity, PreparedAdapter, PreparedEntity, PreparedField } from './prepare.js';
 import { SqlBuilderRegistry } from './sql-builder-registry.js';
+import { createTables } from './migration.js';
 
 /**
  * user.address[0].street => [user, address[0].street]
@@ -75,6 +77,8 @@ export abstract class SQLStatement {
 export abstract class SQLConnection {
     released: boolean = false;
 
+    protected cache: { [cacheId: string]: SQLStatement } = {};
+
     constructor(
         protected connectionPool: SQLConnectionPool,
         public logger: DatabaseLogger = new DatabaseLogger,
@@ -83,11 +87,19 @@ export abstract class SQLConnection {
     ) {
     }
 
+    getCache(cacheId: string): SQLStatement | undefined {
+        return this.cache[cacheId];
+    }
+
+    setCache(cacheId: string, statement: SQLStatement) {
+        this.cache[cacheId] = statement;
+    }
+
     release() {
         this.connectionPool.release(this);
     }
 
-    abstract prepare(sql: string): Promise<SQLStatement>;
+    abstract prepare(sql: string, selector: SelectorState): Promise<SQLStatement>;
 
     /**
      * Runs a single SQL query.
@@ -97,7 +109,7 @@ export abstract class SQLConnection {
     abstract getChanges(): Promise<number>;
 
     async execAndReturnSingle(sql: string, params?: any[]): Promise<any> {
-        const stmt = await this.prepare(sql);
+        const stmt = await this.prepare(sql, {} as any/*todo*/);
         try {
             return await stmt.get(params);
         } finally {
@@ -106,7 +118,7 @@ export abstract class SQLConnection {
     }
 
     async execAndReturnAll(sql: string, params?: any[]): Promise<any> {
-        const stmt = await this.prepare(sql);
+        const stmt = await this.prepare(sql, {} as any/*todo*/);
         try {
             return await stmt.all(params);
         } finally {
@@ -122,7 +134,7 @@ export abstract class SQLConnectionPool {
      * Reserves an existing or new connection. It's important to call `.release()` on it when
      * done. When release is not called a resource leak occurs and server crashes.
      */
-    abstract getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction, stopwatch?: Stopwatch): Promise<SQLConnection>;
+    abstract getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction, stopwatch?: Stopwatch, cacheId?: string): Promise<SQLConnection>;
 
     public getActiveConnections() {
         return this.activeConnections;
@@ -163,11 +175,7 @@ function buildSetFromChanges(platform: DefaultPlatform, classSchema: ReflectionC
     return set;
 }
 
-export class SQLQueryResolver<T extends object> extends SelectorResolver<T> {
-    protected tableId = this.platform.getTableIdentifier.bind(this.platform);
-    protected quoteIdentifier = this.platform.quoteIdentifier.bind(this.platform);
-    protected quote = this.platform.quoteValue.bind(this.platform);
-
+export class SQLSelectorResolver<T extends object> extends SelectorResolver<T> {
     constructor(
         protected connectionPool: SQLConnectionPool,
         protected platform: DefaultPlatform,
@@ -182,12 +190,9 @@ export class SQLQueryResolver<T extends object> extends SelectorResolver<T> {
             state.schema,
             this.platform.serializer,
             this.session.getHydrator(),
-            withIdentityMap ? this.session.identityMap : undefined,
+            withIdentityMap && this.session.withIdentityMap ? this.session.identityMap : undefined,
+            this.session.withChangeDetection && state.withChangeDetection !== false,
         );
-    }
-
-    protected getTableIdentifier(schema: ReflectionClass<any>) {
-        return this.platform.getTableIdentifier(schema);
     }
 
     /**
@@ -245,32 +250,31 @@ export class SQLQueryResolver<T extends object> extends SelectorResolver<T> {
         }
     }
 
-    protected lastPreparedStatement?: SQLStatement;
-
     async find(model: SelectorState<T>): Promise<T[]> {
-        const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
-        const sqlBuilder = new SqlBuilder(this.adapter);
-        const sql = sqlBuilder.select(model);
-        if (sqlBuilderFrame) sqlBuilderFrame.end();
+        const cacheId = getStateCacheId(model);
 
         const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch, cacheId);
         if (connectionFrame) connectionFrame.end();
 
         let rows: any[] = [];
         try {
             // todo: find a way to cache prepared statements. this is just a test for best case scenario:
-            let stmt = this.adapter.cache.lastPreparedStatement;
+
+            let stmt = connection.getCache(cacheId);
             if (!stmt) {
-                this.adapter.cache.lastPreparedStatement = stmt = await connection.prepare(sql.sql);
+                const sqlBuilderFrame = this.session.stopwatch ? this.session.stopwatch.start('SQL Builder') : undefined;
+                const sqlBuilder = new SqlBuilder(this.adapter);
+                const sql = sqlBuilder.select(model);
+                stmt = await connection.prepare(sql.sql, model);
+                connection.setCache(cacheId, stmt);
+                if (sqlBuilderFrame) sqlBuilderFrame.end();
             }
 
-            rows = await stmt.all(sql.params);
-            // rows = await connection.execAndReturnAll(sql.sql, sql.params);
+            rows = await stmt.all(model.params);
         } catch (error: any) {
-        //     error = this.handleSpecificError(error);
-        //     console.log(sql.sql, sql.params);
-        //     throw new DatabaseError(`Could not query ${model.schema.getClassName()} due to SQL error ${error.message}`, { cause: error });
+            error = this.handleSpecificError(error);
+            throw new DatabaseError(`Could not query ${model.schema.getClassName()} due to SQL error ${error.message}`, { cause: error });
         } finally {
             connection.release();
         }
@@ -290,6 +294,7 @@ export class SQLQueryResolver<T extends object> extends SelectorResolver<T> {
         // } else {
         //     for (const row of rows) results.push(formatter.hydrate(model, row));
         // }
+        //todo the resolver itself does formatting directly from binary.
         for (const row of rows) results.push(row);
 
         if (formatterFrame) formatterFrame.end();
@@ -299,6 +304,7 @@ export class SQLQueryResolver<T extends object> extends SelectorResolver<T> {
 
     async findOneOrUndefined(model: SelectorState<T>): Promise<T | undefined> {
         //when joins are used, it's important to fetch all rows
+        model.limit = 1;
         const items = await this.find(model);
         return items[0];
     }
@@ -469,7 +475,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter implements Prep
     public preparedEntities = new Map<ReflectionClass<any>, PreparedEntity>();
     public builderRegistry: SqlBuilderRegistry = new SqlBuilderRegistry;
 
-    public cache: {[name: string]: any} = {};
+    public cache: { [name: string]: any } = {};
 
     abstract createPersistence(databaseSession: DatabaseSession<this>): SQLPersistence;
 
@@ -494,22 +500,7 @@ export abstract class SQLDatabaseAdapter extends DatabaseAdapter implements Prep
      * WARNING: THIS DELETES ALL AFFECTED TABLES AND ITS CONTENT.
      */
     public async createTables(entityRegistry: DatabaseEntityRegistry): Promise<void> {
-        const connection = await this.connectionPool.getConnection();
-        try {
-            const database = new DatabaseModel([], this.getName());
-            database.schemaName = this.getSchemaName();
-            this.platform.createTables(entityRegistry, database);
-            const DDLs = this.platform.getAddTablesDDL(database);
-            for (const sql of DDLs) {
-                try {
-                    await connection.run(sql);
-                } catch (error) {
-                    throw new DatabaseError(`Could not create table: ${error}\n${sql}`, { cause: error });
-                }
-            }
-        } finally {
-            connection.release();
-        }
+        await createTables(entityRegistry, this.connectionPool, this.platform, this);
     }
 
     public async getMigrations(options: MigrateOptions, entityRegistry: DatabaseEntityRegistry): Promise<{
@@ -718,7 +709,7 @@ export class SQLPersistence extends DatabasePersistence {
             error = new DatabaseInsertError(
                 classSchema,
                 items as OrmEntity[],
-                `Could not insert ${classSchema.getClassName()} into database`,
+                `Could not insert ${classSchema.getClassName()} into database: ${formatError(error)}`,
                 { cause: error },
             );
             throw this.handleSpecificError(error);

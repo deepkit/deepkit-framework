@@ -292,6 +292,7 @@ export abstract class DatabaseTransaction {
 export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
     public readonly id = SESSION_IDS++;
     public withIdentityMap = true;
+    public withChangeDetection = true;
 
     /**
      * When this session belongs to a transaction, then this is set.

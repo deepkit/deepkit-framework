@@ -14,7 +14,6 @@ import {
     DefaultPlatform,
     IndexModel,
     isSet,
-    PreparedAdapter,
     SqlPlaceholderStrategy,
     Table,
     typeResolvesToBigInt,
@@ -39,7 +38,6 @@ import {
     TypeNumberBrand,
 } from '@deepkit/type';
 import { PostgresSchemaParser } from './postgres-schema-parser.js';
-import { PostgreSQLFilterBuilder } from './sql-filter-builder.js';
 import { isArray, isObject } from '@deepkit/core';
 import sqlstring from 'sqlstring';
 
@@ -150,10 +148,6 @@ export class PostgresPlatform extends DefaultPlatform {
             return `array_to_string(array_agg(${tableName}.${this.quoteIdentifier(property.name)}), ',')`;
         }
         return super.getAggregateSelect(tableName, property, func);
-    }
-
-    override createSqlFilterBuilder(adapter: PreparedAdapter, schema: ReflectionClass<any>, tableName: string): PostgreSQLFilterBuilder {
-        return new PostgreSQLFilterBuilder(adapter, schema, tableName, this.serializer, new this.placeholderStrategy);
     }
 
     override getDeepColumnAccessor(table: string, column: string, path: string) {

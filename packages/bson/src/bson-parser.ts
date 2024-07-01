@@ -15,7 +15,7 @@ import {
     digitByteSize,
     TWO_PWR_32_DBL_N,
 } from './utils.js';
-import { decodeUTF8 } from './strings.js';
+import { decodeUTF8 } from '@deepkit/core';
 import { nodeBufferToArrayBuffer, ReflectionKind, SerializationError, Type } from '@deepkit/type';
 import { hexTable } from './model.js';
 
@@ -316,7 +316,7 @@ export class BaseParser {
     }
 
     /**
-     * Size includes the \0. If not existend, increase by 1.
+     * Size includes the \0. If not existent, increase by 1.
      */
     eatString(size: number): string {
         this.offset += size;

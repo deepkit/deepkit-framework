@@ -8,7 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ConnectionRequest, MongoConnection, MongoConnectionPool, MongoDatabaseTransaction, MongoStats } from './connection.js';
+import {
+    ConnectionRequest,
+    MongoConnection,
+    MongoConnectionPool,
+    MongoDatabaseTransaction,
+    MongoStats,
+} from './connection.js';
 import { isErrorRetryableRead, isErrorRetryableWrite, MongoError } from './error.js';
 import { sleep } from '@deepkit/core';
 import { Command } from './command/command.js';
@@ -27,9 +33,7 @@ export class MongoClient {
 
     protected serializer: BSONBinarySerializer = mongoBinarySerializer;
 
-    constructor(
-        connectionString: string
-    ) {
+    constructor(connectionString: string) {
         this.config = new MongoClientConfig(connectionString);
         this.connectionPool = new MongoConnectionPool(this.config, this.serializer, this.stats);
     }

@@ -37,7 +37,7 @@ import {
     SQLConnectionPool,
     SQLDatabaseAdapter,
     SQLPersistence,
-    SQLQueryResolver,
+    SQLSelectorResolver,
     SQLStatement,
 } from '@deepkit/sql';
 import { Changes, getPatchSerializeFunction, getSerializeFunction, ReflectionClass, resolvePath } from '@deepkit/type';
@@ -87,9 +87,9 @@ export class SQLiteStatement extends SQLStatement {
     async all(params: any[] = []): Promise<any[]> {
         const frame = this.stopwatch ? this.stopwatch.start('Query', FrameCategory.databaseQuery) : undefined;
         try {
-            if (frame) frame.data({ sql: this.sql, sqlParams: params });
+            // if (frame) frame.data({ sql: this.sql, sqlParams: params });
             const res = this.stmt.all(...params);
-            this.logger.logQuery(this.sql, params);
+            // this.logger.logQuery(this.sql, params);
             return res;
         } catch (error: any) {
             error = ensureDatabaseError(error);
@@ -206,6 +206,8 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
     //we keep the first connection alive
     protected firstConnection?: SQLiteConnection;
 
+    protected connectionHints: { [cacheId: string]: SQLiteConnection } = {};
+
     constructor(protected dbPath: string | ':memory:') {
         super();
         //memory databases can not have more than one connection
@@ -220,7 +222,12 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
         return new SQLiteConnection(this, this.dbPath, logger, transaction, stopwatch);
     }
 
-    async getConnection(logger?: DatabaseLogger, transaction?: SQLiteDatabaseTransaction, stopwatch?: Stopwatch): Promise<SQLiteConnection> {
+    async getConnection(
+        logger?: DatabaseLogger,
+        transaction?: SQLiteDatabaseTransaction,
+        stopwatch?: Stopwatch,
+        cacheHint?: string,
+    ): Promise<SQLiteConnection> {
         //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
         //and only release the connection when the transaction is commit/rollback is executed.
 
@@ -229,17 +236,25 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
             return transaction.connection;
         }
 
-        const connection = this.firstConnection && this.firstConnection.released ? this.firstConnection :
-            this.activeConnections >= this.maxConnections
-                //we wait for the next query to be released and reuse it
-                ? await asyncOperation<SQLiteConnection>((resolve) => {
-                    this.queue.push(resolve);
-                })
-                : this.createConnection(logger, transaction, stopwatch);
+        let connection = cacheHint ? this.connectionHints[cacheHint] : undefined;
+        if (!connection) {
+            connection = this.firstConnection && this.firstConnection.released ? this.firstConnection :
+                this.activeConnections >= this.maxConnections
+                    //we wait for the next query to be released and reuse it
+                    ? await asyncOperation<SQLiteConnection>((resolve) => {
+                        this.queue.push(resolve);
+                    })
+                    : this.createConnection(logger, transaction, stopwatch);
+        }
 
         if (!this.firstConnection) this.firstConnection = connection;
         connection.released = false;
         connection.stopwatch = stopwatch;
+
+        if (cacheHint) {
+            // todo add interval to clear stale cache entries
+            this.connectionHints[cacheHint] = connection;
+        }
 
         //first connection is always reused, so we update the logger
         if (logger) connection.logger = logger;
@@ -423,7 +438,7 @@ export class SQLitePersistence extends SQLPersistence {
     }
 }
 
-export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T> {
+export class SQLiteSelectorResolver<T extends OrmEntity> extends SQLSelectorResolver<T> {
     constructor(
         protected connectionPool: SQLiteConnectionPool,
         protected platform: DefaultPlatform,
@@ -452,6 +467,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         if (connectionFrame) connectionFrame.end();
 
         try {
+            // todo: try to rework this to https://www.sqlite.org/lang_returning.html
             await connection.exec(`DROP TABLE IF EXISTS _tmp_d`);
             await connection.run(`CREATE TEMPORARY TABLE _tmp_d as ${select.sql};`, select.params);
 
@@ -591,8 +607,8 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
         this.connectionPool = new SQLiteConnectionPool(this.sqlitePath);
     }
 
-    createSelectorResolver(session: DatabaseSession<this>): SQLQueryResolver<any> {
-        return new SQLiteQueryResolver(this.connectionPool, this.platform, session);
+    createSelectorResolver(session: DatabaseSession<this>): SQLSelectorResolver<any> {
+        return new SQLiteSelectorResolver(this.connectionPool, this.platform, session);
     }
 
     async getInsertBatchSize(schema: ReflectionClass<any>): Promise<number> {

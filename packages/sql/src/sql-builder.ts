@@ -16,16 +16,7 @@ import {
     ReflectionClass,
     ReflectionProperty,
 } from '@deepkit/type';
-import {
-    getStateCacheId,
-    isOp,
-    isProperty,
-    OpExpression,
-    opTag,
-    propertyTag,
-    SelectorProperty,
-    SelectorState,
-} from '@deepkit/orm';
+import { isOp, isProperty, OpExpression, opTag, propertyTag, SelectorProperty, SelectorState } from '@deepkit/orm';
 import { PreparedAdapter } from './prepare.js';
 import { SqlBuilderState } from './sql-builder-registry.js';
 
@@ -574,10 +565,6 @@ export class SqlBuilder implements SqlBuilderState {
         model: SelectorState,
         options: { select?: string[] } = {},
     ): Sql {
-        const cacheId = getStateCacheId(model);
-        let sql = this.adapter.cache[cacheId];
-        if (sql) return sql;
-
         const manualSelect = options.select && options.select.length ? options.select : undefined;
 
         this.params = model.params.slice();
@@ -591,7 +578,7 @@ export class SqlBuilder implements SqlBuilderState {
             // }
         }
 
-        sql = this.buildSql(model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '));
+        const sql = this.buildSql(model, 'SELECT ' + (manualSelect || this.sqlSelect).join(', '));
 
         if (this.platform.supportsSelectFor()) {
             switch (model.for) {
@@ -606,6 +593,6 @@ export class SqlBuilder implements SqlBuilderState {
             }
         }
 
-        return this.adapter.cache[cacheId] = sql;
+        return sql;
     }
 }

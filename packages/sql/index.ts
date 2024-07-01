@@ -16,6 +16,9 @@ export * from './src/migration/migration-provider.js';
 
 export * from './src/select.js';
 
+export * from './src/sql-builder-registry.js';
+
+export * from './src/migration.js';
 export * from './src/test.js';
 export * from './src/schema/table.js';
 export * from './src/reverse/schema-parser.js';

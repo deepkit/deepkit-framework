@@ -268,7 +268,12 @@ export type OpExpression = {
 export type Op = ((...args: any[]) => OpExpression) & { id: symbol };
 
 export function getStateCacheId(state: SelectorState): string {
-    const cacheId = state.schema.type.id + '_' + state.where?.[treeTag].id + '_' + state.orderBy?.map(v => v.a[treeTag].id).join(':');
+    const cacheId = state.schema.type.id
+        + '_' + state.where?.[treeTag].id
+        + '_' + state.limit
+        + '_' + state.offset
+        + '_' + state.select.map(v => v[treeTag].id).join(':')
+        + '_' + state.orderBy?.map(v => v.a[treeTag].id).join(':');
     //todo select also
     // todo join also
     return cacheId;
@@ -545,6 +550,20 @@ export class Query2<T extends object, R = any> {
         return this;
     }
 
+    /**
+     * When receiving full objects the change-detector is enabled by default
+     * to be able to calculate change sets for database.persist()/session.commit().
+     *
+     * If disabled, it is impossible to send updates via database.persist()/session.commit(),
+     * and patchOne/patchMany has to be used.
+     *
+     * This is disabled per default for partial results.
+     */
+    disableChangeDetection(): this {
+        this.state.withChangeDetection = false;
+        return this;
+    }
+
     protected async callOnFetchEvent(query: Query2<object>): Promise<void> {
         const hasEvents = this.session.eventDispatcher.hasListeners(onFind);
         if (!hasEvents) return;
@@ -607,24 +626,24 @@ export class Query2<T extends object, R = any> {
      * @throws DatabaseError
      */
     public async find(): Promise<T[]> {
-        const frame = this.session
-            .stopwatch?.start('Find:' + this.classSchema.getClassName(), FrameCategory.database);
+        // const frame = this.session
+        //     .stopwatch?.start('Find:' + this.classSchema.getClassName(), FrameCategory.database);
 
         try {
-            frame?.data({
-                collection: this.classSchema.getCollectionName(),
-                className: this.classSchema.getClassName(),
-            });
-            const eventFrame = this.session.stopwatch?.start('Events');
-            await this.callOnFetchEvent(this);
-            this.onQueryResolve(this);
-            eventFrame?.end();
+            // frame?.data({
+            //     collection: this.classSchema.getCollectionName(),
+            //     className: this.classSchema.getClassName(),
+            // });
+            // const eventFrame = this.session.stopwatch?.start('Events');
+            // await this.callOnFetchEvent(this);
+            // this.onQueryResolve(this);
+            // eventFrame?.end();
             return await this.resolver.find(this.state) as T[];
         } catch (error: any) {
             await this.session.eventDispatcher.dispatch(onDatabaseError, new DatabaseErrorEvent(error, this.session, this.state.schema, this));
             throw error;
         } finally {
-            frame?.end();
+            // frame?.end();
         }
     }
 

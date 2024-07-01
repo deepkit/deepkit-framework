@@ -22,6 +22,7 @@
     ]
   },
   "reflection": [
+    "src/client.ts",
     "src/config.ts",
     "tests/**/*.ts"
   ],

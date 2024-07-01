@@ -8,7 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseAdapter, DatabaseDeleteError, DatabasePatchError, DatabaseSession, DeleteResult, Formatter, GenericQueryResolver, OrmEntity, PatchResult } from '@deepkit/orm';
+import {
+    DatabaseAdapter,
+    DatabaseDeleteError,
+    DatabasePatchError,
+    DatabaseSession,
+    DeleteResult,
+    Formatter,
+    GenericQueryResolver,
+    OrmEntity,
+    PatchResult,
+} from '@deepkit/orm';
 import {
     Changes,
     getPartialSerializeFunction,
@@ -314,7 +324,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
     }
 
     public async find(model: MongoQueryModel<T>): Promise<T[]> {
-        const formatter = this.createFormatter(model.withIdentityMap);
+        const formatter9 = this.createFormatter(model.withIdentityMap);
         const connection = await this.client.getConnection(undefined, this.session.assignedTransaction);
 
         try {

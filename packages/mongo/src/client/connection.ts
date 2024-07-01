@@ -63,8 +63,6 @@ export class MongoConnectionPool {
 
     protected queue: { resolve: (connection: MongoConnection) => void, request: ConnectionRequest }[] = [];
 
-    protected nextConnectionClose: Promise<boolean> = Promise.resolve(true);
-
     protected lastError?: Error;
 
     constructor(
@@ -172,7 +170,7 @@ export class MongoConnectionPool {
             waiter.resolve(connection);
             //we don't set reserved/set cleanupTimeout,
             //since the connection is already reserved and the timeout
-            //is only set when the connection actually starting idling.
+            //is only set when the connection actually is starting idling.
             return;
         }
 
@@ -435,7 +433,7 @@ export class MongoConnection {
 
     /**
      * Puts a command on the queue and executes it when queue is empty.
-     * A promises is return that is resolved with the  when executed successfully, or rejected
+     * A promise is returned that is resolved when executed successfully, or rejected
      * when timed out, parser error, or any other error.
      */
     public async execute<T extends Command<unknown>>(command: T): Promise<ReturnType<T['execute']>> {
@@ -497,9 +495,9 @@ export class MongoConnection {
             writer.writeInt32(messageLength);
 
             //detect backPressure
+            this.socket.write(buffer);
             this.bytesSent += buffer.byteLength;
             this.onSent(buffer.byteLength);
-            this.socket.write(buffer);
         } catch (error) {
             console.log('failed sending message', message, 'for type', stringifyType(type));
             throw error;

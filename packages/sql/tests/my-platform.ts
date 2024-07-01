@@ -9,7 +9,7 @@ import {
     SQLConnectionPool,
     SQLDatabaseAdapter,
     SQLPersistence,
-    SQLQueryResolver,
+    SQLSelectorResolver,
 } from '../src/sql-adapter.js';
 import { DatabaseLogger, DatabaseSession, DatabaseTransaction, SelectorState } from '@deepkit/orm';
 import { Stopwatch } from '@deepkit/stopwatch';
@@ -44,7 +44,7 @@ export class MyAdapter extends SQLDatabaseAdapter {
     platform: DefaultPlatform = new MyPlatform();
 
     createSelectorResolver(session: DatabaseSession<SQLDatabaseAdapter>): any {
-        return new SQLQueryResolver(this.connectionPool, this.platform, this, session);
+        return new SQLSelectorResolver(this.connectionPool, this.platform, this, session);
     }
 
     createPersistence(databaseSession: DatabaseSession<this>): SQLPersistence {
