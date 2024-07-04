@@ -9,7 +9,7 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { assertType, AutoIncrement, Group, groupAnnotation, PrimaryKey, ReflectionKind } from '../src/reflection/type.js';
+import { assertType, AutoIncrement, ExtractTypeAnnotationOptions, Group, groupAnnotation, PrimaryKey, ReflectionKind, TypeAnnotation } from '../src/reflection/type.js';
 import { typeOf } from '../src/reflection/reflection.js';
 import { cast } from '../src/serializer-facade.js';
 import { equalType } from './utils.js';
