@@ -20,7 +20,8 @@ function parameterRequiresRequest(parameter: ReflectionParameter): boolean {
         || metaAnnotation.getForName(parameter.type, 'httpBody')
         || metaAnnotation.getForName(parameter.type, 'httpRequestParser')
         || metaAnnotation.getForName(parameter.type, 'httpPath')
-        || metaAnnotation.getForName(parameter.type, 'httpHeader'));
+        || metaAnnotation.getForName(parameter.type, 'httpHeader')
+        || metaAnnotation.getForName(parameter.type, 'httpCookie'));
 }
 
 export class HttpModule extends createModule({
