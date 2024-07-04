@@ -26,6 +26,7 @@ import qs from 'qs';
 // @ts-ignore
 import formidable from 'formidable';
 import { HttpParserOptions } from './module.config.js';
+import { createLazyCookiesAccessor } from './cookies.js';
 
 
 function parseBody(
@@ -126,6 +127,10 @@ export class ParameterForRequestParser {
         return metaAnnotation.getForName(this.parameter.type, 'httpHeader') !== undefined;
     }
 
+    get cookie() {
+        return metaAnnotation.getForName(this.parameter.type, 'httpCookie') !== undefined;
+    }
+
     get query() {
         return metaAnnotation.getForName(this.parameter.type, 'httpQuery') !== undefined;
     }
@@ -135,8 +140,12 @@ export class ParameterForRequestParser {
     }
 
     get typePath(): string | undefined {
-        const typeOptions = metaAnnotation.getForName(this.parameter.type, 'httpQueries') || metaAnnotation.getForName(this.parameter.type, 'httpQuery')
-            || metaAnnotation.getForName(this.parameter.type, 'httpPath') || metaAnnotation.getForName(this.parameter.type, 'httpHeader');
+        const typeOptions = metaAnnotation.getForName(this.parameter.type, 'httpQueries')
+            || metaAnnotation.getForName(this.parameter.type, 'httpQuery')
+            || metaAnnotation.getForName(this.parameter.type, 'httpPath')
+            || metaAnnotation.getForName(this.parameter.type, 'httpHeader')
+            || metaAnnotation.getForName(this.parameter.type, 'httpCookie');
+
         if (!typeOptions) return;
         const options = typeToObject(typeOptions[0]);
         if (isObject(options)) return options.name;
@@ -204,6 +213,7 @@ export function buildRequestParser(parseOptions: HttpParserOptions, parameters: 
     });
     compiler.context.set('ValidationError', ValidationError);
     compiler.context.set('qs', qs);
+    compiler.context.set('createLazyCookiesAccessor', createLazyCookiesAccessor);
 
     let needsQueryString = !!params.find(v => v.query || v.queries || v.requestParser);
     const query = needsQueryString ? '_qPosition === -1 ? {} : qs.parse(_url.substr(_qPosition + 1))' : '{}';
@@ -214,6 +224,7 @@ export function buildRequestParser(parseOptions: HttpParserOptions, parameters: 
         const _method = request.method || 'GET';
         const _url = request.url || '/';
         const _headers = request.headers || {};
+        const _cookies = createLazyCookiesAccessor(_headers);
         const _qPosition = _url.indexOf('?');
         let uploadedFiles = {};
         const _path = _qPosition === -1 ? _url : _url.substr(0, _qPosition);
@@ -311,6 +322,24 @@ export function getRequestParserCodeForParameters(
 
             parameterNames.push(`parameters.${parameter.parameter.name}`);
             parameterValidator.push(`${validatorVar}(parameters.${parameter.parameter.name}, {errors: validationErrors}, ${JSON.stringify(parameter.typePath || parameter.getName())});`);
+
+        } else if (parameter.cookie) {
+            const converted = getSerializeFunction(parameter.parameter.parameter, serializer.deserializeRegistry, undefined, parameter.getName());
+            const validator = getValidatorFunction(undefined, parameter.parameter.parameter);
+            const converterVar = compiler.reserveVariable('argumentConverter', converted);
+            const validatorVar = compiler.reserveVariable('argumentValidator', validator);
+
+            const cookieProp = JSON.stringify(parameter.typePath || parameter.getName());
+            const cookieAccessor = `_cookies[${cookieProp}]`;
+
+            if (isOptional(parameter.parameter.parameter) || hasDefaultValue(parameter.parameter.parameter)) {
+                setParameters.push(`parameters.${parameter.parameter.name} = ${cookieAccessor} === undefined ? undefined : ${converterVar}(${cookieAccessor}, {loosely: true});`);
+            } else {
+                setParameters.push(`parameters.${parameter.parameter.name} = ${converterVar}(${cookieAccessor}, {loosely: true});`);
+            }
+
+            parameterNames.push(`parameters.${parameter.parameter.name}`);
+            parameterValidator.push(`${validatorVar}(parameters.${parameter.parameter.name}, {errors: validationErrors}, ${cookieProp});`);
         } else {
             parameterNames.push(`parameters.${parameter.parameter.name}`);
 
