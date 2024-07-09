@@ -3,8 +3,9 @@ import { rpc } from '@deepkit/rpc';
 import { App, AppModule, createModule, ServiceContainer } from '@deepkit/app';
 import { FrameworkModule } from '../src/module.js';
 import { Database, DatabaseEvent, DatabaseRegistry, MemoryDatabaseAdapter, Query } from '@deepkit/orm';
-import { EventDispatcher } from '@deepkit/event';
+import { eventDispatcher, EventDispatcher } from '@deepkit/event';
 import { PrimaryKey } from '@deepkit/type';
+import { http, HttpKernel, HttpRequest, httpWorkflow } from '@deepkit/http';
 
 test('controller', () => {
     class MyService {
@@ -186,4 +187,96 @@ test('database injection useClass with defaults', () => {
 
     const registry = app.get(DatabaseRegistry);
     expect(registry.getDatabases()).toHaveLength(1);
+});
+
+
+test('provider-visibility-issue', async () => {
+    class SessionForRequest {
+        constructor(
+            public readonly sessionId: string,
+            public readonly userId: string,
+        ) {}
+    }
+
+    class AuthenticationListener {
+        @eventDispatcher.listen(httpWorkflow.onAuth)
+        onServerMainBootstrap(event: typeof httpWorkflow.onAuth.event) {
+            event.injectorContext.set(
+                SessionForRequest,
+                new SessionForRequest(
+                    'sidValue',
+                    'uidValue',
+                ),
+            );
+        }
+    }
+
+    @http.controller('/auth')
+    class OAuth2Controller {
+        @http.GET('/whoami')
+        whoami(sess: SessionForRequest) {
+            // Trying to consume "SessionForRequest" within the same module it's provided – no luck
+            return sess;
+        }
+    }
+
+    class AuthenticationModule extends createModule({
+        providers: [
+            { provide: SessionForRequest, scope: 'http', useValue: undefined },
+        ],
+        controllers: [OAuth2Controller],
+        listeners: [AuthenticationListener],
+        exports: [SessionForRequest],
+    }) { }
+
+    class IAMModule extends createModule({ exports: [AuthenticationModule] }) {
+        imports = [new AuthenticationModule()];
+    }
+
+
+    @http.controller('/another')
+    class AnotherDomainModuleController {
+        @http.GET('/action')
+        action(sess: SessionForRequest) {
+            // Trying to consume "SessionForRequest" within another module – still no luck
+            return sess;
+        }
+    }
+    class AnotherDomainModule extends createModule({}) {
+        controllers = [AnotherDomainModuleController];
+    }
+
+    class DomainModule extends createModule({ exports: [IAMModule] }) {
+        imports = [new IAMModule(), new AnotherDomainModule()];
+    }
+
+    class InfrastructureModule extends createModule({
+        // The whole issue gets "fixed" if DomainModule gets exported here, but what if I don't need to export it?
+        exports: [],
+    }) {
+        imports = [new DomainModule()];
+    }
+
+    const app = new App({
+        imports: [
+            new FrameworkModule({ debug: true }),
+            new InfrastructureModule(),
+        ],
+        providers: [],
+    });
+
+    /**
+     * These fail due to the following error:
+     *
+     * Controller for route /auth/whoami parameter resolving error:
+     * DependenciesUnmetError: Parameter sess is required but provider returned undefined.
+     */
+    expect((await app.get(HttpKernel).request(HttpRequest.GET('/auth/whoami'))).json).toMatchObject({
+        sessionId: 'sidValue',
+        userId: 'uidValue'
+    });
+    expect((await app.get(HttpKernel).request(HttpRequest.GET('/another/action'))).json).toMatchObject({
+        sessionId: 'sidValue',
+        userId: 'uidValue'
+    });
 });
