@@ -5,7 +5,7 @@ import { SessionForRequest } from './session-for-request.dto.js';
 
 export class AuthenticationListener {
     @eventDispatcher.listen(httpWorkflow.onAuth)
-    onServerMainBootstrap(event: typeof httpWorkflow.onAuth.event, module: AuthenticationModule) {
+    onAuth(event: typeof httpWorkflow.onAuth.event, module: AuthenticationModule) {
         event.injectorContext.set(
             SessionForRequest,
             new SessionForRequest(
