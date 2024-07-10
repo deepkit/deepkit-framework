@@ -2,15 +2,21 @@ import { connect, createConnection, Socket } from 'net';
 import { arrayRemoveItem, asyncOperation, CompilerContext, decodeUTF8, formatError } from '@deepkit/core';
 import { DatabaseError, DatabaseTransaction, SelectorState } from '@deepkit/orm';
 import {
+    getDeepConstructorProperties,
     getSerializeFunction,
     getTypeJitContainer,
+    isAutoIncrementType,
     isPropertyType,
+    memberNameToString,
     ReceiveType,
+    ReflectionClass,
     ReflectionKind,
     resolveReceiveType,
     Type,
     TypeClass,
     TypeObjectLiteral,
+    TypeProperty,
+    TypePropertySignature,
 } from '@deepkit/type';
 import { connect as createTLSConnection, TLSSocket } from 'tls';
 import { Host, PostgresClientConfig } from './config.js';
@@ -37,14 +43,37 @@ function readUint16BE(data: Uint8Array, offset: number = 0): number {
     return data[offset + 1] + (data[offset] * 2 ** 8);
 }
 
-function buildDeserializerForType(type: Type): (message: Uint8Array) => any {
+function getPropertyDeserializer(context: CompilerContext, property: TypeProperty | TypePropertySignature, varName: string): string {
+    switch (property.type.kind) {
+        case ReflectionKind.string:
+            return `${varName} = decodeUTF8(data, offset + 4, offset + 4 + length)`;
+        case ReflectionKind.number:
+            if (isAutoIncrementType(property.type)) {
+                return `${varName} = length === 4 ? view.getInt32(offset + 4) : view.getInt64(offset + 4)`;
+            }
+            return `${varName} = length === 4 ? view.getFloat32(offset + 4) : view.getFloat64(offset + 4)`;
+        case ReflectionKind.boolean:
+            return `${varName} = data[offset + 4] === 1`;
+        case ReflectionKind.class:
+        case ReflectionKind.union:
+        case ReflectionKind.array:
+        case ReflectionKind.objectLiteral:
+            return `${varName} = parseJson(decodeUTF8(data, offset + 4 + 1, offset + 4 + length))`;
+        default:
+            throw new Error('Unsupported property type ' + property.type);
+    }
+}
+
+function buildDeserializer(selector: SelectorState): (message: Uint8Array, rows: any[]) => void {
+    const type = selector.schema.type;
     if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) {
         throw new Error('Invalid type for deserialization');
     }
 
     const context = new CompilerContext();
     const lines: string[] = [];
-    const props: string[] = [];
+    const inlineProps: string[] = [];
+    const assignProps: string[] = [];
     context.set({
         DataView,
         decodeUTF8,
@@ -52,56 +81,97 @@ function buildDeserializerForType(type: Type): (message: Uint8Array) => any {
         parseJson: JSON.parse,
     });
 
-    for (const property of type.types) {
-        const varName = context.reserveVariable();
-        if (!isPropertyType(property)) continue;
-        const field = property.type;
+    const isClass = type.kind === ReflectionKind.class;
+    const handledPropertiesInConstructor: string[] = [];
+    const constructorArguments: string[] = [];
+    const preLines: string[] = [];
+    const postLines: string[] = [];
+    const v = context.reserveName('v');
 
-        if (field.kind === ReflectionKind.number) {
-            lines.push(`
+    const properties = type.types.map(v => [context.reserveVariable(), v]);
+
+    for (const [varName, property] of properties) {
+        if (!isPropertyType(property)) continue;
+        lines.push(`
             length = readUint32BE(data, offset);
-            ${varName} = length === 4 ? view.getFloat32(offset + 4) : view.getFloat64(offset + 4);
+            ${getPropertyDeserializer(context, property, varName)}
             offset += 4 + length;
-            `);
+        `);
+
+        if (isClass) {
+            assignProps.push(`${v}.${memberNameToString(property.name)} = ${varName};`);
+        } else {
+            inlineProps.push(`${String(property.name)}: ${varName}`);
         }
-        if (field.kind === ReflectionKind.boolean) {
-            lines.push(`
-            ${varName} = data[offset + 4] === 1;
-            offset += 4 + 1;
-            `);
-        }
-        if (field.kind === ReflectionKind.string) {
-            lines.push(`
-            length = readUint32BE(data, offset);
-            ${varName} = decodeUTF8(data, offset + 4, offset + 4 + length);
-            offset += 4 + length;
-            `);
-        }
-        if (field.kind === ReflectionKind.class || field.kind === ReflectionKind.union
-            || field.kind === ReflectionKind.array || field.kind === ReflectionKind.objectLiteral) {
-            lines.push(`
-            length = readUint32BE(data, offset);
-            ${varName} = parseJson(decodeUTF8(data, offset + 4 + 1, offset + 4 + length));
-            offset += 4 + length;
-            `);
-        }
-        props.push(`${String(property.name)}: ${varName},`);
     }
+
+    let createObject = '';
+    if (isClass) {
+        const clazz = ReflectionClass.from(type.classType);
+        const constructor = clazz.getConstructorOrUndefined();
+        const classType = context.reserveConst(type.classType);
+
+        if (!clazz.disableConstructor && constructor) {
+            handledPropertiesInConstructor.push(...getDeepConstructorProperties(type).map(v => String(v.name)));
+            const parameters = constructor.getParameters();
+            for (const parameter of parameters) {
+                if (!parameter.isProperty()) {
+                    constructorArguments.push('undefined');
+                    continue;
+                }
+
+                const property = clazz.getProperty(parameter.getName());
+                if (!property) continue;
+
+                //todo handle is skipped
+
+                const entry = properties.find(v => v[1] === property);
+                if (!entry) continue;
+
+                constructorArguments.push(entry[0]);
+            }
+        }
+
+        if (clazz.disableConstructor) {
+            createObject = `Object.create(${classType}.prototype);`;
+            for (const property of clazz.getProperties()) {
+                if (property.property.kind !== ReflectionKind.property || property.property.default === undefined) continue;
+                const defaultFn = context.reserveConst(property.property.default);
+                createObject += `\n${v}.${memberNameToString(property.name)} = ${defaultFn}.apply(${v});`;
+            }
+        } else {
+            createObject = `new ${classType}(${constructorArguments.join(', ')})`;
+            // preLines.push(`const oldCheck = typeSettings.unpopulatedCheck; typeSettings.unpopulatedCheck = UnpopulatedCheck.None;`);
+            // postLines.push(`typeSettings.unpopulatedCheck = oldCheck;`);
+        }
+    } else {
+        createObject = `{${inlineProps.join(', ')}}`;
+    }
+
 
     const code = `
     const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     let offset = 1 + 4 + 2; // Skip type, length, and field count
     let length = 0;
+
     ${lines.join('\n')}
 
-    result.push({
-        ${props.join('\n')}
-    });
+    ${preLines.join('\n')}
+    const ${v} = ${createObject};
+    ${assignProps.join('\n')}
+    ${postLines.join('\n')}
+
+    result.push(${v});
     `;
+
+    console.log(code);
     return context.build(code, 'data', 'result');
 }
 
-function buildDeserializer(selector: SelectorState): (message: Uint8Array) => any {
+function buildDeserializerForType(type: Type): (message: Uint8Array, result: any[]) => void {
+    if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) {
+        throw new Error('Invalid type for deserialization');
+    }
     const context = new CompilerContext();
     const lines: string[] = [];
     const props: string[] = [];
@@ -112,39 +182,15 @@ function buildDeserializer(selector: SelectorState): (message: Uint8Array) => an
         parseJson: JSON.parse,
     });
 
-    for (const field of selector.schema.getProperties()) {
+    for (const field of type.types) {
+        if (!isPropertyType(field)) continue;
         const varName = context.reserveVariable();
-
-        if (field.type.kind === ReflectionKind.number) {
-            lines.push(`
+        lines.push(`
             length = readUint32BE(data, offset);
-            ${varName} = length === 4 ? view.getFloat32(offset + 4) : view.getFloat64(offset + 4);
+            ${getPropertyDeserializer(context, field, varName)}
             offset += 4 + length;
-            `);
-        }
-        if (field.type.kind === ReflectionKind.boolean) {
-            lines.push(`
-            ${varName} = data[offset + 4] === 1;
-            offset += 4 + 1;
-            `);
-        }
-        if (field.type.kind === ReflectionKind.string) {
-            lines.push(`
-            length = readUint32BE(data, offset);
-            // ${varName} = decodeUTF8(data, offset + 4, offset + 4 + length);
-            ${varName} = '';
-            offset += 4 + length;
-            `);
-        }
-        if (field.type.kind === ReflectionKind.class || field.type.kind === ReflectionKind.union
-            || field.type.kind === ReflectionKind.array || field.type.kind === ReflectionKind.objectLiteral) {
-            lines.push(`
-            length = readUint32BE(data, offset);
-            ${varName} = parseJson(decodeUTF8(data, offset + 4 + 1, offset + 4 + length));
-            offset += 4 + length;
-            `);
-        }
-        props.push(`${field.name}: ${varName},`);
+        `);
+        props.push(`${String(field.name)}: ${varName},`);
     }
 
     const code = `
@@ -160,11 +206,21 @@ function buildDeserializer(selector: SelectorState): (message: Uint8Array) => an
     return context.build(code, 'data', 'result');
 }
 
+function buildAutoIncrementDeserializer(type: Type) {
+    const schema = ReflectionClass.fromType(type);
+    return buildDeserializerForType({
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            schema.getPrimary().property,
+        ],
+    });
+}
+
 export class PostgresClientPrepared {
     created = false;
 
     cache?: Buffer;
-    deserialize: (message: Uint8Array) => any;
+    deserialize: (message: Uint8Array, rows: any[]) => void;
 
     constructor(
         public client: PostgresClientConnection,
@@ -709,7 +765,7 @@ export abstract class Command<T> {
                 // console.log('columns', columns);
                 // for (let i = 0; i < columns; i++) {
                 //     const length = readUint32BE(response, offset);
-                //     console.log('column', i, length, Buffer.from(response).toString('hex', offset, offset + length));
+                //     console.log('column', i, length, Buffer.from(response).toString('hex', offset + 4, offset + 4 + length));
                 //     offset += 4 + length;
                 // }
                 break;
@@ -763,8 +819,9 @@ export class InsertCommand extends Command<number> {
             placeholders.push(values.join(', '));
         }
 
+        const returning = this.prepared.primaryKey.autoIncrement ? 'RETURNING ' + this.prepared.primaryKey.columnNameEscaped : '';
         const sql = `INSERT INTO ${this.prepared.tableNameEscaped} (${names.join(', ')})
-                VALUES (${placeholders.join('), (')})`;
+                VALUES (${placeholders.join('), (')}) ${returning}`;
 
         const statement = '';
 
@@ -774,10 +831,18 @@ export class InsertCommand extends Command<number> {
             sendExecute('', 0),
             syncMessage,
         ]);
-        await this.sendAndWait(message);
+
+        console.log('insert', sql);
+        const deserializerAutoIncrement = buildAutoIncrementDeserializer(this.prepared.type);
+
+        const rows: any[] = [];
+        await this.sendAndWait(message, (v) => deserializerAutoIncrement(v, rows));
+        console.log('rows', rows);
+        for (let i = 0; i < this.items.length; i++) {
+            this.items[i][this.prepared.primaryKey.name] = rows[i][this.prepared.primaryKey.name];
+        }
 
         // parse data rows: auto-incremented columns
-
         return 0;
     }
 }
@@ -800,7 +865,7 @@ export class FindCommand<T> extends Command<T[]> {
             : () => {
                 //todo more complex deserializer
             };
-        console.log('new FindCommand');
+        console.log('new FindCommand', sql);
     }
 
     setParameters(params: any[]) {
@@ -828,7 +893,14 @@ export class FindCommand<T> extends Command<T[]> {
         }
 
         const rows: any[] = [];
-        await this.sendAndWait(this.cache, (data) => this.deserialize(data, rows));
+        await this.sendAndWait(this.cache, (data) => {
+            try {
+                this.deserialize(data, rows);
+            } catch (e) {
+                console.log('deserialize error', e);
+                throw e;
+            }
+        });
         return rows;
     }
 }

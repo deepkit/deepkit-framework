@@ -2,8 +2,9 @@ import { expect, test } from '@jest/globals';
 import { Minimum, MinLength } from '@deepkit/type';
 import { provide } from '@deepkit/injector';
 import { ServiceContainer } from '../src/service-container.js';
-import { ClassType } from '@deepkit/core';
+import { ClassType, getClassTypeFromInstance } from '@deepkit/core';
 import { AppModule, createModule } from '../src/module.js';
+import { App } from '../src/app.js';
 
 class MyModuleConfig {
     param1!: string & MinLength<5>;
@@ -18,9 +19,9 @@ class ModuleService {
 class MyModule extends createModule({
     config: MyModuleConfig,
     providers: [
-        ModuleService
+        ModuleService,
     ],
-    exports: [ModuleService]
+    exports: [ModuleService],
 }, 'myModule') {
 }
 
@@ -71,25 +72,25 @@ function getServiceOnNewServiceContainer<T>(module: AppModule<any>, service: Cla
 test('import', () => {
     {
         expect(() => getServiceOnNewServiceContainer(new MyAppModule, ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(type): Not a string'
+            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(type): Not a string',
         );
     }
 
     {
         expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '23' } }), ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(minLength): Min length is 5'
+            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param1(minLength): Min length is 5',
         );
     }
 
     {
         expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345' } }), ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(type): Not a number'
+            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(type): Not a number',
         );
     }
 
     {
         expect(() => getServiceOnNewServiceContainer(new MyAppModule({ myModule: { param1: '12345', param2: 55 } }), ModuleService)).toThrow(
-            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(minimum): Number needs to be greater than or equal to 100'
+            'Configuration for module myModule is invalid. Make sure the module is correctly configured. Error: myModule.param2(minimum): Number needs to be greater than or equal to 100',
         );
     }
 
@@ -114,28 +115,28 @@ test('basic configured', () => {
 
     {
         const myService = getServiceOnNewServiceContainer(createConfiguredApp().configure({
-            debug: false
+            debug: false,
         }), MyService);
         expect(myService.isDebug()).toBe(false);
     }
 
     {
         const myService = getServiceOnNewServiceContainer(createConfiguredApp().configure({
-            debug: true
+            debug: true,
         }), MyService);
         expect(myService.isDebug()).toBe(true);
     }
 
     {
         const myService2 = getServiceOnNewServiceContainer(createConfiguredApp().configure({
-            debug: false
+            debug: false,
         }), MyService2);
         expect(myService2.debug).toBe(false);
     }
 
     {
         const myService2 = getServiceOnNewServiceContainer(createConfiguredApp().configure({
-            debug: true
+            debug: true,
         }), MyService2);
         expect(myService2.debug).toBe(true);
     }
@@ -213,7 +214,7 @@ test('same module loaded twice', () => {
 
     class ApiModule extends createModule({
         config: Config,
-        providers: [Service]
+        providers: [Service],
     }) {
     }
 
@@ -237,7 +238,7 @@ test('same module loaded twice', () => {
             imports: [
                 a,
                 b,
-            ]
+            ],
         });
         const serviceContainer = new ServiceContainer(app);
 
@@ -250,19 +251,20 @@ test('same module loaded twice', () => {
 });
 
 test('interface provider can be exported', () => {
-   interface Test {}
+    interface Test {
+    }
 
-   const TEST = {};
+    const TEST = {};
 
-   const Test = provide<Test>({ useValue: TEST });
+    const Test = provide<Test>({ useValue: TEST });
 
-   const test = new AppModule({ providers: [Test], exports: [Test] });
+    const test = new AppModule({ providers: [Test], exports: [Test] });
 
-   const app = new AppModule({ imports: [test] });
+    const app = new AppModule({ imports: [test] });
 
     const serviceContainer = new ServiceContainer(app);
 
-   expect(serviceContainer.getInjector(app).get<Test>()).toBe(TEST);
+    expect(serviceContainer.getInjector(app).get<Test>()).toBe(TEST);
 });
 
 test('non-exported providers can not be overwritten', () => {
@@ -276,8 +278,8 @@ test('non-exported providers can not be overwritten', () => {
     const app = new AppModule({
         providers: [Overwritten, { provide: SubClass, useClass: Overwritten }],
         imports: [
-            sub
-        ]
+            sub,
+        ],
     });
 
     const serviceContainer = new ServiceContainer(app);
@@ -297,8 +299,8 @@ test('exported providers can not be overwritten', () => {
     const app = new AppModule({
         providers: [Overwritten, { provide: SubClass, useClass: Overwritten }],
         imports: [
-            sub
-        ]
+            sub,
+        ],
     });
 
     const serviceContainer = new ServiceContainer(app);
@@ -345,7 +347,7 @@ test('change config of a imported module dynamically', () => {
 
     class DatabaseModule extends createModule({
         config: DatabaseConfig,
-        providers: [Query]
+        providers: [Query],
     }) {
         process() {
             if (this.config.logging) {
@@ -359,7 +361,7 @@ test('change config of a imported module dynamically', () => {
     }
 
     class ApiModule extends createModule({
-        config: ApiConfig
+        config: ApiConfig,
     }) {
         imports = [new DatabaseModule({ logging: false })];
 
@@ -405,7 +407,7 @@ test('scoped injector', () => {
     }
 
     const module = new AppModule({
-        providers: [{ provide: Service, scope: 'http' }]
+        providers: [{ provide: Service, scope: 'http' }],
     });
 
     const serviceContainer = new ServiceContainer(new AppModule({ imports: [module] }));
@@ -456,4 +458,51 @@ test('functional modules', () => {
     const serviceContainer = new ServiceContainer(module);
 
     expect(serviceContainer.getInjectorContext().get('title')).toBe('Peter');
+});
+
+test('configureProvider', () => {
+    class Service {
+    }
+
+    class ScopedCounter {
+        instantiation = new Map<any, number>();
+
+        instantiated(service: any) {
+            this.instantiation.set(service, (this.instantiation.get(service) || 0) + 1);
+        }
+
+        count(service: any) {
+            return this.instantiation.get(service) || 0;
+        }
+    }
+
+    const module = new AppModule({
+        providers: [
+            { provide: ScopedCounter, scope: 'http' },
+            { provide: Service, scope: 'http' },
+        ],
+        exports: [Service, ScopedCounter],
+    });
+
+    const root = new App({
+        imports: [module],
+    });
+
+    root.configureProvider<Service>((service, counter: ScopedCounter) => {
+        counter.instantiated(getClassTypeFromInstance(service));
+    });
+
+    {
+        const scope = root.getInjectorContext().createChildScope('http');
+        expect(scope.get(ScopedCounter).count(Service)).toBe(0);
+        const service1 = scope.get(Service);
+        expect(scope.get(ScopedCounter).count(Service)).toBe(1);
+    }
+
+    {
+        const scope = root.getInjectorContext().createChildScope('http');
+        expect(scope.get(ScopedCounter).count(Service)).toBe(0);
+        const service1 = scope.get(Service);
+        expect(scope.get(ScopedCounter).count(Service)).toBe(1);
+    }
 });

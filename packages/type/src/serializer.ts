@@ -1165,6 +1165,8 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     const constructorArguments: string[] = [];
     const handledPropertiesInConstructor: string[] = [];
     const preLines: string[] = [];
+    const postLines: string[] = [];
+
     if (state.isDeserialization && type.kind === ReflectionKind.class) {
         const clazz = ReflectionClass.from(type.classType);
         const constructor = clazz.getConstructorOrUndefined();
@@ -1264,7 +1266,6 @@ export function serializeObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
     }
 
     let createObject = '{}';
-    const postLines: string[] = [];
     if (state.isDeserialization && type.kind === ReflectionKind.class) {
         const classType = state.compilerContext.reserveConst(type.classType);
         const clazz = ReflectionClass.from(type.classType);

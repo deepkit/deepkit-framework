@@ -6,7 +6,7 @@ async function Title(props: { title: string }) {
 }
 
 export async function UserList(props: { error?: string }, children: any, database: SQLiteDatabase) {
-    const users = await database.query(User).select('username', 'created', 'id').find();
+    const users = await database.singleQuery(User).find();
 
     return <Website title="Users">
         <div class="image">

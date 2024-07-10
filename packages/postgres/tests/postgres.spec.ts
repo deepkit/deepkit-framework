@@ -2,6 +2,7 @@ import { AutoIncrement, entity, PrimaryKey, Reference } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import pg from 'pg';
 import { databaseFactory } from './factory.js';
+import { join } from '@deepkit/orm';
 
 test('count', async () => {
     const pool = new pg.Pool({
@@ -50,6 +51,7 @@ test('bool and json', async () => {
     }
 
     const m = await database.singleQuery(Model).findOne();
+    expect(m).toBeInstanceOf(Model);
     expect(m).toMatchObject({ flag: true, doc: { flag: true } });
 });
 
@@ -84,10 +86,14 @@ test('join', async () => {
         users.push(user);
     }
 
+    // await database.persist(...groups);
     await database.persist(...groups, ...users);
 
     {
-        const users = await database.query(User).find();
+        const users = await database.singleQuery(User, (m) => {
+            const g = join(m.group);
+            return [m, g];
+        }).find();
     }
 });
 

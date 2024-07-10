@@ -821,18 +821,19 @@ test('configure provider replace', () => {
     class Service {
     }
 
-    class Replaced extends Service {}
+    class Replaced extends Service {
+    }
 
     const root = new InjectorModule([Service]);
     root.configureProvider<Service>(service => {
         return new Replaced;
-    }, {replace: true});
+    }, { replace: true });
 
     const injector = new InjectorContext(root);
     const service = injector.get(Service);
 
     expect(service).toBeInstanceOf(Replaced);
-})
+});
 
 test('configure provider additional services scopes', () => {
     class Service {
@@ -1717,4 +1718,35 @@ test('deep config index direct sub class access', () => {
     const injector = new InjectorContext(rootModule);
     const database = injector.get(Database);
     expect(database.url).toBe('localhost');
+});
+
+test('scoped instantiations', () => {
+    class Service {
+    }
+
+    const subModule = new InjectorModule([
+        { provide: Service, scope: 'http' },
+    ]).addExport(Service);
+
+    const root = new InjectorModule().addImport(subModule);
+    const injector = new InjectorContext(root);
+
+    expect(injector.instantiationCount(Service)).toBe(0);
+    expect(injector.instantiationCount(Service, undefined, 'http')).toBe(0);
+
+    {
+        const scope = injector.createChildScope('http');
+        const cookie1 = scope.get(Service);
+
+        expect(injector.instantiationCount(Service)).toBe(0);
+        expect(injector.instantiationCount(Service, undefined, 'http')).toBe(1);
+    }
+
+    {
+        const scope = injector.createChildScope('http');
+        const cookie1 = scope.get(Service);
+
+        expect(injector.instantiationCount(Service)).toBe(0);
+        expect(injector.instantiationCount(Service, undefined, 'http')).toBe(2);
+    }
 });
