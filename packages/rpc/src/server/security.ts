@@ -38,11 +38,11 @@ export class RpcKernelSecurity {
     }
 
     async isAllowedToRegisterAsPeer(session: Session, peerId: string): Promise<boolean> {
-        return true;
+        return false;
     }
 
     async isAllowedToSendToPeer(session: Session, peerId: string): Promise<boolean> {
-        return true;
+        return false;
     }
 
     async authenticate(token: any, connection: RpcKernelBaseConnection): Promise<Session> {

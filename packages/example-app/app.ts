@@ -46,6 +46,7 @@ const app = new App({
             publicDir: 'public',
             httpLog: true,
             migrateOnStartup: true,
+            httpRpcBasePath: 'rpc/v1'
         }),
     ]
 });

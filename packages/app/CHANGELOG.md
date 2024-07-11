@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.153](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.152...v1.0.1-alpha.153) (2024-06-06)
+
+### Bug Fixes
+
+- **app:** don't force package.json to exist for finding env files ([f478e96](https://github.com/deepkit/deepkit-framework/commit/f478e966103fbfde1289fdfbebe2b235bf19875f))
+
+## [1.0.1-alpha.151](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.150...v1.0.1-alpha.151) (2024-05-14)
+
+**Note:** Version bump only for package @deepkit/app
+
 ## [1.0.1-alpha.150](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.149...v1.0.1-alpha.150) (2024-05-09)
 
 **Note:** Version bump only for package @deepkit/app

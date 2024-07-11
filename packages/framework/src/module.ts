@@ -17,7 +17,15 @@ import { DebugDIController } from './cli/debug-di.js';
 import { ServerStartController } from './cli/server-start.js';
 import { DebugController } from './debug/debug.controller.js';
 import { registerDebugHttpController } from './debug/http-debug.controller.js';
-import { http, HttpLogger, HttpModule, HttpRequest, serveStaticListener } from '@deepkit/http';
+import {
+    http,
+    HttpLogger,
+    HttpModule,
+    HttpRegExp,
+    HttpRequest,
+    HttpResponse,
+    serveStaticListener,
+} from '@deepkit/http';
 import { InjectorContext, ProviderWithScope, Token } from '@deepkit/injector';
 import { BrokerConfig, FrameworkConfig } from './module.config.js';
 import { Logger } from '@deepkit/logger';
@@ -37,7 +45,6 @@ import {
 import { FileStopwatchStore } from './debug/stopwatch/store.js';
 import { DebugProfileFramesCommand } from './cli/debug-debug-frames.js';
 import {
-    ConnectionWriter,
     rpcClass,
     RpcKernel,
     RpcKernelBaseConnection,
@@ -58,7 +65,7 @@ import { MediaController } from './debug/media.controller.js';
 import { DebugHttpController } from './debug/debug-http.controller.js';
 import { BrokerServer } from './broker/broker.js';
 import { BrokerListener } from './broker/listener.js';
-import { BrokerBus, BrokerCache, BrokerDeepkitAdapter, BrokerLock, BrokerQueue } from '@deepkit/broker';
+import { BrokerBus, BrokerCache, BrokerDeepkitAdapter, BrokerKeyValue, BrokerLock, BrokerQueue } from '@deepkit/broker';
 import { getBrokerServers } from './broker.js';
 
 export class FrameworkModule extends createModule({
@@ -99,6 +106,7 @@ export class FrameworkModule extends createModule({
         { provide: BrokerLock, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerLock(adapter) },
         { provide: BrokerQueue, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerQueue(adapter) },
         { provide: BrokerBus, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerBus(adapter) },
+        { provide: BrokerKeyValue, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerKeyValue(adapter) },
 
         //move to HttpModule?
         { provide: SessionHandler, scope: 'http' },
@@ -112,7 +120,6 @@ export class FrameworkModule extends createModule({
         { provide: SessionState, scope: 'rpc', useValue: undefined },
         { provide: RpcKernelBaseConnection, scope: 'rpc', useValue: undefined },
         { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
-        { provide: ConnectionWriter, scope: 'rpc', useValue: undefined },
     ],
     workflows: [
         // rpcWorkflow,
@@ -151,7 +158,6 @@ export class FrameworkModule extends createModule({
         SessionState,
         RpcKernelConnection,
         RpcKernelBaseConnection,
-        ConnectionWriter,
 
         BrokerDeepkitAdapter,
         BrokerCache,
@@ -185,7 +191,7 @@ export class FrameworkModule extends createModule({
             this.addListener(HttpLogger);
         }
 
-        this.getImportedModuleByClass(HttpModule).configure({ parser: this.config.httpParse });
+        this.getImportedModuleByClass(HttpModule).configure(this.config.http);
 
         if (this.config.publicDir) {
             const localPublicDir = join(process.cwd(), this.config.publicDir);
@@ -222,10 +228,49 @@ export class FrameworkModule extends createModule({
             // this.setupProvider(LiveDatabase).enableChangeFeed(DebugRequest);
         }
 
+        if (this.config.httpRpcBasePath) {
+            const rpcBaseUrl = this.config.httpRpcBasePath;
+
+            @http.controller(rpcBaseUrl)
+            class HttpRpcController {
+                constructor(protected rpcKernel: RpcKernel) {
+                }
+
+                @http.GET(':controller/:method')
+                @http.POST(':controller/:method')
+                async handle(
+                    controller: HttpRegExp<string, '.*'>,
+                    method: string,
+                    request: HttpRequest,
+                    response: HttpResponse,
+                ) {
+                    const connection = this.rpcKernel.createConnection({
+                        write: (data) => {
+
+                        },
+                        bufferedAmount() {
+                            return 0;
+                        },
+                        close() {
+
+                        },
+                        clientAddress() {
+                            return request.socket.remoteAddress || '';
+                        },
+                    });
+                    request.body = await request.readBody();
+                    await connection.onRequest(rpcBaseUrl, request, response);
+                    return response;
+                }
+            }
+
+            this.addController(HttpRpcController);
+        }
+
         const disconnect = async (event: unknown, broker: DebugBrokerBus, store: StopwatchStore) => {
             await store.close();
             await broker.adapter.disconnect();
-        }
+        };
         this.addListener(onAppShutdown.listen(disconnect));
         // Registering at onServerShutdown also so that ApplicationServer.close disconnects all connections.
         this.addListener(onServerShutdown.listen(disconnect));

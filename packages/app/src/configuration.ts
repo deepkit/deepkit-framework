@@ -25,9 +25,12 @@ function findFileUntilPackageRoot(fileName: string): string | undefined {
     let dir = process.cwd();
     while (true) {
         const candidate = join(dir, fileName);
-        if (existsSync(candidate) && existsSync(join(dir, 'package.json'))) {
+        if (existsSync(candidate)) {
             return candidate;
         }
+
+        // reached root, so stop
+        if (existsSync(join(dir, 'package.json'))) return;
 
         const next = join(dir, '../');
         if (next === dir) return; //reached root

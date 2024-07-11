@@ -11,7 +11,6 @@
 import { InjectorContext } from '@deepkit/injector';
 import {
     rpcActionType,
-    RpcConnectionWriter,
     RpcControllerAccess,
     RpcKernel,
     RpcKernelBaseConnection,
@@ -19,6 +18,7 @@ import {
     RpcMessage,
     RpcMessageBuilder,
     RpcServerAction,
+    TransportConnection,
 } from '@deepkit/rpc';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { ClassType } from '@deepkit/core';
@@ -89,8 +89,8 @@ export class RpcKernelWithStopwatch extends RpcKernel {
 
     stopwatch?: Stopwatch;
 
-    createConnection(writer: RpcConnectionWriter, injector?: InjectorContext): RpcKernelBaseConnection {
-        const connection = super.createConnection(writer, injector);
+    createConnection(transport: TransportConnection, injector?: InjectorContext): RpcKernelBaseConnection {
+        const connection = super.createConnection(transport, injector);
         if (this.stopwatch && connection instanceof RpcKernelConnectionWithStopwatch) {
             connection.setStopwatch(this.stopwatch);
         }

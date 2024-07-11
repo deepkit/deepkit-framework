@@ -3,7 +3,7 @@ import {
     BrokerAdapterQueueProduceOptionsResolved,
     BrokerQueueMessage,
     BrokerTimeOptionsResolved,
-    Release
+    Release,
 } from '../broker.js';
 import { getTypeJitContainer, ReflectionKind, Type, TypePropertySignature } from '@deepkit/type';
 import {
@@ -22,6 +22,7 @@ import {
     BrokerQueueResponseHandleMessage,
     BrokerQueueSubscribe,
     BrokerQueueUnsubscribe,
+    brokerResponseGet,
     brokerResponseGetCache,
     brokerResponseGetCacheMeta,
     brokerResponseIncrement,
@@ -29,7 +30,7 @@ import {
     brokerSet,
     brokerSetCache,
     BrokerType,
-    QueueMessageProcessing
+    QueueMessageProcessing,
 } from '../model.js';
 import {
     ClientTransportAdapter,
@@ -37,18 +38,13 @@ import {
     RpcBaseClient,
     RpcMessage,
     RpcMessageRouteType,
-    RpcWebSocketClientAdapter
+    RpcWebSocketClientAdapter,
 } from '@deepkit/rpc';
-import {
-    deserializeBSON,
-    deserializeBSONWithoutOptimiser,
-    getBSONDeserializer,
-    getBSONSerializer,
-    serializeBSON
-} from '@deepkit/bson';
+import { deserializeBSON, getBSONDeserializer, getBSONSerializer, serializeBSON } from '@deepkit/bson';
 import { arrayRemoveItem } from '@deepkit/core';
 import { BrokerCacheItemOptionsResolved } from '../broker-cache.js';
 import { fastHash } from '../utils.js';
+import { BrokerKeyValueOptionsResolved } from '../broker-key-value.js';
 
 interface TypeSerialize {
     encode(v: any): Uint8Array;
@@ -225,19 +221,25 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
         return first.v && first.ttl !== undefined ? { value: serializer.decode(first.v, 0), ttl: first.ttl } : undefined;
     }
 
-    async set(key: string, value: any, type: Type): Promise<void> {
+    async set(key: string, value: any, options: BrokerKeyValueOptionsResolved, type: Type): Promise<void> {
         const serializer = getSerializer(type);
         const v = serializer.encode(value);
-        await this.pool.getConnection('key/' + key).sendMessage<brokerSet>(BrokerType.Set, { n: key, v }).ackThenClose();
+        await this.pool.getConnection('key/' + key).sendMessage<brokerSet>(BrokerType.Set, { n: key, v, ttl: options.ttl }).ackThenClose();
     }
 
     async get(key: string, type: Type): Promise<any> {
-        const first: RpcMessage = await this.pool.getConnection('key/' + key)
-            .sendMessage<brokerGet>(BrokerType.Get, { n: key }).firstThenClose(BrokerType.ResponseGet);
-        if (first.buffer && first.buffer.byteLength > first.bodyOffset) {
+        const first = await this.pool.getConnection('key/' + key)
+            .sendMessage<brokerGet>(BrokerType.Get, { n: key })
+            .firstThenClose<brokerResponseGet>(BrokerType.ResponseGet);
+        if (first.v) {
             const serializer = getSerializer(type);
-            return serializer.decode(first.buffer, first.bodyOffset);
+            return serializer.decode(first.v, 0);
         }
+    }
+
+    async remove(key: string): Promise<any> {
+        await this.pool.getConnection('key/' + key)
+            .sendMessage<brokerGet>(BrokerType.Delete, { n: key }).ackThenClose();
     }
 
     async increment(key: string, value: any): Promise<number> {

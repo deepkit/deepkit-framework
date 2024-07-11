@@ -3,8 +3,8 @@ import { skip } from 'rxjs/operators';
 import { DirectClient } from '../src/client/client-direct.js';
 import { rpc } from '../src/decorators.js';
 import { RpcKernel } from '../src/server/kernel.js';
-import { ClientProgress } from '../src/writer.js';
-import { RpcBufferReader } from '../src/protocol.js';
+import { ClientProgress } from '../src/progress.js';
+import { RpcBinaryBufferReader } from '../src/protocol.js';
 import { asyncOperation } from '@deepkit/core';
 
 test('buffer read does not do copy', async () => {
@@ -12,7 +12,7 @@ test('buffer read does not do copy', async () => {
     data.writeUint32LE(data.length, 0);
     let received: Uint8Array | undefined = undefined;
 
-    new RpcBufferReader((p) => {
+    new RpcBinaryBufferReader((p) => {
         received = p;
     }).feed(data);
 

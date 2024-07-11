@@ -1,4 +1,4 @@
-import { AutoIncrement, DatabaseField, entity, Index, PrimaryKey, Reference, UUID, uuid } from "@deepkit/type";
+import { AutoIncrement, DatabaseField, entity, Index, PrimaryKey, Reference, UUID, uuid } from '@deepkit/type';
 
 export interface Content {
     tag: string;
@@ -225,6 +225,7 @@ export class CommunityMessageVote {
 
 export interface CommunityQuestionListItem {
     id: number;
+    slug: string;
     created: Date;
     discordUrl: string;
     category: string;

@@ -1,6 +1,7 @@
-import { Component, Input, OnChanges, OnInit } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, signal } from '@angular/core';
 import { highlight, languages } from 'prismjs';
 import { ControllerClient } from '@app/app/client';
+import { waitForInit } from '@app/app/utils';
 import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-jsx';
 import 'prismjs/components/prism-tsx';
@@ -63,7 +64,7 @@ import 'prismjs/components/prism-json';
     `],
     standalone: true,
     template: `
-        <pre class="code codeHighlight" [attr.title]="meta.title" [innerHTML]="html"></pre>
+        <pre class="code codeHighlight" [attr.title]="meta.title" [innerHTML]="html()"></pre>
     `,
 })
 export class HighlightCodeComponent implements OnInit, OnChanges {
@@ -72,9 +73,10 @@ export class HighlightCodeComponent implements OnInit, OnChanges {
     @Input() lang: string = 'typescript';
     @Input() meta: {title?: string} = {};
 
-    html: string = '';
+    html = signal<string>('loading');
 
     constructor(private client: ControllerClient) {
+        waitForInit(this, 'render');
     }
 
     async ngOnInit() {
@@ -96,6 +98,6 @@ export class HighlightCodeComponent implements OnInit, OnChanges {
 
         let lang = this.lang || 'typescript';
         if (!languages[lang]) lang = 'text';
-        this.html = highlight(this.code, languages[lang], lang);
+        this.html.set(highlight(this.code, languages[lang], lang));
     }
 }

@@ -13,11 +13,11 @@ import {
 import { Content } from '@app/common/models';
 import { NgForOf, NgIf } from '@angular/common';
 import { ScreenComponent, ScreensComponent } from '@app/app/components/screens.component';
-import { HighlightCodeComponent } from "@app/app/components/highlight-code.component";
-import { Router } from "@angular/router";
-import { AppImagesComponent } from "@app/app/components/images.component";
-import { ImageComponent } from "@app/app/components/image.component";
-import { DomSanitizer } from "@angular/platform-browser";
+import { HighlightCodeComponent } from '@app/app/components/highlight-code.component';
+import { Router } from '@angular/router';
+import { AppImagesComponent } from '@app/app/components/images.component';
+import { ImageComponent } from '@app/app/components/image.component';
+import { DomSanitizer } from '@angular/platform-browser';
 
 const whitelist = ['div', 'p', 'a', 'button', 'iframe', 'pre', 'span', 'code', 'strong', 'hr', 'ul', 'li', 'ol', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'table', 'tbody', 'tr', 'td', 'th', 'boxes', 'box'];
 
@@ -77,7 +77,6 @@ export class ContentCodeBox implements OnInit {
             display: flex;
             align-items: center;
             margin: 200px 0;
-            text-align: justify;
         }
 
         .text {
@@ -219,7 +218,6 @@ export class ContentRenderComponent implements OnInit, OnChanges {
             }
             return children;
         } else if (components[content.tag]) {
-            // const container = this.renderer.createElement('div');
             const children: ContentCreated[] = content.children ? this.renderContent(this.injector, content.children) : [];
 
             const type = reflectComponentType(components[content.tag]);
@@ -249,10 +247,40 @@ export class ContentRenderComponent implements OnInit, OnChanges {
                 this.renderer.setAttribute(component.location.nativeElement, 'class', content.props.class);
             }
 
+            // function debug(v: any, stack: any[] = []): any {
+            //     if (stack.includes(v)) return '[Circular]';
+            //     stack.push(v);
+            //     if (Array.isArray(v)) {
+            //         const res = v.map(v => debug(v, stack));
+            //         stack.pop();
+            //         return res;
+            //     }
+            //     if (v instanceof Node) {
+            //         stack.pop();
+            //         return `<${v.nodeName.toLowerCase()}>`;
+            //     }
+            //     // if object {}
+            //     if (v && typeof v === 'object') {
+            //         const obj: any = {};
+            //         let i = 0;
+            //         for (const [key, value] of Object.entries(v)) {
+            //             if (i++ > 3) break;
+            //             obj[key] = debug(value, stack);
+            //         }
+            //         stack.pop();
+            //         return obj;
+            //     }
+            //     stack.pop();
+            //     return v;
+            // }
+
             if (type.ngContentSelectors.length === 0) {
                 const lView = (component.hostView as any)._lView;
                 const tView = lView[1];
-                let tNode = lView[12][6];
+                // console.log('lView', debug(lView));
+                // console.log('lView[12]', debug(lView[12]));
+                let tNode = lView[12][5];
+                // console.log('tNode', debug(tNode));
                 const queries = tView.queries;
                 // console.log('lView', lView);
                 for (const child of children) {
@@ -265,6 +293,7 @@ export class ContentRenderComponent implements OnInit, OnChanges {
                         // so we need to update these values every time we add a new directive
                         lView[1].firstChild.directiveEnd++;
                         lView[1].firstChild.providerIndexes = lView.length;
+                        // console.log('clView', debug(clView));
                         lView.push(clView[8]);
 
                         if (queries) {

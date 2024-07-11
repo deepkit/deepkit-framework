@@ -8,7 +8,7 @@ import { eventDispatcher } from '@deepkit/event';
 import { Logger } from '@deepkit/logger';
 import { ApplicationServer } from '@deepkit/framework';
 import { findParentPath } from '@deepkit/app';
-import { PageResponseModel } from "@app/app/page-response-model";
+import { PageResponseModel } from '@app/app/page-response-model';
 
 Error.stackTraceLimit = 1500;
 
@@ -33,16 +33,17 @@ export class AngularListener {
         const dir = findParentPath('dist/app/', __dirname);
         if (!dir) throw new Error('Could not find dist/app/server folder');
 
-        const serverModule = (await require(join(dir, 'server/main.js'))) as {
+        const serverModule = (await import(join(dir, 'server/main.js'))) as {
             CommonEngine: typeof CommonEngine,
-            bootstrap: (rpcKernel: any) => any,
+            bootstrap: (baseUrl: string) => any,
         };
         this.engine = new serverModule.CommonEngine({
             //important to pass as function, otherwise we get `RuntimeError: NG0210`
-            bootstrap: () => serverModule.bootstrap(this.server.getWorker().rpcKernel),
-            providers: undefined,
+            bootstrap: () => serverModule.bootstrap('http://localhost:8080/'),
+            providers: [
+            ],
         });
-        const indexHtml = join(join(dir, 'browser'), 'index.html');
+        const indexHtml = join(join(dir, 'server'), 'index.server.html');
         this.renderOptions.documentFilePath = indexHtml;
 
         return { router: this.router!, engine: this.engine! };

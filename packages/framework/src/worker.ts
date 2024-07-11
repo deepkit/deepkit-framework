@@ -9,12 +9,11 @@
  */
 
 import {
-    ConnectionWriter,
-    RpcConnectionWriter,
     RpcKernel,
     RpcKernelBaseConnection,
     RpcKernelConnection,
     SessionState,
+    TransportConnection,
 } from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
@@ -22,7 +21,7 @@ import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions
 import ws from 'ws';
 import selfsigned from 'selfsigned';
 
-import { HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
+import { HttpConfig, HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
 import { InjectorContext } from '@deepkit/injector';
 import { RpcControllers, RpcInjectorContext } from './rpc.js';
 import { SecureContextOptions, TlsOptions } from 'tls';
@@ -59,10 +58,7 @@ export interface WebServerOptions {
      */
     httpsPort?: number;
 
-    /**
-     * HTTP Keep alive timeout.
-     */
-    keepAliveTimeout?: number;
+    http: HttpConfig;
 
     /**
      * When external server should be used. If this is set, all other options are ignored.
@@ -105,7 +101,7 @@ export interface RpcServerListener {
 }
 
 export interface RpcServerCreateConnection {
-    (writer: RpcConnectionWriter, request?: HttpRequest): RpcKernelBaseConnection;
+    (transport: TransportConnection, request?: HttpRequest): RpcKernelBaseConnection;
 }
 
 export interface RpcServerOptions {
@@ -124,8 +120,8 @@ export class RpcServer implements RpcServerInterface {
 
         server.on('connection', (ws, req: HttpRequest) => {
             const connection = createRpcConnection({
-                write(b) {
-                    ws.send(b);
+                writeBinary(message) {
+                    ws.send(message);
                 },
                 close() {
                     ws.close();
@@ -177,13 +173,12 @@ export class WebMemoryWorkerFactory extends WebWorkerFactory {
     }
 }
 
-export function createRpcConnection(rootScopedContext: InjectorContext, rpcKernel: RpcKernel, writer: RpcConnectionWriter, request?: HttpRequest) {
+export function createRpcConnection(rootScopedContext: InjectorContext, rpcKernel: RpcKernel, transport: TransportConnection, request?: HttpRequest) {
     const injector = rootScopedContext.createChildScope('rpc');
     injector.set(HttpRequest, request);
     injector.set(RpcInjectorContext, injector);
-    injector.set(ConnectionWriter, writer);
 
-    const connection = rpcKernel.createConnection(writer, injector);
+    const connection = rpcKernel.createConnection(transport, injector);
     injector.set(SessionState, connection.sessionState);
     injector.set(RpcKernelConnection, connection);
     injector.set(RpcKernelBaseConnection, connection);
@@ -244,6 +239,16 @@ export class WebWorker {
         return this.httpKernel.handleRequest(request, response);
     }
 
+    applyServerSettings(server: Server) {
+        const config = this.options.http;
+        if ('undefined' !== typeof config.timeout) server.timeout = config.timeout;
+        if ('undefined' !== typeof config.requestTimeout) server.requestTimeout = config.requestTimeout;
+        if ('undefined' !== typeof config.headersTimeout) server.headersTimeout = config.headersTimeout;
+        if ('undefined' !== typeof config.maxHeadersCount) server.maxHeadersCount = config.maxHeadersCount;
+        if ('undefined' !== typeof config.keepAliveTimeout) server.keepAliveTimeout = config.keepAliveTimeout;
+        if ('undefined' !== typeof config.maxRequestsPerSocket) server.maxRequestsPerSocket = config.maxRequestsPerSocket;
+    }
+
     start() {
         if (this.options.server) {
             this.server = this.options.server as Server;
@@ -279,8 +284,8 @@ export class WebWorker {
                     Object.assign({ IncomingMessage: HttpRequest, ServerResponse: HttpResponse as any, }, options),
                     this.handleRequest as any
                 );
+                this.servers.requestTimeout
                 this.servers.listen(this.options.httpsPort || this.options.port, this.options.host);
-                if (this.options.keepAliveTimeout) this.servers.keepAliveTimeout = this.options.keepAliveTimeout;
             }
 
             const startHttpServer = !this.servers || (this.servers && this.options.httpsPort);
@@ -289,30 +294,33 @@ export class WebWorker {
                     { IncomingMessage: HttpRequest, ServerResponse: HttpResponse as any },
                     this.handleRequest as any
                 );
-                if (this.options.keepAliveTimeout) this.server.keepAliveTimeout = this.options.keepAliveTimeout;
                 this.server.listen(this.options.port, this.options.host);
             }
         }
+
+        if (this.servers) this.applyServerSettings(this.servers);
+        if (this.server) this.applyServerSettings(this.server);
+
         this.startRpc();
     }
 
     private startRpc() {
         if (this.server) {
-            this.rpcListener = this.rpcServer.start({ server: this.server }, (writer: RpcConnectionWriter, request?: HttpRequest) => {
+            this.rpcListener = this.rpcServer.start({ server: this.server }, (transport, request?: HttpRequest) => {
                 if (this.shuttingDown) {
-                    writer.close();
+                    transport.close();
                     throw new Error('Server is shutting down');
                 }
-                return createRpcConnection(this.injectorContext, this.rpcKernel, writer, request);
+                return createRpcConnection(this.injectorContext, this.rpcKernel, transport, request);
             });
         }
         if (this.servers) {
-            this.rpcListener = this.rpcServer.start({ server: this.servers }, (writer: RpcConnectionWriter, request?: HttpRequest) => {
+            this.rpcListener = this.rpcServer.start({ server: this.servers }, (transport, request?: HttpRequest) => {
                 if (this.shuttingDown) {
-                    writer.close();
+                    transport.close();
                     throw new Error('Server is shutting down');
                 }
-                return createRpcConnection(this.injectorContext, this.rpcKernel, writer, request);
+                return createRpcConnection(this.injectorContext, this.rpcKernel, transport, request);
             });
         }
     }
@@ -337,10 +345,10 @@ export class WebWorker {
                     await sleep(0.1);
                 }
             }
-            if (this.rpcListener) await this.rpcListener.close();
-            if (this.server) this.server.close();
-            if (this.servers) this.servers.close();
         }
+        if (this.rpcListener) await this.rpcListener.close();
+        if (this.server) this.server.close();
+        if (this.servers) this.servers.close();
     }
 }
 

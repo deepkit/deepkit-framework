@@ -9,7 +9,8 @@
  */
 
 import { ClassType } from '@deepkit/core';
-import { ClientTransportAdapter, RpcClient, TransportConnectionHooks } from './client.js';
+import { ClientTransportAdapter, RpcClient } from './client.js';
+import { TransportClientConnection } from '../transport.js';
 
 /**
  * A RpcClient that connects via WebSocket transport.
@@ -51,7 +52,7 @@ export function createRpcWebSocketClientProvider(baseUrl: string = typeof locati
     [name: number]: number
 } = { 4200: 8080 }) {
     return {
-        provide: RpcWebSocketClient,
+        provide: RpcClient,
         useFactory: () => new RpcWebSocketClient(webSocketFromBaseUrl(baseUrl, portMapping))
     };
 }
@@ -79,7 +80,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
         return this.webSocketConstructor;
     }
 
-    public async connect(connection: TransportConnectionHooks) {
+    public async connect(connection: TransportClientConnection) {
         const webSocketConstructor = await this.getWebSocketConstructor();
 
         try {
@@ -90,23 +91,23 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
         }
     }
 
-    protected mapSocket(socket: WebSocket, connection: TransportConnectionHooks) {
+    protected mapSocket(socket: WebSocket, connection: TransportClientConnection) {
         socket.binaryType = 'arraybuffer';
 
         socket.onmessage = (event: MessageEvent) => {
-            connection.onData(new Uint8Array(event.data));
+            connection.readBinary(new Uint8Array(event.data));
         };
 
         let errored = false;
         let connected = false;
 
         socket.onclose = (event) => {
+            const reason = `code ${event.code} reason ${event.reason || 'unknown'}`;
+            const message = connected ? `abnormal error: ${reason}` : `Could not connect: ${reason}`;
             if (errored) {
-                const reason = `code ${event.code} reason ${event.reason || 'unknown'}`;
-                const message = connected ? `abnormal error` : `Could not connect: ${reason}`;
                 connection.onError(new Error(message));
             } else {
-                connection.onClose();
+                connection.onClose(reason);
             }
         };
 
@@ -127,7 +128,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
                 close() {
                     socket.close();
                 },
-                send(message) {
+                writeBinary(message) {
                     socket.send(message);
                 }
             });

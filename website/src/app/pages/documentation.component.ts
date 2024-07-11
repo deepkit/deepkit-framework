@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AppDescription, AppTitle } from '@app/app/components/title';
 import { ContentRenderComponent } from '@app/app/components/content-render.component';
@@ -25,6 +25,7 @@ import { PlatformHelper } from '@app/app/utils';
         RouterOutlet
     ],
     styleUrls: ['./documentation.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <div class="page">
             <div class="content-wrapper">
@@ -75,6 +76,7 @@ import { PlatformHelper } from '@app/app/utils';
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/reflection">Reflection</a>
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/serialization">Serialization</a>
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/validation">Validation</a>
+                    <a routerLinkActive="active" routerLink="/documentation/runtime-types/extend">Extend</a>
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/custom-serializer">Custom serializer</a>
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/external-types">External Types</a>
                     <a routerLinkActive="active" routerLink="/documentation/runtime-types/bytecode">Bytecode</a>
@@ -108,11 +110,12 @@ import { PlatformHelper } from '@app/app/utils';
                 <div class="category">
                     <div class="category-title">Broker</div>
                     <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/broker">Getting started</a>
-                    <a routerLinkActive="active" routerLink="/documentation/broker/examples">Examples</a>
+<!--                    <a routerLinkActive="active" routerLink="/documentation/broker/examples">Examples</a>-->
                     <a routerLinkActive="active" routerLink="/documentation/broker/cache">Cache</a>
                     <a routerLinkActive="active" routerLink="/documentation/broker/message-bus">Message Bus</a>
                     <a routerLinkActive="active" routerLink="/documentation/broker/message-queue">Message Queue</a>
                     <a routerLinkActive="active" routerLink="/documentation/broker/atomic-locks">Atomic Locks</a>
+                    <a routerLinkActive="active" routerLink="/documentation/broker/key-value">Key Value</a>
                 </div>
 
                 <div class="category">

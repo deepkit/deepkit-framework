@@ -93,22 +93,21 @@ test('skip property', () => {
 
 test('QueryToSql', () => {
     class User {
-        id!: number;
+        id!: number & PrimaryKey;
         username!: string;
         password!: string;
         disabled!: boolean;
         created!: Date;
     }
 
-    const queryToSql = new SQLFilterBuilder(ReflectionClass.from(User), quoteId('user'), serializer, new SqlPlaceholderStrategy(), new class extends DefaultPlatform {
-        schemaParserType = MySchemaParser;
-        quoteIdentifier(id: string): string {
-            return quoteId(id);
+    const localAdapter: PreparedAdapter = {
+        ...adapter,
+        platform: new class extends MyPlatform {
+            quoteIdentifier = quoteId;
         }
-        quoteValue(value: any): string {
-            return escape(value);
-        }
-    });
+    };
+
+    const queryToSql = new SQLFilterBuilder(localAdapter, ReflectionClass.from(User), quoteId('user'), serializer, new SqlPlaceholderStrategy());
 
     expect(queryToSql.convert({ id: 123 })).toBe(`user.id = ?`);
     expect(queryToSql.convert({ id: '$id' })).toBe(`user.id = user.id`);

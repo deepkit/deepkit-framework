@@ -74,6 +74,7 @@ export interface brokerResponseIncrement {
 export interface brokerSet {
     n: string,
     v: Uint8Array,
+    ttl: number,
 }
 
 export interface brokerInvalidateCache {
@@ -90,6 +91,10 @@ export interface brokerSetCache {
 export interface brokerInvalidateCacheMessage {
     key: string;
     ttl: number;
+}
+
+export interface brokerResponseGet {
+    v?: Uint8Array,
 }
 
 export interface brokerResponseGetCache {

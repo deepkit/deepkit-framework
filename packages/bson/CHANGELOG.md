@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.153](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.152...v1.0.1-alpha.153) (2024-06-06)
+
+### Bug Fixes
+
+- **bson:** make sure NaN is deserialized as 0 ([7b19397](https://github.com/deepkit/deepkit-framework/commit/7b193977a35fceac4402829d0709d909e3ef6f8e))
+
+### Features
+
+- **type:** automatically assign .path to SerializationError in TemplateState.convert() errors ([23781a1](https://github.com/deepkit/deepkit-framework/commit/23781a1949d445d769cfc3704c25bc69a27c7350))
+
+## [1.0.1-alpha.151](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.150...v1.0.1-alpha.151) (2024-05-14)
+
+**Note:** Version bump only for package @deepkit/bson
+
 ## [1.0.1-alpha.150](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.149...v1.0.1-alpha.150) (2024-05-09)
 
 **Note:** Version bump only for package @deepkit/bson

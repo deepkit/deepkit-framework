@@ -354,3 +354,17 @@ test('speed', () => {
     // but inline vs ref must not be slower than 2.5 times.
     // expect(ratio).toBeLessThan(2.5);
 });
+
+test('array with multiple errors', () => {
+    interface Skill {
+        level: number & Positive;
+    }
+
+    const errors = validate<Array<Skill>>([{level: -1}, {level: -1}]);
+    console.log(errors);
+
+    expect(errors).toEqual([
+        {code: 'positive', message: 'Number needs to be positive', path: '0.level', value: -1},
+        {code: 'positive', message: 'Number needs to be positive', path: '1.level', value: -1}
+    ]);
+});

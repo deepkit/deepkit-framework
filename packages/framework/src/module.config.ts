@@ -7,13 +7,13 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { HttpParserOptions } from '@deepkit/http';
+import { HttpConfig } from '@deepkit/http';
 
 const isWindows = 'undefined' !== typeof process ? process.platform === 'win32' : false;
 
 export class BrokerConfig {
     /**
-     * @description If startOnBootstrap is true, the broker server stats at this address. Unix socket path or host:port combination
+     * @description If startOnBootstrap is true, the broker server starts at this address. Unix socket path or host:port combination
      */
     listen: string = isWindows ? 'localhost:8811' : 'var/broker.sock';
 
@@ -40,8 +40,6 @@ export class FrameworkConfig {
      * @description If for ssl: true the certificate and key should be automatically generated.
      */
     selfSigned?: boolean;
-
-    keepAliveTimeout?: number;
 
     path: string = '/';
 
@@ -111,6 +109,12 @@ export class FrameworkConfig {
 
     debug: boolean = false;
 
+    /**
+     * @description If set, allows to call RPC methods via HTTP. The value is the base URL for the RPC calls.
+     * Use e.g. `/rpc/v1`
+     */
+    httpRpcBasePath: string = '';
+
     debugUrl: string = '_debug';
 
     /**
@@ -136,8 +140,6 @@ export class FrameworkConfig {
      */
     httpLog: boolean = true;
 
-    httpParse: HttpParserOptions = {};
-
     /**
      * @description The session ClassType
      */
@@ -151,4 +153,10 @@ export class FrameworkConfig {
     migrationDir: string = 'migrations';
 
     broker: BrokerConfig = new BrokerConfig;
+
+    /**
+     * Will be forwarded to HttpModule.
+     * @see HttpConfig
+     */
+    http: HttpConfig = new HttpConfig;
 }

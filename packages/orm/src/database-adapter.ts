@@ -9,8 +9,26 @@
  */
 
 import { OrmEntity } from './type.js';
-import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, getClassTypeFromInstance, isClass, stringifyValueWithType } from '@deepkit/core';
-import { is, isSameType, ItemChanges, PrimaryKeyFields, ReceiveType, ReflectionClass, ReflectionKind, stringifyType, Type } from '@deepkit/type';
+import {
+    AbstractClassType,
+    arrayRemoveItem,
+    ClassType,
+    getClassName,
+    getClassTypeFromInstance,
+    isClass,
+    stringifyValueWithType,
+} from '@deepkit/core';
+import {
+    is,
+    isSameType,
+    ItemChanges,
+    PrimaryKeyFields,
+    ReceiveType,
+    ReflectionClass,
+    ReflectionKind,
+    stringifyType,
+    Type,
+} from '@deepkit/type';
 import { Query } from './query.js';
 import { DatabaseSession, DatabaseTransaction } from './database-session.js';
 
@@ -161,7 +179,7 @@ export class DatabaseEntityRegistry {
             }
 
         } else {
-            //its a regular class
+            //it's a regular class
             return ReflectionClass.from(getClassTypeFromInstance(item));
         }
 
@@ -181,8 +199,13 @@ export class DatabaseEntityRegistry {
             throw new Error(`Only TypeClass|TypeObjectLiteral expected, but got kind ${type.kind}`);
         }
 
+        // exact matches or nominal type match have priority
         for (const entity of this.entities) {
             if (entity.type === type) return entity;
+            if (entity.type.id === type.id) return entity;
+        }
+
+        for (const entity of this.entities) {
             if (type.kind === ReflectionKind.class && entity.type.kind === ReflectionKind.class) {
                 if (type.classType === entity.type.classType) {
                     //if both don't use generic, return directly

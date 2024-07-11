@@ -5,6 +5,16 @@ import { Observable, Subject } from 'rxjs';
 export class RpcController {
 
     @rpc.action()
+    hello(): string {
+        return 'World';
+    }
+
+    @rpc.action()
+    hi(name: string): string {
+        return `Hi ${name}`;
+    }
+
+    @rpc.action()
     timesSubject(): Subject<Date> {
         const subject = new Subject<Date>();
 

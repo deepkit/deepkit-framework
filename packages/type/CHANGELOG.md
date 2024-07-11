@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.153](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.152...v1.0.1-alpha.153) (2024-06-06)
+
+### Bug Fixes
+
+- **orm:** correctly resolve reference class schemas ([e193325](https://github.com/deepkit/deepkit-framework/commit/e193325b561563f0207403103cd8caf859228cc2))
+
+### Features
+
+- **orm:** support passing type to Database.persistAs/Database.removeAs, DatabaseSession.addAs ([6679aba](https://github.com/deepkit/deepkit-framework/commit/6679aba8517b46575b92edaa3a9f59ea90f9f762)), closes [#571](https://github.com/deepkit/deepkit-framework/issues/571)
+- **type:** automatically assign .path to SerializationError in TemplateState.convert() errors ([23781a1](https://github.com/deepkit/deepkit-framework/commit/23781a1949d445d769cfc3704c25bc69a27c7350))
+
+## [1.0.1-alpha.151](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.150...v1.0.1-alpha.151) (2024-05-14)
+
+### Features
+
+- **type:** return all errors when validating array ([#568](https://github.com/deepkit/deepkit-framework/issues/568)) ([c2ca10e](https://github.com/deepkit/deepkit-framework/commit/c2ca10ec33bb0b00568563a225e4ca0f2f92a6cb)), closes [/github.com/deepkit/deepkit-framework/issues/565#issuecomment-2091054710](https://github.com//github.com/deepkit/deepkit-framework/issues/565/issues/issuecomment-2091054710)
+
 ## [1.0.1-alpha.150](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.149...v1.0.1-alpha.150) (2024-05-09)
 
 ### Bug Fixes

@@ -8,8 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { arrayRemoveItem, ClassType, getClassName } from '@deepkit/core';
-import { ReceiveType, ReflectionKind, resolveReceiveType, stringifyUuid, Type, typeOf, writeUuid } from '@deepkit/type';
+import { arrayRemoveItem, bufferToString, ClassType, createBuffer, getClassName } from '@deepkit/core';
+import {
+    ReceiveType,
+    ReflectionKind,
+    resolveReceiveType,
+    serialize,
+    stringifyUuid,
+    Type,
+    typeOf,
+    writeUuid,
+} from '@deepkit/type';
 import { RpcMessageSubject } from '../client/message-subject.js';
 import {
     AuthenticationError,
@@ -22,20 +31,18 @@ import {
     RpcTypes,
 } from '../model.js';
 import {
-    createBuffer,
     createRpcCompositeMessage,
     createRpcCompositeMessageSourceDest,
     createRpcMessage,
-    createRpcMessageForBody,
     createRpcMessageSourceDest,
-    createRpcMessageSourceDestForBody,
+    RpcBinaryMessageReader,
     RpcCreateMessageDef,
     rpcEncodeError,
     RpcMessage,
-    RpcMessageReader,
+    RpcMessageDefinition,
     RpcMessageRouteType,
+    serializeBinaryRpcMessage,
 } from '../protocol.js';
-import { RpcMessageWriter, RpcMessageWriterOptions } from '../writer.js';
 import { ActionTypes, RpcServerAction } from './action.js';
 import { RpcKernelSecurity, SessionState } from './security.js';
 import { RpcActionClient, RpcControllerState } from '../client/action.js';
@@ -43,6 +50,16 @@ import { RemoteController } from '../client/client.js';
 import { InjectorContext, InjectorModule, NormalizedProvider } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
 import { rpcClass } from '../decorators.js';
+import {
+    createWriter,
+    RpcBinaryWriter,
+    TransportBinaryMessageChunkWriter,
+    TransportConnection,
+    TransportMessageWriter,
+    TransportOptions,
+} from '../transport.js';
+import { HttpRpcMessage, RpcHttpRequest, RpcHttpResponse } from './http.js';
+import { SingleProgress } from '../progress.js';
 
 const anyType: Type = { kind: ReflectionKind.any };
 
@@ -57,7 +74,8 @@ export class RpcCompositeMessage {
         protected logger: Logger,
         public type: number,
         protected id: number,
-        protected writer: RpcConnectionWriter,
+        protected writer: TransportMessageWriter,
+        protected transportOptions: TransportOptions,
         protected clientId?: Uint8Array,
         protected source?: Uint8Array,
         protected routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client,
@@ -68,9 +86,13 @@ export class RpcCompositeMessage {
         if (!this.strictSerialization) {
             receiveType = anyType;
         }
+        this.messages.push({ type, schema: receiveType ? resolveReceiveType(receiveType) : undefined, body });
+        return this;
+    }
+
+    write(message: RpcMessageDefinition): void {
         try {
-            this.messages.push({ type, schema: receiveType ? resolveReceiveType(receiveType) : undefined, body });
-            return this;
+            this.writer(message, this.transportOptions);
         } catch (error) {
             if (this.logValidationErrors) {
                 this.logger.warn(this.errorLabel, error);
@@ -82,9 +104,9 @@ export class RpcCompositeMessage {
     send() {
         if (this.clientId && this.source) {
             //we route back accordingly
-            this.writer.write(createRpcCompositeMessageSourceDest(this.id, this.clientId, this.source, this.type, this.messages));
+            this.write(createRpcCompositeMessageSourceDest(this.id, this.clientId, this.source, this.type, this.messages));
         } else {
-            this.writer.write(createRpcCompositeMessage(this.id, this.type, this.messages, this.routeType));
+            this.write(createRpcCompositeMessage(this.id, this.type, this.messages, this.routeType));
         }
     }
 }
@@ -99,62 +121,61 @@ export class RpcMessageBuilder {
 
     constructor(
         protected logger: Logger,
-        protected writer: RpcConnectionWriter,
+        protected writer: TransportMessageWriter,
+        protected transportOptions: TransportOptions,
         protected id: number,
         protected clientId?: Uint8Array,
         protected source?: Uint8Array,
     ) {
     }
 
-    protected messageFactory<T>(type: RpcTypes, schemaOrBody?: ReceiveType<T> | Uint8Array, data?: T): Uint8Array {
-        if (schemaOrBody instanceof Uint8Array) {
-            if (this.source && this.clientId) {
-                //we route back accordingly
-                return createRpcMessageSourceDestForBody(this.id, type, this.clientId, this.source, schemaOrBody);
-            } else {
-                return createRpcMessageForBody(this.id, type, schemaOrBody, this.routeType);
-            }
-        } else {
-            if (!this.strictSerialization) {
-                schemaOrBody = anyType;
-            }
+    protected messageFactory<T>(type: RpcTypes, schemaOrBody?: ReceiveType<T>, data?: T): RpcMessageDefinition {
+        if (!this.strictSerialization) {
+            schemaOrBody = anyType;
+        }
 
-            try {
-                if (this.source && this.clientId) {
-                    //we route back accordingly
-                    return createRpcMessageSourceDest(this.id, type, this.clientId, this.source, data, schemaOrBody);
-                } else {
-                    return createRpcMessage(this.id, type, data, this.routeType, schemaOrBody);
-                }
-            } catch (error: any) {
-                if (this.logValidationErrors) {
-                    this.logger.warn(this.errorLabel, error);
-                }
-                throw new Error(this.errorLabel + ': ' + error.message);
+        if (this.source && this.clientId) {
+            //we route back accordingly
+            return createRpcMessageSourceDest(this.id, type, this.clientId, this.source, data, schemaOrBody);
+        } else {
+            return createRpcMessage(this.id, type, data, this.routeType, schemaOrBody);
+        }
+    }
+
+    write(message: RpcMessageDefinition): void {
+        try {
+            this.writer(message, this.transportOptions);
+        } catch (error: any) {
+            if (this.logValidationErrors) {
+                this.logger.warn(this.errorLabel, error);
             }
+            throw new Error(this.errorLabel + ': ' + error.message, {cause: error});
         }
     }
 
     ack(): void {
-        this.writer.write(this.messageFactory(RpcTypes.Ack));
+        this.write(this.messageFactory(RpcTypes.Ack));
     }
 
     error(error: Error | string): void {
         const extracted = rpcEncodeError(error);
 
-        this.writer.write(this.messageFactory(RpcTypes.Error, typeOf<rpcError>(), extracted));
+        this.write(this.messageFactory(RpcTypes.Error, typeOf<rpcError>(), extracted));
     }
 
     reply<T>(type: number, body?: T, receiveType?: ReceiveType<T>): void {
-        this.writer.write(this.messageFactory(type, receiveType, body));
+        this.write(this.messageFactory(type, receiveType, body));
     }
 
+    /**
+     * @deprecated
+     */
     replyBinary<T>(type: number, body?: Uint8Array): void {
-        this.writer.write(this.messageFactory(type, body));
+        throw new Error('replyBinary deprecated');
     }
 
     composite(type: number): RpcCompositeMessage {
-        const composite = new RpcCompositeMessage(this.logger, type, this.id, this.writer, this.clientId, this.source);
+        const composite = new RpcCompositeMessage(this.logger, type, this.id, this.writer, this.transportOptions, this.clientId, this.source);
         composite.strictSerialization = this.strictSerialization;
         composite.logValidationErrors = this.logValidationErrors;
         composite.errorLabel = this.errorLabel;
@@ -167,7 +188,7 @@ export class RpcMessageBuilder {
  * A real-life implementation would use an external message-bus, like Redis & co.
  */
 export class RpcPeerExchange {
-    protected registeredPeers = new Map<string, RpcConnectionWriter>();
+    protected registeredPeers = new Map<string, TransportConnection>();
 
     async isRegistered(id: string): Promise<boolean> {
         return this.registeredPeers.has(id);
@@ -177,7 +198,7 @@ export class RpcPeerExchange {
         this.registeredPeers.delete('string' === typeof id ? id : stringifyUuid(id));
     }
 
-    register(id: string | Uint8Array, writer: RpcConnectionWriter): void {
+    register(id: string | Uint8Array, writer: TransportConnection): void {
         this.registeredPeers.set('string' === typeof id ? id : stringifyUuid(id), writer);
     }
 
@@ -190,7 +211,7 @@ export class RpcPeerExchange {
                 console.log('NO writer found for peer', peerId);
                 return;
             }
-            writer.write(message.getBuffer());
+            if (writer.writeBinary) writer.writeBinary(message.getBuffer());
         }
 
         if (message.routeType == RpcMessageRouteType.sourceDest) {
@@ -204,29 +225,21 @@ export class RpcPeerExchange {
                 //we silently ignore, as a pub/sub would do as well
                 return;
             }
-            writer.write(message.getBuffer());
+            if (writer.writeBinary) writer.writeBinary(message.getBuffer());
         }
     }
-}
-
-export interface RpcConnectionWriter {
-    write(buffer: Uint8Array): void;
-
-    close(): void;
-
-    bufferedAmount?(): number;
-
-    clientAddress?(): string;
 }
 
 export abstract class RpcKernelBaseConnection {
     protected messageId: number = 0;
     public sessionState = new SessionState();
 
-    protected reader = new RpcMessageReader(
+    public writer: TransportMessageWriter;
+
+    protected reader = new RpcBinaryMessageReader(
         this.handleMessage.bind(this),
         (id: number) => {
-            this.writer.write(createRpcMessage(id, RpcTypes.ChunkAck));
+            this.writer(createRpcMessage(id, RpcTypes.ChunkAck), this.transportOptions);
         },
     );
 
@@ -235,9 +248,8 @@ export abstract class RpcKernelBaseConnection {
     protected id: Uint8Array = writeUuid(createBuffer(16));
 
     protected replies = new Map<number, ((message: RpcMessage) => void)>();
-    public writerOptions: RpcMessageWriterOptions = new RpcMessageWriterOptions;
-
-    public writer: RpcMessageWriter = new RpcMessageWriter(this.transportWriter, this.reader, this.writerOptions);
+    public transportOptions: TransportOptions = new TransportOptions();
+    protected binaryChunkWriter = new TransportBinaryMessageChunkWriter(this.reader, this.transportOptions);
 
     protected timeoutTimers: any[] = [];
     public readonly onClose: Promise<void>;
@@ -245,21 +257,36 @@ export abstract class RpcKernelBaseConnection {
 
     constructor(
         protected logger: Logger,
-        protected transportWriter: RpcConnectionWriter,
+        public transportConnection: TransportConnection,
         protected connections: RpcKernelConnections,
     ) {
+        this.writer = createWriter(transportConnection, this.transportOptions, this.reader);
+
         this.connections.connections.push(this);
         this.onClose = new Promise((resolve) => {
             this.onCloseResolve = resolve;
         });
     }
 
+    write(message: RpcMessageDefinition): void {
+        this.writer(message, this.transportOptions);
+    }
+
+    /**
+     * Serializes the message (binary) and sends it to the client using
+     * a chunk writer (splitting the message into smaller parts if necessary,
+     * so they can be tracked).
+     */
+    sendBinary(message: RpcMessageDefinition, writer: RpcBinaryWriter): void {
+        this.binaryChunkWriter.write(writer, serializeBinaryRpcMessage(message));
+    }
+
     clientAddress(): string | undefined {
-        return this.transportWriter.clientAddress ? this.transportWriter.clientAddress() : undefined;
+        return this.transportConnection.clientAddress ? this.transportConnection.clientAddress() : undefined;
     }
 
     createMessageBuilder(): RpcMessageBuilder {
-        return new RpcMessageBuilder(this.logger, this.writer, this.messageId++);
+        return new RpcMessageBuilder(this.logger, this.writer, this.transportOptions, this.messageId++);
     }
 
     /**
@@ -278,7 +305,7 @@ export abstract class RpcKernelBaseConnection {
         for (const timeout of this.timeoutTimers) clearTimeout(timeout);
         if (this.onCloseResolve) this.onCloseResolve();
         arrayRemoveItem(this.connections.connections, this);
-        this.writer.close();
+        this.transportConnection.close();
     }
 
     public feed(buffer: Uint8Array, bytes?: number): void {
@@ -295,8 +322,12 @@ export abstract class RpcKernelBaseConnection {
             }
         }
 
-        const response = new RpcMessageBuilder(this.logger, this.writer, message.id);
+        const response = new RpcMessageBuilder(this.logger, this.writer, this.transportOptions, message.id);
         this.onMessage(message, response);
+    }
+
+    onRequest(basePath: string, request: RpcHttpRequest, response: RpcHttpResponse): void | Promise<void> {
+        throw new Error('Not supported');
     }
 
     abstract onMessage(message: RpcMessage, response: RpcMessageBuilder): void | Promise<void>;
@@ -323,7 +354,7 @@ export abstract class RpcKernelBaseConnection {
             //send a message with the same id. Don't use sendMessage() again as this would lead to a memory leak
             // and a new id generated. We want to use the same id.
             const message = createRpcMessage(id, type, body, RpcMessageRouteType.server, receiveType);
-            this.writer.write(message);
+            this.writer(message, this.transportOptions);
         };
 
         const subject = new RpcMessageSubject(continuation, () => {
@@ -333,7 +364,7 @@ export abstract class RpcKernelBaseConnection {
         this.replies.set(id, (v: RpcMessage) => subject.next(v));
 
         const message = createRpcMessage(id, type, body, RpcMessageRouteType.server, receiveType);
-        this.writer.write(message);
+        this.writer(message, this.transportOptions);
 
         return subject;
     }
@@ -342,9 +373,9 @@ export abstract class RpcKernelBaseConnection {
 export class RpcKernelConnections {
     public connections: RpcKernelBaseConnection[] = [];
 
-    broadcast(buffer: Uint8Array) {
+    broadcast(buffer: RpcMessageDefinition) {
         for (const connection of this.connections) {
-            connection.writer.write(buffer);
+            connection.writer(buffer, connection.transportOptions);
         }
     }
 }
@@ -361,7 +392,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
 
     constructor(
         logger: Logger,
-        writer: RpcConnectionWriter,
+        transport: TransportConnection,
         connections: RpcKernelConnections,
         protected cache: RpcCache,
         protected controllers: Map<string, { controller: ClassType, module?: InjectorModule }>,
@@ -369,7 +400,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         protected injector: InjectorContext,
         protected peerExchange: RpcPeerExchange,
     ) {
-        super(logger, writer, connections);
+        super(logger, transport, connections);
         this.onClose.then(async () => {
             try {
                 await this.peerExchange.deregister(this.id);
@@ -379,14 +410,80 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
             }
         });
         //register the current client so it can receive messages
-        this.peerExchange.register(this.id, this.writer);
+        this.peerExchange.register(this.id, this.transportConnection);
+    }
+
+    async onRequest(basePath: string, request: RpcHttpRequest, response: RpcHttpResponse) {
+        let routeType: any = RpcMessageRouteType.client;
+        const id = 0;
+        let source: Uint8Array | undefined = undefined;
+        if (!basePath.endsWith('/')) basePath += '/';
+        if (!basePath.startsWith('/')) basePath = '/' + basePath;
+        const url = new URL(request.url || '', 'http://localhost/' + basePath);
+
+        try {
+            const messageResponse = new RpcMessageBuilder(this.logger, (message: RpcMessageDefinition, options: TransportOptions, progress?: SingleProgress) => {
+                response.setHeader('Content-Type', 'application/json');
+                response.setHeader('X-Message-Type', message.type);
+                response.setHeader('X-Message-Composite', String(!!message.composite));
+                response.setHeader('X-Message-RouteType', String(message.routeType));
+                response.writeHead(200);
+
+                if (message.body) {
+                    let body = serialize(message.body.body, undefined, undefined, undefined, message.body.type);
+                    if (message.type === RpcTypes.ResponseActionSimple) {
+                        body = body.v;
+                    }
+                    response.end(JSON.stringify(body));
+                }
+            }, this.transportOptions, id, this.id, routeType === RpcMessageRouteType.peer ? source : undefined);
+            messageResponse.routeType = this.routeType;
+
+            const urlPath = url.pathname.substring(basePath.length);
+            const lastSlash = urlPath.lastIndexOf('/');
+            const base: {controller: string, method: string, args?: any[]} = {
+                controller: urlPath.substring(0, lastSlash),
+                method: decodeURIComponent(urlPath.substring(lastSlash + 1)),
+            };
+
+            let type = false
+            if (base.method.endsWith('.type')) {
+                base.method = base.method.substring(0, base.method.length - 5);
+                type = true;
+            }
+
+            if (request.headers['Authorization']) {
+                const auth = String(request.headers['Authorization']);
+                const token = auth.startsWith('Bearer ') ? auth.substring(7) : auth;
+                const session = await this.security.authenticate(token, this);
+                this.sessionState.setSession(session);
+            }
+
+            if (type) {
+                await this.actionHandler.handleActionTypes(
+                    new HttpRpcMessage(1, false, RpcTypes.ActionType, RpcMessageRouteType.client, request.headers, base),
+                    messageResponse,
+                );
+            } else {
+                const body = request.body && request.body.byteLength > 0 ? JSON.parse(bufferToString(request.body)) : {args: url.searchParams.getAll('arg').map(v => v)};
+                base.args = body.args || [];
+                await this.actionHandler.handleAction(
+                    new HttpRpcMessage(1, false, RpcTypes.Action, RpcMessageRouteType.client, request.headers, base),
+                    messageResponse,
+                );
+            }
+        } catch (error: any) {
+            this.logger.error('onRequest failed', error);
+            response.writeHead(400);
+            response.end(JSON.stringify({ error: error.message }));
+        }
     }
 
     async onMessage(message: RpcMessage): Promise<void> {
         if (message.routeType == RpcMessageRouteType.peer && message.getPeerId() !== this.myPeerId) {
             // console.log('Redirect peer message', RpcTypes[message.type]);
             if (!await this.security.isAllowedToSendToPeer(this.sessionState.getSession(), message.getPeerId())) {
-                new RpcMessageBuilder(this.logger, this.writer, message.id).error(new Error('Access denied'));
+                new RpcMessageBuilder(this.logger, this.writer, this.transportOptions, message.id).error(new Error('Access denied'));
                 return;
             }
             this.peerExchange.redirect(message);
@@ -400,12 +497,12 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         }
 
         if (message.type === RpcTypes.Ping) {
-            this.writer.write(createRpcMessage(message.id, RpcTypes.Pong));
+            this.writer(createRpcMessage(message.id, RpcTypes.Pong), this.transportOptions);
             return;
         }
 
         //all outgoing replies need to be routed to the source via sourceDest messages.
-        const response = new RpcMessageBuilder(this.logger, this.writer, message.id, this.id, message.routeType === RpcMessageRouteType.peer ? message.getSource() : undefined);
+        const response = new RpcMessageBuilder(this.logger, this.writer, this.transportOptions, message.id, this.id, message.routeType === RpcMessageRouteType.peer ? message.getSource() : undefined);
         response.routeType = this.routeType;
 
         try {
@@ -477,7 +574,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
                 return;
             }
 
-            await this.peerExchange.register(body.id, this.writer);
+            await this.peerExchange.register(body.id, this.transportConnection);
             this.myPeerId = body.id;
             response.ack();
         } catch (error) {
@@ -559,10 +656,10 @@ export class RpcKernel {
         });
     }
 
-    createConnection(writer: RpcConnectionWriter, injector?: InjectorContext): RpcKernelBaseConnection {
+    createConnection(transport: TransportConnection, injector?: InjectorContext): RpcKernelBaseConnection {
         if (!injector) injector = this.injector.createChildScope('rpc');
 
-        const connection = new this.RpcKernelConnection(this.logger, writer, this.connections, this.cache, this.controllers, injector.get(RpcKernelSecurity), injector, this.peerExchange);
+        const connection = new this.RpcKernelConnection(this.logger, transport, this.connections, this.cache, this.controllers, injector.get(RpcKernelSecurity), injector, this.peerExchange);
         injector.set(RpcKernelConnection, connection);
         for (const on of this.onConnectionListeners) on(connection, injector, this.logger);
         return connection;

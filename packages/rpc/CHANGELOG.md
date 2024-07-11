@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.153](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.152...v1.0.1-alpha.153) (2024-06-06)
+
+### Bug Fixes
+
+- **rpc:** add interface for fetch ([6035736](https://github.com/deepkit/deepkit-framework/commit/60357366ec1db553789909889bf3489dea17a269))
+- **rpc:** http adapter wrong authorization + remove OPTIONS method ([3ff8955](https://github.com/deepkit/deepkit-framework/commit/3ff89556961864ceffea188e33e0af0404cd44b3))
+- **rpc:** make sure Error is chained and ValidationError correctly handled ([5c49778](https://github.com/deepkit/deepkit-framework/commit/5c49778da68baaab6e7d9588acb03af7d891bf3a))
+
+### Features
+
+- **rpc:** add http transport ([3b2c6cc](https://github.com/deepkit/deepkit-framework/commit/3b2c6cc6c75d70e3b6bfac7d53e3e7606696baf4))
+
+## [1.0.1-alpha.152](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.151...v1.0.1-alpha.152) (2024-05-16)
+
+### Features
+
+- **rpc:** client.transporter.errored subject ([0fc2bd4](https://github.com/deepkit/deepkit-framework/commit/0fc2bd4aa904bdae9398f4e4c7db602afd3bcbc4))
+
+## [1.0.1-alpha.151](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.150...v1.0.1-alpha.151) (2024-05-14)
+
+**Note:** Version bump only for package @deepkit/rpc
+
 ## [1.0.1-alpha.150](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.149...v1.0.1-alpha.150) (2024-05-09)
 
 ### Bug Fixes
