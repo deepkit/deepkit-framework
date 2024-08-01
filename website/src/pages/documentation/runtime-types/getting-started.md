@@ -40,13 +40,13 @@ interface User {
     birthDate?: Date;
 }
 
-const user = cast<User>(User, {
+const user = cast<User>({
     username: 'Peter',
     birthDate: '2010-10-10T00:00:00Z'
 });
 console.log(user);
 
-const reflection = ReflectionClass.from(User);
+const reflection = ReflectionClass.from<User>();
 console.log(reflection.getProperty('username').type);
 ```
 
