@@ -7,7 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { HttpConfig, HttpParserOptions } from '@deepkit/http';
+import { HttpConfig } from '@deepkit/http';
 
 const isWindows = 'undefined' !== typeof process ? process.platform === 'win32' : false;
 
@@ -139,8 +139,6 @@ export class FrameworkConfig {
      * @description print http request logs to logger.
      */
     httpLog: boolean = true;
-
-    httpParse: HttpParserOptions = {};
 
     /**
      * @description The session ClassType

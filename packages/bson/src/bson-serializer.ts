@@ -8,7 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { CompilerContext, hasProperty, isArray, isIterable, isObject, toFastProperties } from '@deepkit/core';
+import {
+    CompilerContext,
+    createBuffer,
+    hasProperty,
+    isArray,
+    isIterable,
+    isObject,
+    toFastProperties,
+} from '@deepkit/core';
 import {
     binaryBigIntAnnotation,
     BinaryBigIntType,
@@ -100,10 +108,6 @@ import {
     isSerializable,
     TWO_PWR_32_DBL_N,
 } from './utils.js';
-
-export function createBuffer(size: number): Uint8Array {
-    return 'undefined' !== typeof Buffer && 'function' === typeof Buffer.allocUnsafe ? Buffer.allocUnsafe(size) : new Uint8Array(size);
-}
 
 // BSON MAX VALUES
 const BSON_INT32_MAX = 0x7fffffff;

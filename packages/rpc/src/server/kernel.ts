@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { arrayRemoveItem, ClassType, getClassName } from '@deepkit/core';
+import { arrayRemoveItem, bufferToString, ClassType, createBuffer, getClassName } from '@deepkit/core';
 import {
     ReceiveType,
     ReflectionKind,
@@ -31,7 +31,6 @@ import {
     RpcTypes,
 } from '../model.js';
 import {
-    createBuffer,
     createRpcCompositeMessage,
     createRpcCompositeMessageSourceDest,
     createRpcMessage,
@@ -466,7 +465,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
                     messageResponse,
                 );
             } else {
-                const body = request.body && request.body.byteLength > 0 ? JSON.parse(Buffer.from(request.body).toString()) : {args: url.searchParams.getAll('arg').map(v => v)};
+                const body = request.body && request.body.byteLength > 0 ? JSON.parse(bufferToString(request.body)) : {args: url.searchParams.getAll('arg').map(v => v)};
                 base.args = body.args || [];
                 await this.actionHandler.handleAction(
                     new HttpRpcMessage(1, false, RpcTypes.Action, RpcMessageRouteType.client, request.headers, base),
