@@ -1792,16 +1792,18 @@ export function handleUnion(type: TypeUnion, state: TemplateState) {
     ` : '';
 
     state.addCodeForSetter(`
-        const oldErrors = state.errors;
-        if (state.errors) state.errors = [];
+        {
+            const oldErrors = state.errors;
+            if (state.errors) state.errors = [];
 
-        //type guard for union
-        if (false) {} ${lines.join(' ')}
-        else {
-            ${handleErrors}
-            ${state.assignValidationError('type', 'No valid union member found. Valid: ' + stringifyResolvedType(type))}
+            //type guard for union
+            if (false) {} ${lines.join(' ')}
+            else {
+                ${handleErrors}
+                ${state.assignValidationError('type', 'No valid union member found. Valid: ' + stringifyResolvedType(type))}
+            }
+            state.errors = oldErrors;
         }
-        state.errors = oldErrors;
     `);
 }
 
