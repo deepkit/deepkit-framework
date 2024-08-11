@@ -5,7 +5,8 @@
 Deepkit uses NPM and Lerna to manage this monorepo. Local package linking is managed through the NPM Workspaces.
 
 Make sure `libpq5` and `libpq-dev` are installed. 
-These are needed for Postgres client `pg`, which is used in `@deepkit/postgres`.
+These are needed for Postgres client `pg`, which is used in `@deepkit/postgres`.\
+See [Ubuntu requirements setup](docs/setup-env-ubuntu.md) for detailed steps for an Ubuntu system.
 
 Node >= v20 is needed.
 
