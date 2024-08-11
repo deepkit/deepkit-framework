@@ -1,11 +1,13 @@
 # Development
 
 ## Prerequisites
+
 Deepkit uses NPM and Lerna to manage this monorepo. Local package linking is managed through the NPM Workspaces.
 
-Make sure `libpq5` and `libpq-dev` are installed, and `python` refers Python2.
+Make sure `libpq5` and `libpq-dev` are installed. 
+These are needed for Postgres client `pg`, which is used in `@deepkit/postgres`.
 
-Node >= v18 is needed.
+Node >= v20 is needed.
 
 ## Getting Started
 
