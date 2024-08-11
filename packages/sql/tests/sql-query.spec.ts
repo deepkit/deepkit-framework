@@ -6,7 +6,7 @@ import { splitDotPath, sql, SQLQueryModel } from '../src/sql-adapter.js';
 import { DefaultPlatform, SqlPlaceholderStrategy } from '../src/platform/default-platform.js';
 import { SchemaParser } from '../src/reverse/schema-parser.js';
 import { DatabaseModel } from '../src/schema/table.js';
-import { SqlBuilder } from '../src/sql-builder.js';
+import { SqlBuilder, SqlReference } from '../src/sql-builder.js';
 import { PreparedAdapter } from '../src/prepare.js';
 
 function quoteId(value: string): string {
@@ -110,7 +110,7 @@ test('QueryToSql', () => {
     const queryToSql = new SQLFilterBuilder(localAdapter, ReflectionClass.from(User), quoteId('user'), serializer, new SqlPlaceholderStrategy());
 
     expect(queryToSql.convert({ id: 123 })).toBe(`user.id = ?`);
-    expect(queryToSql.convert({ id: '$id' })).toBe(`user.id = user.id`);
+    expect(queryToSql.convert({ id: new SqlReference('id') })).toBe(`user.id = user.id`);
 
     expect(queryToSql.convert({ username: 'Peter' })).toBe(`user.username = ?`);
     expect(queryToSql.convert({ id: 44, username: 'Peter' })).toBe(`(user.id = ? AND user.username = ?)`);

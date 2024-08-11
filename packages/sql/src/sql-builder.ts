@@ -459,3 +459,7 @@ export class SqlBuilder {
         return sql;
     }
 }
+
+export class SqlReference {
+    constructor(public readonly field: string) {}
+}
