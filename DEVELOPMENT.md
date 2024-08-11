@@ -3,7 +3,8 @@
 ## Prerequisites
 Deepkit uses NPM and Lerna to manage this monorepo. Local package linking is managed through the NPM Workspaces.
 
-Make sure `libpq5` and `libpq-dev` are installed, and `python` refers Python2.
+Make sure `libpq5` and `libpq-dev` are installed, and `python` refers Python2.\
+See [Ubuntu requirements setup](docs/setup-env-ubuntu.md) for detailed steps for an Ubuntu system.
 
 Node >= v18 is needed.
 
