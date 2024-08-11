@@ -12,7 +12,13 @@ Node >= v18 is needed.
 ```shell
 git clone https://github.com/deepkit/deepkit-framework.git
 cd deepkit-framework
-yarn install
+yarn
+```
+
+Make sure the compiler is built first and injected to node_modules:
+
+```shell
+npm run postinstall
 ```
 
 When installation is finished you can build the packages:
@@ -46,6 +52,12 @@ lerna notice cli v7.4.1
  ——————————————————————————————————————————————
 
  >  Lerna (powered by Nx)   Successfully ran target build for 43 projects (1m)
+```
+
+You can try running some tests
+
+```shell
+npm run test packages/type/
 ```
 
 If everything went fine you can try out the example app:
