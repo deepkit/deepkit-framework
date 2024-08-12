@@ -50,6 +50,22 @@ test('pathResolver deep array object', () => {
     expect(resolver('b.0.0.c')).toMatchObject({ kind: ReflectionKind.propertySignature, type: { kind: ReflectionKind.boolean } });
 });
 
+test('pathResolver deep array object', () => {
+    type t = { a: [string, number, [boolean, string, { b: number }]?] };
+
+    const resolver = pathResolver<t>();
+
+    expect(resolver('a')).toMatchObject({ kind: ReflectionKind.propertySignature, type: { kind: ReflectionKind.tuple } });
+
+    expect(resolver('a.0')).toMatchObject({ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string } });
+    expect(resolver('a.1')).toMatchObject({ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.number } });
+
+    expect(resolver('a.2.0')).toMatchObject({ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.boolean } });
+    expect(resolver('a.2.1')).toMatchObject({ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string } });
+    expect(resolver('a.2.2')).toMatchObject({ kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.objectLiteral } });
+    expect(resolver('a.2.2.b')).toMatchObject({ kind: ReflectionKind.propertySignature });
+});
+
 test('pathResolver deep class', () => {
     interface Config {
         name: string;

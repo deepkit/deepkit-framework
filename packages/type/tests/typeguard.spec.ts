@@ -10,6 +10,9 @@
 import { expect, test } from '@jest/globals';
 import { float, float32, int8, integer, PrimaryKey, Reference } from '../src/reflection/type.js';
 import { is } from '../src/typeguard.js';
+import { Serializer } from '../src/serializer.js';
+import { cast } from '../src/serializer-facade.js';
+import { isReferenceInstance } from '../src/reference.js';
 
 test('primitive string', () => {
     expect(is<string>('a')).toEqual(true);
@@ -198,10 +201,10 @@ test('array any', () => {
     expect(is<any[]>(true)).toEqual(false);
     expect(is<any[]>({})).toEqual(false);
 
-    expect(is<any[]>({length:1})).toEqual(false);
-    expect(is<any[]>({length:0})).toEqual(false);
-    expect(is<any[]>({length:null})).toEqual(false);
-    expect(is<any[]>({length:undefined})).toEqual(false);
+    expect(is<any[]>({ length: 1 })).toEqual(false);
+    expect(is<any[]>({ length: 0 })).toEqual(false);
+    expect(is<any[]>({ length: null })).toEqual(false);
+    expect(is<any[]>({ length: undefined })).toEqual(false);
 });
 
 test('union', () => {
@@ -397,8 +400,8 @@ test('class with literal and default', () => {
         readConcernLevel: 'local' = 'local';
     }
 
-    expect(is<ConnectionOptions>({readConcernLevel: 'local'})).toBe(true);
-    expect(is<ConnectionOptions>({readConcernLevel: 'local2'})).toBe(false);
+    expect(is<ConnectionOptions>({ readConcernLevel: 'local' })).toBe(true);
+    expect(is<ConnectionOptions>({ readConcernLevel: 'local2' })).toBe(false);
 });
 
 test('union literal', () => {
@@ -406,6 +409,41 @@ test('union literal', () => {
         readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';
     }
 
-    expect(is<ConnectionOptions>({readConcernLevel: 'majority'})).toBe(true);
-    expect(is<ConnectionOptions>({readConcernLevel: 'majority2'})).toBe(false);
+    expect(is<ConnectionOptions>({ readConcernLevel: 'majority' })).toBe(true);
+    expect(is<ConnectionOptions>({ readConcernLevel: 'majority2' })).toBe(false);
+});
+
+test('union classes with generic', () => {
+    class Group {
+        id: number & PrimaryKey = 0;
+        second: string = '';
+    }
+
+    class User {
+        id: number = 0;
+        groups: (Group & Reference)[] = [];
+    }
+
+    const serializer = new Serializer();
+
+    const newGroup = cast<Group>({ id: 1, second: 'a' });
+
+    const a = cast<User>({
+        id: 1,
+        groups: [newGroup],
+    }, undefined, serializer);
+
+    expect(a.groups[0]).toBeInstanceOf(Group);
+    expect(isReferenceInstance(a.groups[0])).toBe(false);
+
+    const b = cast<User>({
+        id: 1,
+        groups: [1],
+    }, undefined, serializer);
+
+    expect(b.groups[0]).toBeInstanceOf(Group);
+    expect(isReferenceInstance(b.groups[0])).toBe(true);
+    if (isReferenceInstance(b.groups[0])) {
+        //do something with this instance and fully load it
+    }
 });

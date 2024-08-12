@@ -18,6 +18,34 @@ function pathResolverCode(type: Type, compilerContext: CompilerContext, jitStack
             ${pathResolverCode(type.type, compilerContext, jitStack)}
         }
         `;
+    } else if (type.kind === ReflectionKind.tupleMember) {
+        return `
+            if (!path) return ${compilerContext.reserveVariable('type', type)};
+            ${pathResolverCode(type.type, compilerContext, jitStack)};
+        `;
+    } else if (type.kind === ReflectionKind.tuple) {
+        const cases: string[] = [];
+        for (let i = 0; i < type.types.length; i++) {
+            cases.push(`
+            case "${i}": {
+                ${pathResolverCode(type.types[i], compilerContext, jitStack)}
+            }
+            `);
+        }
+
+        return `
+        {
+            const dotIndex = path.indexOf('.');
+            const segment = dotIndex === -1 ? path : path.substr(0, dotIndex);
+            path = dotIndex === -1 ? '' : path.substr(dotIndex + 1);
+            switch (segment) {
+                ${cases.join('\n')}
+                default: {
+                    return undefined;
+                }
+            }
+        }
+        `;
     } else if (type.kind === ReflectionKind.class && type.classType === Set) {
     } else if (type.kind === ReflectionKind.class && type.classType === Map) {
     } else if (type.kind === ReflectionKind.union) {
@@ -71,6 +99,8 @@ export function pathResolver<T>(type?: ReceiveType<T>, jitStack: JitStack = new 
         const dotIndex = path.indexOf('.');
         const pathName = dotIndex === -1 ? path : path.substr(0, dotIndex);
         path = dotIndex === -1 ? '' : path.substr(dotIndex + 1);
+
+        if (!pathName) return ${compilerContext.reserveVariable('type', type)};
 
         switch(pathName) {
             ${lines.join('\n')}
