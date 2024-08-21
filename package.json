@@ -7,8 +7,8 @@
   "scripts": {
     "test": "node --max_old_space_size=3048 node_modules/jest/bin/jest.js --forceExit --no-cache",
     "test:coverage": "node --max_old_space_size=3048 node_modules/jest/bin/jest.js --coverage --forceExit --no-cache",
-    "build": "tsc --build tsconfig.json && tsc --build tsconfig.esm.json && lerna run build",
-    "build:esm": "tsc --build tsconfig.esm.json",
+    "build": "tsc --build tsconfig.json && mv packages/framework/dist/cjs/src/debug/resolve.cjs packages/framework/dist/cjs/src/debug/resolve.js && tsc --build tsconfig.esm.json && mv packages/framework/dist/esm/src/debug/resolve.mjs packages/framework/dist/esm/src/debug/resolve.js && lerna run build",
+    "build:esm": "tsc --build tsconfig.esm.json && tsc --build tsconfig.esm.json",
     "tsc": "tsc --build",
     "postinstall": "lefthook install && sh install-compiler.sh",
     "tsc-watch": "tsc --build --watch",

@@ -54,7 +54,8 @@ jobs:
             packages/sqlite/tsconfig.json \
             packages/topsort/tsconfig.json \
             packages/type/tsconfig.json \
-            packages/type-spec/tsconfig.json
+            packages/type-spec/tsconfig.json \
+            && mv packages/framework/dist/cjs/src/debug/resolve.cjs packages/framework/dist/cjs/src/debug/resolve.js
       - name: Test
         run: |
           npm run test:coverage \
