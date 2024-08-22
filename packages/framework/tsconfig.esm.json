@@ -4,6 +4,10 @@
     "outDir": "./dist/esm",
     "module": "ES2020"
   },
+  "exclude": [
+    "tests",
+    "src/debug/resolve.cts"
+  ],
   "references": [
     {
       "path": "../api-console-module/tsconfig.esm.json"
