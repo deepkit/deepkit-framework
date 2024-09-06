@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.154](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.153...v1.0.1-alpha.154) (2024-09-06)
+
+### Features
+
+- **http:** http timeout options ([44fbf56](https://github.com/deepkit/deepkit-framework/commit/44fbf5672344f6296de6f62ca2295be17d88501f))
+
 ## [1.0.1-alpha.153](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.152...v1.0.1-alpha.153) (2024-06-06)
 
 **Note:** Version bump only for package @deepkit/http

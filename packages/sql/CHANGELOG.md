@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.154](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.153...v1.0.1-alpha.154) (2024-09-06)
+
+### Bug Fixes
+
+- **sql:** fix queries where value legitimately begins with $ ([#580](https://github.com/deepkit/deepkit-framework/issues/580)) ([e0a0c3f](https://github.com/deepkit/deepkit-framework/commit/e0a0c3f10d7f22cd79760d032c6c90b797e48d9f))
+- **sql:** repair & enable @deepkit/sql tests ([#579](https://github.com/deepkit/deepkit-framework/issues/579)) ([81a1ab1](https://github.com/deepkit/deepkit-framework/commit/81a1ab1e82ae170034545a25aa540a3a7c69acd7))
+
 ## [1.0.1-alpha.153](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.152...v1.0.1-alpha.153) (2024-06-06)
 
 **Note:** Version bump only for package @deepkit/sql

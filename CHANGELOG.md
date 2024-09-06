@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.154](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.153...v1.0.1-alpha.154) (2024-09-06)
+
+### Bug Fixes
+
+- **bson:** make sure index signature keys use full utf8 encoding ([d447c1d](https://github.com/deepkit/deepkit-framework/commit/d447c1d1b12f2331aec8519fec67335151b0183a))
+- **sql:** fix queries where value legitimately begins with $ ([#580](https://github.com/deepkit/deepkit-framework/issues/580)) ([e0a0c3f](https://github.com/deepkit/deepkit-framework/commit/e0a0c3f10d7f22cd79760d032c6c90b797e48d9f))
+- **sql:** repair & enable @deepkit/sql tests ([#579](https://github.com/deepkit/deepkit-framework/issues/579)) ([81a1ab1](https://github.com/deepkit/deepkit-framework/commit/81a1ab1e82ae170034545a25aa540a3a7c69acd7))
+- **type-compiler:** include enum annotations in .d.ts transformation ([#607](https://github.com/deepkit/deepkit-framework/issues/607)) ([08854f3](https://github.com/deepkit/deepkit-framework/commit/08854f3d1aff429b70c384aeaf54538b1f49c079))
+- **type:** add scope in setter code to prevent `variable already declared` [#603](https://github.com/deepkit/deepkit-framework/issues/603) ([#606](https://github.com/deepkit/deepkit-framework/issues/606)) ([9af344f](https://github.com/deepkit/deepkit-framework/commit/9af344f4705943571bc0c18e73435b18c4819641))
+- **website:** modify broken reflection example ([#599](https://github.com/deepkit/deepkit-framework/issues/599)) ([7ee0a75](https://github.com/deepkit/deepkit-framework/commit/7ee0a75f2ddbeff137239fecb72e409ab128bc1c))
+
+### Features
+
+- **http:** http timeout options ([44fbf56](https://github.com/deepkit/deepkit-framework/commit/44fbf5672344f6296de6f62ca2295be17d88501f))
+- **rpc:** make Buffer dependency optional ([2f32a12](https://github.com/deepkit/deepkit-framework/commit/2f32a1214c2c4555371fc1cfccdfdf533c21128e))
+- **type:** support enum in pathResolver/resolvePath ([78d7df0](https://github.com/deepkit/deepkit-framework/commit/78d7df08af6845c3986bc55a7c8b1dc3353d8847))
+
 ## [1.0.1-alpha.153](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.152...v1.0.1-alpha.153) (2024-06-06)
 
 ### Bug Fixes

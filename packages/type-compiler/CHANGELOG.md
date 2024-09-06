@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.154](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.153...v1.0.1-alpha.154) (2024-09-06)
+
+### Bug Fixes
+
+- **type-compiler:** include enum annotations in .d.ts transformation ([#607](https://github.com/deepkit/deepkit-framework/issues/607)) ([08854f3](https://github.com/deepkit/deepkit-framework/commit/08854f3d1aff429b70c384aeaf54538b1f49c079))
+
 ## [1.0.1-alpha.150](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.149...v1.0.1-alpha.150) (2024-05-09)
 
 ### Bug Fixes

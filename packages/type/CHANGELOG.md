@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.154](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.153...v1.0.1-alpha.154) (2024-09-06)
+
+### Bug Fixes
+
+- **type:** add scope in setter code to prevent `variable already declared` [#603](https://github.com/deepkit/deepkit-framework/issues/603) ([#606](https://github.com/deepkit/deepkit-framework/issues/606)) ([9af344f](https://github.com/deepkit/deepkit-framework/commit/9af344f4705943571bc0c18e73435b18c4819641))
+
+### Features
+
+- **type:** support enum in pathResolver/resolvePath ([78d7df0](https://github.com/deepkit/deepkit-framework/commit/78d7df08af6845c3986bc55a7c8b1dc3353d8847))
+
 ## [1.0.1-alpha.153](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.152...v1.0.1-alpha.153) (2024-06-06)
 
 ### Bug Fixes
