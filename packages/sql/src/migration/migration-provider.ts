@@ -51,16 +51,20 @@ export class MigrationProvider {
         return migrationsPerDatabase;
     }
 
-    private async registerTsx() {
+    // FIXME: esm imports doesn't work
+    private async registerTsNode() {
         const esm = isEsm();
-        if (esm) {
-            // @ts-ignore
-            const { register } = await import('tsx/esm/api');
-            register();
-        } else {
-            const { register } = require('tsx/cjs/api');
-            register();
-        }
+        const { register } = await import('ts-node');
+        register({
+            esm,
+            preferTsExts: true,
+            experimentalTsImportSpecifiers: true,
+            compilerOptions: {
+                experimentalDecorators: true,
+                module: esm ? 'ESNext' : 'CommonJS',
+            },
+            transpileOnly: true,
+        });
     }
 
     async addDatabase(path: string): Promise<void> {
