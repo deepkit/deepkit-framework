@@ -51,23 +51,22 @@ export class MigrationProvider {
         return migrationsPerDatabase;
     }
 
-    private async registerTsNode() {
+    private async registerTsx() {
         const esm = isEsm();
-        const { register } = await import('ts-node');
-        register({
-            esm,
-            compilerOptions: {
-                experimentalDecorators: true,
-                module: esm ? 'ESNext' : 'CommonJS',
-            },
-            transpileOnly: true,
-        });
+        if (esm) {
+            // @ts-ignore
+            const { register } = await import('tsx/esm/api');
+            register();
+        } else {
+            const { register } = require('tsx/cjs/api');
+            register();
+        }
     }
 
     async addDatabase(path: string): Promise<void> {
-        await this.registerTsNode();
+        await this.registerTsx();
 
-        const exports = Object.values((await import(path) || {}));
+        const exports = Object.values((await import(join(process.cwd(), path)) || {}));
         if (!exports.length) {
             throw new Error(`No database found in path ${path}`);
         }
@@ -100,7 +99,7 @@ export class MigrationProvider {
 
         const files = await glob('**/*.ts', { cwd: migrationDir });
 
-        await this.registerTsNode();
+        await this.registerTsx();
 
         for (const file of files) {
             const path = join(process.cwd(), migrationDir, file);
