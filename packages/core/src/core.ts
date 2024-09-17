@@ -889,3 +889,13 @@ export function assertDefined<T>(value: T): asserts value is NonNullable<T> {
         throw new Error(`Value is not defined`);
     }
 }
+
+export function isEsm(): boolean {
+    try {
+        // @ts-ignore
+        import.meta;
+        return true;
+    } catch {
+        return false;
+    }
+}

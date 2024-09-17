@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType } from '@deepkit/core';
+import { ClassType, isEsm } from '@deepkit/core';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import glob from 'fast-glob';
 import { basename, join } from 'path';
@@ -51,24 +51,63 @@ export class MigrationProvider {
         return migrationsPerDatabase;
     }
 
+    private async registerTsNode() {
+        const esm = isEsm();
+        const { register } = await import('ts-node');
+        register({
+            esm,
+            compilerOptions: {
+                experimentalDecorators: true,
+                module: esm ? 'ESNext' : 'CommonJS',
+            },
+            transpileOnly: true,
+        });
+    }
+
+    async addDatabase(path: string): Promise<void> {
+        await this.registerTsNode();
+
+        const exports = Object.values((await import(path) || {}));
+        if (!exports.length) {
+            throw new Error(`No database found in path ${path}`);
+        }
+
+        let databaseInstance: Database | undefined;
+        let foundDatabaseClass: ClassType<Database> | undefined;
+
+        for (const value of exports) {
+            if (value instanceof Database) {
+                databaseInstance = value;
+                break;
+            }
+            if (Object.getPrototypeOf(value) instanceof Database) {
+                foundDatabaseClass = value as ClassType<Database>;
+            }
+        }
+
+        if (!databaseInstance) {
+            if (foundDatabaseClass) {
+                throw new Error(`Found database class ${foundDatabaseClass.name} in path ${path} but it has to be instantiated an exported. export const database = new ${foundDatabaseClass.name}(/* ... */);`);
+            }
+            throw new Error(`No database found in path ${path}`);
+        }
+
+        this.databases.addDatabaseInstance(databaseInstance);
+    }
+
     async getMigrations(migrationDir: string): Promise<Migration[]> {
         let migrations: Migration[] = [];
 
         const files = await glob('**/*.ts', { cwd: migrationDir });
-        require('ts-node').register({
-            compilerOptions: {
-                experimentalDecorators: true,
-                module: 'undefined' !== typeof require ? 'CommonJS' : 'ESNext',
-            },
-            transpileOnly: true,
-        });
+
+        await this.registerTsNode();
 
         for (const file of files) {
             const path = join(process.cwd(), migrationDir, file);
             const name = basename(file.replace('.ts', ''));
-            const migration = require(path);
-            if (migration && migration.SchemaMigration) {
-                const jo = new class extends (migration.SchemaMigration as ClassType<Migration>) {
+            const { SchemaMigration } = (await import(path) || {});
+            if (SchemaMigration) {
+                const jo = new class extends (SchemaMigration as ClassType<Migration>) {
                     constructor() {
                         super();
                         if (!this.name) this.name = name;
