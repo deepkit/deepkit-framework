@@ -891,11 +891,5 @@ export function assertDefined<T>(value: T): asserts value is NonNullable<T> {
 }
 
 export function isEsm(): boolean {
-    try {
-        // @ts-ignore
-        import.meta;
-        return true;
-    } catch {
-        return false;
-    }
+    return typeof require === 'undefined';
 }
