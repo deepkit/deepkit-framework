@@ -68,7 +68,7 @@ export class MigrationProvider {
     }
 
     async addDatabase(path: string): Promise<void> {
-        await this.registerTsx();
+        if (path.endsWith('.ts')) await this.registerTsNode();
 
         const exports = Object.values((await import(join(process.cwd(), path)) || {}));
         if (!exports.length) {
@@ -101,13 +101,16 @@ export class MigrationProvider {
     async getMigrations(migrationDir: string): Promise<Migration[]> {
         let migrations: Migration[] = [];
 
-        const files = await glob('**/*.ts', { cwd: migrationDir });
-
-        await this.registerTsx();
+        let files = await glob('**/!(*.d).ts', { cwd: migrationDir });
+        if (files.length) {
+            await this.registerTsNode();
+        } else {
+            files = await glob('**/*.js', { cwd: migrationDir });
+        }
 
         for (const file of files) {
             const path = join(process.cwd(), migrationDir, file);
-            const name = basename(file.replace('.ts', ''));
+            const name = basename(file.replace('.ts', '').replace('.js', ''));
             const { SchemaMigration } = (await import(path) || {});
             if (SchemaMigration) {
                 const jo = new class extends (SchemaMigration as ClassType<Migration>) {
