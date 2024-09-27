@@ -25,7 +25,7 @@ import {
     Route,
     RpcAction,
     RpcActionParameter,
-    Workflow
+    Workflow,
 } from '@deepkit/framework-debug-api';
 import { rpc, rpcClass } from '@deepkit/rpc';
 import { HttpRouter, parseRouteControllerAction } from '@deepkit/http';
@@ -41,7 +41,7 @@ import { unlink } from 'fs/promises';
 import { getScope, resolveToken, Token } from '@deepkit/injector';
 import { AppModule, ServiceContainer } from '@deepkit/app';
 import { RpcControllers } from '../rpc.js';
-import { ReflectionClass, serializeType, stringifyType } from '@deepkit/type';
+import { isType, ReflectionClass, serializeType, stringifyType } from '@deepkit/type';
 import { FilesystemRegistry } from '../filesystem.js';
 import { FrameCategory, FrameCategoryData, FrameType } from '@deepkit/stopwatch';
 
@@ -355,6 +355,7 @@ export class DebugController implements DebugControllerInterface {
 
         function getTokenLabel(token: Token): string {
             if (isClass(token)) return getClassName(token);
+            if (isType(token)) return stringifyType(token);
 
             return String(token);
         }
