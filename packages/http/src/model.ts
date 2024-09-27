@@ -365,8 +365,12 @@ Content-Type: application/json\r
         return this;
     }
 
-    query(query: any): this {
-        this.queryPath = querystring.stringify(query);
+    query(query: any | string): this {
+        if ('string' === typeof query) {
+            this.queryPath = query;
+        } else {
+            this.queryPath = querystring.stringify(query);
+        }
         return this;
     }
 }

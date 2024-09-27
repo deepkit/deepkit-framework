@@ -1727,6 +1727,25 @@ test('required fields in body should be required', async () => {
     expect((await httpKernel.request(HttpRequest.POST('/').json({ a: 'a', b: 'asd' }))).json).toEqual(['a', 'asd']);
 });
 
+test('query validator withing HttpQuery', async () => {
+    class Controller {
+        @http.GET('do')
+        async do(
+            a: HttpQuery<string & MinLength<8>>,
+            b: HttpQuery<string>,
+        ) {
+            return { valid: true };
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    //todo: fix this, see https://github.com/deepkit/deepkit-framework/issues/614
+    // expect((await httpKernel.request(HttpRequest.GET('/do').query('a=aaaaaaaa&b=bbbb'))).json).toMatchObject({
+    //     valid: true
+    // });
+});
+
 test('http body deep optional union', async () => {
     interface AdTitleAndBasicAttributes {
         title: string;
