@@ -77,8 +77,9 @@ jobs:
             packages/stopwatch/ \
             packages/workflow/ \
             packages/type/
-      - name: Send coverage
-        run: ./node_modules/.bin/codecov -f coverage/*.json
+# this is broken at the moment
+#      - name: Send coverage
+#        run: ./node_modules/.bin/codecov -f coverage/*.json
 
   orm-postgres:
     needs:
@@ -111,8 +112,9 @@ jobs:
       - name: Test
         run: npm run test:coverage packages/postgres/
 
-      - name: Send coverage
-        run: ./node_modules/.bin/codecov -f coverage/*.json
+# this is broken at the moment
+#      - name: Send coverage
+#        run: ./node_modules/.bin/codecov -f coverage/*.json
 
   orm-mysql:
     needs:
@@ -144,8 +146,9 @@ jobs:
       - name: Test
         run: npm run test:coverage packages/mysql/
 
-      - name: Send coverage
-        run: ./node_modules/.bin/codecov -f coverage/*.json
+# this is broken at the moment
+#      - name: Send coverage
+#        run: ./node_modules/.bin/codecov -f coverage/*.json
 
   orm-sqlite:
     needs:
@@ -165,8 +168,9 @@ jobs:
       - name: Test
         run: npm run test:coverage packages/sqlite/
 
-      - name: Send coverage
-        run: ./node_modules/.bin/codecov -f coverage/*.json
+# this is broken at the moment
+#      - name: Send coverage
+#        run: ./node_modules/.bin/codecov -f coverage/*.json
 
   orm-mongo:
     needs:
@@ -207,5 +211,6 @@ jobs:
       - name: Test
         run: npm run test:coverage packages/mongo/
 
-      - name: Send coverage
-        run: ./node_modules/.bin/codecov -f coverage/*.json
+# this is broken at the moment
+#      - name: Send coverage
+#        run: ./node_modules/.bin/codecov -f coverage/*.json

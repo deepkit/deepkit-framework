@@ -3,6 +3,7 @@ import { EmptySerializer, executeTemplates, SerializationError, serializer, Seri
 import { ReflectionKind, stringifyResolvedType } from '../src/reflection/type.js';
 import { CompilerContext } from '@deepkit/core';
 import { cast, deserialize, serialize } from '../src/serializer-facade.js';
+import { ValidationError } from '../src/validator';
 
 test('remove guard for string', () => {
     //if the original value (before convert to string) is null, it should stay null
@@ -123,7 +124,7 @@ test('pointer example', () => {
     expect(point.y).toBe(2);
 
     {
-        expect(() => deserialize<Point>(['vbb'])).toThrowError(SerializationError);
+        expect(() => deserialize<Point>(['vbb'])).toThrowError(ValidationError);
         expect(() => deserialize<Point>(['vbb'])).toThrow('Expected array with two elements')
     }
 

@@ -220,10 +220,10 @@ export function getSerializeFunction(type: Type, registry: TemplateRegistry, nam
     return jit[id];
 }
 
-export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): SerializeFunction {
+export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string | RuntimeCode | (string | RuntimeCode)[] = '', jitStack = new JitStack()): SerializeFunction {
     const compiler = new CompilerContext();
 
-    const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, path ? [path] : []);
+    const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, isArray(path) ? path : path ? [path] : []);
     if (state.registry === state.registry.serializer.deserializeRegistry) {
         state.target = 'deserialize';
     }
@@ -546,7 +546,7 @@ export class TemplateState {
             if (error instanceof SerializationError) {
                 error.path = ${collapsePath(this.path)} + (error.path ? '.' + error.path : '');
             }
-            throw error;
+            ${this.throwCode('any', 'error.message', this.accessor)};
         }
         `);
     }
@@ -1643,11 +1643,9 @@ export function getSetTypeToArray(type: TypeClass): TypeArray {
 
     const value = type.arguments?.[0] || { kind: ReflectionKind.any };
 
-    jit.forwardSetToArray = {
+    return jit.forwardSetToArray = {
         kind: ReflectionKind.array, type: value,
-    };
-
-    return jit.forwardSetToArray;
+    } as TypeArray;
 }
 
 export function getMapTypeToArray(type: TypeClass): TypeArray {
@@ -1667,6 +1665,22 @@ export function getMapTypeToArray(type: TypeClass): TypeArray {
     };
 
     return jit.forwardMapToArray;
+}
+
+export function getNTypeToArray(type: TypeClass, n: number): TypeArray {
+    const jit = getTypeJitContainer(type);
+    const name = `forwardNTypeToArray${n}`;
+    if (jit[name]) return jit[name];
+
+    const value = type.arguments?.[n] || { kind: ReflectionKind.any };
+
+    return jit[name] = {
+        kind: ReflectionKind.array, type: value,
+    } as TypeArray;
+}
+
+export function executeTypeArgumentAsArray(type: TypeClass, typeIndex: number, state: TemplateState) {
+    executeTemplates(state, getNTypeToArray(type, typeIndex), true, false);
 }
 
 export function forwardSetToArray(type: TypeClass, state: TemplateState) {
