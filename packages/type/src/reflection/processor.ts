@@ -864,10 +864,11 @@ export class Processor {
                         case ReflectionOp.callSignature:
                         case ReflectionOp.function: {
                             const types = this.popFrame() as Type[];
-                            const name = program.stack[this.eatParameter() as number] as string;
+                            let name = program.stack[this.eatParameter() as number] as string;
 
                             const returnType = types.length > 0 ? types[types.length - 1] as Type : { kind: ReflectionKind.any } as Type;
                             const parameters = types.length > 1 ? types.slice(0, -1) as TypeParameter[] : [];
+                            if (isFunction(name)) name = name();
 
                             let t = op === ReflectionOp.callSignature ? {
                                 kind: ReflectionKind.callSignature,
@@ -925,10 +926,11 @@ export class Processor {
                         }
                         case ReflectionOp.method:
                         case ReflectionOp.methodSignature: {
-                            const name = program.stack[this.eatParameter() as number] as number | string | symbol;
+                            let name = program.stack[this.eatParameter() as number] as number | string | symbol | (() => symbol);
                             const types = this.popFrame() as Type[];
                             const returnType = types.length > 0 ? types[types.length - 1] as Type : { kind: ReflectionKind.any } as Type;
                             const parameters: TypeParameter[] = types.length > 1 ? types.slice(0, -1) as TypeParameter[] : [];
+                            if (isFunction(name)) name = name();
 
                             let t: TypeMethod | TypeMethodSignature = op === ReflectionOp.method
                                 ? { kind: ReflectionKind.method, parent: undefined as any, visibility: ReflectionVisibility.public, name, return: returnType, parameters }

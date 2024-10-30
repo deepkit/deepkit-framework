@@ -1491,15 +1491,17 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 export function serializeArray(type: TypeArray, state: TemplateState) {
     state.setContext({ isIterable });
     const v = state.compilerContext.reserveName('v');
+    const tempIterable = state.compilerContext.reserveName('tempIterable');
     const i = state.compilerContext.reserveName('i');
     const item = state.compilerContext.reserveName('item');
 
     //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
     state.addCodeForSetter(`
          if (isIterable(${state.accessor})) {
+            const ${tempIterable} = ${state.accessor};
             ${state.setter} = [];
             let ${i} = 0;
-            for (const ${item} of ${state.accessor}) {
+            for (const ${item} of ${tempIterable}) {
                 let ${v};
                 ${executeTemplates(state.fork(v, item).extendPath(new RuntimeCode(i)), type.type)}
                 ${state.setter}.push(${v});

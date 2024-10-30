@@ -858,3 +858,27 @@ test('constructor property not assigned as property', () => {
     });
     expect(back).toEqual(derived);
 });
+
+test('custom symbol names as method names', () => {
+    class Model {
+        [Symbol.for('foo')]() {
+            return 'bar';
+        }
+    }
+
+    const type = ReflectionClass.from(Model);
+    const method = type.getMethod(Symbol.for('foo'));
+    expect(method).toBeDefined();
+});
+
+test('global symbol names as method names', () => {
+    class Model {
+        [Symbol.iterator]() {
+            return [];
+        }
+    }
+
+    const type = ReflectionClass.from(Model);
+    const method = type.getMethod(Symbol.iterator);
+    expect(method).toBeDefined();
+});
