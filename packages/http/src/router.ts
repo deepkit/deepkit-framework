@@ -33,6 +33,7 @@ import qs from 'qs';
 import { HtmlResponse, JSONResponse, Response } from './http.js';
 import { getRequestParserCodeForParameters, ParameterForRequestParser, parseRoutePathToRegex } from './request-parser.js';
 import { HttpConfig } from './module.config.js';
+import { createLazyCookiesAccessor } from './cookies';
 
 export type RouteParameterResolverForInjector = ((injector: InjectorContext) => HttpRequestPositionedParameters | Promise<HttpRequestPositionedParameters>);
 
@@ -704,6 +705,7 @@ export class HttpRouter {
         const compiler = new CompilerContext;
         compiler.context.set('ValidationError', ValidationError);
         compiler.context.set('qs', qs);
+        compiler.context.set('createLazyCookiesAccessor', createLazyCookiesAccessor);
 
         const code: string[] = [];
 
@@ -716,6 +718,7 @@ export class HttpRouter {
             const _method = request.method || 'GET';
             const _url = request.url || '/';
             const _headers = request.headers || {};
+            const _cookies = createLazyCookiesAccessor(_headers);
             const _qPosition = _url.indexOf('?');
             let uploadedFiles = {};
             const _path = _qPosition === -1 ? _url : _url.substr(0, _qPosition);
