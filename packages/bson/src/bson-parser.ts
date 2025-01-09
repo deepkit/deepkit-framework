@@ -279,14 +279,17 @@ export class BaseParser {
      */
     stringSize(): number {
         let end = this.offset;
-        while (this.buffer[end] !== 0) end++;
+        while (this.buffer[end] !== 0 && end < this.size) end++;
         end++; //null
         return end - this.offset;
     }
 
     eatObjectPropertyName() {
         let end = this.offset;
-        while (this.buffer[end] !== 0) end++;
+        while (this.buffer[end] !== 0) {
+            if (end >= this.size) throw new SerializationError('Unexpected end of buffer');
+            end++;
+        }
         const s = decodeUTF8(this.buffer, this.offset, end);
         this.offset = end + 1;
         return s;

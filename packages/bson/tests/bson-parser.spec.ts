@@ -4,6 +4,8 @@ import { deserializeBSON, getBSONDeserializer } from '../src/bson-deserializer.j
 import { BinaryBigInt, copyAndSetParent, MongoId, nodeBufferToArrayBuffer, PrimaryKey, Reference, ReflectionKind, SignedBinaryBigInt, TypeObjectLiteral, typeOf, uuid, UUID } from '@deepkit/type';
 import { getClassName } from '@deepkit/core';
 import { serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
+import { BSONType } from '../src/utils';
+import { deserializeBSONWithoutOptimiser } from '../src/bson-parser';
 
 const { deserialize, serialize } = bson;
 
@@ -753,4 +755,21 @@ test('additional are ignored', () => {
     const fn = getBSONDeserializer<IsMasterResponse>();
     const back = fn(bson);
     expect(back).toEqual({ismaster: true});
+});
+
+test('invalid buffer, string parse', () => {
+    const buffer = Buffer.from([
+        28, 0, 0, 0, //size
+        BSONType.BINARY, //just some type
+        112, 111, 115, 105, 116, 105, 111, 110, // 0, /'/position\n' without ending
+        // to simulate a buffer that is not correctly serialized
+    ]);
+
+    expect(() => deserializeBSONWithoutOptimiser(buffer)).toThrow('Unexpected end of buffer');
+
+    const deserialize = getBSONDeserializer<{ position: Uint8Array }>();
+    expect(() => deserialize(buffer)).toThrow('Cannot convert undefined value to Uint8Array');
+
+    const deserialize2 = getBSONDeserializer<{ [name: string]: Uint8Array }>();
+    expect(() => deserialize2(buffer)).toThrow('Serialization failed. Unexpected end of buffer');
 });
