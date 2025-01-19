@@ -55,7 +55,7 @@ app.command('test', (logger: Logger) => {
 app.run();
 ```
 
-Since the app niw imports the `FrameworkModule`, we see there are more commands available grouped into topics.
+Since the app now imports the `FrameworkModule`, we see there are more commands available grouped into topics.
 
 One of them is `server:start`, which starts the HTTP server. To use it, we have to register at least one HTTP route.
 
