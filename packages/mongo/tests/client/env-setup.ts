@@ -1,15 +1,18 @@
-import {afterEach, expect, test} from '@jest/globals';
-import {uuid} from '@deepkit/type';
-import {ChildProcess, spawn, spawnSync} from 'child_process';
-import {existsSync, mkdirSync, rmdirSync} from 'fs';
-import {sleep} from '@deepkit/core';
-import {createConnection} from 'net';
+import { afterEach } from '@jest/globals';
+import { uuid } from '@deepkit/type';
+import { ChildProcess, spawn, spawnSync } from 'child_process';
+import { existsSync, mkdirSync, rmdirSync } from 'fs';
+import { sleep } from '@deepkit/core';
+import { createConnection } from 'net';
 
 interface MongoInstance {
-    unixPath: string;
+    port: number;
     closeRequested: boolean;
-    process: ChildProcess
+    process: ChildProcess;
 }
+
+const portRangeStart = Number(process.env.MONGO_PORT_RANGE_START || 27000);
+const mongoImage = process.env.MONGO_IMAGE || 'mongo:5';
 
 const createdEnvs: MongoEnv[] = [];
 
@@ -20,12 +23,27 @@ afterEach(() => {
     createdEnvs.splice(0, createdEnvs.length);
 });
 
+async function isPortFree(port: number): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+        const connection = createConnection(port);
+        connection.on('error', () => {
+            connection.end();
+            resolve(true);
+        });
+        connection.on('connect', () => {
+            connection.end();
+            resolve(false);
+        });
+    });
+}
+
 export class MongoEnv {
+    protected reservedPorts: number[] = [];
     protected instances = new Map<string, MongoInstance>();
     protected tempFolder = `/tmp/mongo-env/` + uuid();
 
     constructor() {
-        mkdirSync(this.tempFolder, {recursive: true});
+        mkdirSync(this.tempFolder, { recursive: true });
         createdEnvs.push(this);
     }
 
@@ -35,7 +53,7 @@ export class MongoEnv {
         }
 
         if (existsSync(this.tempFolder)) {
-            rmdirSync(this.tempFolder, {recursive: true});
+            rmdirSync(this.tempFolder, { recursive: true });
         }
     }
 
@@ -46,8 +64,8 @@ export class MongoEnv {
     }
 
     public async addReplicaSet(host: string, member: string, priority: number, votes: number): Promise<any> {
-        const unixPath = this.getInstance(member).unixPath;
-        const line = {host: unixPath, priority: priority, votes: votes};
+        const instance = this.getInstance(member);
+        const line = {host: 'host.docker.internal:' + instance.port, priority: priority, votes: votes};
         await this.execute(host, `rs.add(${JSON.stringify(line)})`);
     }
 
@@ -60,11 +78,13 @@ export class MongoEnv {
     }
 
     protected async wait(name: string, cmd: string, checker: (res: any) => boolean, errorMessage: string) {
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 300; i++) {
             const res = await this.executeJson(name, cmd);
             if (checker(res)) return;
             await sleep(0.3);
         }
+        console.log(await this.execute('primary', 'rs.status()'));
+        console.log(await this.execute(name, 'rs.status()'));
         throw new Error(`${name}: ${errorMessage}`);
     }
 
@@ -77,56 +97,102 @@ export class MongoEnv {
         }
     }
 
+    protected isPortReserved(port: number): boolean {
+        return this.reservedPorts.includes(port);
+    }
+
+    protected releasePort(port: number) {
+        const index = this.reservedPorts.indexOf(port);
+        if (index !== -1) {
+            this.reservedPorts.splice(index, 1);
+        }
+    }
+
+    protected getFreePort(): number {
+        for (let i = portRangeStart; i < portRangeStart + 1000; i++) {
+            if (!this.isPortReserved(i)) {
+                this.reservedPorts.push(i);
+                return i;
+            }
+        }
+        throw new Error('Could not find free port');
+    }
+
     public async execute(name: string, cmd: string) {
         const instance = this.getInstance(name);
 
         const args: string[] = [
+            'run',
+            '--rm',
+            '-i',
+            mongoImage,
+            'mongo',
             '--quiet',
-            '--host', instance.unixPath
+            '--host', 'host.docker.internal',
+            '--port', `${instance.port}`,
         ];
 
-        console.log('execute', name, cmd);
-        const res = spawnSync('mongo', args, {
+        console.log(name, 'execute: docker ' + args.join(' '), cmd);
+        const res = spawnSync('docker', args, {
             input: cmd,
-            encoding: 'utf8'
+            encoding: 'utf8',
         });
         if (res.status !== 0) {
             console.error('command stderr:', res.stderr);
-            throw new Error(`Could not execute on ${name} command: ${cmd}`);
+            throw new Error(`Could not execute on ${name} command "${cmd}": ${res.stderr} ${res.stdout}`);
         }
         return res.stdout;
     }
 
-    public async addMongo(name: string, replSet?: string) {
-        const unixPath = `${this.tempFolder}/${name}.sock`;
-        const dbPath = `${this.tempFolder}/${name}.db`;
-        mkdirSync(dbPath);
+    public async addMongo(name: string, replSet?: string): Promise<MongoInstance> {
+        const port = this.getFreePort();
 
+        // todo, rework to allow specifying a network, which will
+        //  be created automatically + hostname. this fixes replicaSet
         const args: string[] = [
-            '--dbpath', dbPath,
-            '--bind_ip', unixPath,
-            '--port', '0',
+            'run',
+            '--rm',
+            '-p', `${port}:27017`,
+            '--add-host=host.docker.internal:host-gateway',
+            mongoImage,
+            '--bind_ip_all'
         ];
 
         if (replSet) args.push('--replSet', replSet);
 
-        console.log('execute: mongod ' + args.join(' '));
-        const p = spawn('mongod', args, {
-            stdio: 'ignore',
+        console.log(name, 'execute: docker ' + args.join(' '));
+        const p = spawn('docker', args, {
+            // stdio: 'ignore',
+            stdio: 'pipe',
         });
 
+        p.on('exit', () => {
+            this.releasePort(port);
+            this.instances.delete(name);
+        });
+
+        const listening = new Promise<void>((resolve) => {
+            p.stdout.on('data', (data) => {
+                if (data.toString().includes('Listening on')) {
+                    resolve();
+                }
+            });
+        });
+
+        await listening;
+
         const instance = {
-            unixPath: unixPath,
             closeRequested: false,
-            process: p
+            process: p,
+            port: port,
         };
 
         this.instances.set(name, instance);
 
         //wait for up
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 100; i++) {
             const connected = await new Promise<boolean>((resolve) => {
-                const connection = createConnection(unixPath);
+                const connection = createConnection(instance.port);
                 connection.on('error', () => {
                     connection.end();
                     resolve(false);
@@ -137,14 +203,14 @@ export class MongoEnv {
                 });
             });
             if (connected) {
-                return;
+                return instance;
             }
 
             await sleep(0.3);
         }
         p.kill();
         this.instances.delete(name);
-        throw new Error(`Could not boot ${name} at ${unixPath} (db=${dbPath})`);
+        throw new Error(`Could not boot ${name} at ${instance.port}`);
     }
 
 }
