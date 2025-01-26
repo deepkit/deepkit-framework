@@ -604,7 +604,7 @@ export class SqlRawFactory implements RawFactory<[SqlQuery]> {
     ) {
     }
 
-    create<T>(sql: SqlQuery, type?: ReceiveType<T>): RawQuery<T> {
+    create<T = unknown>(sql: SqlQuery, type?: ReceiveType<T>): RawQuery<T> {
         type = type ? resolveReceiveType(type) : { kind: ReflectionKind.any };
         return new RawQuery(this.session, this.connectionPool, this.platform, sql, type);
     }

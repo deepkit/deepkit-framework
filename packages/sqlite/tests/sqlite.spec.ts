@@ -4,24 +4,7 @@ import { databaseFactory } from './factory.js';
 import { User, UserCredentials } from '@deepkit/orm-integration';
 import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter.js';
 import { sleep } from '@deepkit/core';
-import {
-    AutoIncrement,
-    BackReference,
-    cast,
-    Entity,
-    entity,
-    getPrimaryKeyExtractor,
-    getPrimaryKeyHashGenerator,
-    isReferenceInstance,
-    PrimaryKey,
-    Reference,
-    ReflectionClass,
-    serialize,
-    typeOf,
-    Unique,
-    UUID,
-    uuid,
-} from '@deepkit/type';
+import { AutoIncrement, BackReference, cast, Entity, entity, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator, isReferenceInstance, PrimaryKey, Reference, ReflectionClass, serialize, typeOf, Unique, UUID, uuid } from '@deepkit/type';
 import { DatabaseEntityRegistry, UniqueConstraintFailure } from '@deepkit/orm';
 import { sql } from '@deepkit/sql';
 
@@ -770,7 +753,7 @@ test('deep join population', async () => {
 
     {
         const basket = await database.query(Basket)
-            .joinWith('items', v=> v.joinWith('product'))
+            .joinWith('items', v => v.joinWith('product'))
             .findOne();
         expect(basket).toBeInstanceOf(Basket);
         expect(basket.items[0]).toBeInstanceOf(BasketItem);
@@ -943,7 +926,9 @@ test('uuid 3', async () => {
 test('unique constraint 1', async () => {
     class Model {
         id: number & PrimaryKey & AutoIncrement = 0;
-        constructor(public username: string & Unique = '') {}
+
+        constructor(public username: string & Unique = '') {
+        }
     }
 
     const database = await databaseFactory([Model]);
@@ -965,15 +950,27 @@ test('unique constraint 1', async () => {
     }
 
     {
-        const m = await database.query(Model).filter({username: 'paul'}).findOne();
+        const m = await database.query(Model).filter({ username: 'paul' }).findOne();
         m.username = 'peter';
         await expect(database.persist(m)).rejects.toThrow('constraint failed');
         await expect(database.persist(m)).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
 
     {
-        const p = database.query(Model).filter({username: 'paul'}).patchOne({username: 'peter'});
+        const p = database.query(Model).filter({ username: 'paul' }).patchOne({ username: 'peter' });
         await expect(p).rejects.toThrow('constraint failed');
         await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
+});
+
+test('forward raw types', async () => {
+    const database = await databaseFactory([]);
+
+    const q1 = await database.raw<{ count1: number }>(sql`SELECT 42 AS count1`);
+    const r1 = await q1.findOne();
+
+    const q2 = await database.raw(sql`SELECT 42 AS count2`);
+    const r2: any = await q2.findOne();
+
+    expect(r1.count1).toEqual(r2.count2);
 });

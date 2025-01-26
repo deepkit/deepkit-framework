@@ -851,6 +851,7 @@ export function zip<T extends (readonly unknown[])[]>(
  */
 export function forwardTypeArguments(x: any, y: any): void {
     y.Ω = x.Ω;
+    x.Ω = undefined;
 }
 
 export function formatError(error: any, withStack: boolean = false): string {
