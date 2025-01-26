@@ -427,9 +427,12 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
             `;
 
             const rows = await connection.execAndReturnAll(sql, select.params);
-            const returning = rows[1];
-            const pk = returning[0]['@_pk'];
-            if (pk) deleteResult.primaryKeys = JSON.parse(pk).map(primaryKeyConverted);
+            const affectedRows = rows[0].affectedRows;
+            if (affectedRows) {
+                const returning = rows[1];
+                const pk = returning[0]['@_pk'];
+                deleteResult.primaryKeys = JSON.parse(pk).map(primaryKeyConverted);
+            }
             deleteResult.modified = deleteResult.primaryKeys.length;
         } catch (error: any) {
             error = new DatabaseDeleteError(this.classSchema, 'Could not delete in database', { cause: error });
