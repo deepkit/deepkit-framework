@@ -13,8 +13,8 @@ import { BSONError } from './model.js';
 const decoder = new TextDecoder('utf-8');
 
 export function decodeUTF8(buffer: Uint8Array, off: number = 0, end: number) {
-    if (end - off > 512) {
-        return decoder.decode(buffer.slice(off, end));
+    if (end - off > 8) {
+        return decoder.decode(buffer.subarray(off, end));
     } else {
         return decodeUTF8Short(buffer, off, end);
     }
