@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.156](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.155...v1.0.1-alpha.156) (2025-01-30)
+
+### Bug Fixes
+
+- **bson:** initial random value of incremental counter of ObjectId ([fb1263d](https://github.com/deepkit/deepkit-framework/commit/fb1263dbd9fbaae0bd9ecbf40f840698e4523e0c))
+- **bson:** throw on invalid string data ([423df6c](https://github.com/deepkit/deepkit-framework/commit/423df6c681c226d8b4bff8c909ccd745c3c61c13))
+
+### Features
+
+- **bson:** decrease threshold to when TextDecoder is used to decoder utf8 ([4daed1c](https://github.com/deepkit/deepkit-framework/commit/4daed1c43e29a80c205aac35ab85317fdb936c9c))
+
 ## [1.0.1-alpha.155](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.154...v1.0.1-alpha.155) (2024-10-30)
 
 **Note:** Version bump only for package @deepkit/bson

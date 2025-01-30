@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.156](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.155...v1.0.1-alpha.156) (2025-01-30)
+
+### Bug Fixes
+
+- don't process delete PKs if norows were affected ([#621](https://github.com/deepkit/deepkit-framework/issues/621)) ([f2f6ed0](https://github.com/deepkit/deepkit-framework/commit/f2f6ed03f21bf5d6a9424c644d899d269cd3a354))
+
 ## [1.0.1-alpha.155](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.154...v1.0.1-alpha.155) (2024-10-30)
 
 **Note:** Version bump only for package @deepkit/mysql
