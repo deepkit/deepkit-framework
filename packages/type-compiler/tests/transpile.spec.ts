@@ -580,3 +580,15 @@ test('symbol function name', () => {
     console.log(res.app);
     expect(res.app).toContain(`() => Symbol.iterator`);
 });
+
+test('infer type', () => {
+    const res = transpile({
+        'app': `
+        class A {
+            a = 1;
+        }
+        `
+    });
+    console.log(res.app);
+    expect(res.app).toContain(`'a'`);
+});

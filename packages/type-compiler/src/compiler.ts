@@ -14,6 +14,7 @@ import type {
     ArrowFunction,
     Block,
     Bundle,
+    CallExpression,
     CallSignatureDeclaration,
     ClassDeclaration,
     ClassElement,
@@ -49,6 +50,7 @@ import type {
     MethodSignature,
     Modifier,
     ModuleDeclaration,
+    NewExpression,
     Node,
     NodeFactory,
     ParseConfigHost,
@@ -1183,6 +1185,65 @@ export class ReflectionTransformer implements CustomTransformer {
         return [variable];
     }
 
+    protected extractPackStructOfExpression(node: Expression, program: CompilerProgram): void {
+        switch (node.kind) {
+            case SyntaxKind.StringLiteral: {
+                program.pushOp(ReflectionOp.string);
+                return;
+            }
+            case SyntaxKind.NumericLiteral: {
+                program.pushOp(ReflectionOp.number);
+                return;
+            }
+            case SyntaxKind.FalseKeyword:
+            case SyntaxKind.TrueKeyword: {
+                program.pushOp(ReflectionOp.boolean);
+                return;
+            }
+            case SyntaxKind.BigIntLiteral: {
+                program.pushOp(ReflectionOp.bigint);
+                return;
+            }
+            //Symbol() is a function call, so we need to check for that
+            case SyntaxKind.CallExpression: {
+                const call = node as CallExpression;
+                if (isIdentifier(call.expression) && getIdentifierName(call.expression) === 'Symbol') {
+                    program.pushOp(ReflectionOp.symbol);
+                    return;
+                }
+                break;
+            }
+            //new Date()
+            case SyntaxKind.NewExpression: {
+                const call = node as NewExpression;
+                if (isIdentifier(call.expression)) {
+                    const map: {[name: string]: ReflectionOp} = {
+                        'Date': ReflectionOp.date,
+                        'RegExp': ReflectionOp.regexp,
+                        'Uint8Array': ReflectionOp.uint8Array,
+                        'Uint8ClampedArray': ReflectionOp.uint8ClampedArray,
+                        'Uint16Array': ReflectionOp.uint16Array,
+                        'Uint32Array': ReflectionOp.uint32Array,
+                        'Int8Array': ReflectionOp.int8Array,
+                        'Int16Array': ReflectionOp.int16Array,
+                        'Int32Array': ReflectionOp.int32Array,
+                        'Float32Array': ReflectionOp.float32Array,
+                        'Float64Array': ReflectionOp.float64Array,
+                        'ArrayBuffer': ReflectionOp.arrayBuffer,
+                    };
+                    const op = map[getIdentifierName(call.expression)];
+                    if (op) {
+                        program.pushOp(op);
+                        return;
+                    }
+                }
+                break;
+            }
+        }
+
+        program.pushOp(ReflectionOp.never);
+    }
+
     protected extractPackStructOfType(node: Node | Declaration | ClassDeclaration | ClassExpression, program: CompilerProgram): void {
         if (isParenthesizedTypeNode(node)) return this.extractPackStructOfType(node.type, program);
 
@@ -1500,32 +1561,36 @@ export class ReflectionTransformer implements CustomTransformer {
                 //TypeScript does not narrow types down
                 const narrowed = node as PropertyDeclaration;
 
+                // if the property was explicitly marked as `@reflection no`, we ignore it
+                if (false === this.getExplicitReflectionMode(program.sourceFile, narrowed)) return;
+
                 if (narrowed.type) {
-                    // if the property was explicitly marked as `@reflection no`, we ignore it
-                    if (false === this.getExplicitReflectionMode(program.sourceFile, narrowed)) return;
-
                     this.extractPackStructOfType(narrowed.type, program);
-                    const name = getPropertyName(this.f, narrowed.name);
-                    program.pushOp(ReflectionOp.property, program.findOrAddStackEntry(name));
-
-                    if (narrowed.questionToken) program.pushOp(ReflectionOp.optional);
-                    if (hasModifier(narrowed, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
-                    if (hasModifier(narrowed, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
-                    if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
-                    if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
-                    if (hasModifier(narrowed, SyntaxKind.StaticKeyword)) program.pushOp(ReflectionOp.static);
-
-                    if (narrowed.initializer) {
-                        //important to use Function, since it will be called using a different `this`
-                        program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(
-                            this.f.createFunctionExpression(undefined, undefined, undefined, undefined, undefined, undefined,
-                                this.f.createBlock([this.f.createReturnStatement(narrowed.initializer)])),
-                        ));
-                    }
-
-                    const description = extractJSDocAttribute(this.sourceFile, narrowed, 'description');
-                    if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
+                } else if (narrowed.initializer) {
+                    this.extractPackStructOfExpression(narrowed.initializer, program);
                 }
+
+                const name = getPropertyName(this.f, narrowed.name);
+                program.pushOp(ReflectionOp.property, program.findOrAddStackEntry(name));
+
+                if (narrowed.questionToken) program.pushOp(ReflectionOp.optional);
+                if (hasModifier(narrowed, SyntaxKind.ReadonlyKeyword)) program.pushOp(ReflectionOp.readonly);
+                if (hasModifier(narrowed, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
+                if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
+                if (hasModifier(narrowed, SyntaxKind.AbstractKeyword)) program.pushOp(ReflectionOp.abstract);
+                if (hasModifier(narrowed, SyntaxKind.StaticKeyword)) program.pushOp(ReflectionOp.static);
+
+                if (narrowed.initializer) {
+                    //important to use Function, since it will be called using a different `this`
+                    program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(
+                        this.f.createFunctionExpression(undefined, undefined, undefined, undefined, undefined, undefined,
+                            this.f.createBlock([this.f.createReturnStatement(narrowed.initializer)])),
+                    ));
+                }
+
+                const description = extractJSDocAttribute(this.sourceFile, narrowed, 'description');
+                if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
+
                 break;
             }
             case SyntaxKind.ConditionalType: {

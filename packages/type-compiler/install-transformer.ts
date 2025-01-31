@@ -28,13 +28,22 @@ function getCode(deepkitDistPath: string, varName: string, id: string): string {
             if (typeTransformer) {
                 if (!customTransformers) ${varName} = {};
                 if (!${varName}.before) ${varName}.before = [];
-                if (!${varName}.before.includes(typeTransformer.transformer)) ${varName}.before.push(typeTransformer.transformer);
+                let alreadyPatched = false;
+                for (let fn of ${varName}.before) {
+                    if (fn && fn.name === 'deepkitTransformer') alreadyPatched = true;
+                }
+                if (!alreadyPatched) {
+                    if (!${varName}.before.includes(typeTransformer.transformer)) ${varName}.before.push(typeTransformer.transformer);
 
-                if (!${varName}.afterDeclarations) ${varName}.afterDeclarations = [];
-                if (!${varName}.afterDeclarations.includes(typeTransformer.declarationTransformer)) ${varName}.afterDeclarations.push(typeTransformer.declarationTransformer);
+                    if (!${varName}.afterDeclarations) ${varName}.afterDeclarations = [];
+                    if (!${varName}.afterDeclarations.includes(typeTransformer.declarationTransformer)) {
+                        ${varName}.afterDeclarations.push(typeTransformer.declarationTransformer);
+                    }
+                }
             }
         } catch (e) {
         }
+        //${getPatchId(id)}-end
     `;
 }
 
