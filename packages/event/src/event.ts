@@ -9,14 +9,13 @@
  */
 
 import { ClassType, CompilerContext, CustomError, isClass, isFunction } from '@deepkit/core';
-import { injectedFunction } from '@deepkit/injector';
-import { InjectorContext, InjectorModule } from '@deepkit/injector';
+import { injectedFunction, InjectorContext, InjectorModule } from '@deepkit/injector';
 import {
     ClassDecoratorResult,
     createClassDecoratorContext,
     createPropertyDecoratorContext,
     PropertyDecoratorResult,
-    ReflectionClass
+    ReflectionClass,
 } from '@deepkit/type';
 
 export type EventListenerCallback<T> = (event: T, ...args: any[]) => any | Promise<any>;
@@ -28,6 +27,9 @@ export interface EventListener<T> {
     eventToken: EventToken<any>;
     callback: EventListenerCallback<T>;
     module?: InjectorModule,
+    /**
+     * The lower the order, the sooner the listener is called. Default is 0.
+     */
     order: number;
 }
 
@@ -136,7 +138,7 @@ class EventDispatcherApi {
     /**
      * Register a new event listener for given token.
      *
-     * order: The lower the order, the sooner the listener is called.
+     * order: The lower the order, the sooner the listener is called. Default is 0.
      */
     listen(eventToken: EventToken<any>, order: number = 0) {
         if (!eventToken) new Error('@eventDispatcher.listen() No event token given');
@@ -189,6 +191,11 @@ export type EventDispatcherUnsubscribe = () => void;
 export interface EventDispatcherInterface {
     add(eventToken: EventToken<any>, listener: EventListenerContainerEntry): EventDispatcherUnsubscribe;
 
+    /**
+     * Register a new event listener for given token.
+     *
+     * order: The lower the order, the sooner the listener is called. Default is 0.
+     */
     listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order?: number): EventDispatcherUnsubscribe;
 
     hasListeners(eventToken: EventToken<any>): boolean;
@@ -234,6 +241,11 @@ export class EventDispatcher implements EventDispatcherInterface {
         return result;
     }
 
+    /**
+     * Register a new event listener for given token.
+     *
+     * order: The lower the order, the sooner the listener is called. Default is 0.
+     */
     listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): EventDispatcherUnsubscribe {
         return this.add(eventToken, { fn: callback, order: order });
     }

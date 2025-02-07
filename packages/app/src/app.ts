@@ -13,7 +13,14 @@ import { ConfigLoader, ServiceContainer } from './service-container.js';
 import { ConfigureProviderOptions, InjectorContext, ResolveToken, Token } from '@deepkit/injector';
 import { AppModule, RootModuleDefinition } from './module.js';
 import { EnvConfiguration } from './configuration.js';
-import { DataEventToken, EventDispatcher, EventListener, EventListenerCallback, EventOfEventToken, EventToken } from '@deepkit/event';
+import {
+    DataEventToken,
+    EventDispatcher,
+    EventListener,
+    EventListenerCallback,
+    EventOfEventToken,
+    EventToken,
+} from '@deepkit/event';
 import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { Logger } from '@deepkit/logger';
 import { executeCommand, getArgsFromEnvironment, getBinFromEnvironment } from './command.js';
@@ -264,6 +271,11 @@ export class App<T extends RootModuleDefinition> {
         return this;
     }
 
+    /**
+     * Register a new event listener for given token.
+     *
+     * order: The lower the order, the sooner the listener is called. Default is 0.
+     */
     listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): this {
         const listener: EventListener<any> = { callback, order, eventToken };
         this.appModule.listeners.push(listener);
