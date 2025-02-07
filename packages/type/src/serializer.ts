@@ -1404,7 +1404,11 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 
                 lines.push(`let ${checkValid} = false;` + template);
             } else {
-                const optionalCheck = member.optional
+                let optional = isOptional(member);
+                if (state.validation === 'loose' && member.kind === ReflectionKind.property && member.default) {
+                    optional = true;
+                }
+                let optionalCheck = optional
                     ? `${propertyAccessor} !== undefined && ` + (!isNullable(member) ? `${propertyAccessor} !== null && ` : '')
                     : '';
                 existing.push(readName);
@@ -1714,6 +1718,7 @@ export function serializePropertyOrParameter(type: TypePropertySignature | TypeP
 export function validatePropertyOrParameter(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
     const optional = isOptional(type)
     const hasDefault = hasDefaultValue(type);
+    throw new Error('asd');
 
     state.addCode(`
         if (${state.accessor} === undefined) {
@@ -1776,6 +1781,7 @@ export function handleUnion(type: TypeUnion, state: TemplateState) {
 
         //when validation=true and not all specificalities are included, we only use 1, which is used for strict validation()/is().
         if (state.validation === 'strict' && specificality !== 1) continue;
+        const validation = !state.validation ? 'loose' : state.validation;
 
         for (const t of type.types) {
             const fn = createTypeGuardFunction(
@@ -1784,7 +1790,7 @@ export function handleUnion(type: TypeUnion, state: TemplateState) {
                     .forRegistry(typeGuard)
                     //if validation is not set, we are in deserialize mode, so we need to activate validation
                     //for this state.
-                    .withValidation(!state.validation ? 'loose' : state.validation)
+                    .withValidation(validation)
                     .includeAllSpecificalities(state.registry.serializer.typeGuards),
                 undefined, false,
             );

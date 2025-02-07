@@ -882,3 +882,35 @@ test('global symbol names as method names', () => {
     const method = type.getMethod(Symbol.iterator);
     expect(method).toBeDefined();
 });
+
+test('union with optional fields', () => {
+    class Foo {
+        __kind!: 'Foo';
+        a?: string;
+    }
+
+    class Bar {
+        __kind!: 'Bar';
+    }
+
+    expect(deserializeFromJson<Bar | Foo>({__kind: 'Bar'})).toEqual({__kind: 'Bar'});
+    expect(deserializeFromJson<Bar | Foo>({__kind: 'Foo', a: 'a'})).toEqual({__kind: 'Foo', a: 'a'});
+    expect(deserializeFromJson<Bar | Foo>({__kind: 'Foo'})).toEqual({__kind: 'Foo'});
+});
+
+test('union with default fields', () => {
+    class Foo {
+        __kind!: 'Foo';
+        a: string = 'a';
+    }
+
+    class Bar {
+        __kind!: 'Bar';
+    }
+
+    type t = Bar | Foo;
+
+    expect(deserializeFromJson<t>({__kind: 'Bar'})).toEqual({__kind: 'Bar'});
+    expect(deserializeFromJson<t>({__kind: 'Foo', a: 'b'})).toEqual({__kind: 'Foo', a: 'b'});
+    expect(deserializeFromJson<t>({__kind: 'Foo'})).toEqual({__kind: 'Foo', a: 'a'});
+});
