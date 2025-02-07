@@ -1718,7 +1718,6 @@ export function serializePropertyOrParameter(type: TypePropertySignature | TypeP
 export function validatePropertyOrParameter(type: TypePropertySignature | TypeProperty | TypeParameter, state: TemplateState) {
     const optional = isOptional(type)
     const hasDefault = hasDefaultValue(type);
-    throw new Error('asd');
 
     state.addCode(`
         if (${state.accessor} === undefined) {
