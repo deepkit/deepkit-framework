@@ -3,7 +3,7 @@ import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterRes
 import { getActions, http, httpClass } from '../src/decorator.js';
 import { HtmlResponse, HttpAccessDeniedError, HttpBadRequestError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest, HttpRequestParser } from '../src/model.js';
+import { HttpBody, HttpBodyValidation, HttpCookie, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest, HttpRequestParser } from '../src/model.js';
 import { getClassName, isObject, sleep } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
 import { Excluded, Group, integer, JSONEntity, Maximum, metaAnnotation, MinLength, Positive, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
@@ -1156,6 +1156,11 @@ test('parameter from header', async () => {
         handle2(userId: number, groupId: HttpHeader<number, { name: 'group_id' }>) {
             return [userId, groupId];
         }
+
+        @http.GET('fourth/:userId')
+        handle4(userId: number, groupId: HttpHeader<string & MinLength<5>, { name: 'gid' }>) {
+            return [userId, groupId];
+        }
     }
 
     const httpKernel = createHttpKernel([Controller], [], [httpWorkflow.onController.listen(async (event) => {
@@ -1164,7 +1169,54 @@ test('parameter from header', async () => {
     })]);
     expect((await httpKernel.request(HttpRequest.GET('/first/2').header('groupId', 1))).json).toEqual([2, 1]);
     expect((await httpKernel.request(HttpRequest.GET('/second/2').header('group_id', 1))).json).toEqual([2, 1]);
+
+
+    const httpKernel2 = createHttpKernel([Controller]);
+    expect((await httpKernel2.request(HttpRequest.GET('/fourth/2').header('gid', 'foo'))).json.message).toEqual('Validation error:\ngid(minLength): Min length is 5 caused by value "foo"');
 });
+
+
+
+test('parameter from cookie', async () => {
+    class Controller {
+        @http.GET('first/:userId')
+        handle(userId: number, sessionId: HttpCookie<string>) {
+            return [userId, sessionId];
+        }
+
+        @http.GET('second/:userId')
+        handle2(userId: number, sessionId: HttpCookie<string, { name: 'sid' }>) {
+            return [userId, sessionId];
+        }
+
+
+        @http.GET('third/:userId')
+        handle3(userId: number, sessionId: HttpCookie<number, { name: 'sid' }>) {
+            return [userId, sessionId];
+        }
+
+
+        @http.GET('minlen/:userId')
+        handle4(userId: number, sessionId: HttpCookie<string & MinLength<32>>) {
+            return [userId, sessionId];
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller], [], [httpWorkflow.onController.listen(async (event) => {
+        expect(event.parameters.arguments).toEqual([2, 'foo']);
+        expect(event.parameters.parameters).toEqual({ userId: 2, sessionId: 'foo' });
+    })]);
+    expect((await httpKernel.request(HttpRequest.GET('/first/2').header('cookie', 'sessionId=foo'))).json).toEqual([2, 'foo']);
+    expect((await httpKernel.request(HttpRequest.GET('/second/2').header('cookie', 'sid=foo'))).json).toEqual([2, 'foo']);
+
+    const httpKernel2 = createHttpKernel([Controller]);
+    expect((await httpKernel2.request(HttpRequest.GET('/second/2').header('cookie', 'sid=""'))).json).toEqual([2, '']);
+    expect((await httpKernel2.request(HttpRequest.GET('/second/2').header('cookie', 'sid='))).json).toEqual([2, '']);
+    expect((await httpKernel2.request(HttpRequest.GET('/third/2').header('cookie', 'sid=12'))).json).toEqual([2, 12]);
+    expect((await httpKernel2.request(HttpRequest.GET('/minlen/2').header('cookie', 'sessionId=tooshort'))).json).toEqual('Validation error:\nsessionId(minLength): Min length is 32 caused by value "tooshort"');
+});
+
+
 
 test('parameter in for listener', async () => {
     class HttpSession {

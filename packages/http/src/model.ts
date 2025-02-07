@@ -224,6 +224,26 @@ export type HttpPath<T, Options extends { name?: string } = {}> = T & TypeAnnota
 export type HttpHeader<T, Options extends { name?: string } = {}> = T & TypeAnnotation<'httpHeader', Options>;
 
 /**
+ * Marks a parameter as HTTP cookie and reads the value from the request 'Cookie' header.
+ *
+ * @example
+ * ```typescript
+ * class Controller {
+ *    @http.GET('/api')
+ *    route(session: HttpCookie<string>) {
+ *         //authorization is string and required
+ *         //use `session?: HttpCookie<string>` to make it optional
+ *    }
+ * }
+ *
+ * // curl /api -H 'Cookie: session=123'
+ * ```
+ *
+ * To change the cookie name, use `param: HttpCookie<string, {name: 'cookieName'}>`.
+ */
+export type HttpCookie<T, Options extends { name?: string } = {}> = T & TypeAnnotation<'httpCookie', Options>;
+
+/**
  * Marks a parameter as HTTP query and reads the value from the request query string.
  *
  * @example
