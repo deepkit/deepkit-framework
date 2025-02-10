@@ -890,3 +890,7 @@ export function assertDefined<T>(value: T): asserts value is NonNullable<T> {
         throw new Error(`Value is not defined`);
     }
 }
+
+export function isEsm(): boolean {
+    return typeof require === 'undefined';
+}
