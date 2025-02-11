@@ -8,7 +8,16 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, ClassType, CustomError, getClassName, getClassTypeFromInstance, isArray, isClassInstance } from '@deepkit/core';
+import {
+    asyncOperation,
+    ClassType,
+    CustomError,
+    getClassName,
+    getClassTypeFromInstance,
+    isArray,
+    isClassInstance,
+    isObject,
+} from '@deepkit/core';
 import { OutgoingHttpHeaders, ServerResponse } from 'http';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpRequestPositionedParameters, HttpResponse } from './model.js';
@@ -29,12 +38,12 @@ import {
     Type,
     typeSettings,
     UnpopulatedCheck,
-    ValidationError
+    ValidationError,
 } from '@deepkit/type';
 import stream from 'stream';
 
 export function isElementStruct(v: any): v is ElementStruct {
-    return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
+    return isObject(v) && 'hasOwnProperty' in v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes');
 }
 
 let templateRender: typeof render;
