@@ -157,7 +157,7 @@ export class SQLiteConnection extends SQLConnection {
         super(connectionPool, logger, transaction, stopwatch);
         this.db = new SQLiteConnection.DatabaseConstructor(this.dbPath);
         this.db.exec('PRAGMA foreign_keys=ON');
-        this.db.function('regexp', { deterministic: true }, (regex, text) => {
+        this.db.function('regexp', { deterministic: true }, (regex: any, text: any) => {
             const splitter = regex.indexOf('::');
             if (splitter !== -1) {
                 return new RegExp(regex.substring(splitter + 2), regex.substring(0, splitter)).test(text) ? 1 : 0;
