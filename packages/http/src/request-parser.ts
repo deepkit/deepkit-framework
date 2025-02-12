@@ -19,55 +19,49 @@ import {
 } from '@deepkit/type';
 import { BodyValidationError, createRequestWithCachedBody, getRegExp, HttpRequest, ValidatedBody } from './model.js';
 import { getRouteActionLabel, RouteConfig, UploadedFile, UploadedFileSymbol } from './router.js';
-
-//@ts-ignore
 import qs from 'qs';
-
-// @ts-ignore
-import formidable from 'formidable';
+import formidable, { Fields, Files, Options } from 'formidable';
 import { HttpParserOptions } from './module.config.js';
-
 
 function parseBody(
     options: HttpParserOptions,
     req: HttpRequest, foundFiles: { [name: string]: UploadedFile }) {
-    const form = formidable(Object.assign(options, {
+
+    const form = formidable(Object.assign(options as Options, {
         multiples: true,
     }));
-    return asyncOperation((resolve, reject) => {
-        function parseData(err: any, fields: any, files: any) {
-            if (err) {
-                reject(err);
-            } else {
-                const fileEntries = Object.entries(files);
+    return asyncOperation(async (resolve, reject) => {
+        function parseData(fields: Fields, files: Files) {
+            const fileEntries = Object.entries(files);
 
-                // formidable turns JSON arrays into numerically keyed objects, so we convert them back
-                if ('0' in fields && fileEntries.length === 0 && Object.keys(fields).every((key, idx) => parseInt(key) === idx)) {
-                    return resolve(Object.values(fields));
-                }
-
-                for (const [name, file] of fileEntries as any) {
-                    if (!file.filepath || 'string' !== typeof file.filepath) continue;
-                    if (!file.size || 'number' !== typeof file.size) continue;
-                    if (file.lastModifiedDate && !(file.lastModifiedDate instanceof Date)) continue;
-
-                    foundFiles[name] = {
-                        validator: UploadedFileSymbol,
-                        size: file.size,
-                        path: file.filepath,
-                        name: file.originalFilename || null,
-                        type: file.mimetype || null,
-                        lastModifiedDate: file.lastModifiedDate || null,
-                    };
-                }
-                const body = { ...fields, ...foundFiles };
-                resolve(body);
+            // formidable turns JSON arrays into numerically keyed objects, so we convert them back
+            if ('0' in fields && fileEntries.length === 0 && Object.keys(fields).every((key, idx) => parseInt(key) === idx)) {
+                return resolve(Object.values(fields));
             }
+
+            for (const [name, files] of fileEntries) {
+                if (!files) continue;
+                const file = files[0];
+                if (!file) continue;
+                if (!file.filepath || 'string' !== typeof file.filepath) continue;
+                if (!file.size || 'number' !== typeof file.size) continue;
+
+                foundFiles[name] = {
+                    validator: UploadedFileSymbol,
+                    size: file.size,
+                    path: file.filepath,
+                    name: file.originalFilename || null,
+                    type: file.mimetype || null,
+                    lastModifiedDate: null,
+                };
+            }
+            const body = { ...fields, ...foundFiles };
+            resolve(body);
         }
 
         if (req.body) {
-            form.parse(createRequestWithCachedBody(req, req.body), parseData);
-            return;
+            const [fields, files] = await form.parse(createRequestWithCachedBody(req, req.body));
+            parseData(fields, files);
         }
 
         const chunks: Buffer[] = [];
@@ -83,7 +77,8 @@ function parseBody(
         });
         req.once('error', () => req.off('data', read));
 
-        form.parse(req, parseData);
+        const [fields, files] = await form.parse(req);
+        parseData(fields, files);
     });
 }
 

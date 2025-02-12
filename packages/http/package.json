@@ -34,9 +34,9 @@
     "@deepkit/workflow": "^1.0.1-alpha.13"
   },
   "dependencies": {
-    "formidable": "^2.0.1",
-    "qs": "^6.11.0",
-    "send": "^0.18.0"
+    "formidable": "^3.5.2",
+    "qs": "^6.14.0",
+    "send": "^1.1.0"
   },
   "devDependencies": {
     "@deepkit/app": "^1.0.1-alpha.156",
@@ -49,7 +49,8 @@
     "@deepkit/type": "^1.0.1-alpha.156",
     "@deepkit/workflow": "^1.0.1-alpha.156",
     "@types/node": "20.6.0",
-    "@types/send": "^0.14.6"
+    "@types/send": "^0.14.6",
+    "@types/formidable": "^3.4.5"
   },
   "jest": {
     "testEnvironment": "node",
