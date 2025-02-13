@@ -162,7 +162,7 @@ test('for update/share', async () => {
 });
 
 test('json field and query', async () => {
-    @entity.name('product').collection('products')
+    @(entity.name('product').collection('products'))
     class Product {
         id: number & PrimaryKey & AutoIncrement = 0;
         raw?: { [key: string]: any };
