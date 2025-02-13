@@ -60,7 +60,7 @@ test('parameter resolver can be retrieved from parent module', async () => {
         }
     }
 
-    const module = new AppModule({
+    const module = new AppModule({}, {
         controllers: [Controller],
     });
 

@@ -17,7 +17,7 @@ import { PerformanceChartComponent, PerformanceEntryDirective } from '@app/app/c
         PerformanceChartComponent,
         PerformanceEntryDirective
     ],
-    styleUrls: ['./startpage.component.scss']
+    styleUrls: ['./startpage.component.css']
 })
 export class StartpageComponent {
 }

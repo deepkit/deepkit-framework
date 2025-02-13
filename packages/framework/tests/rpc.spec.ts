@@ -68,7 +68,7 @@ test('non-forRoot sub module lives in own injector scope for rpc controllers', a
         }
     }
 
-    const module = new AppModule({ providers: [MyService], controllers: [Controller] }, 'base');
+    const module = new AppModule({}, { name: 'base', providers: [MyService], controllers: [Controller] });
     const testing = createTestingApp({ imports: [module] });
     await testing.startServer();
 
@@ -96,12 +96,13 @@ test('module provides RpcKernelSecurity', async () => {
         }
     }
 
-    const module = new AppModule({
+    const module = new AppModule({}, {
+        name: 'module',
         controllers: [Controller],
         providers: [{
             provide: RpcKernelSecurity, useClass: MyRpcKernelSecurity, scope: 'rpc'
         }]
-    }, 'module').forRoot();
+    }).forRoot();
     const testing = createTestingApp({ imports: [module] });
     await testing.startServer();
 

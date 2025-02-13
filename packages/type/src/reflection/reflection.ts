@@ -1326,11 +1326,13 @@ export class ReflectionClass<T> {
             return classType.prototype[reflectionClassSymbol];
         }
 
-        const type = isType(classTypeIn) ? classTypeIn as TypeClass : ('__type' in classType ? resolveRuntimeType(classType, args) : {
-            kind: ReflectionKind.class,
-            classType,
-            types: [],
-        } as TypeClass);
+        const type = isType(classTypeIn) ? classTypeIn as TypeClass : ('__type' in classType ?
+            args.length ? resolveRuntimeType(classType, args) : resolveRuntimeType(classType)
+            : {
+                kind: ReflectionKind.class,
+                classType,
+                types: [],
+            } as TypeClass);
 
         if (type.kind !== ReflectionKind.class) {
             throw new Error(`Given class is not a class but kind ${ReflectionKind[type.kind]}. classType: ${stringifyValueWithType(classType)}`);

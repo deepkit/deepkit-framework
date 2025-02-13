@@ -25,7 +25,9 @@ import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { Logger } from '@deepkit/logger';
 import { executeCommand, getArgsFromEnvironment, getBinFromEnvironment } from './command.js';
 
-export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
+export function setPartialConfig(target: { [name: string]: any }, partial: {
+    [name: string]: any
+}, incomingPath: string = '') {
     for (const i in partial) {
         const path = (incomingPath ? incomingPath + '.' : '') + i;
         if (isObject(partial[i])) {
@@ -36,7 +38,11 @@ export function setPartialConfig(target: { [name: string]: any }, partial: { [na
     }
 }
 
-type EnvNamingStrategy = 'same' | 'upper' | 'lower' | ((name: string) => string | 'same' | 'upper' | 'lower' | undefined);
+type EnvNamingStrategy =
+    'same'
+    | 'upper'
+    | 'lower'
+    | ((name: string) => string | 'same' | 'upper' | 'lower' | undefined);
 
 function camelToUpperCase(str: string) {
     return str.replace(/[A-Z]+/g, (letter: string) => `_${letter.toUpperCase()}`).toUpperCase();
@@ -217,14 +223,14 @@ export class App<T extends RootModuleDefinition> {
 
     public readonly serviceContainer: ServiceContainer;
 
-    public appModule: AppModule<T>;
+    public appModule: AppModule<ExtractClassType<T['config']>>;
 
     constructor(
         appModuleOptions: T,
         serviceContainer?: ServiceContainer,
         appModule?: AppModule<any>,
     ) {
-        this.appModule = appModule || new RootAppModule(appModuleOptions) as any;
+        this.appModule = appModule || new RootAppModule({}, appModuleOptions) as any;
         this.serviceContainer = serviceContainer || new ServiceContainer(this.appModule);
     }
 

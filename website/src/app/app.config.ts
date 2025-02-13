@@ -24,14 +24,14 @@ export const appConfig: ApplicationConfig = {
             includePostRequests: true,
             filter: () => true,
         })),
-        provideHttpClient(withFetch(), ),
+        provideHttpClient(withFetch()),
 
         ControllerClient,
         {
             provide: 'baseUrl',
             deps: [REQUEST_CONTEXT],
             useFactory: (context: any) => {
-                return context.baseUrl
+                return context?.baseUrl || '';
             },
         },
         RpcAngularHttpAdapter,

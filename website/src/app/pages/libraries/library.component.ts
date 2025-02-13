@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { ControllerClient } from '@app/app/client';
-import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { bodyToString, CommunityQuestion, Content, Page, parseBody, UiCodeExample } from '@app/common/models';
 import { AppDescription, AppTitle } from '@app/app/components/title';
 import { ContentRenderComponent } from '@app/app/components/content-render.component';
@@ -14,7 +14,6 @@ import { waitForInit } from '@app/app/utils';
         AppDescription,
         ContentRenderComponent,
         RouterLink,
-        RouterLinkActive,
         LoadingComponent,
     ],
     styleUrls: ['./library.component.scss'],
@@ -102,7 +101,7 @@ import { waitForInit } from '@app/app/utils';
                 }
             </div>
         </div>
-    `
+    `,
 })
 export class LibraryComponent implements OnInit {
     subline = signal<Content | undefined>(undefined);

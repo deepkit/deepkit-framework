@@ -8,11 +8,19 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { InjectorModule, ProviderWithScope, Token, NormalizedProvider } from '@deepkit/injector';
+import { InjectorModule, InjectorModuleConfig, NormalizedProvider, ProviderWithScope, Token } from '@deepkit/injector';
 import { AbstractClassType, ClassType, CustomError, ExtractClassType, isClass } from '@deepkit/core';
 import { EventListener, EventToken } from '@deepkit/event';
 import { WorkflowDefinition } from '@deepkit/workflow';
-import { getPartialSerializeFunction, reflect, ReflectionFunction, ReflectionMethod, serializer, Type, TypeClass } from '@deepkit/type';
+import {
+    getPartialSerializeFunction,
+    reflect,
+    ReflectionFunction,
+    ReflectionMethod,
+    serializer,
+    Type,
+    TypeClass,
+} from '@deepkit/type';
 import { ControllerConfig } from './service-container.js';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
@@ -45,6 +53,17 @@ export function stringifyListener(listener: AddedListener): string {
 }
 
 export interface ModuleDefinition {
+    /**
+     * The name of the module. This is used in the configuration system.
+     * It allows you to have multiple instances of the same module with different configurations
+     * loaded from a configuration loader (e.g. env variables).
+     *
+     * The lowercase alphanumeric module name.
+     * Choose a short unique name for best usability. If you don't have any configuration
+     * or if you want that your configuration options are available without prefix, you can keep this undefined.
+     */
+    name?: string;
+
     /**
      * Providers.
      */
@@ -181,40 +200,21 @@ let moduleId = 0;
 /**
  * @reflection never
  */
-type PartialDeep<T> = T extends string | number | bigint | boolean | null | undefined | symbol | Date
-    ? T | undefined
-    // Arrays, Sets and Maps and their readonly counterparts have their items made
-    // deeply partial, but their own instances are left untouched
-    : T extends Array<infer ArrayType>
-        ? Array<PartialDeep<ArrayType>>
-        : T extends ReadonlyArray<infer ArrayType>
-            ? ReadonlyArray<ArrayType>
-            : T extends Set<infer SetType>
-                ? Set<PartialDeep<SetType>>
-                : T extends ReadonlySet<infer SetType>
-                    ? ReadonlySet<SetType>
-                    : T extends Map<infer KeyType, infer ValueType>
-                        ? Map<PartialDeep<KeyType>, PartialDeep<ValueType>>
-                        : T extends ReadonlyMap<infer KeyType, infer ValueType>
-                            ? ReadonlyMap<PartialDeep<KeyType>, PartialDeep<ValueType>>
-                            // ...and finally, all other objects.
-                            : {
-                                [K in keyof T]?: PartialDeep<T[K]>;
-                            };
+export type DeepPartial<T> =
+    T extends string | number | bigint | boolean | null | undefined | symbol | Date | Set<any> | Map<any, any> | Uint8Array | ArrayBuffer | ArrayBufferView | Error | RegExp | Function | Promise<any> ? T :
+        Partial<{
+            [P in keyof T]: DeepPartial<T[P]>;
+        }>;
 
-export interface AppModuleClass<C> {
-    new(config?: PartialDeep<C>): AppModule<any, C>;
+export interface AppModuleClass<C extends InjectorModuleConfig> {
+    new(config?: DeepPartial<C>): AppModule<C>;
 }
 
 /**
  * Creates a new module class type from which you can extend.
  *
- * name: The lowercase alphanumeric module name. This is used in the configuration system.
- * Choose a short unique name for best usability. If you don't have any configuration
- * or if you want that your configuration options are available without prefix, you can keep this undefined.
- *
  * ```typescript
- * class MyModule extends createModule({}) {}
+ * class MyModule extends createModuleClass({}) {}
  *
  * //and used like this
  * new App({
@@ -222,15 +222,35 @@ export interface AppModuleClass<C> {
  * });
  * ```
  */
-export function createModule<T extends CreateModuleDefinition>(options: T, name: string = ''): AppModuleClass<ExtractClassType<T['config']>> {
-    return class AnonAppModule extends AppModule<T> {
-        constructor(config?: PartialDeep<ExtractClassType<T['config']>>) {
-            super(options, name);
-            if (config) {
-                this.configure(config);
-            }
+export function createModuleClass<C extends InjectorModuleConfig>(options: CreateModuleDefinition & { config?: ClassType<C>}): AppModuleClass<C> {
+    /** @reflection never */
+    return class AnonAppModule extends AppModule<any> {
+        constructor(config?: any) {
+            super(config, options);
         }
     } as any;
+}
+
+/**
+ * Creates a new module instance.
+ *
+ * This is mainly used for small non-reusable modules.
+ * It's recommended to use `createModuleClass` and extend from it.
+ *
+ * @example
+ * ```typescript
+ * const myModule = createModule({
+ *    config: MyConfig
+ *    providers: [MyService]
+ *  });
+ *
+ * const app = new App({
+ *    imports: [myModule]
+ * });
+ * ```
+ */
+export function createModule<T extends CreateModuleDefinition>(options: T): AppModule<ExtractClassType<T['config']>> {
+    return new (createModuleClass(options))();
 }
 
 export type ListenerType = EventListener<any> | ClassType;
@@ -255,7 +275,7 @@ export type ListenerType = EventListener<any> | ClassType;
  *   }
  * }
  */
-export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractClassType<T['config']> = any> extends InjectorModule<C, AppModule<any>> {
+export class AppModule<C extends InjectorModuleConfig = any> extends InjectorModule<C> {
     public setupConfigs: ((module: AppModule<any>, config: any) => void)[] = [];
 
     public imports: AppModule<any>[] = [];
@@ -266,13 +286,16 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
     public middlewares: MiddlewareFactory[] = [];
     public uses: ((...args: any[]) => void)[] = [];
 
+    public name: string = '';
+
     constructor(
-        public options: T = {} as T,
-        public name: string = '',
+        config: DeepPartial<C> = {} as DeepPartial<C>,
+        public options: RootModuleDefinition = {},
         public setups: ((module: AppModule<any>, config: any) => void)[] = [],
         public id: number = moduleId++,
     ) {
         super();
+        if (options.name) this.name = options.name;
         if (this.options.imports) for (const m of this.options.imports) this.addModuleImport(m);
         if (this.options.providers) this.providers.push(...this.options.providers.flat());
         if (this.options.exports) this.exports.push(...this.options.exports);
@@ -293,6 +316,7 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
             //     (this.config as any)[property.name] = defaults[property.name];
             // }
         }
+        this.configure(config as Partial<C>);
     }
 
     protected addModuleImport(m: AppModule<any> | FunctionalModule) {
@@ -406,7 +430,7 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
      * Allows to change the module config before `setup` and bootstrap is called.
      * This is the last step right before the config is validated.
      */
-    setupConfig(callback: (module: AppModule<T>, config: C) => void): this {
+    setupConfig(callback: (module: AppModule<C>, config: C) => void): this {
         this.setupConfigs.push(callback as any);
         return this;
     }
@@ -418,7 +442,7 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
      *
      * At this point no services can be requested as the service container was not built.
      */
-    setup(callback: (module: AppModule<T>, config: C) => void): this {
+    setup(callback: (module: AppModule<C>, config: C) => void): this {
         this.setups.push(callback);
         return this;
     }
@@ -445,13 +469,6 @@ export class AppModule<T extends RootModuleDefinition = {}, C extends ExtractCla
      * Sets configured values.
      */
     configure(config: Partial<C>): this {
-        for (const module of this.getImports()) {
-            if (!module.getName()) continue;
-            if (!(module.getName() in config)) continue;
-            const newModuleConfig = (config as any)[module.getName()];
-            module.configure(newModuleConfig);
-        }
-
         if (this.options.config) {
             const configNormalized = getPartialSerializeFunction(reflect(this.options.config) as TypeClass, serializer.deserializeRegistry)(config);
             Object.assign(this.config, configNormalized);

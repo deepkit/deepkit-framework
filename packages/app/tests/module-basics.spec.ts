@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { createModule } from '../src/module.js';
+import { createModuleClass } from '../src/module.js';
 import { ServiceContainer } from '../src/service-container.js';
 import { assert, IsExact } from 'conditional-type-checks';
 
@@ -8,7 +8,7 @@ test('strict types config', () => {
         host!: string;
     }
 
-    class MyModule extends createModule({
+    class MyModule extends createModuleClass({
         config: Config
     }) {
         process() {
@@ -24,7 +24,7 @@ test('strict types config with defaults', () => {
         host: string = '0.0.0.0';
     }
 
-    class MyModule extends createModule({
+    class MyModule extends createModuleClass({
         config: Config
     }) {
         process() {
@@ -45,7 +45,7 @@ test('nested options are optional as well for constructor, but strict in process
         };
     }
 
-    class MyModule extends createModule({
+    class MyModule extends createModuleClass<Config>({
         config: Config
     }) {
         process() {
@@ -70,7 +70,7 @@ test('partial nested options are optional as well for constructor, but strict in
         };
     }
 
-    class MyModule extends createModule({
+    class MyModule extends createModuleClass({
         config: Config
     }) {
         process() {
@@ -86,14 +86,14 @@ test('partial nested options are optional as well for constructor, but strict in
 });
 
 test('no config reference leak', () => {
-    class ModuleA extends createModule({
+    class ModuleA extends createModuleClass({
         config: class {
             param1?: string;
         }
-    }, 'myModule') {
+    }) {
     }
 
-    class RootApp extends createModule({
+    class RootApp extends createModuleClass({
         config: class {
             value!: string;
         }
@@ -138,18 +138,18 @@ test('nested config', () => {
 
     let moduleAProcessCalled = 0;
 
-    class ModuleA extends createModule({
+    class ModuleA extends createModuleClass({
         config: ModuleAConfig,
         providers: [
             Service
         ]
-    }, 'moduleA') {
+    }) {
         process() {
             moduleAProcessCalled++;
         }
     }
 
-    class RootApp extends createModule({}) {
+    class RootApp extends createModuleClass({}) {
         process() {
             this.addImport(new ModuleA({ param1: 'a', nested: { param2: 'b' } }));
         }

@@ -725,7 +725,8 @@ export function getInheritanceChain(classType: ClassType): ClassType[] {
 declare var v8debug: any;
 
 export function inDebugMode() {
-    return typeof v8debug === 'object' || /--debug|--inspect/.test(process.execArgv.join(' '));
+    return typeof v8debug === 'object' ||
+        (typeof process !== 'undefined' && /--debug|--inspect/.test(process.execArgv.join(' ')));
 }
 
 /**

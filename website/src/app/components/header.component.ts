@@ -1,8 +1,8 @@
 import { ChangeDetectorRef, Component, Input } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { NgForOf, NgIf } from "@angular/common";
-import { ReactiveFormsModule } from "@angular/forms";
-import { SearchComponent } from "@app/app/components/search.component";
+import { NgIf } from '@angular/common';
+import { ReactiveFormsModule } from '@angular/forms';
+import { SearchComponent } from '@app/app/components/search.component';
 
 @Component({
     selector: 'dw-header',
@@ -39,7 +39,6 @@ import { SearchComponent } from "@app/app/components/search.component";
     imports: [
         RouterLink,
         RouterLinkActive,
-        NgForOf,
         NgIf,
         ReactiveFormsModule,
         SearchComponent

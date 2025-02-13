@@ -84,11 +84,6 @@ import { AppTitle } from '@app/app/components/title';
             margin-top: 50px;
             text-align: left;
 
-            p {
-                //max-width: 680px;
-                //text-align: justify;
-            }
-
             h3 {
                 font-weight: bold;
                 font-size: 18px;

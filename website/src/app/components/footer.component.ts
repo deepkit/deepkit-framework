@@ -1,5 +1,5 @@
-import {Component} from '@angular/core';
-import { RouterLink } from "@angular/router";
+import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 @Component({
     selector: 'dw-footer',
@@ -42,7 +42,7 @@ import { RouterLink } from "@angular/router";
     imports: [
         RouterLink
     ],
-    styleUrls: ['./footer.component.scss']
+    styleUrls: ['./footer.component.css']
 })
 export class FooterComponent {
     get year() {

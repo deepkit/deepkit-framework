@@ -74,7 +74,7 @@ export class BrokerMemoryServer extends BrokerServer {
  * For example RPC/Broker/HTTP communication without TCP stack. Logger uses MemoryLogger.
  */
 export function createTestingApp<O extends RootModuleDefinition>(options: O, entities: ClassType[] = [], setup?: (module: AppModule<any>) => void): TestingFacade<App<O>> {
-    const module = new RootAppModule(options);
+    const module = new RootAppModule({}, options);
 
     module.configureProvider<Logger>((v, t: ConsoleTransport) => v.removeTransport(t));
     module.configureProvider<Logger>((v, t: MemoryLoggerTransport) => v.addTransport(t));

@@ -14,7 +14,7 @@ import { NgIf } from '@angular/common';
         AppTitle,
         LoadingComponent,
         NgIf,
-        AppDescription
+        AppDescription,
     ],
     template: `
         <div class="app-content normalize-text" style="margin-top: 50px;">
@@ -28,7 +28,7 @@ import { NgIf } from '@angular/common';
                 <app-render-content [content]="page.body"></app-render-content>
             </div>
         </div>
-    `
+    `,
 })
 export class StaticPageComponent implements OnInit {
     page?: Page;
@@ -36,7 +36,7 @@ export class StaticPageComponent implements OnInit {
 
     constructor(
         private client: ControllerClient,
-        private activatedRoute: ActivatedRoute
+        private activatedRoute: ActivatedRoute,
     ) {
     }
 

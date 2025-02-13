@@ -8,11 +8,11 @@ You can skip this chapter if you do not plan to split your application into subm
 A module can either be defined as class module or as functional module.
 
 ```typescript title=Class Module
-import { createModule } from '@deepkit/app';
+import { createModuleClass } from '@deepkit/app';
 
-export class MyModule extends createModule({
-    //same options as new App({})
-    providers: [MyService]
+export class MyModule extends createModuleClass({
+  //same options as new App({})
+  providers: [MyService]
 }) {
 }
 ```
@@ -52,26 +52,26 @@ Modules can define controllers that are processed by other modules. For example,
 In Deepkit there are three packages that handles such controllers: HTTP, RPC, and CLI. See their respective chapters to learn more. Below is an example of an HTTP controller:
 
 ```typescript
-import { createModule } from '@deepkit/app';
+import { createModuleClass } from '@deepkit/app';
 import { http } from '@deepkit/http';
 import { injectable } from '@deepkit/injector';
 
 class MyHttpController {
-    @http.GET('/hello)
-    hello() {
-        return 'Hello world!';
-    }
+  @http.GET('/hello)
+  hello() {
+    return 'Hello world!';
+  }
 }
 
-export class MyModule extends createModule({
-    controllers: [MyHttpController]
-}) {}
-
+export class MyModule extends createModuleClass({
+  controllers: [MyHttpController]
+}) {
+}
 
 
 //same is possible for App
 new App({
-    controllers: [MyHttpController]
+  controllers: [MyHttpController]
 }).run();
 ```
 
@@ -82,41 +82,43 @@ When you define a provider in the `providers` section of your application, it is
 To learn more about how providers work, see the [Dependency Injection](../dependency-injection.md) chapter.
 
 ```typescript
-import { createModule } from '@deepkit/app';
+import { createModuleClass } from '@deepkit/app';
 import { http } from '@deepkit/http';
 import { injectable } from '@deepkit/injector';
 
 export class HelloWorldService {
-    helloWorld() {
-        return 'Hello there!';
-    }
+  helloWorld() {
+    return 'Hello there!';
+  }
 }
 
 class MyHttpController {
-    constructor(private helloService: HelloWorldService) {}
+  constructor(private helloService: HelloWorldService) {
+  }
 
-    @http.GET('/hello)
-    hello() {
-        return this.helloService.helloWorld();
-    }
+  @http.GET('/hello)
+  hello() {
+    return this.helloService.helloWorld();
+  }
 }
 
-export class MyModule extends createModule({
-    controllers: [MyHttpController],
-    providers: [HelloWorldService],
-}) {}
+export class MyModule extends createModuleClass({
+  controllers: [MyHttpController],
+  providers: [HelloWorldService],
+}) {
+}
 
 export function myModule(options: {} = {}) {
-    return (module: AppModule) => {
-        module.addController(MyHttpController);
-        module.addProvider(HelloWorldService);
-    };
+  return (module: AppModule) => {
+    module.addController(MyHttpController);
+    module.addProvider(HelloWorldService);
+  };
 }
 
 //same is possible for App
 new App({
-    controllers: [MyHttpController],
-    providers: [HelloWorldService],
+  controllers: [MyHttpController],
+  providers: [HelloWorldService],
 }).run();
 ```
 
@@ -127,31 +129,33 @@ When a user imports this module, he has no access to `HelloWorldService` because
 To make providers available in the importer's module, you can include the provider's token in `exports`. This essentially moves the provider up one level into the dependency injection container of the parent module - the importer.
 
 ```typescript
-import { createModule } from '@deepkit/app';
+import { createModuleClass } from '@deepkit/app';
 
-export class MyModule extends createModule({
-    exports: [HelloWorldService],
-}) {}
+export class MyModule extends createModuleClass({
+  exports: [HelloWorldService],
+}) {
+}
 
 export function myModule(options: {} = {}) {
-    return (module: AppModule) => {
-        module.addExport(HelloWorldService);
-    };
+  return (module: AppModule) => {
+    module.addExport(HelloWorldService);
+  };
 }
 ```
 
 If you have other providers like `FactoryProvider`, `UseClassProvider` etc., you should still use only the class type in the exports.
 
 ```typescript
-import { createModule } from '@deepkit/app';
+import { createModuleClass } from '@deepkit/app';
 
-export class MyModule extends createModule({
-    controllers: [MyHttpController]
-    providers: [
-        {provide: HelloWorldService, useValue: new HelloWorldService}
-    ],
-    exports: [HelloWorldService],
-}) {}
+export class MyModule extends createModuleClass({
+  controllers: [MyHttpController]
+  providers: [
+    { provide: HelloWorldService, useValue: new HelloWorldService }
+  ],
+  exports: [HelloWorldService],
+}) {
+}
 ```
 
 We can now import that module and use its exported service in our application code.
@@ -196,17 +200,18 @@ export class Config {
 ```
 
 ```typescript
-import { createModule } from '@deepkit/app';
+import { createModuleClass } from '@deepkit/app';
 import { Config } from './module.config.ts';
 
-export class MyModule extends createModule({
-   config: Config
-}) {}
+export class MyModule extends createModuleClass({
+  config: Config
+}) {
+}
 
 export function myModule(options: Partial<Config> = {}) {
-    return (module: AppModule) => {
-        module.setConfigDefinition(Config).configure(options);
-    };
+  return (module: AppModule) => {
+    module.setConfigDefinition(Config).configure(options);
+  };
 }
 ```
 
@@ -310,40 +315,38 @@ new App({
 In regular modules, this is not possible since the module in the object definition object instance would become a global, which is usually not what you want. Instead, modules could be instantiated in module itself via the `imports` property, so that instances of each imported module is created for each new instance of your module.
 
 ```typescript
-import { createModule } from '@deepkit/app';
+import { createModuleClass } from '@deepkit/app';
 
-export class MyModule extends createModule({
-}) {
-    imports = [new OtherModule()];
+export class MyModule extends createModuleClass({}) {
+  imports = [new OtherModule()];
 }
 
 export function myModule() {
-    return (module: AppModule) => {
-        module.addImport(new OtherModule());
-    };
+  return (module: AppModule) => {
+    module.addImport(new OtherModule());
+  };
 }
 ```
 
 You can also import modules dynamically based on the configuration using the `process` hook.
 
 ```typescript
-import { createModule } from '@deepkit/app';
+import { createModuleClass } from '@deepkit/app';
 
-export class MyModule extends createModule({
-}) {
-    process() {
-        if (this.config.xEnabled) {
-            this.addImport(new OtherModule({option: 'value'});
-        }
+export class MyModule extends createModuleClass({}) {
+  process() {
+    if (this.config.xEnabled) {
+      this.addImport(new OtherModule({ option: 'value' });
     }
+  }
 }
 
-export function myModule(option: {xEnabled?: boolean} = {}) {
-    return (module: AppModule) => {
-        if (option.xEnabled) {
-            module.addImport(new OtherModule());
-        }
-    };
+export function myModule(option: { xEnabled?: boolean } = {}) {
+  return (module: AppModule) => {
+    if (option.xEnabled) {
+      module.addImport(new OtherModule());
+    }
+  };
 }
 ```
 
@@ -376,49 +379,48 @@ The whole process of loading the service container is as follows:
 To use hooks, you can register the `process`, `processProvider`, `postProcess` methods in your module class.
 
 ```typescript
-import { createModule, AppModule } from '@deepkit/app';
+import { createModuleClass, AppModule } from '@deepkit/app';
 import { isClass } from '@deepkit/core';
 import { ProviderWithScope, Token } from '@deepkit/injector';
 
-export class MyModule extends createModule({
-}) {
-    imports = [new FrameworkModule()];
+export class MyModule extends createModuleClass({}) {
+  imports = [new FrameworkModule()];
 
-    //executed first
-    process() {
-        //this.config contains the fully validated config object.
-        if (this.config.environment === 'development') {
-            this.getImportedModuleByClass(FrameworkModule).configure({debug: true});
-        }
-        this.addModule(new AnotherModule);
-        this.addProvider(Service);
-
-        //calls additional setup methods. 
-        //In this case call 'method1' with given arguments when 
-        //Service is instantiated by the dependency injection container.
-        this.configureProvider<Service>(v => v.method1(this.config.value));
+  //executed first
+  process() {
+    //this.config contains the fully validated config object.
+    if (this.config.environment === 'development') {
+      this.getImportedModuleByClass(FrameworkModule).configure({ debug: true });
     }
+    this.addModule(new AnotherModule);
+    this.addProvider(Service);
 
-    //executed for each found provider in all modules
-    processController(module: AppModule<any>, controller: ClassType) {
-        //HttpModule for example checks for each controller whether
-        //a @http decorator was used, and if so extracts all route
-        //information and puts them the router.
-    }
+    //calls additional setup methods. 
+    //In this case call 'method1' with given arguments when 
+    //Service is instantiated by the dependency injection container.
+    this.configureProvider<Service>(v => v.method1(this.config.value));
+  }
 
-    //executed for each found provider in all modules
-    processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
-        //FrameworkModule for example looks for provided tokens that extend from deepkit/orm Database
-        //and automatically registers them in a DatabaseRegistry so they can be used in the migration CLI commands
-        //and Framework Debugger.
-    }
+  //executed for each found provider in all modules
+  processController(module: AppModule<any>, controller: ClassType) {
+    //HttpModule for example checks for each controller whether
+    //a @http decorator was used, and if so extracts all route
+    //information and puts them the router.
+  }
 
-    //executed when all modules have been processed.
-    //Last chance to setup providers via module.configureProvider based on
-    //information processed in process/processProvider. 
-    postProcess() {
-        
-    }
+  //executed for each found provider in all modules
+  processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+    //FrameworkModule for example looks for provided tokens that extend from deepkit/orm Database
+    //and automatically registers them in a DatabaseRegistry so they can be used in the migration CLI commands
+    //and Framework Debugger.
+  }
+
+  //executed when all modules have been processed.
+  //Last chance to setup providers via module.configureProvider based on
+  //information processed in process/processProvider. 
+  postProcess() {
+
+  }
 }
 ```
 
@@ -493,12 +495,11 @@ The `root` property allows you to move the dependency injection container of a m
 
 If you build a library that can be used by many modules, you should avoid using `root`, as it could clash with provider tokens from other libraries. For example, if this library module imports a `foo` module that defines a service, and you reconfigure some services to your need, and the user's application imports the same `foo` module, the user receives your reconfigured services. For many simpler use cases this might be fine though.
 
-
 ```typescript
-import { createModule } from '@deepkit/app';
-export class MyModule extends createModule({
-}) {
-    root = true;
+import { createModuleClass } from '@deepkit/app';
+
+export class MyModule extends createModuleClass({}) {
+  root = true;
 }
 ```
 

@@ -1,5 +1,4 @@
 import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { AppTitle } from '@app/app/components/title';
 
 
@@ -18,7 +17,6 @@ import { AppTitle } from '@app/app/components/title';
       }
     `],
     imports: [
-        RouterLink,
         AppTitle
     ],
     template: `

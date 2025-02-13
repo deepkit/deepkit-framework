@@ -19,7 +19,7 @@ export class RpcAngularHttpAdapter implements RpcHttpInterface {
         private httpClient: HttpClient,
         @Inject('baseUrl') private baseUrl: string,
     ) {
-        this.baseUrl = baseUrl || (typeof location !== 'undefined' ? location.origin + '/' : '');
+        this.baseUrl = baseUrl || (typeof location !== 'undefined' ? location.origin : '');
     }
 
     async fetch(url: string, options: {
@@ -27,9 +27,13 @@ export class RpcAngularHttpAdapter implements RpcHttpInterface {
         method: string;
         body: any
     }): Promise<RpcHttpResponseInterface> {
+        if (!url.startsWith('/')) url = '/' + url;
         url = this.baseUrl + url;
         const res = await this.httpClient.request(options.method, url, {
             body: options.body,
+            transferCache: {
+
+            },
             headers: options.headers,
             observe: 'response',
             responseType: 'json',

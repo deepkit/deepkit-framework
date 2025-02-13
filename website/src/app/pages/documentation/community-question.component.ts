@@ -1,5 +1,4 @@
 import { ChangeDetectorRef, Component, OnInit, signal } from '@angular/core';
-import { AskComponent } from '@app/app/components/ask.component';
 import { FormsModule } from '@angular/forms';
 import { ControllerClient } from '@app/app/client';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -14,7 +13,6 @@ import { waitForInit } from '@app/app/utils';
 
 @Component({
     imports: [
-        AskComponent,
         FormsModule,
         TextFieldModule,
         CommunityQuestionMessagesComponent,

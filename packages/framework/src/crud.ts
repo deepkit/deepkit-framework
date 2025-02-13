@@ -285,7 +285,8 @@ export class CrudAppModule<T extends {}> extends AppModule<T> {
 export function createCrudRoutes(schemas: (ClassType | ReflectionClass<any>)[], options: AutoCrudOptions = {}) {
     const controllers = schemas.map(v => ReflectionClass.from(v)).map(v => createController(v, options));
 
-    return new CrudAppModule({
+    return new CrudAppModule({}, {
+        name: 'autoCrud',
         controllers: controllers
-    }, 'autoCrud');
+    });
 }

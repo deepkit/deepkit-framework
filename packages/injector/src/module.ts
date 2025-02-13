@@ -263,10 +263,14 @@ export function getScope(provider: ProviderWithScope): string {
     return (isClass(provider) ? '' : provider instanceof TagProvider ? provider.provider.scope : provider.scope) || '';
 }
 
+export type InjectorModuleConfig = { [name: string]: any } | undefined;
+
+type RemovedUndefined<T> = T extends undefined ? never : T;
+
 /**
  * @reflection never
  */
-export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = InjectorModule<any, any>> {
+export class InjectorModule<C extends InjectorModuleConfig = any> {
     public id: number = moduleIds++;
 
     /**
@@ -291,7 +295,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
     constructor(
         public providers: ProviderWithScope[] = [],
         public parent?: InjectorModule,
-        public config: C = {} as C,
+        public config: RemovedUndefined<C> = {} as RemovedUndefined<C>,
         public exports: ExportType[] = [],
     ) {
         if (this.parent) this.parent.registerAsChildren(this);

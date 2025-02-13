@@ -17,7 +17,7 @@ import { FooterComponent } from '@app/app/components/footer.component';
 
         <dw-footer *ngIf="withFooter"></dw-footer>
     `,
-    styleUrls: ['./app.component.scss']
+    styleUrls: ['./app.component.css']
 })
 export class AppComponent {
     constructor(public activeRoute: ActivatedRoute, private viewportScroller: ViewportScroller) {

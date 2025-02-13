@@ -11,8 +11,6 @@ import { ContentRenderComponent } from '@app/app/components/content-render.compo
 @Component({
     selector: 'app-search-result-page',
     imports: [
-        NgIf,
-        RouterLink,
         ContentRenderComponent
     ],
     styles: [`
@@ -78,7 +76,7 @@ export class SearchResultQuestion implements OnChanges {
         }
         .search.active {
             .app-search-field {
-                //width: 350px;
+                /*width: 350px;*/
             }
         }
 

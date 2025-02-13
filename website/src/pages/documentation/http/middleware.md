@@ -209,7 +209,7 @@ httpMiddleware.for(MyMiddleware).forModule(ApiModule)
 To execute a middleware for all controllers/routes of a module where the middleware was registered use `forSelfModules()`.
 
 ```typescript
-const ApiModule new AppModule({
+const ApiModule = new AppModule({}, {
     controllers: [MainController, UsersCommand],
     providers: [MyMiddleware],
     middlewares: [
@@ -224,7 +224,7 @@ const ApiModule new AppModule({
 All middleware needs to execute `next()` sooner or later. If a middleware does not execute `next()` withing a timeout, a warning is logged and the next middleware executed. To change the default of 4seconds to something else use timeout(milliseconds).
 
 ```typescript
-const ApiModule = new AppModule({
+const ApiModule = new AppModule({}, {
     controllers: [MainController, UsersCommand],
     providers: [MyMiddleware],
     middlewares: [
@@ -239,7 +239,7 @@ const ApiModule = new AppModule({
 To combine multiple filters, you can chain method calls.
 
 ```typescript
-const ApiModule = new AppModule({
+const ApiModule = new AppModule({}, {
     controllers: [MyController],
     providers: [MyMiddleware],
     middlewares: [
@@ -255,7 +255,7 @@ Almost all express middlewares are supported. Those who access certain request m
 ```typescript
 import * as compression from 'compression';
 
-const ApiModule = new AppModule({
+const ApiModule = new AppModule({}, {
     middlewares: [
         httpMiddleware.for(compress()).forControllers(MyController)
     ],

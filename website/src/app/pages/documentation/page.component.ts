@@ -1,10 +1,9 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, signal } from '@angular/core';
 import { bodyToString, Content, Page, parseBody, projectMap } from '@app/common/models';
 import { AppDescription, AppTitle } from '@app/app/components/title';
-import { AskComponent } from '@app/app/components/ask.component';
 import { ContentRenderComponent } from '@app/app/components/content-render.component';
 import { LoadingComponent } from '@app/app/components/loading';
-import { NgForOf, NgIf, ViewportScroller } from '@angular/common';
+import { NgForOf, ViewportScroller } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ControllerClient } from '@app/app/client';
 import { PageResponse } from '@app/app/page-response';
@@ -14,20 +13,18 @@ import { waitForInit } from '@app/app/utils';
     imports: [
         AppDescription,
         AppTitle,
-        AskComponent,
         ContentRenderComponent,
         LoadingComponent,
-        NgIf,
         NgForOf,
     ],
-    styleUrls: ['./page.component.scss'],
+    styleUrls: ['./page.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
-        <div class="table-of-content">
+        <nav class="table-of-content">
             <a [href]="router.url.split('#')[0] + '#' + h.link" class="intend-{{h.indent}}" *ngFor="let h of headers()">
                 {{ h.label }}
             </a>
-        </div>
+        </nav>
         <div class="app-content normalize-text">
             @if (loading()) {
                 <app-loading></app-loading>
@@ -114,7 +111,6 @@ export class DocumentationPageComponent implements OnInit {
 
         try {
             const page = await this.client.main.getPage('documentation/' + path);
-            console.log('page', path, page);
             if (!page) return;
             this.page.set(page);
             this.subline.set(parseBody(page.body).subline);

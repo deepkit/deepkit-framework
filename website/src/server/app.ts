@@ -81,6 +81,9 @@ const app = new App({
             migrateOnStartup: true, //yolo
             httpRpcBasePath: 'api/v1',
             publicDir: browserDistFolder,
+            broker: {
+                startOnBootstrap: false,
+            }
         }),
     ],
 });
@@ -120,6 +123,8 @@ if ((global as any).server) {
     waitForClose = ((global as any).server as ApplicationServer).close();
 }
 
+const publicBaseUrl = app.get<AppConfig['baseUrl']>();
+
 const server = (global as any).server = app.get(ApplicationServer);
 let baseUrl = '';
 const waitBootstrap = waitForClose.then(() => server.start({
@@ -130,10 +135,16 @@ const waitBootstrap = waitForClose.then(() => server.start({
     if (host?.startsWith('0.0.0.0')) {
         host = 'localhost' + host.substr(7);
     }
-    baseUrl = `http://${host}/`;
+    baseUrl = `http://${host}`;
 });
+
+waitBootstrap.then(() => {
+    console.log('bootstrap done');
+    console.log({ publicBaseUrl, baseUrl });
+});
+
 const http = app.get(HttpKernel);
-const handler = http.createMiddleware(true);
+const handler = http.createMiddleware({ fallThroughOnNotFound: true });
 
 // every request in angular dev server is handled by this function
 export const reqHandler = createNodeRequestHandler(async (req, res) => {
@@ -146,13 +157,14 @@ export const reqHandler = createNodeRequestHandler(async (req, res) => {
 
     try {
         await handler(req, res, async (error?: any) => {
+            if (res.headersSent) return;
             if (error) {
                 console.log('error from handler', error);
                 res.statusCode = 500;
                 res.end('Internal Server Error');
                 return;
             }
-            const response = await ngApp.handle(req, { baseUrl });
+            const response = await ngApp.handle(req, { baseUrl, publicBaseUrl });
             if (response) {
                 await writeResponseToNodeResponse(response, res);
             }

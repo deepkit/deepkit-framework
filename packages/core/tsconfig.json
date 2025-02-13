@@ -9,7 +9,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2021",
+    "target": "es2022",
     "module": "CommonJS",
     "esModuleInterop": true,
     "baseUrl": ".",

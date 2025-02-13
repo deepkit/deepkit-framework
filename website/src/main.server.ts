@@ -9,7 +9,6 @@ export { Router } from '@angular/router';
 export const bootstrap = () => {
     return bootstrapApplication(AppComponent, mergeApplicationConfig(config, {
         providers: [
-            { provide: 'baseUrl', useValue: (global as any).baseUrl || '' },
         ],
     }));
 };

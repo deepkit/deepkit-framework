@@ -1,4 +1,4 @@
-import { APP_BOOTSTRAP_LISTENER, ApplicationConfig, mergeApplicationConfig } from '@angular/core';
+import { APP_BOOTSTRAP_LISTENER, ApplicationConfig, mergeApplicationConfig, REQUEST_CONTEXT } from '@angular/core';
 import { provideServerRendering } from '@angular/platform-server';
 import { appConfig } from './app.config';
 import { PageResponse } from '@app/app/page-response';
@@ -17,7 +17,14 @@ const serverConfig: ApplicationConfig = {
         ]),
         {
             provide: HTTP_TRANSFER_CACHE_ORIGIN_MAP,
-            useValue: { 'http://localhost:8080': 'http://localhost:8080' },
+            deps: [REQUEST_CONTEXT],
+            useValue: { 'http://localhost:8080': 'http://localhost:4200' },
+            // useFactory(context: any) {
+            //     // we use internally localhost:8080 for ssr requests,
+            //     // so we need to map it to the real domain
+            //     // return { [context?.baseUrl]: context?.publicBaseUrl || '' };
+            //     return { [context?.baseUrl]: context?.publicBaseUrl || '' };
+            // },
         },
         {
             provide: APP_BOOTSTRAP_LISTENER,

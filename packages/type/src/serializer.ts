@@ -189,8 +189,8 @@ export function getPartialType(type: TypeClass | TypeObjectLiteral) {
     const jitContainer = getTypeJitContainer(type);
     if (jitContainer.partialType) return jitContainer.partialType;
     type = copyAndSetParent(type);
-    const reflection = ReflectionClass.from(type);
-    type.types = reflection.type.types.map(v => ({ ...v })) as any;
+    // we have to copy members manually, since we want to modify them
+    type.types = type.types.map(v => ({ ...v })) as any;
     for (const member of type.types) {
         if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
             member.optional = true;

@@ -1,16 +1,13 @@
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Component, Input, OnInit, signal } from '@angular/core';
-import { DatePipe, KeyValuePipe } from '@angular/common';
+import { KeyValuePipe } from '@angular/common';
 import { ControllerClient } from '@app/app/client';
 import { CommunityQuestionListItem, projectMap } from '@app/common/models';
-import { ContentRenderComponent } from '@app/app/components/content-render.component';
 import { waitForInit } from '@app/app/utils';
 
 @Component({
     imports: [
-        ContentRenderComponent,
         RouterLink,
-        DatePipe
     ],
     selector: 'render-questions',
     styles: [`
@@ -93,13 +90,10 @@ export class RenderQuestions {
 
 @Component({
     imports: [
-        ContentRenderComponent,
         RouterLink,
-        DatePipe,
-        RenderQuestions,
         KeyValuePipe
     ],
-    styleUrls: ['./community-questions.component.scss'],
+    styleUrls: ['./community-questions.component.css'],
     template: `
         <div class="app-content-full normalize-text">
             <h1>Questions & Answers</h1>
