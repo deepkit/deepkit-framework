@@ -1835,14 +1835,14 @@ test('handleRequest', async () => {
         expect(res.statusCode).toBe(404);
     }
     {
-        const res = await httpKernel.request(HttpRequest.GET('/test'), true);
+        const res = await httpKernel.request(HttpRequest.GET('/test'), { throwOnNotFound: true });
         expect(res.statusCode).toBe(200);
     }
     {
-        await expect(() => httpKernel.request(HttpRequest.GET('/nope'), true)).rejects.toThrow(HttpNotFoundError);
+        await expect(() => httpKernel.request(HttpRequest.GET('/nope'), { throwOnNotFound: true })).rejects.toThrow(HttpNotFoundError);
     }
     {
-        await expect(() => httpKernel.request(HttpRequest.GET('/44040'), true)).rejects.toThrow(HttpNotFoundError);
+        await expect(() => httpKernel.request(HttpRequest.GET('/44040'), { throwOnNotFound: true })).rejects.toThrow(HttpNotFoundError);
     }
     {
         const req = HttpRequest.GET('/test').build();
@@ -1853,16 +1853,17 @@ test('handleRequest', async () => {
     {
         const req = HttpRequest.GET('/test').build();
         const res = new MemoryHttpResponse(req);
-        const middleware = httpKernel.createHandler(false);
+        const middleware = httpKernel.createMiddleware({ fallThroughOnNotFound: false });
         await middleware(req, res, () => {});
         expect(res.statusCode).toBe(200);
     }
     {
         const req = HttpRequest.GET('/nope').build();
         const res = new MemoryHttpResponse(req);
-        const middleware = httpKernel.createHandler(false);
+        const middleware = httpKernel.createMiddleware({ fallThroughOnNotFound: false });
         let called = false;
-        await middleware(req, res, () => {
+        await middleware(req, res, (error) => {
+            expect(error).toBeUndefined();
             called = true;
         });
         expect(res.statusCode).toBe(404);
@@ -1871,7 +1872,7 @@ test('handleRequest', async () => {
     {
         const req = HttpRequest.GET('/nope').build();
         const res = new MemoryHttpResponse(req);
-        const middleware = httpKernel.createHandler(true);
+        const middleware = httpKernel.createMiddleware({ fallThroughOnNotFound: true });
         let called = false;
         await middleware(req, res, (error) => {
             expect(error).toBeUndefined();

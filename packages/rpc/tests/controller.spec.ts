@@ -31,7 +31,7 @@ test('decorator', async () => {
         action(): void {
         }
 
-        @rpc.action().group('a')
+        @(rpc.action().group('a'))
         second(): void {
         }
     }
@@ -57,7 +57,7 @@ test('inheritance', async () => {
             return new User();
         }
 
-        @rpc.action().group('a')
+        @(rpc.action().group('a'))
         second(): User {
             return new User();
         }
@@ -65,12 +65,12 @@ test('inheritance', async () => {
 
     @rpc.controller('different')
     class Extended extends Controller {
-        @rpc.action().group('extended')
+        @(rpc.action().group('extended'))
         second() {
             return super.second();
         }
 
-        @rpc.action().group('b')
+        @(rpc.action().group('b'))
         third(): void {
         }
     }
@@ -688,7 +688,7 @@ test('missing types log warning', async () => {
 test('validation errors', async () => {
     @rpc.logValidationErrors(true)
     class Controller {
-        @rpc.action().logValidationErrors(false)
+        @(rpc.action().logValidationErrors(false))
         test1(value: number & Minimum<3>): any {
             return value;
         }
@@ -698,7 +698,7 @@ test('validation errors', async () => {
             return value;
         }
 
-        @rpc.action().logValidationErrors(true)
+        @(rpc.action().logValidationErrors(true))
         test3(value: number & Minimum<3>): any {
             return value;
         }
@@ -752,7 +752,7 @@ test('disable strict serialization', async () => {
             return 123 as any;
         }
 
-        @rpc.action().strictSerialization(false)
+        @(rpc.action().strictSerialization(false))
         test2(): { value: string } {
             return 123 as any;
         }
@@ -762,7 +762,7 @@ test('disable strict serialization', async () => {
             this.logger.log(`Got ${value}`);
         }
 
-        @rpc.action().strictSerialization(false)
+        @(rpc.action().strictSerialization(false))
         params2(value: { value: string }): void {
             this.logger.log(`Got ${value}`);
         }

@@ -133,7 +133,7 @@ const waitBootstrap = waitForClose.then(() => server.start({
     baseUrl = `http://${host}/`;
 });
 const http = app.get(HttpKernel);
-const handler = http.createHandler(true);
+const handler = http.createMiddleware(true);
 
 // every request in angular dev server is handled by this function
 export const reqHandler = createNodeRequestHandler(async (req, res) => {

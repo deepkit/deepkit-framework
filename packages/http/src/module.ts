@@ -34,7 +34,6 @@ export class HttpModule extends createModule({
         HttpRouterFilterResolver,
         { provide: HttpResponse, scope: 'http' },
         { provide: HttpRequest, scope: 'http' },
-        { provide: HttpRequest, scope: 'http' },
         { provide: RouteConfig, useValue: undefined, scope: 'http' },
         { provide: Logger, useValue: new Logger([new ConsoleTransport()]) },
     ],

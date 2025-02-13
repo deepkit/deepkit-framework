@@ -16,6 +16,23 @@ import { unlink } from 'fs';
 import { ValidationError } from '@deepkit/type';
 import { IncomingMessage, ServerResponse } from 'http';
 
+interface HttpKernelHandleOptions {
+    /**
+     * Makes the kernel throw a HttpNotFoundError when the route is not found
+     * or a controller threw a HttpNotFoundError. This allows you to catch
+     * the error and handle it yourself.
+     */
+    throwOnNotFound?: boolean;
+}
+
+interface HttpKernelMiddlewareOptions extends HttpKernelHandleOptions {
+    /**
+     * If true, a HttpNotFoundError or missing route is not automatically
+     * sent to the client. Instead, the request is passed to the next middleware.
+     */
+    fallThroughOnNotFound?: boolean;
+}
+
 export class HttpKernel {
     constructor(
         protected router: HttpRouter,
@@ -39,23 +56,24 @@ export class HttpKernel {
      * import { createServer } from 'http';
      *
      * const app = new App({
-     *   imports: [new HttpModule({throwOnNotFound: true})],
+     *   imports: [new HttpModule({})],
      * });
      *
-     * const handler = app.get(HttpKernel).createHandler(true);
+     * const handler = app.get(HttpKernel).createMiddleware({ fallThroughOnNotFound: true });
      * const server = createServer(handler);
      *
      * server.listen(3000);
      * ```
      */
-    public createHandler(fallThroughOnNotFound: boolean = false) {
+    public createMiddleware(options: HttpKernelMiddlewareOptions = {}) {
+        if (options.fallThroughOnNotFound && 'undefined' === typeof options.throwOnNotFound) {
+            options.throwOnNotFound = true;
+        }
         return (req: IncomingMessage, res: ServerResponse, next: (error?: any) => void) => {
-            return this.handleRequest(req, res, fallThroughOnNotFound).then(() => {
-                if (!res.headersSent) {
-                    next()
-                }
+            return this.handleRequest(req, res, options).then(() => {
+                next();
             }).catch((error) => {
-                if (fallThroughOnNotFound && error instanceof HttpError && error.httpCode === 404) {
+                if (options.fallThroughOnNotFound && error instanceof HttpError && error.httpCode === 404) {
                     next();
                     return;
                 }
@@ -64,22 +82,26 @@ export class HttpKernel {
         };
     }
 
-    public async request(requestBuilder: RequestBuilder, throwOnNotFound: boolean = false): Promise<MemoryHttpResponse> {
+    public async request(requestBuilder: RequestBuilder, options: HttpKernelHandleOptions = {}): Promise<MemoryHttpResponse> {
         const request = requestBuilder.build();
         const response = new MemoryHttpResponse(request);
         response.assignSocket(request.socket);
-        await this.handleRequest(request, response, throwOnNotFound);
+        await this.handleRequest(request, response, options);
         return response;
     }
 
-    async handleRequest(_req: IncomingMessage, _res: ServerResponse, throwOnNotFound: boolean = false) {
+    async handleRequest(
+        _req: IncomingMessage,
+        _res: ServerResponse,
+        options: HttpKernelHandleOptions = {},
+    ): Promise<void> {
         const httpInjectorContext = this.injectorContext.createChildScope('http');
         const req = incomingMessageToHttpRequest(_req);
         const res = serverResponseToHttpResponse(_res);
         httpInjectorContext.set(HttpRequest, req);
         httpInjectorContext.set(HttpResponse, res);
         httpInjectorContext.set(InjectorContext, httpInjectorContext);
-        req.throwErrorOnNotFound = throwOnNotFound;
+        req.throwErrorOnNotFound = options.throwOnNotFound || false;
 
         const frame = this.stopwatch ? this.stopwatch.start(req.method + ' ' + req.getUrl(), FrameCategory.http, true) : undefined;
         const workflow = httpWorkflow.create('start', this.eventDispatcher, httpInjectorContext, this.stopwatch);
@@ -101,7 +123,7 @@ export class HttpKernel {
                     }, 400).disableAutoSerializing(), { request: req, response: res });
                     return;
                 } else if (error instanceof HttpError) {
-                    if (error.httpCode === 404) {
+                    if (req.throwErrorOnNotFound && error.httpCode === 404) {
                         throw error;
                     }
                     resultFormatter.handle(new JSONResponse({
