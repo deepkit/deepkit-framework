@@ -451,6 +451,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@angular/ssr@npm:^19.1.7":
+  version: 19.1.7
+  resolution: "@angular/ssr@npm:19.1.7"
+  dependencies:
+    tslib: "npm:^2.3.0"
+  peerDependencies:
+    "@angular/common": ^19.0.0
+    "@angular/core": ^19.0.0
+    "@angular/platform-server": ^19.0.0
+    "@angular/router": ^19.0.0
+  peerDependenciesMeta:
+    "@angular/platform-server":
+      optional: true
+  checksum: c443ded9addb86039819953aee0f3a658a11e652e431c6d2d3dc355fd7793869efcf2ad32bce55e72c7cd26224649829583b47470c39d936f8fbf8203c7700b4
+  languageName: node
+  linkType: hard
+
 "@antfu/install-pkg@npm:^1.0.0":
   version: 1.0.0
   resolution: "@antfu/install-pkg@npm:1.0.0"
@@ -2800,6 +2817,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@deepkit/angular-ssr@npm:^1.0.1-alpha.143, @deepkit/angular-ssr@workspace:packages/angular-ssr":
+  version: 0.0.0-use.local
+  resolution: "@deepkit/angular-ssr@workspace:packages/angular-ssr"
+  dependencies:
+    "@angular/ssr": "npm:^19.1.7"
+    "@deepkit/app": "npm:^1.0.1-alpha.19"
+    "@deepkit/http": "npm:^1.0.1-alpha.19"
+  peerDependencies:
+    "@angular/ssr": ^19.1.6
+    "@deepkit/app": ^1.0.1-alpha.19
+    "@deepkit/http": ^1.0.1-alpha.19
+  languageName: unknown
+  linkType: soft
+
 "@deepkit/api-console-api@npm:^1.0.1-alpha.156, @deepkit/api-console-api@workspace:packages/api-console-api":
   version: 0.0.0-use.local
   resolution: "@deepkit/api-console-api@workspace:packages/api-console-api"
@@ -2897,7 +2928,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/app@npm:^1.0.1-alpha.0, @deepkit/app@npm:^1.0.1-alpha.141, @deepkit/app@npm:^1.0.1-alpha.143, @deepkit/app@npm:^1.0.1-alpha.156, @deepkit/app@workspace:packages/app":
+"@deepkit/app@npm:^1.0.1-alpha.0, @deepkit/app@npm:^1.0.1-alpha.141, @deepkit/app@npm:^1.0.1-alpha.143, @deepkit/app@npm:^1.0.1-alpha.156, @deepkit/app@npm:^1.0.1-alpha.19, @deepkit/app@workspace:packages/app":
   version: 0.0.0-use.local
   resolution: "@deepkit/app@workspace:packages/app"
   dependencies:
@@ -3353,7 +3384,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/http@npm:^1.0.1-alpha.0, @deepkit/http@npm:^1.0.1-alpha.143, @deepkit/http@npm:^1.0.1-alpha.156, @deepkit/http@workspace:packages/http":
+"@deepkit/http@npm:^1.0.1-alpha.0, @deepkit/http@npm:^1.0.1-alpha.143, @deepkit/http@npm:^1.0.1-alpha.156, @deepkit/http@npm:^1.0.1-alpha.19, @deepkit/http@workspace:packages/http":
   version: 0.0.0-use.local
   resolution: "@deepkit/http@workspace:packages/http"
   dependencies:
@@ -25498,6 +25529,7 @@ __metadata:
     "@angular/platform-server": "npm:^19.1.5"
     "@angular/router": "npm:^19.1.5"
     "@angular/ssr": "npm:^19.1.6"
+    "@deepkit/angular-ssr": "npm:^1.0.1-alpha.143"
     "@deepkit/app": "npm:^1.0.1-alpha.143"
     "@deepkit/broker": "npm:^1.0.1-alpha.143"
     "@deepkit/bson": "npm:^1.0.1-alpha.143"

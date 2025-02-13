@@ -20,42 +20,53 @@ import send from 'send';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpRouter, RouteConfig } from './router.js';
 
+export function staticServe(
+    localPath: string,
+    path: string,
+    request: HttpRequest,
+    response: HttpResponse,
+) {
+    return new Promise((resolve, reject) => {
+        const res = send(request, path, { root: localPath });
+        res.pipe(response);
+        res.on('end', resolve);
+    });
+}
+
+export async function staticOnRoute(
+    event: typeof httpWorkflow.onRoute.event,
+    path: string,
+    localPath: string,
+) {
+    if (event.sent) return;
+    if (event.route) return;
+
+    if (!event.request.url?.startsWith(path)) return;
+
+    const relativePath = urlJoin('/', event.url.substr(path.length));
+    const finalLocalPath = join(localPath, relativePath);
+
+    return new Promise(resolve => {
+        stat(finalLocalPath, (err, stat) => {
+            if (stat && stat.isFile()) {
+                event.routeFound(
+                    new RouteConfig('static', ['GET'], event.url, {
+                        type: 'function',
+                        fn: staticServe,
+                    }),
+                    () => ({ arguments: [localPath, relativePath, event.request, event.response], parameters: {} }),
+                );
+            }
+            resolve(undefined);
+        });
+    });
+}
+
 export function serveStaticListener(module: AppModule<any>, path: string, localPath: string = path): ClassType {
     class HttpRequestStaticServingListener {
-        serve(path: string, request: HttpRequest, response: HttpResponse) {
-            return new Promise((resolve, reject) => {
-                const res = send(request, path, { root: localPath });
-                res.pipe(response);
-                res.on('end', resolve);
-            });
-        }
-
         @eventDispatcher.listen(httpWorkflow.onRoute, 101) //after default route listener at 100
         onRoute(event: typeof httpWorkflow.onRoute.event) {
-            if (event.sent) return;
-            if (event.route) return;
-
-            if (!event.request.url?.startsWith(path)) return;
-
-            const relativePath = urlJoin('/', event.url.substr(path.length));
-            const finalLocalPath = join(localPath, relativePath);
-
-            return new Promise(resolve => {
-                stat(finalLocalPath, (err, stat) => {
-                    if (stat && stat.isFile()) {
-                        event.routeFound(
-                            new RouteConfig('static', ['GET'], event.url, {
-                                type: 'controller',
-                                controller: HttpRequestStaticServingListener,
-                                module,
-                                methodName: 'serve',
-                            }),
-                            () => ({ arguments: [relativePath, event.request, event.response], parameters: {} }),
-                        );
-                    }
-                    resolve(undefined);
-                });
-            });
+            return staticOnRoute(event, path, localPath);
         }
     }
 

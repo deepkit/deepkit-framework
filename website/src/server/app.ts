@@ -1,6 +1,5 @@
-import { HttpKernel, HttpNotFoundError, HttpRequest, HttpResponse, httpWorkflow, RouteConfig } from '@deepkit/http';
 import { App } from '@deepkit/app';
-import { ApplicationServer, FrameworkModule, onServerMainBootstrap } from '@deepkit/framework';
+import { FrameworkModule, onServerMainBootstrap } from '@deepkit/framework';
 import { AppConfig } from './config';
 import { MainController } from '@app/server/controller/main.controller';
 import { Search } from '@app/server/search';
@@ -24,26 +23,13 @@ import { MarkdownParser } from '@app/common/markdown';
 import { migrate } from '@app/server/commands/migrate';
 import { importExamples, importQuestions } from '@app/server/commands/import';
 import { BenchmarkController, BenchmarkHttpController } from '@app/server/controller/benchmark.controller';
-import {
-    AngularNodeAppEngine,
-    createNodeRequestHandler,
-    createWebRequestFromNodeRequest,
-    isMainModule,
-    writeResponseToNodeResponse,
-} from '@angular/ssr/node';
-import { AngularAppEngine } from '@angular/ssr';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { AngularModule } from '@deepkit/angular-ssr';
 
-const serverDistFolder = dirname(fileURLToPath(import.meta.url));
-const browserDistFolder = resolve(serverDistFolder, '../browser');
-
-console.log('browserDistFolder', browserDistFolder);
 
 (global as any).window = undefined;
 (global as any).document = undefined;
 
-const app = new App({
+export const app = new App({
     config: AppConfig,
     controllers: [
         MainController,
@@ -52,7 +38,6 @@ const app = new App({
         BenchmarkHttpController,
     ],
     providers: [
-        AngularNodeAppEngine,
         PageProcessor,
         Questions,
         Search,
@@ -83,11 +68,11 @@ const app = new App({
         new FrameworkModule({
             migrateOnStartup: true, //yolo
             httpRpcBasePath: 'api/v1',
-            publicDir: browserDistFolder,
             broker: {
                 startOnBootstrap: false,
             },
         }),
+        new AngularModule()
     ],
 });
 
@@ -110,98 +95,4 @@ app.command('migrate', migrate);
 app.listen(onServerMainBootstrap, registerBot);
 app.listen(onServerMainBootstrap, (event, parser: MarkdownParser) => parser.load());
 
-app.listen(httpWorkflow.onRoute, async (event, ngApp: AngularNodeAppEngine) => {
-    if (event.route) return; //already found
-
-    const webRequest = createWebRequestFromNodeRequest(event.request);
-    // @ts-ignore
-    const serverApp = await ((ngApp as any).angularAppEngine as AngularAppEngine).getAngularServerAppForRequest(webRequest);
-    const serverRouter = serverApp.router;
-    if (serverRouter) {
-        const matchedRoute = serverRouter.match(new URL(webRequest.url));
-        if (!matchedRoute) {
-            //not handled by angular app, so early exit
-            return;
-        }
-    }
-
-    event.routeFound(new RouteConfig('angular', ['GET'], '', {
-        type: 'function',
-        fn: async (req: HttpRequest, res: HttpResponse) => {
-            const response = await ngApp.handle(req, { baseUrl, publicBaseUrl });
-            if (!response) {
-                throw new HttpNotFoundError();
-            }
-            await writeResponseToNodeResponse(response, res);
-        }
-    }), () => ({
-        arguments: [event.request, event.response],
-        parameters: {},
-    }));
-}, 102); //102 after 101=static listener, 100=default listener
-
-app.setup((module, config) => {
-    if (!config.baseUrl) {
-        if (isMainModule(import.meta.url)) {
-            config.baseUrl = 'http://localhost:8080';
-        } else {
-            //angular dev server
-            config.baseUrl = 'http://localhost:4200';
-        }
-    }
-});
-
 app.loadConfigFromEnv({ namingStrategy: 'same', prefix: 'app_', envFilePath: ['local.env'] });
-
-if (isMainModule(import.meta.url)) {
-    // started file directly (without angular dev server)
-    // void app.run();
-}
-
-process.on('unhandledRejection', (error) => {
-    console.error('unhandledRejection', error);
-});
-
-let waitForClose = Promise.resolve();
-if ((global as any).server) {
-    waitForClose = ((global as any).server as ApplicationServer).close();
-}
-
-const publicBaseUrl = app.get<AppConfig['baseUrl']>();
-
-const server = (global as any).server = app.get(ApplicationServer);
-let baseUrl = '';
-const waitBootstrap = waitForClose.then(() => server.start({
-    listenOnSignals: false,
-    // startHttpServer: false,
-})).then(() => {
-    let host = server.getHttpHost();
-    if (host?.startsWith('0.0.0.0')) {
-        host = 'localhost' + host.substr(7);
-    }
-    baseUrl = `http://${host}`;
-});
-
-waitBootstrap.then(() => {
-    console.log('bootstrap done');
-    console.log({ publicBaseUrl, baseUrl });
-});
-
-const http = app.get(HttpKernel);
-const handler = http.createMiddleware();
-
-// every request in angular dev server is handled by this function
-export const reqHandler = createNodeRequestHandler(async (req, res, next) => {
-    await waitBootstrap;
-
-    // if req wants to upgrade to websocket, we need to handle this here
-    if (req.headers.upgrade === 'websocket') {
-        return;
-    }
-
-    try {
-        await handler(req, res, next);
-    } catch (error) {
-        console.log('handleRequest error', error);
-    }
-});

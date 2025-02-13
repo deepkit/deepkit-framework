@@ -10,7 +10,7 @@
 
 import { ClassType, ExtractClassType, isFunction, isObject, pathBasename, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container.js';
-import { ConfigureProviderOptions, InjectorContext, ResolveToken, Token } from '@deepkit/injector';
+import { ConfigureProviderOptions, injectedFunction, InjectorContext, ResolveToken, Token } from '@deepkit/injector';
 import { AppModule, RootModuleDefinition } from './module.js';
 import { EnvConfiguration } from './configuration.js';
 import {
@@ -258,6 +258,16 @@ export class App<T extends RootModuleDefinition> {
     use(setup: (...args: any[]) => void): this {
         this.appModule.use(setup);
         return this;
+    }
+
+    /**
+     * Calls a function immediately and resolves all parameters using the
+     * current service container.
+     */
+    call<T>(fn: (...args: any[]) => T, module?: AppModule<any>): T {
+        const injector = this.serviceContainer.getInjector(module || this.appModule);
+        const resolvedFunction = injectedFunction(fn, injector);
+        return resolvedFunction();
     }
 
     command(name: string | ((...args: any[]) => any), callback?: (...args: any[]) => any): this {

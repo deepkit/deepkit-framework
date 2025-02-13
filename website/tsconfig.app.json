@@ -8,7 +8,7 @@
   "files": [
     "src/main.ts",
     "src/main.server.ts",
-    "src/server/app.ts"
+    "src/server/server.ts"
   ],
   "include": [
     "src/**/*.d.ts"

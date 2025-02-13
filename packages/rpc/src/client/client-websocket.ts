@@ -58,20 +58,13 @@ export function createRpcWebSocketClientProvider(baseUrl: string = typeof locati
 }
 
 export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
-    protected webSocketConstructor?: typeof WebSocket;
-
-    constructor(public url: string) {
+    constructor(
+        public url: string,
+        protected webSocketConstructor: typeof WebSocket = WebSocket,
+    ) {
     }
 
     async getWebSocketConstructor(): Promise<typeof WebSocket> {
-        if (this.webSocketConstructor) return this.webSocketConstructor;
-        const wsPackage = 'ws';
-        this.webSocketConstructor = 'undefined' === typeof WebSocket ? (await import(wsPackage)).WebSocket : WebSocket;
-
-        if (!this.webSocketConstructor) {
-            this.webSocketConstructor = (await import(wsPackage)).default;
-        }
-
         if (!this.webSocketConstructor) {
             throw new Error('No WebSocket implementation found.');
         }

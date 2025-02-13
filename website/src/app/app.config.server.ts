@@ -21,8 +21,14 @@ const serverConfig: ApplicationConfig = {
             useFactory(context: any) {
                 // we use internally localhost:8080 for ssr requests,
                 // so we need to map it to the real domain
-                // return { [context?.baseUrl]: context?.publicBaseUrl || '' };
-                return { [context?.baseUrl]: context?.publicBaseUrl || '' };
+                return { [context?.serverBaseUrl]: context?.publicBaseUrl || '' };
+            },
+        },
+        {
+            provide: 'baseUrl',
+            deps: [REQUEST_CONTEXT],
+            useFactory: (context: any) => {
+                return context?.serverBaseUrl || '';
             },
         },
         {

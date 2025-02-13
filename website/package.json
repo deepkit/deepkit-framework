@@ -2,7 +2,7 @@
   "name": "website",
   "version": "0.0.0",
   "scripts": {
-    "ng:start": "NODE_OPTIONS=--preserve-symlinks ng serve",
+    "start": "NODE_OPTIONS=--preserve-symlinks ng serve",
     "ng:build:dev": "NODE_OPTIONS=--preserve-symlinks ng build --watch --configuration development",
     "ng:test": "NODE_OPTIONS=--preserve-symlinks ng test",
     "app": "NODE_OPTIONS=--preserve-symlinks TS_NODE_PROJECT=tsconfig.server.json node -r ts-node/register -r tsconfig-paths/register src/server/app.ts",
@@ -15,6 +15,7 @@
   "private": true,
   "dependencies": {
     "@angular/ssr": "^19.1.6",
+    "@deepkit/angular-ssr": "^1.0.1-alpha.143",
     "@deepkit/app": "^1.0.1-alpha.143",
     "@deepkit/broker": "^1.0.1-alpha.143",
     "@deepkit/bson": "^1.0.1-alpha.143",
