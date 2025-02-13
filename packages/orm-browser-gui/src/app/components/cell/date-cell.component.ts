@@ -11,7 +11,8 @@ import { Type } from '@deepkit/type';
         span {
             color: var(--text-light);
         }
-    `]
+    `],
+    standalone: false
 })
 export class DateCellComponent {
     @Input() model: any;

@@ -1,6 +1,15 @@
-import { AfterViewInit, Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
+import {
+    AfterViewInit,
+    Component,
+    EventEmitter,
+    Input,
+    OnChanges,
+    OnDestroy,
+    OnInit,
+    Output,
+    ViewChild,
+} from '@angular/core';
 import { SelectboxComponent, unsubscribe } from '@deepkit/desktop-ui';
-import * as bla from '@deepkit/desktop-ui';
 import { TypeEnum } from '@deepkit/type';
 import { Subscription } from 'rxjs';
 import { DataStructure } from '../../store';
@@ -11,7 +20,8 @@ import { DataStructure } from '../../store';
                     textured style="width: 100%">
             <dui-option [value]="kv.value" *ngFor="let kv of keyValues">{{kv.label}}</dui-option>
         </dui-select>
-    `
+    `,
+    standalone: false
 })
 export class EnumInputComponent implements OnChanges, OnInit, AfterViewInit, OnDestroy {
     @Input() model!: DataStructure;

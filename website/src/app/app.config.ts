@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { ApplicationConfig, provideExperimentalZonelessChangeDetection, REQUEST_CONTEXT } from '@angular/core';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { routes } from './app.routes';
 import { RpcClient, RpcHttpClientAdapter, RpcHttpHeaderNames } from '@deepkit/rpc';
@@ -29,7 +29,10 @@ export const appConfig: ApplicationConfig = {
         ControllerClient,
         {
             provide: 'baseUrl',
-            useValue: '',
+            deps: [REQUEST_CONTEXT],
+            useFactory: (context: any) => {
+                return context.baseUrl
+            },
         },
         RpcAngularHttpAdapter,
         {

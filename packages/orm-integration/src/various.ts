@@ -164,7 +164,7 @@ export const variousTests = {
         database.disconnect();
     },
     async testSelfReference(databaseFactory: DatabaseFactory) {
-        @entity.name('explorer/block').collection('blocks')
+        @(entity.name('explorer/block').collection('blocks'))
         class ExplorerBlock {
             public id: number & PrimaryKey & AutoIncrement = 0;
 

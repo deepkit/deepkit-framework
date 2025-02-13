@@ -8,7 +8,8 @@ import { typeSettings } from '@deepkit/type';
 
 @Component({
     templateUrl: './overview.component.html',
-    styleUrls: ['./overview.component.scss']
+    styleUrls: ['./overview.component.scss'],
+    standalone: false
 })
 export class OverviewComponent implements OnDestroy, OnInit {
     trackByIndex = trackByIndex;

@@ -48,7 +48,8 @@ import { ModuleImportedService } from '../../../../../framework-debug-api/src/ap
         .scope {
             color: var(--text-light);
         }
-    `]
+    `],
+    standalone: false
 })
 export class ModuleDetailServiceComponent {
     @Input() service!: ModuleService;
@@ -116,7 +117,8 @@ export class ModuleDetailServiceComponent {
             </div>
         </div>
     `,
-    styleUrls: ['./module-detail.component.scss']
+    styleUrls: ['./module-detail.component.scss'],
+    standalone: false
 })
 export class ModuleDetailComponent implements OnChanges {
     trackByIndex = trackByIndex;

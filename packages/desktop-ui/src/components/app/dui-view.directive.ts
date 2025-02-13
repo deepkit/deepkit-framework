@@ -28,6 +28,7 @@ export class ViewState {
 
 @Directive({
     selector: '[duiView]',
+    standalone: false,
     providers: [{ provide: ViewState, useClass: ViewState }]
 })
 export class ViewDirective implements OnDestroy {

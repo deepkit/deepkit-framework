@@ -73,7 +73,6 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
         }
 
         if (!this.webSocketConstructor) {
-            console.log('webSocketConstructor is undefined', this.webSocketConstructor, await import(wsPackage));
             throw new Error('No WebSocket implementation found.');
         }
 

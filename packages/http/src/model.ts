@@ -383,6 +383,8 @@ export class HttpRequest extends IncomingMessage {
 
     public uploadedFiles: { [name: string]: UploadedFile } = {};
 
+    public throwErrorOnNotFound: boolean = false;
+
     /**
      * The router sets the body when it was read.
      */
@@ -440,6 +442,20 @@ export class HttpRequest extends IncomingMessage {
     getRemoteAddress(): string {
         return this.socket.remoteAddress || '';
     }
+}
+
+export function incomingMessageToHttpRequest(request: IncomingMessage): HttpRequest {
+    if (request instanceof HttpRequest) return request;
+    Object.setPrototypeOf(request, HttpRequest.prototype);
+    HttpRequest.constructor.call(request);
+    return request as HttpRequest;
+}
+
+export function serverResponseToHttpResponse(response: ServerResponse): HttpResponse {
+    if (response instanceof HttpResponse) return response;
+    Object.setPrototypeOf(response, HttpResponse.prototype);
+    MemoryHttpResponse.constructor.call(response);
+    return response as HttpResponse;
 }
 
 export class MemoryHttpResponse extends HttpResponse {

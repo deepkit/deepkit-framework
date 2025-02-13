@@ -332,7 +332,7 @@ test('Type excluded', () => {
 });
 
 test('entity classes', () => {
-    @entity.name('user').collection('users').databaseSchema('db').index(['id'], { name: 'primary' })
+    @(entity.name('user').collection('users').databaseSchema('db').index(['id'], { name: 'primary' }))
     class User {
         id: number = 0;
     }

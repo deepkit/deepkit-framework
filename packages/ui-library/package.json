@@ -10,8 +10,8 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "@angular/common": "^17.1.0",
-    "@angular/core": "^17.1.0",
+    "@angular/common": "^19.1.5",
+    "@angular/core": "^19.1.5",
     "@deepkit/core": "^1.0.1-alpha.13",
     "@deepkit/desktop-ui": "^1.0.1-alpha.48",
     "@deepkit/rpc": "^1.0.1-alpha.57",
@@ -21,8 +21,8 @@
     "prismjs": "^1.24.1"
   },
   "devDependencies": {
-    "@angular/common": "^17.1.0",
-    "@angular/core": "^17.1.0",
+    "@angular/common": "^19.1.5",
+    "@angular/core": "^19.1.5",
     "@deepkit/core": "^1.0.1-alpha.52",
     "@deepkit/desktop-ui": "^1.0.1-alpha.48",
     "@deepkit/rpc": "^1.0.1-alpha.57",

@@ -16,11 +16,12 @@ import {
     Directive,
     Input,
     OnDestroy,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
 
 @Directive({
     selector: '[renderComponent]',
+    standalone: false,
 })
 export class RenderComponentDirective implements AfterViewInit, OnDestroy {
     @Input() renderComponent: any;

@@ -23,6 +23,7 @@ function parameterRequiresRequest(parameter: ReflectionParameter): boolean {
         || metaAnnotation.getForName(parameter.type, 'httpHeader'));
 }
 
+
 export class HttpModule extends createModule({
     config: HttpConfig,
     providers: [
@@ -32,6 +33,7 @@ export class HttpModule extends createModule({
         HttpRouterRegistry,
         HttpRouterFilterResolver,
         { provide: HttpResponse, scope: 'http' },
+        { provide: HttpRequest, scope: 'http' },
         { provide: HttpRequest, scope: 'http' },
         { provide: RouteConfig, useValue: undefined, scope: 'http' },
         { provide: Logger, useValue: new Logger([new ConsoleTransport()]) },

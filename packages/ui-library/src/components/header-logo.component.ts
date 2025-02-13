@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 
 @Component({
     selector: 'deepkit-header-logo',
+    standalone: false,
     template: `
         <div style="position: relative; top: -2px;">
             <img class="logo visible-for-dark-mode" src="assets/deepkit_white.svg"/>

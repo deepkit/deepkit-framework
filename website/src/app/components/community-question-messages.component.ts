@@ -4,7 +4,6 @@ import { ContentRenderComponent } from "@app/app/components/content-render.compo
 import { NgForOf, NgIf } from "@angular/common";
 
 @Component({
-    standalone: true,
     selector: 'app-community-question',
     styles: [`
         .message {

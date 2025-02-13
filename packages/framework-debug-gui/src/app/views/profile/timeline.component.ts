@@ -1,4 +1,16 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    EventEmitter,
+    HostListener,
+    Input,
+    OnChanges,
+    Output,
+    SimpleChanges,
+    ViewChild,
+} from '@angular/core';
 import { ControllerClient } from '../../client';
 import { Application, Container, Rectangle, Text } from 'pixi.js';
 import { ChangeFeed, formatTime, FrameItem, FrameParser, ViewState } from './frame';
@@ -163,7 +175,8 @@ class TimelineContainer extends Container {
             </ng-container>
         </div>
     `,
-    styleUrls: ['./timeline.component.scss']
+    styleUrls: ['./timeline.component.scss'],
+    standalone: false
 })
 export class ProfileTimelineComponent implements AfterViewInit, OnChanges {
     FrameCategory = FrameCategory;

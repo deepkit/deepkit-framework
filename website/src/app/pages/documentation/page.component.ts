@@ -11,7 +11,6 @@ import { PageResponse } from '@app/app/page-response';
 import { waitForInit } from '@app/app/utils';
 
 @Component({
-    standalone: true,
     imports: [
         AppDescription,
         AppTitle,
@@ -57,7 +56,7 @@ import { waitForInit } from '@app/app/utils';
             }
             <!--            <app-ask [fixed]="true"></app-ask>-->
         </div>
-    `,
+    `
 })
 export class DocumentationPageComponent implements OnInit {
     protected readonly bodyToString = bodyToString;
@@ -82,7 +81,6 @@ export class DocumentationPageComponent implements OnInit {
 
     ngOnInit() {
         this.activatedRoute.url.subscribe(async (url) => {
-            console.log('url', url);
             if (url.length > 1) {
                 await this.load(url[1].path, url[0].path);
             } else if (url.length === 1) {

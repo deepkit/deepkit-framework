@@ -19,7 +19,7 @@ export class RpcAngularHttpAdapter implements RpcHttpInterface {
         private httpClient: HttpClient,
         @Inject('baseUrl') private baseUrl: string,
     ) {
-        this.baseUrl = baseUrl || location.origin + '/';
+        this.baseUrl = baseUrl || (typeof location !== 'undefined' ? location.origin + '/' : '');
     }
 
     async fetch(url: string, options: {

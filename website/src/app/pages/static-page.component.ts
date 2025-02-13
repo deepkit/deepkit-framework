@@ -1,15 +1,14 @@
-import { Component, OnInit } from "@angular/core";
-import { ContentRenderComponent } from "@app/app/components/content-render.component";
-import { bodyToString, Content, Page, parseBody } from "@app/common/models";
-import { ControllerClient } from "@app/app/client";
-import { ActivatedRoute } from "@angular/router";
-import { AppDescription, AppTitle } from "@app/app/components/title";
-import { LoadingComponent } from "@app/app/components/loading";
-import { NgIf } from "@angular/common";
+import { Component, OnInit } from '@angular/core';
+import { ContentRenderComponent } from '@app/app/components/content-render.component';
+import { bodyToString, Content, Page, parseBody } from '@app/common/models';
+import { ControllerClient } from '@app/app/client';
+import { ActivatedRoute } from '@angular/router';
+import { AppDescription, AppTitle } from '@app/app/components/title';
+import { LoadingComponent } from '@app/app/components/loading';
+import { NgIf } from '@angular/common';
 
 
 @Component({
-    standalone: true,
     imports: [
         ContentRenderComponent,
         AppTitle,

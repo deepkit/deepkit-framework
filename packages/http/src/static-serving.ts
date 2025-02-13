@@ -108,7 +108,7 @@ export function registerStaticHttpController(module: AppModule<any>, options: St
     const groups = options.groups || [];
 
     class StaticController {
-        @http.GET().group(...groups)
+        @(http.GET().group(...groups))
         serveIndex(request: HttpRequest, response: HttpResponse) {
             if (!indexHtml) {
                 indexHtml = loadHtml(options.localPath, normalizeDirectory(options.path));

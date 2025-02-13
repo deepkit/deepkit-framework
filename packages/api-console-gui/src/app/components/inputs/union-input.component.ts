@@ -30,7 +30,8 @@ interface Entry {
             margin-top: 3px;
             margin-left: 1px;
         }
-    `]
+    `],
+    standalone: false
 })
 export class UnionInputComponent implements OnInit, OnChanges {
     trackByIndex = trackByIndex;

@@ -3,6 +3,7 @@ import { Component, Input } from '@angular/core';
 
 @Component({
     selector: 'dui-label',
+    standalone: false,
     template: `
         <label>{{label}}</label>
         <ng-content></ng-content>
@@ -31,6 +32,7 @@ export class LabelComponent {
 
 @Component({
     selector: 'dui-label-grid',
+    standalone: false,
     template: `
         <ng-content></ng-content>
     `,

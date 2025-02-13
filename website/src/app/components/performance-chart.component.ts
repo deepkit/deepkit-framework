@@ -1,5 +1,14 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ContentChildren, Directive, Input, OnChanges, QueryList } from '@angular/core';
-import { DecimalPipe, NgForOf, NgIf } from "@angular/common";
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ContentChildren,
+    Directive,
+    Input,
+    OnChanges,
+    QueryList,
+} from '@angular/core';
+import { DecimalPipe, NgForOf, NgIf } from '@angular/common';
 
 @Directive({
     standalone: true,
@@ -15,7 +24,6 @@ export class PerformanceEntryDirective implements OnChanges {
 }
 
 @Component({
-    standalone: true,
     selector: 'performance-chart',
     imports: [
         DecimalPipe,

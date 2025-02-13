@@ -6,7 +6,6 @@ import { SearchComponent } from "@app/app/components/search.component";
 
 @Component({
     selector: 'dw-header',
-    standalone: true,
     template: `
         <div class="wrapper" [class.showMenu]="showMenu">
             <a class="logo"  routerLink="/"><img alt="logo" style="width: 24px; height: 30px;" src="/assets/images/deepkit_white.svg"/></a>

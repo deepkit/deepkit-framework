@@ -3,6 +3,7 @@ import { Component } from "@angular/core";
 //see https://loading.io/css/
 @Component({
     selector: 'app-loading-spinner',
+    standalone: false,
     styles: [`
         :host {
             //color: white;

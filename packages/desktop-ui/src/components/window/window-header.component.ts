@@ -8,12 +8,24 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ChangeDetectorRef, Component, ElementRef, HostBinding, Input, OnDestroy, OnInit, SkipSelf, TemplateRef, ViewChild } from '@angular/core';
+import {
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    HostBinding,
+    Input,
+    OnDestroy,
+    OnInit,
+    SkipSelf,
+    TemplateRef,
+    ViewChild,
+} from '@angular/core';
 import { WindowState } from './window-state';
 import { Electron } from '../../core/utils';
 
 @Component({
     selector: 'dui-window-header',
+    standalone: false,
     template: `
         <div class="title">
             <ng-content></ng-content>
@@ -89,6 +101,7 @@ export class WindowHeaderComponent implements OnDestroy {
 
 @Component({
     selector: 'dui-window-toolbar',
+    standalone: false,
     template: `
         <ng-template #templateRef>
             <ng-content></ng-content>
@@ -113,6 +126,7 @@ export class WindowToolbarComponent implements OnDestroy, OnInit {
 
 @Component({
     selector: 'dui-window-toolbar-container',
+    standalone: false,
     template: `
         <ng-container *ngIf="windowState.toolbars[name]">
             <ng-container *ngFor="let template of windowState.toolbars[name]">

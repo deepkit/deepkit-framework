@@ -22,7 +22,7 @@ import {
     Input,
     OnDestroy,
     Type,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
 import { DialogComponent } from './dialog.component';
 import { isTargetChildOf } from '../../core/utils';
@@ -34,6 +34,7 @@ import { ComponentPortal } from '@angular/cdk/portal';
 
 
 @Component({
+    standalone: false,
     template: `
         <h3>{{title || 'No title'}}</h3>
         <div *ngIf="content">{{content}}</div>
@@ -54,6 +55,7 @@ export class DuiDialogConfirm {
 }
 
 @Component({
+    standalone: false,
     template: `
         <h3>{{title || 'No title'}}</h3>
         <div *ngIf="content" class="text-selection" style="white-space: pre-line;">{{content}}</div>
@@ -73,6 +75,7 @@ export class DuiDialogAlert {
 }
 
 @Component({
+    standalone: false,
     template: `
         <h3>{{title || 'No title'}}</h3>
         <div *ngIf="content" class="text-selection" style="white-space: pre-line;">{{content}}</div>
@@ -194,6 +197,7 @@ export class DuiDialog {
 }
 
 @Directive({
+    standalone: false,
     selector: '[confirm]',
 })
 export class DuiDialogConfirmDirective implements OnDestroy {

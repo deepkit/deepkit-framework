@@ -155,14 +155,13 @@ type ContentCreated = { hostView?: any, type?: any, node: Node };
 
 @Component({
     selector: 'app-render-content',
-    standalone: true,
     imports: [NgForOf, NgIf, ScreensComponent, ScreenComponent, HighlightCodeComponent, ContentRenderBox, ContentRenderFeature],
     styles: [`
         :host {
             display: inline;
         }
     `],
-    template: ``,
+    template: ``
 })
 export class ContentRenderComponent implements OnInit, OnChanges {
     @Input() content!: (Content | string)[] | Content | string;

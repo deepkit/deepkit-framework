@@ -138,17 +138,17 @@ test('middleware excludeControllers', async () => {
 
 test('middleware for names', async () => {
     class MyController {
-        @http.GET('/another/:name').name('another')
+        @(http.GET('/another/:name').name('another'))
         hello(name: string) {
             return name;
         }
 
-        @http.GET('/api/user/:name').name('api_user')
+        @(http.GET('/api/user/:name').name('api_user'))
         apiUser(name: string) {
             return name;
         }
 
-        @http.GET('/api/group/:name').name('api_group')
+        @(http.GET('/api/group/:name').name('api_group'))
         apiGroup(name: string) {
             return name;
         }
@@ -178,17 +178,17 @@ test('middleware for names', async () => {
 
 test('middleware for routes', async () => {
     class MyController {
-        @http.GET('/another/:name').group('another')
+        @(http.GET('/another/:name').group('another'))
         hello(name: string) {
             return name;
         }
 
-        @http.GET('/api/user/:name').group('api')
+        @(http.GET('/api/user/:name').group('api'))
         apiUser(name: string) {
             return name;
         }
 
-        @http.GET('/api/group/:name').group('api')
+        @(http.GET('/api/group/:name').group('api'))
         apiGroup(name: string) {
             return name;
         }
@@ -413,10 +413,10 @@ test('middleware on http controller', async () => {
             return name;
         }
 
-        @http.GET('/b/:name').middleware((req, res, next) => {
+        @(http.GET('/b/:name').middleware((req, res, next) => {
             res.setHeader('middleware_b', '1');
             next();
-        })
+        }))
         b(name: string) {
             return name;
         }

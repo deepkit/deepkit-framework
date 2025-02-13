@@ -75,6 +75,7 @@ export class ProgressDialogState extends BehaviorSubject<State | undefined> {
 }
 
 @Component({
+    standalone: false,
     template: `
         <div *ngIf="state$|async as state">
             <h3>{{state.title}}</h3>

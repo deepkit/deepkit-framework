@@ -4,10 +4,17 @@ import { appConfig } from './app.config';
 import { PageResponse } from '@app/app/page-response';
 import { NavigationEnd, Router } from '@angular/router';
 import { HTTP_TRANSFER_CACHE_ORIGIN_MAP } from '@angular/common/http';
+import { provideServerRouting, RenderMode } from '@angular/ssr';
 
 const serverConfig: ApplicationConfig = {
     providers: [
         provideServerRendering(),
+        provideServerRouting([
+            {
+                path: '**',
+                renderMode: RenderMode.Server,
+            },
+        ]),
         {
             provide: HTTP_TRANSFER_CACHE_ORIGIN_MAP,
             useValue: { 'http://localhost:8080': 'http://localhost:8080' },

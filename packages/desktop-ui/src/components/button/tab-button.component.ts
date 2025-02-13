@@ -8,11 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
+import { Component, HostListener, Input } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 
 @Component({
     selector: 'dui-tab-button',
+    standalone: false,
     template: `
         <ng-content></ng-content>
     `,

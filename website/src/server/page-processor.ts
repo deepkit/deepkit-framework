@@ -1,8 +1,12 @@
-import {findParentPath} from "@deepkit/app";
-import {readFile} from "fs/promises";
-import {join} from "path";
-import {magicSeparator, Page,} from "@app/common/models";
-import {MarkdownParser} from "@app/common/markdown";
+import { findParentPath } from '@deepkit/app';
+import { readFile } from 'fs/promises';
+import { join } from 'path';
+import { magicSeparator, Page } from '@app/common/models';
+import { MarkdownParser } from '@app/common/markdown';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export class PageProcessor {
     constructor(protected parser: MarkdownParser) {

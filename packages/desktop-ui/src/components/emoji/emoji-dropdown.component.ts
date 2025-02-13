@@ -24,7 +24,7 @@ import {
     Output,
     SimpleChanges,
     ViewChild,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
 import * as emojis from './emojis';
 import { EmojiCategory } from './emojis';
@@ -32,6 +32,7 @@ import { DropdownComponent } from '../button';
 
 @Component({
     selector: 'dui-emoji-dropdown',
+    standalone: false,
     template: `
         <dui-dropdown overlay [center]="true" (shown)="searchInput.focusInput()" #dropdown [height]="360" [width]="320" [minWidth]="320">
             <div class="dropdown">
@@ -189,7 +190,8 @@ export class EmojiDropdownComponent implements AfterViewInit {
 }
 
 @Directive({
-    selector: '[duiEmojiDropdown]'
+    selector: '[duiEmojiDropdown]',
+    standalone: false,
 })
 export class EmojiDropdownDirective implements OnChanges, AfterViewInit, OnDestroy {
     protected dropdown?: ComponentRef<EmojiDropdownComponent>;

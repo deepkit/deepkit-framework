@@ -12,6 +12,7 @@ import { Component, Input } from '@angular/core';
 
 @Component({
     selector: 'dui-cd-counter',
+    standalone: false,
     template: `{{counter}}`
 })
 export class CdCounterComponent {

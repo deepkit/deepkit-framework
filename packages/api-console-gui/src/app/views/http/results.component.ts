@@ -88,7 +88,8 @@ import { ApiRoute } from '@deepkit/api-console-api';
             TODO
         </deepkit-toggle-box>
     `,
-    styleUrls: ['./results.component.scss']
+    styleUrls: ['./results.component.scss'],
+    standalone: false
 })
 export class HttpRequestsComponent {
     trackByIndex = trackByIndex;

@@ -50,7 +50,7 @@
     "@deepkit/orm": "^1.0.1-alpha.156",
     "@deepkit/rpc": "^1.0.1-alpha.156",
     "@deepkit/type": "^1.0.1-alpha.156",
-    "@types/node": "20.6.0",
+    "@types/node": "^22.13.1",
     "rxjs": "~7.8.0"
   },
   "jest": {

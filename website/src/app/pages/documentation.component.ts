@@ -10,7 +10,6 @@ import { Subscription } from 'rxjs';
 import { PlatformHelper } from '@app/app/utils';
 
 @Component({
-    standalone: true,
     imports: [
         AppTitle,
         AppDescription,

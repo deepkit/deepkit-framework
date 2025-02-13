@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 
 @Component({
     selector: 'deepkit-box',
+    standalone: false,
     template: `
         <div class="box">
             <div class="box-title" *ngIf="title" (click)="toggleOpen()">

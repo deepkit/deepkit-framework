@@ -91,6 +91,7 @@ export class ApplicationServerListener {
         protected rpcControllers: RpcControllers,
         protected router: HttpRouter,
         protected config: ApplicationServerConfig,
+        protected server: ApplicationServer,
     ) {
     }
 
@@ -121,15 +122,15 @@ export class ApplicationServerListener {
         if (this.config.server) {
             this.logger.log(`Server up and running`);
         } else {
-            if (httpActive) {
-                let url = `http://${this.config.host}:${this.config.port}`;
+            const host = this.server.getHttpHost();
+            if (host) {
+                let url = `http://${host}`;
 
                 if (this.config.ssl) {
-                    url = `https://${this.config.host}:${this.config.httpsPort || this.config.port}`;
+                    url = `https://${host}:${this.config.httpsPort || this.config.port}`;
                 }
 
                 this.logger.log(`HTTP listening at <yellow>${url}</yellow>`);
-
                 if (this.config.debug) {
                     this.logger.log(`Debugger enabled at <yellow>${url}${urlJoin('/', this.config.debugUrl, '/')}</yellow>`);
                 }
@@ -137,6 +138,11 @@ export class ApplicationServerListener {
         }
 
     }
+}
+
+export interface ApplicationServerOptions {
+    listenOnSignals?: boolean;
+    startHttpServer?: boolean;
 }
 
 export class ApplicationServer {
@@ -199,7 +205,12 @@ export class ApplicationServer {
         });
     }
 
-    public async start(listenOnSignals: boolean = false) {
+    public async start(
+        optionsOrListenOnSignal: boolean | ApplicationServerOptions  = false,
+    ) {
+        const options: ApplicationServerOptions = typeof optionsOrListenOnSignal === 'boolean'
+            ? { listenOnSignals: optionsOrListenOnSignal } : optionsOrListenOnSignal;
+
         if (this.started) throw new Error('ApplicationServer already started');
         this.started = true;
 
@@ -213,8 +224,10 @@ export class ApplicationServer {
 
         await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
 
+        const startHttpServer = options.startHttpServer !== false;
+
         let killRequests = 0;
-        if (this.config.workers > 1) {
+        if (this.config.workers > 1 && startHttpServer) {
             if (cluster.isMaster) {
                 await this.eventDispatcher.dispatch(onServerMainBootstrap, new ServerBootstrapEvent());
 
@@ -236,7 +249,7 @@ export class ApplicationServer {
                     });
                 });
 
-                if (listenOnSignals) {
+                if (options.listenOnSignals) {
                     const stopServer = (signal: string) => async () => {
                         killRequests++;
                         if (killRequests === 3) {
@@ -292,7 +305,7 @@ export class ApplicationServer {
                 await this.eventDispatcher.dispatch(onServerWorkerBootstrapDone, new ServerBootstrapEvent());
             }
         } else {
-            if (listenOnSignals) {
+            if (options.listenOnSignals) {
                 const stopServer = (signal: string) => async () => {
                     killRequests++;
                     if (killRequests === 3) {
@@ -320,7 +333,7 @@ export class ApplicationServer {
             }
             await this.eventDispatcher.dispatch(onServerBootstrap, new ServerBootstrapEvent());
             await this.eventDispatcher.dispatch(onServerMainBootstrap, new ServerBootstrapEvent());
-            if (this.needsHttpWorker) {
+            if (this.needsHttpWorker && startHttpServer) {
                 this.httpWorker = this.webWorkerFactory.create(1, this.config);
                 this.httpWorker.start();
             }
@@ -332,7 +345,12 @@ export class ApplicationServer {
             this.logger.log(`Server started.`);
         }
 
-        return listenOnSignals ? this.onStop : Promise.resolve();
+        return options.listenOnSignals ? this.onStop : Promise.resolve();
+    }
+
+    public getHttpHost(): string | undefined {
+        const port = this.config.ssl ? this.config.httpsPort || this.config.port : this.config.port;
+        return this.httpWorker !== undefined ? `${this.config.host}:${port}` : undefined;
     }
 
     public getWorker(): WebWorker {

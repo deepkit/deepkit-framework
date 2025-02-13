@@ -9,7 +9,6 @@ import { PageResponse } from '@app/app/page-response';
 import { waitForInit } from '@app/app/utils';
 
 @Component({
-    standalone: true,
     imports: [
         AppTitle,
         AppDescription,
@@ -103,7 +102,7 @@ import { waitForInit } from '@app/app/utils';
                 }
             </div>
         </div>
-    `,
+    `
 })
 export class LibraryComponent implements OnInit {
     subline = signal<Content | undefined>(undefined);

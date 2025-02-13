@@ -4,7 +4,6 @@ import { NgForOf, NgIf } from "@angular/common";
 
 @Component({
     selector: 'app-images',
-    standalone: true,
     template: `
         <ng-container *ngIf="images">
             <div class="image" *ngIf="selected">

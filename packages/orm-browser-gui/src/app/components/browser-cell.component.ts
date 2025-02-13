@@ -50,7 +50,8 @@ import { isRequired } from '../utils';
             </ng-container>
         </div>
     `,
-    styleUrls: ['./browser-cell.component.scss']
+    styleUrls: ['./browser-cell.component.scss'],
+    standalone: false
 })
 export class BrowserCellComponent {
     isAutoIncrementType = isAutoIncrementType;

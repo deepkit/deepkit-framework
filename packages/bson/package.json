@@ -31,7 +31,7 @@
     "@deepkit/core": "^1.0.1-alpha.156",
     "@deepkit/type": "^1.0.1-alpha.156",
     "@types/bson": "^4.0.3",
-    "@types/node": "20.6.0",
+    "@types/node": "^22.13.1",
     "bson": "^4.4.0"
   },
   "jest": {

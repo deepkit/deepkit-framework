@@ -31,6 +31,7 @@ interface WinSidebar {
 
 @Component({
     selector: 'dui-window-content',
+    standalone: false,
     template: `
         <div class="top-line"></div>
 

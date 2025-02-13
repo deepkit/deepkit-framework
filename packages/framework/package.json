@@ -54,12 +54,12 @@
     "compression": "^1.7.4",
     "faker": "5.4.0",
     "fs-extra": "^9.0.1",
-    "image-size": "^1.0.2",
-    "jimp": "^0.22.10",
+    "jimp": "^1.6.0",
     "md5": "^2.2.1",
     "mime-types": "^2.1.27",
     "nice-table": "^1.1.0",
     "pirates": "^4.0.1",
+    "probe-image-size": "^7.2.3",
     "selfsigned": "^2.1.1",
     "sift": "^7.0.1",
     "ws": "^7.4.2"
@@ -87,7 +87,7 @@
     "@types/faker": "^5.1.6",
     "@types/fs-extra": "^9.0.1",
     "@types/mime-types": "^2.1.3",
-    "@types/node": "20.6.0",
+    "@types/node": "^22.13.1",
     "@types/ws": "^7.4.0",
     "rxjs": "~7.8.0"
   },

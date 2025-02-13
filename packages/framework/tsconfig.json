@@ -11,7 +11,7 @@
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "preserveSymlinks": true,
-    "target": "es2018",
+    "target": "es2020",
     "module": "CommonJS",
     "skipLibCheck": true,
     "esModuleInterop": true,

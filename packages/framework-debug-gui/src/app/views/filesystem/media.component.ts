@@ -13,7 +13,7 @@ import {
     QueryList,
     SimpleChanges,
     ViewChild,
-    ViewChildren
+    ViewChildren,
 } from '@angular/core';
 import { ControllerClient } from '../../client';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -197,7 +197,8 @@ export class MediaFileQuickLookCache extends MediaFileCache {
                 </iframe>
             </div>
         </ng-container>
-    `
+    `,
+    standalone: false
 })
 export class MediaFileDetail implements OnChanges, OnInit {
     @Input() file!: { filesystem: number, id: string, mimeType?: string };
@@ -273,7 +274,8 @@ export class MediaFileDetail implements OnChanges, OnInit {
     host: {
         '[class.selected]': 'selected',
         '[class.list]': `view === 'list'`,
-    }
+    },
+    standalone: false
 })
 export class MediaFileThumbnail implements OnInit, OnDestroy, OnChanges {
     loadedUrl = '';
@@ -421,7 +423,8 @@ export class MediaFileThumbnail implements OnInit, OnDestroy, OnChanges {
     `,
     host: {
         '[attr.tabindex]': '0',
-    }
+    },
+    standalone: false
 })
 export class MediaQuickLook implements OnInit, OnDestroy, OnChanges {
     mimeTypeToLabel = mimeTypeToLabel;
@@ -664,7 +667,8 @@ function sortByType(a: MediaFile, b: MediaFile) {
     `,
     host: {
         '[attr.tabindex]': '0',
-    }
+    },
+    standalone: false
 })
 export class MediaComponent implements OnInit, OnDestroy {
     trackByIndex = trackByIndex;

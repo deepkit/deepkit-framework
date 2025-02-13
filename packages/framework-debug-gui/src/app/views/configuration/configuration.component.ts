@@ -80,7 +80,8 @@ import { Lifecycle } from '../../utils';
         dui-table {
             flex: 1;
         }
-    `]
+    `],
+    standalone: false
 })
 export class ConfigurationComponent implements OnInit, OnDestroy {
     public applicationConfigFilter: string = '';

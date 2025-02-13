@@ -9,7 +9,8 @@ import { DataStructure } from '../../store';
                    [(ngModel)]="model.value"
                    (ngModelChange)="modelChange.emit(this.model)"
         ></dui-input>
-    `
+    `,
+    standalone: false
 })
 export class DateInputComponent {
     @Input() model!: DataStructure;

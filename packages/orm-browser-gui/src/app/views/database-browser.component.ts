@@ -24,7 +24,8 @@ import { ActivatedRoute } from '@angular/router';
 @Component({
     selector: 'orm-browser-database-browser',
     templateUrl: './database-browser.component.html',
-    styleUrls: ['./database-browser.component.scss']
+    styleUrls: ['./database-browser.component.scss'],
+    standalone: false
 })
 export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
     trackByIndex = trackByIndex;

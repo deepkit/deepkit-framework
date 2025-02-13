@@ -13,7 +13,7 @@ export class MainController {
     constructor(protected logger: LoggerInterface, protected database: SQLiteDatabase) {
     }
 
-    @http.GET('/').name('startPage').description('List all users')
+    @(http.GET('/').name('startPage').description('List all users'))
     async startPage() {
         return <UserList/>;
     }
@@ -48,7 +48,7 @@ export class MainController {
         return response.end(user.image);
     }
 
-    @http.POST('/add').description('Adds a new user')
+    @(http.POST('/add').description('Adds a new user'))
     async add(body: HttpBodyValidation<AddUserDto>) {
         if (!body.valid()) return <UserList error={body.error.getErrorMessageForPath('username')}/>;
 

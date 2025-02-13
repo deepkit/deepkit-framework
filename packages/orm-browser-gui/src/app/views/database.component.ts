@@ -55,7 +55,8 @@ import { Subscription } from 'rxjs';
             </ng-container>
         </div>
     `,
-    styleUrls: ['./database.component.scss']
+    styleUrls: ['./database.component.scss'],
+    standalone: false
 })
 export class DatabaseComponent implements OnDestroy {
     trackByIndex = trackByIndex;

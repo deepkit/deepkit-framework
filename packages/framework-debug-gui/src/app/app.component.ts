@@ -104,7 +104,8 @@ import { Router } from '@angular/router';
             </dui-window-content>
         </dui-window>
     `,
-    styleUrls: ['./app.component.scss']
+    styleUrls: ['./app.component.scss'],
+    standalone: false
 })
 export class AppComponent implements OnInit, OnDestroy {
     databases: Database[] = [];

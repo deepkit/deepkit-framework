@@ -8,6 +8,7 @@ import {
     Writer,
 } from '@deepkit/bson';
 import { AnalyticData, FrameData, FrameEnd, FrameStart, FrameType, getTypeOfCategory } from '@deepkit/stopwatch';
+import { createBuffer } from '@deepkit/core';
 
 export function encodeFrames(frames: (FrameStart | FrameEnd)[]): Uint8Array {
     //cid = id and worker, as compound key
@@ -17,7 +18,7 @@ export function encodeFrames(frames: (FrameStart | FrameEnd)[]): Uint8Array {
         size += frame.type === FrameType.end ? (32 + 8 + 64) / 8 : (((32 + 8 + 64 + 32 + 8 + 8) / 8) + Math.min(255, stringByteLength(frame.label)));
     }
 
-    const buffer = Buffer.allocUnsafe(size);
+    const buffer = createBuffer(size);
     const writer = new Writer(buffer);
 
     for (const frame of frames) {
@@ -47,7 +48,7 @@ export function encodeFrames(frames: (FrameStart | FrameEnd)[]): Uint8Array {
     return buffer;
 }
 
-export function encodeFrameData(dataItems: FrameData[]) {
+export function encodeFrameData(dataItems: FrameData[]): Uint8Array {
     //<cid uint32><bson document>
     let size = 0;
     for (const data of dataItems) {
@@ -57,7 +58,7 @@ export function encodeFrameData(dataItems: FrameData[]) {
         size += ((32 + 8) / 8) + dataSize;
     }
 
-    const buffer = Buffer.allocUnsafe(size);
+    const buffer = createBuffer(size);
     const writer = new Writer(buffer);
 
     for (const data of dataItems) {
@@ -74,9 +75,9 @@ export function encodeFrameData(dataItems: FrameData[]) {
     return buffer;
 }
 
-export function encodeAnalytic(data: AnalyticData[]) {
+export function encodeAnalytic(data: AnalyticData[]): Uint8Array {
     //<timestamp uint64><cpu uint8><memory uint8><loopBlocked uint8>
-    const buffer = Buffer.allocUnsafe(data.length * (4 + 1 + 1 + 4));
+    const buffer = createBuffer(data.length * (4 + 1 + 1 + 4));
     const writer = new Writer(buffer);
 
     for (const item of data) {

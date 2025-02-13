@@ -9,7 +9,6 @@ import { AppTitle } from "@app/app/components/title";
 
 @Component({
     selector: 'app-ask',
-    standalone: true,
     imports: [
         FormsModule,
         NgIf,

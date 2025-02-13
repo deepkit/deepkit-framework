@@ -34,13 +34,13 @@ test('filter by controller', async () => {
 
 test('filter by route names', async () => {
     class ControllerA {
-        @http.GET('a').name('a')
+        @(http.GET('a').name('a'))
         route() {
         }
     }
 
     class ControllerB {
-        @http.GET('b').name('b')
+        @(http.GET('b').name('b'))
         route() {
         }
 
@@ -64,13 +64,13 @@ test('filter by route names', async () => {
 
 test('filter by route names and controller', async () => {
     class ControllerA {
-        @http.GET('a').name('a')
+        @(http.GET('a').name('a'))
         route() {
         }
     }
 
     class ControllerB {
-        @http.GET('a').name('a')
+        @(http.GET('a').name('a'))
         route() {
         }
 
@@ -90,13 +90,13 @@ test('filter by route names and controller', async () => {
 
 test('filter by groups', async () => {
     class ControllerA {
-        @http.GET('a').group('a')
+        @(http.GET('a').group('a'))
         route() {
         }
     }
 
     class ControllerB {
-        @http.GET('a').group('b')
+        @(http.GET('a').group('b'))
         route() {
         }
 

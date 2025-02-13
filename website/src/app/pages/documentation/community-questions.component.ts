@@ -7,7 +7,6 @@ import { ContentRenderComponent } from '@app/app/components/content-render.compo
 import { waitForInit } from '@app/app/utils';
 
 @Component({
-    standalone: true,
     imports: [
         ContentRenderComponent,
         RouterLink,
@@ -93,7 +92,6 @@ export class RenderQuestions {
 }
 
 @Component({
-    standalone: true,
     imports: [
         ContentRenderComponent,
         RouterLink,

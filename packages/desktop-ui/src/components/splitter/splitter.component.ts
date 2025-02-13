@@ -14,6 +14,7 @@ import { getHammer } from '../../core/utils';
 
 @Component({
     selector: 'dui-splitter',
+    standalone: false,
     template: '',
     styleUrls: ['./splitter.component.scss'],
     host: {

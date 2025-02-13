@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@deepkit/type-compiler": "^1.0.1-alpha.155",
-    "bun-types": "1.0.6"
+    "bun-types": "^1.2.2"
   },
   "jest": {
     "testEnvironment": "node",

@@ -36,7 +36,8 @@ import { detectChangesNextFrame } from '@deepkit/desktop-ui';
             margin-left: auto;
             color: var(--text-light);
         }
-    `]
+    `],
+    standalone: false
 })
 export class DatabaseBrowserListComponent implements OnInit {
     encodeURIComponent = encodeURIComponent;

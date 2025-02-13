@@ -132,7 +132,8 @@ import { getTypeJitContainer } from '@deepkit/type';
             </ng-container>
         </deepkit-toggle-box>
     `,
-    styleUrls: ['./route-detail.component.scss']
+    styleUrls: ['./route-detail.component.scss'],
+    standalone: false
 })
 export class HttpRouteDetailComponent implements OnChanges {
     typeToTSJSONInterface = typeToTSJSONInterface;

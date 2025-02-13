@@ -1,13 +1,12 @@
 import { Component } from '@angular/core';
 import { CommonModule, ViewportScroller } from '@angular/common';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
-import { AppTitle } from "@app/app/components/title";
-import { HeaderComponent } from "@app/app/components/header.component";
-import { FooterComponent } from "@app/app/components/footer.component";
+import { AppTitle } from '@app/app/components/title';
+import { HeaderComponent } from '@app/app/components/header.component';
+import { FooterComponent } from '@app/app/components/footer.component';
 
 @Component({
     selector: 'app-root',
-    standalone: true,
     imports: [CommonModule, RouterOutlet, AppTitle, HeaderComponent, FooterComponent],
     template: `
         <app-title value="Deepkit Enterprise TypeScript Framework"></app-title>

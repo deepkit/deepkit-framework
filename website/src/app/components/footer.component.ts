@@ -3,7 +3,6 @@ import { RouterLink } from "@angular/router";
 
 @Component({
     selector: 'dw-footer',
-    standalone: true,
     template: `
         <div class="wrapper">
             <div class="copyright">

@@ -13,7 +13,6 @@ import { PageResponse } from '@app/app/page-response';
 import { waitForInit } from '@app/app/utils';
 
 @Component({
-    standalone: true,
     imports: [
         AskComponent,
         FormsModule,
@@ -93,7 +92,7 @@ import { waitForInit } from '@app/app/utils';
             <!--                          placeholder="Send a message" [(ngModel)]="query"></textarea>-->
             <!--            }-->
         </div>
-    `,
+    `
 })
 export class CommunityQuestionComponent implements OnInit {
     projectMap = projectMap;

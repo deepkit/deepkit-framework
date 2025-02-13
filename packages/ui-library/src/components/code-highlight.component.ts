@@ -9,7 +9,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { removeIndent } from '../utils';
 
 @Directive({
-    selector: '[codeHighlight]'
+    selector: '[codeHighlight]',
+    standalone: false,
 })
 export class CodeHighlightComponent implements OnInit, OnChanges, AfterViewInit, DoCheck {
     @Input() codeHighlight: string = 'typescript';

@@ -213,7 +213,8 @@ function sortByMS(a: PlotData, b: PlotData) {
             </ng-container>
         </div>
     `,
-    styleUrls: ['./benchmarks.component.scss']
+    styleUrls: ['./benchmarks.component.scss'],
+    standalone: false
 })
 export class BenchmarksComponent implements OnInit {
     public graphs: Graph[] = [];

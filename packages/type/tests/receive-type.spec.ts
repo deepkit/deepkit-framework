@@ -61,7 +61,7 @@ test('decorator call', () => {
     }
 
     class Controller {
-        @http.something().response<User>('abc')
+        @(http.something().response<User>('abc'))
         action() {
         }
     }

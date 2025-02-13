@@ -42,7 +42,8 @@ import { isBackReferenceType, ReflectionClass, ReflectionKind, Type, TypePropert
         .value {
             flex: 1;
         }
-    `]
+    `],
+    standalone: false
 })
 export class FilterItemComponent implements OnChanges, OnInit {
     @Input() model!: FilterItem;
@@ -139,7 +140,8 @@ export class FilterItemComponent implements OnChanges, OnInit {
             <dui-button textured icon="add" (click)="add()">Filter</dui-button>
         </div>
     `,
-    styleUrls: ['./filter.component.scss']
+    styleUrls: ['./filter.component.scss'],
+    standalone: false
 })
 export class FilterComponent implements OnChanges {
     @Input() entity!: ReflectionClass<any>;

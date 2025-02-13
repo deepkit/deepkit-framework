@@ -22,7 +22,8 @@ import { DialogComponent } from '@deepkit/desktop-ui';
             <dui-button style="margin-right: auto;" [disabled]="store.state.environments.length === 1" (click)="remove()">Delete</dui-button>
             <dui-button closeDialog>OK</dui-button>
         </dui-dialog-actions>
-    `
+    `,
+    standalone: false
 })
 export class EnvironmentDialogComponent {
     static dialogDefaults = {

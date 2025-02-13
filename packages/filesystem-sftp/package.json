@@ -1,5 +1,5 @@
 {
-  "name": "@deepkit/filesystem-fstp",
+  "name": "@deepkit/filesystem-sftp",
   "version": "1.0.1-alpha.156",
   "description": "Deepkit storage adapter for sFTP (via SSH)",
   "type": "commonjs",
@@ -29,14 +29,6 @@
   },
   "devDependencies": {
     "@types/ssh2-sftp-client": "^9.0.1"
-  },
-  "overrides": {
-    "@types/ssh2-sftp-client": {
-      "@types/node": "20.6.0"
-    },
-    "@types/ssh2": {
-      "@types/node": "20.6.0"
-    }
   },
   "jest": {
     "runner": "../../jest-serial-runner.js",

@@ -9,7 +9,8 @@ import { TypeEnum } from '@deepkit/type';
                     textured style="width: 100%">
             <dui-option [value]="kv.value" *ngFor="let kv of keyValues">{{kv.label}}</dui-option>
         </dui-select>
-    `
+    `,
+    standalone: false
 })
 export class EnumInputComponent implements OnChanges, OnInit, AfterViewInit, OnDestroy {
     @Input() model: any;

@@ -43,7 +43,8 @@ import { Lifecycle } from '../../utils';
         .header dui-input {
             margin-left: auto;
         }
-    `]
+    `],
+    standalone: false
 })
 export class EventsComponent implements OnInit, OnDestroy {
     public events: Event[] = [];

@@ -1,10 +1,10 @@
 import micromatch from 'micromatch';
-import type {
+import {
     CompilerHost,
     CompilerOptions,
     ExportDeclaration,
     Expression,
-    ImportDeclaration,
+    ImportDeclaration, JSDocImportTag,
     ResolvedModule,
     SourceFile,
     StringLiteral,
@@ -35,7 +35,7 @@ export class Resolver {
         protected sourceFiles: { [fileName: string]: SourceFile },
     ) {}
 
-    resolve(from: SourceFile, importOrExportNode: ExportDeclaration | ImportDeclaration): SourceFile | undefined {
+    resolve(from: SourceFile, importOrExportNode: ExportDeclaration | ImportDeclaration | JSDocImportTag): SourceFile | undefined {
         const moduleSpecifier: Expression | undefined = importOrExportNode.moduleSpecifier;
         if (!moduleSpecifier) return;
         if (!isStringLiteral(moduleSpecifier)) return;

@@ -14,7 +14,8 @@ import {
     ChangeDetectorRef,
     Component,
     ComponentRef,
-    Directive, ElementRef,
+    Directive,
+    ElementRef,
     EventEmitter,
     HostListener,
     Injector,
@@ -28,7 +29,7 @@ import {
     TemplateRef,
     Type,
     ViewChild,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
@@ -41,6 +42,7 @@ import { Subscription } from 'rxjs';
 import { ButtonComponent } from '../button';
 
 @Component({
+    standalone: false,
     template: `
         <dui-window>
             <dui-window-content class="{{class}}">
@@ -99,6 +101,7 @@ export class DialogWrapperComponent {
 
 @Component({
     selector: 'dui-dialog',
+    standalone: false,
     template: `
         <ng-template #template>
             <ng-content></ng-content>
@@ -318,6 +321,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
  */
 @Directive({
     'selector': '[dialogContainer]',
+    standalone: false,
 })
 export class DialogDirective {
     constructor(protected dialog: DialogComponent, public template: TemplateRef<any>) {
@@ -327,6 +331,7 @@ export class DialogDirective {
 
 @Component({
     selector: 'dui-dialog-actions',
+    standalone: false,
     template: '<ng-template #template><ng-content></ng-content></ng-template>'
 })
 export class DialogActionsComponent implements AfterViewInit, OnDestroy {
@@ -348,6 +353,7 @@ export class DialogActionsComponent implements AfterViewInit, OnDestroy {
 
 @Component({
     selector: 'dui-dialog-error',
+    standalone: false,
     template: '<ng-content></ng-content>',
     styleUrls: ['./dialog-error.component.scss']
 })
@@ -356,7 +362,8 @@ export class DialogErrorComponent {
 
 
 @Directive({
-    selector: '[closeDialog]'
+    selector: '[closeDialog]',
+    standalone: false,
 })
 export class CloseDialogDirective {
     @Input() closeDialog: any;
@@ -375,6 +382,7 @@ export class CloseDialogDirective {
  */
 @Directive({
     'selector': '[openDialog]',
+    standalone: false,
 })
 export class OpenDialogDirective implements AfterViewInit, OnChanges, OnDestroy {
     @Input() openDialog?: DialogComponent;

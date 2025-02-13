@@ -137,7 +137,8 @@ import { isAutoIncrementType, isReferenceType, ReflectionKind, resolveClassType,
             </div>
         </ng-container>
     `,
-    styleUrls: ['./database-seed-property.component.scss']
+    styleUrls: ['./database-seed-property.component.scss'],
+    standalone: false
 })
 export class DatabaseSeedPropertyComponent implements OnInit {
     @Input() model!: EntityPropertySeed;

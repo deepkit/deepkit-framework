@@ -13,7 +13,7 @@ import { ControllerClient } from '../../client';
 import { RpcAction, Workflow } from '@deepkit/framework-debug-api';
 
 @Component({
-  template: `
+    template: `
     <!--<div class="header">
       <h4>RPC Workflow</h4>
     </div>
@@ -37,7 +37,7 @@ import { RpcAction, Workflow } from '@deepkit/framework-debug-api';
       </dui-table-column>
     </dui-table>
   `,
-  styles: [`
+    styles: [`
     :host {
       display: flex;
       flex-direction: column;
@@ -52,7 +52,8 @@ import { RpcAction, Workflow } from '@deepkit/framework-debug-api';
     .header dui-input {
       margin-left: auto;
     }
-  `]
+  `],
+    standalone: false
 })
 export class RpcComponent implements OnInit {
   public actions: RpcAction[] = [];

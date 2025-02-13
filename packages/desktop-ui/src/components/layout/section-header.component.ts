@@ -3,10 +3,11 @@
  * This file is part of Deepkit and licensed under GNU GPL v3. See the LICENSE file for more information.
  */
 
-import {Component, Input} from "@angular/core";
+import { Component, Input } from '@angular/core';
 
 @Component({
     selector: 'dui-section-header',
+    standalone: false,
     template: `
         <div class="title">
             <ng-content></ng-content>

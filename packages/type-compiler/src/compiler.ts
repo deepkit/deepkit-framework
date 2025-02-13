@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import type {
+import {
     __String,
     ArrayTypeNode,
     ArrowFunction,
@@ -44,12 +44,14 @@ import type {
     InferTypeNode,
     InterfaceDeclaration,
     IntersectionTypeNode,
+    JSDocImportTag,
     LiteralTypeNode,
     MappedTypeNode,
     MethodDeclaration,
     MethodSignature,
     Modifier,
     ModuleDeclaration,
+    ModuleExportName,
     NewExpression,
     Node,
     NodeFactory,
@@ -80,6 +82,7 @@ import {
     ensureImportIsEmitted,
     extractJSDocAttribute,
     findSourceFile,
+    getEscapedText,
     getGlobalsOfSourceFile,
     getIdentifierName,
     getNameAsString,
@@ -1961,7 +1964,7 @@ export class ReflectionTransformer implements CustomTransformer {
      * This is a custom resolver based on populated `locals` from the binder. It uses a custom resolution algorithm since
      * we have no access to the binder/TypeChecker directly and instantiating a TypeChecker per file/transformer is incredible slow.
      */
-    protected resolveDeclaration(typeName: EntityName): { declaration: Node, importDeclaration?: ImportDeclaration, typeOnly?: boolean } | void {
+    protected resolveDeclaration(typeName: EntityName): { declaration: Node, importDeclaration?: ImportDeclaration | JSDocImportTag, typeOnly?: boolean } | void {
         let current: Node = typeName.parent;
         if (typeName.kind === SyntaxKind.QualifiedName) return; //namespace access not supported yet, e.g. type a = Namespace.X;
 
@@ -2009,7 +2012,7 @@ export class ReflectionTransformer implements CustomTransformer {
             }
         }
 
-        let importDeclaration: ImportDeclaration | undefined = undefined;
+        let importDeclaration: ImportDeclaration | JSDocImportTag | undefined = undefined;
         let typeOnly = false;
 
         if (declaration && isImportSpecifier(declaration)) {
@@ -2024,7 +2027,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
         if (importDeclaration) {
             if (importDeclaration.importClause && importDeclaration.importClause.isTypeOnly) typeOnly = true;
-            declaration = this.resolveImportSpecifier(typeName.escapedText, importDeclaration, this.sourceFile);
+            declaration = this.resolveImportSpecifier(getEscapedText(typeName), importDeclaration, this.sourceFile);
         }
 
         if (declaration && declaration.kind === SyntaxKind.TypeParameter && declaration.parent.kind === SyntaxKind.TypeAliasDeclaration) {
@@ -2253,7 +2256,7 @@ export class ReflectionTransformer implements CustomTransformer {
                                 // this is necessary since we emit an additional import `import { __ΩXY } from 'my-module'`,
                                 // so we check if whatever file we get from resolve() actually exports __ΩXY.
                                 const resolverDecVariable = this.resolveImportSpecifier(
-                                    runtimeTypeName.escapedText,
+                                    getEscapedText(runtimeTypeName),
                                     resolved.importDeclaration,
                                     this.sourceFile,
                                 );
@@ -2548,9 +2551,9 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.f.createPropertyAccessExpression(isIdentifier(e.left) ? e.left : this.createAccessorForEntityName(e.left), e.right);
     }
 
-    protected findDeclarationInFile(sourceFile: SourceFile | ModuleDeclaration, declarationName: __String): Declaration | undefined {
+    protected findDeclarationInFile(sourceFile: SourceFile | ModuleDeclaration, declarationName: string): Declaration | undefined {
         if (isNodeWithLocals(sourceFile) && sourceFile.locals) {
-            const declarationSymbol = sourceFile.locals.get(declarationName);
+            const declarationSymbol = sourceFile.locals.get(declarationName as __String);
             if (declarationSymbol && declarationSymbol.declarations && declarationSymbol.declarations[0]) {
                 return declarationSymbol.declarations[0];
             }
@@ -2558,7 +2561,8 @@ export class ReflectionTransformer implements CustomTransformer {
         return;
     }
 
-    protected resolveImportSpecifier(declarationName: __String, importOrExport: ExportDeclaration | ImportDeclaration, sourceFile: SourceFile): Declaration | undefined {
+    protected resolveImportSpecifier(_declarationName: string | ModuleExportName, importOrExport: ExportDeclaration | ImportDeclaration | JSDocImportTag, sourceFile: SourceFile): Declaration | undefined {
+        const declarationName = 'string' === typeof _declarationName ? _declarationName : getIdentifierName(_declarationName);
         if (!importOrExport.moduleSpecifier || !isStringLiteral(importOrExport.moduleSpecifier)) {
             return;
         }
@@ -2596,25 +2600,25 @@ export class ReflectionTransformer implements CustomTransformer {
         return;
     }
 
-    protected followExport(declarationName: __String, statement: ExportDeclaration, sourceFile: SourceFile): Declaration | undefined {
+    protected followExport(declarationName: string, statement: ExportDeclaration, sourceFile: SourceFile): Declaration | undefined {
         if (statement.exportClause) {
             //export {y} from 'x'
             if (isNamedExports(statement.exportClause)) {
                 for (const element of statement.exportClause.elements) {
                     //see if declarationName is exported
-                    if (element.name.escapedText === declarationName) {
+                    if (getEscapedText(element.name) === declarationName) {
                         if (!statement.moduleSpecifier || !isStringLiteral(statement.moduleSpecifier)) {
                             // it's `export {Class}` and Class is either a Declaration or ImportSpecifier
                             if (!statement.moduleSpecifier || !isStringLiteral(statement.moduleSpecifier)) {
                                 // it's `export {Class};` and Class is either a Declaration or ImportSpecifier
                                 if (isNodeWithLocals(sourceFile) && sourceFile.locals) {
-                                    const found = sourceFile.locals.get(declarationName);
+                                    const found = sourceFile.locals.get(declarationName as __String);
                                     if (found && found.declarations && found.declarations[0]) {
                                         const declaration = found.declarations[0];
                                         if (declaration && isImportSpecifier(declaration)) {
                                             const importOrExport = declaration.parent.parent.parent;
                                             const found = this.resolveImportSpecifier(
-                                                element.propertyName ? element.propertyName.escapedText : declarationName,
+                                                element.propertyName ? getEscapedText(element.propertyName) : declarationName,
                                                 importOrExport, sourceFile
                                             );
                                             if (found) return found;
@@ -2625,7 +2629,7 @@ export class ReflectionTransformer implements CustomTransformer {
                             }
                         } else {
                             // it's `export {Class} from 'x'`
-                            const found = this.resolveImportSpecifier(element.propertyName ? element.propertyName.escapedText : declarationName, statement, sourceFile);
+                            const found = this.resolveImportSpecifier(element.propertyName ? getEscapedText(element.propertyName) : declarationName, statement, sourceFile);
                             if (found) return found;
                         }
                     }

@@ -1,4 +1,4 @@
-import { RpcMessage, RpcMessageRouteType } from '../protocol.js';
+import { rpcDecodeError, RpcMessage, RpcMessageRouteType } from '../protocol.js';
 import { cast, ReceiveType, resolveReceiveType } from '@deepkit/type';
 import { base64ToUint8Array } from '@deepkit/core';
 
@@ -42,7 +42,9 @@ export class HttpRpcMessage extends RpcMessage {
     }
 
     getError(): Error {
-        return super.getError();
+        const json = this.getJson();
+        if (!json) throw new Error('No body found');
+        return rpcDecodeError(json);
     }
 
     isError(): boolean {

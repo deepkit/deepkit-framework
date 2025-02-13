@@ -23,6 +23,14 @@ export enum LoggerLevel {
     info,
     debug,
 }
+declare var process: {
+    stdout: {
+        write: (v: string) => any;
+    };
+    stderr: {
+        write: (v: string) => any;
+    };
+}
 
 export type LogData = { [name: string]: any };
 

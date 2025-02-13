@@ -29,7 +29,8 @@ import { BrowserState } from '../../browser-state';
         .date-ms {
             color: var(--text-light);
         }
-    `]
+    `],
+    standalone: false
 })
 export class JsonCellComponent implements OnChanges, OnInit {
     @Input() model: any;

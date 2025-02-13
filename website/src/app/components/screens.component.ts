@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, ElementRef, Input, ViewChild } from '@angular/core';
-import { NgForOf, NgIf } from "@angular/common";
+import { NgForOf, NgIf } from '@angular/common';
 
 @Component({
     selector: 'app-screen',
@@ -18,7 +18,6 @@ export class ScreenComponent {
 
 @Component({
     selector: 'app-screens',
-    standalone: true,
     template: `
         <div class="wrapper single" *ngIf="screens.length === 1" style="text-align: center">
             <a [href]="screens[0].src" target="_blank"><img [style.max-width.px]="screens[0].width" alt="screen" [src]="screens[0].src"/></a>

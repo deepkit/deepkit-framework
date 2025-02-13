@@ -11,7 +11,6 @@ import { waitForInit } from '@app/app/utils';
 
 
 @Component({
-    standalone: true,
     imports: [
         AppDescription,
         AppTitle,
@@ -45,7 +44,7 @@ import { waitForInit } from '@app/app/utils';
                 <app-render-content *ngIf="example.content" [content]="example.content"></app-render-content>
             }
         </div>
-    `,
+    `
 })
 export class ExampleComponent implements OnInit {
     id = signal('');

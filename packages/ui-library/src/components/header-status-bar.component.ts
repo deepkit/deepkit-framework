@@ -4,6 +4,7 @@ import { DeepkitClient } from '@deepkit/rpc';
 
 @Component({
     selector: 'deepkit-header-status-bar',
+    standalone: false,
     template: `
         <div class="connection-info">
             <div class="connected" *ngIf="client.transporter.connection|asyncRender as connected">
