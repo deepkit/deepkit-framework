@@ -207,7 +207,7 @@ test('unique constraint 1', async () => {
             assertInstanceOf(error.cause, DatabaseInsertError);
             assertInstanceOf(error.cause.cause, DatabaseError);
             // error.cause.cause.cause is from the driver
-            expect(error.cause.cause.cause.table).toBe('Model');
+            expect((error.cause.cause.cause as any).table).toBe('Model');
         }
     }
 
