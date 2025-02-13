@@ -1,6 +1,4 @@
-import {
-    entity, MongoId, Index, PrimaryKey, Unique, ReflectionClass,
-} from '@deepkit/type';
+import { entity, Index, MongoId, PrimaryKey, ReflectionClass, Unique } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import { MongoDatabaseAdapter } from '../src/adapter';
 import { Database } from '@deepkit/orm';
@@ -19,7 +17,7 @@ class Model {
     }
 }
 
-@entity.name('model-with-composite-index').index(['a', 'b'], {unique: true})
+@(entity.name('model-with-composite-index').index(['a', 'b'], {unique: true}))
 class ModelCompositeIndex {
     _id: MongoId & PrimaryKey = '';
     a: string = '';
