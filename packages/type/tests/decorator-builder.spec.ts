@@ -1,11 +1,15 @@
 import { expect, test } from '@jest/globals';
 import {
-    APIProperty,
     createClassDecoratorContext,
     createFreeDecoratorContext,
-    createPropertyDecoratorContext, DecoratorAndFetchSignature, DualDecorator, ExtractApiDataType, ExtractClass, FluidDecorator,
+    createPropertyDecoratorContext,
+    DecoratorAndFetchSignature,
+    DualDecorator,
+    ExtractApiDataType,
+    ExtractClass,
     isDecoratorContext,
-    mergeDecorator, PropertyDecoratorFn, PropertyDecoratorResult
+    mergeDecorator,
+    PropertyDecoratorFn,
 } from '../src/decorator-builder.js';
 
 test('without host', () => {
@@ -213,7 +217,7 @@ test('dual decorator', () => {
         class MyClass {
             @dec2.name('dd')
             @dec2.typeArg<string>('dd')
-            @merged.resolve('c').resolve('d')
+            @(merged.resolve('c').resolve('d'))
             property!: string;
         }
 
@@ -242,7 +246,7 @@ test('dual decorator', () => {
     {
         expect(() => {
             class MyClass {
-                @(merged as any).controller('b')
+                @((merged as any).controller('b'))
                 prop!: string;
             }
         }).toThrow(`Decorator 'controller' can not be used on class property MyClass.prop`);
