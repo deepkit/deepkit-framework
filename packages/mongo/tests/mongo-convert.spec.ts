@@ -1,16 +1,11 @@
 import { expect, test } from '@jest/globals';
-import {
-    entity,
-    MongoId,
-    PrimaryKey,
-    ReflectionClass,
-} from '@deepkit/type';
+import { entity, MongoId, PrimaryKey, ReflectionClass } from '@deepkit/type';
 import { createDatabase } from './utils';
 import { UpdateCommand } from '../src/client/command/update';
 
 Error.stackTraceLimit = 100;
 
-@entity.name('Model').collection('test_convert')
+@(entity.name('Model').collection('test_convert'))
 export class Model {
     _id: MongoId & PrimaryKey = '';
 
@@ -20,7 +15,7 @@ export class Model {
     }
 }
 
-@entity.name('ModelString').collection('test_convert')
+@(entity.name('ModelString').collection('test_convert'))
 export class ModelString {
     _id: MongoId & PrimaryKey = '';
 

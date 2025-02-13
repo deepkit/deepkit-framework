@@ -68,7 +68,8 @@ type DKNode = { entity: ReflectionClass<any>, properties: (TypeProperty | TypePr
             </div>
         </div>
     `,
-    styleUrls: ['./database-graph.component.scss']
+    styleUrls: ['./database-graph.component.scss'],
+    standalone: false
 })
 export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
     @Input() database?: DatabaseInfo;

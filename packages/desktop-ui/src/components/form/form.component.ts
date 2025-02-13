@@ -8,12 +8,24 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ChangeDetectorRef, Component, ContentChild, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, SkipSelf } from '@angular/core';
+import {
+    ChangeDetectorRef,
+    Component,
+    ContentChild,
+    EventEmitter,
+    HostListener,
+    Input,
+    OnChanges,
+    Output,
+    SimpleChanges,
+    SkipSelf,
+} from '@angular/core';
 import { FormGroup, NgControl } from '@angular/forms';
 import { detectChangesNextFrame } from '../app';
 
 @Component({
     selector: 'dui-form-row',
+    standalone: false,
     template: `
         <div class="label" [style.width.px]="labelWidth">{{label}}<div class="description" *ngIf="description">{{description}}</div></div>
         <div class="field">
@@ -46,6 +58,7 @@ export class FormRowComponent {
 
 @Component({
     selector: 'dui-form',
+    standalone: false,
     template: `
         <form [formGroup]="formGroup" (submit)="$event.preventDefault();submitForm()">
             <ng-content></ng-content>

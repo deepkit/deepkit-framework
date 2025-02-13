@@ -13,6 +13,7 @@ import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 
 @Component({
     selector: 'dui-radiobox',
+    standalone: false,
     template: `
         <span class="box"><div class="circle"></div></span>
         <ng-content></ng-content>

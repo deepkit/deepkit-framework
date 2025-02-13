@@ -43,7 +43,8 @@ import { DataStructure } from '../../store';
             background-color: var(--dui-window-header-bg);
             margin-left: 20px;
         }
-    `]
+    `],
+    standalone: false
 })
 export class ClassInputComponent implements OnChanges, OnInit {
     trackByIndex = trackByIndex;

@@ -52,22 +52,22 @@ app.run();
 Once modules are used, functional routes can also be provided dynamically by modules.
 
 ```typescript
-import { App, createModule } from '@deepkit/app';
+import { App, createModuleClass } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
 import { HttpRouterRegistry } from '@deepkit/http';
 
-class MyModule extends createModule({}) {
-    override process() {
-        this.configureProvider<HttpRouterRegistry>(router => {
-          router.get('/', () => {
-            return "Hello World!";
-          });
-        });
-    }
+class MyModule extends createModuleClass({}) {
+  override process() {
+    this.configureProvider<HttpRouterRegistry>(router => {
+      router.get('/', () => {
+        return "Hello World!";
+      });
+    });
+  }
 }
 
 const app = new App({
-    imports: [new FrameworkModule, new MyModule]
+  imports: [new FrameworkModule, new MyModule]
 });
 ```
 
@@ -98,25 +98,25 @@ new App({
 Once modules are used, controllers can also be provided by modules.
 
 ```typescript
-import { App, createModule } from '@deepkit/app';
+import { App, createModuleClass } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
 import { http } from '@deepkit/http';
 
 class MyPage {
-    @http.GET('/')
-    helloWorld() {
-        return "Hello World!";
-    }
+  @http.GET('/')
+  helloWorld() {
+    return "Hello World!";
+  }
 }
 
-class MyModule extends createModule({}) {
+class MyModule extends createModuleClass({}) {
   override process() {
     this.addController(MyPage);
   }
 }
 
 const app = new App({
-    imports: [new FrameworkModule, new MyModule]
+  imports: [new FrameworkModule, new MyModule]
 });
 ```
 

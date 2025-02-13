@@ -1,8 +1,8 @@
-import { EventDispatcher } from "@deepkit/event";
-import { fileQueuedEvent, FileToUpload, fileUploadedEvent, State } from "../state";
-import { ChangeDetectorRef, Component } from "@angular/core";
-import { ControllerClient } from "../client";
-import { ClientProgress } from "@deepkit/rpc";
+import { EventDispatcher } from '@deepkit/event';
+import { fileQueuedEvent, FileToUpload, fileUploadedEvent, State } from '../state';
+import { ChangeDetectorRef, Component } from '@angular/core';
+import { ControllerClient } from '../client';
+import { ClientProgress } from '@deepkit/rpc';
 
 @Component({
     selector: 'app-file-uploader',
@@ -18,7 +18,8 @@ import { ClientProgress } from "@deepkit/rpc";
             <dui-indicator *ngIf="upload && upload.progress && upload.progress.upload|asyncRender as upload" [step]="upload.progress"></dui-indicator>
             <dui-button small (click)="cancel()">Cancel</dui-button>
         </ng-container>
-    `
+    `,
+    standalone: false
 })
 export class FileUploaderComponent {
     upload?: FileToUpload;

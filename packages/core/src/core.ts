@@ -25,13 +25,15 @@ import { eachPair } from './iterators.js';
  */
 export class CustomError extends Error {
     public name: string;
-    public stack?: string;
-    public cause?: Error | any;
 
     constructor(...args: any[]) {
         super(...args);
         this.name = this.constructor.name;
     }
+}
+
+export interface CustomError {
+    cause?: unknown;
 }
 
 /**
@@ -725,7 +727,8 @@ export function getInheritanceChain(classType: ClassType): ClassType[] {
 declare var v8debug: any;
 
 export function inDebugMode() {
-    return typeof v8debug === 'object' || /--debug|--inspect/.test(process.execArgv.join(' '));
+    return typeof v8debug === 'object' ||
+        (typeof process !== 'undefined' && /--debug|--inspect/.test(process.execArgv.join(' ')));
 }
 
 /**

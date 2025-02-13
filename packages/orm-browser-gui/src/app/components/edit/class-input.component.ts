@@ -100,7 +100,8 @@ import { getParentProperty } from '../../utils';
         .hidden {
             display: none;
         }
-    `]
+    `],
+    standalone: false
 })
 export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy {
     @Input() model: any;

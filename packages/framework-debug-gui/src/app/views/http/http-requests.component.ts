@@ -33,6 +33,7 @@ import { Router } from '@angular/router';
             </dui-table-column>
         </dui-table>
     `,
+    standalone: false
 })
 export class HttpRequestsComponent implements OnInit {
     requests: DebugRequest[] = [];

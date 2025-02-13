@@ -13,6 +13,7 @@ import { Emoji, emojis } from './emojis';
 
 @Component({
     selector: 'dui-emoji',
+    standalone: false,
     template: `
         <div class="emoji-image"
              *ngIf="emoji as em"

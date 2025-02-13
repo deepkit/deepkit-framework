@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { AppDescription, AppTitle } from '@app/app/components/title';
-import { NgForOf, NgIf } from '@angular/common';
+import { NgIf } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ControllerClient } from '@app/app/client';
 import { projectMap, UiCodeExample } from '@app/common/models';
@@ -11,13 +11,11 @@ import { waitForInit } from '@app/app/utils';
 
 
 @Component({
-    standalone: true,
     imports: [
         AppDescription,
         AppTitle,
         NgIf,
         LoadingComponent,
-        NgForOf,
         RouterLink,
         ContentRenderComponent,
     ],
@@ -45,7 +43,7 @@ import { waitForInit } from '@app/app/utils';
                 <app-render-content *ngIf="example.content" [content]="example.content"></app-render-content>
             }
         </div>
-    `,
+    `
 })
 export class ExampleComponent implements OnInit {
     id = signal('');

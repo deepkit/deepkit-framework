@@ -13,6 +13,7 @@ import { WindowContentComponent } from './window-content.component';
 
 @Component({
     selector: 'dui-window-sidebar',
+    standalone: false,
     template: `
         <ng-template #templateRef>
             <ng-content></ng-content>

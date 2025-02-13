@@ -15,7 +15,7 @@ import {
     ElementRef,
     HostListener,
     Input,
-    OnChanges
+    OnChanges,
 } from '@angular/core';
 import { nextTick } from '@deepkit/core';
 import { Electron } from '../../core/utils';
@@ -23,6 +23,7 @@ import { Electron } from '../../core/utils';
 
 @Directive({
     selector: '[openExternal], a[href]',
+    standalone: false,
 })
 export class OpenExternalDirective implements OnChanges {
     @Input('openExternal') openExternal: string = '';

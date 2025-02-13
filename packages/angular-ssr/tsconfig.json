@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node",
+    "target": "es2020",
+    "module": "CommonJS",
+    "esModuleInterop": true,
+    "outDir": "./dist/cjs",
+    "declaration": true,
+    "composite": true,
+    "types": [
+      "node"
+    ]
+  },
+  "reflection": true,
+  "include": [
+    "src",
+    "index.ts"
+  ],
+  "exclude": [
+    "tests"
+  ],
+  "references": [
+  ]
+}

@@ -12,7 +12,8 @@ import { isProperty } from '../../utils';
         :host {
             display: none;
         }
-    `]
+    `],
+    standalone: false
 })
 export class InputEditingComponent implements OnDestroy, OnChanges {
     @Input() model: any;

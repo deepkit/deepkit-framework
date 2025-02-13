@@ -10,7 +10,7 @@ import {
     Output,
     SimpleChanges,
     ViewChild,
-    ViewContainerRef
+    ViewContainerRef,
 } from '@angular/core';
 import { unsubscribe } from '@deepkit/desktop-ui';
 import { hasDefaultValue, isOptional, ReflectionKind, Type } from '@deepkit/type';
@@ -50,7 +50,8 @@ import { inputRegistry } from './registry';
             </ng-container>
         </dui-dropdown>
     `,
-    styleUrls: ['./input.component.scss']
+    styleUrls: ['./input.component.scss'],
+    standalone: false
 })
 export class InputComponent implements OnDestroy, OnChanges, AfterViewInit {
     typeToTSJSONInterface = typeToTSJSONInterface;

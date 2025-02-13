@@ -37,7 +37,8 @@ interface Entry {
         :host ::ng-deep .table-cell.input-cell {
             padding: 2px 2px !important;
         }
-    `]
+    `],
+    standalone: false
 })
 export class HeadersComponent {
     @Input() model: Entry[] | undefined;

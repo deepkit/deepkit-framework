@@ -1,19 +1,16 @@
-import { ChangeDetectorRef, Component, ElementRef, HostListener, Input, OnChanges, ViewChild } from "@angular/core";
-import { NgForOf, NgIf } from "@angular/common";
-import { FormsModule, ReactiveFormsModule } from "@angular/forms";
-import { bodyToString, CommunityQuestion, DocPageResult, link, parseBody } from "@app/common/models";
-import { debounceTime, distinctUntilChanged, Subject } from "rxjs";
-import { Router, RouterLink } from "@angular/router";
-import { ControllerClient } from "@app/app/client";
-import { LoadingComponent } from "@app/app/components/loading";
-import { ContentRenderComponent } from "@app/app/components/content-render.component";
+import { ChangeDetectorRef, Component, ElementRef, HostListener, Input, OnChanges, ViewChild } from '@angular/core';
+import { NgForOf, NgIf } from '@angular/common';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { bodyToString, CommunityQuestion, DocPageResult, link, parseBody } from '@app/common/models';
+import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
+import { Router, RouterLink } from '@angular/router';
+import { ControllerClient } from '@app/app/client';
+import { LoadingComponent } from '@app/app/components/loading';
+import { ContentRenderComponent } from '@app/app/components/content-render.component';
 
 @Component({
     selector: 'app-search-result-page',
-    standalone: true,
     imports: [
-        NgIf,
-        RouterLink,
         ContentRenderComponent
     ],
     styles: [`
@@ -52,7 +49,6 @@ export class SearchResultQuestion implements OnChanges {
 
 @Component({
     selector: 'app-search',
-    standalone: true,
     imports: [
         NgForOf,
         NgIf,
@@ -80,7 +76,7 @@ export class SearchResultQuestion implements OnChanges {
         }
         .search.active {
             .app-search-field {
-                //width: 350px;
+                /*width: 350px;*/
             }
         }
 

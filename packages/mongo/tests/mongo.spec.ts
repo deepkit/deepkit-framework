@@ -1,21 +1,5 @@
 import { expect, test } from '@jest/globals';
-import {
-    arrayBufferFrom,
-    AutoIncrement,
-    BackReference,
-    cast,
-    entity,
-    MongoId,
-    nodeBufferToArrayBuffer,
-    PrimaryKey,
-    Reference,
-    ReflectionClass,
-    ReflectionKind,
-    serialize,
-    Unique,
-    UUID,
-    uuid,
-} from '@deepkit/type';
+import { arrayBufferFrom, AutoIncrement, BackReference, cast, entity, MongoId, nodeBufferToArrayBuffer, PrimaryKey, Reference, ReflectionClass, ReflectionKind, serialize, Unique, UUID, uuid } from '@deepkit/type';
 import { getInstanceStateFromItem, UniqueConstraintFailure } from '@deepkit/orm';
 import { SimpleModel, SuperSimple } from './entities.js';
 import { createDatabase } from './utils.js';
@@ -312,7 +296,7 @@ test('test databaseName', async () => {
     const database = await createDatabase('testing-databaseName');
     await database.adapter.client.dropDatabase('testing2');
 
-    @entity.name('DifferentDataBase').collection('differentCollection').databaseSchema('testing2')
+    @(entity.name('DifferentDataBase').collection('differentCollection').databaseSchema('testing2'))
     class DifferentDatabase {
         _id: MongoId & PrimaryKey = '';
         name?: string;

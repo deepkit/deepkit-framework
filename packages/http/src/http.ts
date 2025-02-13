@@ -659,7 +659,11 @@ export class HttpListener {
         if (event.sent) return;
         if (event.hasNext()) return;
 
-        event.send(new HtmlResponse('Not found', 404));
+        if (event.request.throwErrorOnNotFound) {
+            throw new HttpNotFoundError;
+        } else {
+            event.send(new HtmlResponse('Not found', 404));
+        }
     }
 
     @eventDispatcher.listen(httpWorkflow.onAuth, 100)
@@ -784,6 +788,9 @@ export class HttpListener {
             }, 400).disableAutoSerializing());
             return;
         } else if (event.error instanceof HttpError) {
+            if (event.request.throwErrorOnNotFound && event.error.httpCode === 404) {
+                throw event.error;
+            }
             event.send(new JSONResponse({
                 message: event.error.message
             }, event.error.httpCode).disableAutoSerializing());

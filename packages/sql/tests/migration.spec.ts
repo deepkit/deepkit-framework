@@ -5,9 +5,9 @@ import { DefaultPlatform } from '../src/platform/default-platform.js';
 import { SchemaParser } from '../src/reverse/schema-parser.js';
 import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
 
-@entity.name('user')
+@(entity.name('user')
     .index(['deleted'], {unique: true})
-    .index(['deleted', 'created'])
+    .index(['deleted', 'created']))
 class User {
     id!: number & PrimaryKey & AutoIncrement;
     username!: string & Unique;

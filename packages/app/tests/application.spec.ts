@@ -1,12 +1,11 @@
 import { beforeEach, expect, test } from '@jest/globals';
 import { App, AppErrorEvent, AppEvent, AppExecutedEvent, onAppError, onAppExecute, onAppExecuted, onAppShutdown } from '../src/app.js';
 import { Inject, ProviderWithScope, Token } from '@deepkit/injector';
-import { AppModule, createModule } from '../src/module.js';
+import { AppModule, createModule, createModuleClass } from '../src/module.js';
 import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
 import { cli, Command, Flag } from '../src/command.js';
 import { ClassType, isClass } from '@deepkit/core';
 import { ControllerConfig, ServiceContainer } from '../src/service-container.js';
-import { Stopwatch } from '@deepkit/stopwatch';
 
 Error.stackTraceLimit = 100;
 
@@ -19,7 +18,7 @@ class BaseService {
     }
 }
 
-class BaseModule extends createModule({ config: BaseConfig, providers: [BaseService] }, 'base') {
+class BaseModule extends createModuleClass({ name: 'base', config: BaseConfig, providers: [BaseService] }) {
     root = true;
 }
 
@@ -90,7 +89,7 @@ test('loadConfigFromEnvVariables non-root import', async () => {
         }
     }
 
-    const baseModule = new AppModule({ config: BaseConfig, providers: [BaseService] }, 'base');
+    const baseModule = new AppModule({}, { name: 'base', config: BaseConfig, providers: [BaseService] });
     const app = new App({ imports: [baseModule] });
     process.env.APP_BASE_DB = 'changed2';
     app.loadConfigFromEnv();
@@ -104,7 +103,7 @@ test('validation fails when setupConfig sets wrong values', async () => {
         log: boolean = false;
     }
 
-    const baseModule = new AppModule({ config: BaseConfig, providers: [BaseService] })
+    const baseModule = new AppModule<BaseConfig>({}, { config: BaseConfig, providers: [BaseService] })
         .setupConfig((module, config) => {
             (config as any).log = 'asda';
         })
@@ -122,7 +121,8 @@ test('validation fails when env is wrong', async () => {
         log: boolean = false;
     }
 
-    const baseModule = new AppModule({ config: BaseConfig, providers: [BaseService] })
+    const baseModule = new (createModuleClass({ config: BaseConfig, providers: [BaseService] }));
+    baseModule
         .setup((module, config) => {
             if (!config.log) throw new Error('log needs to be true');
         })
@@ -140,7 +140,7 @@ test('required value can be set via env or setupConfig', async () => {
         log!: boolean;
     }
 
-    class BaseModule extends createModule({ config: BaseConfig }, 'base') {
+    class BaseModule extends createModuleClass({ name: 'base', config: BaseConfig }) {
         process() {
             if (!this.config.log) throw new Error('log needs to be true');
         }
@@ -148,7 +148,14 @@ test('required value can be set via env or setupConfig', async () => {
 
     {
         const app = new App({ imports: [new BaseModule()] });
-        expect(() => app.serviceContainer.process()).toThrow('base.log(type): Not a boolean');
+        expect(() => app.serviceContainer.process()).toThrow('log(type): Not a boolean');
+    }
+
+    {
+        const app = new App({
+            imports: [new BaseModule({ log: true })]
+        });
+        app.serviceContainer.process();
     }
 
     {
@@ -181,7 +188,7 @@ test('required value can be set via env or setupConfig', async () => {
 
         const app = new App({ imports: [new BaseModule()] });
         app.loadConfigFromEnvVariable('APP_CONFIG');
-        expect(() => app.serviceContainer.process()).toThrow('base.log(type): Not a boolean');
+        expect(() => app.serviceContainer.process()).toThrow('log(type): Not a boolean');
     }
 
     {
@@ -198,7 +205,7 @@ test('loadConfigFromEnvVariables() happens before setup() calls', async () => {
         log: boolean = false;
     }
 
-    const baseModule = new AppModule({ config: BaseConfig }, 'base')
+    const baseModule = new AppModule<BaseConfig>({}, { name: 'base', config: BaseConfig })
         .setup((module, config) => {
             expect(config.log).toBe(true);
         });
@@ -243,7 +250,7 @@ test('loadConfigFromEnvVariable() happens before setup() calls', async () => {
         log: boolean = false;
     }
 
-    const baseModule = new AppModule({ config: BaseConfig }, 'base')
+    const baseModule = createModule({ name: 'base', config: BaseConfig })
         .setup((module, config) => {
             expect(config.log).toBe(true);
         });
@@ -269,7 +276,7 @@ test('non-forRoot module with class listeners works without exports', async () =
         }
     }
 
-    const myModule = new AppModule({ listeners: [Listener] }, 'base');
+    const myModule = new AppModule({}, { listeners: [Listener] });
     const app = new App({ imports: [myModule] });
     await app.get(EventDispatcher).dispatch(myEvent, new BaseEvent());
     expect(executed).toBe(true);
@@ -290,7 +297,7 @@ test('listen() with dependencies', async () => {
     }
 
     const gotEvents: number[] = [];
-    const myModule = new AppModule({
+    const myModule = new AppModule({}, {
         config: MyConfig,
         providers: [MyService],
         listeners: [
@@ -300,7 +307,7 @@ test('listen() with dependencies', async () => {
                 gotEvents.push(event.data.id);
             })
         ]
-    }, 'base');
+    });
 
     const app = new App({ imports: [myModule] });
     const dispatcher = app.get(EventDispatcher);
@@ -315,11 +322,11 @@ test('non-forRoot module with fn listeners works without exports', async () => {
     const myEvent = new EventToken('my-event');
 
     let executed = false;
-    const myModule = new AppModule({
+    const myModule = new AppModule({}, {
         listeners: [myEvent.listen(() => {
             executed = true;
         })]
-    }, 'base');
+    });
     const app = new App({ imports: [myModule] });
     await app.get(EventDispatcher).dispatch(myEvent, new BaseEvent());
     expect(executed).toBe(true);
@@ -346,10 +353,10 @@ test('cli controllers in sub modules are in correct injector context', async () 
         }
     }
 
-    class MyModule extends createModule({
+    class MyModule extends createModuleClass({
         providers: [MyService, { provide: 'onlyInCLI', scope: 'cli', useValue: true }],
         controllers: [MyController],
-    }, 'base') {
+    }) {
     }
 
     {
@@ -395,7 +402,7 @@ test('config deps and @inject() in FactoryProvider', async () => {
     class Unknown {
     }
 
-    const module = new AppModule({
+    const module = new AppModule({}, {
         config: Config,
         providers: [
             {
@@ -419,7 +426,7 @@ test('config deps and @inject() in FactoryProvider', async () => {
     }
 
     {
-        const module = new AppModule({
+        const module = new AppModule({}, {
             providers: [
                 {
                     provide: 'undefinedDep', useFactory(host: string) {
@@ -435,11 +442,11 @@ test('config deps and @inject() in FactoryProvider', async () => {
 
 
 test('service container hooks', () => {
-    class MyModule extends createModule({}) {
+    class MyModule extends createModuleClass({}) {
         providersFound: ProviderWithScope[] = [];
         controllersFound: ClassType[] = [];
 
-        processController(module: AppModule<any>, config: ControllerConfig) {
+        processController(module: AppModule, config: ControllerConfig) {
             const controller = config.controller;
             if (!controller) return;
             expect(module).toBeInstanceOf(AppModule);
@@ -448,7 +455,7 @@ test('service container hooks', () => {
             this.controllersFound.push(controller);
         }
 
-        processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+        processProvider(module: AppModule, token: Token, provider: ProviderWithScope) {
             expect(module).toBeInstanceOf(AppModule);
             if (isClass(provider)) {
                 debugger;
@@ -459,7 +466,7 @@ test('service container hooks', () => {
 
     {
         const m = new MyModule;
-        const app = new ServiceContainer(new AppModule({ imports: [m] }));
+        const app = new ServiceContainer(new AppModule({}, { imports: [m] }));
         app.process();
         expect(m.providersFound.length).toBe(9); //9 is the default, as the ServiceContainer adds default services
         expect(m.controllersFound.length).toBe(0);
@@ -470,7 +477,7 @@ test('service container hooks', () => {
         }
 
         const m = new MyModule;
-        const app = new ServiceContainer(new AppModule({ controllers: [Controller], imports: [m] }));
+        const app = new ServiceContainer(new AppModule({}, { controllers: [Controller], imports: [m] }));
         app.process();
         expect(m.providersFound.length).toBe(10);
         expect(m.controllersFound.length).toBe(1);
@@ -481,7 +488,7 @@ test('service container hooks', () => {
         }
 
         const m = new MyModule;
-        const app = new ServiceContainer(new AppModule({ providers: [Controller], imports: [m] }));
+        const app = new ServiceContainer(new AppModule({}, { providers: [Controller], imports: [m] }));
         app.process();
         expect(m.providersFound.length).toBe(10);
         expect(m.controllersFound.length).toBe(0);
@@ -494,13 +501,13 @@ test('service container hooks', () => {
         class Service {
         }
 
-        const baseModule = new AppModule({
+        const baseModule = new AppModule({}, {
             controllers: [Controller],
             providers: [Service]
         });
 
         const m = new MyModule;
-        const app = new ServiceContainer(new AppModule({ imports: [baseModule, m] }));
+        const app = new ServiceContainer(new AppModule({}, { imports: [baseModule, m] }));
         app.process();
         expect(m.providersFound.length).toBe(11);
         expect(m.controllersFound.length).toBe(1);

@@ -36,7 +36,7 @@ export function createHttpApp(
         }
     }
 
-    const module = new AppModule({
+    const module = new AppModule({}, {
         controllers: isArray(controllers) ? controllers.map(v => isClass(v) ? v : v.controller) : [],
         imports,
         providers,

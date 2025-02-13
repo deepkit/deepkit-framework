@@ -1581,7 +1581,9 @@ export class Processor {
                     ? type
                     : { kind: isTuple ? ReflectionKind.tupleMember : ReflectionKind.propertySignature, name: index, type } as TypePropertySignature;
 
-                if (optional) property.optional = true;
+                if (optional) {
+                    property.optional = true;
+                }
                 if (readonly && property.kind !== ReflectionKind.tupleMember) property.readonly = true;
 
                 if (property !== type) type.parent = property;

@@ -17,8 +17,10 @@
     "@deepkit/type": "^1.0.1-alpha.19"
   },
   "devDependencies": {
-    "@angular/core": "^17.1.0",
-    "@angular/forms": "^17.1.0",
+    "@angular/common": "^19.1.5",
+    "@angular/core": "^19.1.5",
+    "@angular/forms": "19.1.5",
+    "@angular/platform-browser": "^19.1.5",
     "@deepkit/core": "^1.0.1-alpha.156",
     "@deepkit/type": "^1.0.1-alpha.156",
     "rxjs": "*"

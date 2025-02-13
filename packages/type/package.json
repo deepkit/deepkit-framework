@@ -36,7 +36,7 @@
     "@deepkit/core": "^1.0.1-alpha.156",
     "@deepkit/type-compiler": "^1.0.1-alpha.155",
     "@types/lz-string": "^1.3.34",
-    "@types/node": "20.6.0",
+    "@types/node": "^22.13.1",
     "@typescript/vfs": "^1.5.0",
     "lz-string": "^1.4.4"
   },

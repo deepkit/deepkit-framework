@@ -8,7 +8,19 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostBinding, Injector, Input, Output, SkipSelf, ViewChild } from '@angular/core';
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    EventEmitter,
+    HostBinding,
+    Injector,
+    Input,
+    Output,
+    SkipSelf,
+    ViewChild,
+} from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { detectChangesNextFrame } from '../app';
 import { DatePipe } from '@angular/common';
@@ -17,6 +29,7 @@ const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
 
 @Component({
     selector: 'dui-input',
+    standalone: false,
     template: `
         <dui-icon *ngIf="icon" class="icon" [size]="iconSize" [name]="icon"></dui-icon>
         <input

@@ -32,7 +32,8 @@ import { inspect } from '../../utils';
             </ng-container>
         </div>
     `,
-    styleUrls: ['./rpc-inspect-message.component.scss']
+    styleUrls: ['./rpc-inspect-message.component.scss'],
+    standalone: false
 })
 export class RpcInspectMessageComponent implements OnChanges {
     RpcTypes = RpcTypes;

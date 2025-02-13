@@ -8,14 +8,26 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AfterViewInit, ChangeDetectorRef, Component, ContentChildren, Input, OnChanges, QueryList, SimpleChanges, TemplateRef, ViewChild } from '@angular/core';
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ContentChildren,
+    Input,
+    OnChanges,
+    QueryList,
+    SimpleChanges,
+    TemplateRef,
+    ViewChild,
+} from '@angular/core';
 import { BrowserText } from '@deepkit/desktop-ui';
 import { Workflow } from '@deepkit/framework-debug-api';
 import { graphlib, layout, Node } from 'dagre';
 
 @Component({
-  selector: 'app-workflow-card',
-  template: '<ng-template #templateRef><ng-content></ng-content></ng-template>'
+    selector: 'app-workflow-card',
+    template: '<ng-template #templateRef><ng-content></ng-content></ng-template>',
+    standalone: false
 })
 export class WorkflowCardComponent {
   /**
@@ -29,8 +41,8 @@ export class WorkflowCardComponent {
 }
 
 @Component({
-  selector: 'app-workflow',
-  template: `
+    selector: 'app-workflow',
+    template: `
     <div class="nodes"
          [style.width.px]="graphWidth"
          [style.height.px]="graphHeight">
@@ -59,7 +71,8 @@ export class WorkflowCardComponent {
       </div>
     </div>
   `,
-  styleUrls: ['./workflow.component.scss']
+    styleUrls: ['./workflow.component.scss'],
+    standalone: false
 })
 export class WorkflowComponent implements OnChanges, AfterViewInit {
   @Input() workflow?: Workflow;

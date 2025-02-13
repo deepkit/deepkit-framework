@@ -4,6 +4,7 @@ import {
     changeClass,
     collectForMicrotask,
     createDynamicClass,
+    CustomError,
     escapeRegExp,
     getClassName,
     getClassTypeFromInstance,
@@ -52,6 +53,11 @@ test('helper getClassName', () => {
     expect(getClassName(MyError)).toBe('MyError');
     expect(getClassName(new MyError)).toBe('MyError');
 });
+
+test('error', () => {
+    const custom = new CustomError('my message', {cause: new Error('that is the cause')});
+    expect((custom as any).cause.message).toEqual('that is the cause');
+})
 
 test('helper isObject', () => {
     expect(isObject([])).toBe(false);

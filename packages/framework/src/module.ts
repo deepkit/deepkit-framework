@@ -10,7 +10,7 @@
 
 import { ClassType, isClass, isPrototypeOfBase, ProcessLocker } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
-import { join } from 'path';
+import { isAbsolute, join } from 'path';
 import { ApplicationServer, ApplicationServerListener, onServerShutdown } from './application-server.js';
 import { DebugRouterController } from './cli/debug-router.js';
 import { DebugDIController } from './cli/debug-di.js';
@@ -56,7 +56,7 @@ import { DebugConfigController } from './cli/app-config.js';
 import { Zone } from './zone.js';
 import { DebugBrokerBus } from './debug/broker.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
-import { AppModule, ControllerConfig, createModule, onAppShutdown } from '@deepkit/app';
+import { AppModule, ControllerConfig, createModuleClass, DeepPartial, onAppShutdown } from '@deepkit/app';
 import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
 import { normalizeDirectory } from './utils.js';
 import { FilesystemRegistry, PublicFilesystem } from './filesystem.js';
@@ -68,7 +68,8 @@ import { BrokerListener } from './broker/listener.js';
 import { BrokerBus, BrokerCache, BrokerDeepkitAdapter, BrokerKeyValue, BrokerLock, BrokerQueue } from '@deepkit/broker';
 import { getBrokerServers } from './broker.js';
 
-export class FrameworkModule extends createModule({
+export class FrameworkModule extends createModuleClass({
+    name: 'framework',
     config: FrameworkConfig,
     providers: [
         ProcessLocker,
@@ -121,9 +122,6 @@ export class FrameworkModule extends createModule({
         { provide: RpcKernelBaseConnection, scope: 'rpc', useValue: undefined },
         { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
     ],
-    workflows: [
-        // rpcWorkflow,
-    ],
     listeners: [
         ApplicationServerListener,
         DatabaseListener,
@@ -170,15 +168,21 @@ export class FrameworkModule extends createModule({
 
         HttpModule,
     ],
-}, 'framework') {
+}) {
     imports = [
         new HttpModule(),
     ];
+
+    name = 'framework';
 
     protected dbs: { module: AppModule<any>, classType: ClassType }[] = [];
     protected filesystems: { module: AppModule<any>, classType: ClassType }[] = [];
 
     protected rpcControllers = new RpcControllers;
+
+    constructor(options?: DeepPartial<FrameworkConfig>) {
+        super(options);
+    }
 
     process() {
         this.addImport();
@@ -194,7 +198,9 @@ export class FrameworkModule extends createModule({
         this.getImportedModuleByClass(HttpModule).configure(this.config.http);
 
         if (this.config.publicDir) {
-            const localPublicDir = join(process.cwd(), this.config.publicDir);
+            const localPublicDir =
+                isAbsolute(this.config.publicDir) ? this.config.publicDir :
+                    join(process.cwd(), this.config.publicDir);
 
             this.addListener(serveStaticListener(this, normalizeDirectory(this.config.publicDirPrefix), localPublicDir));
 

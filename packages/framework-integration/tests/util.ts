@@ -1,6 +1,6 @@
 import { arrayRemoveItem, ClassType, sleep } from '@deepkit/core';
 import { ApplicationServer, FrameworkModule } from '@deepkit/framework';
-import { App, AppModule, onAppShutdown } from '@deepkit/app';
+import { App, AppModule } from '@deepkit/app';
 import { Observable } from 'rxjs';
 import { createServer } from 'http';
 import { DeepkitClient, RemoteController } from '@deepkit/rpc';
@@ -46,7 +46,7 @@ export function appModuleForControllers(controllers: ClassType[], entities: Clas
         }
     }
 
-    return new AppModule({
+    return new AppModule({}, {
         controllers: controllers,
         providers: [
             { provide: Database, useClass: MyDatabase },

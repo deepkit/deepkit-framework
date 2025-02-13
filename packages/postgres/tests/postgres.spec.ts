@@ -162,7 +162,7 @@ test('for update/share', async () => {
 });
 
 test('json field and query', async () => {
-    @entity.name('product').collection('products')
+    @(entity.name('product').collection('products'))
     class Product {
         id: number & PrimaryKey & AutoIncrement = 0;
         raw?: { [key: string]: any };
@@ -207,7 +207,7 @@ test('unique constraint 1', async () => {
             assertInstanceOf(error.cause, DatabaseInsertError);
             assertInstanceOf(error.cause.cause, DatabaseError);
             // error.cause.cause.cause is from the driver
-            expect(error.cause.cause.cause.table).toBe('Model');
+            expect((error.cause.cause.cause as any).table).toBe('Model');
         }
     }
 

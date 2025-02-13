@@ -141,12 +141,13 @@ export class Config {
 ```
 
 ```typescript
-import { createModule } from '@deepkit/app';
+import { createModuleClass } from '@deepkit/app';
 import { Config } from './module.config.ts';
 
-export class MyModule extends createModule({
-   config: Config
-}) {}
+export class MyModule extends createModuleClass({
+  config: Config
+}) {
+}
 ```
 
 The values for the configuration options can be provided either in the constructor of the module, with the `.configure()` method, or via configuration loaders (e.g. environment variable loader).

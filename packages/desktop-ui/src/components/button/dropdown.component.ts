@@ -40,6 +40,7 @@ import { ButtonComponent } from './button.component';
 
 @Component({
     selector: 'dui-dropdown',
+    standalone: false,
     template: `
         <ng-template #dropdownTemplate>
             <div class="dui-body dui-dropdown" tabindex="1" #dropdown>
@@ -406,6 +407,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
  */
 @Directive({
     'selector': '[openDropdown]',
+    standalone: false,
 })
 export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
     @Input() openDropdown?: DropdownComponent;
@@ -450,6 +452,7 @@ export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
  */
 @Directive({
     'selector': '[openDropdownHover]',
+    standalone: false,
 })
 export class OpenDropdownHoverDirective implements OnDestroy {
     @Input() openDropdownHover?: DropdownComponent;
@@ -506,6 +509,7 @@ export class OpenDropdownHoverDirective implements OnDestroy {
  */
 @Directive({
     'selector': '[contextDropdown]',
+    standalone: false,
 })
 export class ContextDropdownDirective {
     @Input() contextDropdown?: DropdownComponent;
@@ -523,6 +527,7 @@ export class ContextDropdownDirective {
 
 @Component({
     selector: 'dui-dropdown-splitter,dui-dropdown-separator',
+    standalone: false,
     template: `
         <div></div>
     `,
@@ -556,6 +561,7 @@ export class DropdownSplitterComponent {
  */
 @Directive({
     'selector': '[dropdownContainer]',
+    standalone: false,
 })
 export class DropdownContainerDirective {
     constructor(protected dropdown: DropdownComponent, public template: TemplateRef<any>) {
@@ -565,6 +571,7 @@ export class DropdownContainerDirective {
 
 @Component({
     selector: 'dui-dropdown-item',
+    standalone: false,
     template: `
         <dui-icon [size]="14" class="selected" *ngIf="selected" name="check"></dui-icon>
         <ng-content></ng-content>

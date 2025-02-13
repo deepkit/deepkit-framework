@@ -2,8 +2,10 @@ import { http, HttpQuery, HttpResponse } from '@deepkit/http';
 import { FilesystemRegistry } from '../filesystem.js';
 import { Filesystem } from '@deepkit/filesystem';
 import mime from 'mime-types';
-import jimp from 'jimp';
-import { imageSize } from 'image-size';
+import { Jimp } from 'jimp';
+
+//@ts-ignore
+import * as imageSize from 'probe-image-size';
 
 function send(response: HttpResponse, data: Uint8Array, name: string, mimeType?: string, lastModified?: Date) {
     response.setHeader('Cache-Control', 'max-age=31536000');
@@ -56,11 +58,11 @@ export class DebugHttpController {
                 return;
             }
 
-            const size = imageSize(Buffer.from(data));
+            const size = imageSize.sync(Buffer.from(data));
             if (size.width || 0 > 400 || size.height || 0 > 400) {
                 try {
-                    const img = await jimp.read(Buffer.from(data));
-                    const buffer = await img.resize(800, 800).getBufferAsync(mimeType);
+                    const img = await Jimp.read("asd");
+                    const buffer = await img.resize({w: 800, h: 800}).getBuffer(mimeType as any);
                     send(response, buffer, file.name, mimeType, file.lastModified);
                     return;
                 } catch (error: any) {

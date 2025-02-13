@@ -3,7 +3,7 @@ import { ActiveRecord } from '@deepkit/orm';
 import { Book } from './book.js';
 import { Tag } from './tag.js';
 
-@entity.name('active-record-book-tag').index(['book', 'tag'])
+@(entity.name('active-record-book-tag').index(['book', 'tag']))
 export class BookTag extends ActiveRecord {
     public id?: number & AutoIncrement & PrimaryKey;
 

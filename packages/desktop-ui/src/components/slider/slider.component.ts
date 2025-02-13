@@ -8,13 +8,23 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Injector, Input, SkipSelf, ViewChild } from '@angular/core';
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    Injector,
+    Input,
+    SkipSelf,
+    ViewChild,
+} from '@angular/core';
 import { nextTick } from '@deepkit/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { getHammer } from '../../core/utils';
 
 @Component({
     selector: 'dui-slider',
+    standalone: false,
     template: `
         <div class="bg"></div>
         <div class="knob-container">

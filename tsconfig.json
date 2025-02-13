@@ -2,6 +2,9 @@
   "files": [],
   "references": [
     {
+      "path": "packages/angular-ssr/tsconfig.json"
+    },
+    {
       "path": "packages/core/tsconfig.json"
     },
     {

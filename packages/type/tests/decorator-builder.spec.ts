@@ -1,11 +1,15 @@
 import { expect, test } from '@jest/globals';
 import {
-    APIProperty,
     createClassDecoratorContext,
     createFreeDecoratorContext,
-    createPropertyDecoratorContext, DecoratorAndFetchSignature, DualDecorator, ExtractApiDataType, ExtractClass, FluidDecorator,
+    createPropertyDecoratorContext,
+    DecoratorAndFetchSignature,
+    DualDecorator,
+    ExtractApiDataType,
+    ExtractClass,
     isDecoratorContext,
-    mergeDecorator, PropertyDecoratorFn, PropertyDecoratorResult
+    mergeDecorator,
+    PropertyDecoratorFn,
 } from '../src/decorator-builder.js';
 
 test('without host', () => {
@@ -209,11 +213,11 @@ test('dual decorator', () => {
     const merged = mergeDecorator(dec1, dec2);
 
     {
-        @merged.controller('asd').resolve('a').resolve('b')
+        @(merged.controller('asd').resolve('a').resolve('b'))
         class MyClass {
             @dec2.name('dd')
             @dec2.typeArg<string>('dd')
-            @merged.resolve('c').resolve('d')
+            @(merged.resolve('c').resolve('d'))
             property!: string;
         }
 
@@ -222,9 +226,9 @@ test('dual decorator', () => {
     }
 
     {
-        @merged.resolve('a').resolve('b').resolve('2')
+        @(merged.resolve('a').resolve('b').resolve('2'))
         class MyClass {
-            @merged.resolve('c').resolve('d').resolve('3')
+            @(merged.resolve('c').resolve('d').resolve('3'))
             property!: string;
         }
 
@@ -234,7 +238,7 @@ test('dual decorator', () => {
 
     {
         expect(() => {
-            @merged.name('b')
+            @(merged.name('b'))
             class MyClass {
             }
         }).toThrow(`Decorator 'name' can not be used on class MyClass`);
@@ -242,7 +246,7 @@ test('dual decorator', () => {
     {
         expect(() => {
             class MyClass {
-                @(merged as any).controller('b')
+                @((merged as any).controller('b'))
                 prop!: string;
             }
         }).toThrow(`Decorator 'controller' can not be used on class property MyClass.prop`);
@@ -269,7 +273,7 @@ test('basic', () => {
         }
     );
 
-    @dec.name('peter')
+    @(dec.name('peter'))
     class Peter {
     }
 
@@ -284,7 +288,7 @@ test('basic', () => {
     expect(dec._fetch(Peter2)).toBeInstanceOf(EntityInfo);
     expect(dec._fetch(Peter2)!.name).toBe('');
 
-    @dec.name('peter').title('asd')
+    @(dec.name('peter').title('asd'))
     class Peter3 {
 
     }
@@ -314,7 +318,7 @@ test('basic magic property', () => {
         }
     );
 
-    @dec.important
+    @(dec.important)
     class Peter2 {
 
     }
@@ -323,7 +327,7 @@ test('basic magic property', () => {
     expect(dec._fetch(Peter2)!.name).toBe('');
     expect(dec._fetch(Peter2)!.important).toBe(true);
 
-    @dec.important.name('peter3')
+    @(dec.important.name('peter3'))
     class Peter3 {
 
     }
@@ -333,7 +337,7 @@ test('basic magic property', () => {
     expect(dec._fetch(Peter3)!.important).toBe(true);
 
     {
-        @dec.name('peter4').important
+        @(dec.name('peter4').important)
         class Peter4 {
 
         }
@@ -344,8 +348,8 @@ test('basic magic property', () => {
     }
 
     {
-        @dec.name('peter4')
-        @dec.important
+        @(dec.name('peter4'))
+        @(dec.important)
         class Peter4 {
 
         }
@@ -371,16 +375,16 @@ test('basic multiple', () => {
         }
     );
 
-    @dec.name('peter')
+    @(dec.name('peter'))
     class Peter {
     }
 
-    @dec.name('peter2')
+    @(dec.name('peter2'))
     class Peter2 {
     }
 
 
-    @dec.name('peter3')
+    @(dec.name('peter3'))
     class Peter3 {
     }
 
@@ -430,7 +434,7 @@ test('basic property', () => {
 
     {
         class Peter {
-            @dec.name('peter') name!: string;
+            @(dec.name('peter')) name!: string;
         }
 
         expect(dec._fetch(Peter, 'name')).toBeInstanceOf(PropertyInfo);
@@ -440,7 +444,7 @@ test('basic property', () => {
 
     {
         class Peter {
-            @dec.important name!: string;
+            @(dec.important) name!: string;
         }
 
         expect(dec._fetch(Peter, 'name')).toBeInstanceOf(PropertyInfo);
@@ -450,7 +454,7 @@ test('basic property', () => {
 
     {
         class Peter {
-            @dec.important.name('peter') name!: string;
+            @(dec.important.name('peter')) name!: string;
         }
 
         expect(dec._fetch(Peter, 'name')).toBeInstanceOf(PropertyInfo);
@@ -460,8 +464,8 @@ test('basic property', () => {
 
     {
         class Peter {
-            @dec.important
-            @dec.name('peter')
+            @(dec.important)
+            @(dec.name('peter'))
             name!: string;
         }
 

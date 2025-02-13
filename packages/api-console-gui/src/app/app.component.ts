@@ -24,7 +24,8 @@ import { ControllerClient } from './client';
             </dui-window-content>
         </dui-window>
     `,
-    styleUrls: ['./app.component.scss']
+    styleUrls: ['./app.component.scss'],
+    standalone: false
 })
 export class AppComponent {
     sidebarVisible: boolean = true;

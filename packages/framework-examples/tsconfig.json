@@ -6,13 +6,9 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2018",
+    "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
-    "lib": [
-      "es6",
-      "dom"
-    ],
     "baseUrl": ".",
     "outDir": "./dist",
     "jsx": "react-jsx",

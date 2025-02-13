@@ -12,6 +12,7 @@ import { Component, HostBinding, Input, OnChanges, OnInit } from '@angular/core'
 
 @Component({
     selector: 'dui-icon',
+    standalone: false,
     template: `{{name}}`,
     host: {
         '[class.ui-icon]': 'true',

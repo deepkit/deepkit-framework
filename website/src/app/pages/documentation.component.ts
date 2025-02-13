@@ -1,30 +1,18 @@
 import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { AppDescription, AppTitle } from '@app/app/components/title';
-import { ContentRenderComponent } from '@app/app/components/content-render.component';
-import { NgForOf, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LoadingComponent } from '@app/app/components/loading';
-import { AskComponent } from '@app/app/components/ask.component';
 import { Subscription } from 'rxjs';
 import { PlatformHelper } from '@app/app/utils';
 
 @Component({
-    standalone: true,
     imports: [
-        AppTitle,
-        AppDescription,
-        ContentRenderComponent,
-        NgIf,
         RouterLinkActive,
         RouterLink,
-        NgForOf,
         FormsModule,
-        LoadingComponent,
-        AskComponent,
         RouterOutlet
     ],
-    styleUrls: ['./documentation.component.scss'],
+    standalone: true,
+    styleUrls: ['./documentation.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <div class="page">

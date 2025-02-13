@@ -1,6 +1,6 @@
 import { HttpListener, HttpResultFormatter, httpWorkflow } from './http.js';
 import { HttpConfig } from './module.config.js';
-import { AddedListener, AppModule, ControllerConfig, createModule, stringifyListener } from '@deepkit/app';
+import { AddedListener, AppModule, ControllerConfig, createModuleClass, stringifyListener } from '@deepkit/app';
 import { HttpRouter, HttpRouterRegistry, RouteConfig } from './router.js';
 import { HttpKernel } from './kernel.js';
 import { HttpRouterFilterResolver } from './filter.js';
@@ -23,7 +23,8 @@ function parameterRequiresRequest(parameter: ReflectionParameter): boolean {
         || metaAnnotation.getForName(parameter.type, 'httpHeader'));
 }
 
-export class HttpModule extends createModule({
+
+export class HttpModule extends createModuleClass({
     config: HttpConfig,
     providers: [
         HttpRouter,

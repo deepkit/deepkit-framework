@@ -1,16 +1,17 @@
-import { Inject, Injectable } from "@angular/core";
-import { PageResponseModel } from "./page-response-model";
+import { inject, Injectable, RESPONSE_INIT } from '@angular/core';
 
 @Injectable()
 export class PageResponse {
-    constructor(@Inject('page-response-model') private model: PageResponseModel) {
-    }
+    response = inject(RESPONSE_INIT, {optional: true});
 
     notFound() {
-        this.model.statusCode = 404;
+        if (!this.response) return;;
+        this.response.status = 404;
     }
 
     redirect(url: string) {
-        this.model.redirect = url;
+        if (!this.response) return;
+        this.response.status = 302;
+        this.response.headers = { Location: url };
     }
 }

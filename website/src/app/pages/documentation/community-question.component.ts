@@ -1,5 +1,4 @@
 import { ChangeDetectorRef, Component, OnInit, signal } from '@angular/core';
-import { AskComponent } from '@app/app/components/ask.component';
 import { FormsModule } from '@angular/forms';
 import { ControllerClient } from '@app/app/client';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -13,9 +12,7 @@ import { PageResponse } from '@app/app/page-response';
 import { waitForInit } from '@app/app/utils';
 
 @Component({
-    standalone: true,
     imports: [
-        AskComponent,
         FormsModule,
         TextFieldModule,
         CommunityQuestionMessagesComponent,
@@ -93,7 +90,7 @@ import { waitForInit } from '@app/app/utils';
             <!--                          placeholder="Send a message" [(ngModel)]="query"></textarea>-->
             <!--            }-->
         </div>
-    `,
+    `
 })
 export class CommunityQuestionComponent implements OnInit {
     projectMap = projectMap;

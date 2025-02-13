@@ -25,7 +25,7 @@ import {
     OnInit,
     Optional,
     Output,
-    SkipSelf
+    SkipSelf,
 } from '@angular/core';
 import { WindowComponent } from '../window/window.component';
 import { WindowState } from '../window/window-state';
@@ -96,6 +96,7 @@ function isHotKeyActive(hotkey: HotKey, event: KeyboardEvent) {
 
 @Component({
     selector: 'dui-button-hotkey',
+    standalone: false,
     styles: [`
         :host {
             display: inline-flex;
@@ -162,6 +163,7 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
 
 @Component({
     selector: 'dui-button',
+    standalone: false,
     template: `
         <dui-icon *ngIf="icon && iconRight === false" [color]="iconColor" [name]="icon" [size]="iconSize"></dui-icon>
         <ng-content></ng-content>
@@ -321,7 +323,8 @@ export class ButtonComponent implements OnInit, AfterViewInit {
 }
 
 @Directive({
-    selector: '[hotkey]'
+    selector: '[hotkey]',
+    standalone: false,
 })
 export class HotkeyDirective {
     @Input() hotkey!: HotKey;
@@ -396,6 +399,7 @@ export class HotkeyDirective {
  */
 @Component({
     selector: 'dui-button-group',
+    standalone: false,
     template: '<ng-content></ng-content>',
     host: {
         '[class.float-right]': 'float===\'right\'',
@@ -473,6 +477,7 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
 
 @Component({
     selector: 'dui-button-groups',
+    standalone: false,
     template: `
         <ng-content></ng-content>
     `,
@@ -489,6 +494,7 @@ export class ButtonGroupsComponent {
 
 @Directive({
     selector: '[duiFileChooser]',
+    standalone: false,
     providers: [ngValueAccessor(FileChooserDirective)]
 })
 export class FileChooserDirective extends ValueAccessorBase<any> implements OnDestroy, OnChanges {
@@ -572,6 +578,7 @@ function readFile(file: File): Promise<Uint8Array | undefined> {
 
 @Directive({
     selector: '[duiFilePicker]',
+    standalone: false,
     providers: [ngValueAccessor(FileChooserDirective)]
 })
 export class FilePickerDirective extends ValueAccessorBase<any> implements OnDestroy, AfterViewInit {
@@ -636,6 +643,7 @@ export class FilePickerDirective extends ValueAccessorBase<any> implements OnDes
 
 @Directive({
     selector: '[duiFileDrop]',
+    standalone: false,
     host: {
         '[class.file-drop-hover]': 'i > 0',
     },

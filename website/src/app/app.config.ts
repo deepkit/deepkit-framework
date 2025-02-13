@@ -2,12 +2,12 @@ import { ApplicationConfig, provideExperimentalZonelessChangeDetection } from '@
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { routes } from './app.routes';
 import { RpcClient, RpcHttpClientAdapter, RpcHttpHeaderNames } from '@deepkit/rpc';
-import { ControllerClient, RpcAngularHttpAdapter } from '@app/app/client';
+import { APIInterceptor, ControllerClient, RpcAngularHttpAdapter } from '@app/app/client';
 import { provideClientHydration, withHttpTransferCacheOptions } from '@angular/platform-browser';
 import { AppMetaStack } from '@app/app/components/title';
 import { PlatformHelper } from '@app/app/utils';
 import { PageResponse } from '@app/app/page-response';
-import { provideHttpClient, withFetch } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withFetch } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -24,13 +24,13 @@ export const appConfig: ApplicationConfig = {
             includePostRequests: true,
             filter: () => true,
         })),
-        provideHttpClient(withFetch(), ),
-
-        ControllerClient,
+        provideHttpClient(withFetch()),
         {
-            provide: 'baseUrl',
-            useValue: '',
+            provide: HTTP_INTERCEPTORS,
+            useClass: APIInterceptor,
+            multi: true,
         },
+        ControllerClient,
         RpcAngularHttpAdapter,
         {
             provide: RpcClient,

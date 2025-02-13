@@ -9,6 +9,7 @@
  */
 
 import ts, {
+    __String,
     ArrowFunction,
     BigIntLiteral,
     BinaryExpression,
@@ -16,7 +17,9 @@ import ts, {
     Expression,
     Identifier,
     ImportDeclaration,
+    isBigIntLiteral,
     JSDoc,
+    JSDocImportTag,
     ModifierLike,
     Node,
     NodeArray,
@@ -51,8 +54,23 @@ const {
 
 export type PackExpression = Expression | string | number | boolean | bigint;
 
-export function getIdentifierName(node: Identifier | PrivateIdentifier): string {
-    return ts.unescapeLeadingUnderscores(node.escapedText);
+function is__String(value: any): value is __String {
+    return typeof value === 'string';
+}
+
+export function getIdentifierName(node: Identifier | PrivateIdentifier | StringLiteral | __String): string {
+    if (is__String(node)) return node as string;
+    if (isIdentifier(node) || isPrivateIdentifier(node)) {
+        return ts.unescapeLeadingUnderscores(node.escapedText);
+    }
+    if (isStringLiteral(node)) return node.text;
+    return '';
+}
+
+export function getEscapedText(node: Identifier | PrivateIdentifier | StringLiteral | __String): string {
+    if (is__String(node)) return node as string;
+    if (isIdentifier(node) || isPrivateIdentifier(node)) return node.escapedText as string;
+    return getIdentifierName(node);
 }
 
 export function findSourceFile(node: Node): SourceFile | undefined {
@@ -141,6 +159,7 @@ export function getNameAsString(node?: PropertyName | QualifiedName): string {
     if (isIdentifier(node)) return getIdentifierName(node);
     if (isStringLiteral(node)) return node.text;
     if (isNumericLiteral(node)) return node.text;
+    if (isBigIntLiteral(node)) return node.text;
     if (isNoSubstitutionTemplateLiteral(node)) return node.text;
     if (isComputedPropertyName(node)) {
         if (isStringLiteralLike(node) || isNumericLiteral(node)) return (node as StringLiteralLike | NumericLiteral).text;
@@ -250,7 +269,7 @@ export function getGlobalsOfSourceFile(file: SourceFile): SymbolTable | void {
  * For imports that can removed (like a class import only used as type only, like `p: Model[]`) we have
  * to modify the import so TS does not remove it.
  */
-export function ensureImportIsEmitted(importDeclaration: ImportDeclaration, specifierName?: Identifier) {
+export function ensureImportIsEmitted(importDeclaration: ImportDeclaration | JSDocImportTag, specifierName?: Identifier) {
     if (specifierName && importDeclaration.importClause && importDeclaration.importClause.namedBindings) {
         // const binding = importDeclaration.importClause.namedBindings;
         if (isNamedImports(importDeclaration.importClause.namedBindings)) {

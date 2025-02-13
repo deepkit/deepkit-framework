@@ -8,7 +8,20 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, Inject, Input, OnChanges, OnDestroy, Optional, SimpleChanges, SkipSelf, ViewContainerRef } from '@angular/core';
+import {
+    ChangeDetectionStrategy,
+    ChangeDetectorRef,
+    Component,
+    ContentChild,
+    Inject,
+    Input,
+    OnChanges,
+    OnDestroy,
+    Optional,
+    SimpleChanges,
+    SkipSelf,
+    ViewContainerRef,
+} from '@angular/core';
 import { WindowContentComponent } from './window-content.component';
 import { WindowRegistry, WindowState } from './window-state';
 import { DOCUMENT } from '@angular/common';
@@ -22,6 +35,7 @@ import { DuiApp } from '../app';
  */
 @Component({
     selector: 'dui-window-frame',
+    standalone: false,
     template: '<ng-content></ng-content>',
     styleUrls: ['./window-frame.component.scss'],
     host: {
@@ -34,6 +48,7 @@ export class WindowFrameComponent {
 
 @Component({
     selector: 'dui-window',
+    standalone: false,
     template: '<ng-content></ng-content><div *ngIf="windowState.disableInputs|async" (mousedown)="$event.preventDefault();" class="disable-inputs"></div>',
     styleUrls: ['./window.component.scss'],
     host: {

@@ -29,7 +29,8 @@ import { deserialize, ReflectionKind, Type } from '@deepkit/type';
             width: 100%;
             flex: 1;
         }
-    `]
+    `],
+    standalone: false
 })
 export class JsonInputComponent {
     @Input() model: any;

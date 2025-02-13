@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { ClassType } from '@deepkit/core';
 import { App } from '../src/app.js';
-import { AppModule, createModule } from '../src/module.js';
+import { AppModule, createModuleClass } from '../src/module.js';
 import { InjectorContext } from '@deepkit/injector';
 import { ControllerConfig } from '../src/service-container.js';
 
@@ -37,7 +37,7 @@ test('controller instantiation', () => {
         }
     }
 
-    class HttpModule extends createModule({
+    class HttpModule extends createModuleClass({
         providers: [Router],
         exports: [Router],
     }) {

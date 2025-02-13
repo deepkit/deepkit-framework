@@ -10,14 +10,9 @@
     "preserveSymlinks": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "lib": [
-      "es6",
-      "dom"
-    ],
     "outDir": "./dist",
     "jsx": "react-jsx",
-    "jsxImportSource": "@deepkit/template",
-    "types": []
+    "jsxImportSource": "@deepkit/template"
   },
   "ts-node": {
     "experimentalResolver": true

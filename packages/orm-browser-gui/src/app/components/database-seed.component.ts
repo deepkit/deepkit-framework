@@ -33,7 +33,8 @@ import { ReflectionClass } from '@deepkit/type';
             </div>
         </div>
     `,
-    styleUrls: ['./database-seed.component.scss']
+    styleUrls: ['./database-seed.component.scss'],
+    standalone: false
 })
 export class DatabaseSeedComponent implements OnChanges {
     @Input() database!: DatabaseInfo;

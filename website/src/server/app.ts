@@ -1,10 +1,7 @@
-import { App, findParentPath, onAppExecute } from '@deepkit/app';
+import { App } from '@deepkit/app';
 import { FrameworkModule, onServerMainBootstrap } from '@deepkit/framework';
 import { AppConfig } from './config';
 import { MainController } from '@app/server/controller/main.controller';
-import { AngularListener } from '@app/server/angular';
-import { serveStaticListener } from '@deepkit/http';
-import { join } from 'path';
 import { Search } from '@app/server/search';
 import { OpenAI } from 'openai';
 import {
@@ -26,20 +23,19 @@ import { MarkdownParser } from '@app/common/markdown';
 import { migrate } from '@app/server/commands/migrate';
 import { importExamples, importQuestions } from '@app/server/commands/import';
 import { BenchmarkController, BenchmarkHttpController } from '@app/server/controller/benchmark.controller';
+import { AngularModule } from '@deepkit/angular-ssr';
+
 
 (global as any).window = undefined;
 (global as any).document = undefined;
 
-const app = new App({
+export const app = new App({
     config: AppConfig,
     controllers: [
         MainController,
         WebController,
         BenchmarkController,
         BenchmarkHttpController,
-    ],
-    listeners: [
-        AngularListener,
     ],
     providers: [
         PageProcessor,
@@ -71,8 +67,12 @@ const app = new App({
     imports: [
         new FrameworkModule({
             migrateOnStartup: true, //yolo
-            httpRpcBasePath: 'api/v1'
+            httpRpcBasePath: 'api/v1',
+            broker: {
+                startOnBootstrap: false,
+            },
         }),
+        new AngularModule()
     ],
 });
 
@@ -93,15 +93,6 @@ app.command('import:examples', importExamples);
 app.command('migrate', migrate);
 
 app.listen(onServerMainBootstrap, registerBot);
-app.listen(onAppExecute, (event, parser: MarkdownParser) => parser.load());
+app.listen(onServerMainBootstrap, (event, parser: MarkdownParser) => parser.load());
 
 app.loadConfigFromEnv({ namingStrategy: 'same', prefix: 'app_', envFilePath: ['local.env'] });
-
-app.setup((module) => {
-    const assets = findParentPath('dist/', __dirname);
-    if (assets) {
-        module.addListener(serveStaticListener(module, '/', join(assets, 'app/browser')));
-    }
-});
-
-void app.run();

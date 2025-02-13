@@ -4,7 +4,8 @@ import { objToString } from './utils';
 import { BrowserState } from '../../browser-state';
 
 @Component({
-    template: `{{label}}`
+    template: `{{label}}`,
+    standalone: false
 })
 export class ClassCellComponent implements OnChanges, OnInit {
     @Input() model: any;

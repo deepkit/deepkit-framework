@@ -3,7 +3,6 @@ import { NgIf } from "@angular/common";
 
 @Component({
     selector: 'app-error',
-    standalone: true,
     imports: [
         NgIf
     ],

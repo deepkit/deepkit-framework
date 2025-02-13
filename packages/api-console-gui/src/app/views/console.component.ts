@@ -15,7 +15,8 @@ import { ReflectionKind, stringifyType } from '@deepkit/type';
 
 @Component({
     templateUrl: './console.component.html',
-    styleUrls: ['./console.component.scss']
+    styleUrls: ['./console.component.scss'],
+    standalone: false
 })
 export class ConsoleComponent implements OnInit, OnDestroy {
     trackByIndex = trackByIndex;

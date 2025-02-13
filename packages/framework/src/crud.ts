@@ -2,7 +2,15 @@ import { ClassType, getObjectKeysSize, isArray } from '@deepkit/core';
 import { AppModule } from '@deepkit/app';
 import { http, HttpBody, httpClass, HttpQueries, JSONResponse } from '@deepkit/http';
 import { Database, DatabaseRegistry, Query, UniqueConstraintFailure } from '@deepkit/orm';
-import { InlineRuntimeType, Maximum, Positive, ReflectionClass, ReflectionKind, TypeUnion, ValidationError } from '@deepkit/type';
+import {
+    InlineRuntimeType,
+    Maximum,
+    Positive,
+    ReflectionClass,
+    ReflectionKind,
+    TypeUnion,
+    ValidationError,
+} from '@deepkit/type';
 
 function applySelect(query: Query<any>, select: string[] | string): Query<any> {
     const names: string[] = isArray(select) ? select.map(v => v.trim()) : select.replace(/\s+/g, '').split(',');
@@ -147,7 +155,7 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
 
     const identifierChangeable = options && options.identifierChangeable ? true : false;
 
-    @http.controller('/entity/' + schema.name).group('crud')
+    @(http.controller('/entity/' + schema.name).group('crud'))
     class RestController {
         constructor(protected registry: DatabaseRegistry) {
         }
@@ -156,10 +164,10 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
             return this.registry.getDatabaseForEntity(schema);
         }
 
-        @http.GET('')
+        @(http.GET('')
             .description(`A list of ${schema.name}.`)
             .response<SchemaType[]>(200, `List of ${schema.name}.`)
-            .response<ValidationError>(400, `When parameter validation failed.`)
+            .response<ValidationError>(400, `When parameter validation failed.`))
         async readMany(listQuery: HttpQueries<ListQuery>) {
             listQuery.limit = Math.min(options.maxLimit || 1000, listQuery.limit || options.defaultLimit || 30);
             let query = this.getDatabase().query(schema);
@@ -181,11 +189,11 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
                 .find();
         }
 
-        @http.POST('')
+        @(http.POST('')
             .description(`Add a new ${schema.name}.`)
             .response<SchemaType>(201, 'When successfully created.')
             .response<ValidationError>(400, `When parameter validation failed`)
-            .response<ErrorMessage>(409, 'When unique entity already exists.')
+            .response<ErrorMessage>(409, 'When unique entity already exists.'))
         async create(body: HttpBody<SchemaType>) {
             //body is automatically validated
             //is cast really necessary?
@@ -202,20 +210,20 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
             return new JSONResponse(item).status(201);
         }
 
-        @http.DELETE(':' + identifier.name)
+        @(http.DELETE(':' + identifier.name)
             .description(`Delete a single ${schema.name}.`)
             .response<ValidationError>(400, `When parameter validation failed`)
-            .response<{ deleted: number }>(200, `When deletion was successful`)
+            .response<{ deleted: number }>(200, `When deletion was successful`))
         async delete(id: IdentifierType) {
             const result = await this.getDatabase().query(schema).filter({ [identifier.name]: id }).deleteOne();
             return { deleted: result.modified };
         }
 
-        @http.GET(':' + identifier.name)
+        @(http.GET(':' + identifier.name)
             .description(`Get a single ${schema.name}.`)
             .response<SchemaType>(200, `When ${schema.name} was found.`)
             .response<ValidationError>(400, `When parameter validation failed`)
-            .response<ErrorMessage>(404, `When ${schema.name} was not found.`)
+            .response<ErrorMessage>(404, `When ${schema.name} was not found.`))
         async read(
             id: IdentifierType,
             options: HttpQueries<GetQuery>
@@ -230,11 +238,11 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
             return new JSONResponse({ message: `${schema.name} not found` }).status(404);
         }
 
-        @http.PUT(':' + identifier.name)
+        @(http.PUT(':' + identifier.name)
             .description(`Update a single ${schema.name}.`)
             .response<SchemaType>(200, `When ${schema.name} was successfully updated.`)
             .response<ValidationError>(400, `When parameter validation failed`)
-            .response<ErrorMessage>(404, `When ${schema.name} was not found.`)
+            .response<ErrorMessage>(404, `When ${schema.name} was not found.`))
         async update(
             id: IdentifierType,
             body: HttpBody<Partial<SchemaType>>,
@@ -277,7 +285,8 @@ export class CrudAppModule<T extends {}> extends AppModule<T> {
 export function createCrudRoutes(schemas: (ClassType | ReflectionClass<any>)[], options: AutoCrudOptions = {}) {
     const controllers = schemas.map(v => ReflectionClass.from(v)).map(v => createController(v, options));
 
-    return new CrudAppModule({
+    return new CrudAppModule({}, {
+        name: 'autoCrud',
         controllers: controllers
-    }, 'autoCrud');
+    });
 }

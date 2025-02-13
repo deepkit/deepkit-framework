@@ -1,11 +1,8 @@
-import { Component } from "@angular/core";
-import { RouterLink } from "@angular/router";
-import { AppTitle } from "@app/app/components/title";
-
+import { Component } from '@angular/core';
+import { AppTitle } from '@app/app/components/title';
 
 
 @Component({
-    standalone: true,
     styles: [`
       .app-boxes-small {
         margin: 50px 00px;
@@ -20,7 +17,6 @@ import { AppTitle } from "@app/app/components/title";
       }
     `],
     imports: [
-        RouterLink,
         AppTitle
     ],
     template: `
