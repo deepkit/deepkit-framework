@@ -10,7 +10,7 @@
 
 import { ClassType, isClass, isPrototypeOfBase, ProcessLocker } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
-import { join } from 'path';
+import { isAbsolute, join } from 'path';
 import { ApplicationServer, ApplicationServerListener, onServerShutdown } from './application-server.js';
 import { DebugRouterController } from './cli/debug-router.js';
 import { DebugDIController } from './cli/debug-di.js';
@@ -167,7 +167,7 @@ export class FrameworkModule extends createModuleClass({
         FilesystemRegistry,
 
         HttpModule,
-    ]
+    ],
 }) {
     imports = [
         new HttpModule(),
@@ -198,7 +198,9 @@ export class FrameworkModule extends createModuleClass({
         this.getImportedModuleByClass(HttpModule).configure(this.config.http);
 
         if (this.config.publicDir) {
-            const localPublicDir = join(process.cwd(), this.config.publicDir);
+            const localPublicDir =
+                isAbsolute(this.config.publicDir) ? this.config.publicDir :
+                    join(process.cwd(), this.config.publicDir);
 
             this.addListener(serveStaticListener(this, normalizeDirectory(this.config.publicDirPrefix), localPublicDir));
 

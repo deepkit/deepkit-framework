@@ -2,22 +2,12 @@
   "name": "website",
   "version": "0.0.0",
   "scripts": {
-    "app:start": "NODE_OPTIONS=--preserve-symlinks ng serve",
-    "app:build": "NODE_OPTIONS=--preserve-symlinks ng build --configuration production",
-    "app:build:dev": "NODE_OPTIONS=--preserve-symlinks ng build --watch --configuration development",
-    "app:watch": "NODE_OPTIONS=--preserve-symlinks ng build --watch --configuration development",
-    "app:test": "NODE_OPTIONS=--preserve-symlinks ng test",
-    "ssr:build": "NODE_OPTIONS=--preserve-symlinks ng run app:server",
-    "ssr:watch": "NODE_OPTIONS=--preserve-symlinks ng run app:server:development --watch",
-    "server": "NODE_OPTIONS=--preserve-symlinks TS_NODE_PROJECT=tsconfig.server.json node -r ts-node/register -r tsconfig-paths/register src/server/app.ts server:start",
-    "server:prod": "TS_NODE_BASEURL=dist node -r tsconfig-paths/register dist/src/server/app.js server:start",
-    "server:build": "tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json",
-    "server:watch": "NODE_OPTIONS=--preserve-symlinks TS_NODE_PROJECT=tsconfig.server.json node -r ts-node/register -r tsconfig-paths/register --watch src/server/app.ts server:start",
-    "dev:frontend": "rm -rf .angular && concurrently --kill-others \"npm run app:watch\" \"npm run ssr:watch\"",
-    "dev": "rm -rf .angular && concurrently --kill-others \"npm run app:watch\" \"npm run ssr:watch\" \"npm run server:watch\"",
+    "ng:start": "NODE_OPTIONS=--preserve-symlinks ng serve",
+    "ng:build:dev": "NODE_OPTIONS=--preserve-symlinks ng build --watch --configuration development",
+    "ng:test": "NODE_OPTIONS=--preserve-symlinks ng test",
     "app": "NODE_OPTIONS=--preserve-symlinks TS_NODE_PROJECT=tsconfig.server.json node -r ts-node/register -r tsconfig-paths/register src/server/app.ts",
-    "build": "concurrently npm:app:build npm:ssr:build npm:server:build",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+    "build": "NODE_OPTIONS=--preserve-symlinks ng build --configuration production",
+    "test": "jest"
   },
   "installConfig": {
     "hoistingLimits": "workspaces"

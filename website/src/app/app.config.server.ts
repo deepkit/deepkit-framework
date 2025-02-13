@@ -18,13 +18,12 @@ const serverConfig: ApplicationConfig = {
         {
             provide: HTTP_TRANSFER_CACHE_ORIGIN_MAP,
             deps: [REQUEST_CONTEXT],
-            useValue: { 'http://localhost:8080': 'http://localhost:4200' },
-            // useFactory(context: any) {
-            //     // we use internally localhost:8080 for ssr requests,
-            //     // so we need to map it to the real domain
-            //     // return { [context?.baseUrl]: context?.publicBaseUrl || '' };
-            //     return { [context?.baseUrl]: context?.publicBaseUrl || '' };
-            // },
+            useFactory(context: any) {
+                // we use internally localhost:8080 for ssr requests,
+                // so we need to map it to the real domain
+                // return { [context?.baseUrl]: context?.publicBaseUrl || '' };
+                return { [context?.baseUrl]: context?.publicBaseUrl || '' };
+            },
         },
         {
             provide: APP_BOOTSTRAP_LISTENER,

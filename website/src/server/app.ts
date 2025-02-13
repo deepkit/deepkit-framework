@@ -1,4 +1,4 @@
-import { HttpKernel } from '@deepkit/http';
+import { HttpKernel, HttpNotFoundError, HttpRequest, HttpResponse, httpWorkflow, RouteConfig } from '@deepkit/http';
 import { App } from '@deepkit/app';
 import { ApplicationServer, FrameworkModule, onServerMainBootstrap } from '@deepkit/framework';
 import { AppConfig } from './config';
@@ -27,19 +27,21 @@ import { BenchmarkController, BenchmarkHttpController } from '@app/server/contro
 import {
     AngularNodeAppEngine,
     createNodeRequestHandler,
+    createWebRequestFromNodeRequest,
     isMainModule,
     writeResponseToNodeResponse,
 } from '@angular/ssr/node';
+import { AngularAppEngine } from '@angular/ssr';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
 
+console.log('browserDistFolder', browserDistFolder);
+
 (global as any).window = undefined;
 (global as any).document = undefined;
-
-const ngApp = new AngularNodeAppEngine();
 
 const app = new App({
     config: AppConfig,
@@ -50,6 +52,7 @@ const app = new App({
         BenchmarkHttpController,
     ],
     providers: [
+        AngularNodeAppEngine,
         PageProcessor,
         Questions,
         Search,
@@ -83,7 +86,7 @@ const app = new App({
             publicDir: browserDistFolder,
             broker: {
                 startOnBootstrap: false,
-            }
+            },
         }),
     ],
 });
@@ -107,11 +110,52 @@ app.command('migrate', migrate);
 app.listen(onServerMainBootstrap, registerBot);
 app.listen(onServerMainBootstrap, (event, parser: MarkdownParser) => parser.load());
 
+app.listen(httpWorkflow.onRoute, async (event, ngApp: AngularNodeAppEngine) => {
+    if (event.route) return; //already found
+
+    const webRequest = createWebRequestFromNodeRequest(event.request);
+    // @ts-ignore
+    const serverApp = await ((ngApp as any).angularAppEngine as AngularAppEngine).getAngularServerAppForRequest(webRequest);
+    const serverRouter = serverApp.router;
+    if (serverRouter) {
+        const matchedRoute = serverRouter.match(new URL(webRequest.url));
+        if (!matchedRoute) {
+            //not handled by angular app, so early exit
+            return;
+        }
+    }
+
+    event.routeFound(new RouteConfig('angular', ['GET'], '', {
+        type: 'function',
+        fn: async (req: HttpRequest, res: HttpResponse) => {
+            const response = await ngApp.handle(req, { baseUrl, publicBaseUrl });
+            if (!response) {
+                throw new HttpNotFoundError();
+            }
+            await writeResponseToNodeResponse(response, res);
+        }
+    }), () => ({
+        arguments: [event.request, event.response],
+        parameters: {},
+    }));
+}, 102); //102 after 101=static listener, 100=default listener
+
+app.setup((module, config) => {
+    if (!config.baseUrl) {
+        if (isMainModule(import.meta.url)) {
+            config.baseUrl = 'http://localhost:8080';
+        } else {
+            //angular dev server
+            config.baseUrl = 'http://localhost:4200';
+        }
+    }
+});
+
 app.loadConfigFromEnv({ namingStrategy: 'same', prefix: 'app_', envFilePath: ['local.env'] });
 
 if (isMainModule(import.meta.url)) {
     // started file directly (without angular dev server)
-    void app.run();
+    // void app.run();
 }
 
 process.on('unhandledRejection', (error) => {
@@ -144,10 +188,10 @@ waitBootstrap.then(() => {
 });
 
 const http = app.get(HttpKernel);
-const handler = http.createMiddleware({ fallThroughOnNotFound: true });
+const handler = http.createMiddleware();
 
 // every request in angular dev server is handled by this function
-export const reqHandler = createNodeRequestHandler(async (req, res) => {
+export const reqHandler = createNodeRequestHandler(async (req, res, next) => {
     await waitBootstrap;
 
     // if req wants to upgrade to websocket, we need to handle this here
@@ -156,19 +200,7 @@ export const reqHandler = createNodeRequestHandler(async (req, res) => {
     }
 
     try {
-        await handler(req, res, async (error?: any) => {
-            if (res.headersSent) return;
-            if (error) {
-                console.log('error from handler', error);
-                res.statusCode = 500;
-                res.end('Internal Server Error');
-                return;
-            }
-            const response = await ngApp.handle(req, { baseUrl, publicBaseUrl });
-            if (response) {
-                await writeResponseToNodeResponse(response, res);
-            }
-        });
+        await handler(req, res, next);
     } catch (error) {
         console.log('handleRequest error', error);
     }
