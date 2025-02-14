@@ -49,6 +49,7 @@ import {
     isEntitySubject,
     rpcActionObservableSubscribeId,
     rpcActionType,
+    RpcError,
     rpcResponseActionCollectionRemove,
     rpcResponseActionCollectionSort,
     rpcResponseActionObservable,
@@ -80,7 +81,7 @@ export type ActionTypes = {
 };
 
 function createNoTypeError(classType: ClassType, method: string) {
-    return new Error(`No observable type on RPC action ${getClassName(classType)}.${method} detected. Either no return type Observable<T> defined or wrong RxJS nominal type.`);
+    return new RpcError(`No observable type on RPC action ${getClassName(classType)}.${method} detected. Either no return type Observable<T> defined or wrong RxJS nominal type.`);
 }
 
 function createNoObservableWarning(classType: ClassType, method: string) {
@@ -89,7 +90,7 @@ function createNoObservableWarning(classType: ClassType, method: string) {
 
 function createNoTypeWarning(classType: ClassType, method: string, value: any) {
     const firstKey = Object.keys(value)[0];
-    return new Error(`RPC action ${getClassName(classType)}.${method} returns an object, but no specific type (e.g. { ${firstKey || 'v'}: T }) or 'any | unknown' type is defined. This might lead to slow performance.`);
+    return new RpcError(`RPC action ${getClassName(classType)}.${method} returns an object, but no specific type (e.g. { ${firstKey || 'v'}: T }) or 'any | unknown' type is defined. This might lead to slow performance.`);
 }
 
 function validV(type: Type, index = 0): boolean {
@@ -199,10 +200,10 @@ export class RpcServerAction {
 
         const classType = this.controllers.get(controller);
         if (!classType) {
-            throw new Error(`No controller registered for id ${controller}`);
+            throw new RpcError(`No controller registered for id ${controller}`);
         }
         const action = getActions(classType.controller).get(methodName);
-        if (!action) throw new Error(`Action unknown ${methodName}`);
+        if (!action) throw new RpcError(`Action unknown ${methodName}`);
 
         const methodReflection = ReflectionClass.from(classType.controller).getMethod(methodName);
         const method = methodReflection.type;
@@ -306,7 +307,7 @@ export class RpcServerAction {
             noTypeWarned: false,
         };
         if (!types.type) {
-            throw new Error(`No type detected for action ${controller}.${methodName}`);
+            throw new RpcError(`No type detected for action ${controller}.${methodName}`);
         }
         toFastProperties(this.cache.actionsTypes);
 
@@ -318,12 +319,12 @@ export class RpcServerAction {
 
             case RpcTypes.ActionObservableSubscribe: {
                 const observable = this.observables[message.id];
-                if (!observable) return response.error(new Error('No observable found'));
+                if (!observable) return response.error(new RpcError('No observable found'));
                 response.strictSerialization = observable.types.strictSerialization;
 
                 const { types, classType, method } = observable;
                 const body = message.parseBody<rpcActionObservableSubscribeId>();
-                if (observable.subscriptions[body.id]) return response.error(new Error('Subscription already created'));
+                if (observable.subscriptions[body.id]) return response.error(new RpcError('Subscription already created'));
                 if (!types.observableNextSchema) return response.error(createNoTypeError(classType, method));
 
                 if (!types.noTypeWarned && (types.mode !== 'observable' || !validV(types.observableNextSchema, 1))) {
@@ -367,7 +368,7 @@ export class RpcServerAction {
 
             case RpcTypes.ActionCollectionUnsubscribe: {
                 const collection = this.collections[message.id];
-                if (!collection) return response.error(new Error('No collection found'));
+                if (!collection) return response.error(new RpcError('No collection found'));
                 collection.unsubscribe();
                 delete this.collections[message.id];
                 break;
@@ -375,7 +376,7 @@ export class RpcServerAction {
 
             case RpcTypes.ActionCollectionModel: {
                 const collection = this.collections[message.id];
-                if (!collection) return response.error(new Error('No collection found'));
+                if (!collection) return response.error(new RpcError('No collection found'));
                 const body = message.parseBody<CollectionQueryModel<any>>(); //todo, add correct type argument
                 collection.collection.model.set(body);
                 collection.collection.model.changed();
@@ -384,7 +385,7 @@ export class RpcServerAction {
 
             case RpcTypes.ActionObservableUnsubscribe: {
                 const observable = this.observables[message.id];
-                if (!observable) return response.error(new Error('No observable to unsubscribe found'));
+                if (!observable) return response.error(new RpcError('No observable to unsubscribe found'));
                 const body = message.parseBody<rpcActionObservableSubscribeId>();
                 const sub = observable.subscriptions[body.id];
                 if (!sub) return;
@@ -398,7 +399,7 @@ export class RpcServerAction {
 
             case RpcTypes.ActionObservableDisconnect: {
                 const observable = this.observables[message.id];
-                if (!observable) return response.error(new Error('No observable to disconnect found'));
+                if (!observable) return response.error(new RpcError('No observable to disconnect found'));
                 for (const sub of Object.values(observable.subscriptions)) {
                     sub.complete(); //we send all active subscriptions it was completed
                 }
@@ -408,7 +409,7 @@ export class RpcServerAction {
 
             case RpcTypes.ActionObservableSubjectUnsubscribe: { //aka completed
                 const subject = this.observableSubjects[message.id];
-                if (!subject) return response.error(new Error('No subject to unsubscribe found'));
+                if (!subject) return response.error(new RpcError('No subject to unsubscribe found'));
                 subject.completedByClient = true;
                 subject.subject.complete();
                 delete this.observableSubjects[message.id];
@@ -417,7 +418,7 @@ export class RpcServerAction {
 
             case RpcTypes.ActionObservableProgressNext: { //ProgressTracker changes from client (e.g. stop signal)
                 const observable = this.observables[message.id];
-                if (!observable || !(observable.observable instanceof ProgressTracker)) return response.error(new Error('No observable ProgressTracker to sync found'));
+                if (!observable || !(observable.observable instanceof ProgressTracker)) return response.error(new RpcError('No observable ProgressTracker to sync found'));
                 response.strictSerialization = observable.types.strictSerialization;
                 observable.observable.next(message.parseBody<ProgressTrackerState[]>());
                 break;
@@ -429,10 +430,10 @@ export class RpcServerAction {
         const body = message.parseBody<rpcActionType>();
 
         const classType = this.controllers.get(body.controller);
-        if (!classType) throw new Error(`No controller registered for id ${body.controller}`);
+        if (!classType) throw new RpcError(`No controller registered for id ${body.controller}`);
 
         const action = getActions(classType.controller).get(body.method);
-        if (!action) throw new Error(`Action unknown ${body.method}`);
+        if (!action) throw new RpcError(`Action unknown ${body.method}`);
 
         const controllerAccess: RpcControllerAccess = {
             controllerName: body.controller,
@@ -444,7 +445,7 @@ export class RpcServerAction {
         };
 
         if (!await this.hasControllerAccess(controllerAccess)) {
-            throw new Error(`Access denied to action ${body.method}`);
+            throw new RpcError(`Access denied to action ${body.method}`);
         }
 
         const types = await this.loadTypes(body.controller, body.method);
@@ -464,7 +465,7 @@ export class RpcServerAction {
 
         const controllerInstance = this.injector.get(classType.controller, classType.module);
         if (!controllerInstance) {
-            response.error(new Error(`No instance of ${getClassName(classType.controller)} found.`));
+            response.error(new RpcError(`No instance of ${getClassName(classType.controller)} found.`));
         }
 
         if (!isArray(value.args)) {
@@ -498,8 +499,8 @@ export class RpcServerAction {
                 response.reply(RpcTypes.ResponseEntity, { v: result.value }, types.resultSchema);
             } else if (result instanceof Collection) {
                 const collection = result;
-                if (!types.collectionSchema) throw new Error('No collectionSchema set');
-                if (!types.collectionQueryModel) throw new Error('No collectionQueryModel set');
+                if (!types.collectionSchema) throw new RpcError('No collectionSchema set');
+                if (!types.collectionQueryModel) throw new RpcError('No collectionQueryModel set');
 
                 response.composite(RpcTypes.ResponseActionCollection)
                     .add(RpcTypes.ResponseActionCollectionModel, collection.model, types.collectionQueryModel)

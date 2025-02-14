@@ -29,6 +29,9 @@
   "references": [
     {
       "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../injector/tsconfig.json"
     }
   ]
 }

@@ -7,7 +7,7 @@ import {
     serializeBinaryRpcMessage,
 } from './protocol.js';
 import { SingleProgress } from './progress.js';
-import { rpcChunk, RpcTypes } from './model.js';
+import { rpcChunk, RpcError, RpcTypes } from './model.js';
 
 export class TransportOptions {
     /**
@@ -142,5 +142,5 @@ export function createWriter(transport: TransportConnection, options: TransportO
         return transport.write;
     }
 
-    throw new Error('No write method found on transport');
+    throw new RpcError('No write method found on transport');
 }

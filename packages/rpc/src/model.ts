@@ -8,11 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { bufferConcat, ClassType, isObject } from '@deepkit/core';
+import { bufferConcat, ClassType, CustomError, isObject } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
 import { arrayBufferTo, entity } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
 import { skip } from 'rxjs/operators';
+
+export class RpcError extends CustomError {
+}
 
 export type IdType = string | number;
 
@@ -185,7 +188,7 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
             return {
                 unsubscribe(): void {
                     sub.unsubscribe();
-                }
+                },
             };
         });
     }
@@ -205,7 +208,7 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
 export class ControllerDefinition<T> {
     constructor(
         public path: string,
-        public entities: ClassType[] = []
+        public entities: ClassType[] = [],
     ) {
     }
 }

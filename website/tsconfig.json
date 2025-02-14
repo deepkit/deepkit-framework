@@ -14,7 +14,7 @@
     "preserveSymlinks": true,
     "skipLibCheck": true,
     "importHelpers": true,
-    "target": "ES2022",
+    "target": "es2020",
     "noPropertyAccessFromIndexSignature": false,
     "module": "ES2022",
     "useDefineForClassFields": false,

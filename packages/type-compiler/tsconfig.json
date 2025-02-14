@@ -8,7 +8,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "ES2020",
+    "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
@@ -26,7 +26,9 @@
     "compiler-debug.ts",
     "index.ts"
   ],
-  "exclude": ["tests"],
+  "exclude": [
+    "tests"
+  ],
   "references": [
     {
       "path": "../type-spec/tsconfig.json"

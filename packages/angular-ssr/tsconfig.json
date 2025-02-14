@@ -28,5 +28,11 @@
     "tests"
   ],
   "references": [
+    {
+      "path": "../app/tsconfig.json"
+    },
+    {
+      "path": "../http/tsconfig.json"
+    }
   ]
 }

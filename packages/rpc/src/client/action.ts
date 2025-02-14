@@ -18,6 +18,7 @@ import {
     rpcActionObservableNext,
     rpcActionObservableSubscribeId,
     rpcActionType,
+    RpcError,
     rpcResponseActionCollectionRemove,
     rpcResponseActionCollectionSort,
     rpcResponseActionObservable,
@@ -122,7 +123,7 @@ export class RpcActionClient {
 
                         switch (reply.type) {
                             case RpcTypes.ResponseEntity: {
-                                if (!types.classType) throw new Error('No classType returned by the rpc action');
+                                if (!types.classType) throw new RpcError('No classType returned by the rpc action');
                                 resolve(this.entityState.createEntitySubject(types.classType, types.resultSchema, reply));
                                 break;
                             }
@@ -164,7 +165,7 @@ export class RpcActionClient {
                             }
 
                             case RpcTypes.ResponseActionObservableNext: {
-                                if (!types.observableNextSchema) throw new Error('No observableNextSchema set');
+                                if (!types.observableNextSchema) throw new RpcError('No observableNextSchema set');
 
                                 const body = reply.parseBody<rpcActionObservableNext>(types.observableNextSchema);
 
@@ -182,7 +183,7 @@ export class RpcActionClient {
                             }
 
                             case RpcTypes.ResponseActionBehaviorSubject: {
-                                if (!types.observableNextSchema) throw new Error('No observableNextSchema set');
+                                if (!types.observableNextSchema) throw new RpcError('No observableNextSchema set');
 
                                 const body = reply.parseBody<WrappedV>(types.observableNextSchema);
                                 observableSubject = new BehaviorSubject(body.v);
@@ -269,9 +270,9 @@ export class RpcActionClient {
                             }
 
                             case RpcTypes.ResponseActionCollectionChange: {
-                                if (!collection) throw new Error('No collection loaded yet');
-                                if (!types.collectionSchema) throw new Error('no collectionSchema loaded yet');
-                                if (!collectionEntityStore) throw new Error('no collectionEntityStore loaded yet');
+                                if (!collection) throw new RpcError('No collection loaded yet');
+                                if (!types.collectionSchema) throw new RpcError('no collectionSchema loaded yet');
+                                if (!collectionEntityStore) throw new RpcError('no collectionEntityStore loaded yet');
 
                                 this.handleCollection(collectionEntityStore, types, collection, reply.getBodies());
 
@@ -281,8 +282,8 @@ export class RpcActionClient {
                             case RpcTypes.ResponseActionCollection: {
                                 const bodies = reply.getBodies();
 
-                                if (!types.classType) throw new Error('No classType returned by the rpc action');
-                                if (!types.collectionQueryModel) throw new Error('No collectionQueryModel returned by the rpc action');
+                                if (!types.classType) throw new RpcError('No classType returned by the rpc action');
+                                if (!types.collectionQueryModel) throw new RpcError('No collectionQueryModel returned by the rpc action');
                                 collection = new Collection(types.classType);
                                 collectionEntityStore = this.entityState.getStore(types.classType);
 
@@ -342,7 +343,7 @@ export class RpcActionClient {
                 }
 
                 case RpcTypes.ResponseActionCollectionModel: {
-                    if (!types.collectionQueryModel) throw new Error('No collectionQueryModel set');
+                    if (!types.collectionQueryModel) throw new RpcError('No collectionQueryModel set');
                     collection.model.set(next.parseBody(types.collectionQueryModel));
                     break;
                 }

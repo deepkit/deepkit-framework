@@ -8,18 +8,15 @@
     "strict": true,
     "noFallthroughCasesInSwitch": true,
     "sourceMap": true,
+    "skipLibCheck": true,
     "declaration": false,
     "downlevelIteration": true,
     "experimentalDecorators": true,
     "moduleResolution": "node",
     "importHelpers": true,
-    "target": "ES2022",
+    "target": "es2020",
     "module": "ES2022",
     "useDefineForClassFields": false,
-    "lib": [
-      "ES2022",
-      "dom"
-    ],
     "types": [
       "dagre",
       "file-saver",
@@ -39,6 +36,9 @@
   },
   "references": [
     {
+      "path": "../api-console-api/tsconfig.json"
+    },
+    {
       "path": "../bson/tsconfig.json"
     },
     {
@@ -48,7 +48,7 @@
       "path": "../core-rxjs/tsconfig.json"
     },
     {
-      "path": "../api-console-api/tsconfig.json"
+      "path": "../event/tsconfig.json"
     },
     {
       "path": "../framework-debug-api/tsconfig.json"
@@ -76,6 +76,9 @@
     },
     {
       "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../type-compiler/tsconfig.json"
     }
   ]
 }

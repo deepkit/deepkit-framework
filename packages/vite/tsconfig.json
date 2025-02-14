@@ -22,11 +22,10 @@
     "src",
     "index.ts"
   ],
-  "exclude": ["tests"],
+  "exclude": [
+    "tests"
+  ],
   "references": [
-    {
-      "path": "../core/tsconfig.json"
-    },
     {
       "path": "../type-compiler/tsconfig.json"
     }

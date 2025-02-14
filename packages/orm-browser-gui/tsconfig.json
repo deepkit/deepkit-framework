@@ -1,4 +1,3 @@
-/* To learn more about this file see: https://angular.io/config/tsconfig. */
 {
   "compileOnSave": false,
   "compilerOptions": {
@@ -14,7 +13,7 @@
     "experimentalDecorators": true,
     "moduleResolution": "node",
     "importHelpers": true,
-    "target": "ES2022",
+    "target": "es2020",
     "module": "ES2022",
     "useDefineForClassFields": false,
     "types": [
@@ -41,6 +40,9 @@
       "path": "../core-rxjs/tsconfig.json"
     },
     {
+      "path": "../event/tsconfig.json"
+    },
+    {
       "path": "../injector/tsconfig.json"
     },
     {
@@ -63,6 +65,9 @@
     },
     {
       "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../type-compiler/tsconfig.json"
     }
   ]
 }

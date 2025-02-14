@@ -11,6 +11,7 @@
 import { ClassType } from '@deepkit/core';
 import { ClientTransportAdapter, RpcClient } from './client.js';
 import { TransportClientConnection } from '../transport.js';
+import { RpcError } from '../model.js';
 
 /**
  * A RpcClient that connects via WebSocket transport.
@@ -66,7 +67,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
 
     async getWebSocketConstructor(): Promise<typeof WebSocket> {
         if (!this.webSocketConstructor) {
-            throw new Error('No WebSocket implementation found.');
+            throw new RpcError('No WebSocket implementation found.');
         }
 
         return this.webSocketConstructor;
@@ -79,7 +80,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
             const socket = new webSocketConstructor(this.url);
             this.mapSocket(socket, connection);
         } catch (error: any) {
-            throw new Error(`Could not connect to ${this.url}. ${error.message}`);
+            throw new RpcError(`Could not connect to ${this.url}. ${error.message}`);
         }
     }
 
@@ -97,7 +98,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
             const reason = `code ${event.code} reason ${event.reason || 'unknown'}`;
             const message = connected ? `abnormal error: ${reason}` : `Could not connect: ${reason}`;
             if (errored) {
-                connection.onError(new Error(message));
+                connection.onError(new RpcError(message));
             } else {
                 connection.onClose(reason);
             }

@@ -11,7 +11,7 @@
     "build:esm": "tsc --build tsconfig.esm.json",
     "tsc": "tsc --build",
     "postinstall": "lefthook install && sh install-compiler.sh",
-    "tsc-watch": "tsc --build --watch",
+    "tsc-watch": "tsc --build --watch tsconfig.json",
     "tsc-watch:esm": "tsc --build --watch tsconfig.esm.json",
     "clean:all": "npm run clean && npm run clean:modules && npm run clean:lock",
     "clean": "find packages/*/dist/* ! -name 'package.json' -type f -exec rm -f {} +; rm -rf packages/*/.angular; rm -rf website/.angular; npm run postinstall",
@@ -63,6 +63,7 @@
       "src/**/*.ts"
     ],
     "projects": [
+      "packages/angular-ssr",
       "packages/core",
       "packages/core-rxjs",
       "packages/ui-library",

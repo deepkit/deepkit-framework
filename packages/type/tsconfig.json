@@ -1,5 +1,4 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "forceConsistentCasingInFileNames": true,
     "strict": true,
@@ -9,7 +8,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "ES2020",
+    "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
@@ -26,13 +25,18 @@
     "src",
     "index.ts"
   ],
-  "exclude": ["tests"],
+  "exclude": [
+    "tests"
+  ],
   "references": [
+    {
+      "path": "../type-spec/tsconfig.json"
+    },
     {
       "path": "../core/tsconfig.json"
     },
     {
-      "path": "../type-spec/tsconfig.json"
+      "path": "../type-compiler/tsconfig.json"
     }
   ]
 }

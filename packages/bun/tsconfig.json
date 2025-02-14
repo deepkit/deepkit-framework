@@ -29,9 +29,6 @@
   ],
   "references": [
     {
-      "path": "../core/tsconfig.json"
-    },
-    {
       "path": "../type-compiler/tsconfig.json"
     }
   ]

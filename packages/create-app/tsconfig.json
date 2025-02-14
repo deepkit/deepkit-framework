@@ -25,10 +25,16 @@
   "reflection": true,
   "references": [
     {
+      "path": "../app/tsconfig.json"
+    },
+    {
       "path": "../core/tsconfig.json"
     },
     {
-      "path": "../app/tsconfig.json"
+      "path": "../logger/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.json"
     }
   ]
 }

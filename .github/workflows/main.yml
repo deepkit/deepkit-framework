@@ -33,6 +33,7 @@ jobs:
         run: |
           ./node_modules/.bin/tsc --build \
             packages/api-console-module/tsconfig.json \
+            packages/angular-ssr/tsconfig.json \
             packages/broker/tsconfig.json \
             packages/bson/tsconfig.json \
             packages/core/tsconfig.json \

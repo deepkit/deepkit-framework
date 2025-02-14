@@ -3,7 +3,7 @@
     "strict": true,
     "experimentalDecorators": true,
     "moduleResolution": "node",
-    "target": "ES2022",
+    "target": "es2020",
     "esModuleInterop": true,
     "module": "esnext"
   },

@@ -25,6 +25,7 @@ import {
     ControllerDefinition,
     rpcAuthenticate,
     rpcClientId,
+    RpcError,
     rpcError,
     rpcPeerRegister,
     rpcResponseAuthenticate,
@@ -149,7 +150,7 @@ export class RpcMessageBuilder {
             if (this.logValidationErrors) {
                 this.logger.warn(this.errorLabel, error);
             }
-            throw new Error(this.errorLabel + ': ' + error.message, {cause: error});
+            throw new RpcError(this.errorLabel + ': ' + error.message, {cause: error});
         }
     }
 
@@ -171,7 +172,7 @@ export class RpcMessageBuilder {
      * @deprecated
      */
     replyBinary<T>(type: number, body?: Uint8Array): void {
-        throw new Error('replyBinary deprecated');
+        throw new RpcError('replyBinary deprecated');
     }
 
     composite(type: number): RpcCompositeMessage {
@@ -327,7 +328,7 @@ export abstract class RpcKernelBaseConnection {
     }
 
     onRequest(basePath: string, request: RpcHttpRequest, response: RpcHttpResponse): void | Promise<void> {
-        throw new Error('Not supported');
+        throw new RpcError('Not supported');
     }
 
     abstract onMessage(message: RpcMessage, response: RpcMessageBuilder): void | Promise<void>;
@@ -483,7 +484,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         if (message.routeType == RpcMessageRouteType.peer && message.getPeerId() !== this.myPeerId) {
             // console.log('Redirect peer message', RpcTypes[message.type]);
             if (!await this.security.isAllowedToSendToPeer(this.sessionState.getSession(), message.getPeerId())) {
-                new RpcMessageBuilder(this.logger, this.writer, this.transportOptions, message.id).error(new Error('Access denied'));
+                new RpcMessageBuilder(this.logger, this.writer, this.transportOptions, message.id).error(new RpcError('Access denied'));
                 return;
             }
             this.peerExchange.redirect(message);
@@ -539,7 +540,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
             this.sessionState.setSession(session);
             response.reply<rpcResponseAuthenticate>(RpcTypes.AuthenticateResponse, { username: session.username });
         } catch (error) {
-            if (error instanceof AuthenticationError) throw new Error(error.message);
+            if (error instanceof AuthenticationError) throw new RpcError(error.message);
             this.logger.error('authenticate failed', error);
             throw new AuthenticationError();
         }
@@ -550,14 +551,14 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
 
         try {
             if (body.id !== this.myPeerId) {
-                return response.error(new Error(`Not registered as that peer`));
+                return response.error(new RpcError(`Not registered as that peer`));
             }
             this.myPeerId = undefined;
             await this.peerExchange.deregister(body.id);
             response.ack();
         } catch (error) {
             this.logger.error('deregisterAsPeer failed', error);
-            response.error(new Error('Failed'));
+            response.error(new RpcError('Failed'));
         }
     }
 
@@ -566,11 +567,11 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
 
         try {
             if (await this.peerExchange.isRegistered(body.id)) {
-                return response.error(new Error(`Peer ${body.id} already registered`));
+                return response.error(new RpcError(`Peer ${body.id} already registered`));
             }
 
             if (!await this.security.isAllowedToRegisterAsPeer(this.sessionState.getSession(), body.id)) {
-                response.error(new Error('Access denied'));
+                response.error(new RpcError('Access denied'));
                 return;
             }
 
@@ -579,7 +580,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
             response.ack();
         } catch (error) {
             this.logger.error('registerAsPeer failed', error);
-            response.error(new Error('Failed'));
+            response.error(new RpcError('Failed'));
         }
     }
 }
@@ -647,7 +648,7 @@ export class RpcKernel {
         }
         if (!id) {
             const rpcConfig = rpcClass._fetch(controller);
-            if (!rpcConfig) throw new Error(`Controller ${getClassName(controller)} has no @rpc.controller() decorator and no controller id was provided.`);
+            if (!rpcConfig) throw new RpcError(`Controller ${getClassName(controller)} has no @rpc.controller() decorator and no controller id was provided.`);
             id = rpcConfig.getPath();
         }
         this.controllers.set('string' === typeof id ? id : id.path, {

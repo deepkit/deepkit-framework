@@ -7,17 +7,13 @@
     "downlevelIteration": true,
     "sourceMap": true,
     "strict": true,
-    "target": "es2021",
+    "target": "es2020",
     "useDefineForClassFields": false,
     "noImplicitAny": true,
     "esModuleInterop": true,
     "types": [
       "fs-extra",
       "node"
-    ],
-    "lib": [
-      "es2018",
-      "dom"
     ],
     "paths": {
       "angular-desktop-ui": [

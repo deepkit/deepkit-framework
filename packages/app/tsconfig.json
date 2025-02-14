@@ -38,6 +38,9 @@
       "path": "../injector/tsconfig.json"
     },
     {
+      "path": "../logger/tsconfig.json"
+    },
+    {
       "path": "../stopwatch/tsconfig.json"
     },
     {

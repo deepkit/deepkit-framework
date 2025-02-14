@@ -16,7 +16,9 @@
     "composite": true,
     "jsx": "react-jsx",
     "jsxImportSource": "..",
-    "types": ["estree"]
+    "types": [
+      "estree"
+    ]
   },
   "reflection": true,
   "include": [

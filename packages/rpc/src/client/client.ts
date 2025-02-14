@@ -8,13 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, ClassType, formatError, sleep } from '@deepkit/core';
+import { asyncOperation, ClassType, CustomError, formatError, sleep } from '@deepkit/core';
 import { ReceiveType, resolveReceiveType, ValidationError } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import {
     ControllerDefinition,
     rpcAuthenticate,
     rpcClientId,
+    RpcError,
     rpcPeerDeregister,
     rpcPeerRegister,
     rpcResponseAuthenticate,
@@ -41,7 +42,7 @@ import {
     TransportOptions,
 } from '../transport.js';
 
-export class OfflineError extends Error {
+export class OfflineError extends CustomError {
 }
 
 type PromisifyFn<T extends ((...args: any[]) => any)> = (...args: Parameters<T>) => ReturnType<T> extends Promise<any> ? ReturnType<T> : Promise<ReturnType<T>>;
@@ -303,7 +304,7 @@ export class RpcClientTransporter {
 
     public send(message: RpcMessageDefinition, progress?: SingleProgress) {
         if (this.writer === undefined) {
-            throw new Error('Transport connection not created yet');
+            throw new RpcError('Transport connection not created yet');
         }
 
         try {
@@ -418,7 +419,7 @@ export class RpcBaseClient implements WritableClient {
             return;
         }
 
-        throw new Error('Invalid response');
+        throw new RpcError('Invalid response');
     }
 
     protected async onHandshake(): Promise<Uint8Array | undefined> {
@@ -426,7 +427,7 @@ export class RpcBaseClient implements WritableClient {
     }
 
     public getId(): Uint8Array {
-        throw new Error('RpcBaseClient does not load its client id, and thus does not support peer message');
+        throw new RpcError('RpcBaseClient does not load its client id, and thus does not support peer message');
     }
 
     protected onMessage(message: RpcMessage) {
@@ -444,7 +445,7 @@ export class RpcBaseClient implements WritableClient {
         } else {
             const callback = this.replies.get(message.id);
             if (!callback) {
-                throw new Error('No callback for ' + message.id);
+                throw new RpcError('No callback for ' + message.id);
             }
             if (callback) callback(message);
         }
@@ -462,7 +463,7 @@ export class RpcBaseClient implements WritableClient {
         } = {},
     ): RpcMessageSubject {
         const resolvedSchema = schema ? resolveReceiveType(schema) : undefined;
-        if (body && !schema) throw new Error('Body given, but not type');
+        if (body && !schema) throw new RpcError('Body given, but not type');
         const id = this.messageId++;
         const connectionId = options && options.connectionId ? options.connectionId : this.transporter.connectionId;
         const dontWaitForConnection = !!options.dontWaitForConnection;
@@ -609,7 +610,7 @@ export class RpcClient extends RpcBaseClient {
                 //todo: set up timeout for idle detection. Make the timeout configurable
 
                 const c = this.peerKernel.createConnection(writer);
-                if (!(c instanceof RpcKernelConnection)) throw new Error('Expected RpcKernelConnection from peerKernel.createConnection');
+                if (!(c instanceof RpcKernelConnection)) throw new RpcError('Expected RpcKernelConnection from peerKernel.createConnection');
                 connection = c;
                 connection.myPeerId = peerId; //necessary so that the kernel does not redirect the package again.
                 this.peerKernelConnection.set(peerId, connection);
@@ -636,7 +637,7 @@ export class RpcClient extends RpcBaseClient {
                     // Important to disable since transporter.send chunks already,
                     // otherwise data is chunked twice and protocol breaks.
                     c.transportOptions.chunkSize = 0;
-                    if (!(c instanceof RpcKernelConnection)) throw new Error('Expected RpcKernelConnection from clientKernel.createConnection');
+                    if (!(c instanceof RpcKernelConnection)) throw new RpcError('Expected RpcKernelConnection from clientKernel.createConnection');
                     this.clientKernelConnection = c;
                 }
                 this.clientKernelConnection.routeType = RpcMessageRouteType.server;
@@ -648,7 +649,7 @@ export class RpcClient extends RpcBaseClient {
     }
 
     public getId(): Uint8Array {
-        if (!this.transporter.id) throw new Error('Not fully connected yet');
+        if (!this.transporter.id) throw new RpcError('Not fully connected yet');
         return this.transporter.id;
     }
 
@@ -657,7 +658,7 @@ export class RpcClient extends RpcBaseClient {
      * Use `registerAsPeer` first.
      */
     public registerPeerController<T>(classType: ClassType<T>, nameOrDefinition: string | ControllerDefinition<T>) {
-        if (!this.peerKernel) throw new Error('Not registered as peer. Call registerAsPeer() first');
+        if (!this.peerKernel) throw new RpcError('Not registered as peer. Call registerAsPeer() first');
         this.peerKernel.registerController(classType, nameOrDefinition);
     }
 
@@ -672,7 +673,7 @@ export class RpcClient extends RpcBaseClient {
 
     public async registerAsPeer(id: string) {
         if (this.registeredAsPeer) {
-            throw new Error('Already registered as a peer');
+            throw new RpcError('Already registered as a peer');
         }
 
         this.peerKernel = new RpcKernel();

@@ -37,10 +37,16 @@
       "path": "../core-rxjs/tsconfig.json"
     },
     {
+      "path": "../event/tsconfig.json"
+    },
+    {
       "path": "../rpc/tsconfig.json"
     },
     {
       "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../app/tsconfig.json"
     }
   ]
 }

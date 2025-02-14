@@ -3039,13 +3039,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/crypto@npm:^1.0.1-alpha.89":
-  version: 1.0.1-alpha.89
-  resolution: "@deepkit/crypto@npm:1.0.1-alpha.89"
-  checksum: 2f61cb20bb06f71ebe1209fc417db1bb4b197423c26b1789464b6edb6c9695f58007c4f764d720075dc4fd9edb4ceab177d285926e41b8b226d6502a7f441649
-  languageName: node
-  linkType: hard
-
 "@deepkit/desktop-ui@npm:^1.0.1-alpha.143, @deepkit/desktop-ui@npm:^1.0.1-alpha.156, @deepkit/desktop-ui@npm:^1.0.1-alpha.48, @deepkit/desktop-ui@workspace:packages/desktop-ui":
   version: 0.0.0-use.local
   resolution: "@deepkit/desktop-ui@workspace:packages/desktop-ui"
@@ -3518,7 +3511,6 @@ __metadata:
     "@deepkit/bson": "npm:^1.0.1-alpha.156"
     "@deepkit/core": "npm:^1.0.1-alpha.156"
     "@deepkit/core-rxjs": "npm:^1.0.1-alpha.156"
-    "@deepkit/crypto": "npm:^1.0.1-alpha.89"
     "@deepkit/desktop-ui": "npm:^1.0.1-alpha.156"
     "@deepkit/event": "npm:^1.0.1-alpha.156"
     "@deepkit/injector": "npm:^1.0.1-alpha.156"
