@@ -215,7 +215,16 @@ export class ErroredRpcMessage extends RpcMessage {
 export function readBinaryRpcMessage(buffer: Uint8Array): RpcMessage {
     const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     const size = view.getUint32(0, true);
-    if (size !== buffer.byteLength) throw new RpcError(`Message buffer size wrong. Message size=${size}, buffer size=${buffer.byteLength}`);
+    if (size !== buffer.byteLength) {
+        let message = `Message buffer size wrong. Message size=${size}, buffer size=${buffer.byteLength}.`;
+        let hex = '';
+        for (let i = 0; i < buffer.byteLength; i++) {
+            hex += buffer[i].toString(16).padStart(2, '0');
+        }
+        message += ' Buffer hex: '
+            + hex.substr(0, 500) + (hex.length > 500 ? '...' : '');
+        throw new RpcError(message);
+    }
 
     const id = view.getUint32(5, true);
 
