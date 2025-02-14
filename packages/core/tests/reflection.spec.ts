@@ -38,7 +38,7 @@ test('simple', () => {
     }
 
     const code = extractMethodBody(User.toString(), 'constructor');
-    expect(code.trim()).toBe(''); //doesn't work anymore in es2022
+    expect(code.trim()).toBe('this.id=uuid();this.bla=;');
 });
 
 

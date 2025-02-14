@@ -688,6 +688,7 @@ export class RpcBinaryBufferReader {
                 if (currentBuffer.byteLength < 4) {
                     //not enough data to read the header. Wait for next onData
                     this.currentMessage = currentBuffer;
+                    this.currentMessageSize = 0;
                     return;
                 }
 

@@ -20,12 +20,12 @@ test('buffer read does not do copy', async () => {
 });
 
 test('RpcBinaryBufferReader', () => {
-    const a = Buffer.from('00000000010203040506070809', 'hex');
+    const a = Buffer.from('0000000001020304050607', 'hex');
     a.writeUint32LE(a.byteLength, 0);
-    const b = Buffer.from('0000000002030405060708090a', 'hex');
+    const b = Buffer.from('000000000203040506070809', 'hex');
     b.writeUint32LE(b.byteLength, 0);
-    const c = Buffer.from('0000000002030405060708090b', 'hex');
-    c.writeUint32LE(b.byteLength, 0);
+    const c = Buffer.from('00000000020304050607', 'hex');
+    c.writeUint32LE(c.byteLength, 0);
     const data = Buffer.concat([a, b, c]);
 
     function test(cb: (reader: RpcBinaryBufferReader) => void) {
@@ -35,9 +35,9 @@ test('RpcBinaryBufferReader', () => {
         });
         cb(reader);
         expect(received).toEqual([
-            '0d000000010203040506070809',
-            '0d00000002030405060708090a',
-            '0d00000002030405060708090b',
+            '0b00000001020304050607',
+            '0c0000000203040506070809',
+            '0a000000020304050607',
         ]);
     }
 
