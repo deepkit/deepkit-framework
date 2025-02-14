@@ -29,7 +29,6 @@ import {
     Index,
     integer,
     MapName,
-    metaAnnotation,
     MySQL,
     Postgres,
     PrimaryKey,
@@ -41,6 +40,7 @@ import {
     SQLite,
     stringifyResolvedType,
     Type,
+    typeAnnotation,
     TypeClass,
     TypeFunction,
     TypeIndexSignature,
@@ -48,7 +48,7 @@ import {
     TypeNumber,
     TypeObjectLiteral,
     TypeTuple,
-    Unique
+    Unique,
 } from '../src/reflection/type.js';
 import { TypeNumberBrand } from '@deepkit/type-spec';
 import { validate, ValidatorError } from '../src/validator.js';
@@ -1341,7 +1341,7 @@ test('type annotation with union', () => {
     type a = HttpQuery<number | string>;
     const type = typeOf<a>();
     assertType(type, ReflectionKind.union);
-    expect(metaAnnotation.getAnnotations(type)).toEqual([{ name: 'httpQuery', options: [] }]);
+    expect(typeAnnotation.getAnnotations(type)).toEqual([{ name: 'httpQuery', options: undefined }]);
 });
 
 test('simple brands', () => {

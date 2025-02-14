@@ -10,13 +10,30 @@ import {
     TagRegistry,
     Token,
 } from './provider.js';
-import { AbstractClassType, ClassType, CompilerContext, CustomError, getClassName, getPathValue, isArray, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
-import { ConfigurationProviderRegistry, ConfigureProviderEntry, findModuleForConfig, getScope, InjectorModule, PreparedProvider } from './module.js';
+import {
+    AbstractClassType,
+    ClassType,
+    CompilerContext,
+    CustomError,
+    getClassName,
+    getPathValue,
+    isArray,
+    isClass,
+    isFunction,
+    isPrototypeOfBase,
+} from '@deepkit/core';
+import {
+    ConfigurationProviderRegistry,
+    ConfigureProviderEntry,
+    findModuleForConfig,
+    getScope,
+    InjectorModule,
+    PreparedProvider,
+} from './module.js';
 import {
     isOptional,
     isType,
     isWithAnnotations,
-    metaAnnotation,
     ReceiveType,
     reflect,
     ReflectionClass,
@@ -25,6 +42,7 @@ import {
     resolveReceiveType,
     stringifyType,
     Type,
+    typeAnnotation,
 } from '@deepkit/type';
 
 export class InjectorError extends CustomError {
@@ -166,9 +184,9 @@ export interface InjectorInterface {
  * Returns the injector token type if the given type was decorated with `Inject<T>`.
  */
 export function getInjectOptions(type: Type): Type | undefined {
-    const annotations = metaAnnotation.getForName(type, 'inject');
+    const annotations = typeAnnotation.getType(type, 'inject');
     if (!annotations) return;
-    const t = annotations[0];
+    const t = annotations;
     return t && t.kind !== ReflectionKind.never ? t : type;
 }
 

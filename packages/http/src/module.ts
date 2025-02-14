@@ -10,17 +10,17 @@ import { HttpRequest, HttpResponse } from './model.js';
 import '@deepkit/type';
 import { httpClass } from './decorator.js';
 import { EventToken } from '@deepkit/event';
-import { metaAnnotation, ReflectionKind, ReflectionParameter, Type } from '@deepkit/type';
+import { ReflectionKind, ReflectionParameter, Type, typeAnnotation } from '@deepkit/type';
 import { buildRequestParser } from './request-parser.js';
 import { InjectorContext } from '@deepkit/injector';
 
 function parameterRequiresRequest(parameter: ReflectionParameter): boolean {
-    return Boolean(metaAnnotation.getForName(parameter.type, 'httpQueries')
-        || metaAnnotation.getForName(parameter.type, 'httpQuery')
-        || metaAnnotation.getForName(parameter.type, 'httpBody')
-        || metaAnnotation.getForName(parameter.type, 'httpRequestParser')
-        || metaAnnotation.getForName(parameter.type, 'httpPath')
-        || metaAnnotation.getForName(parameter.type, 'httpHeader'));
+    return Boolean(typeAnnotation.getType(parameter.type, 'httpQueries')
+        || typeAnnotation.getType(parameter.type, 'httpQuery')
+        || typeAnnotation.getType(parameter.type, 'httpBody')
+        || typeAnnotation.getType(parameter.type, 'httpRequestParser')
+        || typeAnnotation.getType(parameter.type, 'httpPath')
+        || typeAnnotation.getType(parameter.type, 'httpHeader'));
 }
 
 
@@ -72,7 +72,7 @@ export class HttpModule extends createModuleClass({
         const params = listener.reflection.getParameters().slice(1);
 
         for (const parameter of params) {
-            if (metaAnnotation.getForName(parameter.type, 'httpBody')) needsAsync = true;
+            if (typeAnnotation.getType(parameter.type, 'httpBody')) needsAsync = true;
             if (parameterRequiresRequest(parameter)) requiresHttpRequest = true;
         }
 
@@ -90,7 +90,7 @@ export class HttpModule extends createModuleClass({
             //change the reflection type so that we create a unique injection token for that type.
             const unique = Symbol('event.parameter:' + parameter.name);
             const uniqueType: Type = { kind: ReflectionKind.literal, literal: unique };
-            metaAnnotation.registerType(parameter.type, { name: 'inject', options: [uniqueType] });
+            typeAnnotation.registerType(parameter.type, { name: 'inject', options: uniqueType });
             let i = index;
 
             this.addProvider({
