@@ -140,13 +140,13 @@ export class RpcMessage {
     getSource(): Uint8Array {
         if (!this.buffer) throw new RpcError('No buffer');
         if (this.routeType !== RpcMessageRouteType.sourceDest && this.routeType !== RpcMessageRouteType.peer) throw new RpcError(`Message is not routed via sourceDest, but ${this.routeType}`);
-        return this.buffer.slice(4 + 1 + 4 + 1, 4 + 1 + 4 + 1 + 16);
+        return this.buffer.subarray(4 + 1 + 4 + 1, 4 + 1 + 4 + 1 + 16);
     }
 
     getDestination(): Uint8Array {
         if (!this.buffer) throw new RpcError('No buffer');
         if (this.routeType !== RpcMessageRouteType.sourceDest) throw new RpcError(`Message is not routed via sourceDest, but ${this.routeType}`);
-        return this.buffer.slice(4 + 1 + 4 + 1 + 16, 4 + 1 + 4 + 1 + 16 + 16);
+        return this.buffer.subarray(4 + 1 + 4 + 1 + 16, 4 + 1 + 4 + 1 + 16 + 16);
     }
 
     getError(): Error {
@@ -639,18 +639,24 @@ export class RpcBinaryBufferReader {
         if (!this.currentMessage) {
             if (data.byteLength < 4) {
                 //not enough data to read the header. Wait for next onData
+                this.currentMessage = data;
+                this.currentMessageSize = 0;
                 return;
             }
-            this.currentMessage = data.byteLength === bytes ? data : data.slice(0, bytes);
+            this.currentMessage = data.byteLength === bytes ? data : data.subarray(0, bytes);
             this.currentMessageSize = readUint32LE(data);
         } else {
-            this.currentMessage = bufferConcat([this.currentMessage, data.byteLength === bytes ? data : data.slice(0, bytes)]);
+            this.currentMessage = bufferConcat([this.currentMessage, data.byteLength === bytes ? data : data.subarray(0, bytes)]);
             if (!this.currentMessageSize) {
                 if (this.currentMessage.byteLength < 4) {
                     //not enough data to read the header. Wait for next onData
                     return;
                 }
                 this.currentMessageSize = readUint32LE(this.currentMessage);
+            }
+            if (this.currentMessage.byteLength < this.currentMessageSize) {
+                //not enough data to read the header. Wait for next onData
+                return;
             }
         }
 
@@ -659,8 +665,7 @@ export class RpcBinaryBufferReader {
 
         while (currentBuffer) {
             if (currentSize > currentBuffer.byteLength) {
-                //important to save a copy, since the original buffer might change its content
-                this.currentMessage = new Uint8Array(currentBuffer);
+                this.currentMessage = currentBuffer;
                 this.currentMessageSize = currentSize;
                 //message not completely loaded, wait for next onData
                 return;
@@ -676,10 +681,10 @@ export class RpcBinaryBufferReader {
 
             if (currentSize < currentBuffer.byteLength) {
                 //we have more messages in this buffer. read what is necessary and hop to next loop iteration
-                const message = currentBuffer.slice(0, currentSize);
+                const message = currentBuffer.subarray(0, currentSize);
                 this.onMessage(message);
 
-                currentBuffer = currentBuffer.slice(currentSize);
+                currentBuffer = currentBuffer.subarray(currentSize);
                 if (currentBuffer.byteLength < 4) {
                     //not enough data to read the header. Wait for next onData
                     this.currentMessage = currentBuffer;

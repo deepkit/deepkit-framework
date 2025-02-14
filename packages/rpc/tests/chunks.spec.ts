@@ -19,6 +19,88 @@ test('buffer read does not do copy', async () => {
     expect(received!.buffer === data.buffer).toBe(true);
 });
 
+test('RpcBinaryBufferReader', () => {
+    const a = Buffer.from('00000000010203040506070809', 'hex');
+    a.writeUint32LE(a.byteLength, 0);
+    const b = Buffer.from('0000000002030405060708090a', 'hex');
+    b.writeUint32LE(b.byteLength, 0);
+    const c = Buffer.from('0000000002030405060708090b', 'hex');
+    c.writeUint32LE(b.byteLength, 0);
+    const data = Buffer.concat([a, b, c]);
+
+    function test(cb: (reader: RpcBinaryBufferReader) => void) {
+        const received: string[] = [];
+        const reader = new RpcBinaryBufferReader((p) => {
+            received.push(Buffer.from(p).toString('hex'));
+        });
+        cb(reader);
+        expect(received).toEqual([
+            '0d000000010203040506070809',
+            '0d00000002030405060708090a',
+            '0d00000002030405060708090b',
+        ]);
+    }
+
+    test((reader) => {
+        //all at once
+        reader.feed(data, data.byteLength);
+    });
+
+    test((reader) => {
+        reader.feed(a);
+        reader.feed(b);
+        reader.feed(c);
+    });
+
+    test((reader) => {
+        reader.feed(a);
+        reader.feed(b.subarray(0, 5));
+        reader.feed(b.subarray(5));
+        reader.feed(c);
+    });
+
+    test((reader) => {
+        reader.feed(a);
+        reader.feed(b.subarray(0, 4));
+        reader.feed(b.subarray(4));
+        reader.feed(c);
+    });
+
+    test((reader) => {
+        reader.feed(a);
+        reader.feed(b.subarray(0, 3));
+        reader.feed(b.subarray(3));
+        reader.feed(c);
+    });
+
+    test((reader) => {
+        reader.feed(a);
+        reader.feed(b.subarray(0, 3));
+        reader.feed(b.subarray(3));
+        reader.feed(c.subarray(0, 3));
+        reader.feed(c.subarray(3));
+    });
+
+    test((reader) => {
+        reader.feed(a.subarray(0, 3));
+        reader.feed(a.subarray(3));
+        reader.feed(b.subarray(0, 3));
+        reader.feed(b.subarray(3));
+        reader.feed(c);
+    });
+
+    const steps: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+    for (const step of steps) {
+        test((reader) => {
+            //step by step
+            for (let i = 0; i < data.byteLength; i += step) {
+                reader.feed(data.subarray(i, i + step));
+            }
+        });
+    }
+});
+
 test('chunks', async () => {
     @rpc.controller('test')
     class TestController {
