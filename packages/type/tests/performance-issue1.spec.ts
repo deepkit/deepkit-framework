@@ -11,7 +11,7 @@ import { test } from '@jest/globals';
 import { AbstractClassType, arrayRemoveItem, ClassType, CompilerContext, CustomError, getClassName, isClass, isFunction, urlJoin } from '@deepkit/core';
 import { isExtendable } from '../src/reflection/extends.js';
 import { ReceiveType, reflect, resolveReceiveType } from '../src/reflection/reflection.js';
-import { isType, ReflectionKind, Type, typeAnnotation } from '../src/reflection/type.js';
+import { isType, Type } from '../src/reflection/type.js';
 import { IncomingMessage, ServerResponse } from 'http';
 import { Writable } from 'stream';
 import querystring from 'querystring';
@@ -786,19 +786,6 @@ export interface InjectorInterface {
     get<T>(token: T, scope?: Scope): ResolveToken<T>;
 }
 
-/**
- * Returns the injector token type if the given type was decorated with `Inject<T>`.
- */
-function getInjectOptions(type: Type): Type | undefined {
-    const annotations = typeAnnotation.getAnnotations(type);
-    for (const annotation of annotations) {
-        if (annotation.name === 'inject') {
-            const t = annotation.options as Type;
-            return t.kind !== ReflectionKind.never ? t : type;
-        }
-    }
-    return;
-}
 
 /**
  * This is the actual dependency injection container.

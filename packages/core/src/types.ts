@@ -16,6 +16,8 @@
  * ```
  *
  * Runtime type is `{ __meta?: never & [T, Options] };`
+ *
+ * @intrinsic
  */
 export type TypeAnnotation<T extends string, Options = never> = unknown;
 

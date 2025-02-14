@@ -529,7 +529,7 @@ export class ReflectionTransformer implements CustomTransformer {
      */
     protected tempResultIdentifier?: Identifier;
     protected parseConfigHost: ParseConfigHost;
-    protected intrinsicMetaDeclaration: Declaration;
+    protected intrinsicMetaDeclaration: TypeAliasDeclaration;
 
     constructor(
         protected context: TransformationContext,
@@ -1488,7 +1488,16 @@ export class ReflectionTransformer implements CustomTransformer {
                 break;
             }
             case SyntaxKind.TypeAliasDeclaration: {
-                const narrowed = node as TypeAliasDeclaration;
+                let narrowed = node as TypeAliasDeclaration;
+
+                if (program.sourceFile && getNameAsString(narrowed.name) === 'TypeAnnotation') {
+                    const attribute = extractJSDocAttribute(program.sourceFile, narrowed, 'intrinsic');
+                    if (attribute !== undefined) {
+                        // TypeAnnotation<T> is like an intrinsic type, so we don't need to resolve it
+                        narrowed = this.intrinsicMetaDeclaration;
+                    }
+                }
+
                 this.extractPackStructOfType(narrowed.type, program);
                 if (narrowed.name) this.resolveTypeName(getIdentifierName(narrowed.name), program);
                 break;
@@ -1630,7 +1639,6 @@ export class ReflectionTransformer implements CustomTransformer {
             case SyntaxKind.ConditionalType: {
                 //TypeScript does not narrow types down
                 const narrowed = node as ConditionalTypeNode;
-
 
                 // Depending on whether this a distributive conditional type or not, it has to be moved to its own function
                 // my understanding of when a distributive conditional type is used is:
@@ -2596,11 +2604,6 @@ export class ReflectionTransformer implements CustomTransformer {
         const declarationName = 'string' === typeof _declarationName ? _declarationName : getIdentifierName(_declarationName);
         if (!importOrExport.moduleSpecifier || !isStringLiteral(importOrExport.moduleSpecifier)) {
             return;
-        }
-
-        if (importOrExport.moduleSpecifier.text === '@deepkit/core' && declarationName === 'TypeAnnotation') {
-            // TypeAnnotation<T> is like an intrinsic type, so we don't need to resolve it, but return a custom made Declaration
-            return this.intrinsicMetaDeclaration;
         }
 
         const source: SourceFile | ModuleDeclaration | undefined = this.resolver.resolve(sourceFile, importOrExport);

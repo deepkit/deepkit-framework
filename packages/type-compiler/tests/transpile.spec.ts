@@ -592,16 +592,3 @@ test('infer type', () => {
     console.log(res.app);
     expect(res.app).toContain(`'a'`);
 });
-
-test('Meta<T>', () => {
-    const res = transpile({
-        'app': `
-        import { Meta } from '@deepkit/core';
-
-        export type T = string & Meta<'foo'>;
-        `
-    });
-    console.log(res.app);
-    expect(res.app).toContain(`const __ΩMeta = `);
-    expect(res.app).toContain(`[() => __ΩMeta`);
-});
