@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.158](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.157...v1.0.1-alpha.158) (2025-02-15)
+
+### Bug Fixes
+
+- **desktop-ui:** package scripts ([05e86f0](https://github.com/deepkit/deepkit-framework/commit/05e86f0a6ebbf77fcc293130489461482806a3e3))
+- **desktop-ui:** package scripts ([4b64f7f](https://github.com/deepkit/deepkit-framework/commit/4b64f7ff84b801227df009c880b95da95e38f1f2))
+
 ## [1.0.1-alpha.157](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.156...v1.0.1-alpha.157) (2025-02-15)
 
 ### Bug Fixes
