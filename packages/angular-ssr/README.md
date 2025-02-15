@@ -48,8 +48,9 @@ In `src/server/server.ts`:
 ```typescript
 import { app } from './app';
 import { RequestHandler } from '@deepkit/angular-ssr';
+import { AngularNodeAppEngine } from '@angular/ssr/node';
 
-export const reqHandler = app.get(RequestHandler).create(import.meta.url);
+export const reqHandler = app.get(RequestHandler).create(import.meta.url, new AngularNodeAppEngine());
 ````
 
 ## Configure Angular App
@@ -66,7 +67,7 @@ export class APIInterceptor implements HttpInterceptor {
   }
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    const apiReq = req.clone({ url: `your-api-url/${req.url}` });
+    const apiReq = req.clone({ url: `${this.baseUrl}/${req.url}` });
     return next.handle(apiReq);
   }
 }
