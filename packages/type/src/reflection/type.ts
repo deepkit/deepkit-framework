@@ -1675,7 +1675,7 @@ export const entityAnnotation = new class extends AnnotationDefinition<EntityOpt
         return data;
     }
 }('entity');
-export const mapNameAnnotation = new AnnotationDefinition<{ name: string, serializer?: string }>('entity');
+export const mapNameAnnotation = new AnnotationDefinition<{ name: string, serializer?: string }>('mapName');
 
 export const autoIncrementAnnotation = new AnnotationDefinition('autoIncrement');
 export const primaryKeyAnnotation = new class extends AnnotationDefinition {

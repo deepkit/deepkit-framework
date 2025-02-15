@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { typeOf } from '../../src/reflection/reflection';
 import { assertType, MapName, ReflectionKind, typeAnnotation, validationAnnotation } from '../../src/reflection/type';
+import { cast, serialize } from '../../src/serializer-facade';
 
 import { TypeAnnotation } from '@deepkit/core';
 import { MinLength } from '../../src/validator';
@@ -49,16 +50,30 @@ test('on property', () => {
 
 test('property serialization validation', () => {
     class Test {
-        public firstname: (string | null) & MapName<"first_name"> = null;
+        public firstname1!: string & MinLength<1>;
 
-        prop: (string & MinLength<1>) | null = null;
+        public firstname2: (string | null) & MapName<'first_name2'> = null;
+
+        // note: this MapName does not bubble up to the property and is thus ignored
+        public firstname3: (string & MapName<'first_name3'>) | null = null;
+
+        public firstname4: (string & MinLength<1>) | null = null;
     }
-    const test = new Test();
-    test.firstname = null;
-    test.firstname = 'peter';
 
-    // expect(serialize<Test>({ prop: null })).toEqual({ prop: null });
-    // expect(serialize<Test>({ prop: '1' })).toEqual({ prop: '1' });
-    // expect(cast<Test>({ prop: '1' })).toEqual({ prop: '1' });
-    // expect(cast<Test>({ prop: '' })).toEqual({ prop: '' });
+    const test = new Test();
+    test.firstname1 = 'asd';
+    test.firstname2 = 'asd';
+    test.firstname3 = 'asd';
+    test.firstname4 = 'asd';
+    test.firstname2 = null;
+    test.firstname3 = null;
+    test.firstname4 = null;
+
+    expect(serialize<Test>({ firstname1: 'asd', firstname2: null, firstname3: null, firstname4: null }))
+        .toEqual({ firstname1: 'asd', first_name2: null, firstname3: null, firstname4: null });
+
+    expect(cast<Test>({ firstname1: 'asd', first_name2: 'asd', firstname3: 'asd', firstname4: 'asd' }))
+        .toEqual({ firstname1: 'asd', firstname2: 'asd', firstname3: 'asd', firstname4: 'asd' });
+
+    expect(() => cast<Test>({ firstname1: '', first_name2: 'asd', firstname3: 'asd', firstname4: '' })).toThrow('firstname1(minLength)');
 });
