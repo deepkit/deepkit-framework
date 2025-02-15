@@ -18,7 +18,7 @@
   "scripts": {
     "emoji": "ts-node emoji-map.ts",
     "font": "node bin/create-font.js",
-    "build": "rm -rf .angular && ng-packagr --config tsconfig.prod.json && rm dist/.npmignore && npm run prepublishOnly",
+    "build": "rm -rf .angular && ng-packagr --config tsconfig.prod.json && rm dist/.npmignore",
     "watch": "ng-packagr --config tsconfig.prod.json --watch",
     "prepublishOnly": "webpack && node bin/create-font.js"
   },
