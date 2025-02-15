@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
+import ts, {
     __String,
     ArrayTypeNode,
     ArrowFunction,
@@ -76,7 +76,6 @@ import {
     TypeReferenceNode,
     UnionTypeNode,
 } from 'typescript';
-import ts from 'typescript';
 
 import {
     ensureImportIsEmitted,
@@ -279,7 +278,7 @@ class CompilerProgram {
     protected activeCoRoutines: { ops: ReflectionOp[] }[] = [];
     protected coRoutines: { ops: ReflectionOp[] }[] = [];
 
-    constructor(public forNode: Node, public sourceFile: SourceFile) {
+    constructor(public forNode: Node, public sourceFile?: SourceFile) {
     }
 
     buildPackStruct() {
@@ -506,7 +505,7 @@ export class ReflectionTransformer implements CustomTransformer {
      * Types added to this map will get a type program at the top root level of the program.
      * This is for imported types, which need to be inlined into the current file, as we do not emit type imports (TS will omit them).
      */
-    protected embedDeclarations = new Map<Node, { name: EntityName, sourceFile: SourceFile }>();
+    protected embedDeclarations = new Map<Node, { name: EntityName, sourceFile?: SourceFile }>();
 
     /**
      * When a node was embedded or compiled (from the maps above), we store it here to know to not add it again.
@@ -530,6 +529,7 @@ export class ReflectionTransformer implements CustomTransformer {
      */
     protected tempResultIdentifier?: Identifier;
     protected parseConfigHost: ParseConfigHost;
+    protected intrinsicMetaDeclaration: TypeAliasDeclaration;
 
     constructor(
         protected context: TransformationContext,
@@ -539,7 +539,7 @@ export class ReflectionTransformer implements CustomTransformer {
         this.nodeConverter = new NodeConverter(this.f);
         // It is important to not have undefined values like {paths: undefined} because it would override the read tsconfig.json.
         // Important to create a copy since we will modify it.
-        this.compilerOptions = {...filterUndefined(context.getCompilerOptions())};
+        this.compilerOptions = { ...filterUndefined(context.getCompilerOptions()) };
         // compilerHost has no internal cache and is cheap to build, so no cache needed.
         // Resolver loads SourceFile which has cache implemented.
         this.host = createCompilerHost(this.compilerOptions);
@@ -553,6 +553,36 @@ export class ReflectionTransformer implements CustomTransformer {
                 return this.host.readDirectory(path, extensions || [], exclude, include || [], depth);
             },
         };
+
+        {
+            // TypeAnnotation<T, Options> = { __meta?: never & [T, Options] }
+            const T = this.f.createIdentifier('T');
+            const Options = this.f.createIdentifier('Options');
+            this.intrinsicMetaDeclaration = this.f.createTypeAliasDeclaration(
+                [],
+                'TypeAnnotation',
+                [
+                    this.f.createTypeParameterDeclaration([], T),
+                    this.f.createTypeParameterDeclaration([], Options, undefined, this.f.createTypeReferenceNode('never')),
+                ],
+                this.f.createTypeLiteralNode([
+                    this.f.createPropertySignature(
+                        undefined,
+                        '__meta',
+                        this.f.createToken(SyntaxKind.QuestionToken),
+                        this.f.createIntersectionTypeNode(
+                            [
+                                this.f.createTypeReferenceNode('never'),
+                                this.f.createTupleTypeNode([
+                                    this.f.createTypeReferenceNode(T),
+                                    this.f.createTypeReferenceNode(Options),
+                                ]),
+                            ],
+                        ),
+                    ),
+                ]),
+            );
+        }
     }
 
     forHost(host: CompilerHost): this {
@@ -567,8 +597,8 @@ export class ReflectionTransformer implements CustomTransformer {
             const mode = reflectionModeMatcher(config, path);
             return { mode, tsConfigPath: '' };
         };
-        const configResolver: ResolvedConfig = {...config, path: '', mergeStrategy: 'replace', compilerOptions: this.compilerOptions};
-        this.overriddenConfigResolver = {config: configResolver, match};
+        const configResolver: ResolvedConfig = { ...config, path: '', mergeStrategy: 'replace', compilerOptions: this.compilerOptions };
+        this.overriddenConfigResolver = { config: configResolver, match };
         return this;
     }
 
@@ -604,9 +634,10 @@ export class ReflectionTransformer implements CustomTransformer {
         return configResolver.match(sourceFile.fileName);
     }
 
-    protected isWithReflection(sourceFile: SourceFile, node: Node & { __deepkitConfig?: ReflectionConfig }): boolean {
+    protected isWithReflection(sourceFile: SourceFile | undefined, node: Node & { __deepkitConfig?: ReflectionConfig }): boolean {
         const mode = this.getExplicitReflectionMode(sourceFile, node);
         if (mode === false) return false;
+        if (!sourceFile) return true; // intrinsic types are always with reflection
         const reflection = this.getReflectionConfig(sourceFile);
         // explicit means reflection needs to be enabled per Node/File via @reflection
         if (reflection.mode === 'explicit') return mode === true;
@@ -634,7 +665,7 @@ export class ReflectionTransformer implements CustomTransformer {
         Object.assign(this.compilerOptions, configResolver.config.compilerOptions);
 
         if (reflection.mode === 'never') {
-            debug(`Transform file with reflection=${reflection.mode} took ${Date.now()-start}ms (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`);
+            debug(`Transform file with reflection=${reflection.mode} took ${Date.now() - start}ms (${this.getModuleType()}) ${sourceFile.fileName} via config ${reflection.tsConfigPath || 'none'}.`);
             return sourceFile;
         }
 
@@ -1140,7 +1171,7 @@ export class ReflectionTransformer implements CustomTransformer {
         return node;
     }
 
-    protected createProgramVarFromNode(node: Node, name: EntityName, sourceFile: SourceFile): Statement[] {
+    protected createProgramVarFromNode(node: Node, name: EntityName, sourceFile?: SourceFile): Statement[] {
         const typeProgram = new CompilerProgram(node, sourceFile);
 
         if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node)) && node.typeParameters) {
@@ -1220,7 +1251,7 @@ export class ReflectionTransformer implements CustomTransformer {
             case SyntaxKind.NewExpression: {
                 const call = node as NewExpression;
                 if (isIdentifier(call.expression)) {
-                    const map: {[name: string]: ReflectionOp} = {
+                    const map: { [name: string]: ReflectionOp } = {
                         'Date': ReflectionOp.date,
                         'RegExp': ReflectionOp.regexp,
                         'Uint8Array': ReflectionOp.uint8Array,
@@ -1457,7 +1488,16 @@ export class ReflectionTransformer implements CustomTransformer {
                 break;
             }
             case SyntaxKind.TypeAliasDeclaration: {
-                const narrowed = node as TypeAliasDeclaration;
+                let narrowed = node as TypeAliasDeclaration;
+
+                if (program.sourceFile && getNameAsString(narrowed.name) === 'TypeAnnotation') {
+                    const attribute = extractJSDocAttribute(program.sourceFile, narrowed, 'intrinsic');
+                    if (attribute !== undefined) {
+                        // TypeAnnotation<T> is like an intrinsic type, so we don't need to resolve it
+                        narrowed = this.intrinsicMetaDeclaration;
+                    }
+                }
+
                 this.extractPackStructOfType(narrowed.type, program);
                 if (narrowed.name) this.resolveTypeName(getIdentifierName(narrowed.name), program);
                 break;
@@ -1599,7 +1639,6 @@ export class ReflectionTransformer implements CustomTransformer {
             case SyntaxKind.ConditionalType: {
                 //TypeScript does not narrow types down
                 const narrowed = node as ConditionalTypeNode;
-
 
                 // Depending on whether this a distributive conditional type or not, it has to be moved to its own function
                 // my understanding of when a distributive conditional type is used is:
@@ -2145,20 +2184,20 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 //non-existing references are ignored.
                 program.pushOp(ReflectionOp.never);
-                debug2(`Could not resolve ${getNameAsString(typeName)} in ${program.sourceFile.fileName}`);
+                debug2(`Could not resolve ${getNameAsString(typeName)} in ${program.sourceFile?.fileName || 'intrinsic'}`);
                 return;
             }
 
             let declaration: Node = resolved.declaration;
             const declarationSourceFile = findSourceFile(declaration);
 
-            if (!declarationSourceFile) {
-                program.pushOp(ReflectionOp.never);
-                debug2(`Could not find source file for ${getNameAsString(typeName)} in ${program.sourceFile.fileName}`);
-                return;
-            }
+            // if (!declarationSourceFile) {
+            //     program.pushOp(ReflectionOp.never);
+            //     debug2(`Could not find source file for ${getNameAsString(typeName)} in ${program.sourceFile.fileName}`);
+            //     return;
+            // }
 
-            const isGlobal = resolved.importDeclaration === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName;
+            const isGlobal = !declarationSourceFile || (resolved.importDeclaration === undefined && declarationSourceFile.fileName !== this.sourceFile.fileName);
             const isFromImport = resolved.importDeclaration !== undefined;
 
             if (isVariableDeclaration(declaration)) {
@@ -2222,7 +2261,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 //to break recursion, we track which declaration has already been compiled
                 if (!this.compiledDeclarations.has(declaration) && !this.compileDeclarations.has(declaration)) {
-                    if (this.isExcluded(declarationSourceFile.fileName)) {
+                    if (declarationSourceFile && this.isExcluded(declarationSourceFile.fileName)) {
                         program.pushOp(ReflectionOp.any);
                         return;
                     }
@@ -2340,7 +2379,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 // If a function/class declarations comes from a built library (e.g. node_modules), then we
                 // declarationSourceFile is a d.ts file. We do know if they are built in runtime by checking `xy.__type`.
                 // Otherwise, check if the file will be built with runtime types.
-                const reflection = declarationSourceFile.fileName.endsWith('.d.ts') || this.isWithReflection(program.sourceFile, declaration);
+                const reflection = declarationSourceFile?.fileName.endsWith('.d.ts') || this.isWithReflection(program.sourceFile, declaration);
                 if (!reflection) {
                     this.resolveTypeOnlyImport(typeName, program);
                     return;
@@ -2619,10 +2658,11 @@ export class ReflectionTransformer implements CustomTransformer {
                                             const importOrExport = declaration.parent.parent.parent;
                                             const found = this.resolveImportSpecifier(
                                                 element.propertyName ? getEscapedText(element.propertyName) : declarationName,
-                                                importOrExport, sourceFile
+                                                importOrExport, sourceFile,
                                             );
                                             if (found) return found;
-                                        } else if (declaration) {}
+                                        } else if (declaration) {
+                                        }
                                         return declaration;
                                     }
                                 }
@@ -2783,13 +2823,13 @@ export class ReflectionTransformer implements CustomTransformer {
      * Checks if reflection was disabled/enabled in file via JSDoc attribute for a particular
      * Node, e.g `@reflection no`. If nothing is found, "reflection" config option needs to be used.
      */
-    protected getExplicitReflectionMode(sourceFile: SourceFile, node: Node): boolean | undefined {
+    protected getExplicitReflectionMode(sourceFile: SourceFile | undefined, node: Node): boolean | undefined {
         let current: Node | undefined = node;
 
         let reflectionComment: string | undefined = undefined;
 
         while ('undefined' === typeof reflectionComment && current) {
-            const next = extractJSDocAttribute(sourceFile, current, 'reflection');
+            const next = sourceFile && extractJSDocAttribute(sourceFile, current, 'reflection');
             if ('undefined' !== typeof next) reflectionComment = next;
             current = current.parent;
         }

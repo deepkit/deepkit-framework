@@ -7,13 +7,13 @@ import {
     getValidatorFunction,
     hasDefaultValue,
     isOptional,
-    metaAnnotation,
     ReflectionKind,
     ReflectionParameter,
     resolveReceiveType,
     serializer,
     stringifyType,
     Type,
+    typeAnnotation,
     typeToObject,
     ValidationError,
 } from '@deepkit/type';
@@ -91,21 +91,21 @@ export class ParameterForRequestParser {
     }
 
     get body() {
-        return metaAnnotation.getForName(this.parameter.type, 'httpBody') !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpBody') !== undefined;
     }
 
     get requestParser() {
-        return metaAnnotation.getForName(this.parameter.type, 'httpRequestParser') !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpRequestParser') !== undefined;
     }
 
     get bodyValidation() {
-        return metaAnnotation.getForName(this.parameter.type, 'httpBodyValidation') !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpBodyValidation') !== undefined;
     }
 
     getType(): Type {
-        const parser = metaAnnotation.getForName(this.parameter.type, 'httpRequestParser');
-        if (parser && parser[0]) {
-            return parser[0];
+        const parser = typeAnnotation.getType(this.parameter.type, 'httpRequestParser');
+        if (parser) {
+            return parser;
         }
 
         if (this.bodyValidation) {
@@ -118,22 +118,22 @@ export class ParameterForRequestParser {
     }
 
     get header() {
-        return metaAnnotation.getForName(this.parameter.type, 'httpHeader') !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpHeader') !== undefined;
     }
 
     get query() {
-        return metaAnnotation.getForName(this.parameter.type, 'httpQuery') !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpQuery') !== undefined;
     }
 
     get queries() {
-        return metaAnnotation.getForName(this.parameter.type, 'httpQueries') !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpQueries') !== undefined;
     }
 
     get typePath(): string | undefined {
-        const typeOptions = metaAnnotation.getForName(this.parameter.type, 'httpQueries') || metaAnnotation.getForName(this.parameter.type, 'httpQuery')
-            || metaAnnotation.getForName(this.parameter.type, 'httpPath') || metaAnnotation.getForName(this.parameter.type, 'httpHeader');
+        const typeOptions = typeAnnotation.getType(this.parameter.type, 'httpQueries') || typeAnnotation.getType(this.parameter.type, 'httpQuery')
+            || typeAnnotation.getType(this.parameter.type, 'httpPath') || typeAnnotation.getType(this.parameter.type, 'httpHeader');
         if (!typeOptions) return;
-        const options = typeToObject(typeOptions[0]);
+        const options = typeToObject(typeOptions);
         if (isObject(options)) return options.name;
         return;
     }
@@ -143,7 +143,7 @@ export class ParameterForRequestParser {
     }
 
     isPartOfPath(): boolean {
-        return metaAnnotation.getForName(this.parameter.type, 'httpPath') !== undefined || this.regexPosition !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpPath') !== undefined || this.regexPosition !== undefined;
     }
 }
 

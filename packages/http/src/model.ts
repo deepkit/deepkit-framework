@@ -12,8 +12,8 @@ import { IncomingMessage, OutgoingHttpHeader, OutgoingHttpHeaders, ServerRespons
 import { UploadedFile } from './router.js';
 import * as querystring from 'querystring';
 import { Writable } from 'stream';
-import { metaAnnotation, ReflectionKind, Type, TypeAnnotation, ValidationErrorItem } from '@deepkit/type';
-import { asyncOperation, isArray } from '@deepkit/core';
+import { ReflectionKind, Type, typeAnnotation, ValidationErrorItem } from '@deepkit/type';
+import { asyncOperation, isArray, TypeAnnotation } from '@deepkit/core';
 
 export class HttpResponse extends ServerResponse {
     status(code: number) {
@@ -276,13 +276,13 @@ export type HttpQueries<T, Options extends { name?: string } = {}> = T & TypeAnn
  * }
  * ```
  */
-export type HttpRegExp<T, Pattern extends string | RegExp> = T & { __meta?: never & ['httpRegExp', Pattern] };
+export type HttpRegExp<T, Pattern extends string | RegExp> = T & TypeAnnotation<'httpRegExp', Pattern>;
 
 export function getRegExp(type: Type): string | RegExp | undefined {
-    const options = metaAnnotation.getForName(type, 'httpRegExp');
-    if (!options || !options[0]) return;
-    if (options[0].kind === ReflectionKind.literal && 'string' === typeof options[0].literal) return options[0].literal;
-    if (options[0].kind === ReflectionKind.literal && options[0].literal instanceof RegExp) return options[0].literal;
+    const options = typeAnnotation.getType(type, 'httpRegExp');
+    if (!options) return;
+    if (options.kind === ReflectionKind.literal && 'string' === typeof options.literal) return options.literal;
+    if (options.kind === ReflectionKind.literal && options.literal instanceof RegExp) return options.literal;
     return;
 }
 

@@ -1,7 +1,7 @@
 import { reflect, ReflectionKind, Type } from '@deepkit/type';
-import { getParentClass } from '@deepkit/core';
+import { getParentClass, TypeAnnotation } from '@deepkit/core';
 
-export type InjectMeta<T = never> = { __meta?: never & ['inject', T] }
+export type InjectMeta<T = never> = TypeAnnotation<'inject', T>;
 export type Inject<Type, Token = never> = Type & InjectMeta<Token>
 
 /**

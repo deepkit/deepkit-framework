@@ -1,11 +1,11 @@
 import { ReceiveType } from './reflection/reflection.js';
 import { getValidatorFunction, is } from './typeguard.js';
-import { CustomError } from '@deepkit/core';
+import { CustomError, TypeAnnotation } from '@deepkit/core';
 import { stringifyType, Type } from './reflection/type.js';
 import { entity } from './decorator.js';
 import { serializer, Serializer } from './serializer.js';
 
-export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = { __meta?: never & ['validator', Name, Args] }
+export type ValidatorMeta<Name extends string, Args extends [...args: any[]] = []> = TypeAnnotation<'validator', [Name, Args]>;
 
 export type ValidateFunction = (value: any, type: Type, options: any) => ValidatorError | void;
 export type Validate<T extends ValidateFunction, Options extends Parameters<T>[2] = unknown> = ValidatorMeta<'function', [T, Options]>;

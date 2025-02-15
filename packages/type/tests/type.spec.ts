@@ -11,7 +11,6 @@ import {
     indexAccess,
     InlineRuntimeType,
     isSameType,
-    metaAnnotation,
     PrimaryKey,
     primaryKeyAnnotation,
     ReflectionKind,
@@ -20,7 +19,7 @@ import {
     stringifyResolvedType,
     stringifyType,
     Type,
-    TypeAnnotation,
+    typeAnnotation,
     TypeClass,
     TypeObjectLiteral,
     TypeProperty,
@@ -30,7 +29,7 @@ import {
 } from '../src/reflection/type.js';
 import { isExtendable } from '../src/reflection/extends.js';
 import { expectEqualType } from './utils.js';
-import { ClassType } from '@deepkit/core';
+import { ClassType, TypeAnnotation } from '@deepkit/core';
 import { Partial } from '../src/changes.js';
 import { MaxLength, MinLength } from '../src/validator.js';
 
@@ -62,29 +61,25 @@ test('type annotation', () => {
     type MyAnnotation = { __meta?: never & ['myAnnotation'] };
     type Username = string & MyAnnotation;
     const type = typeOf<Username>();
-    const data = metaAnnotation.getForName(type, 'myAnnotation');
-    expect(data).toEqual([]);
+    const data = typeAnnotation.getType(type, 'myAnnotation');
+    expect(data).toEqual(undefined);
 });
 
 test('type annotation with option', () => {
     type MyAnnotation<Option> = { __meta?: never & ['myAnnotation', Option] };
     type Username = string & MyAnnotation<string>;
     const type = typeOf<Username>();
-    const data = metaAnnotation.getForName(type, 'myAnnotation');
-    expect(data).toMatchObject([
-        { kind: ReflectionKind.string }
-    ]);
+    const data = typeAnnotation.getType(type, 'myAnnotation');
+    expect(data).toMatchObject({ kind: ReflectionKind.string });
 });
 
 test('type annotation TypeAnnotation', () => {
     type MyAnnotation<Option> = TypeAnnotation<'myAnnotation', Option>;
     type Username = string & MyAnnotation<'yes'>;
     const type = typeOf<Username>();
-    const data = metaAnnotation.getForName(type, 'myAnnotation');
-    expect(data).toMatchObject([
-        { kind: ReflectionKind.literal }
-    ]);
-    expect(typeToObject(data![0])).toBe('yes');
+    const data = typeAnnotation.getType(type, 'myAnnotation');
+    expect(data).toMatchObject({ kind: ReflectionKind.literal });
+    expect(typeToObject(data)).toBe('yes');
 });
 
 test('intersection same type', () => {
@@ -124,23 +119,23 @@ test('intersection same type keep annotation', () => {
     type Username = string & MyAnnotation;
     {
         const type = typeOf<string & Username>();
-        const data = metaAnnotation.getForName(type, 'myAnnotation');
-        expect(data).toEqual([]);
+        const data = typeAnnotation.getType(type, 'myAnnotation');
+        expect(data).toEqual(undefined);
     }
     {
         const type = typeOf<string & string & Username>();
-        const data = metaAnnotation.getForName(type, 'myAnnotation');
-        expect(data).toEqual([]);
+        const data = typeAnnotation.getType(type, 'myAnnotation');
+        expect(data).toEqual(undefined);
     }
     {
         const type = typeOf<Username & string>();
-        const data = metaAnnotation.getForName(type, 'myAnnotation');
-        expect(data).toEqual([]);
+        const data = typeAnnotation.getType(type, 'myAnnotation');
+        expect(data).toEqual(undefined);
     }
     {
         const type = typeOf<Username & string & string>();
-        const data = metaAnnotation.getForName(type, 'myAnnotation');
-        expect(data).toEqual([]);
+        const data = typeAnnotation.getType(type, 'myAnnotation');
+        expect(data).toEqual(undefined);
     }
 });
 
@@ -890,13 +885,13 @@ test('tuple indexAccess', () => {
     expect(indexAccess(typeOf<[string, string]>(), { kind: ReflectionKind.literal, literal: 1 })).toMatchObject({ kind: ReflectionKind.string });
     expect(indexAccess(typeOf<[string, number]>(), { kind: ReflectionKind.literal, literal: 1 })).toMatchObject({ kind: ReflectionKind.number });
     expectEqualType(indexAccess(typeOf<[string, ...number[], boolean]>(), { kind: ReflectionKind.literal, literal: 1 }), {
-        kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.boolean }]
+        kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.boolean }],
     });
     expectEqualType(indexAccess(typeOf<[string, ...(number | undefined)[]]>(), { kind: ReflectionKind.literal, literal: 1 }), {
-        kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }]
+        kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
     });
     expectEqualType(indexAccess(typeOf<[string, number?]>(), { kind: ReflectionKind.literal, literal: 1 }), {
-        kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }]
+        kind: ReflectionKind.union, types: [{ kind: ReflectionKind.number }, { kind: ReflectionKind.undefined }],
     });
 });
 
@@ -1079,7 +1074,7 @@ test('enum as literal type', () => {
         kind: ReflectionKind.objectLiteral, types: [
             { kind: ReflectionKind.propertySignature, name: 'type', type: { kind: ReflectionKind.literal, literal: 1 } },
             { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
-        ]
+        ],
     } as TypeObjectLiteral as any);
 });
 
@@ -1259,7 +1254,7 @@ test('keyof indexAccess on any', () => {
     }
 
     const t2 = typeOf<string>();
-    const t3 = typeOf<Partial<{bla: string}>>();
+    const t3 = typeOf<Partial<{ bla: string }>>();
 
     const t = typeOf<ChangesInterface<any>>();
     assertType(t, ReflectionKind.objectLiteral);
@@ -1350,7 +1345,9 @@ test('type id interface', () => {
 
     type O = A & B;
 
-    interface C extends A, B {}
+    interface C extends A, B {
+    }
+
     interface C2 extends A, B {
         c: string;
     }
@@ -1365,9 +1362,11 @@ test('type id interface', () => {
 });
 
 test('type id interface extends', () => {
-    interface A {}
+    interface A {
+    }
 
-    class Clazz implements A {}
+    class Clazz implements A {
+    }
 
     const tClazz = typeOf<Clazz>();
     const idA = getId<A>();
@@ -1390,12 +1389,12 @@ test('new type annotation on already decorated', () => {
     type Decorate<T> = T & CustomB;
     type EmptyTo<T> = {} & T & CustomB;
 
-    expect(metaAnnotation.getAnnotations(typeOf<O>())).toEqual([{ name: 'CustomA', options: [] }]);
-    expect(metaAnnotation.getAnnotations(typeOf<T>())).toEqual([{ name: 'CustomA', options: [] }, { name: 'CustomB', options: [] }]);
-    expect(metaAnnotation.getAnnotations(typeOf<O>())).toEqual([{ name: 'CustomA', options: [] }]);
+    expect(typeAnnotation.getAnnotations(typeOf<O>())).toEqual([{ name: 'CustomA', options: undefined }]);
+    expect(typeAnnotation.getAnnotations(typeOf<T>())).toEqual([{ name: 'CustomA', options: undefined }, { name: 'CustomB', options: undefined }]);
+    expect(typeAnnotation.getAnnotations(typeOf<O>())).toEqual([{ name: 'CustomA', options: undefined }]);
 
-    expect(metaAnnotation.getAnnotations(typeOf<Decorate<O>>())).toEqual([{ name: 'CustomA', options: [] }, { name: 'CustomB', options: [] }]);
-    expect(metaAnnotation.getAnnotations(typeOf<EmptyTo<O>>())).toEqual([{ name: 'CustomA', options: [] }, { name: 'CustomB', options: [] }]);
+    expect(typeAnnotation.getAnnotations(typeOf<Decorate<O>>())).toEqual([{ name: 'CustomA', options: undefined }, { name: 'CustomB', options: undefined }]);
+    expect(typeAnnotation.getAnnotations(typeOf<EmptyTo<O>>())).toEqual([{ name: 'CustomA', options: undefined }, { name: 'CustomB', options: undefined }]);
 });
 
 test('ignore constructor in mapped type', () => {
@@ -1671,7 +1670,7 @@ test('issue-495: extend Promise in union', () => {
 
 test('used type does not leak parent to original', () => {
     class User {
-        groups!: {via: typeof UserGroup};
+        groups!: { via: typeof UserGroup };
     }
 
     class UserGroup {

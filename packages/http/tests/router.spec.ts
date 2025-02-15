@@ -4,9 +4,9 @@ import { getActions, http, httpClass } from '../src/decorator.js';
 import { HtmlResponse, HttpAccessDeniedError, HttpBadRequestError, HttpNotFoundError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest, HttpRequestParser, MemoryHttpResponse } from '../src/model.js';
-import { getClassName, isObject, sleep } from '@deepkit/core';
+import { getClassName, isObject, sleep, TypeAnnotation } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
-import { Excluded, Group, integer, JSONEntity, Maximum, metaAnnotation, MinLength, Positive, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
+import { Excluded, Group, integer, JSONEntity, Maximum, MinLength, Positive, PrimaryKey, Reference, serializer, Type, typeAnnotation, typeSettings, UnpopulatedCheck } from '@deepkit/type';
 import { Readable } from 'stream';
 import { provide } from '@deepkit/injector';
 
@@ -1034,10 +1034,10 @@ test('unpopulated entity without type information', async () => {
 });
 
 test('extend with custom type', async () => {
-    type StringifyTransport = { __meta?: never & ['stringifyTransport'] };
+    type StringifyTransport = TypeAnnotation<'stringifyTransport'>;
 
     function isStringifyTransportType(type: Type): boolean {
-        return !!metaAnnotation.getForName(type, 'stringifyTransport');
+        return !!typeAnnotation.getType(type, 'stringifyTransport');
     }
 
     serializer.serializeRegistry.addPostHook((type, state) => {
