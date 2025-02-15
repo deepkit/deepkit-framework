@@ -234,7 +234,7 @@ To dynamically change the configuration options of a imported module, you can us
 ```typescript
 import { MyModule } from './module.ts';
 
-export class MainModule extends createModule({
+export class MainModule extends createModuleClass({
 }) {
     process() {
         this.getImportedModuleByClass(MyModule).configure({title: 'Changed'});
@@ -263,7 +263,7 @@ new App({
 If the root application module is created from a regular module, it works similarly to regular modules.
 
 ```typescript
-class AppModule extends createModule({
+class AppModule extends createModuleClass({
 }) {
     process() {
         this.getImportedModuleByClass(MyModule).configure({title: 'Changed'});
@@ -278,8 +278,9 @@ App.fromModule(new AppModule()).run();
 All configuration options can also be changed via environment variables. This works only if the module has a name assigned. A module name can be defined via `createModule` and later changed dynamically on the instance creation. The latter pattern is useful if you have imported the same module twice and want to differentiate between them by setting a new name.
 
 ```typescript
-export class MyModule extends createModule({
-}, 'my') { //<-- 'my' is the name
+export class MyModule extends createModuleClass({
+  name: 'my'
+}) {
 }
 
 export function myModule(options: Partial<Config> = {}) {
@@ -462,7 +463,7 @@ class Router {
     }
 }
         
-class HttpModule extends createModule({
+class HttpModule extends createModuleClass({
     providers: [Router],
     exports: [Router],
 }) {

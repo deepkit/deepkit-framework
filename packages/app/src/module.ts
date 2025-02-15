@@ -90,7 +90,7 @@ export interface ModuleDefinition {
      *     debug: boolean = false;
      * });
      *
-     * class MyModule extends createModule({
+     * class MyModule extends createModuleClass({
      *     config: MyModuleConfig
      * });
      * ```
@@ -156,7 +156,7 @@ export interface CreateModuleDefinition extends ModuleDefinition {
      * Use instead:
      *
      * ```typescript
-     * class MyModule extends createModule({}) {
+     * class MyModule extends createModuleClass({}) {
      *     imports = [new AnotherModule];
      * }
      * ```
@@ -164,7 +164,7 @@ export interface CreateModuleDefinition extends ModuleDefinition {
      * or
      *
      * ```typescript
-     * class MyModule extends createModule({}) {
+     * class MyModule extends createModuleClass({}) {
      *     process() {
      *         this.addModuleImport(new AnotherModule);
      *     }
@@ -239,7 +239,7 @@ export function createModuleClass<C extends InjectorModuleConfig>(options: Creat
  *
  * @example
  * ```typescript
- * const myModule = createModule({
+ * const myModule = createModuleClass({
  *    config: MyConfig
  *    providers: [MyService]
  *  });

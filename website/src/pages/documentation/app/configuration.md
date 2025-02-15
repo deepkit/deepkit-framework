@@ -165,7 +165,7 @@ To dynamically change the configuration options of an imported module, you can u
 ```typescript
 import { MyModule } from './module.ts';
 
-export class MainModule extends createModule({
+export class MainModule extends createModuleClass({
 }) {
     process() {
         this.getImportedModuleByClass(MyModule).configure({title: 'Changed'});
@@ -188,7 +188,7 @@ new App({
 When the root application module is created from a regular module, it works similarly to regular modules.
 
 ```typescript
-class AppModule extends createModule({
+class AppModule extends createModuleClass({
 }) {
     process() {
         this.getImportedModuleByClass(MyModule).configure({title: 'Changed'});

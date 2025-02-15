@@ -127,7 +127,7 @@ class MyModuleConfiguration {
     debug: boolean = false;
 }
 
-class MyModule extends createModule({
+class MyModule extends createModuleClass({
     config: MyModuleConfiguration
 }) {
     override process() {
