@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.157](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.156...v1.0.1-alpha.157) (2025-02-15)
+
+### Bug Fixes
+
+- **rpc:** ensure message size is reset to 0 after reaching a buffer that is too small ([c78a2a2](https://github.com/deepkit/deepkit-framework/commit/c78a2a26b98384ae6d1e6b87aa993e77026f4e7c))
+- tsconfig and tsc build ([ac71e83](https://github.com/deepkit/deepkit-framework/commit/ac71e838d542a3cab0e9b1cfc20b27637f1c01df))
+
+### Features
+
+- **rpc:** make binary parser more stable and throw better error message on decoding failure ([66e8f0d](https://github.com/deepkit/deepkit-framework/commit/66e8f0d196ed3f6c7ec2d7b4d106afb4e21d1d54))
+- **rpc:** show invalid binary message in hex on error ([1a7bf16](https://github.com/deepkit/deepkit-framework/commit/1a7bf16a04282125fd3c5c0154bad39beaf8e14d))
+- update to angular 19 and typescript 5.7.3, new @deepkit/angular-ssr package ([#627](https://github.com/deepkit/deepkit-framework/issues/627)) ([52333a7](https://github.com/deepkit/deepkit-framework/commit/52333a71f98c7e25a74f048dd57f1efba61098f5))
+
 ## [1.0.1-alpha.156](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.155...v1.0.1-alpha.156) (2025-01-30)
 
 **Note:** Version bump only for package @deepkit/rpc

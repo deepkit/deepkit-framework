@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.157](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.156...v1.0.1-alpha.157) (2025-02-15)
+
+### Bug Fixes
+
+- **angular-ssr:** docs ([eae7291](https://github.com/deepkit/deepkit-framework/commit/eae729141372fc83492a9b66d479eb121eec7a0f))
+- **core:** disable reflection in indent.ts ([9bbc278](https://github.com/deepkit/deepkit-framework/commit/9bbc2780b904996f51f6ab97ac87566e86f02ddc))
+- **core:** pass correct global in indent.ts ([b1558e4](https://github.com/deepkit/deepkit-framework/commit/b1558e455271f7d6e282ff0668665da4eb8f4920))
+- **http:** isElementStruct with null ([04e54b0](https://github.com/deepkit/deepkit-framework/commit/04e54b0dd7888592fa9db1adbf3003b1e4abe4fa))
+- **rpc:** ensure message size is reset to 0 after reaching a buffer that is too small ([c78a2a2](https://github.com/deepkit/deepkit-framework/commit/c78a2a26b98384ae6d1e6b87aa993e77026f4e7c))
+- tsconfig and tsc build ([ac71e83](https://github.com/deepkit/deepkit-framework/commit/ac71e838d542a3cab0e9b1cfc20b27637f1c01df))
+- **type:** convert TypeAnnotation into intrinsic type ([#629](https://github.com/deepkit/deepkit-framework/issues/629)) ([4d1a13e](https://github.com/deepkit/deepkit-framework/commit/4d1a13ec11536e1951f5e348bd0b43b2244cccca)), closes [#626](https://github.com/deepkit/deepkit-framework/issues/626)
+- **type:** ensure union check in deserialize mode to handle property with default value correctly ([11c2116](https://github.com/deepkit/deepkit-framework/commit/11c21167a06e6eaee46941d4aee13323581caa52)), closes [#623](https://github.com/deepkit/deepkit-framework/issues/623)
+- **type:** remove debug code ([fefd9a3](https://github.com/deepkit/deepkit-framework/commit/fefd9a33a8c9c7edf0267ece2e6f33b4913cd173))
+
+### Features
+
+- **event:** better doc blocks for listen ([452dc6a](https://github.com/deepkit/deepkit-framework/commit/452dc6abfc005cc99b2def853cc15251fb5c732d))
+- **http:** update formidable to ^3.5.2 ([e4007c3](https://github.com/deepkit/deepkit-framework/commit/e4007c39a63dddeb7dadbdd8914cfaa954a059e7))
+- **rpc:** make binary parser more stable and throw better error message on decoding failure ([66e8f0d](https://github.com/deepkit/deepkit-framework/commit/66e8f0d196ed3f6c7ec2d7b4d106afb4e21d1d54))
+- **rpc:** show invalid binary message in hex on error ([1a7bf16](https://github.com/deepkit/deepkit-framework/commit/1a7bf16a04282125fd3c5c0154bad39beaf8e14d))
+- **sqlite:** update better-sqlite3 to 11.8.1 ([cb1eafd](https://github.com/deepkit/deepkit-framework/commit/cb1eafd48306bd6c656b392adc865d48dd425a02))
+- **type-compiler:** support trivially inferred types ([087b60a](https://github.com/deepkit/deepkit-framework/commit/087b60ae8f964dd4e9f477c9346234ef79ccef4a))
+- update to angular 19 and typescript 5.7.3, new @deepkit/angular-ssr package ([#627](https://github.com/deepkit/deepkit-framework/issues/627)) ([52333a7](https://github.com/deepkit/deepkit-framework/commit/52333a71f98c7e25a74f048dd57f1efba61098f5))
+- **website:** adjust docs createModule -> createModuleClass ([763bfa9](https://github.com/deepkit/deepkit-framework/commit/763bfa9a443a9342117c1f11519ba95c1e5b6b28))
+
 ## [1.0.1-alpha.156](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.155...v1.0.1-alpha.156) (2025-01-30)
 
 ### Bug Fixes

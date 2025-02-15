@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.157](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.156...v1.0.1-alpha.157) (2025-02-15)
+
+### Bug Fixes
+
+- **http:** isElementStruct with null ([04e54b0](https://github.com/deepkit/deepkit-framework/commit/04e54b0dd7888592fa9db1adbf3003b1e4abe4fa))
+- **type:** convert TypeAnnotation into intrinsic type ([#629](https://github.com/deepkit/deepkit-framework/issues/629)) ([4d1a13e](https://github.com/deepkit/deepkit-framework/commit/4d1a13ec11536e1951f5e348bd0b43b2244cccca)), closes [#626](https://github.com/deepkit/deepkit-framework/issues/626)
+
+### Features
+
+- **http:** update formidable to ^3.5.2 ([e4007c3](https://github.com/deepkit/deepkit-framework/commit/e4007c39a63dddeb7dadbdd8914cfaa954a059e7))
+- update to angular 19 and typescript 5.7.3, new @deepkit/angular-ssr package ([#627](https://github.com/deepkit/deepkit-framework/issues/627)) ([52333a7](https://github.com/deepkit/deepkit-framework/commit/52333a71f98c7e25a74f048dd57f1efba61098f5))
+
 ## [1.0.1-alpha.156](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.155...v1.0.1-alpha.156) (2025-01-30)
 
 **Note:** Version bump only for package @deepkit/http

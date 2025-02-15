@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/type-spec",
-  "version": "1.0.1-alpha.116",
+  "version": "1.0.1-alpha.157",
   "description": "Deepkit/type bytecode spec",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
