@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.159](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.158...v1.0.1-alpha.159) (2025-02-18)
+
+### Bug Fixes
+
+- **mongo:** update saslprep ([5413295](https://github.com/deepkit/deepkit-framework/commit/5413295aca72f3f75d672853d861aa662c43299b))
+
 ## [1.0.1-alpha.158](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.157...v1.0.1-alpha.158) (2025-02-15)
 
 **Note:** Version bump only for package @deepkit/mongo
