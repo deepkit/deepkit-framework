@@ -462,18 +462,16 @@ The type annotation is used with the intersection operator `&`. Any number of ty
 
 ```typescript
 type Username = string & MyAnnotation;
-type Title = string &
-&
-MyAnnotation & AnnotationOption<{ title: 'Hello' }>;
+type Title = string & MyAnnotation & AnnotationOption<{ title: 'Hello' }>;
 ```
 
-The type annotations can be read out via the type objects of `typeOf<T>()` and `metaAnnotation`:
+The type annotations can be read out via the type objects of `typeOf<T>()` and `typeAnnotation`:
 
 ```typescript
-import { typeOf, metaAnnotation } from '@deepkit/type';
+import { typeOf, typeAnnotation } from '@deepkit/type';
 
 const type = typeOf<Username>();
-const annotation = metaAnnotation.getForName(type, 'myAnnotation'); //[]
+const annotation = typeAnnotation.getForName(type, 'myAnnotation'); //[]
 ```
 
 The result in `annotation` is either an array with options if the type annotation `myAnnotation` was used or `undefined` if not. If the type annotation has additional options as seen in `AnnotationOption`, the passed values can be found in the array.
