@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.160](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.159...v1.0.1-alpha.160) (2025-02-18)
+
+### Bug Fixes
+
+- **type:** make typeAnnotation backwards compatible to metaAnnotation ([8be8b5e](https://github.com/deepkit/deepkit-framework/commit/8be8b5e154eca10fc7cd398347886209d2fa49ae))
+
 ## [1.0.1-alpha.158](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.157...v1.0.1-alpha.158) (2025-02-15)
 
 **Note:** Version bump only for package @deepkit/type

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1-alpha.160](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.159...v1.0.1-alpha.160) (2025-02-18)
+
+### Bug Fixes
+
+- **angular-ssr:** remove usage of angular internals ([ae91295](https://github.com/deepkit/deepkit-framework/commit/ae91295e7da71b6f4c1e7672bcc5983b267f8ee7))
+- **type:** make typeAnnotation backwards compatible to metaAnnotation ([8be8b5e](https://github.com/deepkit/deepkit-framework/commit/8be8b5e154eca10fc7cd398347886209d2fa49ae))
+- **website:** docs about typeAnnotation ([83bab92](https://github.com/deepkit/deepkit-framework/commit/83bab92a01f2846aa8303359638414a935992820))
+
 ## [1.0.1-alpha.159](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.158...v1.0.1-alpha.159) (2025-02-18)
 
 ### Bug Fixes
