@@ -11,7 +11,6 @@
 import {
     AngularNodeAppEngine,
     createNodeRequestHandler,
-    createWebRequestFromNodeRequest,
     isMainModule,
     NodeRequestHandlerFunction,
     writeResponseToNodeResponse,
@@ -76,23 +75,14 @@ class AngularListener {
         if (event.route) return; //already found
         if (!_ngApp) return;
 
-        const webRequest = createWebRequestFromNodeRequest(event.request);
-        // @ts-ignore
-        const serverApp = await ((_ngApp as any).angularAppEngine as AngularAppEngine).getAngularServerAppForRequest(webRequest);
-        const serverRouter = serverApp.router;
-        if (serverRouter) {
-            const matchedRoute = serverRouter.match(new URL(webRequest.url));
-            if (!matchedRoute) {
-                //not handled by angular app, so early exit
-                return;
-            }
-        }
+        const promise = _ngApp.handle(event.request, this.requestContext);
+        if (!promise) return;
 
         event.routeFound(new RouteConfig('angular', ['GET'], event.request.url || '', {
             type: 'function',
             fn: async (req: HttpRequest, res: HttpResponse) => {
                 if (!_ngApp) return;
-                const response = await _ngApp.handle(req, this.requestContext);
+                const response = await promise;
                 if (!response) {
                     throw new HttpNotFoundError();
                 }
