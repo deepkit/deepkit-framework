@@ -7,7 +7,7 @@
  */
 
 import { dirname, join, relative } from 'path';
-import { readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 let to = process.argv[2] || process.cwd();
 
@@ -76,6 +76,7 @@ const paths = ['tsc.js', '_tsc.js', 'typescript.js'];
 
 for (const fileName of paths) {
     const file = join(typeScriptPath, fileName);
+    if (!existsSync(file)) continue;
     const content = patchGetTransformers(deepkitDistPath, readFileSync(file, 'utf8'));
     if (!content) continue;
     writeFileSync(file, content);
