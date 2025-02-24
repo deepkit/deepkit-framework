@@ -1597,6 +1597,8 @@ export class ReflectionTransformer implements CustomTransformer {
 
                     const description = extractJSDocAttribute(this.sourceFile, narrowed, 'description');
                     if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
+                } else {
+                    program.pushOp(ReflectionOp.unknown);
                 }
                 break;
             }
@@ -1611,6 +1613,8 @@ export class ReflectionTransformer implements CustomTransformer {
                     this.extractPackStructOfType(narrowed.type, program);
                 } else if (narrowed.initializer) {
                     this.extractPackStructOfExpression(narrowed.initializer, program);
+                } else {
+                    program.pushOp(ReflectionOp.unknown);
                 }
 
                 const name = getPropertyName(this.f, narrowed.name);
