@@ -44,7 +44,7 @@ import {
     RpcMessageRouteType,
     serializeBinaryRpcMessage,
 } from '../protocol.js';
-import { ActionTypes, RpcServerAction } from './action.js';
+import { ActionTypes, RpcActionHook, RpcActionHookError, RpcActionHookSuccess, RpcServerAction } from './action.js';
 import { RpcKernelSecurity, SessionState } from './security.js';
 import { RpcActionClient, RpcControllerState } from '../client/action.js';
 import { RemoteController } from '../client/client.js';
@@ -387,7 +387,7 @@ export class RpcCache {
 
 export class RpcKernelConnection extends RpcKernelBaseConnection {
     public myPeerId?: string;
-    protected actionHandler = new RpcServerAction(this.cache, this, this.controllers, this.injector, this.security, this.sessionState, this.logger);
+    protected actionHandler = new RpcServerAction(this.cache, this, this.controllers, this.injector, this.security, this.sessionState, this.logger, this.hooks);
 
     public routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client;
 
@@ -400,12 +400,14 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
         protected security = new RpcKernelSecurity(),
         protected injector: InjectorContext,
         protected peerExchange: RpcPeerExchange,
+        protected hooks: RpcHooks,
     ) {
         super(logger, transport, connections);
         this.onClose.then(async () => {
             try {
                 await this.peerExchange.deregister(this.id);
                 await this.actionHandler.onClose();
+                this.hooks.onClose(this, this.injector);
             } catch (e) {
                 logger.scoped('RPC').error('Could no deregister/action close: ' + e);
             }
@@ -587,6 +589,28 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
 
 export type OnConnectionCallback = (connection: RpcKernelConnection, injector: InjectorContext, logger: LoggerInterface) => void;
 
+export class RpcHooks {
+    onConnection(connection: RpcKernelConnection, injector: InjectorContext) {
+
+    }
+
+    onClose(connection: RpcKernelConnection, injector: InjectorContext) {
+
+    }
+
+    onAction(action: RpcActionHook, injector: InjectorContext) {
+
+    }
+
+    onActionSuccess(action: RpcActionHookSuccess, injector: InjectorContext) {
+
+    }
+
+    onActionError(action: RpcActionHookError, injector: InjectorContext) {
+
+    }
+}
+
 /**
  * The kernel is responsible for parsing the message header, redirecting to peer if necessary, loading the body parser,
  * and encode/send outgoing messages.
@@ -606,6 +630,13 @@ export class RpcKernel {
 
     public injector: InjectorContext;
 
+    private _hooks?: RpcHooks;
+
+    public get hooks(): RpcHooks {
+        if (this._hooks) return this._hooks;
+        return this._hooks = this.injector.get(RpcHooks);
+    }
+
     constructor(
         injector?: InjectorContext | NormalizedProvider[],
         protected logger: Logger = new Logger(),
@@ -620,6 +651,7 @@ export class RpcKernel {
                 //will be provided when scope is created
                 { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
 
+                { provide: RpcHooks },
                 { provide: Logger, useValue: logger },
 
                 ...(injector || []),
@@ -660,9 +692,10 @@ export class RpcKernel {
     createConnection(transport: TransportConnection, injector?: InjectorContext): RpcKernelBaseConnection {
         if (!injector) injector = this.injector.createChildScope('rpc');
 
-        const connection = new this.RpcKernelConnection(this.logger, transport, this.connections, this.cache, this.controllers, injector.get(RpcKernelSecurity), injector, this.peerExchange);
+        const connection = new this.RpcKernelConnection(this.logger, transport, this.connections, this.cache, this.controllers, injector.get(RpcKernelSecurity), injector, this.peerExchange, this.hooks);
         injector.set(RpcKernelConnection, connection);
         for (const on of this.onConnectionListeners) on(connection, injector, this.logger);
+        this.hooks.onConnection(connection, injector);
         return connection;
     }
 }

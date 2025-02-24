@@ -58,7 +58,7 @@ import {
     RpcTypes,
 } from '../model.js';
 import { rpcEncodeError, RpcMessage } from '../protocol.js';
-import { RpcCache, RpcKernelBaseConnection, RpcMessageBuilder } from './kernel.js';
+import { RpcCache, RpcHooks, RpcKernelBaseConnection, RpcMessageBuilder } from './kernel.js';
 import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security.js';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
@@ -106,8 +106,13 @@ const anyType: Type = { kind: ReflectionKind.any };
 const anyBodyType: Type = {
     kind: ReflectionKind.objectLiteral,
     types: [
-        { kind: ReflectionKind.propertySignature, name: 'args', parent: Object as any, type: { kind: ReflectionKind.any } },
-    ]
+        {
+            kind: ReflectionKind.propertySignature,
+            name: 'args',
+            parent: Object as any,
+            type: { kind: ReflectionKind.any },
+        },
+    ],
 };
 const anyParametersType: Type = {
     kind: ReflectionKind.tuple,
@@ -121,6 +126,47 @@ const anyParametersType: Type = {
         },
     }],
 };
+
+export interface RpcActionHook extends RpcControllerAccess {
+}
+
+/**
+ * All times are in milliseconds (using performance.now()).
+ */
+interface RpcActionTimings {
+    /**
+     * The start of the action (performance.now())
+     */
+    start: number;
+    /**
+     * The end of the action (performance.now())
+     */
+    end: number;
+    /**
+     * Time it took to check the controller access (since start)
+     */
+    types?: number;
+    /**
+     * Time it took to parse the body (since start)
+     */
+    parseBody?: number;
+    /**
+     * Time it took to validate the parameters (since start)
+     */
+    validate?: number;
+    /**
+     * Time it took to check the controller access (since start)
+     */
+    controllerAccess?: number;
+}
+
+export interface RpcActionHookError extends RpcActionHook, RpcActionTimings {
+    error?: Error;
+}
+
+export interface RpcActionHookSuccess extends RpcActionHook, RpcActionTimings {
+    result: any;
+}
 
 export class RpcServerAction {
     protected observableSubjects: {
@@ -156,6 +202,7 @@ export class RpcServerAction {
         protected security: RpcKernelSecurity,
         protected sessionState: SessionState,
         protected logger: LoggerInterface,
+        protected hooks: RpcHooks,
     ) {
     }
 
@@ -443,12 +490,19 @@ export class RpcServerAction {
             actionData: action.data,
             connection: this.connection,
         };
+        const timing = { start: performance.now(), end: 0 } as RpcActionTimings;
+        this.hooks.onAction(controllerAccess, this.injector);
 
-        if (!await this.hasControllerAccess(controllerAccess)) {
-            throw new RpcError(`Access denied to action ${body.method}`);
+        const access = await this.hasControllerAccess(controllerAccess);
+        timing.controllerAccess = performance.now() - timing.start;
+        if (!access) {
+            const error = new RpcError(`Access denied to action ${body.method}`);
+            this.hooks.onActionError({ ...controllerAccess, ...timing, end: performance.now(), error }, this.injector);
+            return response.error(error);
         }
 
         const types = await this.loadTypes(body.controller, body.method);
+        timing.types = performance.now() - timing.start;
         let value: { args: any[] } = { args: [] };
 
         response.strictSerialization = !!action.strictSerialization;
@@ -456,26 +510,34 @@ export class RpcServerAction {
 
         try {
             value = message.parseBody(action.strictSerialization ? types.actionCallSchema : anyBodyType);
+            timing.parseBody = performance.now() - timing.start;
         } catch (error: any) {
+            const message = `Validation error for arguments of ${getClassName(classType.controller)}.${body.method}`;
             if (action.logValidationErrors) {
-                this.logger.warn(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}`, error);
+                this.logger.warn(message, error);
             }
-            return response.error(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}: ${error.message}`);
+            this.hooks.onActionError({ ...controllerAccess, ...timing, end: performance.now(), error }, this.injector);
+            return response.error(`${message}: ${error.message}`);
         }
 
         const controllerInstance = this.injector.get(classType.controller, classType.module);
         if (!controllerInstance) {
-            response.error(new RpcError(`No instance of ${getClassName(classType.controller)} found.`));
+            const error = new RpcError(`No instance of ${getClassName(classType.controller)} found.`);
+            this.hooks.onActionError({ ...controllerAccess, ...timing, end: performance.now(), error }, this.injector);
+            return response.error(error);
         }
 
         if (!isArray(value.args)) {
-            this.logger.error(`Invalid arguments for ${getClassName(classType.controller)}.${body.method} - expected array but got`, value.args);
-            return response.error(`Invalid arguments for ${getClassName(classType.controller)}.${body.method} - expected array.`);
+            const message = `Invalid arguments for ${getClassName(classType.controller)}.${body.method} - expected array`;
+            this.logger.error(`${message} but got`, value.args);
+            this.hooks.onActionError({ ...controllerAccess, ...timing, end: performance.now(), error: new RpcError(message) }, this.injector);
+            return response.error(message);
         }
 
         // const converted = types.parametersDeserialize(value.args);
         const errors: ValidationErrorItem[] = [];
         types.parametersValidate(value.args, { errors });
+        timing.validate = performance.now() - timing.start;
 
         if (errors.length) {
             const error = new ValidationError(errors);
@@ -483,7 +545,9 @@ export class RpcServerAction {
                 this.logger.warn(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}, using 'any' now.`, error);
             }
             if (action.strictSerialization) {
-                return response.error(`Validation error for arguments of ${getClassName(classType.controller)}.${body.method}: ${error.message}`);
+                const message = `Validation error for arguments of ${getClassName(classType.controller)}.${body.method}: ${error.message}`;
+                this.hooks.onActionError({ ...controllerAccess, ...timing, end: performance.now(), error }, this.injector);
+                return response.error(message);
             }
         }
 
@@ -494,6 +558,8 @@ export class RpcServerAction {
             // so we use `apply` instead of `method(...value.args)`
             const method = controllerInstance[body.method] as Function;
             const result = await method.apply(controllerInstance, value.args);
+            timing.end = performance.now();
+            this.hooks.onActionSuccess({ ...controllerAccess, ...timing, end: performance.now(), result }, this.injector);
 
             if (isEntitySubject(result)) {
                 response.reply(RpcTypes.ResponseEntity, { v: result.value }, types.resultSchema);
@@ -605,6 +671,7 @@ export class RpcServerAction {
                 response.reply(RpcTypes.ResponseActionSimple, { v: result }, types.resultSchema);
             }
         } catch (error: any) {
+            this.hooks.onActionError({ ...controllerAccess, ...timing, end: performance.now(), error }, this.injector);
             response.error(this.security.transformError(error));
         }
     }

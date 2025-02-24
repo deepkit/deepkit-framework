@@ -46,6 +46,7 @@ import { FileStopwatchStore } from './debug/stopwatch/store.js';
 import { DebugProfileFramesCommand } from './cli/debug-debug-frames.js';
 import {
     rpcClass,
+    RpcHooks,
     RpcKernel,
     RpcKernelBaseConnection,
     RpcKernelConnection,
@@ -76,6 +77,7 @@ export class FrameworkModule extends createModuleClass({
         ApplicationServer,
         WebWorkerFactory,
         RpcServer,
+        RpcHooks,
         MigrationProvider,
         DebugController,
         BrokerServer,
@@ -156,6 +158,7 @@ export class FrameworkModule extends createModuleClass({
         SessionState,
         RpcKernelConnection,
         RpcKernelBaseConnection,
+        RpcHooks,
 
         BrokerDeepkitAdapter,
         BrokerCache,

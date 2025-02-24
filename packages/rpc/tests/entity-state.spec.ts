@@ -4,7 +4,7 @@ import { EntitySubject, rpcEntityPatch, RpcTypes } from '../src/model.js';
 import { DirectClient } from '../src/client/client-direct.js';
 import { EntitySubjectStore } from '../src/client/entity-state.js';
 import { rpc } from '../src/decorators.js';
-import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
+import { RpcHooks, RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
 import { InjectorContext } from '@deepkit/injector';
 import { RpcKernelSecurity } from '../src/server/security.js';
 
@@ -105,6 +105,7 @@ test('controller', async () => {
         { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
         { provide: RpcKernelSecurity, scope: 'rpc' },
         { provide: Controller, scope: 'rpc' },
+        { provide: RpcHooks },
     ]));
     kernel.registerController(Controller, 'myController');
 
