@@ -2817,7 +2817,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deepkit/angular-ssr@npm:^1.0.1-alpha.143, @deepkit/angular-ssr@workspace:packages/angular-ssr":
+"@deepkit/angular-ssr@npm:^1.0.1, @deepkit/angular-ssr@workspace:packages/angular-ssr":
   version: 0.0.0-use.local
   resolution: "@deepkit/angular-ssr@workspace:packages/angular-ssr"
   dependencies:
@@ -2928,7 +2928,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/app@npm:^1.0.1, @deepkit/app@npm:^1.0.1-alpha.0, @deepkit/app@npm:^1.0.1-alpha.141, @deepkit/app@npm:^1.0.1-alpha.143, @deepkit/app@workspace:packages/app":
+"@deepkit/app@npm:^1.0.1, @deepkit/app@npm:^1.0.1-alpha.0, @deepkit/app@npm:^1.0.1-alpha.141, @deepkit/app@workspace:packages/app":
   version: 0.0.0-use.local
   resolution: "@deepkit/app@workspace:packages/app"
   dependencies:
@@ -2951,7 +2951,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/broker@npm:^1.0.1, @deepkit/broker@npm:^1.0.1-alpha.0, @deepkit/broker@npm:^1.0.1-alpha.143, @deepkit/broker@workspace:packages/broker":
+"@deepkit/broker@npm:^1.0.1, @deepkit/broker@npm:^1.0.1-alpha.0, @deepkit/broker@workspace:packages/broker":
   version: 0.0.0-use.local
   resolution: "@deepkit/broker@workspace:packages/broker"
   dependencies:
@@ -2975,7 +2975,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/bson@npm:^1.0.1, @deepkit/bson@npm:^1.0.1-alpha.0, @deepkit/bson@npm:^1.0.1-alpha.143, @deepkit/bson@workspace:packages/bson":
+"@deepkit/bson@npm:^1.0.1, @deepkit/bson@npm:^1.0.1-alpha.0, @deepkit/bson@workspace:packages/bson":
   version: 0.0.0-use.local
   resolution: "@deepkit/bson@workspace:packages/bson"
   dependencies:
@@ -3002,7 +3002,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/core-rxjs@npm:^1.0.1, @deepkit/core-rxjs@npm:^1.0.1-alpha.0, @deepkit/core-rxjs@npm:^1.0.1-alpha.143, @deepkit/core-rxjs@workspace:packages/core-rxjs":
+"@deepkit/core-rxjs@npm:^1.0.1, @deepkit/core-rxjs@npm:^1.0.1-alpha.0, @deepkit/core-rxjs@workspace:packages/core-rxjs":
   version: 0.0.0-use.local
   resolution: "@deepkit/core-rxjs@workspace:packages/core-rxjs"
   dependencies:
@@ -3039,7 +3039,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/desktop-ui@npm:^1.0.1, @deepkit/desktop-ui@npm:^1.0.1-alpha.143, @deepkit/desktop-ui@npm:^1.0.1-alpha.48, @deepkit/desktop-ui@workspace:packages/desktop-ui":
+"@deepkit/desktop-ui@npm:^1.0.1, @deepkit/desktop-ui@npm:^1.0.1-alpha.48, @deepkit/desktop-ui@workspace:packages/desktop-ui":
   version: 0.0.0-use.local
   resolution: "@deepkit/desktop-ui@workspace:packages/desktop-ui"
   dependencies:
@@ -3086,7 +3086,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/event@npm:^1.0.1, @deepkit/event@npm:^1.0.1-alpha.0, @deepkit/event@npm:^1.0.1-alpha.143, @deepkit/event@workspace:packages/event":
+"@deepkit/event@npm:^1.0.1, @deepkit/event@npm:^1.0.1-alpha.0, @deepkit/event@workspace:packages/event":
   version: 0.0.0-use.local
   resolution: "@deepkit/event@workspace:packages/event"
   dependencies:
@@ -3178,7 +3178,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/filesystem@npm:^1.0.1, @deepkit/filesystem@npm:^1.0.1-alpha.0, @deepkit/filesystem@npm:^1.0.1-alpha.143, @deepkit/filesystem@workspace:packages/filesystem":
+"@deepkit/filesystem@npm:^1.0.1, @deepkit/filesystem@npm:^1.0.1-alpha.0, @deepkit/filesystem@workspace:packages/filesystem":
   version: 0.0.0-use.local
   resolution: "@deepkit/filesystem@workspace:packages/filesystem"
   dependencies:
@@ -3377,7 +3377,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/http@npm:^1.0.1, @deepkit/http@npm:^1.0.1-alpha.0, @deepkit/http@npm:^1.0.1-alpha.143, @deepkit/http@workspace:packages/http":
+"@deepkit/http@npm:^1.0.1, @deepkit/http@npm:^1.0.1-alpha.0, @deepkit/http@workspace:packages/http":
   version: 0.0.0-use.local
   resolution: "@deepkit/http@workspace:packages/http"
   dependencies:
@@ -3409,7 +3409,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/injector@npm:^1.0.1, @deepkit/injector@npm:^1.0.1-alpha.0, @deepkit/injector@npm:^1.0.1-alpha.143, @deepkit/injector@workspace:packages/injector":
+"@deepkit/injector@npm:^1.0.1, @deepkit/injector@npm:^1.0.1-alpha.0, @deepkit/injector@workspace:packages/injector":
   version: 0.0.0-use.local
   resolution: "@deepkit/injector@workspace:packages/injector"
   dependencies:
@@ -3422,7 +3422,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/logger@npm:^1.0.1, @deepkit/logger@npm:^1.0.1-alpha.0, @deepkit/logger@npm:^1.0.1-alpha.141, @deepkit/logger@npm:^1.0.1-alpha.143, @deepkit/logger@workspace:packages/logger":
+"@deepkit/logger@npm:^1.0.1, @deepkit/logger@npm:^1.0.1-alpha.0, @deepkit/logger@npm:^1.0.1-alpha.141, @deepkit/logger@workspace:packages/logger":
   version: 0.0.0-use.local
   resolution: "@deepkit/logger@workspace:packages/logger"
   dependencies:
@@ -3592,7 +3592,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/orm@npm:^1.0.1, @deepkit/orm@npm:^1.0.1-alpha.0, @deepkit/orm@npm:^1.0.1-alpha.143, @deepkit/orm@workspace:packages/orm":
+"@deepkit/orm@npm:^1.0.1, @deepkit/orm@npm:^1.0.1-alpha.0, @deepkit/orm@workspace:packages/orm":
   version: 0.0.0-use.local
   resolution: "@deepkit/orm@workspace:packages/orm"
   dependencies:
@@ -3639,7 +3639,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/rpc-tcp@npm:^1.0.1, @deepkit/rpc-tcp@npm:^1.0.1-alpha.0, @deepkit/rpc-tcp@npm:^1.0.1-alpha.143, @deepkit/rpc-tcp@workspace:packages/rpc-tcp":
+"@deepkit/rpc-tcp@npm:^1.0.1, @deepkit/rpc-tcp@npm:^1.0.1-alpha.0, @deepkit/rpc-tcp@workspace:packages/rpc-tcp":
   version: 0.0.0-use.local
   resolution: "@deepkit/rpc-tcp@workspace:packages/rpc-tcp"
   dependencies:
@@ -3652,7 +3652,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/rpc@npm:^1.0.1, @deepkit/rpc@npm:^1.0.1-alpha.0, @deepkit/rpc@npm:^1.0.1-alpha.143, @deepkit/rpc@npm:^1.0.1-alpha.57, @deepkit/rpc@workspace:packages/rpc":
+"@deepkit/rpc@npm:^1.0.1, @deepkit/rpc@npm:^1.0.1-alpha.0, @deepkit/rpc@npm:^1.0.1-alpha.57, @deepkit/rpc@workspace:packages/rpc":
   version: 0.0.0-use.local
   resolution: "@deepkit/rpc@workspace:packages/rpc"
   dependencies:
@@ -3739,7 +3739,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/stopwatch@npm:^1.0.1, @deepkit/stopwatch@npm:^1.0.1-alpha.0, @deepkit/stopwatch@npm:^1.0.1-alpha.143, @deepkit/stopwatch@workspace:packages/stopwatch":
+"@deepkit/stopwatch@npm:^1.0.1, @deepkit/stopwatch@npm:^1.0.1-alpha.0, @deepkit/stopwatch@workspace:packages/stopwatch":
   version: 0.0.0-use.local
   resolution: "@deepkit/stopwatch@workspace:packages/stopwatch"
   dependencies:
@@ -3751,7 +3751,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/template@npm:^1.0.1, @deepkit/template@npm:^1.0.1-alpha.0, @deepkit/template@npm:^1.0.1-alpha.143, @deepkit/template@workspace:packages/template":
+"@deepkit/template@npm:^1.0.1, @deepkit/template@npm:^1.0.1-alpha.0, @deepkit/template@workspace:packages/template":
   version: 0.0.0-use.local
   resolution: "@deepkit/template@workspace:packages/template"
   dependencies:
@@ -3792,7 +3792,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/type-compiler@npm:^1.0.1, @deepkit/type-compiler@npm:^1.0.1-alpha.102, @deepkit/type-compiler@workspace:packages/type-compiler":
+"@deepkit/type-compiler@npm:^1.0.1, @deepkit/type-compiler@workspace:packages/type-compiler":
   version: 0.0.0-use.local
   resolution: "@deepkit/type-compiler@workspace:packages/type-compiler"
   dependencies:
@@ -3820,7 +3820,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/type@npm:^1.0.1, @deepkit/type@npm:^1.0.1-alpha.0, @deepkit/type@npm:^1.0.1-alpha.141, @deepkit/type@npm:^1.0.1-alpha.143, @deepkit/type@npm:^1.0.1-alpha.52, @deepkit/type@workspace:packages/type":
+"@deepkit/type@npm:^1.0.1, @deepkit/type@npm:^1.0.1-alpha.0, @deepkit/type@npm:^1.0.1-alpha.141, @deepkit/type@npm:^1.0.1-alpha.52, @deepkit/type@workspace:packages/type":
   version: 0.0.0-use.local
   resolution: "@deepkit/type@workspace:packages/type"
   dependencies:
@@ -3873,7 +3873,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/workflow@npm:^1.0.1, @deepkit/workflow@npm:^1.0.1-alpha.0, @deepkit/workflow@npm:^1.0.1-alpha.143, @deepkit/workflow@workspace:packages/workflow":
+"@deepkit/workflow@npm:^1.0.1, @deepkit/workflow@npm:^1.0.1-alpha.0, @deepkit/workflow@workspace:packages/workflow":
   version: 0.0.0-use.local
   resolution: "@deepkit/workflow@workspace:packages/workflow"
   dependencies:
@@ -25546,30 +25546,30 @@ __metadata:
     "@angular/platform-server": "npm:^19.1.5"
     "@angular/router": "npm:^19.1.5"
     "@angular/ssr": "npm:^19.1.6"
-    "@deepkit/angular-ssr": "npm:^1.0.1-alpha.143"
-    "@deepkit/app": "npm:^1.0.1-alpha.143"
-    "@deepkit/broker": "npm:^1.0.1-alpha.143"
-    "@deepkit/bson": "npm:^1.0.1-alpha.143"
-    "@deepkit/core": "npm:^1.0.1-alpha.143"
-    "@deepkit/core-rxjs": "npm:^1.0.1-alpha.143"
-    "@deepkit/desktop-ui": "npm:^1.0.1-alpha.143"
-    "@deepkit/event": "npm:^1.0.1-alpha.143"
-    "@deepkit/filesystem": "npm:^1.0.1-alpha.143"
+    "@deepkit/angular-ssr": "npm:^1.0.1"
+    "@deepkit/app": "npm:^1.0.1"
+    "@deepkit/broker": "npm:^1.0.1"
+    "@deepkit/bson": "npm:^1.0.1"
+    "@deepkit/core": "npm:^1.0.1"
+    "@deepkit/core-rxjs": "npm:^1.0.1"
+    "@deepkit/desktop-ui": "npm:^1.0.1"
+    "@deepkit/event": "npm:^1.0.1"
+    "@deepkit/filesystem": "npm:^1.0.1"
     "@deepkit/framework": "npm:^1.0.1-alpha.144"
-    "@deepkit/http": "npm:^1.0.1-alpha.143"
-    "@deepkit/injector": "npm:^1.0.1-alpha.143"
-    "@deepkit/logger": "npm:^1.0.1-alpha.143"
+    "@deepkit/http": "npm:^1.0.1"
+    "@deepkit/injector": "npm:^1.0.1"
+    "@deepkit/logger": "npm:^1.0.1"
     "@deepkit/mongo": "npm:^1.0.1-alpha.144"
-    "@deepkit/orm": "npm:^1.0.1-alpha.143"
+    "@deepkit/orm": "npm:^1.0.1"
     "@deepkit/postgres": "npm:^1.0.1-alpha.144"
-    "@deepkit/rpc": "npm:^1.0.1-alpha.143"
-    "@deepkit/rpc-tcp": "npm:^1.0.1-alpha.143"
+    "@deepkit/rpc": "npm:^1.0.1"
+    "@deepkit/rpc-tcp": "npm:^1.0.1"
     "@deepkit/sql": "npm:^1.0.1-alpha.144"
-    "@deepkit/stopwatch": "npm:^1.0.1-alpha.143"
-    "@deepkit/template": "npm:^1.0.1-alpha.143"
-    "@deepkit/type": "npm:^1.0.1-alpha.143"
-    "@deepkit/type-compiler": "npm:^1.0.1-alpha.102"
-    "@deepkit/workflow": "npm:^1.0.1-alpha.143"
+    "@deepkit/stopwatch": "npm:^1.0.1"
+    "@deepkit/template": "npm:^1.0.1"
+    "@deepkit/type": "npm:^1.0.1"
+    "@deepkit/type-compiler": "npm:^1.0.1"
+    "@deepkit/workflow": "npm:^1.0.1"
     "@types/jest": "npm:^29.5.5"
     "@types/prismjs": "npm:^1.26.0"
     angular-plotly.js: "npm:^5.2.2"

@@ -23,8 +23,8 @@ import { MarkdownParser } from '@app/common/markdown';
 import { migrate } from '@app/server/commands/migrate';
 import { importExamples, importQuestions } from '@app/server/commands/import';
 import { BenchmarkController, BenchmarkHttpController } from '@app/server/controller/benchmark.controller';
-import { AngularModule } from '@deepkit/angular-ssr';
-
+import { AngularModule, RequestHandler } from '@deepkit/angular-ssr';
+import { isMainModule } from '@angular/ssr/node';
 
 (global as any).window = undefined;
 (global as any).document = undefined;
@@ -72,7 +72,9 @@ export const app = new App({
                 startOnBootstrap: false,
             },
         }),
-        new AngularModule()
+        new AngularModule({
+            moduleUrl: import.meta.url
+        })
     ],
 });
 
@@ -96,3 +98,15 @@ app.listen(onServerMainBootstrap, registerBot);
 app.listen(onServerMainBootstrap, (event, parser: MarkdownParser) => parser.load());
 
 app.loadConfigFromEnv({ namingStrategy: 'same', prefix: 'app_', envFilePath: ['local.env'] });
+
+const isBuild = process.env.BUILD === 'angular'; //detecting prerender
+const isMain = isMainModule(import.meta.url);
+
+if (isMain) {
+    void app.run();
+}
+
+export const reqHandler =
+    isBuild || isMain
+        ? () => undefined
+        : app.get(RequestHandler).create();

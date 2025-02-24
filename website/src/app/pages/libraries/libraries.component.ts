@@ -24,7 +24,7 @@ import { AppTitle } from '@app/app/components/title';
             text-align: left;
             display: block;
 
-            color: white;
+            color: white !important;
 
             &:hover {
                 text-decoration: none;
