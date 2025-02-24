@@ -194,6 +194,8 @@ describe('application-server', () => {
             };
 
             const rpcServerMock: RpcServerInterface = {
+                close: jest.fn() as any,
+                upgradeWebSocket: jest.fn() as any,
                 start: jest.fn((
                     options: any,
                     createRpcConnection: any

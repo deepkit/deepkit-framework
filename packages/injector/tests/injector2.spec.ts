@@ -821,18 +821,19 @@ test('configure provider replace', () => {
     class Service {
     }
 
-    class Replaced extends Service {}
+    class Replaced extends Service {
+    }
 
     const root = new InjectorModule([Service]);
     root.configureProvider<Service>(service => {
         return new Replaced;
-    }, {replace: true});
+    }, { replace: true });
 
     const injector = new InjectorContext(root);
     const service = injector.get(Service);
 
     expect(service).toBeInstanceOf(Replaced);
-})
+});
 
 test('configure provider additional services scopes', () => {
     class Service {
@@ -1717,4 +1718,34 @@ test('deep config index direct sub class access', () => {
     const injector = new InjectorContext(rootModule);
     const database = injector.get(Database);
     expect(database.url).toBe('localhost');
+});
+
+test('sub class in different scope', () => {
+    class Service {
+    }
+
+    class SubService extends Service {
+    }
+
+    class Test {
+        constructor(public service: Service) {
+        }
+    }
+
+    const sub2 = new (class Sub extends InjectorModule {})([
+        { provide: Test },
+        { provide: SubService },
+    ]).addExport(Test);
+
+    const root = new (class Root extends InjectorModule {})([
+        Service,
+    ]).addImport(sub2);
+
+    const injector = new InjectorContext(root);
+    injector.getRootInjector();
+
+    const test = injector.get(Test, sub2);
+    expect(test.service).toBeInstanceOf(Service);
+    // it must not resolve to SubService, because Service has higher specificity
+    expect(test.service).not.toBeInstanceOf(SubService);
 });

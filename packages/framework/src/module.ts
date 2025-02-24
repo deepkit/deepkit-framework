@@ -24,13 +24,14 @@ import {
     HttpRegExp,
     HttpRequest,
     HttpResponse,
+    httpWorkflow,
     serveStaticListener,
 } from '@deepkit/http';
 import { InjectorContext, ProviderWithScope, Token } from '@deepkit/injector';
 import { BrokerConfig, FrameworkConfig } from './module.config.js';
 import { Logger } from '@deepkit/logger';
 import { SessionHandler } from './session.js';
-import { RpcServer, WebWorkerFactory } from './worker.js';
+import { HttpWebSocketListener, RpcServer, WebWorkerFactory } from './worker.js';
 import { Stopwatch, StopwatchStore } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller.js';
 import { DatabaseListener } from './database/database-listener.js';
@@ -126,6 +127,10 @@ export class FrameworkModule extends createModuleClass({
         ApplicationServerListener,
         DatabaseListener,
         BrokerListener,
+        HttpWebSocketListener,
+        httpWorkflow.onRequest.listen((event, as: ApplicationServer) => {
+            return as.getHttpWorker().onRequest(event.request, event.response);
+        }),
     ],
     controllers: [
         ServerStartController,
@@ -140,6 +145,7 @@ export class FrameworkModule extends createModuleClass({
         MigrationCreateController,
     ],
     exports: [
+        HttpWebSocketListener,
         ProcessLocker,
         ApplicationServer,
         WebWorkerFactory,

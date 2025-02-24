@@ -16,7 +16,7 @@ import { ApplicationServer } from './application-server.js';
 import { BrokerServer } from './broker/broker.js';
 import { App, AppModule, RootAppModule, RootModuleDefinition } from '@deepkit/app';
 import { WebMemoryWorkerFactory, WebWorkerFactory } from './worker.js';
-import { MemoryHttpResponse, RequestBuilder } from '@deepkit/http';
+import { HttpKernel, MemoryHttpResponse, RequestBuilder } from '@deepkit/http';
 import { RpcClient, RpcDirectClientAdapter } from '@deepkit/rpc';
 import { FrameworkModule } from './module.js';
 import { DebugBrokerBus } from './debug/broker.js';
@@ -46,7 +46,7 @@ export class TestingFacade<A extends App<any>> {
     public async request(requestBuilder: RequestBuilder): Promise<MemoryHttpResponse> {
         const request = requestBuilder.build();
         const response = new MemoryHttpResponse(request);
-        await this.app.get(ApplicationServer).getHttpWorker().handleRequest(request, response);
+        await this.app.get(HttpKernel).handleRequest(request, response);
         return response;
     }
 
@@ -95,7 +95,7 @@ export function createTestingApp<O extends RootModuleDefinition>(options: O, ent
     module.addProvider({ provide: BrokerBus, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerBus(adapter) });
     module.addProvider({ provide: DebugBrokerBus, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerBus(adapter) });
 
-    if (!module.hasImport(FrameworkModule)) module.addImportAtBeginning(new FrameworkModule);
+    if (!module.hasImport(FrameworkModule)) module.addImport(new FrameworkModule);
 
     if (entities.length) {
         module.addProvider({ provide: Database, useValue: new Database(new MemoryDatabaseAdapter, entities) });

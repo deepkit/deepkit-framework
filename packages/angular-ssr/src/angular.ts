@@ -30,6 +30,7 @@ import { ApplicationServer } from '@deepkit/framework';
 import { Logger } from '@deepkit/logger';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ws from 'ws';
 
 class AngularConfig {
     /**
@@ -175,12 +176,19 @@ export class RequestHandler {
 
         const handler = this.http.createMiddleware();
 
+        const wss = new ws.Server({ noServer: true });
+
         // every request in angular dev server is handled by this function
         return createNodeRequestHandler(async (req, res, next) => {
             await waitBootstrap;
 
             // if req wants to upgrade to websocket, we need to handle this here
             if (req.headers.upgrade === 'websocket') {
+                wss.handleUpgrade(req, req.socket, Buffer.alloc(0), (ws) => {
+                    this.http.handleWebSocketConnection(ws, req).catch((error) => {
+                        this.logger.error('WebSocket connection handling error', error);
+                    });
+                });
                 return;
             }
 

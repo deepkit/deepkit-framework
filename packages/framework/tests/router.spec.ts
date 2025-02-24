@@ -29,7 +29,9 @@ test('router parameters', async () => {
     const app = createTestingApp({ controllers: [Controller2], imports: [new FrameworkModule()] }).app;
     const httpHandler = app.get(HttpKernel);
 
-    expect((await httpHandler.request(HttpRequest.GET('/user/peter'))).json).toBe('peter');
+    const r = HttpRequest.GET('/user/peter');
+    const r2 = await httpHandler.request(r)
+    expect(r2.json).toBe('peter');
     expect((await httpHandler.request(HttpRequest.GET('/user-id/123'))).json).toBe(123);
     expect((await httpHandler.request(HttpRequest.GET('/user-id/asd'))).json).toMatchObject({ message: 'Validation error:\nid(type): Cannot convert asd to number' });
     expect((await httpHandler.request(HttpRequest.GET('/boolean/1'))).json).toBe(true);

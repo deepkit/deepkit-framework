@@ -21,7 +21,14 @@ import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions
 import ws from 'ws';
 import selfsigned from 'selfsigned';
 
-import { HttpConfig, HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
+import {
+    HttpConfig,
+    HttpKernel,
+    HttpRequest,
+    HttpResponse,
+    incomingMessageToHttpRequest,
+    onWebSocketConnection,
+} from '@deepkit/http';
 import { InjectorContext } from '@deepkit/injector';
 import { RpcControllers, RpcInjectorContext } from './rpc.js';
 import { SecureContextOptions, TlsOptions } from 'tls';
@@ -30,11 +37,13 @@ import { SecureContextOptions, TlsOptions } from 'tls';
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { LoggerInterface } from '@deepkit/logger';
-import { sleep } from '@deepkit/core';
+import { asyncOperation, sleep } from '@deepkit/core';
 
 // @ts-ignore
 import compression from 'compression';
 import { constants } from 'zlib';
+import { IncomingMessage } from 'node:http';
+import { eventDispatcher } from '@deepkit/event';
 
 export interface WebServerOptions {
     host: string;
@@ -95,11 +104,6 @@ export interface WebServerOptions {
     selfSigned?: boolean;
 }
 
-
-export interface RpcServerListener {
-    close(): void | Promise<void>;
-}
-
 export interface RpcServerCreateConnection {
     (transport: TransportConnection, request?: HttpRequest): RpcKernelBaseConnection;
 }
@@ -109,16 +113,37 @@ export interface RpcServerOptions {
 }
 
 export interface RpcServerInterface {
+    close(): void;
+
     start(options: RpcServerOptions, createRpcConnection: RpcServerCreateConnection): void;
+
+    upgradeWebSocket(request: IncomingMessage, socket: any, head: any): Promise<ws>;
 }
 
 export class RpcServer implements RpcServerInterface {
-    start(options: RpcServerOptions, createRpcConnection: RpcServerCreateConnection): RpcServerListener {
+    protected server?: WebSocketServer;
+
+    close(): void {
+        if (!this.server) return;
+        this.server.close();
+    }
+
+    upgradeWebSocket(request: IncomingMessage, socket: any, head: any): Promise<ws> {
+        return asyncOperation((resolve) => {
+            this.server?.handleUpgrade(request, socket, head, (ws) => {
+                resolve(ws);
+            });
+        });
+    }
+
+    start(options: RpcServerOptions, createRpcConnection: RpcServerCreateConnection): void {
+        if (this.server) this.close();
+
         const { Server }: { Server: { new(options: WebSocketServerOptions): WebSocketServer } } = ws;
 
-        const server = new Server(options);
+        this.server = new Server(options);
 
-        server.on('connection', (ws, req: HttpRequest) => {
+        this.server.on('connection', (ws, req: HttpRequest) => {
             const connection = createRpcConnection({
                 writeBinary(message) {
                     ws.send(message);
@@ -131,7 +156,7 @@ export class RpcServer implements RpcServerInterface {
                 },
                 clientAddress(): string {
                     return req.getRemoteAddress();
-                }
+                },
             }, req);
 
             ws.on('message', async (message: Uint8Array) => {
@@ -142,12 +167,6 @@ export class RpcServer implements RpcServerInterface {
                 connection.close();
             });
         });
-
-        return {
-            close() {
-                server.close();
-            }
-        };
     }
 }
 
@@ -186,8 +205,44 @@ export function createRpcConnection(rootScopedContext: InjectorContext, rpcKerne
     return connection;
 }
 
+export class HttpWebSocketListener {
+    constructor(
+        protected injectorContext: InjectorContext,
+        protected rpcKernel: RpcKernel,
+    ) {
+    }
+
+    @eventDispatcher.listen(onWebSocketConnection)
+    onWebSocketConnection(event: typeof onWebSocketConnection.event) {
+        const ws = event.data.socket;
+        const req = event.data.request;
+
+        const connection = createRpcConnection(this.injectorContext, this.rpcKernel, {
+            writeBinary(message) {
+                ws.send(message);
+            },
+            close() {
+                ws.close();
+            },
+            bufferedAmount(): number {
+                return ws.bufferedAmount;
+            },
+            clientAddress(): string {
+                return req.socket.remoteAddress || '';
+            },
+        }, incomingMessageToHttpRequest(req));
+
+        ws.on('message', async (message: Uint8Array) => {
+            connection.feed(message);
+        });
+
+        ws.on('close', async () => {
+            connection.close();
+        });
+    }
+}
+
 export class WebWorker {
-    protected rpcListener?: RpcServerListener;
     protected server?: http.Server | https.Server;
     protected servers?: https.Server;
 
@@ -203,6 +258,10 @@ export class WebWorker {
         windowBits: constants.Z_DEFAULT_WINDOWBITS,
     };
 
+    protected handleRequest = (request: HttpRequest, response: HttpResponse) => {
+        return this.httpKernel.handleRequest(request, response);
+    };
+
     constructor(
         public readonly id: number,
         public logger: LoggerInterface,
@@ -212,14 +271,15 @@ export class WebWorker {
         protected options: WebServerOptions,
         private rpcServer: RpcServer,
     ) {
-        this.handleRequest = this.handleRequest.bind(this);
-
         if (this.options.compression) {
             this.compressionOptions.level = this.options.compression;
         }
     }
 
-    handleRequest(request: HttpRequest, response: HttpResponse) {
+    /**
+     * Called when HttpModule receives a request
+     */
+    onRequest(request: HttpRequest, response: HttpResponse) {
         if (this.shuttingDown) {
             response.writeHead(503, 'Service Unavailable');
             response.end();
@@ -235,8 +295,6 @@ export class WebWorker {
         response.on('close', () => {
             this.activeRequests--;
         });
-
-        return this.httpKernel.handleRequest(request, response);
     }
 
     applyServerSettings(server: Server) {
@@ -281,10 +339,9 @@ export class WebWorker {
                 if (!options.crl && this.options.sslCrl) options.crl = readFileSync(this.options.sslCrl, 'utf8');
 
                 this.servers = new https.Server(
-                    Object.assign({ IncomingMessage: HttpRequest, ServerResponse: HttpResponse as any, }, options),
-                    this.handleRequest as any
+                    Object.assign({ IncomingMessage: HttpRequest, ServerResponse: HttpResponse as any }, options),
+                    this.handleRequest as any,
                 );
-                this.servers.requestTimeout
                 this.servers.listen(this.options.httpsPort || this.options.port, this.options.host);
             }
 
@@ -292,7 +349,7 @@ export class WebWorker {
             if (startHttpServer) {
                 this.server = new http.Server(
                     { IncomingMessage: HttpRequest, ServerResponse: HttpResponse as any },
-                    this.handleRequest as any
+                    this.handleRequest as any,
                 );
                 this.server.listen(this.options.port, this.options.host);
             }
@@ -305,23 +362,19 @@ export class WebWorker {
     }
 
     private startRpc() {
+        const localCreateRpcConnection: RpcServerCreateConnection = (transport, request?: HttpRequest) => {
+            if (this.shuttingDown) {
+                transport.close();
+                throw new Error('Server is shutting down');
+            }
+            return createRpcConnection(this.injectorContext, this.rpcKernel, transport, request);
+        };
+
         if (this.server) {
-            this.rpcListener = this.rpcServer.start({ server: this.server }, (transport, request?: HttpRequest) => {
-                if (this.shuttingDown) {
-                    transport.close();
-                    throw new Error('Server is shutting down');
-                }
-                return createRpcConnection(this.injectorContext, this.rpcKernel, transport, request);
-            });
+            this.rpcServer.start({ server: this.server }, localCreateRpcConnection);
         }
         if (this.servers) {
-            this.rpcListener = this.rpcServer.start({ server: this.servers }, (transport, request?: HttpRequest) => {
-                if (this.shuttingDown) {
-                    transport.close();
-                    throw new Error('Server is shutting down');
-                }
-                return createRpcConnection(this.injectorContext, this.rpcKernel, transport, request);
-            });
+            this.rpcServer.start({ server: this.servers }, localCreateRpcConnection);
         }
     }
 
@@ -346,7 +399,7 @@ export class WebWorker {
                 }
             }
         }
-        if (this.rpcListener) await this.rpcListener.close();
+        this.rpcServer.close();
         if (this.server) this.server.close();
         if (this.servers) this.servers.close();
     }

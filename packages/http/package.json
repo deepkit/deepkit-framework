@@ -31,7 +31,8 @@
     "@deepkit/stopwatch": "^1.0.1-alpha.13",
     "@deepkit/template": "^1.0.1-alpha.13",
     "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/workflow": "^1.0.1-alpha.13"
+    "@deepkit/workflow": "^1.0.1-alpha.13",
+    "ws": "^6.2.3"
   },
   "dependencies": {
     "formidable": "^3.5.2",
@@ -50,7 +51,8 @@
     "@deepkit/workflow": "^1.0.1-alpha.160",
     "@types/formidable": "^3.4.5",
     "@types/node": "^22.13.1",
-    "@types/send": "^0.14.6"
+    "@types/send": "^0.14.6",
+    "ws": "^6.2.3"
   },
   "jest": {
     "testEnvironment": "node",

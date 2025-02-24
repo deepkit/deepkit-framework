@@ -1,6 +1,6 @@
 import { InjectorContext } from '@deepkit/injector';
 import { HttpRouter } from './router.js';
-import { EventDispatcher } from '@deepkit/event';
+import { DataEvent, EventDispatcher, EventToken } from '@deepkit/event';
 import { LoggerInterface } from '@deepkit/logger';
 import {
     HttpRequest,
@@ -15,6 +15,7 @@ import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { unlink } from 'fs';
 import { ValidationError } from '@deepkit/type';
 import { IncomingMessage, ServerResponse } from 'http';
+import { WebSocket } from 'ws';
 
 interface HttpKernelHandleOptions {
     /**
@@ -33,6 +34,11 @@ interface HttpKernelMiddlewareOptions extends HttpKernelHandleOptions {
     fallThroughOnNotFound?: boolean;
 }
 
+export const onWebSocketConnection = new EventToken<DataEvent<{
+    socket: WebSocket,
+    request: IncomingMessage,
+}>>('http.websocketConnection');
+
 export class HttpKernel {
     constructor(
         protected router: HttpRouter,
@@ -41,6 +47,10 @@ export class HttpKernel {
         protected logger: LoggerInterface,
         protected stopwatch?: Stopwatch,
     ) {
+    }
+
+    async handleWebSocketConnection(socket: WebSocket, request: IncomingMessage) {
+        await this.eventDispatcher.dispatch(onWebSocketConnection, { socket, request });
     }
 
     /**
@@ -132,6 +142,7 @@ export class HttpKernel {
                     return;
                 }
 
+                console.log('HTTP kernel request failed', error);
                 res.status(500);
             }
 
