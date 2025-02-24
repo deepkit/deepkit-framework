@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.2](https://github.com/deepkit/deepkit-framework/compare/v1.0.1...v1.0.2) (2025-02-24)
+
+### Bug Fixes
+
+- **type-compiler:** make sure not annotated properties get unknown as type ([b262534](https://github.com/deepkit/deepkit-framework/commit/b262534d5c516c975b9b7d818539f92043f5736e))
+- **website:** complete ssr and docker build ([90371f2](https://github.com/deepkit/deepkit-framework/commit/90371f2363f7d667a41e662c64be728bef92b4f8))
+
+### Features
+
+- **angular-ssr:** support server:start serving of angular routes ([ee3972c](https://github.com/deepkit/deepkit-framework/commit/ee3972cb07766299e315d885a1ee82ca6a49dda9))
+- **rpc:** allow to register hooks for rpc kernel and actions ([cb0102b](https://github.com/deepkit/deepkit-framework/commit/cb0102bf51a0b508dbacbc5d6010fbed058f52cd))
+
 ## [1.0.1](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.160...v1.0.1) (2025-02-24)
 
 ### Bug Fixes

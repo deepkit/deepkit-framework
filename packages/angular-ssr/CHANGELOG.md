@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.2](https://github.com/deepkit/deepkit-framework/compare/v1.0.1...v1.0.2) (2025-02-24)
+
+### Features
+
+- **angular-ssr:** support server:start serving of angular routes ([ee3972c](https://github.com/deepkit/deepkit-framework/commit/ee3972cb07766299e315d885a1ee82ca6a49dda9))
+
 ## [1.0.1](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.160...v1.0.1) (2025-02-24)
 
 **Note:** Version bump only for package @deepkit/angular-ssr
