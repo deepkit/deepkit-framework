@@ -47,6 +47,11 @@ class AngularConfig {
      * @see REQUEST_CONTEXT
      */
     serverBaseUrl: string = '';
+
+    /**
+     * Value of `import.meta.url` in the main entry point module (usually app.ts/server.ts).
+     */
+    moduleUrl: string = '';
 }
 
 /**
@@ -62,26 +67,27 @@ class AngularRequestContext {
     }
 }
 
-let _ngApp: AngularNodeAppEngine | undefined = undefined;
+class AngularState {
+    ngApp: AngularNodeAppEngine = new AngularNodeAppEngine()
+}
 
 class AngularListener {
     constructor(
         public requestContext: AngularRequestContext,
+        public state: AngularState,
     ) {
     }
 
     @eventDispatcher.listen(httpWorkflow.onRoute, 102)  //102 after 101=static listener, 100=default listener
     async onRoute(event: typeof httpWorkflow.onRoute.event) {
         if (event.route) return; //already found
-        if (!_ngApp) return;
 
-        const promise = _ngApp.handle(event.request, this.requestContext);
+        const promise = this.state.ngApp.handle(event.request, this.requestContext);
         if (!promise) return;
 
         event.routeFound(new RouteConfig('angular', ['GET'], event.request.url || '', {
             type: 'function',
             fn: async (req: HttpRequest, res: HttpResponse) => {
-                if (!_ngApp) return;
                 const response = await promise;
                 if (!response) {
                     throw new HttpNotFoundError();
@@ -98,6 +104,12 @@ class AngularListener {
 class AngularStaticListener {
     public localPath: string = '';
     public path: string = '/'; //public path
+
+    constructor(
+        protected config: AngularConfig,
+    ) {
+        this.localPath = resolve(dirname(fileURLToPath(this.config.moduleUrl)), '../browser');
+    }
 
     @eventDispatcher.listen(httpWorkflow.onRoute, 101) //after default route listener at 100
     onRoute(event: typeof httpWorkflow.onRoute.event) {
@@ -123,6 +135,7 @@ export class RequestHandler {
     protected started: boolean = false;
 
     constructor(
+        protected config: AngularConfig,
         protected logger: Logger,
         protected requestContext: AngularRequestContext,
         protected http: HttpKernel,
@@ -131,19 +144,17 @@ export class RequestHandler {
     ) {
     }
 
-    create(url: string, ngApp: AngularNodeAppEngine): NodeRequestHandlerFunction {
-        this.staticListener.localPath = resolve(dirname(fileURLToPath(url)), '../browser');
-
+    create(): NodeRequestHandlerFunction {
         const global = ((globalThis as any).deepkitAngular ||= {}) as {
             server?: ApplicationServer,
             started?: boolean,
         };
 
         const waitForClose = global.server ? global.server.close() : Promise.resolve();
-        _ngApp = ngApp;
+        const mainModule = isMainModule(this.config.moduleUrl);
 
         // We only listen for process signals in the main module.
-        const listenOnSignals = isMainModule(url);
+        const listenOnSignals = mainModule;
         global.server = this.server;
 
         const waitBootstrap = waitForClose.then(() => this.server.start({
@@ -157,7 +168,7 @@ export class RequestHandler {
             this.requestContext.serverBaseUrl = `http://${host}`;
 
             if (!this.requestContext.serverBaseUrl) {
-                if (isMainModule(url)) {
+                if (mainModule) {
                     this.requestContext.serverBaseUrl = 'http://localhost:8080';
                 } else {
                     //angular dev server
@@ -200,11 +211,13 @@ export class AngularModule extends createModuleClass({
         RequestHandler,
         AngularRequestContext,
         AngularStaticListener,
+        AngularState,
     ],
     exports: [
         RequestHandler,
         AngularRequestContext,
         AngularStaticListener,
+        AngularState,
     ],
     listeners: [
         AngularListener,

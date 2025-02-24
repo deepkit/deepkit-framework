@@ -2,16 +2,16 @@
 
 ## Configure Deepkit App
 
-- Make sure to put your main application inside `app.ts` and export the `App` instance:
+- Make sure to put your main application inside `app.ts` and configure it in your `angular.json`:
 
 In `src/server/app.ts`:
 
 ```typescript
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
-import { AngularModule } from '@deepkit/angular-ssr';
+import { AngularModule, RequestHandler } from '@deepkit/angular-ssr';
 
-export const app = new App({
+const app = new App({
   controllers: [
     // your controllers
   ],
@@ -20,12 +20,23 @@ export const app = new App({
   ],
   imports: [
     new FrameworkModule({}),
-    new AngularModule()
+    new AngularModule({
+      moduleUrl: import.meta.url,
+    })
   ]
 });
-```
 
-Create a `src/server/server.ts` and configure it in your `angular.json`:
+const main = isMainModule(import.meta.url);
+
+if (main) {
+  void app.run(); //allows to call all CLI commands, including server:start
+}
+
+export const reqHandler = main
+  //when in main, we don't want to create a new request handler
+  ? () => undefined
+  : app.get(RequestHandler).create();
+```
 
 ```json
 {
@@ -36,22 +47,14 @@ Create a `src/server/server.ts` and configure it in your `angular.json`:
     "server": "src/main.server.ts",
     "outputMode": "server",
     "ssr": {
-      "entry": "src/server/server.ts"
+      "entry": "src/server/app.ts"
     },
     "browser": "src/main.ts"
   }
 }
 ```
 
-In `src/server/server.ts`:
-
-```typescript
-import { app } from './app';
-import { RequestHandler } from '@deepkit/angular-ssr';
-import { AngularNodeAppEngine } from '@angular/ssr/node';
-
-export const reqHandler = app.get(RequestHandler).create(import.meta.url, new AngularNodeAppEngine());
-````
+Make sure to have `src/server/app.ts` also in your tsconfig. 
 
 ## Configure Angular App
 
