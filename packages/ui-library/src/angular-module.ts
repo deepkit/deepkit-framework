@@ -6,6 +6,7 @@ import { HeaderStatusBarComponent } from './components/header-status-bar.compone
 import { HeaderLogoComponent } from './components/header-logo.component';
 import { ToggleBoxComponent } from './components/toggle-box.component';
 import { LoadingSpinnerComponent } from './components/loading-spinner.component';
+import { NgIf } from '@angular/common';
 
 @NgModule({
     declarations: [
@@ -29,7 +30,8 @@ import { LoadingSpinnerComponent } from './components/loading-spinner.component'
         DuiButtonModule,
         DuiSplitterModule,
         DuiAppModule,
-    ]
+        NgIf,
+    ],
 })
 export class DeepkitUIModule {
     static forRoot(): ModuleWithProviders<DeepkitUIModule> {
