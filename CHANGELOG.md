@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.1](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.160...v1.0.1) (2025-02-24)
+
+### Bug Fixes
+
+- **app:** remove deepkit-openapi since incompatible ([f825f27](https://github.com/deepkit/deepkit-framework/commit/f825f27d1ad691211333d9849b46045f3010ca21))
+- **framework-debug-gui:** hide broker menu ([ecf1b27](https://github.com/deepkit/deepkit-framework/commit/ecf1b27647567adcc8cd956c11de3d78955fbc72))
+- **type-compiler:** check in installer if file exists ([eb07783](https://github.com/deepkit/deepkit-framework/commit/eb0778318fb369b0eaabb9ee04d76f88d27f4f90)), closes [#630](https://github.com/deepkit/deepkit-framework/issues/630)
+- **ui-library:** missing module import ([30f80d3](https://github.com/deepkit/deepkit-framework/commit/30f80d345fe5cbf85f8722650c8fbdcc1bdfd8da))
+
 ## [1.0.1-alpha.160](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.159...v1.0.1-alpha.160) (2025-02-18)
 
 ### Bug Fixes

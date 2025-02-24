@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/sqlite",
-  "version": "1.0.1-alpha.160",
+  "version": "1.0.1",
   "description": "deepkit/orm SQLite adapter",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -36,12 +36,12 @@
     "sqlstring-sqlite": "^0.1.1"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.158",
-    "@deepkit/orm": "^1.0.1-alpha.160",
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/orm": "^1.0.1",
     "@deepkit/orm-integration": "^1.0.1-alpha.13",
-    "@deepkit/sql": "^1.0.1-alpha.160",
-    "@deepkit/stopwatch": "^1.0.1-alpha.160",
-    "@deepkit/type": "^1.0.1-alpha.160"
+    "@deepkit/sql": "^1.0.1",
+    "@deepkit/stopwatch": "^1.0.1",
+    "@deepkit/type": "^1.0.1"
   },
   "jest": {
     "runner": "../../jest-serial-runner.js",
