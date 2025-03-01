@@ -1,0 +1,10 @@
+# See http://help.github.com/ignore-files/ for more about ignoring files.
+
+# Compiled output
+dist/app
+!dist/manifest.json
+!dist/content.js
+!dist/inject.js
+!dist/devtools.js
+!dist/devtools.html
+

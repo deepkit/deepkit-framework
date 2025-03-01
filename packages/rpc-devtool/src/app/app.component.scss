@@ -1,0 +1,32 @@
+
+
+:host ::ng-deep dui-window-content.no-padding > .content {
+    padding: 0 !important;
+}
+
+.top-right {
+    display: flex;
+    align-items: center;
+    position: absolute;
+    right: 15px;
+    top: -3px;
+
+    a, a:link {
+        font-size: 10px;
+        color: var(--color-text);
+        text-decoration: none;
+        display: inline-block;
+        padding: 3px 5px;
+        margin-right: 5px;
+        border-radius: 3px;
+
+    }
+}
+
+:host-context(.dui-theme-light) .top-right a:hover {
+    background-color: #aaa;
+}
+
+:host-context(.dui-theme-dark) .top-right a:hover {
+    background-color: #111;
+}
