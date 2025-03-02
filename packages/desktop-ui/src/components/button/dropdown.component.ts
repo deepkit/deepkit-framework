@@ -29,7 +29,7 @@ import {
     ViewContainerRef,
 } from '@angular/core';
 import { TemplatePortal } from '@angular/cdk/portal';
-import { Overlay, OverlayConfig, OverlayRef, PositionStrategy } from '@angular/cdk/overlay';
+import { ConnectedPosition, Overlay, OverlayConfig, OverlayRef, PositionStrategy } from '@angular/cdk/overlay';
 import { Subscription } from 'rxjs';
 import { WindowRegistry } from '../window/window-state';
 import { focusWatcher } from '../../core/utils';
@@ -98,6 +98,8 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     @Input() overlay: boolean | '' = false;
 
     @Input() show?: boolean;
+    @Input() connectedPositions: ConnectedPosition[] = [];
+
     @Output() showChange = new EventEmitter<boolean>();
 
     @Output() shown = new EventEmitter();
@@ -205,6 +207,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 .withPush(true)
                 .withDefaultOffsetY(this.overlay !== false ? 15 : 0)
                 .withPositions([
+                    ...this.connectedPositions,
                     {
                         originX: 'start',
                         originY: 'bottom',
@@ -232,6 +235,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 .withPush(true)
                 .withDefaultOffsetY(this.overlay !== false ? 15 : 0)
                 .withPositions([
+                    ...this.connectedPositions,
                     {
                         originX: this.center ? 'center' : 'start',
                         originY: 'bottom',
