@@ -1,4 +1,4 @@
-(function() {
+function inject() {
   let socketIds = 0;
 
   function arrayBufferToBase64(buffer) {
@@ -42,4 +42,5 @@
       pushMessage({ type: 'client', socket, url, timestamp: Date.now() });
     }
   };
-})();
+}
+inject();

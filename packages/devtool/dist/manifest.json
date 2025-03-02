@@ -3,35 +3,22 @@
   "name": "Deepkit Devtool",
   "version": "1.2",
   "description": "Deepkit Chrome Devtools",
-  "permissions": [
-    "scripting",
-    "storage"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
   "devtools_page": "devtools.html",
+  "optional_permissions": [
+    "scripting"
+  ],
   "web_accessible_resources": [
     {
       "resources": [
-        "inject.js",
-        "app/browser/*.css",
-        "app/browser/*.js"
+        "inject.js"
       ],
       "matches": [
         "<all_urls>"
       ]
     }
   ],
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "run_at": "document_start"
-    }
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
   ]
 }

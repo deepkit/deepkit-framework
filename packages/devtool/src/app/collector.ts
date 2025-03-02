@@ -103,10 +103,18 @@ function binaryToHex(binary: Uint8Array) {
 
 function decreaseObservableStats(mode: RpcAction['mode'], summary: ActionObservables) {
     switch (mode) {
-        case 'observable': summary.observables -= 1; break;
-        case 'subject': summary.subjects -= 1; break;
-        case 'behaviorSubject': summary.behaviorSubjects -= 1; break;
-        case 'progressTracker': summary.progressTrackers -= 1; break;
+        case 'observable':
+            summary.observables -= 1;
+            break;
+        case 'subject':
+            summary.subjects -= 1;
+            break;
+        case 'behaviorSubject':
+            summary.behaviorSubjects -= 1;
+            break;
+        case 'progressTracker':
+            summary.progressTrackers -= 1;
+            break;
     }
 }
 
@@ -140,17 +148,28 @@ export function clearMessages() {
     }
 }
 
-export function startCollecting() {
+export class RpcCollector {
+    started = false;
+
+    start(port: any) {
+        if (this.started) return;
+        this.started = true;
+        startCollecting(port);
+    }
+}
+
+export function startCollecting(port: any) {
     if (!chrome || !chrome.runtime) return;
 
-    const port = chrome.runtime.connect({
-        name: `${chrome.devtools.inspectedWindow.tabId}`,
+    const tabId = chrome.devtools.inspectedWindow.tabId;
+
+    port ||= chrome.runtime.connect({
+        name: `${tabId}`,
     });
+
     clients.update(() => []);
 
-    console.log('start receiving', port);
     let first = true;
-
 
     port.onMessage.addListener((message: any) => {
         if (first) {
@@ -245,7 +264,7 @@ export function startCollecting() {
                                         behaviorSubjects: 0,
                                         progressTrackers: 0,
                                         subscriptions: 0,
-                                    }
+                                    },
                                 };
                                 client.actions.update((v) => [...v, action]);
                                 client.actionMap[action.id] = action;

@@ -19,20 +19,21 @@ window.addEventListener('@deepkit', (event) => {
 });
 
 chrome.runtime.onConnect.addListener((port) => {
-    console.log('Connected to Deepkit devtools', port);
-
     function onMessage(message) {
         if (message.type === 'start') {
             messages.forEach((message) => {
                 port.postMessage(message);
             });
+        } else if (message.type === 'ping') {
+            port.postMessage({ type: 'pong' });
         }
     }
+
     port.onMessage.addListener(onMessage);
     const entry = {
         port,
         onMessage,
-    }
+    };
     ports.push(entry);
 
     port.onDisconnect.addListener(() => {
