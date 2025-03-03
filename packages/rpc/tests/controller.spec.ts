@@ -966,15 +966,13 @@ test('connection disconnect back-controller', async () => {
         }
     }
 
-    let actionPromise: Promise<any> | undefined;
-
     class ServerController {
         constructor(private connection: RpcKernelConnection) {
         }
 
         @rpc.action()
         async start() {
-            actionPromise = this.connection.controller<ClientController>('client').action();
+            return this.connection.controller<ClientController>('client').action();
         }
     }
 
@@ -984,16 +982,14 @@ test('connection disconnect back-controller', async () => {
     const controller = client.controller<ServerController>('myController');
 
     await client.connect();
-    await controller.start();
-    await expect(actionPromise).rejects.toThrow('RpcClient has no controllers registered');
+    await expect(controller.start()).rejects.toThrow('RpcClient has no controllers registered');
 
     client.registerController(ClientController, 'client');
-    await controller.start();
-    await expect(actionPromise).resolves.toBe(true);
+    await expect(controller.start()).resolves.toBe(true);
 
-    await controller.start();
+    const promise = controller.start();
     await client.disconnect();
-    await expect(actionPromise).rejects.toThrow('Connection closed');
+    await expect(promise).rejects.toThrow('Connection closed');
 });
 
 
