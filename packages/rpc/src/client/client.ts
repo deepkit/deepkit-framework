@@ -22,9 +22,9 @@ import {
     RpcTypes,
 } from '../model.js';
 import {
+    createErrorMessage,
     createRpcMessage,
     createRpcMessagePeer,
-    ErroredRpcMessage,
     RpcBinaryMessageReader,
     RpcMessage,
     RpcMessageDefinition,
@@ -34,13 +34,7 @@ import { RpcKernel, RpcKernelConnection } from '../server/kernel.js';
 import { ClientProgress, SingleProgress } from '../progress.js';
 import { RpcActionClient, RpcControllerState } from './action.js';
 import { RpcMessageSubject } from './message-subject.js';
-import {
-    createWriter,
-    TransportClientConnection,
-    TransportConnection,
-    TransportMessageWriter,
-    TransportOptions,
-} from '../transport.js';
+import { createWriter, TransportClientConnection, TransportConnection, TransportMessageWriter, TransportOptions } from '../transport.js';
 
 export class OfflineError extends CustomError {
 }
@@ -172,20 +166,26 @@ export class RpcClientTransporter {
 
     protected onError(error: Error) {
         this.errored.next({ connectionId: this.connectionId, error });
-        this.onDisconnect();
+        this.onDisconnect(error);
     }
 
-    protected onDisconnect() {
+    protected onDisconnect(error?: Error) {
         this.id = undefined;
         this.connectionPromise = undefined;
+        if (!this.transportConnection) return;
 
-        if (this.connected) {
-            this.connection.next(false);
-            this.connected = false;
-            const id = this.connectionId;
-            this.connectionId++;
-            this.disconnected.next(id);
-        }
+        this.transportConnection = undefined;
+
+        this.connection.next(false);
+        this.connected = false;
+        this.onClose(error);
+        const id = this.connectionId;
+        this.connectionId++;
+        this.disconnected.next(id);
+    }
+
+    public onClose(error?: Error) {
+
     }
 
     protected onConnect() {
@@ -219,7 +219,6 @@ export class RpcClientTransporter {
             this.transportConnection.close();
             this.transportConnection = undefined;
         }
-        this.onDisconnect();
     }
 
     protected async doConnect(token?: any): Promise<void> {
@@ -231,52 +230,49 @@ export class RpcClientTransporter {
         }
 
         return asyncOperation<void>(async (resolve, reject) => {
-            try {
-                await this.transport.connect({
-                    token,
+            await this.transport.connect({
+                token,
 
-                    onClose: () => {
-                        this.onDisconnect();
-                    },
+                onClose: () => {
+                    this.onDisconnect();
+                },
 
-                    onConnected: async (transport: TransportConnection) => {
-                        this.transportConnection = transport;
-                        this.writer = createWriter(transport, this.writerOptions, this.reader);
+                onConnected: async (transport: TransportConnection) => {
+                    this.transportConnection = transport;
+                    this.writer = createWriter(transport, this.writerOptions, this.reader);
 
+                    this.connected = false;
+                    this.connectionTries = 0;
+
+                    try {
+                        this.id = await this.onHandshake();
+                        await this.onAuthenticate(token);
+                    } catch (error) {
                         this.connected = false;
                         this.connectionTries = 0;
+                        this.onError(error instanceof Error ? error : new Error(String(error)));
+                        reject(error);
+                        return;
+                    }
 
-                        try {
-                            this.id = await this.onHandshake();
-                            await this.onAuthenticate(token);
-                        } catch (error) {
-                            this.connected = false;
-                            this.connectionTries = 0;
-                            reject(error);
-                            return;
-                        }
+                    this.connected = true;
+                    this.onConnect();
+                    resolve(undefined);
+                },
 
-                        this.connected = true;
-                        this.onConnect();
-                        resolve(undefined);
-                    },
+                onError: (error: Error) => {
+                    this.onError(error);
+                    reject(new OfflineError(`Could not connect: ${formatError(error)}`, { cause: error }));
+                },
 
-                    onError: (error: Error) => {
-                        this.onError(error);
-                        reject(new OfflineError(`Could not connect: ${formatError(error)}`, {cause: error}));
-                    },
+                read: (message: RpcMessage) => {
+                    this.onMessage(message);
+                },
 
-                    read: (message: RpcMessage) => {
-                        this.onMessage(message);
-                    },
-
-                    readBinary: (buffer: Uint8Array, bytes?: number) => {
-                        this.reader.feed(buffer, bytes);
-                    },
-                });
-            } catch (error) {
-                reject(error);
-            }
+                readBinary: (buffer: Uint8Array, bytes?: number) => {
+                    this.reader.feed(buffer, bytes);
+                },
+            });
         });
     }
 
@@ -298,7 +294,7 @@ export class RpcClientTransporter {
         try {
             await this.connectionPromise;
         } finally {
-            delete this.connectionPromise;
+            this.connectionPromise = undefined;
         }
     }
 
@@ -311,7 +307,7 @@ export class RpcClientTransporter {
             this.writer(message, this.writerOptions, progress);
         } catch (error: any) {
             if (error instanceof ValidationError) throw error;
-            throw new OfflineError(error, {cause: error});
+            throw new OfflineError(error, { cause: error });
         }
     }
 }
@@ -359,7 +355,7 @@ export type RpcClientEvent = RpcClientEventIncomingMessage | RpcClientEventOutgo
 
 export class RpcBaseClient implements WritableClient {
     protected messageId: number = 1;
-    protected replies = new Map<number, ((message: RpcMessage) => void)>();
+    protected replies = new Map<number, RpcMessageSubject>();
 
     protected actionClient = new RpcActionClient(this);
     public readonly token = new RpcClientToken(undefined);
@@ -378,6 +374,14 @@ export class RpcBaseClient implements WritableClient {
         this.transporter.onMessage = this.onMessage.bind(this);
         this.transporter.onHandshake = this.onHandshake.bind(this);
         this.transporter.onAuthenticate = this.onAuthenticate.bind(this);
+        this.transporter.onClose = this.onClose.bind(this);
+    }
+
+    onClose(error?: Error) {
+        for (const subject of this.replies.values()) {
+            subject.disconnect(error);
+        }
+        this.replies.clear();
     }
 
     /**
@@ -443,11 +447,11 @@ export class RpcBaseClient implements WritableClient {
         if (message.type === RpcTypes.Entity) {
             this.actionClient.entityState.handle(message);
         } else {
-            const callback = this.replies.get(message.id);
-            if (!callback) {
+            const subject = this.replies.get(message.id);
+            if (!subject) {
                 throw new RpcError('No callback for ' + message.id);
             }
-            if (callback) callback(message);
+            if (subject) subject.next(message);
         }
     }
 
@@ -489,7 +493,7 @@ export class RpcBaseClient implements WritableClient {
             this.replies.delete(id);
         });
 
-        this.replies.set(id, (v: RpcMessage) => subject.next(v));
+        this.replies.set(id, subject);
 
         const progress = ClientProgress.getNext();
         if (progress) {
@@ -511,26 +515,24 @@ export class RpcBaseClient implements WritableClient {
 
             this.transporter.send(message, progress?.upload);
         } else {
-            this.connect().then(
-                () => {
-                    //this.getId() only now available
-                    const message = options && options.peerId
-                        ? createRpcMessagePeer(id, type, this.getId(), options.peerId, body, resolvedSchema)
-                        : createRpcMessage(id, type, body, undefined, resolvedSchema);
+            this.connect().then(() => {
+                //this.getId() only now available
+                const message = options && options.peerId
+                    ? createRpcMessagePeer(id, type, this.getId(), options.peerId, body, resolvedSchema)
+                    : createRpcMessage(id, type, body, undefined, resolvedSchema);
 
-                    if (this.events.observers.length) {
-                        this.events.next({
-                            event: 'outgoing',
-                            date: new Date,
-                            id, type, body, messages: [], composite: false,
-                        });
-                    }
-                    this.transporter.send(message, progress?.upload);
-                },
-                (e) => {
-                    subject.next(new ErroredRpcMessage(id, e));
-                },
-            );
+                if (this.events.observers.length) {
+                    this.events.next({
+                        event: 'outgoing',
+                        date: new Date,
+                        id, type, body, messages: [], composite: false,
+                    });
+                }
+                this.transporter.send(message, progress?.upload);
+            }, () => {
+                // we ignore errors here since created `RpcMessageSubject` receive them
+                // onClose(error)
+            });
         }
 
         return subject;
@@ -618,14 +620,18 @@ export class RpcClient extends RpcBaseClient {
 
             connection.handleMessage(message);
         } else {
-            if (message.routeType === RpcMessageRouteType.server && this.clientKernel) {
+            if (message.routeType === RpcMessageRouteType.server) {
+                if (!this.clientKernel) {
+                    this.transporter.send(createErrorMessage(message.id, 'RpcClient has no controllers registered', RpcMessageRouteType.server));
+                    return;
+                }
                 if (!this.clientKernelConnection) {
                     const c = this.clientKernel.createConnection({
                         write: (answer: RpcMessageDefinition) => {
                             this.transporter.send(answer);
                         },
                         close: () => {
-                            this.transporter.disconnect();
+                            this.transporter.disconnect().catch(() => undefined);
                         },
                         clientAddress: () => {
                             return this.transporter.clientAddress();

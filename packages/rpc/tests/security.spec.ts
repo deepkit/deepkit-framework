@@ -4,11 +4,10 @@ import { rpc } from '../src/decorators.js';
 import { RpcKernel, RpcKernelBaseConnection, RpcKernelConnection } from '../src/server/kernel.js';
 import { RpcControllerAccess, RpcKernelSecurity, Session } from '../src/server/security.js';
 import { AuthenticationError } from '../src/model.js';
-import { Logger } from '@deepkit/logger';
-import { MemoryLoggerTransport } from '@deepkit/logger';
+import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { Inject } from '@deepkit/injector';
 
-test('authentication', async () => {
+test('authentication basics', async () => {
     class Controller {
         @rpc.action()
         test(value: string): string {
@@ -48,7 +47,7 @@ test('authentication', async () => {
         await expect(controller.test('asd')).rejects.toThrow('Access denied');
         await expect(client.registerAsPeer('asd')).rejects.toThrowError('Access denied');
         await expect(client.peer('asd').controller<Controller>('controller').test('foo')).rejects.toThrowError('Access denied');
-        client.disconnect();
+        await client.disconnect();
 
         client.token.set('invalid');
         await expect(client.registerAsPeer('asd')).rejects.toThrowError('Authentication failed');
@@ -258,7 +257,6 @@ test('connection is available in controller access information', async () => {
             return true;
         }
     }
-
 
     const memoryLogger = new MemoryLoggerTransport;
     const kernel = new RpcKernel([{provide: RpcKernelSecurity, useClass: TestRpcKernelSecurity, scope: 'rpc'}], new Logger([memoryLogger]));

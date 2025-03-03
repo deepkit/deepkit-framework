@@ -8,25 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    deserializeBSONWithoutOptimiser,
-    getBSONDeserializer,
-    getBSONSerializer,
-    getBSONSizer,
-    Writer,
-} from '@deepkit/bson';
+import { deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { bufferConcat, ClassType, createBuffer } from '@deepkit/core';
 import { rpcChunk, RpcError, rpcError, RpcTypes } from './model.js';
 import type { SingleProgress } from './progress.js';
-import {
-    deserialize,
-    ReceiveType,
-    ReflectionClass,
-    resolveReceiveType,
-    serialize,
-    Type,
-    typeSettings,
-} from '@deepkit/type';
+import { deserialize, ReceiveType, ReflectionClass, resolveReceiveType, serialize, Type, typeOf, typeSettings } from '@deepkit/type';
 
 export const enum RpcMessageRouteType {
     client = 0,
@@ -105,6 +91,7 @@ export class RpcMessage {
     debug() {
         return {
             type: this.type,
+            typeString: RpcTypes[this.type],
             id: this.id,
             date: new Date,
             composite: this.composite,
@@ -754,4 +741,10 @@ export function rpcDecodeError(error: EncodedError): Error {
     e.stack = error.stack + '\nat ___SERVER___';
 
     return e;
+}
+
+export function createErrorMessage(id: number, error: Error | string, routeType: RpcMessageRouteType.client | RpcMessageRouteType.server): RpcMessageDefinition {
+    const extracted = rpcEncodeError(error);
+
+    return createRpcMessage(id, RpcTypes.Error, extracted, routeType, typeOf<rpcError>());
 }

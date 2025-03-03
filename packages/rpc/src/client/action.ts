@@ -34,9 +34,6 @@ import { EntityState, EntitySubjectStore } from './entity-state.js';
 import { assertType, deserializeType, ReflectionKind, Type, TypeObjectLiteral, typeOf } from '@deepkit/type';
 import { ProgressTracker, ProgressTrackerState } from '@deepkit/core-rxjs';
 
-interface ResponseActionObservableError extends rpcActionObservableSubscribeId, WrappedV {
-}
-
 type ControllerStateActionTypes = {
     callSchema: TypeObjectLiteral, //with args, method, and controller as property
     resultSchema: TypeObjectLiteral, //with v as property
@@ -56,7 +53,7 @@ export class RpcControllerState {
     public peerId?: string;
 
     constructor(
-        public controller: string
+        public controller: string,
     ) {
 
     }
@@ -87,7 +84,11 @@ export class RpcActionClient {
     constructor(protected client: WritableClient) {
     }
 
-    public action<T>(controller: RpcControllerState, method: string, args: any[], options: { timeout?: number, dontWaitForConnection?: true, typeReuseDisabled?: boolean } = {}) {
+    public action<T>(controller: RpcControllerState, method: string, args: any[], options: {
+        timeout?: number,
+        dontWaitForConnection?: true,
+        typeReuseDisabled?: boolean
+    } = {}) {
         const progress = ClientProgress.getNext();
 
         return asyncOperation<any>(async (resolve, reject) => {
@@ -112,12 +113,12 @@ export class RpcActionClient {
                 const subject = this.client.sendMessage(RpcTypes.Action, {
                     controller: controller.controller,
                     method: method,
-                    args
+                    args,
                 }, types.callSchema, {
                     peerId: controller.peerId,
                     dontWaitForConnection: options.dontWaitForConnection,
                     timeout: options.timeout,
-                }).onReply((reply) => {
+                }).onRejected(reject).onReply((reply) => {
                     try {
                         // console.log('client: answer', RpcTypes[reply.type], reply.composite);
 
@@ -207,7 +208,7 @@ export class RpcActionClient {
                                             unsubscribe: () => {
                                                 delete subscribers[id];
                                                 subject.send<rpcActionObservableSubscribeId>(RpcTypes.ActionObservableUnsubscribe, { id });
-                                            }
+                                            },
                                         };
                                     });
                                     (observable as any).disconnect = () => {
@@ -257,7 +258,7 @@ export class RpcActionClient {
                                         //whenever the client changes something, it's synced back to the server.
                                         //this is important to handle the stop signal.
                                         const oldChanged = observableSubject.changed;
-                                        observableSubject.changed = function (this: ProgressTracker) {
+                                        observableSubject.changed = function(this: ProgressTracker) {
                                             subject.send(RpcTypes.ActionObservableProgressNext, this.value, typeOf<ProgressTrackerState[]>());
                                             return oldChanged.apply(this);
                                         };
@@ -434,12 +435,12 @@ export class RpcActionClient {
                 const a = this.client.sendMessage<rpcActionType>(RpcTypes.ActionType, {
                     controller: controller.controller,
                     method: method,
-                    disableTypeReuse: typeReuseDisabled
+                    disableTypeReuse: typeReuseDisabled,
                 }, undefined, {
                     peerId: controller.peerId,
                     dontWaitForConnection: options.dontWaitForConnection,
                     timeout: options.timeout,
-                });
+                }).onRejected(reject);
 
                 const parsed = await a.firstThenClose<rpcResponseActionType>(RpcTypes.ResponseActionType, typeOf<rpcResponseActionType>());
 
@@ -465,8 +466,8 @@ export class RpcActionClient {
                             name: 'v',
                             parent: Object as any,
                             optional: true,
-                            type: { kind: ReflectionKind.array, type: unwrappedReturnType }
-                        }]
+                            type: { kind: ReflectionKind.array, type: unwrappedReturnType },
+                        }],
                     };
                 }
 
@@ -480,21 +481,21 @@ export class RpcActionClient {
                             { kind: ReflectionKind.propertySignature, name: 'controller', type: { kind: ReflectionKind.string } },
                             { kind: ReflectionKind.propertySignature, name: 'method', type: { kind: ReflectionKind.string } },
                             { kind: ReflectionKind.propertySignature, name: 'args', type: parameters },
-                        ]
+                        ],
                     } as TypeObjectLiteral,
                     resultSchema: {
                         kind: ReflectionKind.objectLiteral,
                         types: [
                             { kind: ReflectionKind.propertySignature, name: 'v', type: unwrappedReturnType },
-                        ]
+                        ],
                     } as TypeObjectLiteral,
                     observableNextSchema: {
                         kind: ReflectionKind.objectLiteral,
                         types: [
                             { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
                             { kind: ReflectionKind.propertySignature, name: 'v', type: unwrappedReturnType },
-                        ]
-                    } as TypeObjectLiteral
+                        ],
+                    } as TypeObjectLiteral,
                 };
 
                 resolve(state.types);

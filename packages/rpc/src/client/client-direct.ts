@@ -24,9 +24,14 @@ export class RpcDirectClientAdapter implements ClientTransportAdapter {
     }
 
     public async connect(connection: TransportClientConnection) {
+        let closed = false;
         const kernelConnection = this.rpcKernel.createConnection({
-            writeBinary: (buffer) => connection.readBinary(buffer),
+            writeBinary: (buffer) => {
+                if (closed) return;
+                connection.readBinary(buffer);
+            },
             close: () => {
+                closed = true;
                 connection.onClose('closed');
             },
         }, this.injector);
@@ -39,6 +44,7 @@ export class RpcDirectClientAdapter implements ClientTransportAdapter {
                 return 0;
             },
             close() {
+                closed = true;
                 kernelConnection.close();
             },
             writeBinary(buffer) {

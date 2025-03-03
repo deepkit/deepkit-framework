@@ -9,16 +9,7 @@
  */
 
 import { arrayRemoveItem, bufferToString, ClassType, createBuffer, getClassName } from '@deepkit/core';
-import {
-    ReceiveType,
-    ReflectionKind,
-    resolveReceiveType,
-    serialize,
-    stringifyUuid,
-    Type,
-    typeOf,
-    writeUuid,
-} from '@deepkit/type';
+import { ReceiveType, ReflectionKind, resolveReceiveType, serialize, stringifyUuid, Type, typeOf, writeUuid } from '@deepkit/type';
 import { RpcMessageSubject } from '../client/message-subject.js';
 import {
     AuthenticationError,
@@ -150,7 +141,7 @@ export class RpcMessageBuilder {
             if (this.logValidationErrors) {
                 this.logger.warn(this.errorLabel, error);
             }
-            throw new RpcError(this.errorLabel + ': ' + error.message, {cause: error});
+            throw new RpcError(this.errorLabel + ': ' + error.message, { cause: error });
         }
     }
 
@@ -248,13 +239,14 @@ export abstract class RpcKernelBaseConnection {
 
     protected id: Uint8Array = writeUuid(createBuffer(16));
 
-    protected replies = new Map<number, ((message: RpcMessage) => void)>();
+    protected replies = new Map<number, RpcMessageSubject>();
     public transportOptions: TransportOptions = new TransportOptions();
     protected binaryChunkWriter = new TransportBinaryMessageChunkWriter(this.reader, this.transportOptions);
 
     protected timeoutTimers: any[] = [];
     public readonly onClose: Promise<void>;
     protected onCloseResolve?: Function;
+    public closed: boolean = false;
 
     constructor(
         protected logger: Logger,
@@ -303,6 +295,11 @@ export abstract class RpcKernelBaseConnection {
     }
 
     public close(): void {
+        this.closed = true;
+        for (const subject of this.replies.values()) {
+            subject.disconnect();
+        }
+        this.replies.clear();
         for (const timeout of this.timeoutTimers) clearTimeout(timeout);
         if (this.onCloseResolve) this.onCloseResolve();
         arrayRemoveItem(this.connections.connections, this);
@@ -318,7 +315,7 @@ export abstract class RpcKernelBaseConnection {
             //initiated by the server, so we check replies
             const callback = this.replies.get(message.id);
             if (callback) {
-                callback(message);
+                callback.next(message);
                 return;
             }
         }
@@ -350,6 +347,7 @@ export abstract class RpcKernelBaseConnection {
         body?: T,
         receiveType?: ReceiveType<T>,
     ): RpcMessageSubject {
+        if (this.closed) throw new RpcError('Connection closed');
         const id = this.messageId++;
         const continuation = <T>(type: number, body?: T, receiveType?: ReceiveType<T>) => {
             //send a message with the same id. Don't use sendMessage() again as this would lead to a memory leak
@@ -362,7 +360,7 @@ export abstract class RpcKernelBaseConnection {
             this.replies.delete(id);
         });
 
-        this.replies.set(id, (v: RpcMessage) => subject.next(v));
+        this.replies.set(id, subject);
 
         const message = createRpcMessage(id, type, body, RpcMessageRouteType.server, receiveType);
         this.writer(message, this.transportOptions);
@@ -444,12 +442,12 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
 
             const urlPath = url.pathname.substring(basePath.length);
             const lastSlash = urlPath.lastIndexOf('/');
-            const base: {controller: string, method: string, args?: any[]} = {
+            const base: { controller: string, method: string, args?: any[] } = {
                 controller: urlPath.substring(0, lastSlash),
                 method: decodeURIComponent(urlPath.substring(lastSlash + 1)),
             };
 
-            let type = false
+            let type = false;
             if (base.method.endsWith('.type')) {
                 base.method = base.method.substring(0, base.method.length - 5);
                 type = true;
@@ -468,7 +466,7 @@ export class RpcKernelConnection extends RpcKernelBaseConnection {
                     messageResponse,
                 );
             } else {
-                const body = request.body && request.body.byteLength > 0 ? JSON.parse(bufferToString(request.body)) : {args: url.searchParams.getAll('arg').map(v => v)};
+                const body = request.body && request.body.byteLength > 0 ? JSON.parse(bufferToString(request.body)) : { args: url.searchParams.getAll('arg').map(v => v) };
                 base.args = body.args || [];
                 await this.actionHandler.handleAction(
                     new HttpRpcMessage(1, false, RpcTypes.Action, RpcMessageRouteType.client, request.headers, base),

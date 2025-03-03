@@ -64,7 +64,6 @@ export interface Queue {
 export class BrokerConnection extends RpcKernelBaseConnection {
     protected subscribedChannels: string[] = [];
     protected locks = new Map<number, ProcessLock>();
-    protected replies = new Map<number, ((message: RpcMessage) => void)>();
 
     constructor(
         logger: Logger,
@@ -93,7 +92,7 @@ export class BrokerConnection extends RpcKernelBaseConnection {
         const promises: Promise<void>[] = [];
 
         for (const connection of this.connections.connections) {
-            if (connection === this) continue;
+            if ((connection as any) === this) continue;
             promises.push(connection.sendMessage<brokerEntityFields>(BrokerType.EntityFields, {
                 name,
                 fields,

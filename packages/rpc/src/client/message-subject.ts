@@ -10,7 +10,7 @@
 
 import { asyncOperation, CustomError } from '@deepkit/core';
 import { ReceiveType } from '@deepkit/type';
-import { RpcTypes } from '../model.js';
+import { RpcError, RpcTypes } from '../model.js';
 import type { RpcMessage } from '../protocol.js';
 
 export class UnexpectedMessageType extends CustomError {
@@ -22,6 +22,8 @@ export class RpcMessageSubject {
     protected onReplyCallback(next: RpcMessage) {
         this.uncatchedNext = next;
     }
+
+    protected rejected?: (error: any) => void;
 
     protected catchOnReplyCallback = this.onReplyCallback.bind(this);
 
@@ -35,8 +37,22 @@ export class RpcMessageSubject {
     ) {
     }
 
+    /**
+     * Called when the underlying transport disconnected.
+     * This force-cleans everything up.
+     */
+    public disconnect(error?: Error) {
+        if (this.rejected) this.rejected(error || new RpcError('Connection closed'));
+        this.release();
+    }
+
     public next(next: RpcMessage) {
         this.onReplyCallback(next);
+    }
+
+    public onRejected(callback: (error: any) => void): this {
+        this.rejected = callback;
+        return this;
     }
 
     public onReply(callback: (next: RpcMessage) => void): this {
@@ -66,6 +82,7 @@ export class RpcMessageSubject {
      */
     async ackThenClose(): Promise<undefined> {
         return asyncOperation<undefined>((resolve, reject) => {
+            this.rejected = reject;
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 this.release();
@@ -88,6 +105,7 @@ export class RpcMessageSubject {
      */
     async waitNextMessage<T>(): Promise<RpcMessage> {
         return asyncOperation<any>((resolve, reject) => {
+            this.rejected = reject;
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 return resolve(next);
@@ -100,6 +118,7 @@ export class RpcMessageSubject {
      */
     async waitNext<T>(type: number, schema?: ReceiveType<T>): Promise<T> {
         return asyncOperation<any>((resolve, reject) => {
+            this.rejected = reject;
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 if (next.type === type) {
@@ -120,7 +139,8 @@ export class RpcMessageSubject {
      * Waits for the first message of a specific type, then closes the subject.
      */
     async firstThenClose<T = RpcMessage>(type: number, schema?: ReceiveType<T>): Promise<T> {
-        return await asyncOperation<any>((resolve, reject) => {
+        return asyncOperation<any>((resolve, reject) => {
+            this.rejected = reject;
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 this.release();

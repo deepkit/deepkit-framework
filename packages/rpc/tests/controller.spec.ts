@@ -366,7 +366,9 @@ test('connect disconnect', async () => {
 
         @rpc.action()
         bye(): void {
+            expect(this.connection.closed).toBe(false);
             this.connection.close();
+            expect(this.connection.closed).toBe(true);
         }
     }
 
@@ -394,7 +396,7 @@ test('connect disconnect', async () => {
 
     await controller.test();
     expect(client.transporter.isConnected()).toBe(true);
-    await controller.bye();
+    await expect(controller.bye()).rejects.toThrow('Connection closed');
     expect(client.transporter.isConnected()).toBe(false);
     expect(triggered).toBe(3);
 
@@ -777,6 +779,7 @@ test('disable strict serialization', async () => {
         getActionClient() {
             return this.actionClient;
         }
+
         constructor(rpcKernel: RpcKernel, injector?: InjectorContext) {
             super(new RpcDirectClientAdapter(rpcKernel, injector));
         }
@@ -859,6 +862,7 @@ test('hooks', async () => {
             await sleep(0.1);
             return 'test1';
         }
+
         @rpc.action()
         async test2(): Promise<void> {
             throw new Error('test2');
@@ -932,3 +936,64 @@ test('hooks', async () => {
     expect(_actionError!.error).toBeInstanceOf(Error);
     expect(_actionError!.error).toMatchObject({ message: 'test2' });
 });
+
+test('connection disconnect client', async () => {
+    class Controller {
+        @rpc.action()
+        async action() {
+            await sleep(0.1);
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    await client.connect();
+    const promise = controller.action();
+    await client.disconnect();
+    await expect(promise).rejects.toThrow('Connection closed');
+});
+
+
+test('connection disconnect back-controller', async () => {
+    class ClientController {
+        @rpc.action()
+        async action() {
+            await sleep(0.1);
+            return true;
+        }
+    }
+
+    let actionPromise: Promise<any> | undefined;
+
+    class ServerController {
+        constructor(private connection: RpcKernelConnection) {
+        }
+
+        @rpc.action()
+        async start() {
+            actionPromise = this.connection.controller<ClientController>('client').action();
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(ServerController, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<ServerController>('myController');
+
+    await client.connect();
+    await controller.start();
+    await expect(actionPromise).rejects.toThrow('RpcClient has no controllers registered');
+
+    client.registerController(ClientController, 'client');
+    await controller.start();
+    await expect(actionPromise).resolves.toBe(true);
+
+    await controller.start();
+    await client.disconnect();
+    await expect(actionPromise).rejects.toThrow('Connection closed');
+});
+
+
