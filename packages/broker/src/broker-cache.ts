@@ -2,7 +2,7 @@ import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
 import { BrokerAdapterBase, BrokerInvalidateCacheMessage } from './broker.js';
 import { parseTime } from './utils.js';
 import { ConsoleLogger, LoggerInterface } from '@deepkit/logger';
-import { asyncOperation, formatError } from '@deepkit/core';
+import { asyncOperation } from '@deepkit/core';
 
 export interface BrokerCacheOptions {
     /**
@@ -215,10 +215,9 @@ export class BrokerCacheItem<T> {
 
         //cache is expired or nearly created, rebuild it.
         await this.build(entry);
-        //no need to wait for L2 to be updated, we can return the value already
-        this.adapter.setCache(this.key, entry.value, this.options, this.type).catch((error: any) => {
-            this.logger.warn(`Could not send cache to L2 ${this.key}: ${formatError(error)}`);
-        });
+
+        //outdated: no need to wait for L2 to be updated, we can return the value already
+        await this.adapter.setCache(this.key, entry.value, this.options, this.type);
 
         return entry.value;
     }
