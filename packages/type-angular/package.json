@@ -13,8 +13,8 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.19",
-    "@deepkit/type": "^1.0.1-alpha.19"
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/type": "^1.0.1"
   },
   "devDependencies": {
     "@angular/common": "^19.1.5",
