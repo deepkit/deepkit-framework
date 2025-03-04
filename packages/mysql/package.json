@@ -24,11 +24,11 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/orm": "^1.0.1-alpha.13",
-    "@deepkit/sql": "^1.0.1-alpha.13",
-    "@deepkit/stopwatch": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13"
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/orm": "^1.0.1",
+    "@deepkit/sql": "^1.0.1",
+    "@deepkit/stopwatch": "^1.0.1",
+    "@deepkit/type": "^1.0.1"
   },
   "dependencies": {
     "mariadb": "^3.2.3"

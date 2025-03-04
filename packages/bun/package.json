@@ -24,7 +24,7 @@
     "install": "rm -rf node_modules/typescript || exit 0"
   },
   "peerDependencies": {
-    "@deepkit/type-compiler": "^1.0.1-alpha.93",
+    "@deepkit/type-compiler": "^1.0.1",
     "typescript": "*"
   },
   "devDependencies": {
