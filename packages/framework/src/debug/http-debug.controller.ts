@@ -9,16 +9,19 @@
  */
 
 import { registerStaticHttpController } from '@deepkit/http';
-import { AppModule, findParentPath } from '@deepkit/app';
-import { dirname } from 'path';
-import { getCurrentFileName } from '@deepkit/core';
+import { AppModule } from '@deepkit/app';
+import { resolve } from './resolve.js';
 
 export function registerDebugHttpController(module: AppModule<any>, path: string): void {
-    const currentDir = dirname(getCurrentFileName());
-    const localPath = findParentPath('node_modules/@deepkit/framework-debug-gui/dist/framework-debug-gui', currentDir);
-    if (localPath) {
-        registerStaticHttpController(module, { path, localPath, groups: ['app-static'], controllerName: 'FrameworkDebuggerController' });
-    } else {
-        console.log('Warning: node_modules/@deepkit/framework-debug-gui no build found in ' + currentDir);
-    }
+    const localPath = (() => {
+        try {
+            return resolve('@deepkit/framework-debug-gui/dist/framework-debug-gui/index.html')
+        } catch (e) {
+            console.log('Warning: @deepkit/framework-debug-gui assets location not resolved.')
+            return null
+        }
+    })()
+    if (!localPath) return
+
+    registerStaticHttpController(module, { path, localPath, groups: ['app-static'], controllerName: 'FrameworkDebuggerController' });
 }

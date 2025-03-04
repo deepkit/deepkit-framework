@@ -18,6 +18,7 @@
   "files": [
     "dist"
   ],
+  "preferUnplugged": true,
   "devDependencies": {
     "@angular-devkit/build-angular": "^19.1.6",
     "@angular/animations": "^19.1.5",

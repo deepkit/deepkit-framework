@@ -36,7 +36,8 @@
     "loader.ts"
   ],
   "exclude": [
-    "tests"
+    "tests",
+    "src/debug/resolve.mts"
   ],
   "references": [
     {
