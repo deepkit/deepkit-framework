@@ -13,6 +13,8 @@ import { ClientTransportAdapter, RpcClient } from './client.js';
 import { TransportClientConnection } from '../transport.js';
 import { RpcError } from '../model.js';
 
+declare const location: { protocol: string, host: string, origin: string };
+
 /**
  * A RpcClient that connects via WebSocket transport.
  */

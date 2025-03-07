@@ -8,13 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    AbstractClassType,
-    ClassType,
-    forwardTypeArguments,
-    getClassName,
-    getClassTypeFromInstance,
-} from '@deepkit/core';
+import { AbstractClassType, ClassType, forwardTypeArguments, getClassName, getClassTypeFromInstance } from '@deepkit/core';
 import {
     entityAnnotation,
     EntityOptions,
@@ -200,7 +194,12 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         return C;
     }
 
-    listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): EventDispatcherUnsubscribe {
+    /**
+     * Register a new event listener for given token.
+     *
+     * order: The lower the order, the sooner the listener is called. Default is 0.
+     */
+    listen<T extends EventToken<any>>(eventToken: T, callback: EventListenerCallback<T>, order: number = 0): EventDispatcherUnsubscribe {
         return this.eventDispatcher.listen(eventToken, callback, order);
     }
 

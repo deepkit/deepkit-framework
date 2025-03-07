@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { JSONTransport, Logger, LoggerLevel, ScopedLogger, ScopeFormatter } from '../src/logger.js';
+import { JSONTransport, Logger, LoggerLevel, MemoryLogger, ScopedLogger, ScopeFormatter } from '../src/logger.js';
 import { MemoryLoggerTransport } from '../src/memory-logger.js';
 import { Injector, ServiceNotFoundError, TransientInjectionTarget } from '@deepkit/injector';
 
@@ -32,7 +32,7 @@ test('log message', () => {
     expect(memory.messageStrings).toEqual(['Peter']);
 });
 
-test('log scope', () => {
+test('log scope 1', () => {
     const memory = new MemoryLoggerTransport();
     const logger = new Logger([memory], [new ScopeFormatter()]);
     logger.level = LoggerLevel.error;
@@ -42,6 +42,17 @@ test('log scope', () => {
     scoped.error('Peter');
 
     expect(memory.messageStrings).toEqual(['(database) Peter']);
+    expect(scoped.level).toBe(LoggerLevel.error);
+});
+
+test('log scope 2', () => {
+    const logger = new MemoryLogger(undefined, [new ScopeFormatter()]);
+    logger.level = LoggerLevel.error;
+
+    const scoped = logger.scoped('database');
+    scoped.error('Peter');
+
+    expect(logger.memory.messageStrings).toEqual(['(database) Peter']);
     expect(scoped.level).toBe(LoggerLevel.error);
 });
 

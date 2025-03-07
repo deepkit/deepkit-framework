@@ -5,6 +5,8 @@ import { RpcError, RpcTypes } from '../model.js';
 import { HttpRpcMessage } from '../server/http.js';
 import { serialize } from '@deepkit/type';
 
+declare const location: { protocol: string, host: string, origin: string };
+
 export interface RpcHttpResponseInterface {
     status: number;
     headers: { [name: string]: string };

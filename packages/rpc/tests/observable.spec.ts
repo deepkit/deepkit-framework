@@ -538,7 +538,7 @@ test('observable complete', async () => {
     }
 });
 
-test('createSubject', async () => {
+test('createSubject basic', async () => {
     let teardowns = 0;
 
     class Controller {
@@ -559,20 +559,28 @@ test('createSubject', async () => {
 
     {
         const o = await controller.subscribeChats();
+        expect(kernel.stats.active.subjects).toBe(1);
+        expect(kernel.stats.total.subjects).toBe(1);
         expect(o).toBeInstanceOf(Subject);
         const values = await o.pipe(take(2), toArray()).toPromise();
         expect(values).toEqual(['hello', 'world']);
         o.complete();
         await sleep(0);
+        expect(kernel.stats.active.subjects).toBe(0);
+        expect(kernel.stats.total.subjects).toBe(1);
         expect(teardowns).toBe(1);
     }
 
     {
         const s = instantSubject(controller.subscribeChats());
         const values = await s.pipe(take(2), toArray()).toPromise();
+        expect(kernel.stats.active.subjects).toBe(1);
+        expect(kernel.stats.total.subjects).toBe(2);
         expect(values).toEqual(['hello', 'world']);
         s.complete();
         await sleep(0);
+        expect(kernel.stats.active.subjects).toBe(0);
+        expect(kernel.stats.total.subjects).toBe(2);
         expect(teardowns).toBe(2);
     }
 
@@ -584,6 +592,73 @@ test('createSubject', async () => {
         await sleep(0);
         expect(teardowns).toBe(3);
     }
+});
+
+test('garbage collection', async () => {
+    let teardowns = 0;
+
+    class Controller {
+        @rpc.action()
+        async subscribeChats(name: string) {
+            return createSubject<string>((subject) => {
+                subject.next(name);
+                subject.next('hello');
+                subject.next('world');
+            }, () => teardowns++);
+        }
+
+        @rpc.action()
+        async subscribeChats2(name: string) {
+            return new Observable<string>((subject) => {
+                subject.next(name);
+                subject.next('hello');
+                subject.next('world');
+            });
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'main');
+    const client = new DirectClient(kernel);
+    await client.connect();
+    const controller = client.controller<Controller>('main');
+
+    async function test(callback: () => Promise<void>) {
+        for (let i = 0; i < 100; i++) {
+            await callback();
+        }
+        await sleep(0.1);
+        (gc as any)();
+        await sleep(0.1);
+        (gc as any)();
+        await sleep(0.1);
+    }
+
+    await test(async () => {
+        const subject = await controller.subscribeChats('asd');
+    });
+
+    expect(kernel.stats.active.subjects).toBe(0);
+    expect(kernel.stats.total.subjects).toBe(100);
+
+    await test(async () => {
+        const observable = await controller.subscribeChats2('asd');
+    });
+    expect(kernel.stats.active.observables).toBe(0);
+    expect(kernel.stats.total.observables).toBe(100);
+
+    await test(async () => {
+        const observable = await controller.subscribeChats2('asd');
+        const sub = observable.subscribe(() => {
+
+        });
+        sub.unsubscribe();
+    });
+
+    expect(kernel.stats.active.observables).toBe(0);
+    expect(kernel.stats.total.observables).toBe(200);
+    expect(kernel.stats.active.subscriptions).toBe(0);
+    expect(kernel.stats.total.subscriptions).toBe(100);
 });
 
 test('instantObservable', async () => {

@@ -1,5 +1,14 @@
 import { expect, test } from '@jest/globals';
-import { EmptySerializer, executeTemplates, SerializationError, serializer, Serializer, TemplateRegistry, TemplateState, TypeGuardRegistry } from '../src/serializer.js';
+import {
+    EmptySerializer,
+    executeTemplates,
+    SerializationError,
+    serializer,
+    Serializer,
+    TemplateRegistry,
+    TemplateState,
+    TypeGuardRegistry,
+} from '../src/serializer.js';
 import { ReflectionKind, stringifyResolvedType } from '../src/reflection/type.js';
 import { CompilerContext } from '@deepkit/core';
 import { cast, deserialize, serialize } from '../src/serializer-facade.js';

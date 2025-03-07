@@ -12,15 +12,7 @@ import { InjectorModule, InjectorModuleConfig, NormalizedProvider, ProviderWithS
 import { AbstractClassType, ClassType, CustomError, ExtractClassType, isClass } from '@deepkit/core';
 import { EventListener, EventToken } from '@deepkit/event';
 import { WorkflowDefinition } from '@deepkit/workflow';
-import {
-    getPartialSerializeFunction,
-    reflect,
-    ReflectionFunction,
-    ReflectionMethod,
-    serializer,
-    Type,
-    TypeClass,
-} from '@deepkit/type';
+import { getPartialSerializeFunction, reflect, ReflectionFunction, ReflectionMethod, serializer, Type, TypeClass } from '@deepkit/type';
 import { ControllerConfig } from './service-container.js';
 
 export type DefaultObject<T> = T extends undefined ? {} : T;
@@ -137,7 +129,7 @@ export interface ModuleDefinition {
      * }
      * ```
      */
-    listeners?: (EventListener<any> | ClassType)[];
+    listeners?: (EventListener | ClassType)[];
 
     /**
      * HTTP middlewares.
@@ -253,7 +245,7 @@ export function createModule<T extends CreateModuleDefinition>(options: T): AppM
     return new (createModuleClass(options))();
 }
 
-export type ListenerType = EventListener<any> | ClassType;
+export type ListenerType = EventListener | ClassType;
 
 /**
  * The AppModule is the base class for all modules.
@@ -409,7 +401,7 @@ export class AppModule<C extends InjectorModuleConfig = any> extends InjectorMod
         return this;
     }
 
-    addListener(...listener: (EventListener<any> | ClassType)[]): this {
+    addListener(...listener: (EventListener | ClassType)[]): this {
         this.assertInjectorNotBuilt();
 
         for (const l of listener) {

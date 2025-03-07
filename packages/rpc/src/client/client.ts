@@ -19,6 +19,7 @@ import {
     rpcPeerDeregister,
     rpcPeerRegister,
     rpcResponseAuthenticate,
+    RpcStats,
     RpcTypes,
 } from '../model.js';
 import {
@@ -71,6 +72,8 @@ export interface ClientTransportAdapter {
 }
 
 export interface WritableClient {
+    clientStats: RpcStats;
+
     sendMessage<T>(
         type: number,
         body?: T,
@@ -136,14 +139,18 @@ export class RpcClientTransporter {
     public readonly errored = new Subject<{ connectionId: number, error: Error }>();
 
     public reader = new RpcBinaryMessageReader(
-        (v) => this.onMessage(v),
+        (v) => {
+            this.stats.increase('incoming', 1);
+            this.onMessage(v);
+        },
         (id) => {
-            this.writer!(createRpcMessage(id, RpcTypes.ChunkAck), this.writerOptions);
+            this.writer!(createRpcMessage(id, RpcTypes.ChunkAck), this.writerOptions, this.stats);
         },
     );
 
     public constructor(
         public transport: ClientTransportAdapter,
+        protected stats: RpcStats,
     ) {
     }
 
@@ -175,6 +182,7 @@ export class RpcClientTransporter {
         if (!this.transportConnection) return;
 
         this.transportConnection = undefined;
+        this.stats.increase('connections', -1);
 
         this.connection.next(false);
         this.connected = false;
@@ -239,6 +247,8 @@ export class RpcClientTransporter {
 
                 onConnected: async (transport: TransportConnection) => {
                     this.transportConnection = transport;
+                    this.stats.increase('connections', 1);
+                    this.stats.increase('totalConnections', 1);
                     this.writer = createWriter(transport, this.writerOptions, this.reader);
 
                     this.connected = false;
@@ -266,6 +276,7 @@ export class RpcClientTransporter {
                 },
 
                 read: (message: RpcMessage) => {
+                    this.stats.increase('incoming', 1);
                     this.onMessage(message);
                 },
 
@@ -304,7 +315,7 @@ export class RpcClientTransporter {
         }
 
         try {
-            this.writer(message, this.writerOptions, progress);
+            this.writer(message, this.writerOptions, this.stats, progress);
         } catch (error: any) {
             if (error instanceof ValidationError) throw error;
             throw new OfflineError(error, { cause: error });
@@ -357,7 +368,9 @@ export class RpcBaseClient implements WritableClient {
     protected messageId: number = 1;
     protected replies = new Map<number, RpcMessageSubject>();
 
-    protected actionClient = new RpcActionClient(this);
+    public clientStats: RpcStats = new RpcStats;
+
+    public actionClient = new RpcActionClient(this);
     public readonly token = new RpcClientToken(undefined);
     public readonly transporter: RpcClientTransporter;
 
@@ -370,7 +383,7 @@ export class RpcBaseClient implements WritableClient {
     constructor(
         protected transport: ClientTransportAdapter,
     ) {
-        this.transporter = new RpcClientTransporter(this.transport);
+        this.transporter = new RpcClientTransporter(this.transport, this.clientStats);
         this.transporter.onMessage = this.onMessage.bind(this);
         this.transporter.onHandshake = this.onHandshake.bind(this);
         this.transporter.onAuthenticate = this.onAuthenticate.bind(this);
@@ -448,11 +461,14 @@ export class RpcBaseClient implements WritableClient {
             this.actionClient.entityState.handle(message);
         } else {
             const subject = this.replies.get(message.id);
-            if (!subject) {
-                throw new RpcError('No callback for ' + message.id);
-            }
             if (subject) subject.next(message);
         }
+    }
+
+    debug() {
+        return {
+            activeMessages: this.replies.size,
+        };
     }
 
     public sendMessage<T>(
@@ -463,7 +479,7 @@ export class RpcBaseClient implements WritableClient {
             dontWaitForConnection?: boolean,
             connectionId?: number,
             peerId?: string,
-            timeout?: number
+            timeout?: number;
         } = {},
     ): RpcMessageSubject {
         const resolvedSchema = schema ? resolveReceiveType(schema) : undefined;
