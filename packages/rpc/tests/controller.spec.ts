@@ -2,7 +2,7 @@ import { assertType, entity, Minimum, Positive, ReflectionClass, ReflectionKind 
 import { expect, test } from '@jest/globals';
 import { DirectClient, RpcDirectClientAdapter } from '../src/client/client-direct.js';
 import { getActions, rpc, RpcController } from '../src/decorators.js';
-import { RpcHooks, RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
+import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
 import { Session, SessionState } from '../src/server/security.js';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { getClassName, sleep } from '@deepkit/core';
@@ -11,7 +11,8 @@ import { Logger, MemoryLogger } from '@deepkit/logger';
 import { RpcClient } from '../src/client/client.js';
 import { InjectorContext } from '@deepkit/injector';
 import { RpcControllerState } from '../src/client/action.js';
-import { RpcActionHook, RpcActionHookError, RpcActionHookSuccess } from '../src/server/action.js';
+import { onRpcAction, onRpcAuth, onRpcConnection, onRpcConnectionClose, onRpcControllerAccess } from '../src/events.js';
+import { eventWatcher } from '@deepkit/event';
 
 test('default name', () => {
     @rpc.controller()
@@ -854,8 +855,7 @@ test('Observable<Buffer>', async () => {
     }
 });
 
-
-test('hooks', async () => {
+test('events', async () => {
     class Controller {
         @rpc.action()
         async test1(): Promise<string> {
@@ -869,72 +869,73 @@ test('hooks', async () => {
         }
     }
 
-    let _connection: RpcKernelConnection | undefined;
-    let _action: RpcActionHook | undefined;
-    let _actionSuccess: RpcActionHookSuccess | undefined;
-    let _actionError: RpcActionHookError | undefined;
-
-    class MyRpcHooks extends RpcHooks {
-        onConnection(connection: RpcKernelConnection, injector: InjectorContext) {
-            expect(connection).toBeInstanceOf(RpcKernelConnection);
-            expect(injector).toBeInstanceOf(InjectorContext);
-            _connection = connection;
-        }
-
-        onClose(connection: RpcKernelConnection, injector: InjectorContext) {
-            expect(connection).toBeInstanceOf(RpcKernelConnection);
-            expect(injector).toBeInstanceOf(InjectorContext);
-            _connection = undefined;
-        }
-
-        onAction(action: RpcActionHook, injector: InjectorContext) {
-            expect(injector).toBeInstanceOf(InjectorContext);
-            _action = action;
-        }
-
-        onActionSuccess(action: RpcActionHookSuccess, injector: InjectorContext) {
-            expect(injector).toBeInstanceOf(InjectorContext);
-            _actionSuccess = action;
-        }
-
-        onActionError(action: RpcActionHookError, injector: InjectorContext) {
-            expect(injector).toBeInstanceOf(InjectorContext);
-            _actionError = action;
-        }
-    }
-
-    const kernel = new RpcKernel([
-        { provide: RpcHooks, useClass: MyRpcHooks },
-    ]);
+    const kernel = new RpcKernel();
     kernel.registerController(Controller, 'myController');
+    kernel.listen(onRpcAuth, event => {
+        event.data.session = new Session('abc', event.data.token);
+    });
     const client = new DirectClient(kernel);
     const controller = client.controller<Controller>('myController');
 
+    const watcher = eventWatcher(kernel.getEventDispatcher(), [
+        onRpcConnection,
+        onRpcAction,
+        onRpcConnectionClose,
+        onRpcControllerAccess,
+        onRpcAuth,
+    ]);
+
     await controller.test1();
 
-    expect(_connection).toBeInstanceOf(RpcKernelConnection);
-    expect(_action).toEqual({
-        actionData: {}, actionGroups: [],
-        actionName: 'test1',
-        connection: _connection, controllerClassType: Controller,
-        controllerName: 'myController',
-    });
-    expect(_actionSuccess).toMatchObject({
-        actionData: {}, actionGroups: [],
-        actionName: 'test1',
-        connection: _connection, controllerClassType: Controller,
-        controllerName: 'myController',
-    });
-    expect(_actionSuccess!.start).toBeLessThan(_actionSuccess!.end);
-    expect(_actionSuccess!.types).toBeGreaterThan(0);
-    expect(_actionSuccess!.parseBody).toBeGreaterThan(0);
-    expect(_actionSuccess!.validate).toBeGreaterThan(0);
-    expect(_actionSuccess!.controllerAccess).toBeGreaterThan(0);
-    expect(_actionSuccess!.result).toBe('test1');
+    await client.disconnect();
 
-    await expect(controller.test2()).rejects.toThrow('test2');
-    expect(_actionError!.error).toBeInstanceOf(Error);
-    expect(_actionError!.error).toMatchObject({ message: 'test2' });
+    expect(watcher.messages).toEqual([
+        'rpc.connection',
+        'rpc.action phase=start',
+        'rpc.controllerAccess phase=start',
+        'rpc.controllerAccess phase=success',
+        'rpc.action phase=success',
+        'rpc.connectionClose reason=closed',
+    ]);
+
+    expect(kernel.stats).toMatchObject({
+        actions: 1,
+        connections: 0,
+        totalConnections: 1,
+    });
+
+    expect(watcher.get(onRpcAction, (event) => event.phase === 'success').timing)
+        .toEqual({
+            start: expect.any(Number),
+            end: expect.any(Number),
+            types: expect.any(Number),
+            parseBody: expect.any(Number),
+            validate: expect.any(Number),
+            controllerAccess: expect.any(Number),
+        });
+
+    client.token.set('abc');
+    watcher.clear();
+    await controller.test1();
+    await client.disconnect();
+
+    expect(watcher.messages).toEqual([
+        'rpc.connection',
+        'rpc.auth phase=start token=abc',
+        'rpc.auth phase=success token=abc',
+        'rpc.action phase=start',
+        'rpc.controllerAccess phase=start',
+        'rpc.controllerAccess phase=success',
+        'rpc.action phase=success',
+        'rpc.connectionClose reason=closed',
+    ]);
+
+    expect(kernel.stats).toMatchObject({
+        actions: 2,
+        connections: 0,
+        totalConnections: 2,
+    });
+
 });
 
 test('connection disconnect client', async () => {

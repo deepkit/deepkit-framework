@@ -11,6 +11,7 @@
 import {
     ClassType,
     collectForMicrotask,
+    ensureError,
     getClassName,
     isArray,
     isPlainObject,
@@ -34,19 +35,15 @@ import {
     ValidationErrorItem,
 } from '@deepkit/type';
 import { isObservable, Observable, Subject, Subscription } from 'rxjs';
-import {
-    Collection,
-    CollectionEvent,
-    CollectionQueryModel,
-    CollectionQueryModelInterface,
-    CollectionState,
-} from '../collection.js';
+import { Collection, CollectionEvent, CollectionQueryModel, CollectionQueryModelInterface, CollectionState } from '../collection.js';
 import { getActions } from '../decorators.js';
 import {
     ActionMode,
     ActionObservableTypes,
+    ActionStats,
     EntitySubject,
     isEntitySubject,
+    NumericKeys,
     rpcActionObservableSubscribeId,
     rpcActionType,
     RpcError,
@@ -55,13 +52,16 @@ import {
     rpcResponseActionObservable,
     rpcResponseActionObservableSubscriptionError,
     rpcResponseActionType,
+    RpcStats,
     RpcTypes,
 } from '../model.js';
 import { rpcEncodeError, RpcMessage } from '../protocol.js';
-import { RpcCache, RpcHooks, RpcKernelBaseConnection, RpcMessageBuilder } from './kernel.js';
+import { RpcCache, RpcKernelBaseConnection, RpcMessageBuilder } from './kernel.js';
 import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security.js';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
+import { onRpcAction, onRpcControllerAccess, RpcActionTimings, RpcControllerAccessEventStart } from '../events';
+import { DataEvent, EventDispatcher } from '@deepkit/event';
 
 export type ActionTypes = {
     strictSerialization: boolean;
@@ -127,47 +127,6 @@ const anyParametersType: Type = {
     }],
 };
 
-export interface RpcActionHook extends RpcControllerAccess {
-}
-
-/**
- * All times are in milliseconds (using performance.now()).
- */
-interface RpcActionTimings {
-    /**
-     * The start of the action (performance.now())
-     */
-    start: number;
-    /**
-     * The end of the action (performance.now())
-     */
-    end: number;
-    /**
-     * Time it took to check the controller access (since start)
-     */
-    types?: number;
-    /**
-     * Time it took to parse the body (since start)
-     */
-    parseBody?: number;
-    /**
-     * Time it took to validate the parameters (since start)
-     */
-    validate?: number;
-    /**
-     * Time it took to check the controller access (since start)
-     */
-    controllerAccess?: number;
-}
-
-export interface RpcActionHookError extends RpcActionHook, RpcActionTimings {
-    error?: Error;
-}
-
-export interface RpcActionHookSuccess extends RpcActionHook, RpcActionTimings {
-    result: any;
-}
-
 export class RpcServerAction {
     protected observableSubjects: {
         [id: number]: {
@@ -194,15 +153,18 @@ export class RpcServerAction {
         }
     } = {};
 
+    protected context: { connection: RpcKernelBaseConnection, injector: InjectorContext } = { connection: this.connection, injector: this.injector };
+
     constructor(
+        protected stats: RpcStats,
         protected cache: RpcCache,
         protected connection: RpcKernelBaseConnection,
         protected controllers: Map<string, { controller: ClassType, module?: InjectorModule }>,
         protected injector: InjectorContext,
+        protected eventDispatcher: EventDispatcher,
         protected security: RpcKernelSecurity,
         protected sessionState: SessionState,
         protected logger: LoggerInterface,
-        protected hooks: RpcHooks,
     ) {
     }
 
@@ -234,10 +196,35 @@ export class RpcServerAction {
         for (const subject of Object.values(this.observableSubjects)) {
             if (!subject.subject.closed) subject.subject.complete();
         }
+
+        this.collections = {};
+        this.observables = {};
+        this.observableSubjects = {};
     }
 
-    protected async hasControllerAccess(controllerAccess: RpcControllerAccess): Promise<boolean> {
-        return await this.security.hasControllerAccess(this.sessionState.getSession(), controllerAccess);
+    protected async hasControllerAccess(controller: RpcControllerAccess): Promise<boolean> {
+        const session = this.sessionState.getSession();
+
+        const event = new DataEvent<RpcControllerAccessEventStart>({
+            phase: 'start', session, controller, context: this.context,
+        })
+        await this.eventDispatcher.dispatch(onRpcControllerAccess, event, this.injector);
+
+        try {
+            let granted = event.data.granted;
+            if ('undefined' === typeof granted) {
+                granted = await this.security.hasControllerAccess(session, controller);
+            }
+            await this.eventDispatcher.dispatch(onRpcControllerAccess, () => ({
+                phase: granted ? 'success' : 'denied', session, controller, context: this.context,
+            }), this.injector);
+            return granted;
+        } catch (error) {
+            await this.eventDispatcher.dispatch(onRpcControllerAccess, () => ({
+                phase: 'fail', error: ensureError(''), session, controller, context: this.context,
+            }), this.injector);
+            throw error;
+        }
     }
 
     protected async loadTypes(controller: string, methodName: string): Promise<ActionTypes> {
@@ -363,7 +350,6 @@ export class RpcServerAction {
 
     public async handle(message: RpcMessage, response: RpcMessageBuilder) {
         switch (message.type) {
-
             case RpcTypes.ActionObservableSubscribe: {
                 const observable = this.observables[message.id];
                 if (!observable) return response.error(new RpcError('No observable found'));
@@ -391,6 +377,7 @@ export class RpcServerAction {
                 };
                 observable.subscriptions[body.id] = sub;
 
+                this.stats.total.increase('subscriptions', 1);
                 response.errorLabel = `Observable ${getClassName(observable.classType)}.${observable.method} next serialization error`;
                 sub.sub = observable.observable.subscribe((next) => {
                     if (!sub.active) return;
@@ -399,12 +386,14 @@ export class RpcServerAction {
                         v: next,
                     }, types.observableNextSchema);
                 }, (error) => {
+                    this.stats.total.increase('subscriptions', -1);
                     const extracted = rpcEncodeError(this.security.transformError(error));
                     response.reply<rpcResponseActionObservableSubscriptionError>(RpcTypes.ResponseActionObservableError, {
                         ...extracted,
                         id: body.id,
                     });
                 }, () => {
+                    this.stats.total.increase('subscriptions', -1);
                     response.reply<rpcActionObservableSubscribeId>(RpcTypes.ResponseActionObservableComplete, {
                         id: body.id,
                     });
@@ -450,6 +439,7 @@ export class RpcServerAction {
                 for (const sub of Object.values(observable.subscriptions)) {
                     sub.complete(); //we send all active subscriptions it was completed
                 }
+                this.stats.active.increase('observables', -1);
                 delete this.observables[message.id];
                 break;
             }
@@ -482,7 +472,7 @@ export class RpcServerAction {
         const action = getActions(classType.controller).get(body.method);
         if (!action) throw new RpcError(`Action unknown ${body.method}`);
 
-        const controllerAccess: RpcControllerAccess = {
+        const controller: RpcControllerAccess = {
             controllerName: body.controller,
             actionName: body.method,
             controllerClassType: classType.controller,
@@ -491,13 +481,23 @@ export class RpcServerAction {
             connection: this.connection,
         };
         const timing = { start: performance.now(), end: 0 } as RpcActionTimings;
-        this.hooks.onAction(controllerAccess, this.injector);
 
-        const access = await this.hasControllerAccess(controllerAccess);
+        this.eventDispatcher.dispatch(onRpcAction, () => ({
+            phase: 'start', context: this.context, timing, controller,
+        }), this.injector);
+
+        const triggerError = (error?: any) => {
+            timing.end = performance.now();
+            this.eventDispatcher.dispatch(onRpcAction, () => ({
+                phase: 'fail', error: ensureError(error, RpcError), context: this.context, timing, controller,
+            }), this.injector);
+        };
+
+        const access = await this.hasControllerAccess(controller);
         timing.controllerAccess = performance.now() - timing.start;
         if (!access) {
             const error = new RpcError(`Access denied to action ${body.method}`);
-            this.hooks.onActionError({ ...controllerAccess, ...timing, end: performance.now(), error }, this.injector);
+            triggerError(error);
             return response.error(error);
         }
 
@@ -516,21 +516,21 @@ export class RpcServerAction {
             if (action.logValidationErrors) {
                 this.logger.warn(message, error);
             }
-            this.hooks.onActionError({ ...controllerAccess, ...timing, end: performance.now(), error }, this.injector);
+            triggerError(error);
             return response.error(`${message}: ${error.message}`);
         }
 
         const controllerInstance = this.injector.get(classType.controller, classType.module);
         if (!controllerInstance) {
             const error = new RpcError(`No instance of ${getClassName(classType.controller)} found.`);
-            this.hooks.onActionError({ ...controllerAccess, ...timing, end: performance.now(), error }, this.injector);
+            triggerError(error);
             return response.error(error);
         }
 
         if (!isArray(value.args)) {
             const message = `Invalid arguments for ${getClassName(classType.controller)}.${body.method} - expected array`;
             this.logger.error(`${message} but got`, value.args);
-            this.hooks.onActionError({ ...controllerAccess, ...timing, end: performance.now(), error: new RpcError(message) }, this.injector);
+            triggerError(message);
             return response.error(message);
         }
 
@@ -546,11 +546,12 @@ export class RpcServerAction {
             }
             if (action.strictSerialization) {
                 const message = `Validation error for arguments of ${getClassName(classType.controller)}.${body.method}: ${error.message}`;
-                this.hooks.onActionError({ ...controllerAccess, ...timing, end: performance.now(), error }, this.injector);
+                triggerError(error);
                 return response.error(message);
             }
         }
 
+        this.stats.increase('actions', 1);
         response.errorLabel = `Action ${getClassName(classType.controller)}.${body.method} return type serialization error`;
 
         try {
@@ -559,7 +560,9 @@ export class RpcServerAction {
             const method = controllerInstance[body.method] as Function;
             const result = await method.apply(controllerInstance, value.args);
             timing.end = performance.now();
-            this.hooks.onActionSuccess({ ...controllerAccess, ...timing, end: performance.now(), result }, this.injector);
+            this.eventDispatcher.dispatch(onRpcAction, () => ({
+                phase: 'success', context: this.context, timing, controller,
+            }), this.injector);
 
             if (isEntitySubject(result)) {
                 response.reply(RpcTypes.ResponseEntity, { v: result.value }, types.resultSchema);
@@ -618,6 +621,8 @@ export class RpcServerAction {
                     },
                 };
             } else if (isObservable(result)) {
+                let trackingType: NumericKeys<ActionStats> = 'observables';
+
                 this.observables[message.id] = {
                     observable: result,
                     subscriptions: {},
@@ -628,11 +633,14 @@ export class RpcServerAction {
 
                 let type: ActionObservableTypes = ActionObservableTypes.observable;
                 if (isSubject(result)) {
+                    trackingType = 'subjects';
                     type = ActionObservableTypes.subject;
 
                     if (isBehaviorSubject(result)) {
+                        trackingType = 'behaviorSubjects';
                         type = ActionObservableTypes.behaviorSubject;
                         if (result instanceof ProgressTracker) {
+                            trackingType = 'progressTrackers';
                             type = ActionObservableTypes.progressTracker;
                         }
                     }
@@ -646,12 +654,14 @@ export class RpcServerAction {
                                 v: next,
                             }, types.observableNextSchema);
                         }, (error) => {
+                            this.stats.active.increase(trackingType, -1);
                             const extracted = rpcEncodeError(this.security.transformError(error));
                             response.reply<rpcResponseActionObservableSubscriptionError>(RpcTypes.ResponseActionObservableError, {
                                 ...extracted,
                                 id: message.id,
                             });
                         }, () => {
+                            this.stats.active.increase(trackingType, -1);
                             const v = this.observableSubjects[message.id];
                             if (v && v.completedByClient) return; //we don't send ResponseActionObservableComplete when the client issued unsubscribe
                             response.reply<rpcActionObservableSubscribeId>(RpcTypes.ResponseActionObservableComplete, {
@@ -660,6 +670,9 @@ export class RpcServerAction {
                         }),
                     };
                 }
+
+                this.stats.active.increase(trackingType, 1);
+                this.stats.total.increase(trackingType, 1);
 
                 response.reply<rpcResponseActionObservable>(RpcTypes.ResponseActionObservable, { type });
             } else {
@@ -671,7 +684,7 @@ export class RpcServerAction {
                 response.reply(RpcTypes.ResponseActionSimple, { v: result }, types.resultSchema);
             }
         } catch (error: any) {
-            this.hooks.onActionError({ ...controllerAccess, ...timing, end: performance.now(), error }, this.injector);
+            triggerError(error);
             response.error(this.security.transformError(error));
         }
     }

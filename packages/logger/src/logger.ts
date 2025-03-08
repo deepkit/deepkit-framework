@@ -335,9 +335,15 @@ export class ConsoleLogger extends Logger {
 export class MemoryLogger extends Logger {
     public memory = new MemoryLoggerTransport();
 
-    constructor() {
-        super([]);
-        this.transporter.push(this.memory);
+    constructor(
+        transporter: LoggerTransport[] = [],
+        formatter: LoggerFormatter[] = [],
+        scope: string = ''
+    ) {
+        super(transporter || [], formatter, scope);
+        if (transporter.length === 0) {
+            this.transporter.push(this.memory);
+        }
     }
 
     getOutput(): string {

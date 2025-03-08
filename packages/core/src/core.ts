@@ -604,6 +604,13 @@ export function mergeStack(error: Error, stack: string) {
     }
 }
 
+/**
+ * Makes sure the given value is an error. If it's not an error, it creates a new error with the given value as message.
+ */
+export function ensureError(error?: any, classType: ClassType = Error): Error {
+    return error instanceof Error || error instanceof AggregateError ? error : new classType(error);
+}
+
 export function collectForMicrotask<T>(callback: (args: T[]) => void): (arg: T) => void {
     let items: T[] = [];
     let taskScheduled = false;

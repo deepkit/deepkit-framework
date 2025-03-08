@@ -17,15 +17,7 @@ import { DebugDIController } from './cli/debug-di.js';
 import { ServerStartController } from './cli/server-start.js';
 import { DebugController } from './debug/debug.controller.js';
 import { registerDebugHttpController } from './debug/http-debug.controller.js';
-import {
-    http,
-    HttpLogger,
-    HttpModule,
-    HttpRegExp,
-    HttpRequest,
-    HttpResponse,
-    serveStaticListener,
-} from '@deepkit/http';
+import { http, HttpLogger, HttpModule, HttpRegExp, HttpRequest, HttpResponse, serveStaticListener } from '@deepkit/http';
 import { InjectorContext, ProviderWithScope, Token } from '@deepkit/injector';
 import { BrokerConfig, FrameworkConfig } from './module.config.js';
 import { Logger } from '@deepkit/logger';
@@ -44,15 +36,7 @@ import {
 } from '@deepkit/sql/commands';
 import { FileStopwatchStore } from './debug/stopwatch/store.js';
 import { DebugProfileFramesCommand } from './cli/debug-debug-frames.js';
-import {
-    rpcClass,
-    RpcHooks,
-    RpcKernel,
-    RpcKernelBaseConnection,
-    RpcKernelConnection,
-    RpcKernelSecurity,
-    SessionState,
-} from '@deepkit/rpc';
+import { rpcClass, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
 import { DebugConfigController } from './cli/app-config.js';
 import { Zone } from './zone.js';
 import { DebugBrokerBus } from './debug/broker.js';
@@ -77,7 +61,6 @@ export class FrameworkModule extends createModuleClass({
         ApplicationServer,
         WebWorkerFactory,
         RpcServer,
-        RpcHooks,
         MigrationProvider,
         DebugController,
         BrokerServer,
@@ -158,7 +141,6 @@ export class FrameworkModule extends createModuleClass({
         SessionState,
         RpcKernelConnection,
         RpcKernelBaseConnection,
-        RpcHooks,
 
         BrokerDeepkitAdapter,
         BrokerCache,

@@ -8,13 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    RpcKernel,
-    RpcKernelBaseConnection,
-    RpcKernelConnection,
-    SessionState,
-    TransportConnection,
-} from '@deepkit/rpc';
+import { RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, SessionState, TransportConnection } from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
 import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
@@ -134,11 +128,15 @@ export class RpcServer implements RpcServerInterface {
                 }
             }, req);
 
-            ws.on('message', async (message: Uint8Array) => {
+            ws.on('message', (message: Uint8Array) => {
                 connection.feed(message);
             });
 
-            ws.on('close', async () => {
+            ws.on('error', (error) => {
+                connection.close(error);
+            });
+
+            ws.on('close', () => {
                 connection.close();
             });
         });

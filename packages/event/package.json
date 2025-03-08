@@ -1,7 +1,7 @@
 {
   "name": "@deepkit/event",
   "version": "1.0.2",
-  "description": "Deepkit async event dispatcher",
+  "description": "Deepkit event dispatcher",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",

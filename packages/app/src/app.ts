@@ -15,10 +15,11 @@ import { AppModule, RootModuleDefinition } from './module.js';
 import { EnvConfiguration } from './configuration.js';
 import {
     DataEventToken,
+    DispatchArguments,
     EventDispatcher,
+    EventDispatcherDispatchType,
     EventListener,
     EventListenerCallback,
-    EventOfEventToken,
     EventToken,
 } from '@deepkit/event';
 import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
@@ -292,14 +293,14 @@ export class App<T extends RootModuleDefinition> {
      *
      * order: The lower the order, the sooner the listener is called. Default is 0.
      */
-    listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): this {
-        const listener: EventListener<any> = { callback, order, eventToken };
+    listen<T extends EventToken<any>>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): this {
+        const listener: EventListener = { callback, order, eventToken };
         this.appModule.listeners.push(listener);
         return this;
     }
 
-    public async dispatch<T extends EventToken<any>>(eventToken: T, event?: EventOfEventToken<T>, injector?: InjectorContext): Promise<void> {
-        return await this.get(EventDispatcher).dispatch(eventToken, event, injector);
+    dispatch<T extends EventToken<any>>(eventToken: T, ...args: DispatchArguments<T>): EventDispatcherDispatchType<T> {
+        return this.get(EventDispatcher).dispatch(eventToken, ...args);
     }
 
     /**

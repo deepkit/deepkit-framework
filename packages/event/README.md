@@ -1,3 +1,3 @@
 # @deepkit/event
 
-Deepkit async event dispatcher.
+Deepkit async/sync event dispatcher.

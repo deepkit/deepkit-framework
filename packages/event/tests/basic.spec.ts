@@ -1,8 +1,15 @@
 import { expect, test } from '@jest/globals';
-import { BaseEvent, DataEventToken, EventDispatcher, EventError, EventToken } from '../src/event.js';
+import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, EventError, EventOfEventToken, EventToken, EventTokenSync } from '../src/event.js';
+import { sleep } from '@deepkit/core';
+
+type TypeA = 'asd' | void;
+function a(a: string, b: TypeA, c?: string) {}
+
+a('asd');
 
 test('functional api', async () => {
     const dispatcher = new EventDispatcher();
+    type a = EventOfEventToken<EventToken>;
 
     const MyEvent = new EventToken('my-event');
     let calls = 0;
@@ -91,4 +98,125 @@ test('fork', async () => {
     expect(callsB).toBe(1);
 
     expect(() => sub1()).toThrow(EventError);
+});
+
+test('sync not doing async stuff', async () => {
+    const dispatcher = new EventDispatcher();
+    const MyEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
+    let calls = 0;
+
+    dispatcher.listen(MyEvent, (async () => {
+        await sleep(0.01);
+        calls++;
+    }) as any);
+
+    const res = dispatcher.dispatch(MyEvent, {data: 'abc'});
+    expect(res).toBe(undefined);
+    expect(calls).toBe(0);
+    await sleep(0.1);
+    expect(calls).toBe(1);
+});
+
+
+test('sync', async () => {
+    const dispatcher = new EventDispatcher();
+    const MyEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
+    let calls = 0;
+
+    dispatcher.listen(MyEvent, () => {
+        calls++;
+    });
+
+    const res = dispatcher.dispatch(MyEvent, new DataEvent({data: 'abc'}));
+    expect(res).toBe(undefined);
+    expect(calls).toBe(1);
+});
+
+test('custom event', async () => {
+    const dispatcher = new EventDispatcher();
+    class MyEvent extends BaseEvent {
+        data: string = 'asd';
+        type: string = '';
+    }
+    const myEventToken = new EventTokenSync<MyEvent>('my-event');
+    let calls = 0;
+
+    dispatcher.listen(myEventToken, () => {
+        calls++;
+    });
+
+    // dispatcher.dispatch(myEventToken, undefined);
+    // dispatcher.dispatch(myEventToken, new BaseEvent());
+
+    const res = dispatcher.dispatch(myEventToken, new MyEvent());
+    expect(res).toBe(undefined);
+    expect(calls).toBe(1);
+});
+
+test('delayed event factory sync empty', async () => {
+    const dispatcher = new EventDispatcher();
+    const MyEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
+    let factories = 0;
+
+    const res = dispatcher.dispatch(MyEvent, () => {
+        factories++;
+        return new DataEvent({data: 'abc'});
+    });
+
+    expect(res).toBe(undefined);
+    expect(factories).toBe(0); // because no listener attached
+});
+
+test('delayed event factory sync filled', async () => {
+    const dispatcher = new EventDispatcher();
+    const myEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
+    let factories = 0;
+    let calls = 0;
+
+    dispatcher.listen(myEvent, () => {
+        calls++;
+    });
+
+    const res = dispatcher.dispatch(myEvent, () => {
+        factories++;
+        return new DataEvent({data: 'abc'});
+    });
+
+    expect(res).toBe(undefined);
+    expect(calls).toBe(1);
+    expect(factories).toBe(1);
+});
+
+test('delayed event factory fork sync empty', async () => {
+    const dispatcher = new EventDispatcher().fork()
+    const MyEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
+    let factories = 0;
+
+    const res = dispatcher.dispatch(MyEvent, () => {
+        factories++;
+        return new DataEvent({data: 'abc'});
+    });
+
+    expect(res).toBe(undefined);
+    expect(factories).toBe(0); // because no listener attached
+});
+
+test('delayed event factory fork sync filled', async () => {
+    const dispatcher = new EventDispatcher().fork();
+    const myEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
+    let factories = 0;
+    let calls = 0;
+
+    dispatcher.listen(myEvent, () => {
+        calls++;
+    });
+
+    const res = dispatcher.dispatch(myEvent, () => {
+        factories++;
+        return new DataEvent({data: 'abc'});
+    });
+
+    expect(res).toBe(undefined);
+    expect(calls).toBe(1);
+    expect(factories).toBe(1);
 });
