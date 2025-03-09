@@ -41,6 +41,8 @@ export interface EventListener {
 export type EventOfEvent<E> = E extends SimpleDataEvent<infer D> ? (D | E) : (E | void);
 export type EventOfEventToken<T> = T extends EventToken<infer E> | EventTokenSync<infer E> ? EventOfEvent<E> : void;
 
+export type Dispatcher<T extends EventToken<any>> = (...args: DispatchArguments<T>) => EventDispatcherDispatchType<T>;
+
 type ValueOrFactory<T> = T | (() => T);
 
 /**
@@ -223,7 +225,7 @@ function compareListenerEntry(a: EventListenerContainerEntry, b: EventListenerCo
 }
 
 interface EventDispatcherFn {
-    (scopedContext: InjectorContext, event: BaseEvent): Promise<void> | void;
+    (event: BaseEvent, scopedContext: InjectorContext): Promise<void> | void;
 }
 
 export type EventDispatcherUnsubscribe = () => void;
@@ -244,7 +246,7 @@ export interface EventDispatcherInterface {
 
     dispatch<T extends EventToken<any>>(eventToken: T, ...args: DispatchArguments<T>): EventDispatcherDispatchType<T>;
 
-    fork(): EventDispatcherInterface;
+    getDispatcher<T extends EventToken<any>>(eventToken: T): (...args: DispatchArguments<T>) => EventDispatcherDispatchType<T>;
 }
 
 function resolveEvent<T>(eventToken: EventToken<any>, event?: EventOfEventToken<T>): BaseEvent {
@@ -264,8 +266,15 @@ export interface EventListenerRegistered {
 function noop() {
 }
 
+interface Context {
+    listeners: EventListenerContainerEntry[],
+    built: boolean,
+    dispatcher: (event: BaseEvent, injector: InjectorContext) => any
+}
+
+/** @reflection never */
 export class EventDispatcher implements EventDispatcherInterface {
-    protected listenerMap = new Map<EventToken<any>, EventListenerContainerEntry[]>();
+    protected context = new Map<EventToken<any>, Context>();
     protected instances: any[] = [];
     protected registeredClassTypes = new Set<ClassType>();
 
@@ -299,118 +308,139 @@ export class EventDispatcher implements EventDispatcherInterface {
         return this.add(eventToken, { fn: callback, order: order });
     }
 
-    public add(eventToken: EventToken<any>, listener: EventListenerContainerEntry): EventDispatcherUnsubscribe {
-        if ((eventToken as any)[this.symbol]) throw new EventError(`EventDispatcher already built for token ${eventToken.id}. Use eventDispatcher.fork() for late event binding.`);
+    add(eventToken: EventToken<any>, listener: EventListenerContainerEntry): EventDispatcherUnsubscribe {
         const listeners = this.getListeners(eventToken);
         listeners.push(listener);
 
+        this.scheduleDispatcherRebuild(eventToken);
+
         return () => {
-            if ((eventToken as any)[this.symbol]) throw new EventError(`EventDispatcher already built for token ${eventToken.id}. Use eventDispatcher.fork() for late event binding.`);
             const index = listeners.findIndex(v => compareListenerEntry(v, listener));
             if (index !== -1) listeners.splice(index, 1);
+            this.scheduleDispatcherRebuild(eventToken);
         };
     }
 
-    public getTokens(): EventToken<any>[] {
-        return [...this.listenerMap.keys()];
-    }
-
-    public hasListeners(eventToken: EventToken<any>): boolean {
-        return this.listenerMap.has(eventToken);
-    }
-
-    public getListeners(eventToken: EventToken<any>): EventListenerContainerEntry[] {
-        let listeners = this.listenerMap.get(eventToken);
-        if (!listeners) {
-            listeners = [];
-            this.listenerMap.set(eventToken, listeners);
+    protected getContext(eventToken: EventToken<any>): Context {
+        let context = this.context.get(eventToken);
+        if (!context) {
+            context = { listeners: [], built: false, dispatcher: () => undefined };
+            this.context.set(eventToken, context);
         }
-
-        return listeners;
+        return context;
     }
 
-    protected buildFor(eventToken: EventToken<any>): EventDispatcherFn {
-        const compiler = new CompilerContext();
-        const lines: string[] = [];
+    protected scheduleDispatcherRebuild(eventToken: EventToken<any>) {
+        const context = this.getContext(eventToken);
+        context.built = false;
+        context.dispatcher = (event: BaseEvent, injector?: InjectorContext) => {
+            const fn = buildStaticDispatcher(context, eventToken, this.injector);
+            context.dispatcher = fn;
+            context.built = true;
+            return fn(event, injector || this.injector);
+        };
+    }
 
-        const awaitKeyword = isSyncEventToken(eventToken) ? '' : 'await';
+    getTokens(): EventToken<any>[] {
+        return [...this.context.keys()];
+    }
 
-        const listeners = this.listenerMap.get(eventToken) || [];
-        if (!listeners.length) return noop;
+    hasListeners(eventToken: EventToken<any>): boolean {
+        return this.context.has(eventToken);
+    }
 
-        listeners.sort((a, b) => {
-            if (a.order > b.order) return +1;
-            if (a.order < b.order) return -1;
-            return 0;
-        });
+    getListeners(eventToken: EventToken<any>): EventListenerContainerEntry[] {
+        return this.getContext(eventToken).listeners;
+    }
 
-        compiler.set({
-            eventToken,
-            resolveEvent,
-        });
+    /**
+     * Dispatches the given event to all listeners for the given event token.
+     */
+    dispatch<T extends EventToken<any>>(eventToken: T, ...args: DispatchArguments<T>): EventDispatcherDispatchType<T> {
+        const context = this.getContext(eventToken);
+        return context.dispatcher(args[0], args[1] || this.injector);
+    }
 
-        lines.push(`
+    /**
+     * Returns a dispatcher function for the given event token.
+     * This is the most performant way to dispatch events, as it's pre-compiled
+     * and if there are no listeners attached it's a noop.
+     */
+    getDispatcher<T extends EventToken<any>>(eventToken: T): Dispatcher<T> {
+        const context = this.getContext(eventToken);
+        return ((event: BaseEvent, injector: InjectorContext = this.injector) => {
+            return context.dispatcher(event, injector);
+        }) as any as Dispatcher<T>;
+    }
+}
+
+function buildStaticDispatcher(
+    context: Context,
+    eventToken: EventToken<any>,
+    injector: InjectorContext
+): EventDispatcherFn {
+    const compiler = new CompilerContext();
+    const lines: string[] = [];
+
+    const awaitKeyword = isSyncEventToken(eventToken) ? '' : 'await';
+    const listeners = context.listeners;
+    if (!listeners.length) return noop;
+
+    listeners.sort((a, b) => {
+        if (a.order > b.order) return +1;
+        if (a.order < b.order) return -1;
+        return 0;
+    });
+
+    compiler.set({
+        eventToken,
+        resolveEvent,
+    });
+
+    lines.push(`
         if ('function' === typeof event) event = event();
         event = resolveEvent(eventToken, event);
         `);
 
-        for (const listener of listeners) {
-            if (isEventListenerContainerEntryCallback(listener)) {
-                const injector = listener.module ? this.injector.getInjector(listener.module) : this.injector.getRootInjector();
-                try {
-                    const fn = injectedFunction(listener.fn, injector, 1);
-                    const fnVar = compiler.reserveVariable('fn', fn);
-                    lines.push(`
+    for (const listener of listeners) {
+        if (isEventListenerContainerEntryCallback(listener)) {
+            const listenerInjector = listener.module ? injector.getInjector(listener.module) : injector.getRootInjector();
+            try {
+                const fn = injectedFunction(listener.fn, listenerInjector, 1);
+                const fnVar = compiler.reserveVariable('fn', fn);
+                lines.push(`
                         ${awaitKeyword} ${fnVar}(scopedContext.scope, event);
                         if (event.isPropagationStopped()) return;
                     `);
-                } catch (error: any) {
-                    throw new Error(`Could not build listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
-                }
-            } else if (isEventListenerContainerEntryService(listener)) {
-                const injector = listener.module ? this.injector.getInjector(listener.module) : this.injector.getRootInjector();
-                const classTypeVar = compiler.reserveVariable('classType', listener.classType);
-                const moduleVar = compiler.reserveVariable('module', listener.module);
+            } catch (error: any) {
+                throw new Error(`Could not build listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
+            }
+        } else if (isEventListenerContainerEntryService(listener)) {
+            const resolver = injector.resolve(listener.module, listener.classType);
+            const resolverVar = compiler.reserveVariable('resolver', resolver);
+            let call = `${resolverVar}(scopedContext.scope).${listener.methodName}(event)`;
 
-                const method = ReflectionClass.from(listener.classType).getMethod(listener.methodName);
-                let call = `scopedContext.get(${classTypeVar}, ${moduleVar}).${listener.methodName}(event)`;
+            const method = ReflectionClass.from(listener.classType).getMethod(listener.methodName);
 
-                if (method.getParameters().length > 1) {
-                    const fn = injectedFunction((event, classInstance, ...args: any[]) => {
-                        return classInstance[listener.methodName](event, ...args);
-                    }, injector, 2, method.type, 1);
-                    call = `${compiler.reserveVariable('fn', fn)}(scopedContext.scope, event, scopedContext.get(${classTypeVar}, ${moduleVar}))`;
-                }
+            if (method.getParameters().length > 1) {
+                const listenerInjector = listener.module ? injector.getInjector(listener.module) : injector.getRootInjector();
+                const fn = injectedFunction((event, classInstance, ...args: any[]) => {
+                    return classInstance[listener.methodName](event, ...args);
+                }, listenerInjector, 2, method.type, 1);
 
-                lines.push(`
+                call = `${compiler.reserveVariable('fn', fn)}(scopedContext.scope, event, ${resolverVar}(scopedContext.scope))`;
+            }
+
+            lines.push(`
                     ${awaitKeyword} ${call};
                     if (event.isPropagationStopped()) return;
                 `);
-            }
         }
-        if (isSyncEventToken(eventToken)) {
-            return compiler.build(lines.join('\n'), 'scopedContext', 'event') as EventDispatcherFn;
-        }
-        return compiler.buildAsync(lines.join('\n'), 'scopedContext', 'event') as EventDispatcherFn;
     }
-
-    public dispatch<T extends EventToken<any>>(eventToken: T, ...args: DispatchArguments<T>): EventDispatcherDispatchType<T> {
-        const [event, injector] = args;
-
-        let build = (eventToken as any)[this.symbol];
-        if (!build) {
-            build = (eventToken as any)[this.symbol] = { fn: this.buildFor(eventToken) };
-        }
-        return build.fn(injector || this.injector, event);
+    if (isSyncEventToken(eventToken)) {
+        return compiler.build(lines.join('\n'), 'event', 'scopedContext') as EventDispatcherFn;
     }
-
-    /**
-     * A forked EventDispatcher does not use JIT compilation and thus is slightly slower in executing listeners,
-     * but cheap in creating event dispatchers.
-     */
-    fork(): ForkedEventDispatcher {
-        return new ForkedEventDispatcher(this as any, this.injector);
-    }
+    return compiler.buildAsync(lines.join('\n'), 'event', 'scopedContext') as EventDispatcherFn;
 }
 
 function buildDispatcher(eventToken: EventToken<any>, entries: EventListenerContainerEntry[], injector: InjectorContext) {
@@ -452,8 +482,7 @@ function buildDispatcher(eventToken: EventToken<any>, entries: EventListenerCont
     }
 
     if (isSyncEventToken(eventToken)) {
-        return (parent: EventDispatcherInterface, event: ValueOrFactory<BaseEvent>) => {
-            parent.dispatch(eventToken, event);
+        return (event: ValueOrFactory<BaseEvent>) => {
             if ('function' === typeof event) event = event();
             event = resolveEvent(eventToken, event as any);
             for (const call of calls) {
@@ -463,8 +492,7 @@ function buildDispatcher(eventToken: EventToken<any>, entries: EventListenerCont
         };
     }
 
-    return async (parent: EventDispatcherInterface, event: ValueOrFactory<BaseEvent>) => {
-        await parent.dispatch(eventToken, event);
+    return async (event: ValueOrFactory<BaseEvent>) => {
         if ('function' === typeof event) event = event();
         event = resolveEvent(eventToken, event as any);
         for (const call of calls) {
@@ -472,63 +500,6 @@ function buildDispatcher(eventToken: EventToken<any>, entries: EventListenerCont
             if (event.isPropagationStopped()) return;
         }
     };
-}
-
-/**
- * A forked EventDispatcher does not use JIT compilation and thus is slightly slower in executing listeners,
- * but cheap in creating event dispatchers.
- */
-export class ForkedEventDispatcher implements EventDispatcherInterface {
-    protected listenerMap = new Map<EventToken<any>, {
-        entries: EventListenerContainerEntry[];
-        dispatcher?: (parent: EventDispatcherInterface, event: ValueOrFactory<BaseEvent>) => any;
-    }>();
-
-    constructor(protected parent: EventDispatcherInterface, protected injector: InjectorContext) {
-    }
-
-    dispatch<T extends EventToken<any>>(eventToken: T, ...args: DispatchArguments<T>): EventDispatcherDispatchType<T> {
-        const [eventIn, injector] = args;
-        const item = this.listenerMap.get(eventToken);
-
-        if (!item) return this.parent.dispatch(eventToken, ...args);
-        if (!item.dispatcher) item.dispatcher = buildDispatcher(eventToken, item.entries, injector || this.injector);
-
-        return item.dispatcher(this.parent, eventIn);
-    }
-
-    public getListeners(eventToken: EventToken<any>) {
-        let listeners = this.listenerMap.get(eventToken);
-        if (!listeners) {
-            listeners = { entries: [] };
-            this.listenerMap.set(eventToken, listeners);
-        }
-        return listeners;
-    }
-
-    add(eventToken: EventToken<any>, listener: EventListenerContainerEntry): EventDispatcherUnsubscribe {
-        const listeners = this.getListeners(eventToken);
-        listeners.entries.push(listener);
-        listeners.dispatcher = undefined;
-        return () => {
-            listeners.dispatcher = undefined;
-            const index = listeners.entries.findIndex(v => compareListenerEntry(v, listener));
-            if (index !== -1) listeners.entries.splice(index, 1);
-        };
-    }
-
-    listen<T extends EventToken<any>>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): EventDispatcherUnsubscribe {
-        return this.add(eventToken, { fn: callback, order: order });
-    }
-
-    hasListeners(eventToken: EventToken<any>): boolean {
-        if (this.listenerMap.has(eventToken)) return true;
-        return this.parent.hasListeners(eventToken);
-    }
-
-    fork(): EventDispatcherInterface {
-        return new ForkedEventDispatcher(this, this.injector);
-    }
 }
 
 export function eventWatcher(eventDispatcher: EventDispatcher, tokens: readonly EventToken<any>[]) {
@@ -549,7 +520,7 @@ export function eventWatcher(eventDispatcher: EventDispatcher, tokens: readonly 
             const data = event instanceof DataEvent ? event.data : event;
             dispatches.push([token.id, data]);
             const string = debugData(data);
-            messages.push(`${token.id}${ string ? ` ${string}` : ''}`);
+            messages.push(`${token.id}${string ? ` ${string}` : ''}`);
         });
     }
 
@@ -568,6 +539,6 @@ export function eventWatcher(eventDispatcher: EventDispatcher, tokens: readonly 
                 if (id === token.id && (!filter || filter(data))) return data;
             }
             throw new Error(`No event dispatched for token ${token.id}`);
-        }
+        },
     };
 }

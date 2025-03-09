@@ -167,7 +167,7 @@ test('connection pool 1', async () => {
     const promises: Promise<any>[] = [];
 
     async function test() {
-        const c = await client.connectionPool.getConnection();
+        const c = await client.pool.getConnection();
         await sleep(0.1 * Math.random());
         c.release();
     }
@@ -192,7 +192,7 @@ test('connection pool stress test', async () => {
     const promises: Promise<any>[] = [];
 
     async function test() {
-        const c = await client.connectionPool.getConnection();
+        const c = await client.pool.getConnection();
         await sleep(0.001 * Math.random());
         c.release();
     }
@@ -219,38 +219,38 @@ test('connection pool 10', async () => {
     const client = new MongoClient('mongodb://127.0.0.1?maxPoolSize=10');
 
     {
-        const c1 = await client.connectionPool.getConnection();
-        const c2 = await client.connectionPool.getConnection();
+        const c1 = await client.pool.getConnection();
+        const c2 = await client.pool.getConnection();
 
         expect(c1 === c2).toBe(false);
 
         c1.release();
         c2.release();
 
-        const c3 = await client.connectionPool.getConnection();
+        const c3 = await client.pool.getConnection();
         expect(c3 === c1).toBe(true);
         c3.release();
     }
 
     {
-        const c1 = await client.connectionPool.getConnection();
-        const c2 = await client.connectionPool.getConnection();
-        const c3 = await client.connectionPool.getConnection();
-        const c4 = await client.connectionPool.getConnection();
-        const c5 = await client.connectionPool.getConnection();
-        const c6 = await client.connectionPool.getConnection();
-        const c7 = await client.connectionPool.getConnection();
-        const c8 = await client.connectionPool.getConnection();
-        const c9 = await client.connectionPool.getConnection();
-        const c10 = await client.connectionPool.getConnection();
+        const c1 = await client.pool.getConnection();
+        const c2 = await client.pool.getConnection();
+        const c3 = await client.pool.getConnection();
+        const c4 = await client.pool.getConnection();
+        const c5 = await client.pool.getConnection();
+        const c6 = await client.pool.getConnection();
+        const c7 = await client.pool.getConnection();
+        const c8 = await client.pool.getConnection();
+        const c9 = await client.pool.getConnection();
+        const c10 = await client.pool.getConnection();
         // this blocks
         let c11: any;
-        client.connectionPool.getConnection().then((c) => {
+        client.pool.getConnection().then((c) => {
             c11 = c;
             expect(c11.id).toBe(0);
         });
         let c12: any;
-        client.connectionPool.getConnection().then((c) => {
+        client.pool.getConnection().then((c) => {
             c12 = c;
             expect(c12.id).toBe(1);
         });

@@ -1,14 +1,80 @@
 import { afterEach } from '@jest/globals';
 import { uuid } from '@deepkit/type';
 import { ChildProcess, spawn, spawnSync } from 'child_process';
-import { existsSync, mkdirSync, rmdirSync } from 'fs';
-import { sleep } from '@deepkit/core';
-import { createConnection } from 'net';
+import { existsSync, mkdirSync } from 'fs';
+import { asyncOperation, sleep } from '@deepkit/core';
+import { createConnection, Server, Socket } from 'net';
+import { connect, createServer } from 'node:net';
+import { rmSync } from 'node:fs';
 
-interface MongoInstance {
-    port: number;
-    closeRequested: boolean;
-    process: ChildProcess;
+class MongoInstance {
+    proxy: Server;
+
+    constructor(
+        public name: string,
+        public port: number,
+        public process: ChildProcess,
+    ) {
+        this.proxy = this.createProxy();
+    }
+
+    createProxy() {
+        if (this.proxy?.listening) this.proxy.close();
+
+        return createServer(async (clientSocket) => {
+            await sleep(this.connectionDelay);
+            if (this.connectionDrop) {
+                clientSocket.destroy();
+                return;
+            }
+
+            this.connections.push(clientSocket);
+            const mongoSocket = connect(this.port, 'localhost');
+
+            if (this.connectionDropAfterBytes) {
+                let totalBytes = 0;
+                clientSocket.on('data', (data) => {
+                    totalBytes += data.length;
+                    if (totalBytes >= this.connectionDropAfterBytes) {
+                        clientSocket.destroy();
+                    }
+                });
+            }
+            clientSocket.pipe(mongoSocket);
+            mongoSocket.pipe(clientSocket);
+
+            clientSocket.on('close', () => {
+                this.connections.splice(this.connections.indexOf(clientSocket), 1);
+                mongoSocket.end();
+            });
+
+            mongoSocket.on('close', () => {
+                clientSocket.end();
+            });
+        });
+    }
+
+    stopProxy() {
+        this.proxy?.close();
+    }
+
+    proxyPort: number = 0;
+    connections: Socket[] = [];
+
+    connectionDelay: number = 0;
+    connectionDrop = false;
+
+    connectionDropAfterBytes: number = 0;
+
+    closeConnections() {
+        for (const connection of this.connections) {
+            connection.end();
+        }
+    }
+
+    public getUrl(): string {
+        return `mongodb://127.0.0.1:${this.proxyPort}`;
+    }
 }
 
 const portRangeStart = Number(process.env.MONGO_PORT_RANGE_START || 27000);
@@ -18,7 +84,7 @@ const createdEnvs: MongoEnv[] = [];
 
 afterEach(() => {
     for (const env of createdEnvs) {
-        env.close();
+        env.closeAll();
     }
     createdEnvs.splice(0, createdEnvs.length);
 });
@@ -42,18 +108,21 @@ export class MongoEnv {
     protected instances = new Map<string, MongoInstance>();
     protected tempFolder = `/tmp/mongo-env/` + uuid();
 
-    constructor() {
+    constructor(
+        protected name: string = 'default',
+        protected startPort: number = portRangeStart,
+    ) {
         mkdirSync(this.tempFolder, { recursive: true });
         createdEnvs.push(this);
     }
 
-    close() {
+    closeAll() {
         for (const p of this.instances.values()) {
             if (!p.process.killed) p.process.kill();
         }
 
         if (existsSync(this.tempFolder)) {
-            rmdirSync(this.tempFolder, { recursive: true });
+            rmSync(this.tempFolder, { recursive: true });
         }
     }
 
@@ -65,7 +134,7 @@ export class MongoEnv {
 
     public async addReplicaSet(host: string, member: string, priority: number, votes: number): Promise<any> {
         const instance = this.getInstance(member);
-        const line = {host: 'host.docker.internal:' + instance.port, priority: priority, votes: votes};
+        const line = { host: 'host.docker.internal:' + instance.port, priority: priority, votes: votes };
         await this.execute(host, `rs.add(${JSON.stringify(line)})`);
     }
 
@@ -109,7 +178,7 @@ export class MongoEnv {
     }
 
     protected getFreePort(): number {
-        for (let i = portRangeStart; i < portRangeStart + 1000; i++) {
+        for (let i = this.startPort; i < this.startPort + 1000; i++) {
             if (!this.isPortReserved(i)) {
                 this.reservedPorts.push(i);
                 return i;
@@ -118,18 +187,42 @@ export class MongoEnv {
         throw new Error('Could not find free port');
     }
 
+    stop(name: string) {
+        const args: string[] = [
+            'stop',
+            `mongo-env-${name}`,
+        ];
+
+        console.log(name, 'execute: docker ' + args.join(' '));
+        spawnSync('docker', args, {
+            stdio: 'inherit',
+        });
+    }
+
+    protected async ensureNetwork() {
+        const args: string[] = [
+            'network',
+            'create',
+            '--attachable',
+            'mongo-env',
+        ];
+
+        spawnSync('docker', args, {
+            encoding: 'utf8',
+        });
+    }
+
     public async execute(name: string, cmd: string) {
         const instance = this.getInstance(name);
 
         const args: string[] = [
             'run',
             '--rm',
+            '--network', 'mongo-env',
             '-i',
             mongoImage,
             'mongo',
-            '--quiet',
-            '--host', 'host.docker.internal',
-            '--port', `${instance.port}`,
+            '--host', instance.name,
         ];
 
         console.log(name, 'execute: docker ' + args.join(' '), cmd);
@@ -137,6 +230,7 @@ export class MongoEnv {
             input: cmd,
             encoding: 'utf8',
         });
+        console.log('executed', res);
         if (res.status !== 0) {
             console.error('command stderr:', res.stderr);
             throw new Error(`Could not execute on ${name} command "${cmd}": ${res.stderr} ${res.stdout}`);
@@ -144,18 +238,24 @@ export class MongoEnv {
         return res.stdout;
     }
 
-    public async addMongo(name: string, replSet?: string): Promise<MongoInstance> {
+    public async addMongo(name: string = '', replSet?: string): Promise<MongoInstance> {
         const port = this.getFreePort();
+        if (!name) name = 'mongo' + port;
+
+        await this.ensureNetwork();
 
         // todo, rework to allow specifying a network, which will
         //  be created automatically + hostname. this fixes replicaSet
         const args: string[] = [
             'run',
             '--rm',
+            '--hostname', name,
+            '--name', `mongo-env-${name}`,
+            '--network', 'mongo-env',
             '-p', `${port}:27017`,
             '--add-host=host.docker.internal:host-gateway',
             mongoImage,
-            '--bind_ip_all'
+            '--bind_ip_all',
         ];
 
         if (replSet) args.push('--replSet', replSet);
@@ -165,13 +265,24 @@ export class MongoEnv {
             // stdio: 'ignore',
             stdio: 'pipe',
         });
+        p.stderr.pipe(process.stderr);
 
-        p.on('exit', () => {
-            this.releasePort(port);
-            this.instances.delete(name);
-        });
+        const instance = new MongoInstance(
+            name,
+            port,
+            p,
+        );
 
-        const listening = new Promise<void>((resolve) => {
+        const listening = asyncOperation<void>((resolve, reject) => {
+            p.on('exit', (code) => {
+                if (code !== 0) {
+                    reject(new Error(`Mongo exited with code ${code}`));
+                }
+                instance.proxy.close();
+                this.releasePort(port);
+                this.instances.delete(name);
+            });
+
             p.stdout.on('data', (data) => {
                 if (data.toString().includes('Listening on')) {
                     resolve();
@@ -181,11 +292,12 @@ export class MongoEnv {
 
         await listening;
 
-        const instance = {
-            closeRequested: false,
-            process: p,
-            port: port,
-        };
+        await asyncOperation<void>((resolve) => {
+            instance.proxy.listen(undefined, () => {
+                instance.proxyPort = (instance.proxy.address() as { port: number }).port;
+                resolve();
+            });
+        });
 
         this.instances.set(name, instance);
 
@@ -206,7 +318,7 @@ export class MongoEnv {
                 return instance;
             }
 
-            await sleep(0.3);
+            await sleep(0.1);
         }
         p.kill();
         this.instances.delete(name);

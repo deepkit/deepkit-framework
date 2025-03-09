@@ -39,12 +39,12 @@ import {
     serializeBinaryRpcMessage,
 } from '../protocol.js';
 import { ActionTypes, RpcServerAction } from './action.js';
-import { RpcKernelSecurity, SessionState } from './security.js';
+import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security.js';
 import { RpcActionClient, RpcControllerState } from '../client/action.js';
 import { RemoteController } from '../client/client.js';
-import { InjectorContext, InjectorModule, NormalizedProvider } from '@deepkit/injector';
+import { InjectorContext, InjectorModule, NormalizedProvider, Resolver } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
-import { rpcClass } from '../decorators.js';
+import { RpcAction, rpcClass } from '../decorators.js';
 import {
     createWriter,
     RpcBinaryWriter,
@@ -410,8 +410,18 @@ export class RpcKernelConnections {
     }
 }
 
+export interface RpcCacheAction {
+    controller: RpcControllerAccess;
+    fn: Function;
+    types: ActionTypes;
+    action: RpcAction;
+    resolver: Resolver<any>;
+    label: string; //controller.action
+}
+
 export class RpcCache {
     actionsTypes: { [id: string]: ActionTypes } = {};
+    actions: { [id: string]: RpcCacheAction } = {};
 }
 
 export class RpcKernelConnection extends RpcKernelBaseConnection {

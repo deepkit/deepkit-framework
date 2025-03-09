@@ -50,12 +50,19 @@ export class MongoClientConfig {
     srvDomain: string = '';
 
     constructor(
-        connectionString: string
+        connectionString: string,
     ) {
         this.parseConnectionString(connectionString);
     }
 
-     applyReadPreference(cmd: ReadPreferenceMessage) {
+    getTopology(): string {
+        return this.hosts.map(v => `${v.hostname}:${v.port}=${v.status}`).join(',');
+    }
+
+    /**
+     * @see https://github.com/mongodb/specifications/blob/master/source/server-selection/server-selection.md#passing-read-preference-to-mongos-and-load-balancers
+     */
+    applyReadPreference(cmd: ReadPreferenceMessage) {
         if (this.options.readPreference) {
             cmd.$readPreference = {
                 mode: this.options.readPreference,

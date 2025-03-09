@@ -23,9 +23,9 @@ interface IsMasterSchema {
     $db: string;
     saslSupportedMechs?: string;
     client: {
-        // application: {
-        //     name: t.string,
-        // },
+        application: {
+            name: string,
+        },
         driver: {
             name: string;
             version: string;
@@ -85,15 +85,15 @@ export class HandshakeCommand extends Command<boolean> {
             isMaster: 1,
             $db: db,
             client: {
-                // application: {
-                //     name: 'undefined'
-                // },
+                application: {
+                    name: config.options.appName || 'deepkit'
+                },
                 driver: {
-                    name: 'deepkit/mongo',
+                    name: 'deepkit',
                     version: '1.0.0'
                 },
                 os: {
-                    type: 'Darwin'
+                    type: 'Linux'
                 }
             }
         };
@@ -107,7 +107,7 @@ export class HandshakeCommand extends Command<boolean> {
 
         host.setType(hostType);
         if (hostType === HostType.arbiter) {
-            //If the server is of type RSArbiter, no authentication is possible and the handshake is complete.
+            // If the server is of type RSArbiter, no authentication is possible and the handshake is complete.
             return true;
         }
 

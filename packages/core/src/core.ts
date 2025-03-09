@@ -543,6 +543,13 @@ export async function asyncOperation<T>(executor: (resolve: (value: T) => void, 
 }
 
 /**
+ * Forwards an existing promise while maintaining the stack trace.
+ */
+export function forwardPromise<T>(promise: Promise<T>): Promise<T> {
+    return asyncOperation((resolve, reject) => promise.then(resolve, reject));
+}
+
+/**
  * When an API is called that returns a promise that loses the stack trace on error, you can use fixAsyncOperation().
  *
  * ```typescript

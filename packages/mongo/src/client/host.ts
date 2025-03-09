@@ -8,7 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export const enum HostType {
+import { MongoConnection } from './connection';
+
+export enum HostType {
     unknown,
     standalone,
     primary,
@@ -19,21 +21,37 @@ export const enum HostType {
     ghost,
 }
 
-interface ConnectionInterface {
-    close();
+export class HostStats {
+    // activeConnections: number = 0;
+    // freeConnections: number = 0;
+
+    // activeCommands: number = 0;
+    // totalCommands: number = 0;
 }
 
 export class Host {
-    protected type: HostType = HostType.unknown;
+    type: HostType = HostType.unknown;
+
+    status: string = 'pending';
 
     protected typeSetAt?: Date;
 
-    /**
-     * Round Trip Times of the `ismaster` command, for `nearest`
-     */
-    protected rrt?: number;
+    readonly connections: MongoConnection[] = [];
 
-    public readonly connections: ConnectionInterface[] = [];
+    lastScan: Date = new Date(1000, 0);
+
+    stats: HostStats = new HostStats;
+
+    staleness: number = 0;
+
+    tags: { [name: string]: string } = {};
+
+    /**
+     * Average latency in ms (used for `nearest`)
+     *
+     * Round Trip Times of the `ismaster` command.
+     */
+    latency: number = 0;
 
     constructor(
         public readonly hostname: string,
@@ -41,21 +59,36 @@ export class Host {
     ) {
     }
 
+    countReservedConnections(): number {
+        return this.connections.filter(v => v.reserved).length;
+    }
+
+    countTotalConnections(): number {
+        return this.connections.length;
+    }
+
+    countFreeConnections(): number {
+        return this.connections.filter(v => !v.reserved).length;
+    }
+
     get id() {
         return `${this.hostname}:${this.port}`;
     }
 
     isWritable(): boolean {
+        // todo: check if dead. check if correct replica set
         return this.type === HostType.primary || this.type === HostType.standalone || this.type === HostType.mongos;
     }
 
-    isSecondary(): boolean {
-        return this.type === HostType.secondary;
-    }
-
     isReadable(): boolean {
+        // todo: check if dead. check if correct replica set
         return this.type === HostType.primary || this.type === HostType.standalone
             || this.type === HostType.mongos || this.type === HostType.secondary;
+    }
+
+    // state for not usable hosts like arbiters or hidden secondaries
+    isUsable(): boolean {
+        return this.isWritable() || this.isReadable();
     }
 
     setType(type: HostType) {

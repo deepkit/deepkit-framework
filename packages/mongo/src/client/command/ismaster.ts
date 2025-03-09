@@ -38,6 +38,8 @@ export interface IsMasterResponse extends BaseResponse {
     secondary?: boolean;
     arbiterOnly?: boolean;
     hidden?: boolean;
+
+    [k: string]: any;
 }
 
 interface IsMasterSchema {

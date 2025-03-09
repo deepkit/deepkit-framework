@@ -14,3 +14,4 @@ export { BaseParser } from './src/bson-parser.js';
 export * from './src/bson-deserializer.js';
 export * from './src/bson-serializer.js';
 export * from './src/strings.js';
+export * from './src/stream.js';

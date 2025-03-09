@@ -14,24 +14,36 @@ import { createConnection, Socket } from 'net';
 import { connect as createTLSConnection, TLSSocket } from 'tls';
 import { Command, TransactionalMessage } from './command/command.js';
 import { stringifyType, Type, uuid } from '@deepkit/type';
-import { BSONBinarySerializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
+import { BSONBinarySerializer, BsonStreamReader, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { HandshakeCommand } from './command/handshake.js';
 import { MongoClientConfig } from './config.js';
 import { MongoConnectionError, MongoError } from './error.js';
 import { DatabaseTransaction } from '@deepkit/orm';
 import { CommitTransactionCommand } from './command/commitTransaction.js';
 import { AbortTransactionCommand } from './command/abortTransaction.js';
+import { EventDispatcher, EventTokenSync } from '@deepkit/event';
+import { IsMasterCommand } from './command/ismaster';
+import { Logger } from '@deepkit/logger';
 
 export enum MongoConnectionStatus {
     pending = 'pending',
     connecting = 'connecting',
     connected = 'connected',
     disconnected = 'disconnected',
+    error = 'error',
 }
 
 export interface ConnectionRequest {
-    readonly: boolean;
-    nearest: boolean;
+    /**
+     * When set to true, connections to a primary are returned.
+     *
+     * Is set to true automatically when a write operation is executed.
+     *
+     * Default is false.
+     */
+    writable: boolean;
+
+    readPreference: 'primary' | 'secondary' | 'nearest' | 'primaryPreferred' | 'secondaryPreferred';
 }
 
 export class MongoStats {
@@ -54,48 +66,139 @@ export class MongoStats {
     bytesSent: number = 0;
 }
 
+export const onMongoTopologyChange = new EventTokenSync('mongo.topologyChange');
+
+
 export class MongoConnectionPool {
     protected connectionId: number = 0;
+
     /**
      * Connections, might be in any state, not necessarily connected.
      */
     public connections: MongoConnection[] = [];
 
-    protected queue: { resolve: (connection: MongoConnection) => void, request: ConnectionRequest }[] = [];
-
-    protected nextConnectionClose: Promise<boolean> = Promise.resolve(true);
+    protected queue: {
+        resolve: (connection: MongoConnection) => void,
+        reject: (error: Error) => void,
+        request: ConnectionRequest,
+        time: number
+    }[] = [];
 
     protected lastError?: Error;
+
+    protected lastTopologyChange: Date = new Date(1000, 0);
 
     constructor(
         protected config: MongoClientConfig,
         protected serializer: BSONBinarySerializer,
         protected stats: MongoStats,
+        public logger: Logger,
+        public eventDispatcher: EventDispatcher,
     ) {
     }
 
-    protected async waitForAllConnectionsToConnect(throws: boolean = false): Promise<void> {
-        const promises: Promise<any>[] = [];
-        for (const connection of this.connections) {
-            if (connection.connectingPromise) {
-                promises.push(connection.connectingPromise);
-            }
+    // protected async waitForAllConnectionsToConnect(throws: boolean = false): Promise<void> {
+    //     const promises: Promise<any>[] = [];
+    //     for (const connection of this.connections) {
+    //         if (connection.connectingPromise) {
+    //             promises.push(connection.connectingPromise);
+    //         }
+    //     }
+    //
+    //     if (!promises.length) return;
+    //     try {
+    //         if (throws) {
+    //             await Promise.all(promises);
+    //         } else {
+    //             await Promise.allSettled(promises);
+    //         }
+    //     } catch (error: any) {
+    //         throw new MongoConnectionError(`Failed to connect: ${formatError(error)}`, { cause: error });
+    //     }
+    // }
+
+    protected connectPromise?: Promise<void>;
+    protected connectPromiseHandles?: { resolve: () => void, reject: (error: Error) => void };
+
+    public async connect() {
+        if (this.isConnected()) return;
+
+        if (this.connectPromise) {
+            await this.connectPromise;
+            return;
         }
 
-        if (!promises.length) return;
-        try {
-            if (throws) {
-                await Promise.all(promises);
-            } else {
-                await Promise.allSettled(promises);
+        // wait for topology change: we need at least one secondary or primary online
+        return this.connectPromise = asyncOperation<void>((resolve, reject) => {
+            this.connectPromiseHandles = { resolve, reject };
+            this.findTopology();
+        });
+    }
+
+    protected onTopologyProgress(status: 'start' | 'host' | 'done' | 'fail', error?: Error) {
+        // when a new host's type was detected
+
+        // todo: we need to have a state that shows the progress of topology discovery
+        //  that is, if the progress ended, we need to
+        //  - reject connectPromise
+        //  - reject all pending queue requests
+
+        console.log('onTopologyProgress', status);
+        if (status === 'done') {
+            const queue = this.queue.splice(0, this.queue.length);
+            for (const waiter of queue) {
+                const host = this.findHostForRequest(waiter.request);
+                if (host) {
+                    const connection = this.getConnectionForHost(host);
+                    if (connection) {
+                        waiter.resolve(connection);
+                        continue;
+                    }
+                }
+
+                const error = new MongoConnectionError(
+                    `Could not find host for connection request. (readPreference=${waiter.request.readPreference}, topology=${this.config.getTopology()})`,
+                );
+                waiter.reject(error);
             }
-        } catch (error: any) {
-            throw new MongoConnectionError(`Failed to connect: ${formatError(error)}`, { cause: error });
+
+            if (this.connectPromiseHandles) {
+                if (this.isConnected()) {
+                    this.connectPromiseHandles.resolve();
+                } else {
+                    this.connectPromiseHandles.reject(new MongoConnectionError('Connection failed: could not find any primary or secondary host'));
+                }
+                this.connectPromiseHandles = undefined;
+                this.connectPromise = undefined;
+            }
         }
     }
 
-    public async connect() {
-        await this.ensureHostsConnected(true);
+    /**
+     * Returns true when at least one primary or secondary host is connected.
+     */
+    public isConnected(): boolean {
+        for (const host of this.config.hosts) {
+            if (host.countTotalConnections() > 0 && (host.isReadable() || host.isWritable())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns true when at least one connection is writable.
+     */
+    public isWritable(): boolean {
+        for (const connection of this.connections) {
+            if (connection.host.isWritable()) return true;
+        }
+
+        return false;
+    }
+
+    public getConnectedConnections(): MongoConnection[] {
+        return this.connections.filter(v => v.isConnected());
     }
 
     public close() {
@@ -106,66 +209,184 @@ export class MongoConnectionPool {
         }
     }
 
-    protected ensureHostsConnectedPromise?: Promise<void>;
+    protected scanHost(host: Host): void {
+        this._scanHost(host).then((error) => {
+            this.onTopologyProgress('host');
 
-    public async ensureHostsConnected(throws: boolean = false) {
-        if (this.ensureHostsConnectedPromise) return this.ensureHostsConnectedPromise;
-        //make sure each host has at least one connection
-        //getHosts automatically updates hosts (mongodb-srv) and returns new one,
-        //so we don't need any interval to automatically update it.
-        const hosts = await this.config.getHosts();
-        for (const host of hosts) {
-            if (host.connections.length > 0) continue;
-            this.newConnection(host);
-        }
-
-        return this.ensureHostsConnectedPromise = asyncOperation(async (resolve) => {
-            await this.waitForAllConnectionsToConnect(throws);
-            resolve(undefined);
-        }).then(() => {
-            this.ensureHostsConnectedPromise = undefined;
+            // check if we are done
+            let done = true;
+            for (const host of this.config.hosts) {
+                if (host.lastScan.getTime() >= this.lastTopologyChange.getTime()) continue;
+                done = false;
+            }
+            if (done) {
+                this.onTopologyProgress('done');
+            }
+        }).catch((error) => {
+            this.logger.log('Mongo scanHost error', error);
         });
     }
 
-    protected findHostForRequest(hosts: Host[], request: ConnectionRequest): Host {
-        //todo, handle request.nearest
-        for (const host of hosts) {
-            if (!request.readonly && host.isWritable()) return host;
-            if (request.readonly && host.isReadable()) return host;
+    protected async _scanHost(host: Host): Promise<void> {
+        let connection = this.getConnectionForHost(host);
+        if (!connection) {
+            // we force create a connection to this host, ignoring limits
+            // as we don't want to wait for busy connections to be released.
+            connection = this.createConnection(host);
         }
 
-        throw new MongoConnectionError(`Could not find host for connection request. (readonly=${request.readonly}, hosts=${hosts.length}). Last Error: ${this.lastError}`);
+        try {
+            connection.reserved = true;
+            console.log('scan host', host.hostname);
+            await connection.connect();
+            const data = await connection.execute(new IsMasterCommand());
+            console.log('data', host.hostname, data);
+        } catch (error) {
+            console.log('scan error', error);
+            host.status = 'scan(): ' + formatError(error);
+        } finally {
+            host.lastScan = new Date;
+            connection.release();
+        }
     }
 
-    protected createAdditionalConnectionForRequest(request: ConnectionRequest): MongoConnection {
-        const hosts = this.config.hosts;
-        const host = this.findHostForRequest(hosts, request);
+    /**
+     * Creates a queue of tasks for each host to find out the topology.
+     * If a new host is found, the task list increases, until no new hosts are found.
+     */
+    protected findTopology(): boolean {
+        if (Date.now() - this.lastTopologyChange.getTime() < 1000 * 60) return true;
+        this.lastTopologyChange = new Date();
 
-        return this.newConnection(host);
+        this.config.getHosts().then((hosts) => {
+            for (const host of hosts) {
+                this.scanHost(host);
+            }
+        }).catch((error) => {
+            this.onTopologyProgress('fail', error);
+        });
+        return false;
     }
 
-    protected newConnection(host: Host): MongoConnection {
+    protected findHostForRequest(request: ConnectionRequest): Host | undefined {
+        let bestHost: Host | undefined = undefined;
+        let bestLatency = Infinity;
+        let bestBusyConnections = Infinity;
+        let bestFreeConnections = -1;
+        let hasPrimary = false;
+        let hasSecondary = false;
+
+        const tags = this.config.options.getReadPreferenceTags();
+
+        for (const host of this.config.hosts) {
+            if (!host.isUsable()) continue;
+            const isPrimary = host.isWritable();
+            const isSecondary = host.isReadable();
+            if (request.writable && isPrimary) return host;
+
+            if (tags.length) {
+                let found = false;
+                for (const tag of tags) {
+                    // todo this is wrong since "tag sets" means {}[]
+                    if (host.tags[tag.key] === tag.value) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) continue;
+            }
+
+            if (this.config.options.maxStalenessSeconds && host.staleness > this.config.options.maxStalenessSeconds) continue;
+
+            const busyConnections = host.countReservedConnections();
+            const freeConnections = host.countFreeConnections();
+            const latency = host.latency;
+
+            if (request.readPreference === 'primary' && !isPrimary) continue;
+            if (request.readPreference === 'secondary' && !isSecondary) continue;
+
+            hasPrimary = hasPrimary || isPrimary;
+            hasSecondary = hasSecondary || isSecondary;
+
+            let selectHost = false;
+
+            if (request.readPreference === 'primaryPreferred' && isPrimary) {
+                return host;
+            }
+            if (request.readPreference === 'secondaryPreferred' && isSecondary) {
+                selectHost = true;
+            }
+            if (request.readPreference === 'nearest') {
+                if (latency < bestLatency) {
+                    bestLatency = latency;
+                    selectHost = true;
+                }
+            }
+            if (!selectHost) {
+                if (busyConnections < bestBusyConnections) {
+                    bestBusyConnections = busyConnections;
+                    selectHost = true;
+                } else if (busyConnections === bestBusyConnections && freeConnections > bestFreeConnections) {
+                    bestFreeConnections = freeConnections;
+                    selectHost = true;
+                }
+            }
+
+            if (selectHost) {
+                bestHost = host;
+            }
+        }
+
+        return bestHost;
+    }
+
+    protected createConnection(host: Host): MongoConnection {
         this.stats.connectionsCreated++;
         const connection = new MongoConnection(this.connectionId++, host, this.config, this.serializer, (connection) => {
             arrayRemoveItem(host.connections, connection);
             arrayRemoveItem(this.connections, connection);
-            //onClose does not automatically reconnect. Only new commands re-establish connections.
+            // onClose does not automatically reconnect. Only new commands re-establish connections.
         }, (connection) => {
             this.release(connection);
         }, (bytesSent) => {
             this.stats.bytesSent += bytesSent;
-        }, (bytesReceived) =>{
+        }, (bytesReceived) => {
             this.stats.bytesReceived += bytesReceived;
+        });
+        connection.connect().catch((error) => {
+            host.status = 'connect(): ' + formatError(error);
         });
         host.connections.push(connection);
         this.connections.push(connection);
         return connection;
     }
 
+    // protected matchRequest(host: Host, request: ConnectionRequest): boolean {
+    //     if (!host.isUsable()) return false;
+    //     if (request.writable && !connection.host.isWritable()) return false;
+    //     if (request.readPreference === 'primary' && !connection.host.isWritable()) return false;
+    //     if (request.readPreference === 'secondary' && !connection.host.isReadable()) return false;
+    //     return true;
+    // }
+
     protected release(connection: MongoConnection) {
         for (let i = 0; i < this.queue.length; i++) {
             const waiter = this.queue[i];
-            if (!this.matchRequest(connection, waiter.request)) continue;
+
+            // check if timed out
+            if (this.config.options.connectionAcquisitionTimeout && Date.now() - waiter.time > this.config.options.connectionAcquisitionTimeout) {
+                this.queue.splice(i, 1);
+                waiter.reject(new MongoConnectionError(`Connection acquisition timed out after ${Date.now() - waiter.time}ms (max ${this.config.options.connectionAcquisitionTimeout}ms)`));
+                continue;
+            }
+
+            if (waiter.request.writable && !connection.host.isWritable()) continue;
+            if (waiter.request.readPreference === 'primary' && !connection.host.isWritable()) continue;
+            if (waiter.request.readPreference === 'secondary' && !connection.host.isReadable()) continue;
+            if (!connection.host.isUsable()) continue;
+
+            // todo this needs to change, we just need findHost again
+            // if (!this.matchRequest(connection, waiter.request)) continue;
 
             this.stats.connectionsReused++;
             this.queue.splice(i, 1);
@@ -183,35 +404,56 @@ export class MongoConnectionPool {
             }
 
             connection.close();
-        }, this.config.options.maxIdleTimeMS);
+        }, this.config.options.maxIdleTime);
     }
 
-    protected matchRequest(connection: MongoConnection, request: ConnectionRequest): boolean {
-        if (!request.readonly && !connection.host.isWritable()) return false;
-
-        if (!request.readonly) {
-            if (connection.host.isSecondary() && !this.config.options.secondaryReadAllowed) return false;
-            if (!connection.host.isReadable()) return false;
+    protected applyRequestDefaults(request: Partial<ConnectionRequest>): ConnectionRequest {
+        if (request.writable === undefined) request.writable = false;
+        if (!request.readPreference) {
+            request.readPreference = this.config.options.readPreference || 'primary';
         }
-
-        return true;
+        return request as ConnectionRequest;
     }
 
     /**
      * Returns an existing or new connection, that needs to be released once done using it.
      */
-    async getConnection(request: Partial<ConnectionRequest> = {}): Promise<MongoConnection> {
-        const r = Object.assign({ readonly: false, nearest: false }, request) as ConnectionRequest;
+    async getConnection(partialRequest: Partial<ConnectionRequest> = {}): Promise<MongoConnection> {
+        const request = this.applyRequestDefaults(partialRequest);
+        const up2date = this.findTopology();
 
-        await this.ensureHostsConnected(true);
+        // todo: we should wait here if we know topology changed
+        //  and we have to ask all hosts first.
 
-        for (const connection of this.connections) {
+        const host = this.findHostForRequest(request);
+
+        if (!host && up2date) {
+            throw new MongoConnectionError(
+                `Could not find host for connection request. (readPreference=${request.readPreference}, topology=${this.config.getTopology()})`,
+            );
+        }
+
+        if (host) {
+            const connection = this.getConnectionForHost(host);
+            if (connection) return connection;
+
+            if (host.connections.length < this.config.options.maxPoolSize) {
+                const connection = this.createConnection(host);
+                connection.reserved = true;
+                return connection;
+            }
+        }
+
+        return asyncOperation((resolve, reject) => {
+            this.stats.connectionsQueued++;
+            this.queue.push({ resolve, reject, request, time: Date.now() });
+        });
+    }
+
+    protected getConnectionForHost(host: Host): MongoConnection | undefined {
+        for (const connection of host.connections) {
             if (!connection.isConnected()) continue;
             if (connection.reserved) continue;
-
-            if (request.nearest) throw new MongoConnectionError('Nearest not implemented yet');
-
-            if (!this.matchRequest(connection, r)) continue;
 
             this.stats.connectionsReused++;
             connection.reserved = true;
@@ -222,17 +464,7 @@ export class MongoConnectionPool {
 
             return connection;
         }
-
-        if (this.connections.length < this.config.options.maxPoolSize) {
-            const connection = this.createAdditionalConnectionForRequest(r);
-            connection.reserved = true;
-            return connection;
-        }
-
-        return asyncOperation((resolve) => {
-            this.stats.connectionsQueued++;
-            this.queue.push({ resolve, request: r });
-        });
+        return;
     }
 }
 
@@ -306,11 +538,12 @@ export class MongoConnection {
 
     public transaction?: MongoDatabaseTransaction;
 
-    responseParser: ResponseParser;
+    responseParser: BsonStreamReader;
     error?: Error;
 
     bytesReceived: number = 0;
     bytesSent: number = 0;
+    closed: boolean = false;
 
     protected boundSendMessage = this.sendMessage.bind(this);
 
@@ -324,13 +557,13 @@ export class MongoConnection {
         protected onSent: (bytes: number) => void,
         protected onReceived: (bytes: number) => void,
     ) {
-        this.responseParser = new ResponseParser(this.onResponse.bind(this));
+        this.responseParser = new BsonStreamReader(this.onResponse.bind(this));
 
         if (this.config.options.ssl === true) {
             const options: { [name: string]: any } = {
                 host: host.hostname,
                 port: host.port,
-                timeout: config.options.connectTimeoutMS,
+                timeout: config.options.socketTimeout,
                 servername: host.hostname,
             };
             const optional = {
@@ -357,7 +590,7 @@ export class MongoConnection {
             this.socket = createConnection({
                 host: host.hostname,
                 port: host.port,
-                timeout: config.options.connectTimeoutMS,
+                timeout: config.options.socketTimeout,
             });
 
             this.socket.on('data', (data) => {
@@ -382,17 +615,47 @@ export class MongoConnection {
             //
             // read();
         }
+        this.connectingPromise = asyncOperation(async (resolve, reject) => {
+            this.socket.on('timeout', () => {
+                this.socket.destroy(new Error('Socket timeout'));
+            });
 
-        this.socket.on('close', () => {
-            this.status = MongoConnectionStatus.disconnected;
-            onClose(this);
-        });
+            this.socket.on('close', () => {
+                // console.log('close', this.id);
+                if (this.status !== MongoConnectionStatus.error) {
+                    this.status = MongoConnectionStatus.disconnected;
+                    this.closed = true;
+                    this.onClose(this);
+                    reject(new MongoConnectionError('Connection closed'));
+                }
+            });
 
-        //important to catch it, so it doesn't bubble up
-        this.connect().catch((error) => {
-            this.error = error;
-            this.socket.end();
-            onClose(this);
+            this.socket.on('error', (error) => {
+                // console.log('error', this.id, error);
+                this.connectingPromise = undefined;
+                this.status = MongoConnectionStatus.error;
+                this.closed = true;
+                this.error = new MongoConnectionError(`Connection failed ${formatError(error.message)}`);
+                reject(this.error);
+            });
+
+            if (this.socket.destroyed) {
+                this.status = MongoConnectionStatus.disconnected;
+                this.connectingPromise = undefined;
+                resolve();
+            }
+
+            if (await this.execute(new HandshakeCommand())) {
+                this.status = MongoConnectionStatus.connected;
+                this.socket.setTimeout(this.config.options.socketTimeout);
+                this.connectingPromise = undefined;
+                resolve();
+            } else {
+                this.status = MongoConnectionStatus.error;
+                this.error = new MongoError('Connection error: Could not complete handshake 🤷‍️');
+                this.connectingPromise = undefined;
+                reject(this.error);
+            }
         });
     }
 
@@ -405,6 +668,7 @@ export class MongoConnection {
     }
 
     close() {
+        console.log('external close');
         this.status = MongoConnectionStatus.disconnected;
         this.socket.end();
     }
@@ -439,8 +703,9 @@ export class MongoConnection {
      * when timed out, parser error, or any other error.
      */
     public async execute<T extends Command<unknown>>(command: T): Promise<ReturnType<T['execute']>> {
-        if (this.status === MongoConnectionStatus.pending) await this.connect();
-        if (this.status === MongoConnectionStatus.disconnected) throw new MongoError('Disconnected');
+        await this.connectingPromise;
+        // if (this.status === MongoConnectionStatus.pending) await this.connect();
+        // if (this.status === MongoConnectionStatus.disconnected) throw new MongoError('Disconnected');
 
         if (this.lastCommand && this.lastCommand.promise) {
             await this.lastCommand.promise;
@@ -460,6 +725,7 @@ export class MongoConnection {
     }
 
     protected sendMessage<T>(type: Type, message: T) {
+        //todo: check if we can just reuse an older buffer, or maybe we cache the buffer to commands
         const messageSerializer = getBSONSerializer(this.serializer, type);
         const messageSizer = getBSONSizer(this.serializer, type);
 
@@ -507,109 +773,6 @@ export class MongoConnection {
     }
 
     async connect(): Promise<void> {
-        if (this.status === MongoConnectionStatus.disconnected) throw new MongoError('Connection disconnected');
-        if (this.status !== MongoConnectionStatus.pending) return;
-
-        this.status = MongoConnectionStatus.connecting;
-
-        this.connectingPromise = asyncOperation(async (resolve, reject) => {
-            this.socket.on('error', (error) => {
-                this.connectingPromise = undefined;
-                this.status = MongoConnectionStatus.disconnected;
-                reject(new MongoConnectionError(formatError(error.message), { cause: error }));
-            });
-
-            if (this.socket.destroyed) {
-                this.status = MongoConnectionStatus.disconnected;
-                this.connectingPromise = undefined;
-                resolve();
-            }
-
-            if (await this.execute(new HandshakeCommand())) {
-                this.status = MongoConnectionStatus.connected;
-                this.socket.setTimeout(this.config.options.socketTimeoutMS);
-                this.connectingPromise = undefined;
-                resolve();
-            } else {
-                this.status = MongoConnectionStatus.disconnected;
-                this.connectingPromise = undefined;
-                reject(new MongoError('Connection error: Could not complete handshake 🤷‍️'));
-            }
-        });
-
         return this.connectingPromise;
-    }
-}
-
-export class ResponseParser {
-    protected currentMessage?: Uint8Array;
-    protected currentMessageSize: number = 0;
-
-    constructor(
-        protected readonly onMessage: (response: Uint8Array) => void,
-    ) {
-    }
-
-    public feed(data: Uint8Array, bytes?: number) {
-        if (!data.byteLength) return;
-        if (!bytes) bytes = data.byteLength;
-
-        if (!this.currentMessage) {
-            if (data.byteLength < 4) {
-                //not enough data to read the header. Wait for next onData
-                return;
-            }
-            this.currentMessage = data.byteLength === bytes ? data : data.slice(0, bytes);
-            this.currentMessageSize = readUint32LE(data);
-        } else {
-            this.currentMessage = Buffer.concat([this.currentMessage, data.byteLength === bytes ? data : data.slice(0, bytes)]);
-            if (!this.currentMessageSize) {
-                if (this.currentMessage.byteLength < 4) {
-                    //not enough data to read the header. Wait for next onData
-                    return;
-                }
-                this.currentMessageSize = readUint32LE(this.currentMessage);
-            }
-        }
-
-        let currentSize = this.currentMessageSize;
-        let currentBuffer = this.currentMessage;
-
-        while (currentBuffer) {
-            if (currentSize > currentBuffer.byteLength) {
-                //important to copy, since the incoming might change its data
-                this.currentMessage = new Uint8Array(currentBuffer);
-                // this.currentMessage = currentBuffer;
-                this.currentMessageSize = currentSize;
-                //message not completely loaded, wait for next onData
-                return;
-            }
-
-            if (currentSize === currentBuffer.byteLength) {
-                //current buffer is exactly the message length
-                this.currentMessageSize = 0;
-                this.currentMessage = undefined;
-                this.onMessage(currentBuffer);
-                return;
-            }
-
-            if (currentSize < currentBuffer.byteLength) {
-                //we have more messages in this buffer. read what is necessary and hop to next loop iteration
-                const message = currentBuffer.slice(0, currentSize);
-                this.onMessage(message);
-
-                currentBuffer = currentBuffer.slice(currentSize);
-                if (currentBuffer.byteLength < 4) {
-                    //not enough data to read the header. Wait for next onData
-                    this.currentMessage = currentBuffer;
-                    return;
-                }
-
-                const nextCurrentSize = readUint32LE(currentBuffer);
-                if (nextCurrentSize <= 0) throw new MongoError('message size wrong');
-                currentSize = nextCurrentSize;
-                //buffer and size has been set. consume this message in the next loop iteration
-            }
-        }
     }
 }

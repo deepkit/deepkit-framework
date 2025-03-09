@@ -48,6 +48,7 @@ export interface TransactionalMessage {
 }
 
 export interface ReadPreferenceMessage {
+    // this is needed for Mongos or LoadBalancer
     $readPreference?: {
         mode: string;
         tags?: { [name: string]: string }[];
