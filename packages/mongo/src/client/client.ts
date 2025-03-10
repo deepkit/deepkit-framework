@@ -18,7 +18,7 @@ import { ReflectionClass } from '@deepkit/type';
 import { mongoBinarySerializer } from '../mongo-serializer.js';
 import { BSONBinarySerializer } from '@deepkit/bson';
 import { EventDispatcher } from '@deepkit/event';
-import { ConsoleTransport, Logger } from '@deepkit/logger';
+import { ConsoleLogger, Logger } from '@deepkit/logger';
 
 export class MongoClient {
     protected inCloseProcedure: boolean = false;
@@ -29,14 +29,14 @@ export class MongoClient {
 
     protected serializer: BSONBinarySerializer = mongoBinarySerializer;
 
-    public logger: Logger = new Logger([new ConsoleTransport()]);
-    public eventDispatcher: EventDispatcher = new EventDispatcher();
-
     constructor(
         connectionString: string,
+        public eventDispatcher: EventDispatcher = new EventDispatcher(),
+        public logger: Logger = new ConsoleLogger(),
     ) {
         this.config = new MongoClientConfig(connectionString);
         this.pool = new MongoConnectionPool(this.config, this.serializer, this.stats, this.logger, this.eventDispatcher);
+        this.config.options.validate();
     }
 
     setLogger(logger: Logger) {

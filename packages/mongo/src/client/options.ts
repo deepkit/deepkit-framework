@@ -8,6 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { MongoError } from './error.js';
+
 type AuthMechanismProperties = { [name: string]: string | boolean };
 
 function parsePropertyValue(value: string): string | boolean {
@@ -47,6 +49,21 @@ export class ConnectionOptions {
     socketTimeout: Milliseconds = 0;
 
     /**
+     * The interval in milliseconds between the heartbeat checks. Default 10s.
+     */
+    heartbeatFrequency: Milliseconds = 10000;
+
+    /**
+     * The maximum staleness to allow in milliseconds. Default 0 (no staleness check).
+     *
+     * I define this must be minimum 90 seconds:
+     *    `heartbeatFrequency`+`idleWritePeriodMS` (10"000ms from the spec).
+     *
+     * Don't choose too low value to ensure secondaries are not considered stale too aggressively.
+     */
+    maxStalenessSeconds: number = 0;
+
+    /**
      * Command response timeout. Default 0.
      *
      * If greater than 0, the command is aborted if it takes longer than this value
@@ -77,7 +94,6 @@ export class ConnectionOptions {
 
     readPreference: 'primary' | 'primaryPreferred' | 'secondary' | 'secondaryPreferred' | 'nearest' = 'primary';
 
-    maxStalenessSeconds?: number;
     readPreferenceTags?: string; //e.g. "dc:ny,rack:1"
     hedge?: boolean;
 
@@ -115,6 +131,17 @@ export class ConnectionOptions {
     maxIdleTime: Milliseconds = 60 * 1000;
 
     protected parsedReadPreferenceTags?: { [name: string]: string }[];
+
+    validate() {
+        const idleWritePeriodMS = 10_000; // 10 seconds as per spec
+        const maxStalenessMS = (this.maxStalenessSeconds || 0) * 1000;
+        const heartbeatFrequencyMS = this.heartbeatFrequency;
+
+        // Ensure maxStalenessSeconds meets the minimum requirements
+        if (maxStalenessMS > 0 && maxStalenessMS < Math.max(90_000, heartbeatFrequencyMS + idleWritePeriodMS)) {
+            throw new MongoError(`maxStalenessSeconds must be at least ${Math.max(90, (heartbeatFrequencyMS + idleWritePeriodMS) / 1000)} seconds.`);
+        }
+    }
 
     getReadPreferenceTags(): { [name: string]: string }[] {
         if (!this.parsedReadPreferenceTags) {

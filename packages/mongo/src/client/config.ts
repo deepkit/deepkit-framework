@@ -18,6 +18,120 @@ import { resolveSrvHosts } from './dns.js';
 import { cast, ReflectionClass } from '@deepkit/type';
 import { ReadPreferenceMessage } from './command/command.js';
 
+export type Topology = 'single' | 'replicaSetNoPrimary' | 'replicaSetWithPrimary' | 'sharded' | 'unknown' | 'invalidated';
+
+/**
+ * @see https://github.com/mongodb/specifications/blob/master/source/max-staleness/max-staleness.md
+ */
+export function updateStaleness(config: MongoClientConfig) {
+    const heartbeatFrequencyMS = config.options.heartbeatFrequency || 10_000; // default to 10 seconds if not specified
+    const maxStalenessMS = (config.options.maxStalenessSeconds || 0) * 1000;
+
+    const primary = config.hosts.find(v => v.type === 'primary');
+    const secondaries = config.hosts.filter(v => v.type === 'secondary');
+
+    if (primary) {
+        // Calculate primary staleness
+        primary.staleness = 0; // Primary is always considered fresh
+        primary.stale = false;
+    }
+
+    for (const secondary of secondaries) {
+        if (!secondary.lastWriteDate || !secondary.lastUpdateTime) {
+            // No heartbeat yet received
+            continue;
+        }
+
+        if (primary && primary.lastUpdateTime && primary.lastWriteDate) {
+            // Staleness calculation when primary is known
+            const s_lastUpdateTime = secondary.lastUpdateTime.getTime();
+            const s_lastWriteDate = secondary.lastWriteDate.getTime();
+            const p_lastUpdateTime = primary.lastUpdateTime.getTime();
+            const p_lastWriteDate = primary.lastWriteDate.getTime();
+
+            const p_staleness = p_lastUpdateTime - p_lastWriteDate;
+            const s_staleness = s_lastUpdateTime - s_lastWriteDate;
+
+            secondary.staleness = s_staleness - p_staleness + heartbeatFrequencyMS;
+        } else {
+            // Staleness calculation when primary is unknown
+            const maxLastWriteDate = Math.max(...secondaries.map(s => s.lastWriteDate?.getTime() || 0));
+            const s_lastWriteDate = secondary.lastWriteDate.getTime();
+
+            secondary.staleness = maxLastWriteDate - s_lastWriteDate + heartbeatFrequencyMS;
+        }
+
+        // Determine if the secondary is stale based on maxStalenessSeconds
+        if (maxStalenessMS > 0) {
+            secondary.stale = secondary.staleness > maxStalenessMS;
+        }
+    }
+}
+
+/**
+ * When a replica member reports `hosts` in a heartbeat, we have to make sure to update our known hosts.
+ *
+ * This removes also duplicate hosts.
+ *
+ * Use-cases: The user specified IP, but the nodes are known under hostnames
+ * config = mongodb://192.168.0.2,192.168.0.3
+ * hostnames = [server1, server2]
+ *
+ * Resolving stage:
+ *  1. initial user config: config.hosts=[192.168.0.2,192.168.0.3] (Host.id[])
+ *  2. heartbeat(192.168.0.2), reporting me=server1, hosts=[server1, server2], rename id=192.168.0.2 to server1
+ *  3. updateKnownHosts(): server2 is new. config.hosts=[server1, 192.168.0.3, server2]
+ *  4. heartbeat(192.168.0.3), reporting me=server1, hosts=[server1, server2], rename id=192.168.0.3 to server2
+ *  4. heartbeat(server2), reporting me=server2, hosts=[server1, server2], detected as duplicate, remove, config.hosts=[server1, server2]
+ *
+ * In this case we have temporarily a duplicate host `server2`, since at point 3 the heartbeat of `192.168.0.3`
+ * was not finished yet. This is fine, since we remove duplicates in the end after asking `192.168.0.3` what its real hostname is.
+ *
+ * Use-case: The user specified hostnames, but the nodes are known under IPs
+ * config = mongodb://server1,server2
+ * hostname = [192.168.0.2, 192.168.0.3]
+ *
+ * `hostname` is what the replica member reports as `me`.
+ * We use hostname as Host.id.
+ */
+export function updateKnownHosts(config: MongoClientConfig): Host[] {
+    const newHosts: Host[] = [];
+
+    for (const host of config.hosts.slice()) {
+        // check if hosts are all known
+        const referencedHosts = [...host.hosts, ...host.passives, ...host.arbiters];
+        for (const reportedHost of referencedHosts) {
+            if (!reportedHost) continue;
+            const exists = config.hosts.find(v => v.id === reportedHost);
+            if (exists) continue;
+
+            const [hostname, port] = reportedHost.split(':');
+            const newHost = new Host(hostname, port ? parseInt(port, 10) : 27017);
+            newHost.id = reportedHost;
+            config.hosts.push(newHost);
+            newHosts.push(newHost);
+        }
+    }
+    return newHosts;
+}
+
+export function detectTopology(hosts: Host[]): Topology {
+    const hasStandalone = hosts.find(v => v.type === 'standalone');
+    if (hasStandalone) return 'single';
+
+    const hasPrimary = hosts.find(v => v.type === 'primary');
+    if (hasPrimary) {
+        return 'replicaSetWithPrimary';
+    }
+
+    const hasMongoS = hosts.find(v => v.type === 'mongos');
+    if (hasMongoS) {
+        return 'sharded';
+    }
+
+    return 'replicaSetNoPrimary';
+}
+
 /**
  * Default URL:
  * mongodb://mongodb0.example.com:27017
@@ -32,7 +146,12 @@ import { ReadPreferenceMessage } from './command/command.js';
  * mongodb+srv://server.example.com/
  */
 export class MongoClientConfig {
-    public readonly hosts: Host[] = [];
+    topology: Topology = 'unknown';
+
+    topologyId: number = 0;
+
+    readonly hosts: Host[] = [];
+
     protected hostsFetchedMS?: number;
 
     /**
@@ -53,6 +172,31 @@ export class MongoClientConfig {
         connectionString: string,
     ) {
         this.parseConnectionString(connectionString);
+    }
+
+    shortSummary(): string {
+        const lines: string[] = [];
+        for (const host of this.hosts) {
+            let id = host.id;
+            if (id !== `${host.hostname}:${host.port}`) {
+                id += `(${host.hostname}:${host.port})`;
+            }
+            const attributes: string[] = [host.type];
+            if (host.dead) attributes.push('dead(' + host.status + ')');
+            if (host.connections.length) attributes.push('connections=' + host.connections.length);
+            attributes.push('latency=' + host.latency + 'ms');
+            if (host.stale) attributes.push('stale');
+            attributes.push('staleness=' + host.staleness + 'ms');
+
+            lines.push(`${id}=${attributes.join(' ')}`);
+        }
+        return lines.join(', ');
+    }
+
+    invalidate() {
+        if (this.topology === 'invalidated') return;
+        this.topologyId++;
+        this.topology = 'invalidated';
     }
 
     getTopology(): string {

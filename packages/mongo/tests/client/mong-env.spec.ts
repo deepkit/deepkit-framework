@@ -1,52 +1,125 @@
-import { afterEach, describe, expect, it, jest, test } from '@jest/globals';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, jest, test } from '@jest/globals';
 import { MongoClient } from '../../src/client/client.js';
-import { MongoEnv } from './env-setup.js';
-import { asyncOperation, sleep } from '@deepkit/core';
-import { IsMasterCommand } from '../../src/client/command/ismaster';
-import { MongoConnectionError } from '../../src/client/error';
-import { after } from 'node:test';
+import { MongoEnv, MongoInstance } from './env-setup.js';
+import { sleep } from '@deepkit/core';
+import { MongoConnection, MongoConnectionPool, MongoStats, onMongoNewHost, onMongoTopologyChange } from '../../src/client/connection.js';
+import { EventDispatcher } from '@deepkit/event';
+import { ConsoleLogger, LoggerLevel } from '@deepkit/logger';
+import { IsMasterCommand } from '../../src/client/command/ismaster.js';
+import { MongoConnectionError } from '../../src/client/error.js';
+import { Host } from '../../src/client/host.js';
+import { MongoClientConfig } from '../../src/client/config.js';
+import { mongoBinarySerializer } from '../../src/mongo-serializer.js';
 
-jest.setTimeout(213123);
+jest.setTimeout(60 * 1000);
 
 test('nix', () => {
 });
 
+function createMongoClientFactory(mongoEnv: MongoEnv) {
+    const clients: MongoClient[] = [];
+    const fn = (url: string) => {
+        const logger = new ConsoleLogger();
+        logger.level = LoggerLevel.debug;
+
+        const eventDispatcher = new EventDispatcher();
+        eventDispatcher.listen(onMongoNewHost, (event) => {
+            const [name] = event.data.host.id.split(':');
+            const instance = mongoEnv.getInstanceByName(name);
+            if (!instance) return;
+            event.data.host.hostname = '127.0.0.1';
+            event.data.host.port = instance.proxyPort;
+        });
+
+        const client = new MongoClient(url, eventDispatcher, logger);
+        clients.push(client);
+        return client;
+    };
+    fn.closeAll = () => {
+        for (const client of clients) {
+            client.close();
+        }
+    };
+
+    return fn;
+}
+
+describe('basic', () => {
+    it('should close the node process', async () => {
+        const client = new MongoClient(`mongodb://primary`);
+        await expect(client.connect()).rejects.toThrow('Connection failed');
+    });
+
+    it('MongoConnection close the node process ', async () => {
+        const host = new Host('primary', 27017);
+        const config = new MongoClientConfig('mongodb://primary');
+        const connection = new MongoConnection(
+            1, host, config, mongoBinarySerializer, (connection) => {
+                console.log('onClose', connection.id);
+            }, () => {
+                console.log('onRelease', connection.id);
+            }, (bytes) => {
+                console.log('onSent', bytes);
+            }, (bytes) => {
+                console.log('onReceived', bytes);
+            },
+        );
+
+        await expect(connection.connect()).rejects.toThrow('Connection failed');
+    });
+
+    it('MongoConnectionPool close the node process', async () => {
+        const config = new MongoClientConfig('mongodb://primary');
+        const stats = new MongoStats();
+        const logger = new ConsoleLogger();
+        const eventDispatcher = new EventDispatcher();
+        const pool = new MongoConnectionPool(config, mongoBinarySerializer, stats, logger, eventDispatcher);
+
+        await expect(pool.getConnection()).rejects.toThrow('Connection failed');
+    });
+});
+
 describe('mongo-env', () => {
     const mongoEnv = new MongoEnv('basics');
+    let mongo: MongoInstance;
+    const createClient = createMongoClientFactory(mongoEnv);
 
-    afterEach(() => {
-        mongoEnv.closeAll();
+    beforeAll(async () => {
+        mongo = await mongoEnv.addMongo();
+    });
+
+    beforeEach(async () => {
+        await mongo?.reset();
+    });
+
+    afterAll(async () => {
+        createClient.closeAll();
+        await mongoEnv.closeAll();
     });
 
     it('should execute json', async () => {
-        const mongo = await mongoEnv.addMongo();
         const res = await mongoEnv.executeJson(mongo.name, `db.isMaster()`);
         expect(res.ismaster).toBe(true);
     });
 
-    test('client connect', async () => {
-        const a = await mongoEnv.addMongo();
-
-        const client = new MongoClient(a.getUrl());
+    it('client connect', async () => {
+        const client = createClient(mongo.getUrl());
         await client.connect();
         expect(client.pool.isConnected()).toBe(true);
         expect(client.pool.isWritable()).toBe(true);
         expect(client.pool.getConnectedConnections().length).toBe(1);
         client.close();
-        await sleep(0);
     });
 
-    test('client reconnect', async () => {
-        const a = await mongoEnv.addMongo();
-
-        const client = new MongoClient(a.getUrl());
+    it('client reconnect', async () => {
+        const client = createClient(mongo.getUrl());
         {
             const cmd = await client.execute(new IsMasterCommand());
             expect(client.pool.isConnected()).toBe(true);
             expect(cmd.ismaster).toBe(true);
         }
 
-        a.closeConnections();
+        mongo.closeConnections();
         await sleep(0);
         expect(client.pool.isConnected()).toBe(false);
 
@@ -57,30 +130,40 @@ describe('mongo-env', () => {
         }
     });
 
-    test('client down', async () => {
-        const mongo = await mongoEnv.addMongo();
+    it('client down', async () => {
         mongo.connectionDrop = true;
         mongo.stopProxy();
 
-        const client = new MongoClient(mongo.getUrl());
+        const client = createClient(mongo.getUrl());
 
         await expect(client.connect()).rejects.toThrow('Connection failed');
-        expect(client.execute(new IsMasterCommand())).rejects.toThrow('Connection failed');
+        await expect(client.connect()).rejects.toThrow('Connection failed');
+        await expect(client.execute(new IsMasterCommand())).rejects.toThrow('Connection failed');
         expect(client.pool.isConnected()).toBe(false);
     });
 
-    test('server down', async () => {
-        const mongo = await mongoEnv.addMongo();
+    it('server down', async () => {
         mongo.stopProxy();
 
-        const client = new MongoClient(mongo.getUrl());
+        const client = createClient(mongo.getUrl());
         await expect(client.execute(new IsMasterCommand())).rejects.toThrow('Connection failed');
     });
 
-    test('client down - reconnect', async () => {
-        const mongo = await mongoEnv.addMongo();
+    it('topology change event', async () => {
+        const client = createClient(`mongodb://127.0.0.1:${mongo.proxyPort}`);
+        const promise = new Promise<void>((resolve) => {
+            client.eventDispatcher.listen(onMongoTopologyChange, (event) => {
+                resolve();
+            });
+        });
+        await client.connect();
+        await promise;
+        expect(client.config.hosts[0].type).toBe('standalone');
+        expect(client.config.topology).toBe('single');
+    });
 
-        const client = new MongoClient(mongo.getUrl());
+    it('client down - reconnect', async () => {
+        const client = createClient(mongo.getUrl());
         {
             const cmd = await client.execute(new IsMasterCommand());
             expect(client.pool.isConnected()).toBe(true);
@@ -97,17 +180,19 @@ describe('mongo-env', () => {
         mongo.connectionDrop = false;
         await client.execute(new IsMasterCommand());
     });
-
 });
 
-describe('replica set', () => {
+describe('replica set, primary secondary', () => {
     const mongoEnv = new MongoEnv;
 
-    const setup = asyncOperation<void>(async (resolve) => {
-        const [primary, secondary1, secondary2] = await Promise.all([
+    let primary: MongoInstance;
+    let secondary1: MongoInstance;
+    const createClient = createMongoClientFactory(mongoEnv);
+
+    beforeAll(async () => {
+        [primary, secondary1] = await Promise.all([
             mongoEnv.addMongo('primary', 'rs1'),
             mongoEnv.addMongo('secondary1', 'rs1'),
-            mongoEnv.addMongo('secondary2', 'rs1'),
         ]);
 
         const init = await mongoEnv.execute('primary', `rs.initiate(${JSON.stringify({
@@ -115,45 +200,99 @@ describe('replica set', () => {
             members: [
                 { _id: 0, host: primary.name },
             ],
-        })}`);
-        console.log('rs.initiate', init);
+        })})`);
+        // console.log('rs.initiate', init);
         await mongoEnv.waitUntilBeingPrimary('primary');
 
         await mongoEnv.addReplicaSet('primary', 'secondary1', 1, 1);
         await mongoEnv.waitUntilBeingSecondary('secondary1');
-        resolve();
     });
 
-    after(() => {
-        mongoEnv.closeAll();
+    afterAll(async () => {
+        createClient.closeAll();
+        await mongoEnv.closeAll();
     });
 
     it('mongo env, replSet', async () => {
-        await setup;
-        // await mongoEnv.addReplicaSet('primary', 'secondary2', 1, 1);
-        // await mongoEnv.waitUntilBeingSecondary('secondary2');
-        //
-        // {
-        //     const res = await mongoEnv.executeJson('primary', `db.isMaster()`);
-        //     console.log('primary', res);
-        //     expect(res.ismaster).toBe(true);
-        //     expect(res.setName).toBe('rs1');
-        // }
-        //
-        // {
-        //     const res = await mongoEnv.executeJson('secondary1', `db.isMaster()`);
-        //     console.log('secondary1', res);
-        //     expect(res.ismaster).toBe(false);
-        //     expect(res.secondary).toBe(true);
-        //     expect(res.setName).toBe('rs1');
-        // }
-        //
-        // {
-        //     const res = await mongoEnv.executeJson('secondary2', `db.isMaster()`);
-        //     console.log('secondary2', res);
-        //     expect(res.ismaster).toBe(false);
-        //     expect(res.secondary).toBe(true);
-        //     expect(res.setName).toBe('rs1');
-        // }
+        {
+            const res = await mongoEnv.executeJson('primary', `db.isMaster()`);
+            console.log('primary', res);
+            expect(res.ismaster).toBe(true);
+            expect(res.setName).toBe('rs1');
+        }
+
+        {
+            const res = await mongoEnv.executeJson('secondary1', `db.isMaster()`);
+            console.log('secondary1', res);
+            expect(res.ismaster).toBe(false);
+            expect(res.secondary).toBe(true);
+            expect(res.setName).toBe('rs1');
+        }
     });
+
+    it('topology change event', async () => {
+        // console.log(await mongoEnv.executeJson(primary.name, `db.isMaster()`));
+        // console.log(await mongoEnv.executeJson(secondary1.name, `db.isMaster()`));
+
+        const client = createClient(`mongodb://primary`);
+
+        const promise = new Promise<void>((resolve) => {
+            client.eventDispatcher.listen(onMongoTopologyChange, (event) => {
+                resolve();
+            });
+        });
+
+        await client.connect();
+        await promise;
+        console.log(client.config.shortSummary());
+        expect(client.config.hosts[0].type).toBe('primary');
+        //todo secondary might be passive sometimes
+        expect(client.config.hosts[1].type).toBe('secondary');
+        expect(client.config.topology).toBe('replicaSetWithPrimary');
+        client.close();
+    });
+
+    it('invalid host specified', async () => {
+        const client = createClient(`mongodb://primary,secondary56`);
+
+        const promise = new Promise<void>((resolve) => {
+            client.eventDispatcher.listen(onMongoTopologyChange, (event) => {
+                resolve();
+            });
+        });
+
+        await client.connect();
+        await promise;
+        expect(client.config.hosts[0].type).toBe('primary');
+        expect(client.config.hosts[0].dead).toBe(false);
+        expect(client.config.hosts[0].isWritable()).toBe(true);
+        expect(client.config.hosts[0].isReadable()).toBe(true);
+        expect(client.config.hosts[0].isUsable()).toBe(true);
+
+        expect(client.config.hosts[1].type).toBe('unknown');
+        expect(client.config.hosts[1].dead).toBe(true);
+        expect(client.config.hosts[1].isWritable()).toBe(false);
+        expect(client.config.hosts[1].isReadable()).toBe(false);
+        expect(client.config.hosts[1].isUsable()).toBe(false);
+
+        expect(client.config.hosts[2].type).toBe('secondary');
+        expect(client.config.hosts[2].dead).toBe(false);
+        expect(client.config.hosts[2].isWritable()).toBe(false);
+        expect(client.config.hosts[2].isReadable()).toBe(true);
+        expect(client.config.hosts[2].isUsable()).toBe(true);
+
+        expect(client.config.topology).toBe('replicaSetWithPrimary');
+        client.close();
+        await sleep(0);
+        expect(client.config.hosts[0].connections.length).toBe(0);
+        expect(client.config.hosts[1].connections.length).toBe(0);
+        expect(client.config.hosts[2].connections.length).toBe(0);
+    });
+});
+
+describe('primary - 2 secondaries', () => {
+
+    // await mongoEnv.addReplicaSet('primary', 'secondary2', 1, 1);
+    // await mongoEnv.waitUntilBeingSecondary('secondary2');
+    //
 });

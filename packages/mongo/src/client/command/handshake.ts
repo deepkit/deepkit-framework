@@ -11,7 +11,7 @@
 import { Command } from './command.js';
 import { IsMasterResponse } from './ismaster.js';
 import { MongoClientConfig } from '../config.js';
-import { Host, HostType } from '../host.js';
+import { Host } from '../host.js';
 import { Sha1ScramAuth, Sha256ScramAuth } from './auth/scram.js';
 import { ClassType } from '@deepkit/core';
 import { MongoError } from '../error.js';
@@ -104,9 +104,8 @@ export class HandshakeCommand extends Command<boolean> {
 
         const response = await this.sendAndWait<IsMasterSchema, IsMasterResponse>(cmd);
         const hostType = host.getTypeFromIsMasterResult(response);
-
         host.setType(hostType);
-        if (hostType === HostType.arbiter) {
+        if (hostType === 'arbiter') {
             // If the server is of type RSArbiter, no authentication is possible and the handshake is complete.
             return true;
         }

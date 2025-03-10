@@ -8,15 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CompilerContext, CustomError, isClass, isFunction, isObject } from '@deepkit/core';
+import { ClassType, CustomError, isClass, isFunction, isObject } from '@deepkit/core';
 import { injectedFunction, InjectorContext, InjectorModule } from '@deepkit/injector';
-import {
-    ClassDecoratorResult,
-    createClassDecoratorContext,
-    createPropertyDecoratorContext,
-    PropertyDecoratorResult,
-    ReflectionClass,
-} from '@deepkit/type';
+import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, PropertyDecoratorResult } from '@deepkit/type';
 
 export type EventListenerCallbackAsync<E> = (event: E, ...args: any[]) => Promise<void> | void;
 export type EventListenerCallbackSync<E> = (event: E, ...args: any[]) => undefined | void;
@@ -73,13 +67,13 @@ interface SimpleDataEvent<T> extends BaseEvent {
  *
  * @example
  * ```typescript
- * const userAdded = new EventToken('user.added');
+ * const userAdded = new EventToken<DataEvent<{user: User}>>('user.added');
  *
  * eventDispatcher.listen(userAdded, (event) => {
- *    console.log('user added', event);
+ *    console.log('user added', event.data.user);
  * });
  *
- * eventDispatcher.dispatch(userAdded);
+ * eventDispatcher.dispatch(userAdded, {user: new User});
  * ```
  */
 export class EventToken<T extends BaseEvent = BaseEvent> {
@@ -103,6 +97,16 @@ export class EventToken<T extends BaseEvent = BaseEvent> {
 /**
  * Defines a new event token that is dispatched in a synchronous way.
  * It's not possible to subscribe to this event token with async listeners.
+ *
+ * ```typescript
+ * const onChange = new EventTokenSync<DataEvent<{change: string}>>('change');
+ *
+ * eventDispatcher.listen(onChange, (event) => {
+ *   console.log(event.data.change); // 'hello'
+ * });
+ *
+ * eventDispatcher.dispatch(onChange, {change: 'hello'});
+ * ```
  */
 export class EventTokenSync<T extends BaseEvent = BaseEvent> extends EventToken<T> {
     public readonly sync: boolean = true;
@@ -191,18 +195,23 @@ class EventDispatcherApi {
 
 export const eventDispatcher: PropertyDecoratorResult<typeof EventDispatcherApi> = createPropertyDecoratorContext(EventDispatcherApi);
 
+type BuiltFn = (event: BaseEvent, injector: InjectorContext) => any;
+
 export type EventListenerContainerEntryCallback = {
     order: number,
     fn: EventListenerCallback<any>,
-    builtFn?: Function,
     module?: InjectorModule,
+    builtFn?: BuiltFn,
 };
+
 export type EventListenerContainerEntryService = {
     module: InjectorModule,
     order: number,
     classType: ClassType,
-    methodName: string
+    methodName: string;
+    builtFn?: BuiltFn,
 };
+
 export type EventListenerContainerEntry = EventListenerContainerEntryCallback | EventListenerContainerEntryService;
 
 export function isEventListenerContainerEntryCallback(obj: any): obj is EventListenerContainerEntryCallback {
@@ -249,13 +258,11 @@ export interface EventDispatcherInterface {
     getDispatcher<T extends EventToken<any>>(eventToken: T): (...args: DispatchArguments<T>) => EventDispatcherDispatchType<T>;
 }
 
-function resolveEvent<T>(eventToken: EventToken<any>, event?: EventOfEventToken<T>): BaseEvent {
+function resolveEvent(event?: ValueOrFactory<BaseEvent>): BaseEvent {
     if (!event) return new BaseEvent();
-    return eventToken instanceof DataEventToken
-        ? (event as any) instanceof DataEvent
-            ? event
-            : new DataEvent(event)
-        : event instanceof BaseEvent ? event : new DataEvent(event);
+    event = 'function' === typeof event ? event() : event;
+    if (event instanceof BaseEvent) return event;
+    return new DataEvent(event);
 }
 
 export interface EventListenerRegistered {
@@ -334,7 +341,7 @@ export class EventDispatcher implements EventDispatcherInterface {
         const context = this.getContext(eventToken);
         context.built = false;
         context.dispatcher = (event: BaseEvent, injector?: InjectorContext) => {
-            const fn = buildStaticDispatcher(context, eventToken, this.injector);
+            const fn = buildDispatcher(context.listeners, eventToken, this.injector);
             context.dispatcher = fn;
             context.built = true;
             return fn(event, injector || this.injector);
@@ -374,84 +381,13 @@ export class EventDispatcher implements EventDispatcherInterface {
     }
 }
 
-function buildStaticDispatcher(
-    context: Context,
-    eventToken: EventToken<any>,
-    injector: InjectorContext
-): EventDispatcherFn {
-    const compiler = new CompilerContext();
-    const lines: string[] = [];
-
-    const awaitKeyword = isSyncEventToken(eventToken) ? '' : 'await';
-    const listeners = context.listeners;
-    if (!listeners.length) return noop;
-
-    listeners.sort((a, b) => {
-        if (a.order > b.order) return +1;
-        if (a.order < b.order) return -1;
-        return 0;
-    });
-
-    compiler.set({
-        eventToken,
-        resolveEvent,
-    });
-
-    lines.push(`
-        if ('function' === typeof event) event = event();
-        event = resolveEvent(eventToken, event);
-        `);
-
-    for (const listener of listeners) {
-        if (isEventListenerContainerEntryCallback(listener)) {
-            const listenerInjector = listener.module ? injector.getInjector(listener.module) : injector.getRootInjector();
-            try {
-                const fn = injectedFunction(listener.fn, listenerInjector, 1);
-                const fnVar = compiler.reserveVariable('fn', fn);
-                lines.push(`
-                        ${awaitKeyword} ${fnVar}(scopedContext.scope, event);
-                        if (event.isPropagationStopped()) return;
-                    `);
-            } catch (error: any) {
-                throw new Error(`Could not build listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
-            }
-        } else if (isEventListenerContainerEntryService(listener)) {
-            const resolver = injector.resolve(listener.module, listener.classType);
-            const resolverVar = compiler.reserveVariable('resolver', resolver);
-            let call = `${resolverVar}(scopedContext.scope).${listener.methodName}(event)`;
-
-            const method = ReflectionClass.from(listener.classType).getMethod(listener.methodName);
-
-            if (method.getParameters().length > 1) {
-                const listenerInjector = listener.module ? injector.getInjector(listener.module) : injector.getRootInjector();
-                const fn = injectedFunction((event, classInstance, ...args: any[]) => {
-                    return classInstance[listener.methodName](event, ...args);
-                }, listenerInjector, 2, method.type, 1);
-
-                call = `${compiler.reserveVariable('fn', fn)}(scopedContext.scope, event, ${resolverVar}(scopedContext.scope))`;
-            }
-
-            lines.push(`
-                    ${awaitKeyword} ${call};
-                    if (event.isPropagationStopped()) return;
-                `);
-        }
-    }
-    if (isSyncEventToken(eventToken)) {
-        return compiler.build(lines.join('\n'), 'event', 'scopedContext') as EventDispatcherFn;
-    }
-    return compiler.buildAsync(lines.join('\n'), 'event', 'scopedContext') as EventDispatcherFn;
-}
-
-function buildDispatcher(eventToken: EventToken<any>, entries: EventListenerContainerEntry[], injector: InjectorContext) {
+function buildDispatcher(entries: EventListenerContainerEntry[], eventToken: EventToken<any>, injector: InjectorContext): EventDispatcherFn {
     if (entries.length === 0) {
         if (isSyncEventToken(eventToken)) {
-            return (parent: EventDispatcherInterface, event: ValueOrFactory<BaseEvent>) => {
-                parent.dispatch(eventToken, event);
+            return () => {
             };
         }
-        return async (parent: EventDispatcherInterface, event: ValueOrFactory<BaseEvent>) => {
-            await parent.dispatch(eventToken, event);
+        return async () => {
         };
     }
 
@@ -461,42 +397,41 @@ function buildDispatcher(eventToken: EventToken<any>, entries: EventListenerCont
         return 0;
     });
 
-    const calls: Array<(event: BaseEvent) => any> = [];
+    const calls: Array<(event: BaseEvent, injector: InjectorContext) => any> = [];
 
     for (const listener of entries) {
         if (isEventListenerContainerEntryCallback(listener)) {
-            let fn = listener.builtFn;
-            if (!fn) {
-                try {
-                    const thisInjector = listener.module ? injector.getInjector(listener.module) : injector.getRootInjector();
-                    fn = listener.builtFn = injectedFunction(listener.fn, thisInjector, 1);
-                } catch (error: any) {
-                    throw new Error(`Could not build listener ${listener.fn.name || 'anonymous function'} of event token ${eventToken.id}: ${error.message}`);
-                }
+            if (!listener.builtFn) {
+                const thisInjector = listener.module ? injector.getInjector(listener.module) : injector.getRootInjector();
+                const fn = injectedFunction(listener.fn, thisInjector, 1);
+                listener.builtFn = (event: BaseEvent, injector: InjectorContext) => fn(injector.scope, event);
             }
 
-            calls.push((event) => fn(injector.scope, event));
+            calls.push(listener.builtFn);
         } else if (isEventListenerContainerEntryService(listener)) {
-            calls.push((event) => injector.get(listener.classType, listener.module)[listener.methodName](event));
+            if (!listener.builtFn) {
+                const resolve = injector.resolve(listener.module, listener.classType);
+                listener.builtFn = (event, injector) => resolve(injector.scope)[listener.methodName](event);
+            }
+
+            calls.push(listener.builtFn);
         }
     }
 
     if (isSyncEventToken(eventToken)) {
-        return (event: ValueOrFactory<BaseEvent>) => {
-            if ('function' === typeof event) event = event();
-            event = resolveEvent(eventToken, event as any);
+        return (_event: ValueOrFactory<BaseEvent>, injector: InjectorContext) => {
+            const event = resolveEvent(_event);
             for (const call of calls) {
-                call(event);
+                call(event, injector);
                 if (event.isPropagationStopped()) return;
             }
         };
     }
 
-    return async (event: ValueOrFactory<BaseEvent>) => {
-        if ('function' === typeof event) event = event();
-        event = resolveEvent(eventToken, event as any);
+    return async (_event: ValueOrFactory<BaseEvent>, injector: InjectorContext) => {
+        const event = resolveEvent(_event);
         for (const call of calls) {
-            await call(event);
+            await call(event, injector);
             if (event.isPropagationStopped()) return;
         }
     };

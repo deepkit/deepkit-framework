@@ -953,7 +953,13 @@ export class InjectorContext {
     }
 }
 
-export function injectedFunction<T extends (...args: any) => any>(fn: T, injector: Injector, skipParameters: number = 0, type?: Type, skipTypeParameters?: number): ((scope?: Scope, ...args: any[]) => ReturnType<T>) {
+export function injectedFunction<T extends (...args: any) => any>(
+    fn: T,
+    injector: Injector,
+    skipParameters: number = 0,
+    type?: Type,
+    skipTypeParameters?: number
+): ((scope?: Scope, ...args: any[]) => ReturnType<T>) {
     type = type || reflect(fn);
     skipTypeParameters = skipTypeParameters === undefined ? skipParameters : skipTypeParameters;
     if (type.kind === ReflectionKind.function || type.kind === ReflectionKind.method) {
