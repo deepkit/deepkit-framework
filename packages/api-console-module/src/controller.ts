@@ -74,7 +74,7 @@ export class ApiConsoleController implements ApiConsoleApi {
                     methodName,
                     action.description,
                     action.groups,
-                    action.category
+                    action.category,
                 );
 
                 const reflectionMethod = ReflectionClass.from(controller.controller).getMethod(methodName);
@@ -103,7 +103,7 @@ export class ApiConsoleController implements ApiConsoleApi {
         for (const route of this.filterResolver.resolve(this.filter.model)) {
             if (route.internal) continue;
 
-            const controllerName = nameGenerator.getName( route.action.type === 'controller' ? route.action.controller : route.action.fn);
+            const controllerName = nameGenerator.getName(route.action.type === 'controller' ? route.action.controller : route.action.fn);
 
             const routeD = new ApiRoute(
                 route.getFullPath(), route.httpMethods,
@@ -116,7 +116,7 @@ export class ApiConsoleController implements ApiConsoleApi {
 
             for (const response of route.responses) {
                 routeD.responses.push(new ApiRouteResponse(
-                    response.statusCode, response.description, response.type ? serializeType(response.type) : undefined
+                    response.statusCode, response.description, response.type ? serializeType(response.type) : undefined,
                 ));
             }
 
@@ -131,8 +131,8 @@ export class ApiConsoleController implements ApiConsoleApi {
             };
 
             for (const parameter of parsedRoute.getParameters()) {
-                if (parameter.body || parameter.bodyValidation) {
-                    routeD.bodySchemas = serializeType(parameter.parameter.type);
+                if (parameter.body || parameter.bodyValidation || parameter.requestParser) {
+                    routeD.bodySchemas = serializeType(parameter.getType());
                 } else if (parameter.query || parameter.queries) {
                     if (parameter.queries) {
                         //if there is a typePath set, all sub properties get their own property
@@ -140,8 +140,8 @@ export class ApiConsoleController implements ApiConsoleApi {
                             // property.name = parameter.typePath;
                             // querySchema.registerProperty(property);
                             (queryType as TypeObjectLiteral).types.push({
-                                kind: ReflectionKind.propertySignature, name: parameter.typePath, type: parameter.parameter.type as Type
-                            } as TypePropertySignature)
+                                kind: ReflectionKind.propertySignature, name: parameter.typePath, type: parameter.parameter.type as Type,
+                            } as TypePropertySignature);
                         } else {
                             if (parameter.parameter.type.kind !== ReflectionKind.class && parameter.parameter.type.kind !== ReflectionKind.objectLiteral) {
                                 continue;
@@ -153,15 +153,15 @@ export class ApiConsoleController implements ApiConsoleApi {
                         (queryType as TypeObjectLiteral).types.push({
                             kind: ReflectionKind.propertySignature,
                             name: parameter.typePath || parameter.getName(),
-                            type: parameter.parameter.type as Type
-                        } as TypePropertySignature)
+                            type: parameter.parameter.type as Type,
+                        } as TypePropertySignature);
                     }
                 } else if (parameter.isPartOfPath()) {
                     urlType.types.push({
                         kind: ReflectionKind.propertySignature,
                         name: parameter.typePath || parameter.getName(),
-                        type: parameter.parameter.type as Type
-                    } as TypePropertySignature)
+                        type: parameter.parameter.type as Type,
+                    } as TypePropertySignature);
                 } else {
                     //its a dependency injection token
                 }
