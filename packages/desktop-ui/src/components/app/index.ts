@@ -22,13 +22,7 @@ import {
     Renderer2,
     RendererFactory2,
 } from '@angular/core';
-import {
-    MenuCheckboxDirective,
-    MenuDirective,
-    MenuItemDirective,
-    MenuRadioDirective,
-    MenuSeparatorDirective,
-} from './menu.component';
+import { MenuCheckboxDirective, MenuDirective, MenuItemDirective, MenuRadioDirective, MenuSeparatorDirective } from './menu.component';
 import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from './utils';
 import { ViewDirective } from './dui-view.directive';
 import { CdCounterComponent } from './cd-counter.component';
@@ -401,7 +395,7 @@ export class DuiAppModule {
             providers: [
                 DuiApp,
                 Storage,
-                { provide: EventDispatcher, useValue: new EventDispatcher().fork() },
+                { provide: EventDispatcher, useValue: new EventDispatcher },
                 { provide: IN_DIALOG, useValue: false },
                 {
                     provide: ELECTRON_WINDOW,

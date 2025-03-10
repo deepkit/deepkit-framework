@@ -8,9 +8,18 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { AfterViewInit, ApplicationRef, inject, NgModule, OnDestroy, Type, ɵComponentDef as ComponentDef, ɵNG_COMP_DEF as NG_COMP_DEF } from '@angular/core';
+import {
+    AfterViewInit,
+    ApplicationRef,
+    inject,
+    NgModule,
+    OnDestroy,
+    Type,
+    ɵComponentDef as ComponentDef,
+    ɵNG_COMP_DEF as NG_COMP_DEF,
+} from '@angular/core';
 import { getClassName, nextTick, throttleTime } from '@deepkit/core';
-import { EventDispatcher, EventDispatcherUnsubscribe, EventOfEventToken, EventToken } from '@deepkit/event';
+import { EventDispatcher, EventToken } from '@deepkit/event';
 import { Subscription } from 'rxjs';
 
 export function observeAction() {
@@ -118,51 +127,6 @@ export function unsubscribe<T extends OnDestroy>() {
                 unsub(store[propertyKey]);
             }
         });
-    };
-}
-
-export interface EventHandler<T extends EventToken> {
-    dispatch(event?: EventOfEventToken<T>): Promise<any>;
-
-    listen(listener: (event: T['event']) => any | Promise<any>, order?: number): EventDispatcherUnsubscribe;
-}
-
-/**
- * Creates a new function that calls the given event dispatcher with the given arguments.
- *
- * It's important to call this function either in constructor or as property initializer (as it uses Angular's fetch()).
- *
- * @example
- * ```typescript
- * const userAdded = new EventToken<User>('user.added');
- *
- * class MyComponent {
- *     userAdded = eventHandler(userAdded);
- *
- *     async save() {
- *         const user = new User;
- *         await this.api.saveUser(user);
- *         this.userAdded.dispatch(user);
- *     }
- * }
- */
-export function eventHandler<T extends EventToken, C>(eventToken: T, component: C): EventHandler<T> {
-    const eventDispatcher = inject(EventDispatcher);
-
-    const listeners: EventDispatcherUnsubscribe[] = [];
-    addComponentHook((component as any).constructor, 'onDestroy', function () {
-        for (const listener of listeners) listener();
-    });
-
-    return {
-        dispatch(event?: EventOfEventToken<T>): Promise<any> {
-            return eventDispatcher.dispatch(eventToken, event);
-        },
-        listen(listener: (event: T['event']) => any | Promise<any>, order: number = 0): EventDispatcherUnsubscribe {
-            const unsub = eventDispatcher.listen(eventToken, listener);
-            listeners.push(unsub);
-            return unsub;
-        }
     };
 }
 
