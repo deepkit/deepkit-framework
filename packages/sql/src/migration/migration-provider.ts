@@ -55,18 +55,11 @@ export class MigrationProvider {
         let migrations: Migration[] = [];
 
         const files = await glob('**/*.ts', { cwd: migrationDir });
-        require('ts-node').register({
-            compilerOptions: {
-                experimentalDecorators: true,
-                module: 'undefined' !== typeof require ? 'CommonJS' : 'ESNext',
-            },
-            transpileOnly: true,
-        });
 
         for (const file of files) {
             const path = join(process.cwd(), migrationDir, file);
             const name = basename(file.replace('.ts', ''));
-            const migration = require(path);
+            const migration = await import(path);
             if (migration && migration.SchemaMigration) {
                 const jo = new class extends (migration.SchemaMigration as ClassType<Migration>) {
                     constructor() {
