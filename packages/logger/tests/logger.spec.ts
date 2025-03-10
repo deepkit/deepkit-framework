@@ -92,6 +92,16 @@ test('colorless', () => {
     logger.log('This is a <yellow>color</yellow> test');
 });
 
+test('scope catches late changes', () => {
+    const logger = new MemoryLogger(undefined, [new ScopeFormatter()]);
+    const scoped = logger.scoped('database');
+    expect(scoped).toBeInstanceOf(Logger);
+
+    logger.level = LoggerLevel.debug;
+    scoped.debug('test');
+    expect(logger.memory.messageStrings).toEqual(['(database) test']);
+});
+
 test('scoped logger', () => {
     class MyProvider {
         constructor (public logger: ScopedLogger) {
