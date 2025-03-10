@@ -26,13 +26,13 @@
     "js-xxhash": "3.0.1"
   },
   "peerDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.40",
-    "@deepkit/bson": "^1.0.1-alpha.40",
-    "@deepkit/core": "^1.0.1-alpha.39",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.39",
-    "@deepkit/event": "^1.0.1-alpha.40",
-    "@deepkit/rpc": "^1.0.1-alpha.41",
-    "@deepkit/type": "^1.0.1-alpha.40",
+    "@deepkit/app": "^1.0.1",
+    "@deepkit/bson": "^1.0.1",
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/core-rxjs": "^1.0.1",
+    "@deepkit/event": "^1.0.1",
+    "@deepkit/rpc": "^1.0.1",
+    "@deepkit/type": "^1.0.1",
     "rxjs": "*"
   },
   "devDependencies": {
