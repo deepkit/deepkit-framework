@@ -16,7 +16,7 @@ export class MongoInstance {
     ) {
     }
 
-    async createProxy() {
+    async startProxy() {
         if (this.proxy?.listening) this.proxy.close();
 
         const proxy = this.proxy = createServer(async (clientSocket) => {
@@ -52,8 +52,8 @@ export class MongoInstance {
         });
 
         await new Promise<void>((resolve) => {
-            proxy.listen(undefined, () => {
-                this.proxyPort = (proxy.address() as { port: number }).port;
+            proxy.listen(this.proxyPort, () => {
+                this.proxyPort ||= (proxy.address() as { port: number }).port;
                 resolve();
             });
         });
@@ -65,7 +65,7 @@ export class MongoInstance {
         this.connectionDrop = false;
         this.connectionDropAfterBytes = 0;
         if (!this.proxy) {
-            await this.createProxy();
+            await this.startProxy();
         }
     }
 
@@ -108,6 +108,12 @@ export class MongoEnv {
         protected startPort: number = portRangeStart,
     ) {
         mkdirSync(this.tempFolder, { recursive: true });
+    }
+
+    async reset() {
+        for (const instance of this.instances.values()) {
+            await instance.reset();
+        }
     }
 
     async closeAll() {
@@ -254,12 +260,14 @@ export class MongoEnv {
 
         await this.ensureDestroyed(name);
 
+        const containerName = `mongo-env-${name}`;
+
         const args: string[] = [
             'run',
             '--rm',
             '--init',
             '--hostname', name,
-            '--name', `mongo-env-${name}`,
+            '--name', containerName,
             '--network', 'mongo-env',
             '-p', `${port}:27017`,
             '--add-host=host.docker.internal:host-gateway',
@@ -281,11 +289,16 @@ export class MongoEnv {
             port,
             p,
         );
+        const stdoutBuffer: string[] = [];
 
         const listening = asyncOperation<void>((resolve, reject) => {
+            let done = false;
             p.on('exit', (code) => {
                 if (code !== 0) {
-                    reject(new Error(`Mongo exited with code ${code}`));
+                    if (!done) {
+                        console.log(containerName, stdoutBuffer.join(''));
+                        reject(new Error(`Mongo exited with code ${code}`));
+                    }
                 }
                 instance.proxy?.close();
                 this.releasePort(port);
@@ -293,7 +306,9 @@ export class MongoEnv {
             });
 
             p.stdout.on('data', (data) => {
+                stdoutBuffer.push(data.toString());
                 if (data.toString().includes('Listening on')) {
+                    done = true;
                     resolve();
                 }
             });
@@ -301,7 +316,7 @@ export class MongoEnv {
 
         await listening;
 
-        await instance.createProxy();
+        await instance.startProxy();
 
         this.instances.set(name, instance);
 

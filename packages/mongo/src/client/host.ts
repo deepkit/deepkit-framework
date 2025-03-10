@@ -20,6 +20,25 @@ export type HostType =
     'other' |
     'ghost';
 
+export class HostStats {
+    /**
+     * How many connections were created to this host.
+     */
+    connectionsCreated: number = 0;
+
+    connectionsReused: number = 0;
+
+    connectionsError: number = 0;
+
+    connectionsQueued: number = 0;
+
+    bytesReceived: number = 0;
+    bytesSent: number = 0;
+
+    heartbeats: number = 0;
+    heartbeatsFailed: number = 0;
+}
+
 export class Host {
     /**
      * The real unique id of the host. This is the host returned by the server.
@@ -79,6 +98,8 @@ export class Host {
      */
     staleness: number = 0;
     stale: boolean = false;
+
+    stats: HostStats = new HostStats;
 
     constructor(
         /**

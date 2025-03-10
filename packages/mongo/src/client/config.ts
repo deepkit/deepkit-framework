@@ -168,10 +168,26 @@ export class MongoClientConfig {
     isSrv: boolean = false;
     srvDomain: string = '';
 
+    lastTopologyKey: string = '';
+
     constructor(
         connectionString: string,
     ) {
         this.parseConnectionString(connectionString);
+    }
+
+    /**
+     * Unique representation of a topology. If this changes, the topology has changed.
+     * Topology change happens when:
+     *
+     * - A new host is added
+     * - A host is removed
+     * - A host changes its type
+     * - A host is marked as dead
+     * - A host is marked as stale
+     */
+    topologyKey(): string {
+        return this.hosts.map(v => `${v.hostname}:${v.port}=${v.type}:${v.stale}:${v.readonly}`).join(',');
     }
 
     shortSummary(): string {

@@ -52,6 +52,8 @@ export class MongoStats {
      */
     connectionsCreated: number = 0;
 
+    connectionsError: number = 0;
+
     /**
      * How many connections have been reused.
      */
@@ -64,6 +66,11 @@ export class MongoStats {
 
     bytesReceived: number = 0;
     bytesSent: number = 0;
+
+    heartbeats: number = 0;
+    heartbeatsFailed: number = 0;
+
+    topologyChanges: number = 0;
 }
 
 export const onMongoTopologyChange = new EventTokenSync<DataEvent<{ pool: MongoConnectionPool }>>('mongo.topologyChange');
@@ -79,6 +86,7 @@ interface QueueEntry {
 
 export class MongoConnectionPool {
     protected connectionId: number = 0;
+    public closed: boolean = false;
 
     /**
      * Connections, might be in any state, not necessarily connected.
@@ -89,7 +97,8 @@ export class MongoConnectionPool {
 
     protected lastError?: Error;
 
-    protected lastHeartbeat: Date = new Date(1000, 0);
+    protected lastHeartbeat: Date = new Date(0);
+    protected heartbeatTimer?: ReturnType<typeof setTimeout>;
 
     protected get scopedLogger() {
         return this.logger.scoped('mongo');
@@ -111,20 +120,38 @@ export class MongoConnectionPool {
     }
 
     public async connect() {
-        if (this.isConnected()) return;
+        if (this.closed) {
+            this.closed = false;
+            this.connectPromise = undefined;
+        } else {
+            if (this.isConnected()) return;
+        }
 
         if (this.connectPromise) {
             await this.connectPromise;
             return;
         }
 
-        if (this.heartbeats > 0) return this.connectPromise;
+        if (this.heartbeats > 0) {
+            // heartbeat bigger than 0 means we got a successful topology discovery,
+            // so we return whatever we had before.
+            await this.connectPromise;
+            return;
+        }
 
         // wait for topology change: we need at least one secondary or primary online
         return this.connectPromise = asyncOperation<void>((resolve, reject) => {
             this.connectPromiseHandles = { resolve, reject };
             this.heartbeat();
         });
+    }
+
+    protected createErrorForUnmetRequest(request: ConnectionRequest): MongoConnectionError {
+        let message = `Connection failed: could not find host for connection request. (readPreference=${request.readPreference}, topology=${this.config.shortSummary()})`;
+        if (request.writable || request.readPreference === 'primary') {
+            message = `Connection failed: no primary available. (readPreference=${request.readPreference}, topology=${this.config.shortSummary()})`;
+        }
+        return new MongoConnectionError(message);
     }
 
     protected onTopologyProgress(status: 'start' | 'host' | 'done') {
@@ -144,12 +171,15 @@ export class MongoConnectionPool {
 
         if (status === 'done') {
             this.heartbeats++;
-            const topology = detectTopology(this.config.hosts);
-            updateStaleness(this.config);
 
-            if (topology !== this.config.topology) {
-                this.scopedLogger.debug(`Topology detected: ${topology}, ${this.config.shortSummary()}`);
-                this.config.topology = topology;
+            this.config.topology = detectTopology(this.config.hosts);
+            updateStaleness(this.config);
+            const topologyKey = this.config.topologyKey();
+
+            if (topologyKey !== this.config.lastTopologyKey) {
+                this.stats.topologyChanges++;
+                this.scopedLogger.debug(`Topology detected: ${this.config.topology}, ${this.config.shortSummary()}`);
+                this.config.lastTopologyKey = topologyKey;
                 this.eventDispatcher.dispatch(onMongoTopologyChange, { pool: this });
             }
 
@@ -165,10 +195,7 @@ export class MongoConnectionPool {
                     // put back in queue
                     this.queue.push(waiter);
                 } else {
-                    const error = new MongoConnectionError(
-                        `Connection failed: could not find host for connection request. (readPreference=${waiter.request.readPreference}, topology=${this.config.shortSummary()})`,
-                    );
-                    waiter.reject(error);
+                    waiter.reject(this.createErrorForUnmetRequest(waiter.request));
                 }
             }
 
@@ -176,7 +203,7 @@ export class MongoConnectionPool {
                 if (this.isConnected()) {
                     this.connectPromiseHandles.resolve();
                 } else {
-                    this.connectPromiseHandles.reject(new MongoConnectionError('Connection failed: no host available: ' + this.config.shortSummary()));
+                    this.connectPromiseHandles.reject(new MongoConnectionError('Connection failed: no hosts available. ' + this.config.shortSummary()));
                 }
                 this.connectPromiseHandles = undefined;
             }
@@ -211,11 +238,23 @@ export class MongoConnectionPool {
     }
 
     public close() {
+        this.closed = true;
+
+        clearTimeout(this.heartbeatTimer);
+        this.heartbeatTimer = undefined;
+
         // import to work on the copy, since Connection.onClose modifies this.connections.
         const connections = this.connections.slice(0);
         for (const connection of connections) {
             connection.close();
         }
+        for (const waiter of this.queue) {
+            waiter.reject(new MongoConnectionError('Connection pool closed'));
+        }
+        this.queue = [];
+        this.lastError = undefined;
+        this.connections = [];
+        this.lastHeartbeat = new Date(0);
     }
 
     protected heartbeats: number = 0;
@@ -240,10 +279,12 @@ export class MongoConnectionPool {
 
             try {
                 connection.reserved = true;
+                host.stats.heartbeats++;
                 this.scopedLogger.debug(`Heartbeat host ${host.id} (${host.hostname}:${host.port})`);
                 await connection.connect();
                 const start = Date.now();
                 const data = await connection.execute(new IsMasterCommand());
+                if (this.closed) return;
 
                 if (topologyId !== this.config.topologyId) {
                     // this is an old request which is not relevant anymore
@@ -273,6 +314,7 @@ export class MongoConnectionPool {
                 host.status = 'heartbeat(): ' + formatError(error);
                 host.dead = true;
                 host.type = 'unknown';
+                host.stats.heartbeatsFailed++;
             } finally {
                 connection.release();
                 resolve();
@@ -291,15 +333,23 @@ export class MongoConnectionPool {
      * If a new host is found, the task list increases, until no new hosts are found.
      */
     protected heartbeat(): void {
+        if (this.closed) return;
         if (Date.now() - this.lastHeartbeat.getTime() < this.config.options.heartbeatFrequency) return;
         this.lastHeartbeat = new Date();
+        this.stats.heartbeats++;
+
+        this.scopedLogger.debug(`Heartbeat start ${this.stats.heartbeats}`);
 
         this.config.getHosts().then((hosts) => {
+            if (this.closed) return;
             for (const host of hosts) {
                 this.heartbeatHost(host);
             }
         }).catch((error) => {
+            this.stats.heartbeatsFailed++;
             this.scopedLogger.error(`Mongo heartbeat error: ${formatError(error)}`);
+        }).finally(() => {
+            this.heartbeatTimer = setTimeout(() => this.heartbeat(), this.config.options.heartbeatFrequency);
         });
     }
 
@@ -379,15 +429,22 @@ export class MongoConnectionPool {
 
     protected createConnection(host: Host): MongoConnection {
         this.stats.connectionsCreated++;
+        host.stats.connectionsCreated++;
         const connection = new MongoConnection(this.connectionId++, host, this.config, this.serializer, (connection) => {
             arrayRemoveItem(host.connections, connection);
             arrayRemoveItem(this.connections, connection);
+            if (connection.status === MongoConnectionStatus.error) {
+                this.stats.connectionsError++;
+                host.stats.connectionsError++;
+            }
             // onClose does not automatically reconnect. Only new commands re-establish connections.
         }, (connection) => {
             this.release(connection);
         }, (bytesSent) => {
+            host.stats.bytesSent += bytesSent;
             this.stats.bytesSent += bytesSent;
         }, (bytesReceived) => {
+            host.stats.bytesReceived += bytesReceived;
             this.stats.bytesReceived += bytesReceived;
         });
         connection.connect().catch((error) => {
@@ -425,12 +482,15 @@ export class MongoConnectionPool {
                 continue;
             }
 
+            connection.host.stats.connectionsReused++;
             this.stats.connectionsReused++;
+
             this.queue.splice(i, 1);
             waiter.resolve(connection);
             // we don't set reserved/set cleanupTimeout,
             // since the connection is already reserved and the timeout
             // is only set when the connection actually starting idling.
+            // as soon a connection becomes reserved, the timer is stopped.
             return;
         }
 
@@ -462,6 +522,10 @@ export class MongoConnectionPool {
      * Returns an existing or new connection, that needs to be released once done using it.
      */
     async getConnection(partialRequest: Partial<ConnectionRequest> = {}): Promise<MongoConnection> {
+        if (this.closed) {
+            throw new MongoError('Connection pool is closed');
+        }
+
         const request = this.applyRequestDefaults(partialRequest);
         this.heartbeat();
 
@@ -477,12 +541,11 @@ export class MongoConnectionPool {
                 await connection.connect();
                 return connection;
             }
+            host.stats.connectionsQueued++;
         } else {
             if (this.heartbeats > 0) {
                 // we have a known topology, but no host is available
-                throw new MongoConnectionError(
-                    `Could not find host for connection request. (readPreference=${request.readPreference}, topology=${this.config.getTopology()})`,
-                );
+                throw this.createErrorForUnmetRequest(request);
             }
         }
 
@@ -502,6 +565,7 @@ export class MongoConnectionPool {
             }
 
             this.stats.connectionsReused++;
+            host.stats.connectionsReused++;
             connection.reserved = true;
             if (connection.cleanupTimeout) {
                 clearTimeout(connection.cleanupTimeout);
@@ -720,6 +784,8 @@ export class MongoConnection {
 
     close() {
         this.status = MongoConnectionStatus.disconnected;
+        clearTimeout(this.cleanupTimeout);
+        this.cleanupTimeout = undefined;
         this.socket.destroy();
     }
 
