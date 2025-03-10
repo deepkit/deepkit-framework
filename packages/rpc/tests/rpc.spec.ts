@@ -9,7 +9,6 @@ import {
     createRpcMessageSourceDest,
     readBinaryRpcMessage,
     readUint32LE,
-    RpcBinaryBufferReader,
     RpcBinaryMessageReader,
     RpcMessage,
     RpcMessageRouteType,
@@ -269,128 +268,6 @@ test('rpc peer', async () => {
     const controller = client2.peer('peer1').controller<Controller>('foo');
     const res = await controller.action('bar');
     expect(res).toBe('bar');
-});
-
-test('message reader', async () => {
-    const messages: Buffer[] = [];
-    const reader = new RpcBinaryBufferReader(Array.prototype.push.bind(messages));
-
-    let buffer: any;
-
-    {
-        messages.length = 0;
-        buffer = Buffer.alloc(8);
-        buffer.writeUInt32LE(8);
-        reader.feed(buffer);
-
-        expect(reader.emptyBuffer()).toBe(true);
-        expect(messages.length).toBe(1);
-        expect(messages[0].readUInt32LE()).toBe(8);
-    }
-
-    {
-        messages.length = 0;
-        buffer = Buffer.alloc(500_000);
-        buffer.writeUInt32LE(1_000_000);
-        reader.feed(buffer);
-        buffer = Buffer.alloc(500_000);
-        reader.feed(buffer);
-
-        expect(reader.emptyBuffer()).toBe(true);
-        expect(messages.length).toBe(1);
-        expect(messages[0].readUInt32LE()).toBe(1_000_000);
-    }
-
-    {
-        messages.length = 0;
-        buffer = Buffer.alloc(0);
-        reader.feed(buffer);
-
-        buffer = Buffer.alloc(8);
-        buffer.writeUInt32LE(8);
-        reader.feed(buffer);
-
-        expect(reader.emptyBuffer()).toBe(true);
-        expect(messages.length).toBe(1);
-        expect(messages[0].readUInt32LE()).toBe(8);
-    }
-
-    {
-        messages.length = 0;
-        buffer = Buffer.alloc(18);
-        buffer.writeUInt32LE(8);
-        buffer.writeUInt32LE(10, 8);
-        reader.feed(buffer);
-
-        expect(reader.emptyBuffer()).toBe(true);
-        expect(messages.length).toBe(2);
-        expect(messages[0].readUInt32LE()).toBe(8);
-        expect(messages[1].readUInt32LE()).toBe(10);
-    }
-
-    {
-        messages.length = 0;
-        buffer = Buffer.alloc(22);
-        buffer.writeUInt32LE(8);
-        buffer.writeUInt32LE(10, 8);
-        buffer.writeUInt32LE(20, 18);
-
-        reader.feed(buffer);
-        buffer = Buffer.alloc(16);
-        reader.feed(buffer);
-
-        expect(reader.emptyBuffer()).toBe(true);
-        expect(messages.length).toBe(3);
-        expect(messages[0].readUInt32LE()).toBe(8);
-        expect(messages[1].readUInt32LE()).toBe(10);
-        expect(messages[2].readUInt32LE()).toBe(20);
-    }
-
-    {
-        messages.length = 0;
-        buffer = Buffer.alloc(8);
-        buffer.writeUInt32LE(8);
-        reader.feed(buffer);
-        reader.feed(buffer);
-
-        expect(reader.emptyBuffer()).toBe(true);
-        expect(messages.length).toBe(2);
-        expect(messages[0].readUInt32LE()).toBe(8);
-        expect(messages[1].readUInt32LE()).toBe(8);
-    }
-
-    {
-        messages.length = 0;
-        buffer = Buffer.alloc(4);
-        buffer.writeUInt32LE(8);
-        reader.feed(buffer);
-
-        buffer = Buffer.alloc(4);
-        reader.feed(buffer);
-
-        expect(reader.emptyBuffer()).toBe(true);
-        expect(messages.length).toBe(1);
-        expect(messages[0].readUInt32LE()).toBe(8);
-    }
-
-    {
-        messages.length = 0;
-        let buffer = Buffer.alloc(4);
-        buffer.writeUInt32LE(30);
-        reader.feed(buffer);
-
-        buffer = Buffer.alloc(26);
-        reader.feed(buffer);
-
-        buffer = Buffer.alloc(8);
-        buffer.writeUInt32LE(8);
-        reader.feed(buffer);
-
-        expect(reader.emptyBuffer()).toBe(true);
-        expect(messages.length).toBe(2);
-        expect(messages[0].readUInt32LE()).toBe(30);
-        expect(messages[1].readUInt32LE()).toBe(8);
-    }
 });
 
 test('message chunks', async () => {

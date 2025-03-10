@@ -28,9 +28,7 @@ export class RpcDirectClientAdapter implements ClientTransportAdapter {
         const kernelConnection = this.rpcKernel.createConnection({
             writeBinary: (buffer) => {
                 if (closed) return;
-                setImmediate(() => {
-                    connection.readBinary(buffer);
-                });
+                connection.readBinary(buffer);
             },
             close: () => {
                 closed = true;
