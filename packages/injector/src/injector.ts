@@ -22,14 +22,7 @@ import {
     isFunction,
     isPrototypeOfBase,
 } from '@deepkit/core';
-import {
-    ConfigurationProviderRegistry,
-    ConfigureProviderEntry,
-    findModuleForConfig,
-    getScope,
-    InjectorModule,
-    PreparedProvider,
-} from './module.js';
+import { ConfigurationProviderRegistry, ConfigureProviderEntry, findModuleForConfig, getScope, InjectorModule, PreparedProvider } from './module.js';
 import {
     isOptional,
     isType,
@@ -163,7 +156,6 @@ export type ContainerToken = Exclude<Token, Type | TagProvider<any>>;
  * This is used in the big switch-case statement in the generated code to match DI tokens.
  */
 export function getContainerToken(type: Token): ContainerToken {
-    if (isClass(type)) return type;
     if (type instanceof TagProvider) return getContainerToken(type.provider);
 
     if (isType(type)) {
@@ -240,6 +232,8 @@ export class Injector implements InjectorInterface {
     private instances: { [name: string]: any } = {};
     private instantiated: { [name: string]: number } = {};
 
+    private resolverMap = new WeakMap<any, Resolver<any>>;
+
     constructor(
         public readonly module: InjectorModule,
         private buildContext: BuildContext,
@@ -258,15 +252,18 @@ export class Injector implements InjectorInterface {
 
     get<T>(token?: ReceiveType<T> | Token<T>, scope?: Scope): ResolveToken<T> {
         if (!this.resolver) throw new Error('Injector was not built');
-        if ('string' === typeof token || 'number' === typeof token || 'bigint' === typeof token ||
-            'boolean' === typeof token || 'symbol' === typeof token || isFunction(token) || isClass(token) || token instanceof RegExp) {
-            return this.resolver(getContainerToken(token), scope) as ResolveToken<T>;
-        } else if (isType(token)) {
-            return this.createResolver(isType(token) ? token as Type : resolveReceiveType(token), scope)(scope);
-        } else if (isArray(token)) {
-            return this.createResolver(resolveReceiveType(token), scope)(scope);
+        let resolver = this.resolverMap.get(token);
+        if (!resolver) {
+            if (isType(token)) {
+                resolver = this.createResolver(isType(token) ? token as Type : resolveReceiveType(token), scope);
+            } else if (isArray(token)) {
+                resolver = this.createResolver(resolveReceiveType(token), scope);
+            } else {
+                resolver = this.createResolver(getContainerToken(token), scope)
+            }
+            this.resolverMap.set(token, resolver);
         }
-        throw new Error(`Invalid get<T> argument given ${token}`);
+        return resolver(scope);
     }
 
     set(token: ContainerToken, value: any, scope?: Scope): void {
@@ -871,7 +868,10 @@ export class Injector implements InjectorInterface {
 
         const resolveFromModule = foundPreparedProvider.resolveFrom || foundPreparedProvider.modules[0];
 
-        return (scopeIn?: Scope) => resolveFromModule.injector!.resolver!(getContainerToken(foundPreparedProvider!.token), scopeIn || scope);
+        const containerToken = getContainerToken(foundPreparedProvider!.token);
+        const resolver = resolveFromModule.injector!.resolver!;
+
+        return (scopeIn?: Scope) => resolver(containerToken, scopeIn || scope);
     }
 }
 
@@ -960,7 +960,13 @@ export class InjectorContext {
     }
 }
 
-export function injectedFunction<T extends (...args: any) => any>(fn: T, injector: Injector, skipParameters: number = 0, type?: Type, skipTypeParameters?: number): ((scope?: Scope, ...args: any[]) => ReturnType<T>) {
+export function injectedFunction<T extends (...args: any) => any>(
+    fn: T,
+    injector: Injector,
+    skipParameters: number = 0,
+    type?: Type,
+    skipTypeParameters?: number
+): ((scope?: Scope, ...args: any[]) => ReturnType<T>) {
     type = type || reflect(fn);
     skipTypeParameters = skipTypeParameters === undefined ? skipParameters : skipTypeParameters;
     if (type.kind === ReflectionKind.function || type.kind === ReflectionKind.method) {
