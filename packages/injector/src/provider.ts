@@ -25,7 +25,7 @@ export interface ProviderScope {
 }
 
 /** @reflection never */
-export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | AbstractClassType<T> | Type | TagProvider<T> | Function | T;
+export type Token<T = unknown> = symbol | number | bigint | boolean | string | AbstractClassType<T> | Type | TagProvider<T> | Function | T;
 
 export function provide<T>(
     provider:

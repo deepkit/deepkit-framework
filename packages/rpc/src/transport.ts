@@ -31,6 +31,9 @@ export class TransportOptions {
     public chunkSize: number = 100_000;
 }
 
+/**
+ * @see createWriter
+ */
 export interface TransportMessageWriter {
     (message: RpcMessageDefinition, options: TransportOptions, stats: RpcTransportStats, progress?: SingleProgress): void;
 }
@@ -132,18 +135,20 @@ export class TransportBinaryMessageChunkWriter {
 export function createWriter(transport: TransportConnection, options: TransportOptions, reader: RpcBinaryMessageReader): TransportMessageWriter {
     if (transport.writeBinary) {
         const chunkWriter = new TransportBinaryMessageChunkWriter(reader, options);
+        const writeBinary = transport.writeBinary;
         return (message, options, stats, progress) => {
             const buffer = serializeBinaryRpcMessage(message);
             stats.increase('outgoing', 1);
             stats.increase('outgoingBytes', buffer.byteLength);
-            chunkWriter.write(transport.writeBinary!, buffer, progress);
+            chunkWriter.write(writeBinary, buffer, progress);
         };
     }
 
     if (transport.write) {
+        const write = transport.write;
         return (message, options, stats, progress) => {
             stats.increase('outgoing', 1);
-            transport.write!(message, options, stats, progress);
+            write(message, options, stats, progress);
         };
     }
 

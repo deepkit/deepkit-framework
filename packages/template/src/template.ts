@@ -12,7 +12,7 @@ import './optimize-tsx';
 import { injectedFunction, Injector, Resolver } from '@deepkit/injector';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { escapeAttribute, escapeHtml, safeString } from './utils.js';
-import { reflect, ReflectionClass, ReflectionKind, Type } from '@deepkit/type';
+import { ReflectionClass, Type } from '@deepkit/type';
 
 export type Attributes<T = any> = {
     [P in keyof T]: T[P];
@@ -177,7 +177,7 @@ export async function render(injector: Injector, struct: ElementStruct | string 
             const args: Resolver<any>[] = [];
             const types = schema.getMethodParameters('constructor');
             for (let i = 2; i < types.length; i++) {
-                args.push(injector.createResolver(types[i].type as Type));
+                args.push(injector.getResolver(types[i].type as Type));
             }
 
             element.templateCall = (attributes: any, children: any) => {

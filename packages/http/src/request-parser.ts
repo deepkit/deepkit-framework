@@ -351,7 +351,7 @@ export function getRequestParserCodeForParameters(
                 requiresAsyncParameters = true;
                 let instanceFetcher = '';
                 if (config.module && config.module.injector) {
-                    const resolverResolverVar = compiler.reserveVariable('resolverProvideToken', config.module.injector.createResolver(resolveReceiveType(resolverType)));
+                    const resolverResolverVar = compiler.reserveVariable('resolverProvideToken', config.module.injector.getResolver(resolveReceiveType(resolverType)));
                     instanceFetcher = `${resolverResolverVar}(${injector}.scope)`;
                 } else {
                     const resolverProvideTokenVar = compiler.reserveVariable('resolverProvideToken', resolverType);
@@ -384,7 +384,7 @@ export function getRequestParserCodeForParameters(
                 const resolverVar = compiler.reserveVariable('resolver');
                 let injectorGet = `
                 if (!${resolverVar}) ${resolverVar} = ${injector}.resolve(${moduleRawVar}, ${injectorTokenVar});
-                parameters.${parameter.parameter.name} = ${resolverVar}(${injector}.scope);
+                parameters.${parameter.parameter.name} = ${resolverVar}(${injector}.scope, true);
                 `;
                 if (!parameter.parameter.isOptional()) {
                     injectorGet += `

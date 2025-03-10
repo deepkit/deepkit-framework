@@ -11,7 +11,7 @@
 import style from 'ansi-styles';
 import format from 'format-util';
 import { arrayRemoveItem, ClassType } from '@deepkit/core';
-import { Inject, TransientInjectionTarget } from '@deepkit/injector';
+import { Inject, tokenLabel, TransientInjectionTarget } from '@deepkit/injector';
 import { MemoryLoggerTransport } from './memory-logger.js';
 
 export enum LoggerLevel {
@@ -23,6 +23,7 @@ export enum LoggerLevel {
     info,
     debug,
 }
+
 declare var process: {
     stdout: {
         write: (v: string) => any;
@@ -30,7 +31,7 @@ declare var process: {
     stderr: {
         write: (v: string) => any;
     };
-}
+};
 
 export type LogData = { [name: string]: any };
 
@@ -108,7 +109,7 @@ export class ColorFormatter implements LoggerFormatter {
         }
 
         if (message.message.includes('<')) {
-            message.message = message.message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
+            message.message = message.message.replace(/<(\/)?([a-zA-Z]+)>/g, function(a, end, color) {
                 if (!(style as any)[color]) return a;
                 if (end === '/') return (style as any)[color].close;
                 return (style as any)[color].open;
@@ -120,7 +121,7 @@ export class ColorFormatter implements LoggerFormatter {
 export class RemoveColorFormatter implements LoggerFormatter {
     format(message: LogMessage): void {
         if (message.message.includes('<')) {
-            message.message = message.message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
+            message.message = message.message.replace(/<(\/)?([a-zA-Z]+)>/g, function(a, end, color) {
                 return '';
             });
         }
@@ -209,7 +210,6 @@ export class Logger implements LoggerInterface {
 
     protected logData?: LogData;
 
-    scopedLevel: { [scope: string]: LoggerLevel } = {};
     protected scopes: { [scope: string]: Logger } = {};
 
     constructor(
@@ -225,8 +225,24 @@ export class Logger implements LoggerInterface {
     }
 
     scoped(name: string): Logger {
-        const scopedLogger = (this.scopes[name] ||= new (this.constructor as any)(this.transporter, this.formatter, name));
-        scopedLogger.level = this.level;
+        let scopedLogger = this.scopes[name];
+        if (!scopedLogger) {
+            const self = this;
+            const scope = this.scope ? this.scope + '.' + name : name;
+            scopedLogger = Object.setPrototypeOf({
+                get level() {
+                    return self.level;
+                },
+                transporter: self.transporter,
+                formatter: self.formatter,
+                scope,
+                scopes: self.scopes,
+                logData: self.logData,
+                colorFormatter: self.colorFormatter,
+                removeColorFormatter: self.removeColorFormatter,
+            }, Logger.prototype);
+            this.scopes[name] = scopedLogger;
+        }
         return scopedLogger;
     }
 
@@ -325,7 +341,7 @@ export class Logger implements LoggerInterface {
  */
 export class ConsoleLogger extends Logger {
     constructor() {
-        super([new ConsoleTransport]);
+        super([new ConsoleTransport], [new DefaultFormatter]);
     }
 }
 
@@ -338,7 +354,7 @@ export class MemoryLogger extends Logger {
     constructor(
         transporter: LoggerTransport[] = [],
         formatter: LoggerFormatter[] = [],
-        scope: string = ''
+        scope: string = '',
     ) {
         super(transporter || [], formatter, scope);
         if (transporter.length === 0) {
@@ -361,5 +377,5 @@ export const ScopedLogger = {
     provide: 'scoped-logger',
     transient: true,
     useFactory: (target: TransientInjectionTarget, logger: Logger = new Logger()) =>
-        logger.scoped(target.token?.name ?? String(target.token)),
+        logger.scoped(tokenLabel(target.token)),
 } as const;

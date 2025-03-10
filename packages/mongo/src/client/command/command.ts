@@ -10,8 +10,8 @@
 
 import { asyncOperation, getClassName } from '@deepkit/core';
 import { handleErrorResponse, MongoDatabaseError, MongoError } from '../error.js';
-import { MongoClientConfig } from '../config.js';
-import { Host } from '../host.js';
+import type { MongoClientConfig } from '../config.js';
+import type { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
 import {
     InlineRuntimeType,
@@ -48,6 +48,7 @@ export interface TransactionalMessage {
 }
 
 export interface ReadPreferenceMessage {
+    // this is needed for Mongos or LoadBalancer
     $readPreference?: {
         mode: string;
         tags?: { [name: string]: string }[];

@@ -25,6 +25,7 @@ export interface IsMasterResponse extends BaseResponse {
     //indicates that the mongod or mongos is running in read-only mode
     readOnly?: boolean;
 
+
     compression?: string[];
     saslSupportedMechs?: string[];
 
@@ -32,12 +33,20 @@ export interface IsMasterResponse extends BaseResponse {
     msg?: string;
 
     //isMaster contains these fields when returned by a member of a replica set:
-    // hosts: string[];
+    hosts?: string[];
+    passives?: string[];
     setName?: string; //replica set name
     // setVersion: number; //replica set version
+    me?: string;
     secondary?: boolean;
     arbiterOnly?: boolean;
     hidden?: boolean;
+
+    lastWrite?: {
+        lastWriteDate: Date;
+    };
+
+    [k: string]: any;
 }
 
 interface IsMasterSchema {

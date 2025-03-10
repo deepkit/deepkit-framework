@@ -87,7 +87,9 @@ test('error insert event', async () => {
     const database = new Database(new FailAdapter(), [User]);
 
     let event: DatabaseErrorEvent | undefined;
-    database.listen(onDatabaseError, e => event = e);
+    database.listen(onDatabaseError, e => {
+        event = e;
+    });
 
     await database.persist(new User(1, 'peter')).catch(() => undefined);
 
@@ -122,7 +124,9 @@ test('error update event', async () => {
     const database = new Database(new FailAdapter(), [User]);
 
     let event: DatabaseErrorEvent | undefined;
-    database.listen(onDatabaseError, e => event = e);
+    database.listen(onDatabaseError, e => {
+        event = e;
+    });
 
     const item = new User(1, 'peter');
     await database.persist(item);

@@ -118,7 +118,7 @@ test('scopes', () => {
     const serviceContainer = new ServiceContainer(myModule);
     const sessionInjector = serviceContainer.getInjectorContext().createChildScope('rpc');
 
-    expect(() => serviceContainer.getInjectorContext().get(SessionHandler)).toThrow('not found');
+    expect(() => serviceContainer.getInjectorContext().get(SessionHandler)).toThrow(`Service 'SessionHandler' is known but has no value`);
     expect(sessionInjector.get(SessionHandler)).toBeInstanceOf(SessionHandler);
 
     expect(serviceContainer.getInjectorContext().get(MyService)).toBeInstanceOf(MyService);

@@ -51,7 +51,7 @@ export class MigrationDownCommand extends BaseCommand {
                     const latestVersion = await migrationHandler.getLatestMigrationVersion();
                     const migration = migrations.find(v => v.version === latestVersion);
                     if (!migration) {
-                        this.logger.log('<red>No migration found to execute');
+                        this.logger.log('<red>No migration found to execute</red>');
                         return;
                     }
 

@@ -28,12 +28,11 @@ export interface RpcControllerAccess {
     controllerClassType: ClassType;
     actionName: string;
     actionGroups: string[];
-    connection: RpcKernelBaseConnection;
     actionData: { [name: string]: any };
 }
 
 export class RpcKernelSecurity {
-    async hasControllerAccess(session: Session, controllerAccess: RpcControllerAccess): Promise<boolean> {
+    async hasControllerAccess(session: Session, controllerAccess: RpcControllerAccess, connection: RpcKernelBaseConnection): Promise<boolean> {
         return true;
     }
 

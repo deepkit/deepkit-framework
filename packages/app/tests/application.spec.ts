@@ -373,7 +373,7 @@ test('cli controllers in sub modules are in correct injector context', async () 
             expect(created).toBe(2);
         }
 
-        expect(() => app.get(MyService)).toThrow('not found');
+        expect(() => app.get(MyService)).toThrow(`Service 'MyService' not found`);
     }
 
     {
@@ -551,7 +551,7 @@ test('event dispatch', () => {
         providers: [Logger]
     });
 
-    const UserAddedEvent = new DataEventToken<User>('user-added');
+    const UserAddedEvent = new EventToken<DataEvent<User>>('user-added');
 
     app.listen(UserAddedEvent, (event, logger: Logger) => {
         logger.log('User added', event.data.username);

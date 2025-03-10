@@ -5,8 +5,8 @@ import {
     injectedFunction,
     Injector,
     InjectorContext,
-    TransientInjectionTarget,
     PartialFactory,
+    TransientInjectionTarget,
 } from '../src/injector.js';
 import { InjectorModule } from '../src/module.js';
 import { ReflectionClass, ReflectionKind } from '@deepkit/type';
@@ -416,7 +416,7 @@ test('injector optional dependency', () => {
 
     {
         const injector = Injector.from([MyServer]);
-        expect(() => injector.get(Connection)).toThrow(`Service 'Connection' in InjectorModule not found`);
+        expect(() => injector.get(Connection)).toThrow(`Service 'Connection' not found`);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
     }
 });
