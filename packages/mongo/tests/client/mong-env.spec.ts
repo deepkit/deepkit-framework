@@ -172,7 +172,7 @@ describe('mongo-env', () => {
 
         mongo.closeConnections();
         mongo.connectionDrop = true;
-        await sleep(0);
+        await sleep(0.1);
         expect(client.pool.isConnected()).toBe(false);
 
         await expect(client.execute(new IsMasterCommand())).rejects.toThrow(MongoConnectionError);

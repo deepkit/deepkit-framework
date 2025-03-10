@@ -263,28 +263,28 @@ test('connection pool 10', async () => {
         const c9 = await client.pool.getConnection();
         expect(host.connections.length).toBe(9);
         const c10 = await client.pool.getConnection();
-        // // this blocks
-        // let c11: any;
-        // client.pool.getConnection().then((c) => {
-        //     c11 = c;
-        //     expect(c11.id).toBe(0);
-        // });
-        // let c12: any;
-        // client.pool.getConnection().then((c) => {
-        //     c12 = c;
-        //     expect(c12.id).toBe(1);
-        // });
-        // await sleep(0.01);
-        // expect(c11).toBe(undefined);
-        // expect(c12).toBe(undefined);
-        //
-        // c1.release();
-        // await sleep(0.01);
-        // expect(c11).toBe(c1);
-        //
-        // c2.release();
-        // await sleep(0.01);
-        // expect(c12).toBe(c2);
+        // this blocks
+        let c11: any;
+        client.pool.getConnection().then((c) => {
+            c11 = c;
+            expect(c11.id).toBe(0);
+        });
+        let c12: any;
+        client.pool.getConnection().then((c) => {
+            c12 = c;
+            expect(c12.id).toBe(1);
+        });
+        await sleep(0.01);
+        expect(c11).toBe(undefined);
+        expect(c12).toBe(undefined);
+
+        c1.release();
+        await sleep(0.01);
+        expect(c11).toBe(c1);
+
+        c2.release();
+        await sleep(0.01);
+        expect(c12).toBe(c2);
     }
 
     client.close();

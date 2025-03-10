@@ -254,8 +254,6 @@ export class MongoEnv {
 
         await this.ensureDestroyed(name);
 
-        // todo, rework to allow specifying a network, which will
-        //  be created automatically + hostname. this fixes replicaSet
         const args: string[] = [
             'run',
             '--rm',
