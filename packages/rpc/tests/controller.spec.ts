@@ -1,6 +1,6 @@
 import { assertType, entity, Minimum, Positive, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { DirectClient, RpcDirectClientAdapter } from '../src/client/client-direct.js';
+import { AsyncDirectClient, DirectClient, RpcDirectClientAdapter } from '../src/client/client-direct.js';
 import { getActions, rpc, RpcController } from '../src/decorators.js';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
 import { Session, SessionState } from '../src/server/security.js';
@@ -948,7 +948,7 @@ test('connection disconnect client', async () => {
 
     const kernel = new RpcKernel();
     kernel.registerController(Controller, 'myController');
-    const client = new DirectClient(kernel);
+    const client = new AsyncDirectClient(kernel);
     const controller = client.controller<Controller>('myController');
 
     await client.connect();

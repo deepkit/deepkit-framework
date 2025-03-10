@@ -137,8 +137,8 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     public logger: DatabaseLogger = new DatabaseLogger();
 
-    /** @reflection never */
     public eventDispatcher: EventDispatcher = new EventDispatcher();
+
     public pluginRegistry: DatabasePluginRegistry = new DatabasePluginRegistry();
 
     constructor(
@@ -236,7 +236,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * ```
      */
     public createSession(): DatabaseSession<ADAPTER> {
-        return new DatabaseSession(this.adapter, this.entityRegistry, this.eventDispatcher.fork(), this.pluginRegistry, this.logger, this.stopwatch);
+        return new DatabaseSession(this.adapter, this.entityRegistry, this.eventDispatcher, this.pluginRegistry, this.logger, this.stopwatch);
     }
 
     /**

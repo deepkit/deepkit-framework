@@ -34,11 +34,11 @@ export class RpcInjectorContext extends InjectorContext {
 export class RpcServerActionWithStopwatch extends RpcServerAction {
     stopwatch?: Stopwatch;
 
-    protected async hasControllerAccess(controllerAccess: RpcControllerAccess): Promise<boolean> {
+    protected async hasControllerAccess(controllerAccess: RpcControllerAccess, connection: RpcKernelBaseConnection): Promise<boolean> {
         const frame = this.stopwatch ? this.stopwatch.start('RPC/controllerAccess') : undefined;
 
         try {
-            return await super.hasControllerAccess(controllerAccess);
+            return await super.hasControllerAccess(controllerAccess, connection);
         } finally {
             if (frame) frame.end();
         }

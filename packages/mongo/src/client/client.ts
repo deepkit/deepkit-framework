@@ -17,21 +17,36 @@ import { MongoClientConfig } from './config.js';
 import { ReflectionClass } from '@deepkit/type';
 import { mongoBinarySerializer } from '../mongo-serializer.js';
 import { BSONBinarySerializer } from '@deepkit/bson';
+import { EventDispatcher } from '@deepkit/event';
+import { ConsoleLogger, Logger } from '@deepkit/logger';
 
 export class MongoClient {
     protected inCloseProcedure: boolean = false;
 
     public readonly config: MongoClientConfig;
-    public connectionPool: MongoConnectionPool;
+    public pool: MongoConnectionPool;
     public stats: MongoStats = new MongoStats;
 
     protected serializer: BSONBinarySerializer = mongoBinarySerializer;
 
     constructor(
-        connectionString: string
+        connectionString: string,
+        public eventDispatcher: EventDispatcher = new EventDispatcher(),
+        public logger: Logger = new ConsoleLogger(),
     ) {
         this.config = new MongoClientConfig(connectionString);
-        this.connectionPool = new MongoConnectionPool(this.config, this.serializer, this.stats);
+        this.pool = new MongoConnectionPool(this.config, this.serializer, this.stats, this.logger, this.eventDispatcher);
+        this.config.options.validate();
+    }
+
+    setLogger(logger: Logger) {
+        this.logger = logger;
+        this.pool.logger = logger
+    }
+
+    setEventDispatcher(eventDispatcher: EventDispatcher) {
+        this.eventDispatcher = eventDispatcher;
+        this.pool.eventDispatcher = eventDispatcher;
     }
 
     public resolveCollectionName(schema: ReflectionClass<any>): string {
@@ -39,12 +54,12 @@ export class MongoClient {
     }
 
     public async connect() {
-        await this.connectionPool.connect();
+        await this.pool.connect();
     }
 
     public close() {
         this.inCloseProcedure = true;
-        this.connectionPool.close();
+        this.pool.close();
     }
 
     async dropDatabase(dbName: string): Promise<void> {
@@ -56,7 +71,7 @@ export class MongoClient {
      */
     async getConnection(request: Partial<ConnectionRequest> = {}, transaction?: MongoDatabaseTransaction): Promise<MongoConnection> {
         if (transaction && transaction.connection) return transaction.connection;
-        const connection = await this.connectionPool.getConnection(request);
+        const connection = await this.pool.getConnection(request);
         if (transaction) {
             transaction.connection = connection;
             connection.transaction = transaction;
@@ -65,18 +80,21 @@ export class MongoClient {
             } catch (error) {
                 transaction.ended = true;
                 connection.release();
-                throw new Error('Could not start transaction: ' + error);
+                throw new MongoError('Could not start transaction: ' + error);
             }
         }
         return connection;
     }
 
-    public async execute<T extends Command<unknown>>(command: T): Promise<ReturnType<T['execute']>> {
-        const maxRetries = 10;
-        const request = { readonly: !command.needsWritableHost() };
+    public async execute<T extends Command<unknown>>(
+        command: T,
+        request: Partial<ConnectionRequest> = {},
+    ): Promise<ReturnType<T['execute']>> {
+        if (command.needsWritableHost()) request.writable = true;
 
+        const maxRetries = 10;
         for (let i = 1; i <= maxRetries; i++) {
-            const connection = await this.connectionPool.getConnection(request);
+            const connection = await this.pool.getConnection(request);
 
             try {
                 return await connection.execute(command);

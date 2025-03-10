@@ -245,6 +245,7 @@ test('connection is available during authentication', async () => {
 
 test('connection is available in controller access information', async () => {
     let _controllerAccess: RpcControllerAccess | undefined;
+    let _connection: RpcKernelBaseConnection | undefined;
 
     class Controller {
         @rpc.action()
@@ -252,8 +253,9 @@ test('connection is available in controller access information', async () => {
     }
 
     class TestRpcKernelSecurity extends RpcKernelSecurity {
-        async hasControllerAccess(session: Session, controllerAccess: RpcControllerAccess): Promise<boolean> {
+        async hasControllerAccess(session: Session, controllerAccess: RpcControllerAccess, connection: RpcKernelBaseConnection): Promise<boolean> {
             _controllerAccess = controllerAccess;
+            _connection = connection;
             return true;
         }
     }
@@ -266,5 +268,6 @@ test('connection is available in controller access information', async () => {
     const controller = client.controller<Controller>('test');
     await controller.test();
 
-    expect(_controllerAccess?.connection).toBeInstanceOf(RpcKernelBaseConnection);
+    expect(_controllerAccess?.controllerClassType).toBe(Controller);
+    expect(_connection).toBeInstanceOf(RpcKernelBaseConnection);
 });

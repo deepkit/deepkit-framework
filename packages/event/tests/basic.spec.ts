@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, EventError, EventOfEventToken, EventToken, EventTokenSync } from '../src/event.js';
+import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, EventOfEventToken, EventToken, EventTokenSync } from '../src/event.js';
 import { sleep } from '@deepkit/core';
 
 type TypeA = 'asd' | void;
@@ -61,16 +61,21 @@ test('custom event', async () => {
     expect(calls).toBe(1);
 });
 
-test('throw when already built', async () => {
+test('rebuild if necessary', async () => {
     const dispatcher = new EventDispatcher();
     const MyEvent = new EventToken('my-event');
 
+    let called = 0;
     await dispatcher.dispatch(MyEvent);
 
-    expect(() => dispatcher.listen(MyEvent, (event) => undefined)).toThrow(EventError);
+    dispatcher.listen(MyEvent, (event) => {
+        called++;
+    });
+    await dispatcher.dispatch(MyEvent);
+    expect(called).toBe(1);
 });
 
-test('fork', async () => {
+test('rebuild', async () => {
     const dispatcher = new EventDispatcher();
     const MyEvent = new EventToken('my-event');
     let callsA = 0;
@@ -82,22 +87,24 @@ test('fork', async () => {
     await dispatcher.dispatch(MyEvent);
     expect(callsA).toBe(1);
 
-    const fork = dispatcher.fork();
     let callsB = 0;
-    const sub2 = fork.listen(MyEvent, (event) => {
+    const sub2 = dispatcher.listen(MyEvent, (event) => {
         callsB++;
     });
 
-    await fork.dispatch(MyEvent);
+    await dispatcher.dispatch(MyEvent);
     expect(callsA).toBe(2);
     expect(callsB).toBe(1);
 
     sub2();
-    await fork.dispatch(MyEvent);
+    await dispatcher.dispatch(MyEvent);
     expect(callsA).toBe(3);
     expect(callsB).toBe(1);
 
-    expect(() => sub1()).toThrow(EventError);
+    sub1();
+    await dispatcher.dispatch(MyEvent);
+    expect(callsA).toBe(3);
+    expect(callsB).toBe(1);
 });
 
 test('sync not doing async stuff', async () => {
@@ -169,40 +176,6 @@ test('delayed event factory sync empty', async () => {
 
 test('delayed event factory sync filled', async () => {
     const dispatcher = new EventDispatcher();
-    const myEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
-    let factories = 0;
-    let calls = 0;
-
-    dispatcher.listen(myEvent, () => {
-        calls++;
-    });
-
-    const res = dispatcher.dispatch(myEvent, () => {
-        factories++;
-        return new DataEvent({data: 'abc'});
-    });
-
-    expect(res).toBe(undefined);
-    expect(calls).toBe(1);
-    expect(factories).toBe(1);
-});
-
-test('delayed event factory fork sync empty', async () => {
-    const dispatcher = new EventDispatcher().fork()
-    const MyEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
-    let factories = 0;
-
-    const res = dispatcher.dispatch(MyEvent, () => {
-        factories++;
-        return new DataEvent({data: 'abc'});
-    });
-
-    expect(res).toBe(undefined);
-    expect(factories).toBe(0); // because no listener attached
-});
-
-test('delayed event factory fork sync filled', async () => {
-    const dispatcher = new EventDispatcher().fork();
     const myEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
     let factories = 0;
     let calls = 0;
