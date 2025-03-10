@@ -30,7 +30,7 @@ export interface HttpParserOptions {
     /**
      * the minium size of uploaded file
      *
-     * @default 1
+     * @default 0
      */
     minFileSize?: number | undefined;
 

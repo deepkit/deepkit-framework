@@ -27,7 +27,10 @@ function parseBody(
     options: HttpParserOptions,
     req: HttpRequest, foundFiles: { [name: string]: UploadedFile }) {
 
-    const form = formidable(Object.assign(options as Options, {
+    const form = formidable(Object.assign({
+        allowEmptyFiles: true,
+        minFileSize: 0,
+    }, options as Options, {
         multiples: true,
     }));
     return asyncOperation(async (resolve, reject) => {
