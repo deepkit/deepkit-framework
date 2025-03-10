@@ -60,7 +60,7 @@ export class ConfigurationProviderRegistry {
         const results: ConfigureProviderEntry[] = [];
         for (const configure of this.configurations) {
             const lookup = isClass(token) ? resolveReceiveType(token) : token;
-            if (dependencyLookupMatcher(configure.type, lookup)) {
+            if (isType(lookup) && dependencyLookupMatcher(configure.type, lookup)) {
                 results.push(configure);
             }
         }

@@ -293,7 +293,7 @@ export class App<T extends RootModuleDefinition> {
      *
      * order: The lower the order, the sooner the listener is called. Default is 0.
      */
-    listen<T extends EventToken<any>>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): this {
+    listen<T extends EventToken<any>>(eventToken: T, callback: EventListenerCallback<T>, order: number = 0): this {
         const listener: EventListener = { callback, order, eventToken };
         this.appModule.listeners.push(listener);
         return this;

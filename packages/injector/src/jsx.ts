@@ -16,7 +16,7 @@ export function wrapComponent<T extends Function>(fn: T & { __injected?: any }, 
     const componentName = fn.name;
 
     for (let i = 1; i < type.parameters.length; i++) {
-        args.push(injector.createResolver(type.parameters[i], undefined, `${componentName}.${type.parameters[i].name}`));
+        args.push(injector.getResolver(type.parameters[i], `${componentName}.${type.parameters[i].name}`));
     }
 
     const fnWithInjected = (props: any) => {

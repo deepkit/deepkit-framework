@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { InjectorContext } from '../src/injector.js';
+import { injectedFunction, InjectorContext } from '../src/injector.js';
 import { provide, Tag } from '../src/provider.js';
 import { InjectorModule } from '../src/module.js';
 import { InlineRuntimeType, ReflectionKind, Type, typeOf } from '@deepkit/type';
@@ -42,7 +42,7 @@ test('scoped provider', () => {
 
     const context = new InjectorContext(module1);
     const injector = context.getInjector(module1);
-    expect(() => injector.get(Service)).toThrow('not found');
+    expect(() => injector.get(Service)).toThrow(`Service 'Service' is known but has no value. Available in scopes: http, requested scope is global`);
 
     expect(context.createChildScope('http').get(Service)).toBeInstanceOf(Service);
 
@@ -50,6 +50,65 @@ test('scoped provider', () => {
 
     expect(injector.get(Service, scope)).toBeInstanceOf(Service);
     expect(injector.get(Service, scope) === injector.get(Service, scope)).toBe(true);
+});
+
+test('undefined scoped provider', () => {
+    class UnkownService {
+    }
+    class Service {
+    }
+
+    class ControllerRequired {
+        constructor(public service: Service) {}
+    }
+
+    class ControllerOptional {
+        constructor(public service?: Service) {}
+    }
+
+    const module1 = new InjectorModule([
+        { provide: Service, scope: 'http', useValue: undefined },
+        { provide: ControllerRequired, scope: 'http' },
+        { provide: ControllerOptional, scope: 'http' },
+    ]).addExport(Service, ControllerOptional, ControllerRequired);
+
+    const rootModule = new InjectorModule([]).addImport(module1);
+    const context = new InjectorContext(rootModule);
+    const scope = context.createChildScope('http');
+
+    expect(() => context.get(UnkownService)).toThrow(`Service 'UnkownService' not found. No matching provider`)
+
+    let expectService: Service | undefined = undefined;
+    const fn = injectedFunction((controllerOptional: ControllerOptional, service?: Service) => {
+        expect(controllerOptional).toBeInstanceOf(ControllerOptional);
+        expect(service).toBe(expectService);
+    }, context.getRootInjector());
+
+    fn(scope.scope);
+
+    expect(() => scope.get(Service)).toThrow(`Service 'Service' is known but has no value. Available in scopes: http, requested scope is http`);
+
+    const resolver = scope.resolve(module1, Service);
+    expect(() => resolver()).toThrow(`Service 'Service' is known but has no value. Available in scopes: http, requested scope is global`);
+    expect(resolver(undefined, true)).toBe(undefined);
+
+    const controllerOptional = scope.get(ControllerOptional);
+    expect(controllerOptional).toBeInstanceOf(ControllerOptional);
+    expect(controllerOptional.service).toBe(undefined);
+
+    expect(() => scope.get(ControllerRequired)).toThrow(`Constructor argument 'service: Service' of ControllerRequired(?) is known but has no value. Make sure 'Service' is set`);
+
+    scope.set(Service, new Service);
+
+    expectService = scope.get(Service);
+    expect(expectService).toBeInstanceOf(Service);
+
+    fn(scope.scope);
+
+    const controllerRequired = scope.get(ControllerRequired);
+    expect(controllerRequired).toBeInstanceOf(ControllerRequired);
+    expect(controllerRequired.service).toBeInstanceOf(Service);
+
 });
 
 test('scoped provider with dependency to unscoped', () => {
@@ -60,7 +119,7 @@ test('scoped provider with dependency to unscoped', () => {
 
     const context = new InjectorContext(module1);
     const injector = context.getInjector(module1);
-    expect(() => injector.get(Service)).toThrow('not found');
+    expect(() => injector.get(Service)).toThrow(`Service 'Service' is known but has no value. Available in scopes: http, requested scope is global`);
 
     const scope = context.createChildScope('http');
     expect(scope.get(Service)).toBeInstanceOf(Service);
@@ -1221,7 +1280,7 @@ test('exported scoped can be replaced for another scope', () => {
     const root = new InjectorModule().addImport(frameworkModule);
 
     const injector = new InjectorContext(root);
-    expect(() => injector.get(HttpRequest)).toThrow('not found');
+    expect(() => injector.get(HttpRequest)).toThrow(`Service 'HttpRequest' is known but has no value`);
 
     const scopeHttp = injector.createChildScope('http');
     const httpRequest1 = scopeHttp.get(HttpRequest);

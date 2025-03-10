@@ -11,7 +11,7 @@
 import style from 'ansi-styles';
 import format from 'format-util';
 import { arrayRemoveItem, ClassType } from '@deepkit/core';
-import { Inject, TransientInjectionTarget } from '@deepkit/injector';
+import { Inject, tokenLabel, TransientInjectionTarget } from '@deepkit/injector';
 import { MemoryLoggerTransport } from './memory-logger.js';
 
 export enum LoggerLevel {
@@ -377,5 +377,5 @@ export const ScopedLogger = {
     provide: 'scoped-logger',
     transient: true,
     useFactory: (target: TransientInjectionTarget, logger: Logger = new Logger()) =>
-        logger.scoped(target.token?.name ?? String(target.token)),
+        logger.scoped(tokenLabel(target.token)),
 } as const;
