@@ -3,7 +3,9 @@ import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, EventOfEventToke
 import { sleep } from '@deepkit/core';
 
 type TypeA = 'asd' | void;
-function a(a: string, b: TypeA, c?: string) {}
+
+function a(a: string, b: TypeA, c?: string) {
+}
 
 a('asd');
 
@@ -26,7 +28,9 @@ test('functional api', async () => {
 
 test('data event', async () => {
     const dispatcher = new EventDispatcher();
-    class User {}
+
+    class User {
+    }
 
     const MyEvent = new DataEventToken<User>('my-event');
     let calls = 0;
@@ -42,7 +46,9 @@ test('data event', async () => {
 
 test('custom event', async () => {
     const dispatcher = new EventDispatcher();
-    class User {}
+
+    class User {
+    }
 
     class MyEvent extends BaseEvent {
         user: User = new User;
@@ -109,7 +115,7 @@ test('rebuild', async () => {
 
 test('sync not doing async stuff', async () => {
     const dispatcher = new EventDispatcher();
-    const MyEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
+    const MyEvent = new EventTokenSync<DataEvent<{ data: string }>>('my-event');
     let calls = 0;
 
     dispatcher.listen(MyEvent, (async () => {
@@ -117,7 +123,7 @@ test('sync not doing async stuff', async () => {
         calls++;
     }) as any);
 
-    const res = dispatcher.dispatch(MyEvent, {data: 'abc'});
+    const res = dispatcher.dispatch(MyEvent, { data: 'abc' });
     expect(res).toBe(undefined);
     expect(calls).toBe(0);
     await sleep(0.1);
@@ -127,24 +133,25 @@ test('sync not doing async stuff', async () => {
 
 test('sync', async () => {
     const dispatcher = new EventDispatcher();
-    const MyEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
+    const MyEvent = new EventTokenSync<DataEvent<{ data: string }>>('my-event');
     let calls = 0;
 
     dispatcher.listen(MyEvent, () => {
         calls++;
     });
 
-    const res = dispatcher.dispatch(MyEvent, new DataEvent({data: 'abc'}));
+    const res = dispatcher.dispatch(MyEvent, new DataEvent({ data: 'abc' }));
     expect(res).toBe(undefined);
     expect(calls).toBe(1);
 });
 
 test('custom event', async () => {
     const dispatcher = new EventDispatcher();
+
     class MyEvent extends BaseEvent {
         data: string = 'asd';
-        type: string = '';
     }
+
     const myEventToken = new EventTokenSync<MyEvent>('my-event');
     let calls = 0;
 
@@ -162,12 +169,12 @@ test('custom event', async () => {
 
 test('delayed event factory sync empty', async () => {
     const dispatcher = new EventDispatcher();
-    const MyEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
+    const MyEvent = new EventTokenSync<DataEvent<{ data: string }>>('my-event');
     let factories = 0;
 
     const res = dispatcher.dispatch(MyEvent, () => {
         factories++;
-        return new DataEvent({data: 'abc'});
+        return new DataEvent({ data: 'abc' });
     });
 
     expect(res).toBe(undefined);
@@ -176,7 +183,7 @@ test('delayed event factory sync empty', async () => {
 
 test('delayed event factory sync filled', async () => {
     const dispatcher = new EventDispatcher();
-    const myEvent = new EventTokenSync<DataEvent<{data: string}>>('my-event');
+    const myEvent = new EventTokenSync<DataEvent<{ data: string }>>('my-event');
     let factories = 0;
     let calls = 0;
 
@@ -186,10 +193,65 @@ test('delayed event factory sync filled', async () => {
 
     const res = dispatcher.dispatch(myEvent, () => {
         factories++;
-        return new DataEvent({data: 'abc'});
+        return new DataEvent({ data: 'abc' });
     });
 
     expect(res).toBe(undefined);
     expect(calls).toBe(1);
     expect(factories).toBe(1);
+});
+
+test('Event', () => {
+    const event = new Event('a');
+    expect(event.defaultPrevented).toBe(false);
+    event.initEvent('abc', false, true);
+    event.preventDefault();
+    expect(event.defaultPrevented).toBe(true);
+});
+
+test('BaseEvent', () => {
+    const event = new BaseEvent();
+    expect(event.defaultPrevented).toBe(false);
+    event.preventDefault();
+    expect(event.defaultPrevented).toBe(true);
+
+    expect(event.immediatePropagationStopped).toBe(false);
+    event.stopImmediatePropagation();
+    expect(event.immediatePropagationStopped).toBe(true);
+});
+
+test('waitForNext', async () => {
+    const dispatcher = new EventDispatcher();
+    const myEvent = new EventTokenSync<DataEvent<{ data: string }>>('my-event');
+
+    let wait = dispatcher.next(myEvent);
+    dispatcher.dispatch(myEvent, new DataEvent({ data: 'abc' }));
+    {
+        const res = await wait;
+        expect(res.data.data).toBe('abc');
+    }
+    wait = dispatcher.next(myEvent);
+    dispatcher.dispatch(myEvent, new DataEvent({ data: 'abc2' }));
+    {
+        const res = await wait;
+        expect(res.data.data).toBe('abc2');
+    }
+});
+
+test('immediatePropagationStopped', () => {
+    const dispatcher = new EventDispatcher();
+    const eventToken = new EventTokenSync('my-event');
+
+    let called = 0;
+
+    dispatcher.listen(eventToken, (event) => {
+        event.stopImmediatePropagation();
+    });
+
+    dispatcher.listen(eventToken, (event) => {
+        called++;
+    });
+
+    dispatcher.dispatch(eventToken, new BaseEvent());
+    expect(called).toBe(0);
 });

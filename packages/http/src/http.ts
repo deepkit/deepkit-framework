@@ -8,18 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    asyncOperation,
-    ClassType,
-    CustomError,
-    getClassName,
-    getClassTypeFromInstance,
-    isArray,
-    isClassInstance,
-    isObject,
-} from '@deepkit/core';
+import { asyncOperation, ClassType, CustomError, getClassName, getClassTypeFromInstance, isArray, isClassInstance, isObject } from '@deepkit/core';
 import { OutgoingHttpHeaders, ServerResponse } from 'http';
-import { eventDispatcher } from '@deepkit/event';
+import { BaseEvent, eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpRequestPositionedParameters, HttpResponse } from './model.js';
 import { InjectorContext } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
@@ -131,17 +122,7 @@ export class HttpInternalServerError extends createHttpError(500, 'Internal serv
 export class HttpNotImplementedError extends createHttpError(501, 'Not implemented') {
 }
 
-export class HttpWorkflowEvent {
-    propagationStopped = false;
-
-    stopPropagation() {
-        this.propagationStopped = true;
-    }
-
-    isPropagationStopped() {
-        return this.propagationStopped;
-    }
-
+export class HttpWorkflowEvent extends BaseEvent {
     public nextState?: any;
     public nextStateEvent?: any;
 
@@ -170,6 +151,7 @@ export class HttpWorkflowEvent {
         public request: HttpRequest,
         public response: HttpResponse,
     ) {
+        super();
     }
 
     get url() {

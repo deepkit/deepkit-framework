@@ -190,7 +190,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
             if (this.eventDispatcher.hasListeners(DatabaseSession.onDeletePre)) {
                 const event = new UnitOfWorkEvent(classSchema, this.session, items);
                 await this.eventDispatcher.dispatch(DatabaseSession.onDeletePre, event);
-                if (event.stopped) return;
+                if (event.defaultPrevented) return;
             }
 
             await persistence.remove(classSchema, items);
@@ -252,7 +252,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                     if (this.eventDispatcher.hasListeners(DatabaseSession.onInsertPre)) {
                         const event = new UnitOfWorkEvent(group.type, this.session, inserts);
                         await this.eventDispatcher.dispatch(DatabaseSession.onInsertPre, event);
-                        if (event.stopped) doInsert = false;
+                        if (event.defaultPrevented) doInsert = false;
                     }
                     if (doInsert) {
                         try {
@@ -276,7 +276,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                     if (this.eventDispatcher.hasListeners(DatabaseSession.onUpdatePre)) {
                         const event = new UnitOfWorkUpdateEvent(group.type, this.session, changeSets);
                         await this.eventDispatcher.dispatch(DatabaseSession.onUpdatePre, event);
-                        if (event.stopped) doUpdate = false;
+                        if (event.defaultPrevented) doUpdate = false;
                     }
 
                     if (doUpdate) {
@@ -639,7 +639,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
             if (this.eventDispatcher.hasListeners(DatabaseSession.onCommitPre)) {
                 const event = new UnitOfWorkCommitEvent(this);
                 await this.eventDispatcher.dispatch(DatabaseSession.onCommitPre, event);
-                if (event.stopped) return;
+                if (event.defaultPrevented) return;
             }
 
             //we need to iterate via for i, because hooks might add additional rounds dynamically

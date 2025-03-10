@@ -905,7 +905,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
                 const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events') : undefined;
                 await this.session.eventDispatcher.dispatch(Query.onDeletePre, event);
                 if (eventFrame) eventFrame.end();
-                if (event.stopped) return deleteResult;
+                if (event.defaultPrevented) return deleteResult;
             }
 
             //we need to use event.query in case someone overwrite it
@@ -917,7 +917,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
                 const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events Post') : undefined;
                 await this.session.eventDispatcher.dispatch(Query.onDeletePost, event);
                 if (eventFrame) eventFrame.end();
-                if (event.stopped) return deleteResult;
+                if (event.defaultPrevented) return deleteResult;
             }
 
             return deleteResult;
@@ -985,7 +985,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
                 const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events') : undefined;
                 await this.session.eventDispatcher.dispatch(Query.onPatchPre, event);
                 if (eventFrame) eventFrame.end();
-                if (event.stopped) return patchResult;
+                if (event.defaultPrevented) return patchResult;
             }
 
             for (const field of event.returning) {
@@ -1016,7 +1016,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
                 const eventFrame = this.session.stopwatch ? this.session.stopwatch.start('Events Post') : undefined;
                 await this.session.eventDispatcher.dispatch(Query.onPatchPost, event);
                 if (eventFrame) eventFrame.end();
-                if (event.stopped) return patchResult;
+                if (event.defaultPrevented) return patchResult;
             }
 
             return patchResult;

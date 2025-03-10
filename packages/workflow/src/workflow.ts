@@ -20,17 +20,7 @@ interface WorkflowTransition<T> {
     label?: string;
 }
 
-export class WorkflowEvent {
-    propagationStopped = false;
-
-    stopPropagation() {
-        this.propagationStopped = true;
-    }
-
-    isPropagationStopped() {
-        return this.propagationStopped;
-    }
-
+export class WorkflowEvent extends BaseEvent {
     public nextState?: any;
     public nextStateEvent?: any;
 
@@ -146,7 +136,7 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
                     const fn = injectedFunction(listener.fn, injector, 1);
                     const fnVar = compiler.reserveVariable('fn', fn);
                     listenerCode.push(`
-                        if (!event.isPropagationStopped()) {
+                        if (!event.immediatePropagationStopped) {
                             await ${fnVar}(scopedContext.scope, event);
                         }
                     `);
@@ -168,7 +158,7 @@ export class WorkflowDefinition<T extends WorkflowPlaces> {
 
                     listenerCode.push(`
                         //${getClassName(listener.classType)}.${listener.methodName}
-                        if (!event.isPropagationStopped()) {
+                        if (!event.immediatePropagationStopped) {
                             if (!${resolvedVar}) ${resolvedVar} = scopedContext.get(${classTypeVar}${moduleVar});
                             await ${call};
                         }

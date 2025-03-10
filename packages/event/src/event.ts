@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, CustomError, isClass, isFunction, isObject } from '@deepkit/core';
+import { asyncOperation, ClassType, CustomError, isClass, isFunction, isObject } from '@deepkit/core';
 import { injectedFunction, InjectorContext, InjectorModule } from '@deepkit/injector';
 import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, PropertyDecoratorResult } from '@deepkit/type';
 
@@ -133,16 +133,15 @@ export class DataEventToken<T> extends EventToken<SimpleDataEvent<T>> {
 }
 
 export class BaseEvent {
-    metadata?: Record<string | symbol, any>;
+    immediatePropagationStopped: boolean = false;
+    defaultPrevented: boolean = false;
 
-    propagationStopped = false;
-
-    stopPropagation() {
-        this.propagationStopped = true;
+    preventDefault() {
+        this.defaultPrevented = true;
     }
 
-    isPropagationStopped() {
-        return this.propagationStopped;
+    stopImmediatePropagation() {
+        this.immediatePropagationStopped = true;
     }
 }
 
@@ -282,6 +281,7 @@ interface Context {
 /** @reflection never */
 export class EventDispatcher implements EventDispatcherInterface {
     protected context = new Map<EventToken<any>, Context>();
+    protected awaiter = new Map<EventToken<any>, { promise?: Promise<any>, resolve?: (value: any) => void }>();
     protected instances: any[] = [];
     protected registeredClassTypes = new Set<ClassType>();
 
@@ -326,6 +326,35 @@ export class EventDispatcher implements EventDispatcherInterface {
             if (index !== -1) listeners.splice(index, 1);
             this.scheduleDispatcherRebuild(eventToken);
         };
+    }
+
+    /**
+     * Waits for the next event of given token.
+     */
+    next<T extends EventToken<any>>(eventToken: T): Promise<T['event']> {
+        let awaiter = this.awaiter.get(eventToken);
+        if (!awaiter) {
+            awaiter = {};
+            this.awaiter.set(eventToken, awaiter);
+            this.listen<any>(eventToken, (event) => {
+                if (!awaiter!.resolve) return;
+                awaiter!.resolve(event);
+                awaiter!.resolve = undefined;
+                awaiter!.promise = undefined;
+            });
+        }
+
+        if (!awaiter.promise) {
+            awaiter.promise = new Promise<any>((resolve) => {
+                awaiter!.resolve = resolve;
+            });
+        }
+
+        this.awaiter.set(eventToken, awaiter);
+
+        return asyncOperation((resolve) => {
+            awaiter.promise!.then(resolve);
+        });
     }
 
     protected getContext(eventToken: EventToken<any>): Context {
@@ -403,8 +432,14 @@ function buildDispatcher(entries: EventListenerContainerEntry[], eventToken: Eve
         if (isEventListenerContainerEntryCallback(listener)) {
             if (!listener.builtFn) {
                 const thisInjector = listener.module ? injector.getInjector(listener.module) : injector.getRootInjector();
-                const fn = injectedFunction(listener.fn, thisInjector, 1);
-                listener.builtFn = (event: BaseEvent, injector: InjectorContext) => fn(injector.scope, event);
+                if (!(listener.fn as any).__type) {
+                    // no types available
+                    const fn = listener.fn;
+                    listener.builtFn = (event: BaseEvent) => fn(event);
+                } else {
+                    const fn = injectedFunction(listener.fn, thisInjector, 1);
+                    listener.builtFn = (event: BaseEvent, injector: InjectorContext) => fn(injector.scope, event);
+                }
             }
 
             calls.push(listener.builtFn);
@@ -423,7 +458,7 @@ function buildDispatcher(entries: EventListenerContainerEntry[], eventToken: Eve
             const event = resolveEvent(_event);
             for (const call of calls) {
                 call(event, injector);
-                if (event.isPropagationStopped()) return;
+                if (event.immediatePropagationStopped) return;
             }
         };
     }
@@ -432,7 +467,7 @@ function buildDispatcher(entries: EventListenerContainerEntry[], eventToken: Eve
         const event = resolveEvent(_event);
         for (const call of calls) {
             await call(event, injector);
-            if (event.isPropagationStopped()) return;
+            if (event.immediatePropagationStopped) return;
         }
     };
 }

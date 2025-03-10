@@ -19,15 +19,6 @@ import type { DeleteResult, PatchResult } from './type.js';
 import { OrmEntity } from './type.js';
 
 export class DatabaseEvent extends BaseEvent {
-    stopped = false;
-
-    stop() {
-        this.stopped = true;
-    }
-
-    isStopped() {
-        return this.stopped;
-    }
 }
 
 export class UnitOfWorkCommitEvent<T> extends DatabaseEvent {
