@@ -8,14 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command, ReadPreferenceMessage, TransactionalMessage } from './command.js';
+import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
+import { CommandOptions } from '../options.js';
 
 interface FindAndModifyResponse extends BaseResponse {
     value: any;
 }
 
-type findAndModifySchema = {
+type FindAndModifySchema = {
     findAndModify: string;
     $db: string;
     query: any;
@@ -23,12 +24,13 @@ type findAndModifySchema = {
     new: boolean;
     upsert: boolean;
     fields: Record<string, number>;
-} & TransactionalMessage & ReadPreferenceMessage;
+} & WriteConcernMessage & TransactionalMessage;
 
 export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Command<FindAndModifyResponse> {
-    public upsert = false;
-    public fields: string[] = [];
-    public returnNew: boolean = false;
+    commandOptions: CommandOptions = {};
+    upsert = false;
+    fields: string[] = [];
+    returnNew: boolean = false;
 
     constructor(
         public schema: T,
@@ -42,7 +44,7 @@ export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Comman
         const fields = {};
         for (const name of this.fields) fields[name] = 1;
 
-        const cmd: findAndModifySchema = {
+        const cmd: FindAndModifySchema = {
             findAndModify: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             query: this.query,
@@ -53,9 +55,9 @@ export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Comman
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        config.applyReadPreference(cmd);
+        config.applyWriteConcern(cmd, this.commandOptions);
 
-        return await this.sendAndWait<findAndModifySchema, FindAndModifyResponse>(cmd);
+        return await this.sendAndWait<FindAndModifySchema, FindAndModifyResponse>(cmd);
     }
 
     needsWritableHost(): boolean {

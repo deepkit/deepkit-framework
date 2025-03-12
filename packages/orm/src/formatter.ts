@@ -25,7 +25,7 @@ import {
     Serializer,
     typeSettings,
     UnpopulatedCheck,
-    unpopulatedSymbol
+    unpopulatedSymbol,
 } from '@deepkit/type';
 import { DatabaseQueryModel } from './query.js';
 import { capitalize, ClassType } from '@deepkit/core';
@@ -277,7 +277,9 @@ export class Formatter {
         if (!partial) {
             if (model.withChangeDetection) getInstanceState(classState, converted).markAsPersisted();
             if (pool) pool.set(pkHash, converted);
-            if (this.identityMap) this.identityMap.store(classSchema, converted);
+            if (this.identityMap) {
+                this.identityMap.store(classSchema, converted);
+            }
         }
 
         return converted;

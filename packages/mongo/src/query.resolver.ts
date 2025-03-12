@@ -8,7 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { DatabaseAdapter, DatabaseDeleteError, DatabasePatchError, DatabaseSession, DeleteResult, Formatter, GenericQueryResolver, OrmEntity, PatchResult } from '@deepkit/orm';
+import {
+    DatabaseAdapter,
+    DatabaseDeleteError,
+    DatabasePatchError,
+    DatabaseSession,
+    DeleteResult,
+    Formatter,
+    GenericQueryResolver,
+    OrmEntity,
+    PatchResult,
+} from '@deepkit/orm';
 import {
     Changes,
     getPartialSerializeFunction,
@@ -32,7 +42,7 @@ import { convertClassQueryToMongo } from './mapping.js';
 import { DEEP_SORT, FilterQuery, MongoQueryModel } from './query.model.js';
 import { MongoConnection } from './client/connection.js';
 import { MongoDatabaseAdapter } from './adapter.js';
-import { empty } from '@deepkit/core';
+import { empty, formatError } from '@deepkit/core';
 import { mongoSerializer } from './mongo-serializer.js';
 import { handleSpecificError } from './error.js';
 
@@ -92,29 +102,35 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
             if (limit) pipeline.push({ $limit: limit });
             pipeline.push({ $project: projection });
             const command = new AggregateCommand(this.classSchema, pipeline);
+            command.commandOptions = queryModel.getCommandOptions();
             command.partial = true;
             return await connection.execute(command);
         } else {
             const mongoFilter = getMongoFilter(this.classSchema, queryModel);
-            return await connection.execute(new FindCommand(this.classSchema, mongoFilter, projection, undefined, limit || queryModel.limit, queryModel.skip));
+            const command = new FindCommand(this.classSchema, mongoFilter, projection, undefined, limit || queryModel.limit, queryModel.skip);
+            command.commandOptions = queryModel.getCommandOptions();
+            return await connection.execute(command);
         }
     }
 
     public async delete(queryModel: MongoQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
-        const connection = await this.client.getConnection(undefined, this.session.assignedTransaction);
+        const connection = await this.client.getConnection(queryModel.getCommandOptions(), this.session.assignedTransaction);
 
         try {
+            // todo rework this to one query using aggregates
+            // todo make deleteResult.primaryKeys not default anymore as too expensive (add options to Query returnPrimaryKeys)
             const primaryKeys = await this.fetchIds(queryModel, queryModel.limit, connection);
-
             if (primaryKeys.length === 0) return;
             deleteResult.modified = primaryKeys.length;
             deleteResult.primaryKeys = primaryKeys;
             const primaryKeyName = this.classSchema.getPrimary().name;
 
             const query = convertClassQueryToMongo(this.classSchema, { [primaryKeyName]: { $in: primaryKeys.map(v => v[primaryKeyName]) } } as FilterQuery<T>);
-            await connection.execute(new DeleteCommand(this.classSchema, query, queryModel.limit));
+            const command = new DeleteCommand(this.classSchema, query, queryModel.limit);
+            command.commandOptions = queryModel.getCommandOptions();
+            await connection.execute(command);
         } catch (error: any) {
-            error = new DatabaseDeleteError(this.classSchema, `Could not delete ${this.classSchema.getClassName()} in database`, { cause: error });
+            error = new DatabaseDeleteError(this.classSchema, `Could not delete ${this.classSchema.getClassName()} in database: ${formatError(error)}`, { cause: error });
             error.query = queryModel;
             throw this.handleSpecificError(error);
         } finally {
@@ -145,7 +161,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
 
         const returning = new Set([...model.returning, ...changes.getReturning()]);
 
-        const connection = await this.client.getConnection(undefined, this.session.assignedTransaction);
+        const connection = await this.client.getConnection(model.getCommandOptions(), this.session.assignedTransaction);
 
         try {
             if (model.limit === 1) {
@@ -154,6 +170,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                     filter,
                     u
                 );
+                command.commandOptions = model.getCommandOptions();
                 command.returnNew = true;
                 command.fields = [primaryKeyName, ...returning];
                 const res = await connection.execute(command);
@@ -169,11 +186,13 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                 return;
             }
 
-            patchResult.modified = await connection.execute(new UpdateCommand(this.classSchema, [{
+            const command = new UpdateCommand(this.classSchema, [{
                 q: filter,
                 u: u,
                 multi: !model.limit
-            }]));
+            }]);
+            command.commandOptions = model.getCommandOptions();
+            patchResult.modified = await connection.execute(command);
 
             const projection: { [name: string]: 1 | 0 } = {};
             projection[primaryKeyName] = 1;
@@ -182,7 +201,9 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                 patchResult.returning[name] = [];
             }
 
-            const items = await connection.execute(new FindCommand(this.classSchema, filter, projection, {}, model.limit, model.skip));
+            const findCommand = new FindCommand(this.classSchema, filter, projection, {}, model.limit, model.skip);
+            findCommand.commandOptions = model.getCommandOptions();
+            const items = await connection.execute(findCommand);
             for (const item of items) {
                 const converted = partialDeserialize(item);
                 patchResult.primaryKeys.push(converted);
@@ -199,7 +220,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
     }
 
     public async count(queryModel: MongoQueryModel<T>) {
-        const connection = await this.client.getConnection(undefined, this.session.assignedTransaction);
+        const connection = await this.client.getConnection(queryModel.getCommandOptions(), this.session.assignedTransaction);
 
         try {
             //count command is not supported for transactions
@@ -207,6 +228,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                 const pipeline = this.buildAggregationPipeline(queryModel);
                 pipeline.push({ $count: 'count' });
                 const command = new AggregateCommand<any, CountSchema>(this.classSchema, pipeline, this.countSchema);
+                command.commandOptions = queryModel.getCommandOptions();
                 const items = await connection.execute(command);
                 return items.length ? items[0].count : 0;
             } else {
@@ -217,12 +239,14 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                     const primaryKey = this.classSchema.getPrimary().name;
                     query[primaryKey] = { $nin: [] };
                 }
-                return await connection.execute(new CountCommand(
+                const command = new CountCommand(
                     this.classSchema,
                     query,
                     queryModel.limit,
                     queryModel.skip,
-                ));
+                );
+                command.commandOptions = queryModel.getCommandOptions();
+                return await connection.execute(command);
             }
         } finally {
             connection.release();
@@ -250,7 +274,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
     }
 
     public async findOneOrUndefined(model: MongoQueryModel<T>): Promise<T | undefined> {
-        const connection = await this.client.getConnection(undefined, this.session.assignedTransaction);
+        const connection = await this.client.getConnection(model.getCommandOptions(), this.session.assignedTransaction);
 
         try {
             if (model.hasJoins() || model.isAggregate()) {
@@ -259,20 +283,23 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                 const resultsSchema = model.isAggregate() ? this.getCachedAggregationSchema(model) : this.getSchemaWithJoins();
                 const command = new AggregateCommand(this.classSchema, pipeline, resultsSchema);
                 command.partial = model.isPartial();
+                command.commandOptions = model.getCommandOptions();
                 const items = await connection.execute(command);
                 if (items.length) {
                     const formatter = this.createFormatter(model.withIdentityMap);
                     return formatter.hydrate(model, items[0]);
                 }
             } else {
-                const items = await connection.execute(new FindCommand(
+                const command = new FindCommand(
                     this.classSchema,
                     getMongoFilter(this.classSchema, model),
                     this.getProjection(this.classSchema, model.select),
                     this.getSortFromModel(model.sort),
                     1,
                     model.skip,
-                ));
+                );
+                command.commandOptions = model.getCommandOptions();
+                const items = await connection.execute(command);
                 if (items.length) {
                     const formatter = this.createFormatter(model.withIdentityMap);
                     return formatter.hydrate(model, items[0]);
@@ -315,16 +342,18 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
 
     public async find(model: MongoQueryModel<T>): Promise<T[]> {
         const formatter = this.createFormatter(model.withIdentityMap);
-        const connection = await this.client.getConnection(undefined, this.session.assignedTransaction);
+
+        const connection = await this.client.getConnection(model.getCommandOptions(), this.session.assignedTransaction);
 
         try {
             if (model.hasJoins() || model.isAggregate()) {
                 const pipeline = this.buildAggregationPipeline(model);
                 const resultsSchema = model.isAggregate() ? this.getCachedAggregationSchema(model) : this.getSchemaWithJoins();
                 const command = new AggregateCommand(this.classSchema, pipeline, resultsSchema);
-                if (model.batchSize) command.batchSize = model.batchSize;
+                command.commandOptions = model.getCommandOptions();
                 command.partial = model.isPartial();
                 const items = await connection.execute(command);
+
                 if (model.isAggregate()) {
                     return items;
                 }
@@ -339,7 +368,7 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                     model.limit,
                     model.skip,
                 );
-                if (model.batchSize) command.batchSize = model.batchSize;
+                command.commandOptions = model.getCommandOptions();
                 const items = await connection.execute(command);
                 return items.map(v => formatter.hydrate(model, v));
             }
@@ -378,10 +407,10 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
                 }
 
                 if (join.query.model.hasJoins()) {
-                    handleJoins(joinPipeline, join.query.model, foreignSchema);
+                    handleJoins(joinPipeline, join.query.model as MongoQueryModel<any>, foreignSchema);
                 }
 
-                if (join.query.model.filter) joinPipeline.push({ $match: getMongoFilter(join.query.classSchema, join.query.model) });
+                if (join.query.model.filter) joinPipeline.push({ $match: getMongoFilter(join.query.classSchema, join.query.model as MongoQueryModel<any>) });
                 if (join.query.model.sort) joinPipeline.push({ $sort: this.getSortFromModel(join.query.model.sort) });
                 if (join.query.model.skip) joinPipeline.push({ $skip: join.query.model.skip });
                 if (join.query.model.limit) joinPipeline.push({ $limit: join.query.model.limit });

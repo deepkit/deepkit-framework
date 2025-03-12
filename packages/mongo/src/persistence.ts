@@ -33,9 +33,11 @@ import { getPartialSerializeFunction, ReflectionClass } from '@deepkit/type';
 import { ObjectId } from '@deepkit/bson';
 import { mongoSerializer } from './mongo-serializer.js';
 import { handleSpecificError } from './error.js';
+import { CommandOptions } from './client/options.js';
 
 export class MongoPersistence extends DatabasePersistence {
     protected connection?: MongoConnection;
+    commandOptions: CommandOptions = {};
 
     constructor(protected client: MongoClient, protected ormSequences: ReflectionClass<any>, protected session: DatabaseSession<any>) {
         super();
@@ -47,7 +49,7 @@ export class MongoPersistence extends DatabasePersistence {
 
     async getConnection(): Promise<MongoConnection> {
         if (!this.connection) {
-            this.connection = await this.client.getConnection(undefined, this.session.assignedTransaction);
+            this.connection = await this.client.getConnection(this.commandOptions, this.session.assignedTransaction);
         }
         return this.connection;
     }
@@ -82,6 +84,7 @@ export class MongoPersistence extends DatabasePersistence {
         }
 
         try {
+            command.commandOptions = this.commandOptions;
             await (await this.getConnection()).execute(command);
         } catch (error: any) {
             error = new DatabaseDeleteError(
@@ -113,6 +116,7 @@ export class MongoPersistence extends DatabasePersistence {
 
             //we do not use the same connection for ormSequences if it has a transaction, since
             //sequences need to behave like AUTO_INCREMENT does in SQL databases (they increase no matter if transaction is aborted or not)
+            command.commandOptions = this.commandOptions;
             const res = await (this.session.assignedTransaction ? this.client : connection).execute(command);
             autoIncrementValue = res.value['value'] - items.length;
         }
@@ -134,7 +138,9 @@ export class MongoPersistence extends DatabasePersistence {
         if (this.session.logger.active) this.session.logger.log('insert', classSchema.getClassName(), items.length);
 
         try {
-            await connection.execute(new InsertCommand(classSchema, insert));
+            const command = new InsertCommand(classSchema, insert);
+            command.commandOptions = this.commandOptions;
+            await connection.execute(command);
         } catch (error: any) {
             error = new DatabaseInsertError(
                 classSchema,
@@ -197,10 +203,14 @@ export class MongoPersistence extends DatabasePersistence {
         const connection = await this.getConnection();
 
         try {
-            const res = await connection.execute(new UpdateCommand(classSchema, updates));
+            const command = new UpdateCommand(classSchema, updates)
+            command.commandOptions = this.commandOptions;
+            const res = await connection.execute(command);
 
             if (res > 0 && hasAtomic) {
-                const returnings = await connection.execute(new FindCommand(classSchema, { [primaryKeyName]: { $in: pks } }, projection));
+                const command = new FindCommand(classSchema, { [primaryKeyName]: { $in: pks } }, projection);
+                command.commandOptions = this.commandOptions;
+                const returnings = await connection.execute(command);
                 for (const returning of returnings) {
                     const r = assignReturning[returning[primaryKeyName]];
 

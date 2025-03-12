@@ -116,10 +116,10 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
     protected ormSequences: ReflectionClass<any>;
 
     constructor(
-        connectionString: string,
+        connection: string | MongoClient,
     ) {
         super();
-        this.client = new MongoClient(connectionString);
+        this.client = connection instanceof MongoClient ? connection : new MongoClient(connection);
 
         @entity.name(this.getAutoIncrementSequencesCollection())
         class OrmSequence {

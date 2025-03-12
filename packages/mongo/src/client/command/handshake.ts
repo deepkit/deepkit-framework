@@ -20,6 +20,7 @@ import { X509Auth } from './auth/x509.js';
 
 interface IsMasterSchema {
     isMaster: number;
+    helloOk: number;
     $db: string;
     saslSupportedMechs?: string;
     client: {
@@ -83,6 +84,7 @@ export class HandshakeCommand extends Command<boolean> {
         const db = config.getAuthSource();
         const cmd: IsMasterSchema = {
             isMaster: 1,
+            helloOk: 1,
             $db: db,
             client: {
                 application: {

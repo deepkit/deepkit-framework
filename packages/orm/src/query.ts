@@ -134,7 +134,7 @@ export class DatabaseQueryModel<T extends OrmEntity, FILTER extends FilterQuery<
         }
     }
 
-    clone(parentQuery: BaseQuery<T>): this {
+    clone(): this {
         const constructor = this.constructor as ClassType<this>;
         const m = new constructor();
         m.filter = this.filter && { ...this.filter };
@@ -527,7 +527,7 @@ export class BaseQuery<T extends OrmEntity> {
 
     clone(): this {
         const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema);
-        cloned.model = this.model.clone(cloned) as this['model'];
+        cloned.model = this.model.clone() as this['model'];
         return cloned;
     }
 
@@ -699,7 +699,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         _: () => T
     }, T extends ReturnType<InstanceType<B>['_']>, B extends ClassType<Query<any>>>(this: B, query: Q): Replace<InstanceType<B>, Resolve<Q>> {
         const result = (new this(query.classSchema, query.session, query.resolver));
-        result.model = query.model.clone(result);
+        result.model = query.model.clone();
         return result as any;
     }
 
@@ -739,7 +739,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         for (const i in lift) {
             (cloned)[i] = (lift as any)[i];
         }
-        cloned.model = this.model.clone(cloned as BaseQuery<any>);
+        cloned.model = this.model.clone();
         cloned.lifts = this.lifts;
         cloned.lifts.push(...lifts);
 
@@ -758,7 +758,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
      */
     clone(): this {
         const cloned = new (this['constructor'] as ClassType<this>)(this.classSchema, this.session, this.resolver);
-        cloned.model = this.model.clone(cloned) as this['model'];
+        cloned.model = this.model.clone() as this['model'];
         cloned.lifts = this.lifts;
         return cloned;
     }

@@ -32,6 +32,10 @@ export class HostStats {
 
     connectionsQueued: number = 0;
 
+    commandsActive: number = 0;
+    commandsExecuted: number = 0;
+    commandsFailed: number = 0;
+
     bytesReceived: number = 0;
     bytesSent: number = 0;
 

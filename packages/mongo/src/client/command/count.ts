@@ -10,6 +10,7 @@
 
 import { BaseResponse, Command, ReadPreferenceMessage, TransactionalMessage } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
+import { CommandOptions } from '../options.js';
 
 interface CountResponse extends BaseResponse {
     n: number;
@@ -24,6 +25,8 @@ type CountSchema = {
 } & TransactionalMessage & ReadPreferenceMessage;
 
 export class CountCommand<T extends ReflectionClass<any>> extends Command<number> {
+    commandOptions: CommandOptions = {};
+
     constructor(
         public schema: T,
         public query: { [name: string]: any } = {},
@@ -43,7 +46,7 @@ export class CountCommand<T extends ReflectionClass<any>> extends Command<number
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        config.applyReadPreference(cmd);
+        config.applyReadPreference(host, cmd, this.commandOptions);
 
         const res = await this.sendAndWait<CountSchema, CountResponse>(cmd);
         return res.n;

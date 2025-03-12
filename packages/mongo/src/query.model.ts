@@ -10,6 +10,7 @@
 
 import { DatabaseQueryModel, OrmEntity, SORT_ORDER } from '@deepkit/orm';
 import { MongoId, UUID } from '@deepkit/type';
+import { CommandOptions } from './client/options.js';
 
 type BSONTypeAlias =
     | 'number'
@@ -118,4 +119,16 @@ export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends OrmEntity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
 
 export class MongoQueryModel<T extends OrmEntity> extends DatabaseQueryModel<T, FilterQuery<T>, DEEP_SORT<T>> {
+    options: CommandOptions = {};
+
+    clone() {
+        const clone = super.clone();
+        clone.options = { ...this.options };
+        return clone;
+    }
+
+    getCommandOptions(): CommandOptions {
+        if (this.batchSize) this.options.batchSize = this.batchSize;
+        return this.options;
+    }
 }

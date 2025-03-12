@@ -14,11 +14,11 @@ jest.setTimeout(60000);
 test('ConnectionOptions', async () => {
     {
         const options = cast<ConnectionOptions>({});
-        expect(options.readConcernLevel).toBe('majority');
+        expect(options.readConcernLevel).toBe(undefined);
     }
     {
         const options = validatedDeserialize<ConnectionOptions>({});
-        expect(options.readConcernLevel).toBe('majority');
+        expect(options.readConcernLevel).toBe(undefined);
     }
 });
 
@@ -91,10 +91,8 @@ test('connect handshake', async () => {
 
 test('connect isMaster command', async () => {
     const client = new MongoClient('mongodb://127.0.0.1/');
-
     const response = await client.execute(new IsMasterCommand);
-
-    expect(response.ismaster).toBe(true);
+    expect(response.ismaster).toBe(1);
     client.close();
 });
 

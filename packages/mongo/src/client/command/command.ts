@@ -28,6 +28,7 @@ import {
 } from '@deepkit/type';
 import { BSONDeserializer, deserializeBSONWithoutOptimiser, getBSONDeserializer } from '@deepkit/bson';
 import { mongoBinarySerializer } from '../../mongo-serializer.js';
+import { CommandOptions, ConnectionOptions } from '../options.js';
 
 export interface BaseResponse {
     ok: number;
@@ -47,10 +48,15 @@ export interface TransactionalMessage {
     commitTransaction?: 1;
 }
 
+export interface WriteConcernMessage {
+    writeConcern?: { w?: string | number, j?: boolean, wtimeout?: number };
+}
+
 export interface ReadPreferenceMessage {
-    // this is needed for Mongos or LoadBalancer
+    readConcern?: { level: ConnectionOptions['readConcernLevel'] };
+
     $readPreference?: {
-        mode: string;
+        mode: ConnectionOptions['readPreference'];
         tags?: { [name: string]: string }[];
         maxStalenessSeconds?: number;
         hedge?: { enabled: boolean }
@@ -61,6 +67,10 @@ export abstract class Command<T> {
     protected current?: { responseType?: Type, resolve: Function, reject: Function };
 
     public sender?: <T>(schema: Type, message: T) => void;
+
+    reject(error: Error): void {
+        this.current?.reject(error);
+    }
 
     public sendAndWait<T, R extends BaseResponse = BaseResponse>(
         message: T, messageType?: ReceiveType<T>, responseType?: ReceiveType<R>,
@@ -125,7 +135,7 @@ export abstract class Command<T> {
     }
 }
 
-interface CommandOptions {
+interface CreateCommandOptions {
     // default false
     needsWritableHost: boolean;
 
@@ -136,13 +146,13 @@ interface CommandOptions {
     readPreference: boolean;
 }
 
-export function createCommand<Request extends {[name: string]: any}, Response>(
+export function createCommand<Request extends { [name: string]: any }, Response>(
     request: Request | ((config: MongoClientConfig) => Request),
-    optionsIn: Partial<CommandOptions> = {},
+    optionsIn: Partial<CreateCommandOptions> = {},
     typeRequest?: ReceiveType<Request>,
     typeResponse?: ReceiveType<Response>,
 ): Command<Response & BaseResponse> {
-    const options: CommandOptions = Object.assign(
+    const options: CreateCommandOptions = Object.assign(
         { needsWritableHost: false, transactional: true, readPreference: true },
         optionsIn,
     );
@@ -156,10 +166,12 @@ export function createCommand<Request extends {[name: string]: any}, Response>(
     typeResponse = typeOf<FullTypeResponse>();
 
     class DynamicCommand extends Command<Response> {
+        commandOptions: CommandOptions = {};
+
         async execute(config: MongoClientConfig, host, transaction?): Promise<Response & BaseResponse> {
             const cmd = 'function' === typeof request ? request(config) : request;
             if (options.transactional && transaction) transaction.applyTransaction(cmd);
-            if (options.readPreference) config.applyReadPreference(cmd as any);
+            if (options.readPreference) config.applyReadPreference(host, cmd as any, this.commandOptions);
             return await this.sendAndWait(cmd, typeRequest, typeResponse as Type) as any;
         }
 

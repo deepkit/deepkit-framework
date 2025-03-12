@@ -24,6 +24,7 @@ import { AbortTransactionCommand } from './command/abortTransaction.js';
 import { DataEvent, EventDispatcher, EventTokenSync } from '@deepkit/event';
 import { IsMasterCommand } from './command/ismaster.js';
 import { Logger } from '@deepkit/logger';
+import { ConnectionOptions } from './options.js';
 
 export enum MongoConnectionStatus {
     pending = 'pending',
@@ -43,7 +44,9 @@ export interface ConnectionRequest {
      */
     writable: boolean;
 
-    readPreference: 'primary' | 'secondary' | 'nearest' | 'primaryPreferred' | 'secondaryPreferred';
+    readPreference: ConnectionOptions['readPreference'];
+
+    readPreferenceTags?: ConnectionOptions['readPreferenceTags'];
 }
 
 export class MongoStats {
@@ -329,12 +332,11 @@ export class MongoConnectionPool {
     }
 
     /**
-     * Creates a queue of tasks for each host to find out the topology.
-     * If a new host is found, the task list increases, until no new hosts are found.
+     * Explores the topology and updates the known hosts.
      */
-    protected heartbeat(): void {
+    heartbeat(force: boolean = false): void {
         if (this.closed) return;
-        if (Date.now() - this.lastHeartbeat.getTime() < this.config.options.heartbeatFrequency) return;
+        if (!force && Date.now() - this.lastHeartbeat.getTime() < this.config.options.heartbeatFrequencyMS) return;
         this.lastHeartbeat = new Date();
         this.stats.heartbeats++;
 
@@ -349,7 +351,7 @@ export class MongoConnectionPool {
             this.stats.heartbeatsFailed++;
             this.scopedLogger.error(`Mongo heartbeat error: ${formatError(error)}`);
         }).finally(() => {
-            this.heartbeatTimer = setTimeout(() => this.heartbeat(), this.config.options.heartbeatFrequency);
+            this.heartbeatTimer = setTimeout(() => this.heartbeat(), this.config.options.heartbeatFrequencyMS);
         });
     }
 
@@ -363,7 +365,7 @@ export class MongoConnectionPool {
         let hasPrimary = false;
         let hasSecondary = false;
 
-        const tags = this.config.options.getReadPreferenceTags();
+        const tags = request.readPreferenceTags || this.config.options.readPreferenceTags;
 
         for (const host of this.config.hosts) {
             if (!host.isUsable()) continue;
@@ -371,9 +373,9 @@ export class MongoConnectionPool {
             const isSecondary = host.isReadable();
             if (request.writable && isPrimary) return host;
 
-            if (tags.length) {
+            if (tags) {
                 let found = false;
-                for (const tag of tags) {
+                for (const tag of this.config.options.parsePreferenceTags(tags)) {
                     // todo this is wrong since "tag sets" means {}[]
                     if (host.tags[tag.key] === tag.value) {
                         found = true;
@@ -460,9 +462,9 @@ export class MongoConnectionPool {
         if (!waiter) return false;
 
         // check if timed out
-        if (this.config.options.connectionAcquisitionTimeout && Date.now() - waiter.time > this.config.options.connectionAcquisitionTimeout) {
+        if (this.config.options.waitQueueTimeoutMS && Date.now() - waiter.time > this.config.options.waitQueueTimeoutMS) {
             this.queue.splice(i, 1);
-            waiter.reject(new MongoConnectionError(`Connection acquisition timed out after ${Date.now() - waiter.time}ms (max ${this.config.options.connectionAcquisitionTimeout}ms)`));
+            waiter.reject(new MongoConnectionError(`Connection acquisition timed out after ${Date.now() - waiter.time}ms (max ${this.config.options.waitQueueTimeoutMS}ms)`));
             return false;
         }
 
@@ -506,7 +508,7 @@ export class MongoConnectionPool {
                 }
 
                 connection.close();
-            }, this.config.options.maxIdleTime);
+            }, this.config.options.maxIdleTimeMS);
         }
     }
 
@@ -527,6 +529,7 @@ export class MongoConnectionPool {
         }
 
         const request = this.applyRequestDefaults(partialRequest);
+
         this.heartbeat();
 
         const host = this.findHostForRequest(request);
@@ -633,7 +636,6 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
 export class MongoConnection {
     protected messageId: number = 0;
     status: MongoConnectionStatus = MongoConnectionStatus.pending;
-    public bufferSize: number = 2.5 * 1024 * 1024;
 
     public connectingPromise?: Promise<void>;
     public lastCommand?: { command: Command<unknown>, promise?: Promise<any> };
@@ -673,7 +675,7 @@ export class MongoConnection {
             const options: { [name: string]: any } = {
                 host: host.hostname,
                 port: host.port,
-                timeout: config.options.socketTimeout,
+                timeout: config.options.socketTimeoutMS,
                 servername: host.hostname,
             };
             const optional = {
@@ -701,7 +703,7 @@ export class MongoConnection {
             this.socket = createConnection({
                 host: host.hostname,
                 port: host.port,
-                timeout: config.options.socketTimeout,
+                timeout: config.options.socketTimeoutMS,
             });
 
             this.socket.on('data', (data) => {
@@ -728,17 +730,30 @@ export class MongoConnection {
         }
 
         this.connectingPromise = asyncOperation(async (resolve, reject) => {
+            let timeout: ReturnType<typeof setTimeout> | undefined = undefined;
+
+            if (this.config.options.connectTimeoutMS > 0) {
+                timeout = setTimeout(() => {
+                    this.socket.destroy();
+                    reject(new MongoConnectionError(`Connect timeout after ${this.config.options.connectTimeoutMS}ms`));
+                }, this.config.options.connectTimeoutMS);
+            }
             // this.socket.on('timeout', () => {
             //     this.socket.destroy(new Error('Socket timeout'));
             // });
 
             this.socket.on('close', () => {
+                clearTimeout(timeout);
                 clearTimeout(this.cleanupTimeout);
                 this.cleanupTimeout = undefined;
                 if (this.closed) return;
                 this.status = MongoConnectionStatus.disconnected;
                 this.connectingPromise = undefined;
                 this.closed = true;
+                if (this.lastCommand) {
+                    this.lastCommand.command.reject(this.error || new MongoConnectionError('Connection closed'));
+                    this.lastCommand = undefined;
+                }
                 this.onClose(this);
                 reject(new MongoConnectionError('Connection closed'));
                 this.socket.destroy();
@@ -761,8 +776,9 @@ export class MongoConnection {
             }
 
             if (await this.execute(new HandshakeCommand())) {
+                clearTimeout(timeout);
                 this.status = MongoConnectionStatus.connected;
-                this.socket.setTimeout(this.config.options.socketTimeout);
+                this.socket.setTimeout(this.config.options.socketTimeoutMS);
                 this.connectingPromise = undefined;
                 resolve();
             } else {
@@ -829,6 +845,8 @@ export class MongoConnection {
         this.lastCommand = { command };
         this.activeCommands++;
         this.executedCommands++;
+        this.host.stats.commandsActive++;
+        this.host.stats.commandsExecuted++;
         command.sender = this.boundSendMessage;
         try {
             this.lastCommand.promise = command.execute(this.config, this.host, this.transaction);
@@ -836,10 +854,13 @@ export class MongoConnection {
         } catch (error) {
             // if error suggests that the topology changed, we need to re-try
             // this.config.invalidate()
+            this.host.stats.commandsFailed++;
+            (error as Error).message += ', on connection ' + this.host.id + ' (' + this.host.type + ')';
             throw error;
         } finally {
             this.lastCommand = undefined;
             this.activeCommands--;
+            this.host.stats.commandsActive--;
         }
     }
 

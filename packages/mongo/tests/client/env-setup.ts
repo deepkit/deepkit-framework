@@ -5,6 +5,39 @@ import { asyncOperation, sleep } from '@deepkit/core';
 import { createConnection, Server, Socket } from 'net';
 import { connect, createServer } from 'node:net';
 import { rmSync } from 'node:fs';
+import { MongoClient } from '../../src/client/client.js';
+import { ConsoleLogger, LoggerLevel } from '@deepkit/logger';
+import { EventDispatcher } from '@deepkit/event';
+import { onMongoNewHost } from '../../src/client/connection.js';
+
+export function createMongoClientFactory(mongoEnv: MongoEnv) {
+    const clients: MongoClient[] = [];
+    const fn = (url: string) => {
+        const logger = new ConsoleLogger();
+        logger.level = LoggerLevel.debug;
+
+        const eventDispatcher = new EventDispatcher();
+        eventDispatcher.listen(onMongoNewHost, (event) => {
+            const [name] = event.data.host.id.split(':');
+            const instance = mongoEnv.getInstanceByName(name);
+            if (!instance) return;
+            event.data.host.hostname = '127.0.0.1';
+            event.data.host.port = instance.proxyPort;
+        });
+
+        const client = new MongoClient(url, eventDispatcher, logger);
+        clients.push(client);
+        return client;
+    };
+    fn.closeAll = () => {
+        for (const client of clients) {
+            client.close();
+        }
+    };
+
+    return fn;
+}
+
 
 export class MongoInstance {
     proxy?: Server;
@@ -119,7 +152,7 @@ export class MongoEnv {
     async closeAll() {
         for (const p of this.instances.values()) {
             p.stopProxy();
-            spawnSync('docker', ['rm', '-f', `mongo-env-${p.name}`], {});
+            spawnSync('docker', ['rm', '-v', '-f', `mongo-env-${p.name}`], {});
             if (!p.process.killed) {
                 p.process.kill();
             }

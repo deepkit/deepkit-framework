@@ -36,7 +36,7 @@ test('connection string options', async () => {
         const config = new MongoClientConfig('mongodb://localhost/db?authSource=peter');
         expect(config.options.authSource).toBe('peter');
         expect(config.getAuthSource()).toBe('peter');
-        expect(config.options.readPreference).toBe('primary');
+        expect(config.options.readPreference).toBe(undefined);
     }
     {
         const config = new MongoClientConfig('mongodb://localhost/db?authSource=peter&readPreference=primaryPreferred');

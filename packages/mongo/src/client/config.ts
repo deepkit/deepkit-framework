@@ -9,14 +9,14 @@
  */
 
 import { Host } from './host.js';
-import { ConnectionOptions } from './options.js';
+import { CommandOptions, ConnectionOptions } from './options.js';
 import { parse as parseUrl } from 'url';
 import { parse as parseQueryString } from 'querystring';
 import { MongoError } from './error.js';
 import { arrayRemoveItem, eachPair, singleStack } from '@deepkit/core';
 import { resolveSrvHosts } from './dns.js';
 import { cast, ReflectionClass } from '@deepkit/type';
-import { ReadPreferenceMessage } from './command/command.js';
+import { ReadPreferenceMessage, WriteConcernMessage } from './command/command.js';
 
 export type Topology = 'single' | 'replicaSetNoPrimary' | 'replicaSetWithPrimary' | 'sharded' | 'unknown' | 'invalidated';
 
@@ -24,7 +24,7 @@ export type Topology = 'single' | 'replicaSetNoPrimary' | 'replicaSetWithPrimary
  * @see https://github.com/mongodb/specifications/blob/master/source/max-staleness/max-staleness.md
  */
 export function updateStaleness(config: MongoClientConfig) {
-    const heartbeatFrequencyMS = config.options.heartbeatFrequency || 10_000; // default to 10 seconds if not specified
+    const heartbeatFrequencyMS = config.options.heartbeatFrequencyMS || 10_000; // default to 10 seconds if not specified
     const maxStalenessMS = (config.options.maxStalenessSeconds || 0) * 1000;
 
     const primary = config.hosts.find(v => v.type === 'primary');
@@ -95,8 +95,9 @@ export function updateStaleness(config: MongoClientConfig) {
  * We use hostname as Host.id.
  */
 export function updateKnownHosts(config: MongoClientConfig): Host[] {
-    const newHosts: Host[] = [];
+    if (config.options.directConnection) return [];
 
+    const newHosts: Host[] = [];
     for (const host of config.hosts.slice()) {
         // check if hosts are all known
         const referencedHosts = [...host.hosts, ...host.passives, ...host.arbiters];
@@ -153,11 +154,6 @@ export class MongoClientConfig {
     readonly hosts: Host[] = [];
 
     protected hostsFetchedMS?: number;
-
-    /**
-     * In seconds.
-     */
-    srvCacheTimeout: number = 3600;
 
     defaultDb?: string;
     authUser?: string;
@@ -219,16 +215,40 @@ export class MongoClientConfig {
         return this.hosts.map(v => `${v.hostname}:${v.port}=${v.status}`).join(',');
     }
 
+    applyWriteConcern(cmd: WriteConcernMessage, options: CommandOptions) {
+        if (this.options.w || this.options.journal || this.options.wtimeout
+            || options.writeConcern || options.journal || options.wtimeout) {
+            cmd.writeConcern = {};
+            if (this.options.w !== undefined) cmd.writeConcern.w = this.options.w;
+            if (this.options.journal !== undefined) cmd.writeConcern.j = this.options.journal;
+            if (this.options.wtimeout !== undefined) cmd.writeConcern.wtimeout = this.options.wtimeout;
+            if (options.writeConcern !== undefined) cmd.writeConcern.w = options.writeConcern;
+            if (options.journal !== undefined) cmd.writeConcern.j = options.journal;
+            if (options.wtimeout !== undefined) cmd.writeConcern.wtimeout = options.wtimeout;
+        }
+    }
+
     /**
      * @see https://github.com/mongodb/specifications/blob/master/source/server-selection/server-selection.md#passing-read-preference-to-mongos-and-load-balancers
      */
-    applyReadPreference(cmd: ReadPreferenceMessage) {
-        if (this.options.readPreference) {
+    applyReadPreference(host: Host, cmd: ReadPreferenceMessage, options: CommandOptions) {
+        const readPreference = options.readPreference || this.options.readPreference;
+        if (readPreference === 'primary') return;
+
+        const readConcernLevel = options.readConcernLevel || this.options.readConcernLevel;
+        if (readConcernLevel) {
+            cmd.readConcern = { level: readConcernLevel };
+        }
+
+        const readTags = options.readPreferenceTags || this.options.readPreferenceTags;
+
+        if (readPreference) {
             cmd.$readPreference = {
-                mode: this.options.readPreference,
+                mode: readPreference,
             };
-            if (this.options.getReadPreferenceTags().length) {
-                cmd.$readPreference.tags = this.options.getReadPreferenceTags();
+
+            if (readTags) {
+                cmd.$readPreference.tags = this.options.parsePreferenceTags(readTags);
             }
             if (this.options.maxStalenessSeconds) {
                 cmd.$readPreference.maxStalenessSeconds = this.options.maxStalenessSeconds;
@@ -333,7 +353,7 @@ export class MongoClientConfig {
             //todo: refactor this to do it in the background
             if (this.hostsFetchedMS) {
                 const diff = (Date.now() - this.hostsFetchedMS) / 1000;
-                if (diff < this.srvCacheTimeout) return this.hosts;
+                if (diff < this.options.srvCacheTimeout) return this.hosts;
             }
 
             const hostsData = await this.resolveSrvHosts();

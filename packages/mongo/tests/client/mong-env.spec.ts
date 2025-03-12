@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, jest, test } from '@jest/globals';
 import { MongoClient } from '../../src/client/client.js';
-import { MongoEnv, MongoInstance } from './env-setup.js';
+import { createMongoClientFactory, MongoEnv, MongoInstance } from './env-setup.js';
 import { sleep } from '@deepkit/core';
-import { MongoConnection, MongoConnectionPool, MongoStats, onMongoNewHost, onMongoTopologyChange } from '../../src/client/connection.js';
+import { MongoConnection, MongoConnectionPool, MongoStats, onMongoTopologyChange } from '../../src/client/connection.js';
 import { EventDispatcher } from '@deepkit/event';
-import { ConsoleLogger, LoggerLevel } from '@deepkit/logger';
+import { ConsoleLogger } from '@deepkit/logger';
 import { IsMasterCommand } from '../../src/client/command/ismaster.js';
 import { MongoConnectionError } from '../../src/client/error.js';
 import { Host } from '../../src/client/host.js';
@@ -15,34 +15,6 @@ jest.setTimeout(60 * 1000);
 
 test('nix', () => {
 });
-
-function createMongoClientFactory(mongoEnv: MongoEnv) {
-    const clients: MongoClient[] = [];
-    const fn = (url: string) => {
-        const logger = new ConsoleLogger();
-        logger.level = LoggerLevel.debug;
-
-        const eventDispatcher = new EventDispatcher();
-        eventDispatcher.listen(onMongoNewHost, (event) => {
-            const [name] = event.data.host.id.split(':');
-            const instance = mongoEnv.getInstanceByName(name);
-            if (!instance) return;
-            event.data.host.hostname = '127.0.0.1';
-            event.data.host.port = instance.proxyPort;
-        });
-
-        const client = new MongoClient(url, eventDispatcher, logger);
-        clients.push(client);
-        return client;
-    };
-    fn.closeAll = () => {
-        for (const client of clients) {
-            client.close();
-        }
-    };
-
-    return fn;
-}
 
 describe('basic', () => {
     it('should close the node process', async () => {
@@ -116,7 +88,7 @@ describe('mongo-env', () => {
         {
             const cmd = await client.execute(new IsMasterCommand());
             expect(client.pool.isConnected()).toBe(true);
-            expect(cmd.ismaster).toBe(true);
+            expect(cmd.ismaster).toBe(1);
         }
 
         mongo.closeConnections();
@@ -126,7 +98,7 @@ describe('mongo-env', () => {
         {
             const cmd = await client.execute(new IsMasterCommand());
             expect(client.pool.isConnected()).toBe(true);
-            expect(cmd.ismaster).toBe(true);
+            expect(cmd.ismaster).toBe(1);
         }
     });
 
@@ -164,12 +136,6 @@ describe('mongo-env', () => {
 
     it('client down - reconnect', async () => {
         const client = createClient(mongo.getUrl());
-        {
-            const cmd = await client.execute(new IsMasterCommand());
-            expect(client.pool.isConnected()).toBe(true);
-            expect(cmd.ismaster).toBe(true);
-        }
-
         mongo.closeConnections();
         mongo.connectionDrop = true;
         await sleep(0.1);
@@ -178,6 +144,8 @@ describe('mongo-env', () => {
         await expect(client.execute(new IsMasterCommand())).rejects.toThrow(MongoConnectionError);
 
         mongo.connectionDrop = false;
+        client.pool.heartbeat(true);
+        await client.eventDispatcher.next(onMongoTopologyChange);
         await client.execute(new IsMasterCommand());
     });
 });
@@ -314,39 +282,33 @@ describe('replica set, primary secondary', () => {
 
     it('invalid host specified', async () => {
         const client = createClient(`mongodb://primary,secondary56`);
-
-        // const promise = new Promise<void>((resolve) => {
-        //     client.eventDispatcher.listen(onMongoTopologyChange, (event) => {
-        //         resolve();
-        //     });
-        // });
-        //
+        const topologyChange = client.eventDispatcher.next(onMongoTopologyChange);
         await client.connect();
-        // await promise;
-        // expect(client.config.hosts[0].type).toBe('primary');
-        // expect(client.config.hosts[0].dead).toBe(false);
-        // expect(client.config.hosts[0].isWritable()).toBe(true);
-        // expect(client.config.hosts[0].isReadable()).toBe(true);
-        // expect(client.config.hosts[0].isUsable()).toBe(true);
-        //
-        // expect(client.config.hosts[1].type).toBe('unknown');
-        // expect(client.config.hosts[1].dead).toBe(true);
-        // expect(client.config.hosts[1].isWritable()).toBe(false);
-        // expect(client.config.hosts[1].isReadable()).toBe(false);
-        // expect(client.config.hosts[1].isUsable()).toBe(false);
-        //
-        // expect(client.config.hosts[2].type).toBe('secondary');
-        // expect(client.config.hosts[2].dead).toBe(false);
-        // expect(client.config.hosts[2].isWritable()).toBe(false);
-        // expect(client.config.hosts[2].isReadable()).toBe(true);
-        // expect(client.config.hosts[2].isUsable()).toBe(true);
-        //
-        // expect(client.config.topology).toBe('replicaSetWithPrimary');
+        await topologyChange;
+        expect(client.config.hosts[0].type).toBe('primary');
+        expect(client.config.hosts[0].dead).toBe(false);
+        expect(client.config.hosts[0].isWritable()).toBe(true);
+        expect(client.config.hosts[0].isReadable()).toBe(true);
+        expect(client.config.hosts[0].isUsable()).toBe(true);
+
+        expect(client.config.hosts[1].type).toBe('unknown');
+        expect(client.config.hosts[1].dead).toBe(true);
+        expect(client.config.hosts[1].isWritable()).toBe(false);
+        expect(client.config.hosts[1].isReadable()).toBe(false);
+        expect(client.config.hosts[1].isUsable()).toBe(false);
+
+        expect(client.config.hosts[2].type).toBe('secondary');
+        expect(client.config.hosts[2].dead).toBe(false);
+        expect(client.config.hosts[2].isWritable()).toBe(false);
+        expect(client.config.hosts[2].isReadable()).toBe(true);
+        expect(client.config.hosts[2].isUsable()).toBe(true);
+
+        expect(client.config.topology).toBe('replicaSetWithPrimary');
         client.close();
-        // await sleep(0);
-        // expect(client.config.hosts[0].connections.length).toBe(0);
-        // expect(client.config.hosts[1].connections.length).toBe(0);
-        // expect(client.config.hosts[2].connections.length).toBe(0);
+        await sleep(0);
+        expect(client.config.hosts[0].connections.length).toBe(0);
+        expect(client.config.hosts[1].connections.length).toBe(0);
+        expect(client.config.hosts[2].connections.length).toBe(0);
     });
 });
 

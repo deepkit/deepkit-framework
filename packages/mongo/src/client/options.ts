@@ -29,29 +29,45 @@ export class ConnectionOptions {
     /**
      * TCP connection timeout. Default 30s.
      *
-     * If the tcp connect takes longer than this value, the connection is aborted.
+     * If the socket connect takes longer than this value, the connection is aborted.
      */
-    connectTimeout: Milliseconds = 30000;
-
-    /**
-     * Connection pool timeout. Default 1 minute.
-     *
-     * If no connection is available in the pool, the request is placed in a queue.
-     * If it takes longer than this value, the request is aborted.
-     */
-    connectionAcquisitionTimeout: Milliseconds = 60 * 1000;
+    connectTimeoutMS: Milliseconds = 30000;
 
     /**
      * TCP socket timeout. Default not set.
      *
      * If greater than 0 `Socket.setTimeout()` will be called.
      */
-    socketTimeout: Milliseconds = 0;
+    socketTimeoutMS: Milliseconds = 0;
 
     /**
      * The interval in milliseconds between the heartbeat checks. Default 10s.
      */
-    heartbeatFrequency: Milliseconds = 10000;
+    heartbeatFrequencyMS: Milliseconds = 10000;
+
+    /**
+     * The maximum number of connections in the connection pool
+     * How many connections per host are allowed on the pool.
+     * If this limit is reached, the connection acquisition waits until a connection is released.
+     * See also `connectionAcquisitionTimeout`.
+     */
+    maxPoolSize: number = 100;
+
+    /**
+     * The minimum number of connections in the connection pool.
+     */
+    minPoolSize: number = 0;
+
+    /**
+     * The maximum time in milliseconds that a thread can wait for a connection to become available
+     */
+    waitQueueTimeoutMS: Milliseconds = 0;
+
+    /**
+     * Close a connection after it has been idle for this duration.
+     * Default 60s.
+     */
+    maxIdleTimeMS: Milliseconds = 60 * 1000;
 
     /**
      * The maximum staleness to allow in milliseconds. Default 0 (no staleness check).
@@ -67,14 +83,20 @@ export class ConnectionOptions {
      * Command response timeout. Default 0.
      *
      * If greater than 0, the command is aborted if it takes longer than this value
-     * to respond. This might be tricky if you have very long-running queries.
+     * to answer. This might be tricky if you have very long-running queries.
      */
-    commandTimeout: Milliseconds = 0;
+    commandTimeoutMS: Milliseconds = 0;
 
     /**
      * @see https://www.mongodb.com/docs/manual/reference/write-concern/#std-label-wc-j
      */
     w?: string | number;
+
+    /**
+     * If true the client sends operations to only the specified host.
+     * It doesn't attempt to discover any other members of the replica set.
+     */
+    directConnection: boolean = false;
 
     /**
      * Write concern timeout in milliseconds.
@@ -83,16 +105,16 @@ export class ConnectionOptions {
      */
     wtimeout?: Milliseconds;
 
-    journal?: string;
+    journal?: boolean;
 
     appName?: string;
 
     retryWrites: boolean = true;
     retryReads: boolean = true;
 
-    readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';
+    readConcernLevel?: 'local' | 'majority' | 'linearizable' | 'available' | 'snapshot';
 
-    readPreference: 'primary' | 'primaryPreferred' | 'secondary' | 'secondaryPreferred' | 'nearest' = 'primary';
+    readPreference?: 'primary' | 'primaryPreferred' | 'secondary' | 'secondaryPreferred' | 'nearest';
 
     readPreferenceTags?: string; //e.g. "dc:ny,rack:1"
     hedge?: boolean;
@@ -105,6 +127,8 @@ export class ConnectionOptions {
     authMechanismProperties?: string;
     gssapiServiceName?: string;
 
+    batchSize: number = 100_000;
+
     ssl?: boolean;
     tlsCertificateFile?: string;
     tlsCertificateKeyFile?: string;
@@ -116,26 +140,16 @@ export class ConnectionOptions {
     tlsInsecure?: boolean;
 
     /**
-     * How many connections per host are allowed on the pool.
-     * If this limit is reached, the connection acquisition waits until a connection is released.
-     * See also `connectionAcquisitionTimeout`.
+     * In seconds.
      */
-    maxPoolSize: number = 20;
-
-    minPoolSize: number = 1;
-
-    /**
-     * Close a connection after it has been idle for this duration.
-     * Default 60s.
-     */
-    maxIdleTime: Milliseconds = 60 * 1000;
+    srvCacheTimeout: number = 5 * 60;
 
     protected parsedReadPreferenceTags?: { [name: string]: string }[];
 
     validate() {
         const idleWritePeriodMS = 10_000; // 10 seconds as per spec
         const maxStalenessMS = (this.maxStalenessSeconds || 0) * 1000;
-        const heartbeatFrequencyMS = this.heartbeatFrequency;
+        const heartbeatFrequencyMS = this.heartbeatFrequencyMS;
 
         // Ensure maxStalenessSeconds meets the minimum requirements
         if (maxStalenessMS > 0 && maxStalenessMS < Math.max(90_000, heartbeatFrequencyMS + idleWritePeriodMS)) {
@@ -143,17 +157,19 @@ export class ConnectionOptions {
         }
     }
 
-    getReadPreferenceTags(): { [name: string]: string }[] {
-        if (!this.parsedReadPreferenceTags) {
-            this.parsedReadPreferenceTags = [];
-            if (this.readPreferenceTags) {
-                for (const tag of this.readPreferenceTags.split(',')) {
-                    const [name, value] = tag.split(':');
-                    this.parsedReadPreferenceTags.push({ [name]: value });
-                }
+    protected preferenceTagCache = new Map<string, { [name: string]: string }[]>;
+
+    parsePreferenceTags(tags: string): { [name: string]: string }[] {
+        let cache = this.preferenceTagCache.get(tags);
+        if (!cache) {
+            cache = [];
+            for (const tag of tags.split(',')) {
+                const [name, value] = tag.split(':');
+                cache.push({ [name]: value });
             }
+            this.preferenceTagCache.set(tags, cache);
         }
-        return this.parsedReadPreferenceTags;
+        return cache;
     }
 
     getAuthMechanismProperties(): AuthMechanismProperties {
@@ -177,4 +193,15 @@ export class ConnectionOptions {
     get secondaryReadAllowed() {
         return this.readPreference === 'secondary' || this.readPreference === 'secondaryPreferred';
     }
+}
+
+export interface CommandOptions {
+    batchSize?: number;
+    readPreference?: ConnectionOptions['readPreference'];
+    readPreferenceTags?: string;
+    readConcernLevel?: ConnectionOptions['readConcernLevel'];
+
+    writeConcern?: string | number;
+    journal?: boolean;
+    wtimeout?: number;
 }

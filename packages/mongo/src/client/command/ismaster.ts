@@ -15,7 +15,7 @@ import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
 
 export interface IsMasterResponse extends BaseResponse {
-    ismaster: boolean;
+    ismaster: number;
     maxBsonObjectSize: number;
     maxMessageSizeBytes: number;
     maxWriteBatchSize: number;
@@ -51,6 +51,7 @@ export interface IsMasterResponse extends BaseResponse {
 
 interface IsMasterSchema {
     isMaster: number;
+    helloOk: number;
     $db: string;
 }
 
@@ -62,6 +63,7 @@ export class IsMasterCommand extends Command<IsMasterResponse> {
     async execute(config: MongoClientConfig, host: Host): Promise<IsMasterResponse> {
         const cmd = {
             isMaster: 1,
+            helloOk: 1,
             $db: config.getAuthSource(),
         };
 

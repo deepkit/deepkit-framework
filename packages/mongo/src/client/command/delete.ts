@@ -8,24 +8,22 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command } from './command.js';
-import { ReflectionClass, UUID } from '@deepkit/type';
+import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
+import { ReflectionClass } from '@deepkit/type';
+import { CommandOptions } from '../options.js';
 
 interface DeleteResponse extends BaseResponse {
     n: number;
 }
 
-interface DeleteSchema {
+type DeleteSchema = {
     delete: string;
     $db: string;
     deletes: { q: any, limit: number }[];
-    lsid?: { id: UUID };
-    txnNumber?: number;
-    autocommit?: boolean;
-    startTransaction?: boolean;
-}
+} & TransactionalMessage & WriteConcernMessage;
 
 export class DeleteCommand<T extends ReflectionClass<any>> extends Command<number> {
+    commandOptions: CommandOptions = {};
 
     constructor(
         public schema: T,
@@ -37,18 +35,19 @@ export class DeleteCommand<T extends ReflectionClass<any>> extends Command<numbe
     }
 
     async execute(config, host, transaction): Promise<number> {
-        const cmd = {
+        const cmd: DeleteSchema = {
             delete: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             deletes: [
                 {
                     q: this.filter,
                     limit: this.limit,
-                }
-            ]
+                },
+            ],
         };
 
         if (transaction) transaction.applyTransaction(cmd);
+        config.applyWriteConcern(cmd, this.commandOptions);
 
         const res = await this.sendAndWait<DeleteSchema, DeleteResponse>(cmd);
         return res.n;

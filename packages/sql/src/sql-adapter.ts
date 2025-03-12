@@ -9,7 +9,6 @@
  */
 
 import {
-    BaseQuery,
     Database,
     DatabaseAdapter,
     DatabaseAdapterQueryFactory,
@@ -82,8 +81,8 @@ export class SQLQueryModel<T extends OrmEntity> extends DatabaseQueryModel<T, Fi
     where?: SqlQuery;
     sqlSelect?: SqlQuery;
 
-    clone(parentQuery: BaseQuery<T>): this {
-        const m = super.clone(parentQuery);
+    clone(): this {
+        const m = super.clone();
         m.where = this.where ? this.where.clone() : undefined;
         m.sqlSelect = this.sqlSelect ? this.sqlSelect.clone() : undefined;
         return m;

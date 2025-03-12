@@ -8,18 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { UUID } from '@deepkit/type';
-import { BaseResponse, Command } from './command.js';
+import { BaseResponse, Command, TransactionalMessage } from './command.js';
 import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
 
-interface Request {
-    commitTransaction: number;
+type CommitTransaction = {
     $db: string;
-    lsid?: { id: UUID };
-    txnNumber?: number;
-    autocommit?: boolean;
-}
+} & TransactionalMessage;
 
 export class CommitTransactionCommand extends Command<BaseResponse> {
     needsWritableHost() {
@@ -34,6 +29,6 @@ export class CommitTransactionCommand extends Command<BaseResponse> {
 
         if (transaction) transaction.applyTransaction(cmd);
 
-        return await this.sendAndWait<Request>(cmd);
+        return await this.sendAndWait<CommitTransaction>(cmd);
     }
 }
