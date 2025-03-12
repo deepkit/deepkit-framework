@@ -4,7 +4,24 @@ import { databaseFactory } from './factory.js';
 import { User, UserCredentials } from '@deepkit/orm-integration';
 import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter.js';
 import { sleep } from '@deepkit/core';
-import { AutoIncrement, BackReference, cast, Entity, entity, getPrimaryKeyExtractor, getPrimaryKeyHashGenerator, isReferenceInstance, PrimaryKey, Reference, ReflectionClass, serialize, typeOf, Unique, UUID, uuid } from '@deepkit/type';
+import {
+    AutoIncrement,
+    BackReference,
+    cast,
+    Entity,
+    entity,
+    getPrimaryKeyExtractor,
+    getPrimaryKeyHashGenerator,
+    isReferenceInstance,
+    PrimaryKey,
+    Reference,
+    ReflectionClass,
+    serialize,
+    typeOf,
+    Unique,
+    UUID,
+    uuid,
+} from '@deepkit/type';
 import { DatabaseEntityRegistry, UniqueConstraintFailure } from '@deepkit/orm';
 import { sql } from '@deepkit/sql';
 
@@ -190,7 +207,7 @@ test('transaction', async () => {
 
     {
         const t1 = new SQLiteDatabaseTransaction();
-        const c1 = await sqlite.connectionPool.getConnection(undefined, t1);
+        const c1 = await sqlite.connectionPool.getConnection(t1);
         const c2 = await sqlite.connectionPool.getConnection();
 
         expect(c1 === c2).toBe(false);

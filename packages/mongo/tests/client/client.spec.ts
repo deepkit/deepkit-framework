@@ -236,14 +236,15 @@ test('connection pool 10', async () => {
     {
         const host = client.config.hosts[0];
         expect(host.connections.length).toBe(2);
-        expect(host.countFreeConnections()).toBe(2);
+        expect(host.freeConnections).toBe(2);
+        expect(host.freeConnections).toBe(2);
 
         const c1 = await client.pool.getConnection();
         expect(host.connections.length).toBe(2);
-        expect(host.countFreeConnections()).toBe(1);
+        expect(host.freeConnections).toBe(1);
 
         const c2 = await client.pool.getConnection();
-        expect(host.countFreeConnections()).toBe(0);
+        expect(host.freeConnections).toBe(0);
         expect(host.connections.length).toBe(2);
 
         const c3 = await client.pool.getConnection();

@@ -135,8 +135,6 @@ export class MongoPersistence extends DatabasePersistence {
             insert.push(filteredItem);
         }
 
-        if (this.session.logger.active) this.session.logger.log('insert', classSchema.getClassName(), items.length);
-
         try {
             const command = new InsertCommand(classSchema, insert);
             command.commandOptions = this.commandOptions;
@@ -197,8 +195,6 @@ export class MongoPersistence extends DatabasePersistence {
                 multi: false,
             });
         }
-
-        if (this.session.logger.active) this.session.logger.log('update', classSchema.getClassName(), updates.length);
 
         const connection = await this.getConnection();
 

@@ -41,7 +41,7 @@ export class InsertCommand<T> extends Command<number> {
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        config.applyWriteConcern(cmd, this.commandOptions);
+        if (!transaction) config.applyWriteConcern(cmd, this.commandOptions);
 
         const jit = this.schema.getJitContainer();
         let specialisedSchema = jit.mdbInsert;

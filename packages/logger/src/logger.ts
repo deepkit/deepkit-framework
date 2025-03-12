@@ -208,6 +208,8 @@ export class Logger implements LoggerInterface {
      */
     level: LoggerLevel = LoggerLevel.info;
 
+    protected debugScopes = new Set<string>();
+
     protected logData?: LogData;
 
     protected scopes: { [scope: string]: Logger } = {};
@@ -219,11 +221,53 @@ export class Logger implements LoggerInterface {
     ) {
     }
 
+    /**
+     * Enables debug logging for a given scope.
+     *
+     * This is useful to enable debug logs only for certain parts of your application.
+     */
+    enableDebugScope(name: string) {
+        this.debugScopes.add(name);
+    }
+
+    disableDebugScope(name: string) {
+        this.debugScopes.delete(name);
+    }
+
+    isDebugScopeEnabled(name: string): boolean {
+        return this.debugScopes.has(name);
+    }
+
+    /**
+     * Sends additional log data for the very next log/error/alert/warning/etc call.
+     *
+     * @example
+     * ```typescript
+     *
+     * logger.data({user: user}).log('User logged in');
+     *
+     * //or
+     *
+     * //the given data is only used for the very next log (or error/alert/warning etc) call.
+     * logger.data({user: user})
+     * logger.log('User logged in');
+     *
+     * //at this point `data` is consumed, and for all other log calls not used anymore.
+     * logger.log('another message without data');
+     *
+     *
+     * ```
+     */
     data(data: LogData): this {
         this.logData = data;
         return this;
     }
 
+    /**
+     * Creates a new scoped logger. A scoped logger has the same log level, transports, and formatters as the parent logger,
+     * and references them directly. This means if you change the log level on the parent logger, it will also change for all
+     * scoped loggers.
+     */
     scoped(name: string): Logger {
         let scopedLogger = this.scopes[name];
         if (!scopedLogger) {
@@ -238,6 +282,7 @@ export class Logger implements LoggerInterface {
                 scope,
                 scopes: self.scopes,
                 logData: self.logData,
+                debugScopes: self.debugScopes,
                 colorFormatter: self.colorFormatter,
                 removeColorFormatter: self.removeColorFormatter,
             }, Logger.prototype);
@@ -284,7 +329,7 @@ export class Logger implements LoggerInterface {
     }
 
     is(level: LoggerLevel): boolean {
-        return level <= this.level;
+        return level <= this.level || (level === LoggerLevel.debug && this.debugScopes.has(this.scope));
     }
 
     protected send(messages: any[], level: LoggerLevel, data: LogData = {}) {

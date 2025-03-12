@@ -45,7 +45,7 @@ export class UpdateCommand<T extends ReflectionClass<any>> extends Command<numbe
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        config.applyWriteConcern(cmd, this.commandOptions);
+        if (!transaction) config.applyWriteConcern(cmd, this.commandOptions);
 
         const res = await this.sendAndWait<UpdateSchema, UpdateResponse>(cmd);
         return res.n;

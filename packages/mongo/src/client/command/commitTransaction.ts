@@ -8,15 +8,18 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command, TransactionalMessage } from './command.js';
+import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
+import { CommandOptions } from '../options.js';
 
-type CommitTransaction = TransactionalMessage & {
+type CommitTransaction = TransactionalMessage & WriteConcernMessage & {
     $db: string;
 };
 
 export class CommitTransactionCommand extends Command<BaseResponse> {
+    commandOptions: CommandOptions = {};
+
     needsWritableHost() {
         return false;
     }
@@ -28,6 +31,7 @@ export class CommitTransactionCommand extends Command<BaseResponse> {
         };
 
         if (transaction) transaction.applyTransaction(cmd);
+        config.applyWriteConcern(cmd, this.commandOptions);
 
         return await this.sendAndWait<CommitTransaction>(cmd);
     }

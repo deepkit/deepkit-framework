@@ -171,7 +171,7 @@ export function createCommand<Request extends { [name: string]: any }, Response>
         async execute(config: MongoClientConfig, host, transaction?): Promise<Response & BaseResponse> {
             const cmd = 'function' === typeof request ? request(config) : request;
             if (options.transactional && transaction) transaction.applyTransaction(cmd);
-            if (options.readPreference) config.applyReadPreference(host, cmd as any, this.commandOptions);
+            if (options.readPreference) config.applyReadPreference(host, cmd as any, this.commandOptions, transaction);
             return await this.sendAndWait(cmd, typeRequest, typeResponse as Type) as any;
         }
 

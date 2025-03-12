@@ -84,7 +84,7 @@ test('colorless', () => {
     jsonLogger.out = {
         write: (message: string) => {
             expect(message).toContain(`This is a color test`);
-        }
+        },
     };
 
     const logger = new Logger([jsonLogger]);
@@ -100,11 +100,17 @@ test('scope catches late changes', () => {
     logger.level = LoggerLevel.debug;
     scoped.debug('test');
     expect(logger.memory.messageStrings).toEqual(['(database) test']);
+
+    scoped.log('test2');
+    expect(logger.memory.messageStrings).toEqual(['(database) test', '(database) test2']);
+
+    logger.log('test3');
+    expect(logger.memory.messageStrings).toEqual(['(database) test', '(database) test2', 'test3' ]);
 });
 
 test('scoped logger', () => {
     class MyProvider {
-        constructor (public logger: ScopedLogger) {
+        constructor(public logger: ScopedLogger) {
         }
     }
 
@@ -133,17 +139,17 @@ test('scoped logger', () => {
 
     {
         class A {
-            constructor (public b: B) {
+            constructor(public b: B) {
             }
         }
 
         class B {
-            constructor (public c: C, public target: TransientInjectionTarget) {
+            constructor(public c: C, public target: TransientInjectionTarget) {
             }
         }
 
         class C {
-            constructor (public target: TransientInjectionTarget) {
+            constructor(public target: TransientInjectionTarget) {
             }
         }
 
@@ -159,17 +165,17 @@ test('scoped logger', () => {
 
     {
         class A {
-            constructor (public b: C) {
+            constructor(public b: C) {
             }
         }
 
         class B {
-            constructor (public target: TransientInjectionTarget) {
+            constructor(public target: TransientInjectionTarget) {
             }
         }
 
         class C {
-            constructor (public target: TransientInjectionTarget) {
+            constructor(public target: TransientInjectionTarget) {
             }
         }
 
@@ -183,4 +189,18 @@ test('scoped logger', () => {
         expect(a.b).toBeInstanceOf(B);
         expect(a.b.target.token).toBe(A);
     }
+});
+
+test('enableDebug', () => {
+    const logger = new MemoryLogger();
+
+    logger.enableDebugScope('database');
+    logger.debug('test1');
+    expect(logger.isDebugScopeEnabled('database')).toBe(true);
+
+    const scoped = logger.scoped('database');
+    scoped.debug('test2');
+    expect(scoped.isDebugScopeEnabled('database')).toBe(true);
+
+    expect(logger.memory.messageStrings).toEqual(['test2']);
 });

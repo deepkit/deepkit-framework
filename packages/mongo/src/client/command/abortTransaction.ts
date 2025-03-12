@@ -21,10 +21,15 @@ export class AbortTransactionCommand extends Command<BaseResponse> {
         return false;
     }
 
+    constructor(private transaction: TransactionalMessage = {}) {
+        super();
+    }
+
     async execute(config: MongoClientConfig, host: Host, transaction): Promise<BaseResponse> {
         const cmd: AbortTransaction = {
             abortTransaction: 1,
             $db: 'admin',
+            ...this.transaction,
         };
 
         if (transaction) transaction.applyTransaction(cmd);

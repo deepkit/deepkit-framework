@@ -6,6 +6,10 @@ import { DatabaseSession } from '../src/database-session.js';
 import { MemoryDatabaseAdapter } from '../src/memory-db.js';
 import { getClassState, getInstanceStateFromItem } from '../src/identity-map.js';
 import { buildChangesFromInstance } from '../src/utils.js';
+import { DatabaseEntityRegistry } from '../src/database-adapter.js';
+import { EventDispatcher } from '@deepkit/event';
+import { DatabasePluginRegistry } from '../src/plugin/plugin.js';
+import { Logger } from '@deepkit/logger';
 
 test('change-detection', () => {
     class Image {
@@ -24,7 +28,7 @@ test('change-detection', () => {
         }
     }
 
-    const session = new DatabaseSession(new MemoryDatabaseAdapter);
+    const session = new DatabaseSession(new MemoryDatabaseAdapter, new DatabaseEntityRegistry(), new EventDispatcher(), new DatabasePluginRegistry(), new Logger());
 
     {
         const formatter = new Formatter(ReflectionClass.from(User), serializer);

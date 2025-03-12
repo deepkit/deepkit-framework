@@ -32,6 +32,10 @@ export class HostStats {
 
     connectionsQueued: number = 0;
 
+    connectionsAlive: number = 0;
+
+    connectionsReserved: number = 0;
+
     commandsActive: number = 0;
     commandsExecuted: number = 0;
     commandsFailed: number = 0;
@@ -123,16 +127,8 @@ export class Host {
         return id;
     }
 
-    countReservedConnections(): number {
-        return this.connections.filter(v => v.reserved).length;
-    }
-
-    countTotalConnections(): number {
-        return this.connections.length;
-    }
-
-    countFreeConnections(): number {
-        return this.connections.filter(v => !v.reserved).length;
+    get freeConnections(): number {
+        return this.stats.connectionsAlive - this.stats.connectionsReserved;
     }
 
     isWritable(): boolean {

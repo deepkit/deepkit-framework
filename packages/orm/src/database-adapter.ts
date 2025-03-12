@@ -18,19 +18,12 @@ import {
     isClass,
     stringifyValueWithType,
 } from '@deepkit/core';
-import {
-    is,
-    isSameType,
-    ItemChanges,
-    PrimaryKeyFields,
-    ReceiveType,
-    ReflectionClass,
-    ReflectionKind,
-    stringifyType,
-    Type,
-} from '@deepkit/type';
+import { is, isSameType, ItemChanges, PrimaryKeyFields, ReceiveType, ReflectionClass, ReflectionKind, stringifyType, Type } from '@deepkit/type';
 import { Query } from './query.js';
 import { DatabaseSession, DatabaseTransaction } from './database-session.js';
+import { EventDispatcher } from '@deepkit/event';
+import { Logger } from '@deepkit/logger';
+import { Stopwatch } from '@deepkit/stopwatch';
 
 export abstract class DatabaseAdapterQueryFactory {
     abstract createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): Query<T>;
@@ -109,6 +102,18 @@ export class MigrateOptions {
  * You can specify a more specialized adapter like MysqlDatabaseAdapter/MongoDatabaseAdapter with special API for MySQL/Mongo.
  */
 export abstract class DatabaseAdapter {
+    eventDispatcher: EventDispatcher = new EventDispatcher();
+    logger: Logger = new Logger();
+    stopwatch?: Stopwatch;
+
+    setEventDispatcher(eventDispatcher: EventDispatcher) {
+        this.eventDispatcher = eventDispatcher;
+    }
+
+    setLogger(logger: Logger) {
+        this.logger = logger;
+    }
+
     abstract queryFactory(session: DatabaseSession<this>): DatabaseAdapterQueryFactory;
 
     rawFactory(session: DatabaseSession<this>): RawFactory<any> {

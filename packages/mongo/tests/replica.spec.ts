@@ -1,13 +1,35 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { createMongoClientFactory, MongoEnv, MongoInstance } from './client/env-setup.js';
 import { AutoIncrement, PrimaryKey, ReflectionClass } from '@deepkit/type';
-import { MongoClient as MongoMongoClient, ReadPreference } from 'mongodb';
+import { FindOptions, MongoClient as MongoMongoClient } from 'mongodb';
 import { MongoClient } from '../src/client/client.js';
 import { FindCommand } from '../src/client/command/find.js';
 import { Database } from '@deepkit/orm';
 import { MongoDatabaseAdapter } from '../src/adapter.js';
+import { ConsoleLogger, LoggerLevel, MemoryLogger } from '@deepkit/logger';
+import { sleep } from '@deepkit/core';
 
 jest.setTimeout(60 * 1000);
+
+test('logger', () => {
+    const logger = new ConsoleLogger();
+    logger.level = LoggerLevel.debug;
+    const client = new MongoClient(`mongodb://primary`, undefined, logger);
+    expect(client.logger.level).toBe(LoggerLevel.debug);
+
+    const adapter = new MongoDatabaseAdapter(client);
+    expect(client.logger.level).toBe(LoggerLevel.debug);
+
+    const database = new Database(new MongoDatabaseAdapter(client), []);
+    expect(client.logger.level).toBe(LoggerLevel.debug);
+
+    database.setLogger(client.logger);
+    expect(database.logger.level).toBe(LoggerLevel.debug);
+    client.logger.debug('TEST');
+    database.logger.debug('TEST');
+    database.adapter.logger.debug('TEST');
+    database.adapter.client.logger.debug('TEST');
+});
 
 describe('replica set, primary secondary', () => {
     const mongoEnv = new MongoEnv;
@@ -31,7 +53,7 @@ describe('replica set, primary secondary', () => {
         await mongoEnv.waitUntilBeingPrimary('primary');
         await mongoEnv.addReplicaSet('primary', 'secondary1', 1, 1);
         await mongoEnv.waitUntilBeingSecondary('secondary1');
-        await mongoEnv.execute('primary', `rs.secondaryOk();`);
+        await sleep(0.5);
     });
 
     beforeEach(async () => {
@@ -51,7 +73,7 @@ describe('replica set, primary secondary', () => {
     }
 
     test('primary - secondary', async () => {
-        const client = createClient(`mongodb://primary`);
+        const client = createClient(`mongodb://primary,secondary1`);
         const database = new Database(new MongoDatabaseAdapter(client), [User]);
         await client.connect();
 
@@ -82,7 +104,7 @@ describe('replica set, primary secondary', () => {
         expect(client.config.hosts[1].stats.commandsExecuted).toBe(3);
     });
 
-    test('transaction', async () => {
+    test('transaction write', async () => {
         const client = createClient(`mongodb://primary`);
         const database = new Database(new MongoDatabaseAdapter(client), [User]);
 
@@ -113,6 +135,52 @@ describe('replica set, primary secondary', () => {
             expect(await database.query(User).filter({ username: 'user1 changed' }).has()).toBe(true);
         }
     });
+
+    test('read only transaction', async () => {
+        const client = createClient(`mongodb://primary`);
+        const database = new Database(new MongoDatabaseAdapter(client), [User]);
+        database.setEventDispatcher(client.eventDispatcher);
+        database.setLogger(client.logger);
+        await client.connect();
+
+        const session = database.createSession();
+        session.useTransaction();
+
+        await session.query(User).with({ readPreference: 'secondary' }).find();
+    });
+
+    test('leaky transaction detection', async () => {
+        const client = createClient(`mongodb://primary`);
+        const logger = new MemoryLogger();
+        const database = new Database(new MongoDatabaseAdapter(client), [User]);
+        database.setLogger(logger);
+
+        async function doIt() {
+            await database.query(User).deleteMany();
+
+            const session = database.createSession();
+            session.useTransaction();
+            await session.add(new User('user1')).flush();
+
+            const user = await session.query(User).with({ readPreference: 'secondary' }).findOne();
+            expect(user.username).toBe('user1');
+        }
+
+        await doIt();
+        await sleep(0.2);
+        (global as any).gc();
+        await sleep(0.1);
+        expect(logger.memory.messageStrings.some(v => v.includes('Leaking transaction detected'))).toBe(true);
+    });
+
+    // test('sticky host for read session', async () => {
+    //     const database = new Database(new MongoDatabaseAdapter('mongodb://localhost'));
+    //     const logger = new MemoryLogger();
+    //     database.setLogger(logger);
+    //
+    //     const session = database.createSession();
+    // });
+
 });
 
 describe.skip('local replica', () => {
@@ -136,9 +204,8 @@ describe.skip('local replica', () => {
      */
 
     test('official mongo', async () => {
-        const client2 = new MongoMongoClient(`mongodb://localhost:27018`);
+        const client = new MongoMongoClient(`mongodb://localhost:27018`);
         // await client2.connect();
-        const db = client2.db('test');
 
         /*
     {
@@ -173,19 +240,30 @@ describe.skip('local replica', () => {
       '$readPreference': { mode: 'secondary' }
     }
          */
-        const rows = await db.collection('User').find()
-            .withReadConcern('majority')
-            .withReadPreference(ReadPreference.fromOptions({
-                readPreference: {
-                    mode: 'secondary',
-                    // tags: [{ a: 'b' }],
-                    maxStalenessSeconds: 90,
-                }
-            })!)
-            .toArray();
-        console.log('rows', rows);
 
-        await client2.close();
+        const session = client.startSession();
+        const db = client.db('myDB');
+
+        const options: FindOptions = { readPreference: 'secondary', session };
+
+        const res1 = await db.collection('users').findOne({ name: 'Alice' }, options);
+        const res2 = await db.collection('users').findOne({ name: 'Bob' }, options);
+        session.endSession();
+
+        // const rows = await db.collection('User').find()
+        //     .withReadConcern('majority')
+        //     .withReadPreference(ReadPreference.fromOptions({
+        //         readPreference: {
+        //             mode: 'secondary',
+        //             // tags: [{ a: 'b' }],
+        //             maxStalenessSeconds: 90,
+        //         }
+        //     })!)
+        //     .toArray();
+        // console.log('rows', rows);
+        session.endSession();
+
+        await client.close();
     });
 
     test('deepkit', async () => {

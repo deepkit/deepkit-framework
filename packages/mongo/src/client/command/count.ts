@@ -46,7 +46,7 @@ export class CountCommand<T extends ReflectionClass<any>> extends Command<number
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        config.applyReadPreference(host, cmd, this.commandOptions);
+        config.applyReadPreference(host, cmd, this.commandOptions, transaction);
 
         const res = await this.sendAndWait<CountSchema, CountResponse>(cmd);
         return res.n;

@@ -4,6 +4,7 @@ import { MySQLConnectionPool } from '../src/mysql-adapter.js';
 import { AutoIncrement, cast, entity, PrimaryKey, Unique } from '@deepkit/type';
 import { databaseFactory } from './factory.js';
 import { UniqueConstraintFailure } from '@deepkit/orm';
+import { Logger } from '@deepkit/logger';
 
 test('connection MySQLConnectionPool', async () => {
     const pool = createPool({
@@ -12,7 +13,7 @@ test('connection MySQLConnectionPool', async () => {
         database: 'default',
         password: process.env.MYSQL_PW
     });
-    const connectionPool = new MySQLConnectionPool(pool);
+    const connectionPool = new MySQLConnectionPool(pool, new Logger());
 
     for (let i = 0; i < 50; i++) {
         const connection = await connectionPool.getConnection();

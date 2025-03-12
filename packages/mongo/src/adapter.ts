@@ -27,13 +27,15 @@ import { MongoPersistence } from './persistence.js';
 import { MongoClient } from './client/client.js';
 import { DeleteCommand } from './client/command/delete.js';
 import { MongoQueryResolver } from './query.resolver.js';
-import { MongoDatabaseTransaction } from './client/connection.js';
+import { MongoDatabaseTransaction, MongoDatabaseTransactionMonitor } from './client/connection.js';
 import { CreateIndex, CreateIndexesCommand } from './client/command/createIndexes.js';
 import { DropIndexesCommand } from './client/command/dropIndexes.js';
 import { CreateCollectionCommand } from './client/command/createCollection.js';
 import { entity, ReceiveType, ReflectionClass, resolveReceiveType } from '@deepkit/type';
 import { Command } from './client/command/command.js';
 import { AggregateCommand } from './client/command/aggregate.js';
+import { EventDispatcher } from '@deepkit/event';
+import { Logger } from '@deepkit/logger';
 
 export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     constructor(
@@ -114,12 +116,14 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
     public readonly client: MongoClient;
 
     protected ormSequences: ReflectionClass<any>;
+    transactionMonitor: MongoDatabaseTransactionMonitor;
 
     constructor(
         connection: string | MongoClient,
     ) {
         super();
-        this.client = connection instanceof MongoClient ? connection : new MongoClient(connection);
+        this.client = connection instanceof MongoClient ? connection : new MongoClient(connection, this.eventDispatcher, this.logger);
+        this.transactionMonitor = new MongoDatabaseTransactionMonitor(this.logger);
 
         @entity.name(this.getAutoIncrementSequencesCollection())
         class OrmSequence {
@@ -128,6 +132,17 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
         }
 
         this.ormSequences = ReflectionClass.from(OrmSequence);
+    }
+
+    setEventDispatcher(eventDispatcher: EventDispatcher) {
+        super.setEventDispatcher(eventDispatcher);
+        this.client.setEventDispatcher(eventDispatcher);
+    }
+
+    setLogger(logger: Logger) {
+        super.setLogger(logger);
+        this.client.setLogger(logger);
+        this.transactionMonitor.setLogger(logger);
     }
 
     rawFactory(session: DatabaseSession<this>): MongoRawFactory {
@@ -147,7 +162,7 @@ export class MongoDatabaseAdapter extends DatabaseAdapter {
     }
 
     createTransaction(session: DatabaseSession<this>): MongoDatabaseTransaction {
-        return new MongoDatabaseTransaction;
+        return new MongoDatabaseTransaction(this.transactionMonitor);
     }
 
     isNativeForeignKeyConstraintSupported() {

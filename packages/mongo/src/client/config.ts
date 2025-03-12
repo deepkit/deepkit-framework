@@ -16,7 +16,8 @@ import { MongoError } from './error.js';
 import { arrayRemoveItem, eachPair, singleStack } from '@deepkit/core';
 import { resolveSrvHosts } from './dns.js';
 import { cast, ReflectionClass } from '@deepkit/type';
-import { ReadPreferenceMessage, WriteConcernMessage } from './command/command.js';
+import { ReadPreferenceMessage, TransactionalMessage, WriteConcernMessage } from './command/command.js';
+import type { MongoDatabaseTransaction } from './connection.js';
 
 export type Topology = 'single' | 'replicaSetNoPrimary' | 'replicaSetWithPrimary' | 'sharded' | 'unknown' | 'invalidated';
 
@@ -215,9 +216,14 @@ export class MongoClientConfig {
         return this.hosts.map(v => `${v.hostname}:${v.port}=${v.status}`).join(',');
     }
 
+    /**
+     * Applies the write concern to the command.
+     *
+     * This must not be called in a transaction for normal commands, since only
+     * commitTransaction/abortTransaction commands are allowed to set writeConcern.
+     */
     applyWriteConcern(cmd: WriteConcernMessage, options: CommandOptions) {
-        if (this.options.w || this.options.journal || this.options.wtimeout
-            || options.writeConcern || options.journal || options.wtimeout) {
+        if (this.options.w || this.options.journal || this.options.wtimeout || options.writeConcern || options.journal || options.wtimeout) {
             cmd.writeConcern = {};
             if (this.options.w !== undefined) cmd.writeConcern.w = this.options.w;
             if (this.options.journal !== undefined) cmd.writeConcern.j = this.options.journal;
@@ -231,9 +237,14 @@ export class MongoClientConfig {
     /**
      * @see https://github.com/mongodb/specifications/blob/master/source/server-selection/server-selection.md#passing-read-preference-to-mongos-and-load-balancers
      */
-    applyReadPreference(host: Host, cmd: ReadPreferenceMessage, options: CommandOptions) {
+    applyReadPreference(host: Host, cmd: ReadPreferenceMessage & TransactionalMessage, options: CommandOptions, transaction?: MongoDatabaseTransaction) {
         const readPreference = options.readPreference || this.options.readPreference;
         if (readPreference === 'primary') return;
+
+        if (transaction && !cmd.startTransaction) {
+            // readConcern to use for the first command, and only the first command, in a transaction
+            return;
+        }
 
         const readConcernLevel = options.readConcernLevel || this.options.readConcernLevel;
         if (readConcernLevel) {

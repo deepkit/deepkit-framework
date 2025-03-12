@@ -16,7 +16,6 @@ import {
     DatabaseEntityRegistry,
     DatabaseError,
     DatabaseInsertError,
-    DatabaseLogger,
     DatabasePatchError,
     DatabasePersistence,
     DatabasePersistenceChangeSet,
@@ -58,6 +57,7 @@ import { SqlFormatter } from './sql-formatter.js';
 import { DatabaseComparator, DatabaseModel } from './schema/table.js';
 import { Stopwatch } from '@deepkit/stopwatch';
 import { getPreparedEntity, PreparedEntity, PreparedField } from './prepare.js';
+import { Logger } from '@deepkit/logger';
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends OrmEntity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };
@@ -106,7 +106,7 @@ export abstract class SQLConnection {
 
     constructor(
         protected connectionPool: SQLConnectionPool,
-        public logger: DatabaseLogger = new DatabaseLogger,
+        public logger: Logger,
         public transaction?: DatabaseTransaction,
         public stopwatch?: Stopwatch,
     ) {
@@ -147,11 +147,18 @@ export abstract class SQLConnection {
 export abstract class SQLConnectionPool {
     protected activeConnections = 0;
 
+    constructor(protected logger: Logger) {
+    }
+
+    setLogger(logger: Logger) {
+        this.logger = logger;
+    }
+
     /**
      * Reserves an existing or new connection. It's important to call `.release()` on it when
      * done. When release is not called a resource leak occurs and server crashes.
      */
-    abstract getConnection(logger?: DatabaseLogger, transaction?: DatabaseTransaction, stopwatch?: Stopwatch): Promise<SQLConnection>;
+    abstract getConnection(transaction?: DatabaseTransaction): Promise<SQLConnection>;
 
     public getActiveConnections() {
         return this.activeConnections;
@@ -235,7 +242,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
         const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(this.session.assignedTransaction);
         if (connectionFrame) connectionFrame.end();
 
         try {
@@ -259,7 +266,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
         const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(this.session.assignedTransaction);
         if (connectionFrame) connectionFrame.end();
 
         try {
@@ -282,7 +289,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
         const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(this.session.assignedTransaction);
         if (connectionFrame) connectionFrame.end();
 
         let rows: any[] = [];
@@ -335,7 +342,7 @@ export class SQLQueryResolver<T extends OrmEntity> extends GenericQueryResolver<
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
         const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(this.session.assignedTransaction);
         if (connectionFrame) connectionFrame.end();
 
         try {
@@ -542,7 +549,7 @@ export class RawQuery<T> implements FindQuery<T> {
      */
     async execute(): Promise<void> {
         const sql = this.sql.convertToSQL(this.platform, new this.platform.placeholderStrategy);
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(this.session.assignedTransaction);
 
         try {
             return await connection.run(sql.sql, sql.params);
@@ -583,7 +590,7 @@ export class RawQuery<T> implements FindQuery<T> {
      */
     async find(): Promise<T[]> {
         const sql = this.sql.convertToSQL(this.platform, new this.platform.placeholderStrategy);
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(this.session.assignedTransaction);
 
         try {
             const caster = castFunction(undefined, undefined, this.type);
@@ -742,7 +749,7 @@ export class SQLPersistence extends DatabasePersistence {
 
     async getConnection(): Promise<ReturnType<this['connectionPool']['getConnection']>> {
         if (!this.connection) {
-            this.connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+            this.connection = await this.connectionPool.getConnection(this.session.assignedTransaction);
         }
         return this.connection as any;
     }

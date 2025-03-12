@@ -23,7 +23,6 @@ import {
 } from '@deepkit/type';
 import { DatabaseAdapter, DatabaseEntityRegistry, MigrateOptions } from './database-adapter.js';
 import { DatabaseSession } from './database-session.js';
-import { DatabaseLogger } from './logger.js';
 import { Query } from './query.js';
 import { getReference } from './reference.js';
 import { OrmEntity } from './type.js';
@@ -32,6 +31,7 @@ import { Stopwatch } from '@deepkit/stopwatch';
 import { getClassState, getInstanceState, getNormalizedPrimaryKey } from './identity-map.js';
 import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
 import { DatabasePlugin, DatabasePluginRegistry } from './plugin/plugin.js';
+import { Logger } from '@deepkit/logger';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -135,7 +135,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     protected virtualForeignKeyConstraint: VirtualForeignKeyConstraint = new VirtualForeignKeyConstraint(this);
 
-    public logger: DatabaseLogger = new DatabaseLogger();
+    public logger: Logger = new Logger;
 
     public eventDispatcher: EventDispatcher = new EventDispatcher();
 
@@ -145,6 +145,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         public readonly adapter: ADAPTER,
         schemas: (Type | ClassType | ReflectionClass<any>)[] = [],
     ) {
+        this.logger = adapter.logger;
         this.entityRegistry.add(...schemas);
         if (Database.registry) Database.registry.push(this);
 
@@ -172,6 +173,16 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         if (!this.adapter.isNativeForeignKeyConstraintSupported()) {
             setupVirtualForeignKey(this, this.virtualForeignKeyConstraint);
         }
+    }
+
+    setEventDispatcher(eventDispatcher: EventDispatcher) {
+        this.eventDispatcher = eventDispatcher;
+        this.adapter.setEventDispatcher(eventDispatcher);
+    }
+
+    setLogger(logger: Logger) {
+        this.logger = logger;
+        this.adapter.setLogger(logger);
     }
 
     registerPlugin(...plugins: DatabasePlugin[]): void {

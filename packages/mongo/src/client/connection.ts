@@ -24,7 +24,7 @@ import { AbortTransactionCommand } from './command/abortTransaction.js';
 import { DataEvent, EventDispatcher, EventTokenSync } from '@deepkit/event';
 import { IsMasterCommand } from './command/ismaster.js';
 import { Logger } from '@deepkit/logger';
-import { ConnectionOptions } from './options.js';
+import { CommandOptions, ConnectionOptions } from './options.js';
 
 export enum MongoConnectionStatus {
     pending = 'pending',
@@ -218,7 +218,7 @@ export class MongoConnectionPool {
      */
     public isConnected(): boolean {
         for (const host of this.config.hosts) {
-            if (host.countTotalConnections() > 0 && (host.isReadable() || host.isWritable())) {
+            if (host.stats.connectionsAlive > 0 && (host.isReadable() || host.isWritable())) {
                 return true;
             }
         }
@@ -278,11 +278,13 @@ export class MongoConnectionPool {
                 // we force create a connection to this host, ignoring limits
                 // as we don't want to wait for busy connections to be released.
                 connection = this.createConnection(host);
+                connection.reserved = true;
+                host.stats.connectionsReserved++;
             }
 
             try {
-                connection.reserved = true;
                 host.stats.heartbeats++;
+
                 this.scopedLogger.debug(`Heartbeat host ${host.id} (${host.hostname}:${host.port})`);
                 await connection.connect();
                 const start = Date.now();
@@ -369,9 +371,11 @@ export class MongoConnectionPool {
 
         for (const host of this.config.hosts) {
             if (!host.isUsable()) continue;
-            const isPrimary = host.isWritable();
-            const isSecondary = host.isReadable();
+            const isPrimary = host.type === 'primary';
+            const isSecondary = host.type === 'secondary';
+
             if (request.writable && isPrimary) return host;
+            if (request.writable && !isPrimary) continue;
 
             if (tags) {
                 let found = false;
@@ -387,8 +391,8 @@ export class MongoConnectionPool {
 
             if (host.stale) continue;
 
-            const busyConnections = host.countReservedConnections();
-            const freeConnections = host.countFreeConnections();
+            const busyConnections = host.stats.connectionsReserved;
+            const freeConnections = host.stats.connectionsAlive - busyConnections;
             const latency = host.latency;
 
             if (request.readPreference === 'primary' && !isPrimary) continue;
@@ -432,12 +436,17 @@ export class MongoConnectionPool {
     protected createConnection(host: Host): MongoConnection {
         this.stats.connectionsCreated++;
         host.stats.connectionsCreated++;
+        host.stats.connectionsAlive++;
         const connection = new MongoConnection(this.connectionId++, host, this.config, this.serializer, (connection) => {
             arrayRemoveItem(host.connections, connection);
             arrayRemoveItem(this.connections, connection);
             if (connection.status === MongoConnectionStatus.error) {
                 this.stats.connectionsError++;
                 host.stats.connectionsError++;
+            }
+            host.stats.connectionsAlive--;
+            if (connection.reserved) {
+                host.stats.connectionsReserved--;
             }
             // onClose does not automatically reconnect. Only new commands re-establish connections.
         }, (connection) => {
@@ -497,6 +506,7 @@ export class MongoConnectionPool {
         }
 
         connection.reserved = false;
+        connection.host.stats.connectionsReserved--;
 
         // the connection might have closed already
         if (!connection.closed) {
@@ -540,6 +550,7 @@ export class MongoConnectionPool {
 
             if (host.connections.length < this.config.options.maxPoolSize) {
                 const connection = this.createConnection(host);
+                host.stats.connectionsReserved++;
                 connection.reserved = true;
                 await connection.connect();
                 return connection;
@@ -569,6 +580,7 @@ export class MongoConnectionPool {
 
             this.stats.connectionsReused++;
             host.stats.connectionsReused++;
+            host.stats.connectionsReserved++;
             connection.reserved = true;
             if (connection.cleanupTimeout) {
                 clearTimeout(connection.cleanupTimeout);
@@ -585,7 +597,35 @@ export function readUint32LE(buffer: Uint8Array | ArrayBuffer, offset: number = 
     return buffer[offset] + (buffer[offset + 1] * 2 ** 8) + (buffer[offset + 2] * 2 ** 16) + (buffer[offset + 3] * 2 ** 24);
 }
 
+/**
+ * This class is responsible to monitor leaking transactions and automatically
+ * rollback them if the DatabaseSession was garbage collected without commit or rollback.
+ */
+export class MongoDatabaseTransactionMonitor {
+    finalizer = new FinalizationRegistry<{
+        connection: MongoConnection;
+        lsid: { id: string };
+        txnNumber: bigint;
+    }>((value) => {
+        this.logger.scoped('mongo').warn(`Leaking transaction detected. Automatically rollback transaction ${value.txnNumber}`);
+        value.connection.execute(new AbortTransactionCommand({ ...value, autocommit: false }))
+            .catch((error) => {
+                this.logger.scoped('mongo').error(`Could not rollback transaction ${value.txnNumber}: ${formatError(error)}`);
+            }).finally(() => {
+            value.connection.release();
+        });
+    });
+
+    constructor(public logger: Logger) {
+    }
+
+    setLogger(logger: Logger) {
+        this.logger = logger;
+    }
+}
+
 export class MongoDatabaseTransaction extends DatabaseTransaction {
+    commandOptions: CommandOptions = {};
     static txnNumber: bigint = 0n;
 
     connection?: MongoConnection;
@@ -593,14 +633,26 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
     txnNumber: bigint = 0n;
     started: boolean = false;
 
+    constructor(protected monitor: MongoDatabaseTransactionMonitor) {
+        super();
+    }
+
+    with(commandOptions: CommandOptions): this {
+        Object.assign(this.commandOptions, commandOptions);
+        return this;
+    }
+
     applyTransaction(cmd: TransactionalMessage) {
-        if (!this.lsid) return;
-        cmd.lsid = this.lsid;
-        cmd.txnNumber = this.txnNumber;
-        cmd.autocommit = false;
+        if (!this.lsid || !this.connection) return;
         if (!this.started && !cmd.abortTransaction && !cmd.commitTransaction) {
             this.started = true;
             cmd.startTransaction = true;
+            this.monitor.finalizer.register(this, { connection: this.connection, lsid: this.lsid, txnNumber: this.txnNumber });
+        }
+        if (this.started) {
+            cmd.lsid = this.lsid;
+            cmd.txnNumber = this.txnNumber;
+            cmd.autocommit = false;
         }
     }
 
@@ -609,11 +661,10 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
         // see https://github.com/mongodb/specifications/blob/master/source/sessions/driver-sessions.rst
         this.lsid = { id: uuid() };
         this.txnNumber = MongoDatabaseTransaction.txnNumber++;
-        // const res = await this.connection.execute(new StartSessionCommand());
-        // this.lsid = res.id;
     }
 
     async commit() {
+        console.log('transaction commit');
         if (!this.connection) return;
         if (this.ended) throw new MongoError('Transaction ended already');
 
@@ -623,6 +674,7 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
     }
 
     async rollback() {
+        console.log('transaction rollback');
         if (!this.connection) return;
         if (this.ended) throw new MongoError('Transaction ended already');
         if (!this.started) return;
@@ -648,7 +700,7 @@ export class MongoConnection {
 
     protected socket: Socket | TLSSocket;
 
-    public transaction?: MongoDatabaseTransaction;
+    public transaction?: WeakRef<MongoDatabaseTransaction>;
 
     responseParser: BsonStreamReader;
     error?: Error;
@@ -808,7 +860,7 @@ export class MongoConnection {
     public release() {
         //connections attached to a transaction are not automatically released.
         //only with commit/rollback actions
-        if (this.transaction && !this.transaction.ended) return;
+        if (this.transaction?.deref()) return;
 
         if (this.transaction) this.transaction = undefined;
         this.onRelease(this);
@@ -849,7 +901,7 @@ export class MongoConnection {
         this.host.stats.commandsExecuted++;
         command.sender = this.boundSendMessage;
         try {
-            this.lastCommand.promise = command.execute(this.config, this.host, this.transaction);
+            this.lastCommand.promise = command.execute(this.config, this.host, this.transaction?.deref());
             return await this.lastCommand.promise;
         } catch (error) {
             // if error suggests that the topology changed, we need to re-try

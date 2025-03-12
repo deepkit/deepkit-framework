@@ -19,7 +19,6 @@ export * from './src/query-filter.js';
 export * from './src/utils.js';
 export * from './src/memory-db.js';
 export * from './src/type.js';
-export * from './src/logger.js';
 export * from './src/event.js';
 export * from './src/reference.js';
 export * from './src/plugin/plugin.js';

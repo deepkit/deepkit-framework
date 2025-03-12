@@ -41,7 +41,7 @@ export class MongoClient {
 
     setLogger(logger: Logger) {
         this.logger = logger;
-        this.pool.logger = logger
+        this.pool.logger = logger;
     }
 
     setEventDispatcher(eventDispatcher: EventDispatcher) {
@@ -71,10 +71,13 @@ export class MongoClient {
      */
     async getConnection(request: Partial<ConnectionRequest> = {}, transaction?: MongoDatabaseTransaction): Promise<MongoConnection> {
         if (transaction && transaction.connection) return transaction.connection;
+        if (transaction) {
+            request.writable = true;
+        }
         const connection = await this.pool.getConnection(request);
         if (transaction) {
             transaction.connection = connection;
-            connection.transaction = transaction;
+            connection.transaction = new WeakRef(transaction);
             try {
                 await transaction.begin();
             } catch (error) {

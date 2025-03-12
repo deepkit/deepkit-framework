@@ -292,8 +292,9 @@ export class FrameworkModule extends createModuleClass({
     protected setupDatabase() {
         for (const db of this.dbs) {
             this.configureProvider<DatabaseRegistry>(v => v.addDatabase(db.classType, {}, db.module));
-            db.module.configureProvider((db: Database, eventDispatcher: EventDispatcher, stopwatch: Stopwatch) => {
-                db.eventDispatcher = eventDispatcher;
+            db.module.configureProvider((db: Database, eventDispatcher: EventDispatcher, logger: Logger, stopwatch: Stopwatch) => {
+                db.setEventDispatcher(eventDispatcher);
+                db.setLogger(logger);
                 db.stopwatch = stopwatch;
             }, {}, db.classType);
         }

@@ -16,12 +16,23 @@ import {
     UUID,
     uuid,
 } from '@deepkit/type';
-import { getInstanceStateFromItem, UniqueConstraintFailure } from '@deepkit/orm';
+import { Database, getInstanceStateFromItem, UniqueConstraintFailure } from '@deepkit/orm';
 import { SimpleModel, SuperSimple } from './entities.js';
 import { createDatabase } from './utils.js';
 import { databaseFactory } from './factory.js';
+import { MongoDatabaseAdapter } from '../src/adapter.js';
+import { MemoryLogger } from '@deepkit/logger';
 
 Error.stackTraceLimit = 100;
+
+test('logger', async () => {
+    const database = new Database(new MongoDatabaseAdapter('mongodb://invalid-host'));
+    const logger = new MemoryLogger();
+    database.setLogger(logger);
+    await expect(database.adapter.client.connect()).rejects.toThrow('Connection failed: no hosts available');
+    expect(logger.memory.messageStrings[0]).toContain('Connection failed');
+    database.disconnect();
+});
 
 test('test save undefined values', async () => {
     const session = await createDatabase('test save undefined values');

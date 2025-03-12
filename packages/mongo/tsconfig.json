@@ -14,7 +14,8 @@
     "module": "CommonJS",
     "lib": [
       "es2020",
-      "es2022.error"
+      "es2022.error",
+      "es2021.weakref"
     ],
     "esModuleInterop": true,
     "outDir": "./dist/cjs",

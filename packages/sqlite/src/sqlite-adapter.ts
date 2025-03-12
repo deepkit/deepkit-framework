@@ -12,7 +12,6 @@ import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/co
 import {
     DatabaseDeleteError,
     DatabaseError,
-    DatabaseLogger,
     DatabasePatchError,
     DatabasePersistenceChangeSet,
     DatabaseSession,
@@ -42,17 +41,11 @@ import {
     SQLQueryResolver,
     SQLStatement,
 } from '@deepkit/sql';
-import {
-    Changes,
-    getPatchSerializeFunction,
-    getSerializeFunction,
-    ReceiveType,
-    ReflectionClass,
-    resolvePath,
-} from '@deepkit/type';
+import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
 import sqlite3 from 'better-sqlite3';
 import { SQLitePlatform } from './sqlite-platform.js';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import { Logger } from '@deepkit/logger';
 
 /**
  * Converts a specific database error to a more specific error, if possible.
@@ -72,8 +65,10 @@ function handleSpecificError(session: DatabaseSession, error: DatabaseError): Er
     return error;
 }
 
+const scope = 'deepkit:orm:sqlite';
+
 export class SQLiteStatement extends SQLStatement {
-    constructor(protected logger: DatabaseLogger, protected sql: string, protected stmt: sqlite3.Statement, protected stopwatch?: Stopwatch) {
+    constructor(protected logger: Logger, protected sql: string, protected stmt: sqlite3.Statement, protected stopwatch?: Stopwatch) {
         super();
     }
 
@@ -82,11 +77,11 @@ export class SQLiteStatement extends SQLStatement {
         try {
             if (frame) frame.data({ sql: this.sql, sqlParams: params });
             const res = this.stmt.get(...params);
-            this.logger.logQuery(this.sql, params);
+            this.logger.scoped(scope).debug(this.sql, params);
             return res;
         } catch (error: any) {
             error = ensureDatabaseError(error);
-            this.logger.failedQuery(error, this.sql, params);
+            this.logger.scoped(scope).debug(error, this.sql, params);
             throw error;
         } finally {
             if (frame) frame.end();
@@ -98,11 +93,11 @@ export class SQLiteStatement extends SQLStatement {
         try {
             if (frame) frame.data({ sql: this.sql, sqlParams: params });
             const res = this.stmt.all(...params);
-            this.logger.logQuery(this.sql, params);
+            this.logger.scoped(scope).debug(this.sql, params);
             return res;
         } catch (error: any) {
             error = ensureDatabaseError(error);
-            this.logger.failedQuery(error, this.sql, params);
+            this.logger.scoped(scope).debug(error, this.sql, params);
             throw error;
         } finally {
             if (frame) frame.end();
@@ -150,7 +145,7 @@ export class SQLiteConnection extends SQLConnection {
     constructor(
         connectionPool: SQLConnectionPool,
         protected dbPath: string,
-        logger?: DatabaseLogger,
+        logger: Logger,
         transaction?: DatabaseTransaction,
         stopwatch?: Stopwatch,
     ) {
@@ -175,12 +170,12 @@ export class SQLiteConnection extends SQLConnection {
         try {
             if (frame) frame.data({ sql, sqlParams: params });
             const stmt = this.db.prepare(sql);
-            this.logger.logQuery(sql, params);
+            this.logger.scoped(scope).debug(sql, params);
             const result = stmt.run(...params);
             this.changes = result.changes;
         } catch (error: any) {
             error = ensureDatabaseError(error);
-            this.logger.failedQuery(error, sql, params);
+            this.logger.scoped(scope).debug(error, sql, params);
             throw error;
         } finally {
             if (frame) frame.end();
@@ -192,10 +187,10 @@ export class SQLiteConnection extends SQLConnection {
         try {
             if (frame) frame.data({ sql });
             this.db.exec(sql);
-            this.logger.logQuery(sql, []);
+            this.logger.scoped(scope).debug(sql, []);
         } catch (error: any) {
             error = ensureDatabaseError(error);
-            this.logger.failedQuery(error, sql, []);
+            this.logger.scoped(scope).debug(error, sql, []);
             throw error;
         } finally {
             if (frame) frame.end();
@@ -215,8 +210,12 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
     //we keep the first connection alive
     protected firstConnection?: SQLiteConnection;
 
-    constructor(protected dbPath: string | ':memory:') {
-        super();
+    constructor(
+        protected dbPath: string | ':memory:',
+        protected logger: Logger,
+        protected stopwatch?: Stopwatch,
+    ) {
+        super(logger);
         //memory databases can not have more than one connection
         if (dbPath === ':memory:') this.maxConnections = 1;
     }
@@ -225,16 +224,15 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
         if (this.firstConnection) this.firstConnection.db.close();
     }
 
-    protected createConnection(logger?: DatabaseLogger, transaction?: SQLiteDatabaseTransaction, stopwatch?: Stopwatch): SQLiteConnection {
-        return new SQLiteConnection(this, this.dbPath, logger, transaction, stopwatch);
+    protected createConnection(transaction?: SQLiteDatabaseTransaction): SQLiteConnection {
+        return new SQLiteConnection(this, this.dbPath, this.logger, transaction, this.stopwatch);
     }
 
-    async getConnection(logger?: DatabaseLogger, transaction?: SQLiteDatabaseTransaction, stopwatch?: Stopwatch): Promise<SQLiteConnection> {
+    async getConnection(transaction?: SQLiteDatabaseTransaction): Promise<SQLiteConnection> {
         //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
         //and only release the connection when the transaction is commit/rollback is executed.
 
         if (transaction && transaction.connection) {
-            transaction.connection.stopwatch = stopwatch;
             return transaction.connection;
         }
 
@@ -244,14 +242,10 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
                 ? await asyncOperation<SQLiteConnection>((resolve) => {
                     this.queue.push(resolve);
                 })
-                : this.createConnection(logger, transaction, stopwatch);
+                : this.createConnection(transaction);
 
         if (!this.firstConnection) this.firstConnection = connection;
         connection.released = false;
-        connection.stopwatch = stopwatch;
-
-        //first connection is always reused, so we update the logger
-        if (logger) connection.logger = logger;
 
         this.activeConnections++;
 
@@ -458,7 +452,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
         const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(this.session.assignedTransaction);
         if (connectionFrame) connectionFrame.end();
 
         try {
@@ -558,7 +552,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         `;
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(this.session.assignedTransaction);
         try {
             await connection.exec(`DROP TABLE IF EXISTS _b;`);
 
@@ -598,7 +592,7 @@ export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
 
     createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): SQLiteDatabaseQuery<T> {
         return new SQLiteDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
-            new SQLiteQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession)
+            new SQLiteQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession),
         );
     }
 }
@@ -612,7 +606,12 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
         if (this.sqlitePath.startsWith('sqlite://')) {
             this.sqlitePath = this.sqlitePath.substring('sqlite://'.length);
         }
-        this.connectionPool = new SQLiteConnectionPool(this.sqlitePath);
+        this.connectionPool = new SQLiteConnectionPool(this.sqlitePath, this.logger);
+    }
+
+    setLogger(logger: Logger) {
+        super.setLogger(logger);
+        this.connectionPool.setLogger(logger);
     }
 
     async getInsertBatchSize(schema: ReflectionClass<any>): Promise<number> {

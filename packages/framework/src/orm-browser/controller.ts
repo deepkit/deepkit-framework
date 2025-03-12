@@ -10,14 +10,23 @@ import {
     FakerTypes,
     getType,
     QueryResult,
-    SeedDatabase
+    SeedDatabase,
 } from '@deepkit/orm-browser-api';
 import { rpc } from '@deepkit/rpc';
 import { SQLDatabaseAdapter } from '@deepkit/sql';
-import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
+import { Logger, LoggerLevel, MemoryLoggerTransport } from '@deepkit/logger';
 import { performance } from 'perf_hooks';
 import { http, HttpQuery } from '@deepkit/http';
-import { cast, getPartialSerializeFunction, isReferenceType, ReflectionClass, ReflectionKind, resolveClassType, serializer, Type } from '@deepkit/type';
+import {
+    cast,
+    getPartialSerializeFunction,
+    isReferenceType,
+    ReflectionClass,
+    ReflectionKind,
+    resolveClassType,
+    serializer,
+    Type,
+} from '@deepkit/type';
 
 @rpc.controller(BrowserControllerInterface)
 export class OrmBrowserController implements BrowserControllerInterface {
@@ -122,7 +131,8 @@ export class OrmBrowserController implements BrowserControllerInterface {
     @rpc.action()
     async seed(dbName: string, seed: SeedDatabase): Promise<void> {
         const db = this.getDb(dbName);
-        db.logger.active = false;
+        const oldLevel = db.logger.level;
+        db.logger.level = LoggerLevel.debug;
 
         try {
             const session = db.createSession();
@@ -259,7 +269,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
 
             await session.commit();
         } finally {
-            db.logger.active = true;
+            db.logger.level = oldLevel;
         }
     }
 
@@ -283,9 +293,9 @@ export class OrmBrowserController implements BrowserControllerInterface {
         };
 
         const [db, entity] = this.getDbEntity(dbName, entityName);
-        const oldLogger = db.logger.logger;
+        const oldLogger = db.logger;
         const loggerTransport = new MemoryLoggerTransport;
-        db.logger.setLogger(new Logger([loggerTransport]));
+        db.setLogger(new Logger([loggerTransport]));
 
         try {
             const fn = new Function(`return function(database, ${entity.getClassName()}) {return ${query}}`)();
@@ -296,7 +306,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
             res.error = String(error);
         } finally {
             res.log = loggerTransport.messageStrings;
-            if (oldLogger) db.logger.setLogger(oldLogger);
+            if (oldLogger) db.setLogger(oldLogger);
         }
 
         return res;

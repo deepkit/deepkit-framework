@@ -53,7 +53,7 @@ export class FindCommand<T> extends Command<T[]> {
 
         if (transaction) transaction.applyTransaction(cmd);
 
-        config.applyReadPreference(host, cmd, this.commandOptions);
+        config.applyReadPreference(host, cmd, this.commandOptions, transaction);
 
         if (this.projection) cmd.projection = this.projection;
         if (this.sort) cmd.sort = this.sort;
@@ -138,7 +138,7 @@ export class FindCommand<T> extends Command<T[]> {
                 batchSize: cmd.batchSize,
             };
             if (transaction) transaction.applyTransaction(nextCommand);
-            config.applyReadPreference(host, nextCommand, this.commandOptions);
+            config.applyReadPreference(host, nextCommand, this.commandOptions, transaction);
             const next = await this.sendAndWait<GetMoreMessage, Response>(nextCommand, undefined, specialisedResponse);
 
             if (next.cursor.nextBatch) {

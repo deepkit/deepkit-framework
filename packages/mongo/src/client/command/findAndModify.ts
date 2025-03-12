@@ -55,7 +55,7 @@ export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Comman
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        config.applyWriteConcern(cmd, this.commandOptions);
+        if (!transaction) config.applyWriteConcern(cmd, this.commandOptions);
 
         return await this.sendAndWait<FindAndModifySchema, FindAndModifyResponse>(cmd);
     }

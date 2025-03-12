@@ -47,7 +47,7 @@ export class DeleteCommand<T extends ReflectionClass<any>> extends Command<numbe
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        config.applyWriteConcern(cmd, this.commandOptions);
+        if (!transaction) config.applyWriteConcern(cmd, this.commandOptions, transaction);
 
         const res = await this.sendAndWait<DeleteSchema, DeleteResponse>(cmd);
         return res.n;

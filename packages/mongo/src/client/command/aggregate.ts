@@ -48,8 +48,8 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        config.applyReadPreference(host, cmd, this.commandOptions);
-        config.applyWriteConcern(cmd, this.commandOptions);
+        config.applyReadPreference(host, cmd, this.commandOptions, transaction);
+        if (!transaction) config.applyWriteConcern(cmd, this.commandOptions);
 
         let resultSchema = this.resultSchema || this.schema;
         if (resultSchema && !isType(resultSchema)) resultSchema = resultSchema.type;
@@ -103,7 +103,7 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
                 batchSize: cmd.cursor.batchSize,
             };
             if (transaction) transaction.applyTransaction(nextCommand);
-            config.applyReadPreference(host, nextCommand, this.commandOptions);
+            config.applyReadPreference(host, nextCommand, this.commandOptions, transaction);
             const next = await this.sendAndWait<GetMoreMessage, Response>(nextCommand, undefined, specialisedResponse);
 
             if (next.cursor.nextBatch) {
