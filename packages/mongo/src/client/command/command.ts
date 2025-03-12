@@ -39,13 +39,13 @@ export interface BaseResponse {
 }
 
 export interface TransactionalMessage {
+    abortTransaction?: 1;
+    commitTransaction?: 1;
+
     lsid?: { id: UUID };
     txnNumber?: bigint;
     startTransaction?: boolean;
     autocommit?: boolean;
-
-    abortTransaction?: 1;
-    commitTransaction?: 1;
 }
 
 export interface WriteConcernMessage {

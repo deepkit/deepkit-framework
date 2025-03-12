@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterAll, beforeAll, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { createMongoClientFactory, MongoEnv, MongoInstance } from './client/env-setup.js';
 import { AutoIncrement, PrimaryKey, ReflectionClass } from '@deepkit/type';
 import { MongoClient as MongoMongoClient, ReadPreference } from 'mongodb';
@@ -46,11 +46,11 @@ describe('replica set, primary secondary', () => {
     class User {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public name: string) {
+        constructor(public username: string) {
         }
     }
 
-    it('primary ', async () => {
+    test('primary - secondary', async () => {
         const client = createClient(`mongodb://primary`);
         const database = new Database(new MongoDatabaseAdapter(client), [User]);
         await client.connect();
@@ -81,6 +81,38 @@ describe('replica set, primary secondary', () => {
         expect(client.config.hosts[0].stats.commandsExecuted).toBe(5);
         expect(client.config.hosts[1].stats.commandsExecuted).toBe(3);
     });
+
+    test('transaction', async () => {
+        const client = createClient(`mongodb://primary`);
+        const database = new Database(new MongoDatabaseAdapter(client), [User]);
+
+        {
+            await database.query(User).deleteMany();
+            await database.persist(new User('user1'));
+
+            const session = database.createSession();
+            session.useTransaction();
+            const user = await session.query(User).findOne();
+            expect(user.username).toBe('user1');
+
+            expect(session.hasTransaction()).toBe(true);
+
+            user.username = 'user1 changed';
+            await session.flush(); //no transaction commit
+            expect(session.hasTransaction()).toBe(true);
+
+            expect(await session.query(User).filter({ username: 'user1 changed' }).has()).toBe(true);
+
+            //in another connection we still have the old changed
+            expect(await database.query(User).filter({ username: 'user1 changed' }).has()).toBe(false);
+
+            await session.commit();
+            expect(session.hasTransaction()).toBe(false);
+
+            //in another connection we now have the changes
+            expect(await database.query(User).filter({ username: 'user1 changed' }).has()).toBe(true);
+        }
+    });
 });
 
 describe.skip('local replica', () => {
@@ -103,7 +135,7 @@ describe.skip('local replica', () => {
 
      */
 
-    it('official mongo', async () => {
+    test('official mongo', async () => {
         const client2 = new MongoMongoClient(`mongodb://localhost:27018`);
         // await client2.connect();
         const db = client2.db('test');
@@ -156,7 +188,7 @@ describe.skip('local replica', () => {
         await client2.close();
     });
 
-    it('deepkit', async () => {
+    test('deepkit', async () => {
         const client = new MongoClient(`mongodb://localhost:27018`);
         await client.connect();
         console.log(client.config.shortSummary());

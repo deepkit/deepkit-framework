@@ -12,9 +12,9 @@ import { BaseResponse, Command, TransactionalMessage } from './command.js';
 import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
 
-type CommitTransaction = {
+type CommitTransaction = TransactionalMessage & {
     $db: string;
-} & TransactionalMessage;
+};
 
 export class CommitTransactionCommand extends Command<BaseResponse> {
     needsWritableHost() {
@@ -22,9 +22,9 @@ export class CommitTransactionCommand extends Command<BaseResponse> {
     }
 
     async execute(config: MongoClientConfig, host: Host, transaction): Promise<BaseResponse> {
-        const cmd: any = {
+        const cmd: CommitTransaction = {
             commitTransaction: 1,
-            $db: 'admin',
+            $db: 'admin'
         };
 
         if (transaction) transaction.applyTransaction(cmd);
