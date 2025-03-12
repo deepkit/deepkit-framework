@@ -51,8 +51,8 @@ export interface IsMasterResponse extends BaseResponse {
 
 interface IsMasterSchema {
     isMaster: number;
-    helloOk: number;
-    $db: string;
+    helloOk: boolean;
+    $db?: string;
 }
 
 export class IsMasterCommand extends Command<IsMasterResponse> {
@@ -61,9 +61,9 @@ export class IsMasterCommand extends Command<IsMasterResponse> {
     }
 
     async execute(config: MongoClientConfig, host: Host): Promise<IsMasterResponse> {
-        const cmd = {
+        const cmd: IsMasterSchema = {
             isMaster: 1,
-            helloOk: 1,
+            helloOk: true,
             $db: config.getAuthSource(),
         };
 

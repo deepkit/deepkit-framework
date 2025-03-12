@@ -109,6 +109,23 @@ describe.skip('local replica', () => {
         const db = client2.db('test');
 
         /*
+    {
+      ismaster: 1,
+      helloOk: true,
+      client: {
+        driver: { name: 'nodejs', version: '6.14.2' },
+        platform: 'Node.js v22.13.1, LE',
+        os: {
+          name: 'darwin',
+          architecture: 'arm64',
+          version: '24.3.0',
+          type: 'Darwin'
+        }
+      },
+      compression: [ 'none' ]
+    }
+
+
     supportsOpMsg true {
       find: 'User',
       filter: {},
