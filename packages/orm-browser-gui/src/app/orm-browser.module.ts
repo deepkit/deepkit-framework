@@ -15,7 +15,7 @@ import {
     DuiSplitterModule,
     DuiTableModule,
     DuiTabsModule,
-    DuiWindowModule
+    DuiWindowModule,
 } from '@deepkit/desktop-ui';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { DatabaseComponent } from './views/database.component';
@@ -51,7 +51,7 @@ import { FakerTypeDialogComponent } from './components/dialog/faker-type-dialog.
 import { DatabaseSeedPropertyComponent } from './components/database-seed-property.component';
 import { DatabaseSeedPropertiesComponent } from './components/database-seed-properties.component';
 import { RouterModule } from '@angular/router';
-import { DeepkitClient } from '@deepkit/rpc';
+import { RpcWebSocketClient } from '@deepkit/rpc';
 
 @NgModule({
     declarations: [
@@ -120,8 +120,8 @@ import { DeepkitClient } from '@deepkit/rpc';
     ],
     imports: [
         RouterModule.forChild([
-            {path: 'database/:database/:entity', component: DatabaseBrowserComponent},
-            {path: 'database/:database', component: DatabaseComponent},
+            { path: 'database/:database/:entity', component: DatabaseBrowserComponent },
+            { path: 'database/:database', component: DatabaseComponent },
         ]),
         BrowserModule,
         FormsModule,
@@ -152,10 +152,10 @@ export class OrmBrowserModule {
             ngModule: OrmBrowserModule,
             providers: [
                 {
-                    provide: DeepkitClient,
-                    useFactory: () => new DeepkitClient(ControllerClient.getServerHost())
-                }
-            ]
+                    provide: RpcWebSocketClient,
+                    useFactory: () => new RpcWebSocketClient(ControllerClient.getServerHost()),
+                },
+            ],
         };
     }
 }

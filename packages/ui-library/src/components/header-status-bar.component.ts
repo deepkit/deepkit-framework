@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { DuiApp } from '@deepkit/desktop-ui';
-import { DeepkitClient } from '@deepkit/rpc';
+import { RpcWebSocketClient } from '@deepkit/rpc';
 
 @Component({
     selector: 'deepkit-header-status-bar',
@@ -43,6 +43,6 @@ import { DeepkitClient } from '@deepkit/rpc';
     `]
 })
 export class HeaderStatusBarComponent {
-    constructor(public client: DeepkitClient, public duiApp: DuiApp) {
+    constructor(public client: RpcWebSocketClient, public duiApp: DuiApp) {
     }
 }

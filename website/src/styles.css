@@ -366,12 +366,11 @@ codebox {
 .scroll-small {
   overflow: auto;
   overflow: overlay;
-  scrollbar-width: thin;
   scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
 
   &::-webkit-scrollbar {
-    height: 11px;
-    width: 11px;
+    height: 12px;
+    width: 12px;
     background: transparent;
   }
 

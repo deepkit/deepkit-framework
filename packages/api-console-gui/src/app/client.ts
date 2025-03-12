@@ -9,7 +9,7 @@
  */
 
 import { Injectable } from '@angular/core';
-import { DeepkitClient } from '@deepkit/rpc';
+import { RpcWebSocketClient } from '@deepkit/rpc';
 import { ApiConsoleApi, ApiDocument, ApiEntryPoints } from '@deepkit/api-console-api';
 import { LiveSubject } from '@deepkit/ui-library';
 
@@ -23,7 +23,7 @@ export class ControllerClient {
         this.api.getDocument().then(v => subject.next(v));
     });
 
-    constructor(public client: DeepkitClient) {
+    constructor(public client: RpcWebSocketClient) {
         client.transporter.reconnected.subscribe(() => {
             this.entryPoints.reload();
             this.document.reload();

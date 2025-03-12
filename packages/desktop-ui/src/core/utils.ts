@@ -8,18 +8,22 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+/**
+ * @reflection never
+ */
 import { Observable, Subscription } from 'rxjs';
 import { ChangeDetectorRef, EventEmitter } from '@angular/core';
 import { ActivatedRoute, Router, UrlTree } from '@angular/router';
 import { nextTick } from '@deepkit/core';
+import type Hammer from 'hammerjs';
 
 const electron = 'undefined' === typeof window ? undefined : (window as any).electron || ((window as any).require ? (window as any).require('electron') : undefined);
 
-export async function getHammer() {
+export async function getHammer(): Promise<typeof Hammer | undefined> {
     if ('undefined' === typeof window) return;
     //@ts-ignore
-    const { default: Hammer } = await import('hammerjs');
-    return Hammer;
+    const hammer = await import('hammerjs');
+    return hammer.default;
 }
 
 export class Electron {

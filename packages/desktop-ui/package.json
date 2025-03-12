@@ -14,7 +14,27 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "sideEffects": false,
-  "main": "src/index.ts",
+  "main": "dist/fesm2022/deepkit-desktop-ui.mjs",
+  "module": "dist/fesm2022/deepkit-desktop-ui.mjs",
+  "es2020": "dist/fesm2022/deepkit-desktop-ui.mjs",
+  "typings": "dist/index.d.ts",
+  "exports": {
+    "./package.json": {
+      "default": "./package.json"
+    },
+    "./src/scss/all.scss": {
+        "default": "./src/scss/all.scss"
+    },
+    "./src/scss/icon.scss": {
+        "default": "./src/scss/icon.scss"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "esm2020": "./dist/fesm2022/deepkit-desktop-ui.mjs",
+      "esm": "./dist/fesm2022/deepkit-desktop-ui.mjs",
+      "default": "./dist/fesm2022/deepkit-desktop-ui.mjs"
+    }
+  },
   "scripts": {
     "emoji": "ts-node emoji-map.ts",
     "font": "node bin/create-font.js",

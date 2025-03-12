@@ -21,15 +21,18 @@ import 'prismjs/components/prism-json';
         pre {
             overflow: auto;
             overflow: overlay;
-            scrollbar-width: thin;
+            @supports not (-webkit-hyphens: none) {
+                /* in safari this breaks scrolling styling, so we need to exclude it*/
+                scrollbar-width: thin;
+            }
             max-width: 100%;
             margin: 0;
 
             scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
 
             &::-webkit-scrollbar {
-                height: 8px;
-                width: 8px;
+                height: 10px;
+                width: 10px;
                 background: transparent;
             }
 

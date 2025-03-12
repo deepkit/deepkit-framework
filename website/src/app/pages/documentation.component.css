@@ -111,8 +111,8 @@ nav {
   scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
 
   &::-webkit-scrollbar {
-    height: 8px;
-    width: 8px;
+    height: 10px;
+    width: 10px;
     background: transparent;
   }
 

@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.lib.json",
+  "compilerOptions": {
+    "declarationMap": false,
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/*.ts",
+  ],
+  "angularCompilerOptions": {
+    "compilationMode": "partial"
+  }
+}

@@ -3894,6 +3894,9 @@ __metadata:
     "@deepkit/desktop-ui": "npm:^1.0.1-alpha.48"
     "@deepkit/rpc": "npm:^1.0.1-alpha.57"
     "@deepkit/type": "npm:^1.0.1-alpha.52"
+    "@types/hammerjs": "npm:^2.0.36"
+    hammerjs: "npm:^2.0.8"
+    ng-packagr: "npm:^19.1.2"
     prismjs: "npm:^1.24.1"
     rxjs: "npm:~7.8.0"
   peerDependencies:

@@ -15,11 +15,11 @@ import {
     DuiSplitterModule,
     DuiTableModule,
     DuiTabsModule,
-    DuiWindowModule
+    DuiWindowModule,
 } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
 import { ConsoleComponent } from './views/console.component';
-import { DeepkitClient } from '@deepkit/rpc';
+import { RpcWebSocketClient } from '@deepkit/rpc';
 import { ControllerClient } from './client';
 import { Store } from './store';
 import { StringInputComponent } from './components/inputs/string-input.component';
@@ -91,7 +91,12 @@ import { RpcInspectMessageComponent } from './views/rpc/rpc-inspect-message.comp
         MarkdownModule.forRoot(),
     ],
     providers: [
-        { provide: DeepkitClient, useFactory: () => new DeepkitClient(ControllerClient.getServerHost()) },
+        {
+            provide: RpcWebSocketClient, useFactory: () => {
+                console.log('wtf');
+                return new RpcWebSocketClient(ControllerClient.getServerHost());
+            },
+        },
         Store,
         ControllerClient,
     ],
