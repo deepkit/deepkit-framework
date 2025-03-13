@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/angular-ssr",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Deepkit + angular SSR",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -30,8 +30,8 @@
   },
   "devDependencies": {
     "@angular/ssr": "^19.1.7",
-    "@deepkit/app": "^1.0.2",
-    "@deepkit/http": "^1.0.2"
+    "@deepkit/app": "^1.0.3",
+    "@deepkit/http": "^1.0.3"
   },
   "jest": {
     "transform": {

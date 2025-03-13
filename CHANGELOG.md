@@ -3,6 +3,47 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.3](https://github.com/deepkit/deepkit-framework/compare/v1.0.2...v1.0.3) (2025-03-13)
+
+### Bug Fixes
+
+- **api-console-module:** correctly parse HttpBodyValidation and HttpRequestParser ([3a5a048](https://github.com/deepkit/deepkit-framework/commit/3a5a04804dfce3a6b906e8e32fb524a62891e649))
+- **broker:** ensure no dangling Promise ([9056812](https://github.com/deepkit/deepkit-framework/commit/90568125151e7daafb1ea1bb81d1175c6343b50c))
+- **create-app:** update dep versions ([6d12d4a](https://github.com/deepkit/deepkit-framework/commit/6d12d4a9853ec5f9c922aaf5838a070450efc300))
+- **desktop-ui:** adjust to new event api ([38ef6b8](https://github.com/deepkit/deepkit-framework/commit/38ef6b8250b8544f90588dd29306f2653eaa749e))
+- **desktop-ui:** ng-packagr build and safari styling ([956ca9b](https://github.com/deepkit/deepkit-framework/commit/956ca9b7ff98e598c7ab9632eaf4303ef37070b7))
+- **http:** better defaults for new formidable version ([5c9788e](https://github.com/deepkit/deepkit-framework/commit/5c9788ebfb4b3ab3f056cbaa1ff79a109015f5ba))
+- **logger:** ensure scoped Logger maintain reference to log level ([3874148](https://github.com/deepkit/deepkit-framework/commit/387414895af893bbaa0a6874631d0ac47ab165c8))
+- **mongo:** hello command ([30cbad5](https://github.com/deepkit/deepkit-framework/commit/30cbad5e745d9e3a60d212cb0814da3c2758753e))
+- **mongo:** transactions ([e4781db](https://github.com/deepkit/deepkit-framework/commit/e4781db2a1f9766b811713f501b630adc384e6e7))
+
+### Features
+
+- **bson:** new BsonStreamReader ([3faa77a](https://github.com/deepkit/deepkit-framework/commit/3faa77a8fdf41315697670353c574b2954584dec))
+- **desktop-ui:** allow to pass ConnectedPosition strategy to dropdown component ([9ffd941](https://github.com/deepkit/deepkit-framework/commit/9ffd941092b347ed68108a758411edada20fff41))
+- **devtool:** new chrome devtool to debug rpc connections ([80c5105](https://github.com/deepkit/deepkit-framework/commit/80c5105dd7ceb2cb30c15d54b2aca14a35e5a9f3))
+- **devtool:** reduce needed permissions and make it explicit for each domain ([1cb03cd](https://github.com/deepkit/deepkit-framework/commit/1cb03cd30dfada89c5c66e91380d78cdb254516b))
+- **event:** align API with Event web standards ([0e1dca2](https://github.com/deepkit/deepkit-framework/commit/0e1dca28fd8bbfb5232f9f9df4654598744d77a0))
+- **event:** allow late event listening, new synchronous event dispatching with 15x performance improvement ([0cc6843](https://github.com/deepkit/deepkit-framework/commit/0cc68438b2b933ee8241bbcca310ac79fea2b5c9))
+- **event:** allow sync tokens with sync dispatching and sync listeners ([798dfb7](https://github.com/deepkit/deepkit-framework/commit/798dfb72670ce26d6d2904e48a2edded42fd4b46))
+- **injector:** improve error messages, make it very clear what failed and where providers are located ([5866eda](https://github.com/deepkit/deepkit-framework/commit/5866eda8ece1705bb9d1df655d53c70cd77f43a8))
+- **injector:** improve prepared resolver performance by 11x and dynamic `Injector.get` by 17x ([3906e2c](https://github.com/deepkit/deepkit-framework/commit/3906e2c013782fee2b27a3ff99da5b1e912b8458))
+- **mongo,orm,logger:** improve transaction safety and logging ([95faf2c](https://github.com/deepkit/deepkit-framework/commit/95faf2c0143a34ba3524db290719692cc93593d3))
+- **mongo:** add replica set support, rework connection handling ([7fe1a9a](https://github.com/deepkit/deepkit-framework/commit/7fe1a9aac6c799b33cdea7b1454464ebabc131d6))
+- **mongo:** add support for read preference via Query API ([c829762](https://github.com/deepkit/deepkit-framework/commit/c829762ef6ec1f4b9a57c89d19f09dce39e5b940))
+- **mongo:** more statistics, optimise error message when primary is not reachable ([0cd4e1e](https://github.com/deepkit/deepkit-framework/commit/0cd4e1eaf2127fb2ff7b4a729c3ef6eeb9f0d5fa))
+- **rpc:** add utility functions to create Subject/Observable synchronously from an RPC controller ([349668f](https://github.com/deepkit/deepkit-framework/commit/349668fe0d2586831fc21d4b0d130bd1b8a2ffbb))
+- **rpc:** automatically garbage collect observables + new event system + stats collection ([d727232](https://github.com/deepkit/deepkit-framework/commit/d727232ca4b445a6bc82de8df31e25ba2d60d683))
+- **rpc:** improve disconnect handling and cleaning up RpcMessageSubject correctly ([9d9e29a](https://github.com/deepkit/deepkit-framework/commit/9d9e29ad2bffa91751a78486fe031d9b8a8fecf7))
+- **rpc:** improve performance by 25% ([f7e524f](https://github.com/deepkit/deepkit-framework/commit/f7e524fabafe1b54047a642744373a0db611ce93))
+- **sql:** migration support for node v22 without ts-node dependency ([f939ea1](https://github.com/deepkit/deepkit-framework/commit/f939ea1bad49363b729a019f335cdf0253a619e9))
+
+### BREAKING CHANGES
+
+- **event:** stopPropagation() becomes stopImmediatePropagation().
+
+New BaseEvent.preventDefault() which replaces custom solutions like stop() in DatabaseEvent.
+
 ## [1.0.2](https://github.com/deepkit/deepkit-framework/compare/v1.0.1...v1.0.2) (2025-02-24)
 
 ### Bug Fixes

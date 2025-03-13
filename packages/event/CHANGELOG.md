@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.3](https://github.com/deepkit/deepkit-framework/compare/v1.0.2...v1.0.3) (2025-03-13)
+
+### Features
+
+- **event:** align API with Event web standards ([0e1dca2](https://github.com/deepkit/deepkit-framework/commit/0e1dca28fd8bbfb5232f9f9df4654598744d77a0))
+- **event:** allow late event listening, new synchronous event dispatching with 15x performance improvement ([0cc6843](https://github.com/deepkit/deepkit-framework/commit/0cc68438b2b933ee8241bbcca310ac79fea2b5c9))
+- **event:** allow sync tokens with sync dispatching and sync listeners ([798dfb7](https://github.com/deepkit/deepkit-framework/commit/798dfb72670ce26d6d2904e48a2edded42fd4b46))
+
+### BREAKING CHANGES
+
+- **event:** stopPropagation() becomes stopImmediatePropagation().
+
+New BaseEvent.preventDefault() which replaces custom solutions like stop() in DatabaseEvent.
+
 ## [1.0.2](https://github.com/deepkit/deepkit-framework/compare/v1.0.1...v1.0.2) (2025-02-24)
 
 **Note:** Version bump only for package @deepkit/event

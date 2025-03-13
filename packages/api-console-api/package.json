@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/api-console-api",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -31,12 +31,12 @@
     "@deepkit/type": "^1.0.1"
   },
   "devDependencies": {
-    "@deepkit/bson": "^1.0.2",
-    "@deepkit/core": "^1.0.1",
-    "@deepkit/injector": "^1.0.2",
-    "@deepkit/logger": "^1.0.2",
-    "@deepkit/rpc": "^1.0.2",
-    "@deepkit/type": "^1.0.2"
+    "@deepkit/bson": "^1.0.3",
+    "@deepkit/core": "^1.0.3",
+    "@deepkit/injector": "^1.0.3",
+    "@deepkit/logger": "^1.0.3",
+    "@deepkit/rpc": "^1.0.3",
+    "@deepkit/type": "^1.0.3"
   },
   "jest": {
     "testEnvironment": "node",

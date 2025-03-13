@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/rpc-tcp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -30,7 +30,7 @@
     "ws": "^8.6.0"
   },
   "devDependencies": {
-    "@deepkit/rpc": "^1.0.2"
+    "@deepkit/rpc": "^1.0.3"
   },
   "jest": {
     "testEnvironment": "node",
