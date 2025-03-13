@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.4](https://github.com/deepkit/deepkit-framework/compare/v1.0.3...v1.0.4) (2025-03-13)
+
+### Bug Fixes
+
+- **rpc:** export events ([829317c](https://github.com/deepkit/deepkit-framework/commit/829317c0e7ef2dfbabe7e844258b3c5cd8c8c7df))
+
 ## [1.0.3](https://github.com/deepkit/deepkit-framework/compare/v1.0.2...v1.0.3) (2025-03-13)
 
 ### Bug Fixes

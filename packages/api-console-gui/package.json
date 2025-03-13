@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/api-console-gui",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "API Console GUI",
   "scripts": {
     "ng": "ng",
@@ -34,7 +34,7 @@
     "@angular/platform-browser": "^19.1.5",
     "@angular/platform-browser-dynamic": "^19.1.5",
     "@angular/router": "^19.1.5",
-    "@deepkit/api-console-api": "^1.0.3",
+    "@deepkit/api-console-api": "^1.0.4",
     "@deepkit/bson": "^1.0.3",
     "@deepkit/core": "^1.0.3",
     "@deepkit/core-rxjs": "^1.0.3",
@@ -42,7 +42,7 @@
     "@deepkit/event": "^1.0.3",
     "@deepkit/injector": "^1.0.3",
     "@deepkit/logger": "^1.0.3",
-    "@deepkit/rpc": "^1.0.3",
+    "@deepkit/rpc": "^1.0.4",
     "@deepkit/stopwatch": "^1.0.3",
     "@deepkit/type": "^1.0.3",
     "@deepkit/type-compiler": "^1.0.2",
