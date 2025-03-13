@@ -24,10 +24,10 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.13",
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/orm": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13"
+    "@deepkit/bson": "^1.0.1",
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/orm": "^1.0.1",
+    "@deepkit/type": "^1.0.1"
   },
   "dependencies": {
     "saslprep-patch": "^1.0.4"
@@ -36,7 +36,7 @@
     "@deepkit/bson": "^1.0.2",
     "@deepkit/core": "^1.0.1",
     "@deepkit/orm": "^1.0.2",
-    "@deepkit/orm-integration": "^1.0.1-alpha.13",
+    "@deepkit/orm-integration": "^1.0.1",
     "@deepkit/type": "^1.0.2",
     "@types/mongodb": "3.5.25",
     "@types/node": "^22.13.1",

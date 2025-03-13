@@ -23,10 +23,10 @@
       "default": "./package.json"
     },
     "./src/scss/all.scss": {
-        "default": "./src/scss/all.scss"
+      "default": "./src/scss/all.scss"
     },
     "./src/scss/icon.scss": {
-        "default": "./src/scss/icon.scss"
+      "default": "./src/scss/icon.scss"
     },
     ".": {
       "types": "./dist/index.d.ts",
@@ -56,10 +56,10 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/core-rxjs": "^1.0.1-alpha.13",
-    "@deepkit/event": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13"
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/core-rxjs": "^1.0.1",
+    "@deepkit/event": "^1.0.1",
+    "@deepkit/type": "^1.0.1"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^19.1.6",

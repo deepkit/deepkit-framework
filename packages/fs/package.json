@@ -15,10 +15,10 @@
     "tsc-watch": "rm -rf dist && tsc --watch"
   },
   "dependencies": {
-    "@deepkit/core": "^1.0.1-alpha.100",
-    "@deepkit/framework": "^1.0.1-alpha.103",
-    "@deepkit/orm": "^1.0.1-alpha.102",
-    "@deepkit/type": "^1.0.1-alpha.102",
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/framework": "^1.0.1",
+    "@deepkit/orm": "^1.0.1",
+    "@deepkit/type": "^1.0.1",
     "fs-extra": "^9.0.1"
   },
   "devDependencies": {
