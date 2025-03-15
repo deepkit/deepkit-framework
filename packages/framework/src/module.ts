@@ -11,7 +11,7 @@
 import { ClassType, isClass, isPrototypeOfBase, ProcessLocker } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
 import { isAbsolute, join } from 'path';
-import { ApplicationServer, ApplicationServerListener, onServerShutdown } from './application-server.js';
+import { ApplicationServer, LogStartupListener, onServerShutdown } from './application-server.js';
 import { DebugRouterController } from './cli/debug-router.js';
 import { DebugDIController } from './cli/debug-di.js';
 import { ServerStartController } from './cli/server-start.js';
@@ -108,7 +108,6 @@ export class FrameworkModule extends createModuleClass({
         { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
     ],
     listeners: [
-        ApplicationServerListener,
         DatabaseListener,
         BrokerListener,
     ],
@@ -181,6 +180,10 @@ export class FrameworkModule extends createModuleClass({
         }
 
         this.getImportedModuleByClass(HttpModule).configure(this.config.http);
+
+        if (this.config.logStartup) {
+            this.addListener(LogStartupListener);
+        }
 
         if (this.config.publicDir) {
             const localPublicDir =
