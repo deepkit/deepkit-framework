@@ -952,27 +952,49 @@ export class InjectorContext {
     ) {
     }
 
+    /**
+     * Returns a resolver for the given token. The returned resolver can
+     * be executed to resolve the token. This increases performance in hot paths.
+     */
     resolve<T>(module?: InjectorModule, type?: ReceiveType<T> | Token<T>): Resolver<T> {
         return this.getInjector(module || this.rootModule).getResolver(type) as Resolver<T>;
     }
 
+    /**
+     * Returns an instance of the given token or type from the injector associated with the specified module.
+     *
+     * If there is no provider for the token or the provider returns undefined, it returns undefined.
+     */
     getOrUndefined<T>(token?: ReceiveType<T> | Token<T>, module?: InjectorModule): ResolveToken<T> | undefined {
-        try {
-            return this.get(token, module);
-        } catch (error) {
-            return;
-        }
+        const injector = this.getInjector(module || this.rootModule);
+        return injector.get(token, this.scope, true);
     }
 
+    /**
+     * Returns an instance of the given token or type from the injector associated with the specified module.
+     *
+     * If there is no provider for the token or the provider returns undefined, it throws an error.
+     */
     get<T>(token?: ReceiveType<T> | Token<T>, module?: InjectorModule): ResolveToken<T> {
         const injector = this.getInjector(module || this.rootModule);
         return injector.get(token, this.scope);
     }
 
+    /**
+     * Returns the instantiation count of the given token.
+     *
+     * This is either 0 or 1 for normal providers, and >= 0 for transient providers.
+     */
     instantiationCount(token: Token, module?: InjectorModule, scope?: string): number {
         return this.getInjector(module || this.rootModule).instantiationCount(token, this.scope ? this.scope.name : scope);
     }
 
+    /**
+     * Sets a value for the given token in the injector associated with the specified module.
+     *
+     * This is useful for scoped providers like HttpRequest that are created dynamically
+     * outside the injector container and need to be injected into services.
+     */
     set<T>(token: T, value: any, module?: InjectorModule): void {
         return this.getInjector(module || this.rootModule).set(
             getContainerToken(token),
