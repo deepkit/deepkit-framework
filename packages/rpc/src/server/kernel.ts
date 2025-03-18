@@ -9,7 +9,7 @@
  */
 
 import { arrayRemoveItem, bufferToString, ClassType, createBuffer, ensureError, getClassName } from '@deepkit/core';
-import { ReceiveType, ReflectionKind, resolveReceiveType, serialize, stringifyUuid, Type, typeOf, writeUuid } from '@deepkit/type';
+import { ReceiveType, ReflectionKind, serialize, stringifyUuid, Type, writeUuid } from '@deepkit/type';
 import { RpcMessageSubject } from '../client/message-subject.js';
 import {
     AuthenticationError,
@@ -18,28 +18,13 @@ import {
     rpcAuthenticate,
     rpcClientId,
     RpcError,
-    rpcError,
     rpcPeerRegister,
     rpcResponseAuthenticate,
     RpcStats,
     RpcTransportStats,
     RpcTypes,
 } from '../model.js';
-import {
-    BodyDecoder,
-    createRpcCompositeMessage,
-    createRpcCompositeMessageSourceDest,
-    createRpcMessage,
-    createRpcMessageSourceDest,
-    RpcBinaryMessageReader,
-    RpcCreateMessageDef,
-    rpcEncodeError,
-    RpcMessage,
-    RpcMessageDefinition,
-    RpcMessageRouteType,
-    serializeBinaryRpcMessage,
-} from '../protocol.js';
-import { ActionTypes, RpcServerAction } from './action.js';
+import { ActionTypes, RpcActionServer } from './action.js';
 import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security.js';
 import { RpcActionClient, RpcControllerState } from '../client/action.js';
 import { RemoteController } from '../client/client.js';
@@ -58,130 +43,131 @@ import { HttpRpcMessage, RpcHttpRequest, RpcHttpResponse } from './http.js';
 import { SingleProgress } from '../progress.js';
 import { DataEvent, EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
 import { onRpcAuth, onRpcConnection, onRpcConnectionClose, RpcAuthEventStart } from '../events';
+import { ContextId, isRouteFlag, MessageFlag, RpcBinaryMessageReader } from '../protocol.js';
 
 const anyType: Type = { kind: ReflectionKind.any };
 
-export class RpcCompositeMessage {
-    protected messages: RpcCreateMessageDef<any>[] = [];
+// export class RpcCompositeMessage {
+//     protected messages: RpcCreateMessageDef<any>[] = [];
+//
+//     public strictSerialization: boolean = false;
+//     public logValidationErrors: boolean = false;
+//     public errorLabel: string = 'Error in serialization';
+//
+//     constructor(
+//         protected stats: RpcTransportStats,
+//         protected logger: Logger,
+//         public type: number,
+//         protected id: number,
+//         protected writer: TransportMessageWriter,
+//         protected transportOptions: TransportOptions,
+//         protected clientId?: Uint8Array,
+//         protected source?: Uint8Array,
+//         protected routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client,
+//     ) {
+//     }
+//
+//     add<T>(type: number, body?: T, receiveType?: ReceiveType<T>): this {
+//         if (!this.strictSerialization) {
+//             receiveType = anyType;
+//         }
+//         this.messages.push({ type, schema: receiveType ? resolveReceiveType(receiveType) : undefined, body });
+//         return this;
+//     }
+//
+//     write(message: RpcMessageDefinition): void {
+//         try {
+//             this.writer(message, this.transportOptions, this.stats);
+//         } catch (error) {
+//             if (this.logValidationErrors) {
+//                 this.logger.warn(this.errorLabel, error);
+//             }
+//             throw error;
+//         }
+//     }
+//
+//     send() {
+//         if (this.clientId && this.source) {
+//             //we route back accordingly
+//             this.write(createRpcCompositeMessageSourceDest(this.id, this.clientId, this.source, this.type, this.messages));
+//         } else {
+//             this.write(createRpcCompositeMessage(this.id, this.type, this.messages, this.routeType));
+//         }
+//     }
+// }
 
-    public strictSerialization: boolean = false;
-    public logValidationErrors: boolean = false;
-    public errorLabel: string = 'Error in serialization';
-
-    constructor(
-        protected stats: RpcTransportStats,
-        protected logger: Logger,
-        public type: number,
-        protected id: number,
-        protected writer: TransportMessageWriter,
-        protected transportOptions: TransportOptions,
-        protected clientId?: Uint8Array,
-        protected source?: Uint8Array,
-        protected routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client,
-    ) {
-    }
-
-    add<T>(type: number, body?: T, receiveType?: ReceiveType<T>): this {
-        if (!this.strictSerialization) {
-            receiveType = anyType;
-        }
-        this.messages.push({ type, schema: receiveType ? resolveReceiveType(receiveType) : undefined, body });
-        return this;
-    }
-
-    write(message: RpcMessageDefinition): void {
-        try {
-            this.writer(message, this.transportOptions, this.stats);
-        } catch (error) {
-            if (this.logValidationErrors) {
-                this.logger.warn(this.errorLabel, error);
-            }
-            throw error;
-        }
-    }
-
-    send() {
-        if (this.clientId && this.source) {
-            //we route back accordingly
-            this.write(createRpcCompositeMessageSourceDest(this.id, this.clientId, this.source, this.type, this.messages));
-        } else {
-            this.write(createRpcCompositeMessage(this.id, this.type, this.messages, this.routeType));
-        }
-    }
-}
-
-export class RpcMessageBuilder {
-    public routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client;
-
-    public strictSerialization: boolean = true;
-    public logValidationErrors: boolean = false;
-
-    public errorLabel: string = 'Error in serialization';
-
-    constructor(
-        protected stats: RpcTransportStats,
-        protected logger: Logger,
-        protected writer: TransportMessageWriter,
-        protected transportOptions: TransportOptions,
-        protected id: number,
-        protected clientId?: Uint8Array,
-        protected source?: Uint8Array,
-    ) {
-    }
-
-    protected messageFactory<T>(type: RpcTypes, schemaOrBody?: ReceiveType<T>, data?: T): RpcMessageDefinition {
-        if (!this.strictSerialization) {
-            schemaOrBody = anyType;
-        }
-
-        if (this.source && this.clientId) {
-            //we route back accordingly
-            return createRpcMessageSourceDest(this.id, type, this.clientId, this.source, data, schemaOrBody);
-        } else {
-            return createRpcMessage(this.id, type, data, this.routeType, schemaOrBody);
-        }
-    }
-
-    write(message: RpcMessageDefinition): void {
-        try {
-            this.writer(message, this.transportOptions, this.stats);
-        } catch (error: any) {
-            if (this.logValidationErrors) {
-                this.logger.warn(this.errorLabel, error);
-            }
-            throw new RpcError(this.errorLabel + ': ' + error.message, { cause: error });
-        }
-    }
-
-    ack(): void {
-        this.write(this.messageFactory(RpcTypes.Ack));
-    }
-
-    error(error: Error | string): void {
-        const extracted = rpcEncodeError(error);
-
-        this.write(this.messageFactory(RpcTypes.Error, typeOf<rpcError>(), extracted));
-    }
-
-    reply<T>(type: number, body?: T, receiveType?: ReceiveType<T>): void {
-        this.write(this.messageFactory(type, receiveType, body));
-    }
-
-    /**
-     * @deprecated
-     */
-    replyBinary<T>(type: number, body?: Uint8Array): void {
-        throw new RpcError('replyBinary deprecated');
-    }
-
-    composite(type: number): RpcCompositeMessage {
-        const composite = new RpcCompositeMessage(this.stats, this.logger, type, this.id, this.writer, this.transportOptions, this.clientId, this.source);
-        composite.strictSerialization = this.strictSerialization;
-        composite.logValidationErrors = this.logValidationErrors;
-        composite.errorLabel = this.errorLabel;
-        return composite;
-    }
-}
+// export class RpcMessageBuilder {
+//     public routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client;
+//
+//     public strictSerialization: boolean = true;
+//     public logValidationErrors: boolean = false;
+//
+//     public errorLabel: string = 'Error in serialization';
+//
+//     constructor(
+//         protected stats: RpcTransportStats,
+//         protected logger: Logger,
+//         protected writer: TransportMessageWriter,
+//         protected transportOptions: TransportOptions,
+//         protected id: number,
+//         protected clientId?: Uint8Array,
+//         protected source?: Uint8Array,
+//     ) {
+//     }
+//
+//     protected messageFactory<T>(type: RpcTypes, schemaOrBody?: ReceiveType<T>, data?: T): RpcMessageDefinition {
+//         if (!this.strictSerialization) {
+//             schemaOrBody = anyType;
+//         }
+//
+//         if (this.source && this.clientId) {
+//             //we route back accordingly
+//             return createRpcMessageSourceDest(this.id, type, this.clientId, this.source, data, schemaOrBody);
+//         } else {
+//             return createRpcMessage(this.id, type, data, this.routeType, schemaOrBody);
+//         }
+//     }
+//
+//     write(message: RpcMessageDefinition): void {
+//         try {
+//             this.writer(message, this.transportOptions, this.stats);
+//         } catch (error: any) {
+//             if (this.logValidationErrors) {
+//                 this.logger.warn(this.errorLabel, error);
+//             }
+//             throw new RpcError(this.errorLabel + ': ' + error.message, { cause: error });
+//         }
+//     }
+//
+//     ack(): void {
+//         this.write(this.messageFactory(RpcTypes.Ack));
+//     }
+//
+//     error(error: Error | string): void {
+//         const extracted = rpcEncodeError(error);
+//
+//         this.write(this.messageFactory(RpcTypes.Error, typeOf<rpcError>(), extracted));
+//     }
+//
+//     reply<T>(type: number, body?: T, receiveType?: ReceiveType<T>): void {
+//         this.write(this.messageFactory(type, receiveType, body));
+//     }
+//
+//     /**
+//      * @deprecated
+//      */
+//     replyBinary<T>(type: number, body?: Uint8Array): void {
+//         throw new RpcError('replyBinary deprecated');
+//     }
+//
+//     composite(type: number): RpcCompositeMessage {
+//         const composite = new RpcCompositeMessage(this.stats, this.logger, type, this.id, this.writer, this.transportOptions, this.clientId, this.source);
+//         composite.strictSerialization = this.strictSerialization;
+//         composite.logValidationErrors = this.logValidationErrors;
+//         composite.errorLabel = this.errorLabel;
+//         return composite;
+//     }
+// }
 
 /**
  * This is a reference implementation and only works in a single process.
@@ -202,8 +188,8 @@ export class RpcPeerExchange {
         this.registeredPeers.set('string' === typeof id ? id : stringifyUuid(id), writer);
     }
 
-    redirect(message: RpcMessage) {
-        if (message.routeType == RpcMessageRouteType.peer) {
+    redirect(message: Uint8Array) {
+        if (isRouteFlag(message[0], MessageFlag.RoutePeer)) {
             const peerId = message.getPeerId();
             const writer = this.registeredPeers.get(peerId);
             if (!writer) {
@@ -212,9 +198,7 @@ export class RpcPeerExchange {
                 return;
             }
             if (writer.writeBinary) writer.writeBinary(message.getBuffer());
-        }
-
-        if (message.routeType == RpcMessageRouteType.sourceDest) {
+        } else if (isRouteFlag(message[0], MessageFlag.RouteDirect)) {
             const destination = message.getDestination();
 
             //in this implementation we have to stringify it first, since v8 can not index Uint8Arrays
@@ -235,11 +219,13 @@ export abstract class RpcKernelBaseConnection {
     public sessionState = new SessionState();
 
     public writer: TransportMessageWriter;
+    protected selfContext = new ContextId;
 
     protected reader = new RpcBinaryMessageReader(
+        this.selfContext,
         this.handleMessage.bind(this),
-        (id: number) => {
-            this.writer(createRpcMessage(id, RpcTypes.ChunkAck), this.transportOptions, this.stats);
+        (message: Uint8Array) => {
+            this.writer(message, this.transportOptions, this.stats);
         },
     );
 
@@ -251,7 +237,7 @@ export abstract class RpcKernelBaseConnection {
     /**
      * When the server wants to execute an action on the client, it uses the actionClient.
      */
-    protected actionClient: RpcActionClient = new RpcActionClient(this);
+    protected actionClient: RpcActionClient = new RpcActionClient(this, this.selfContext);
 
     protected id: Uint8Array = writeUuid(createBuffer(16));
 
@@ -428,9 +414,7 @@ export class RpcCache {
 
 export class RpcKernelConnection extends RpcKernelBaseConnection {
     public myPeerId?: string;
-    protected actionHandler = new RpcServerAction(this.stats, this.cache, this, this.controllers, this.injector, this.eventDispatcher, this.security, this.sessionState, this.logger);
-
-    public routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client;
+    protected actionHandler = new RpcActionServer(this.stats, this.cache, this, this.controllers, this.injector, this.eventDispatcher, this.security, this.sessionState, this.logger);
     protected context: { connection: RpcKernelBaseConnection, injector: InjectorContext } = { connection: this, injector: this.injector };
 
     constructor(

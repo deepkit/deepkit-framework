@@ -22,6 +22,7 @@ export enum LoggerLevel {
     log,
     info,
     debug,
+    debug2, // very verbose debug output
 }
 
 declare var process: {
@@ -197,6 +198,8 @@ export interface LoggerInterface {
     info(...message: any[]): void;
 
     debug(...message: any[]): void;
+
+    debug2(...message: any[]): void;
 }
 
 export class Logger implements LoggerInterface {
@@ -208,7 +211,7 @@ export class Logger implements LoggerInterface {
      */
     level: LoggerLevel = LoggerLevel.info;
 
-    protected debugScopes = new Set<string>();
+    protected debugScopes = new Map<string, boolean>();
 
     protected logData?: LogData;
 
@@ -227,15 +230,19 @@ export class Logger implements LoggerInterface {
      * This is useful to enable debug logs only for certain parts of your application.
      */
     enableDebugScope(name: string) {
-        this.debugScopes.add(name);
+        this.debugScopes.set(name, true);
     }
 
     disableDebugScope(name: string) {
+        this.debugScopes.set(name, false);
+    }
+
+    unsetDebugScope(name: string) {
         this.debugScopes.delete(name);
     }
 
     isDebugScopeEnabled(name: string): boolean {
-        return this.debugScopes.has(name);
+        return this.debugScopes.get(name) ?? true;
     }
 
     /**
@@ -329,7 +336,7 @@ export class Logger implements LoggerInterface {
     }
 
     is(level: LoggerLevel): boolean {
-        return level <= this.level || (level === LoggerLevel.debug && this.debugScopes.has(this.scope));
+        return level <= this.level || (level >= LoggerLevel.debug && (this.debugScopes.get(this.scope) ?? true));
     }
 
     protected send(messages: any[], level: LoggerLevel, data: LogData = {}) {
@@ -378,6 +385,10 @@ export class Logger implements LoggerInterface {
 
     debug(...message: any[]) {
         this.send(message, LoggerLevel.debug);
+    }
+
+    debug2(...message: any[]) {
+        this.send(message, LoggerLevel.debug2);
     }
 }
 

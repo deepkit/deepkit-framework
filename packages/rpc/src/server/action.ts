@@ -57,7 +57,7 @@ import {
     RpcTypes,
 } from '../model.js';
 import { createBodyDecoder, rpcEncodeError, RpcMessage } from '../protocol.js';
-import { RpcCache, RpcCacheAction, RpcKernelBaseConnection, RpcMessageBuilder } from './kernel.js';
+import { RpcCache, RpcCacheAction, RpcKernelBaseConnection } from './kernel.js';
 import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security.js';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
@@ -131,7 +131,7 @@ const anyParametersType: Type = {
 const rpcActionTypeDecoder = createBodyDecoder<rpcActionType>();
 const rpcActionDecoder = createBodyDecoder<rpcAction>();
 
-export class RpcServerAction {
+export class RpcActionServer {
     protected observableSubjects: {
         [id: number]: {
             subject: Subject<any>,
@@ -355,7 +355,7 @@ export class RpcServerAction {
     public async handle(message: RpcMessage, response: RpcMessageBuilder) {
         switch (message.type) {
             case RpcTypes.ActionObservableSubscribe: {
-                const observable = this.observables[message.id];
+                const observable = this.observables[message.contextId];
                 if (!observable) return response.error(new RpcError('No observable found'));
                 response.strictSerialization = observable.types.strictSerialization;
 
@@ -407,15 +407,15 @@ export class RpcServerAction {
             }
 
             case RpcTypes.ActionCollectionUnsubscribe: {
-                const collection = this.collections[message.id];
+                const collection = this.collections[message.contextId];
                 if (!collection) return response.error(new RpcError('No collection found'));
                 collection.unsubscribe();
-                delete this.collections[message.id];
+                delete this.collections[message.contextId];
                 break;
             }
 
             case RpcTypes.ActionCollectionModel: {
-                const collection = this.collections[message.id];
+                const collection = this.collections[message.contextId];
                 if (!collection) return response.error(new RpcError('No collection found'));
                 const body = message.parseBody<CollectionQueryModel<any>>(); //todo, add correct type argument
                 collection.collection.model.set(body);
@@ -424,7 +424,7 @@ export class RpcServerAction {
             }
 
             case RpcTypes.ActionObservableUnsubscribe: {
-                const observable = this.observables[message.id];
+                const observable = this.observables[message.contextId];
                 if (!observable) return response.error(new RpcError('No observable to unsubscribe found'));
                 const body = message.parseBody<rpcActionObservableSubscribeId>();
                 const sub = observable.subscriptions[body.id];
@@ -438,27 +438,27 @@ export class RpcServerAction {
             }
 
             case RpcTypes.ActionObservableDisconnect: {
-                const observable = this.observables[message.id];
+                const observable = this.observables[message.contextId];
                 if (!observable) return response.error(new RpcError('No observable to disconnect found'));
                 for (const sub of Object.values(observable.subscriptions)) {
                     sub.complete(); //we send all active subscriptions it was completed
                 }
                 this.stats.active.increase('observables', -1);
-                delete this.observables[message.id];
+                delete this.observables[message.contextId];
                 break;
             }
 
             case RpcTypes.ActionObservableSubjectUnsubscribe: { //aka completed
-                const subject = this.observableSubjects[message.id];
+                const subject = this.observableSubjects[message.contextId];
                 if (!subject) return response.error(new RpcError('No subject to unsubscribe found'));
                 subject.completedByClient = true;
                 subject.subject.complete();
-                delete this.observableSubjects[message.id];
+                delete this.observableSubjects[message.contextId];
                 break;
             }
 
             case RpcTypes.ActionObservableProgressNext: { //ProgressTracker changes from client (e.g. stop signal)
-                const observable = this.observables[message.id];
+                const observable = this.observables[message.contextId];
                 if (!observable || !(observable.observable instanceof ProgressTracker)) return response.error(new RpcError('No observable ProgressTracker to sync found'));
                 response.strictSerialization = observable.types.strictSerialization;
                 observable.observable.next(message.parseBody<ProgressTrackerState[]>());
@@ -626,11 +626,11 @@ export class RpcServerAction {
                 }));
 
                 collection.addTeardown(() => {
-                    const c = this.collections[message.id];
+                    const c = this.collections[message.contextId];
                     if (c) c.unsubscribe();
                 });
 
-                this.collections[message.id] = {
+                this.collections[message.contextId] = {
                     collection,
                     unsubscribe: () => {
                         if (unsubscribed) return;
@@ -642,7 +642,7 @@ export class RpcServerAction {
             } else if (isObservable(result)) {
                 let trackingType: NumericKeys<ActionStats> = 'observables';
 
-                this.observables[message.id] = {
+                this.observables[message.contextId] = {
                     observable: result,
                     subscriptions: {},
                     types,
@@ -664,12 +664,12 @@ export class RpcServerAction {
                         }
                     }
 
-                    this.observableSubjects[message.id] = {
+                    this.observableSubjects[message.contextId] = {
                         subject: result,
                         completedByClient: false,
                         subscription: result.subscribe((next) => {
                             response.reply(RpcTypes.ResponseActionObservableNext, {
-                                id: message.id,
+                                id: message.contextId,
                                 v: next,
                             }, types.observableNextSchema);
                         }, (error) => {
@@ -677,14 +677,14 @@ export class RpcServerAction {
                             const extracted = rpcEncodeError(this.security.transformError(error));
                             response.reply<rpcResponseActionObservableSubscriptionError>(RpcTypes.ResponseActionObservableError, {
                                 ...extracted,
-                                id: message.id,
+                                id: message.contextId,
                             });
                         }, () => {
                             this.stats.active.increase(trackingType, -1);
-                            const v = this.observableSubjects[message.id];
+                            const v = this.observableSubjects[message.contextId];
                             if (v && v.completedByClient) return; //we don't send ResponseActionObservableComplete when the client issued unsubscribe
                             response.reply<rpcActionObservableSubscribeId>(RpcTypes.ResponseActionObservableComplete, {
-                                id: message.id,
+                                id: message.contextId,
                             });
                         }),
                     };

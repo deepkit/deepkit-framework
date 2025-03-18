@@ -1,13 +1,6 @@
-import {
-    createRpcMessage,
-    readBinaryRpcMessage,
-    RpcBinaryMessageReader,
-    RpcMessage,
-    RpcMessageDefinition,
-    serializeBinaryRpcMessage,
-} from './protocol.js';
+import { readBinaryRpcMessage, RpcBinaryMessageReader, RpcMessage } from './protocol.js';
 import { SingleProgress } from './progress.js';
-import { rpcChunk, RpcError, RpcTransportStats, RpcTypes } from './model.js';
+import { RpcError, RpcTransportStats } from './model.js';
 
 export class TransportOptions {
     /**
@@ -35,7 +28,7 @@ export class TransportOptions {
  * @see createWriter
  */
 export interface TransportMessageWriter {
-    (message: RpcMessageDefinition, options: TransportOptions, stats: RpcTransportStats, progress?: SingleProgress): void;
+    (message: Uint8Array, options: TransportOptions, stats: RpcTransportStats, progress?: SingleProgress): void;
 }
 
 export interface TransportConnection {
@@ -112,16 +105,16 @@ export class TransportBinaryMessageChunkWriter {
             while (offset < buffer.byteLength) {
                 //todo: check back-pressure and wait if necessary
                 const slice = buffer.slice(offset, offset + this.options.chunkSize);
-                const chunkMessage = createRpcMessage<rpcChunk>(message.id, RpcTypes.Chunk, {
-                    id: chunkId,
-                    total: buffer.byteLength,
-                    v: slice,
-                });
+                // const chunkMessage = createRpcMessage<rpcChunk>(message.contextId, RpcTypes.Chunk, {
+                //     id: chunkId,
+                //     total: buffer.byteLength,
+                //     v: slice,
+                // });
                 offset += slice.byteLength;
                 const promise = new Promise((resolve) => {
-                    this.reader.onChunkAck(message.id, resolve);
+                    this.reader.onChunkAck(message.contextId, resolve);
                 });
-                writer(serializeBinaryRpcMessage(chunkMessage));
+                // writer(serializeBinaryRpcMessage(chunkMessage));
                 await promise;
                 progress?.set(buffer.byteLength, offset);
             }
@@ -137,10 +130,10 @@ export function createWriter(transport: TransportConnection, options: TransportO
         const chunkWriter = new TransportBinaryMessageChunkWriter(reader, options);
         const writeBinary = transport.writeBinary;
         return (message, options, stats, progress) => {
-            const buffer = serializeBinaryRpcMessage(message);
-            stats.increase('outgoing', 1);
-            stats.increase('outgoingBytes', buffer.byteLength);
-            chunkWriter.write(writeBinary, buffer, progress);
+            // const buffer = serializeBinaryRpcMessage(message);
+            // stats.increase('outgoing', 1);
+            // stats.increase('outgoingBytes', buffer.byteLength);
+            // chunkWriter.write(writeBinary, buffer, progress);
         };
     }
 

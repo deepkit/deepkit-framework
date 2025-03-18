@@ -8,6 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+/**
+ * @reflection never
+ */
 import { asyncOperation, ClassType, toFastProperties } from '@deepkit/core';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
 import { skip } from 'rxjs/operators';
@@ -28,7 +31,7 @@ import {
     RpcTypes,
     WrappedV,
 } from '../model.js';
-import { rpcDecodeError, RpcMessage } from '../protocol.js';
+import { ContextId, rpcDecodeError, RpcMessage } from '../protocol.js';
 import type { WritableClient } from './client.js';
 import { EntityState, EntitySubjectStore } from './entity-state.js';
 import { assertType, deserializeType, ReflectionKind, Type, TypeObjectLiteral, typeOf } from '@deepkit/type';
@@ -438,7 +441,7 @@ function actionProtocol(reply: RpcMessage, subject: RpcMessageSubject, state: Ac
     try {
         actionProtocolFull(reply, subject, state);
     } catch (error) {
-        console.warn('reply error', reply.id, RpcTypes[reply.type], error);
+        console.warn('reply error', reply.contextId, RpcTypes[reply.type], error);
         rejectAction(state, `Reply failed for ${state.action}: ${error}`);
     }
 }
@@ -450,7 +453,24 @@ export class RpcActionClient {
         heldValue();
     });
 
-    constructor(protected client: WritableClient) {
+    constructor(
+        protected client: WritableClient,
+        protected context: ContextId,
+    ) {
+    }
+
+    public getAction<T>(controller: RpcControllerState, method: string, options: {
+        timeout?: number,
+        dontWaitForConnection?: true,
+        typeReuseDisabled?: boolean
+    }): (...args: any[]) => any {
+
+        // connection await and load types await
+        const prepare = {};
+
+        return async () => {
+            await prepare;
+        };
     }
 
     public action<T>(controller: RpcControllerState, method: string, args: any[], options: {
@@ -476,19 +496,44 @@ export class RpcActionClient {
                 progress,
             };
 
-            this.client.sendMessage(RpcTypes.Action, {
-                controller: controller.controller,
-                method: method,
-                args,
-            }, types.callSchema, {
-                peerId: controller.peerId,
-                dontWaitForConnection: options.dontWaitForConnection,
-                timeout: options.timeout,
-            }).onRejected((error) => {
-                rejectAction(state, error);
-            }).onReply(function(reply: RpcMessage, subject: RpcMessageSubject) {
-                actionProtocol(reply, subject, state);
-            });
+            {
+                const contextId = this.context.next();
+                this.client.registerPromise(contextId);
+                await this.client.sendActionType(actionId);
+            }
+
+            {
+                const contextId = this.context.next();
+                this.client.registerContext(contextId, {
+                    reply: (reply: RpcMessage) => {
+                        actionProtocol(reply, subject, state);
+                    },
+                    error: (error: any) => {
+                        rejectAction(state, error);
+                    },
+                });
+                this.client.sendAction(actionId, args);
+                // this.client.registerContext(contextId)
+                //     .onRejected(function(error) {
+                //         rejectAction(state, error);
+                //     }).onReply(function(reply: RpcMessage, subject: RpcMessageSubject) {
+                //     actionProtocol(reply, subject, state);
+                // });
+            }
+
+            // this.client.sendMessage(RpcTypes.Action, {
+            //     controller: controller.controller,
+            //     method: method,
+            //     args,
+            // }, types.callSchema, {
+            //     peerId: controller.peerId,
+            //     dontWaitForConnection: options.dontWaitForConnection,
+            //     timeout: options.timeout,
+            // }).onRejected((error) => {
+            //     rejectAction(state, error);
+            // }).onReply(function(reply: RpcMessage, subject: RpcMessageSubject) {
+            //     actionProtocol(reply, subject, state);
+            // });
         });
     }
 
