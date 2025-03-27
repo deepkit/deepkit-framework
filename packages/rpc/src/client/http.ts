@@ -1,7 +1,7 @@
 import { ClientTransportAdapter, RpcClient } from './client.js';
 import { TransportClientConnection } from '../transport.js';
 import { RpcMessageDefinition } from '../protocol.js';
-import { RpcError, RpcTypes } from '../model.js';
+import { RpcAction, RpcError } from '../model.js';
 import { HttpRpcMessage } from '../server/http.js';
 import { serialize } from '@deepkit/type';
 
@@ -75,12 +75,12 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
                 let method = 'GET';
                 let body: any = undefined;
 
-                if (message.type === RpcTypes.ActionType) {
+                if (message.type === RpcAction.Types) {
                     if (!message.body) throw new RpcError('No body given');
                     const body = message.body.body as { controller: string, method: string, };
                     path = body.controller + '/' + encodeURIComponent(body.method) + '.type';
                     method = 'GET';
-                } else if (message.type === RpcTypes.Action) {
+                } else if (message.type === RpcAction.Execute) {
                     if (!message.body) throw new RpcError('No body given');
                     const messageBody = serialize(message.body.body, undefined, undefined, undefined, message.body.type) as {
                         controller: string,
@@ -118,7 +118,7 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
                 const composite = 'true' === res.headers['x-message-composite'];
                 const routeType = Number(res.headers['x-message-routetype']);
                 let json = res.body;
-                if (type === RpcTypes.ResponseActionSimple) {
+                if (type === RpcAction.ResponseActionSimple) {
                     json = { v: json };
                 }
                 connection.read(new HttpRpcMessage(message.id, composite, type, routeType, {}, json));

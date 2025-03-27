@@ -8,36 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, ClassType, CustomError, formatError, sleep } from '@deepkit/core';
-import { ReceiveType, ValidationError } from '@deepkit/type';
-import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import {
-    ControllerDefinition,
-    rpcAuthenticate,
-    rpcClientId,
-    RpcError,
-    rpcPeerDeregister,
-    rpcPeerRegister,
-    rpcResponseAuthenticate,
-    RpcStats,
-    RpcTypes,
-} from '../model.js';
-import {
-    BodyEncoder,
-    ContextId,
-    createErrorMessage,
-    createRpcMessage,
-    isRouteFlag,
-    MessageFlag,
-    RpcBinaryMessageReader,
-    RpcMessage,
-    setRouteFlag,
-} from '../protocol.js';
+import { asyncOperation, CustomError, formatError, sleep } from '@deepkit/core';
+import { BehaviorSubject, Subject } from 'rxjs';
+import { RpcError, RpcStats } from '../model.js';
+import { BodyEncoder, ContextDispatcher, getContextId, hasContext, isRouteFlag, MessageFlag, setRouteFlag } from '../protocol.js';
 import { RpcKernel, RpcKernelConnection } from '../server/kernel.js';
-import { ClientProgress, SingleProgress } from '../progress.js';
-import { RpcActionClient, RpcControllerState } from './action.js';
+import { SingleProgress } from '../progress.js';
 import { RpcMessageSubject } from './message-subject.js';
-import { createWriter, TransportClientConnection, TransportConnection, TransportMessageWriter, TransportOptions } from '../transport.js';
+import { TransportClientConnection, TransportConnection, TransportOptions } from '../transport.js';
 
 export class OfflineError extends CustomError {
 }
@@ -47,24 +25,8 @@ export type RemoteController<T> = {
     [P in keyof T]: T[P] extends (...args: any[]) => any ? PromisifyFn<T[P]> : never
 };
 
-export interface ObservableDisconnect {
-    /**
-     * Unsubscribes all active subscriptions and cleans the stored Observable instance on the server.
-     * This signals the server that the created observable from the RPC action is no longer needed.
-     */
-    disconnect(): void;
-}
-
-export type DisconnectableObservable<T> = Observable<T> & ObservableDisconnect;
-
 export interface ClientTransportAdapter {
     connect(connection: TransportClientConnection): Promise<void> | void;
-
-    /**
-     * Whether ClientId call is needed to get a client id.
-     * This is disabled for http adapter.
-     */
-    supportsPeers?(): boolean;
 
     /**
      * Whether Authentication call is needed to authenticate the client.
@@ -112,7 +74,6 @@ export class RpcClientTransporter {
     protected connectionPromise?: Promise<void>;
 
     protected connected = false;
-    protected writer?: TransportMessageWriter;
     public writerOptions: TransportOptions = new TransportOptions();
 
     public id?: Uint8Array;
@@ -139,20 +100,19 @@ export class RpcClientTransporter {
      */
     public readonly errored = new Subject<{ connectionId: number, error: Error }>();
 
-    public reader = new RpcBinaryMessageReader(
-        this.context,
-        (v) => {
-            this.stats.increase('incoming', 1);
-            this.onMessage(v);
-        },
-        (message) => {
-            this.writer!(message, this.writerOptions, this.stats);
-        },
-    );
+    // public reader = new RpcBinaryMessageReader(
+    //     this.context,
+    //     (v) => {
+    //         this.stats.increase('incoming', 1);
+    //         this.onMessage(v);
+    //     },
+    //     (message) => {
+    //         this.writer!(message, this.writerOptions, this.stats);
+    //     },
+    // );
 
     public constructor(
         public transport: ClientTransportAdapter,
-        protected context: ContextId,
         protected stats: RpcStats,
     ) {
     }
@@ -185,7 +145,7 @@ export class RpcClientTransporter {
         if (!this.transportConnection) return;
 
         this.transportConnection = undefined;
-        this.stats.increase('connections', -1);
+        this.stats.connections--;
 
         this.connection.next(false);
         this.connected = false;
@@ -217,7 +177,7 @@ export class RpcClientTransporter {
     public async onAuthenticate(token?: any): Promise<void> {
     }
 
-    public onMessage(message: RpcMessage) {
+    public onMessage(message: Uint8Array) {
     }
 
     public async disconnect() {
@@ -250,9 +210,11 @@ export class RpcClientTransporter {
 
                 onConnected: async (transport: TransportConnection) => {
                     this.transportConnection = transport;
-                    this.stats.increase('connections', 1);
-                    this.stats.increase('totalConnections', 1);
-                    this.writer = createWriter(transport, this.writerOptions, this.reader);
+                    this.stats.connections++;
+                    this.stats.totalConnections++;
+
+                    this.writer = transport.write;
+                    // this.writer = createWriter(transport, this.writerOptions, this.reader);
 
                     this.connected = false;
                     this.connectionTries = 0;
@@ -278,16 +240,16 @@ export class RpcClientTransporter {
                     reject(new OfflineError(`Could not connect: ${formatError(error)}`, { cause: error }));
                 },
 
-                read: (message: RpcMessage) => {
-                    this.stats.increase('incoming', 1);
+                read: (message: Uint8Array) => {
+                    this.stats.incoming++;
                     this.onMessage(message);
-                },
-
-                readBinary: (buffer: Uint8Array, bytes?: number) => {
-                    this.reader.feed(buffer, bytes);
                 },
             });
         });
+    }
+
+    protected writer(message: Uint8Array): void {
+
     }
 
     /**
@@ -317,59 +279,45 @@ export class RpcClientTransporter {
             throw new RpcError('Transport connection not created yet');
         }
 
-        try {
-            this.writer(message, this.writerOptions, this.stats, progress);
-        } catch (error: any) {
-            if (error instanceof ValidationError) throw error;
-            throw new OfflineError(error, { cause: error });
-        }
+        // this.writer(message, this.writerOptions, this.stats, progress);
+        this.writer(message);
     }
 }
 
-export class RpcClientPeer {
-    // todo this needs its own RpcActionClient
+// export class RpcClientPeer {
+//     // todo this needs its own RpcActionClient
+//
+//     constructor(
+//         protected actionClient: RpcActionClient,
+//         protected peerId: string,
+//         protected onDisconnect: (peerId: string) => void,
+//     ) {
+//
+//     }
+//
+//     public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: {
+//         timeout?: number,
+//         dontWaitForConnection?: true
+//     } = {}): RemoteController<T> {
+//         const controller = new RpcControllerState('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path);
+//         controller.peerId = this.peerId;
+//
+//         return new Proxy(this, {
+//             //todo: try getOwnPropertyDescriptor to improve performance
+//
+//             get: (target, propertyName) => {
+//                 return this.actionClient.getAction(controller, String(propertyName), options);
+//             },
+//         }) as any as RemoteController<T>;
+//     }
+//
+//     disconnect() {
+//         this.onDisconnect(this.peerId);
+//     }
+// }
 
-    constructor(
-        protected actionClient: RpcActionClient,
-        protected peerId: string,
-        protected onDisconnect: (peerId: string) => void,
-    ) {
 
-    }
-
-    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: {
-        timeout?: number,
-        dontWaitForConnection?: true
-    } = {}): RemoteController<T> {
-        const controller = new RpcControllerState('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path);
-        controller.peerId = this.peerId;
-
-        return new Proxy(this, {
-            //todo: try getOwnPropertyDescriptor to improve performance
-
-            get: (target, propertyName) => {
-                return this.actionClient.getAction(controller, String(propertyName), options);
-            },
-        }) as any as RemoteController<T>;
-    }
-
-    disconnect() {
-        this.onDisconnect(this.peerId);
-    }
-}
-
-
-export type RpcEventMessage = { id: number, date: Date, type: number, body: any };
-export type RpcClientEventIncomingMessage =
-    { event: 'incoming' } & RpcEventMessage;
-export type RpcClientEventOutgoingMessage =
-    { event: 'outgoing' } & RpcEventMessage;
-
-export type RpcClientEvent = RpcClientEventIncomingMessage | RpcClientEventOutgoingMessage;
-
-export class RpcBaseClient implements WritableClient {
-    protected replies = new Map<number, RpcMessageSubject>();
-
+export class RpcClient {
     public clientStats: RpcStats = new RpcStats;
 
     public readonly token = new RpcClientToken(undefined);
@@ -379,15 +327,35 @@ export class RpcBaseClient implements WritableClient {
 
     public typeReuseDisabled: boolean = false;
 
-    protected selfContext = new ContextId();
-    protected remoteContext = new ContextId();
+    selfContext = new ContextDispatcher();
+    protected remoteContext = new ContextDispatcher();
 
-    public actionClient = new RpcActionClient(this, this.selfContext);
+    // public actionClient = new RpcActionClient(this, this.selfContext);
+
+    /**
+     * For server->client (us) communication.
+     * This is automatically created when registerController is called.
+     * Set this property earlier to work with a custom RpcKernel.
+     */
+    public clientKernel?: RpcKernel;
+
+    /**
+     * Once the server starts actively with first RPC action for the client,
+     * a RPC connection is created.
+     */
+    protected clientKernelConnection?: RpcKernelConnection;
+
+    /**
+     * For peer->client(us) communication.
+     * This is automatically created when registerAsPeer is called.
+     * Set this property earlier to work with a custom RpcKernel.
+     */
+    public peerKernel?: RpcKernel;
 
     constructor(
         protected transport: ClientTransportAdapter,
     ) {
-        this.transporter = new RpcClientTransporter(this.transport, this.remoteContext, this.clientStats);
+        this.transporter = new RpcClientTransporter(this.transport, this.clientStats);
         this.transporter.onMessage = this.onMessage.bind(this);
         this.transporter.onHandshake = this.onHandshake.bind(this);
         this.transporter.onAuthenticate = this.onAuthenticate.bind(this);
@@ -395,10 +363,10 @@ export class RpcBaseClient implements WritableClient {
     }
 
     onClose(error?: Error) {
-        for (const subject of this.replies.values()) {
-            subject.disconnect(error);
-        }
-        this.replies.clear();
+        // for (const subject of this.replies.values()) {
+        //     subject.disconnect(error);
+        // }
+        // this.replies.clear();
     }
 
     /**
@@ -426,21 +394,29 @@ export class RpcBaseClient implements WritableClient {
      * ```
      */
     protected async onAuthenticate(token?: any): Promise<void> {
-        if (undefined === token) return;
-        if (this.transport.supportsPeers && !this.transport.supportsPeers()) return;
-
-        const reply: RpcMessage = await this.sendMessage<rpcAuthenticate>(RpcTypes.Authenticate, { token }, undefined, { dontWaitForConnection: true })
-            .waitNextMessage();
-
-        if (reply.isError()) throw reply.getError();
-
-        if (reply.type === RpcTypes.AuthenticateResponse) {
-            const body = reply.parseBody<rpcResponseAuthenticate>();
-            this.username = body.username;
-            return;
-        }
-
-        throw new RpcError('Invalid response');
+        // if (undefined === token) return;
+        // // if (this.transport.supportsPeers && !this.transport.supportsPeers()) return;
+        //
+        // const id = this.context.create((message: Uint8Array) => {
+        //     this.context.release(id);
+        // });
+        //
+        // const authEncoder = createBodyEncoder<rpcAuthenticate>();
+        //
+        // this.send(RpcAction.Authenticate);
+        //
+        // const reply: RpcMessage = await this.sendMessage<rpcAuthenticate>(RpcAction.Authenticate, { token }, undefined, { dontWaitForConnection: true })
+        //     .waitNextMessage();
+        //
+        // if (reply.isError()) throw reply.getError();
+        //
+        // if (reply.type === RpcAction.AuthenticateResponse) {
+        //     const body = reply.parseBody<rpcResponseAuthenticate>();
+        //     this.username = body.username;
+        //     return;
+        // }
+        //
+        // throw new RpcError('Invalid response');
     }
 
     protected async onHandshake(): Promise<Uint8Array | undefined> {
@@ -451,142 +427,9 @@ export class RpcBaseClient implements WritableClient {
         throw new RpcError('RpcBaseClient does not load its client id, and thus does not support peer message');
     }
 
-    protected onMessage(message: RpcMessage) {
-        // console.log('client: received message', message.id, message.type, RpcTypes[message.type], message.routeType);
+    protected onMessage(message: Uint8Array) {
 
-        if (message.type === RpcTypes.Entity) {
-            this.actionClient.entityState.handle(message);
-        } else {
-            const subject = this.replies.get(message.contextId
-            );
-            if (subject) subject.next(message);
-        }
-    }
-
-    debug() {
-        return {
-            activeMessages: this.replies.size,
-        };
-    }
-
-    public sendMessage<T>(
-        type: number,
-        body?: T,
-        bodyEncoder?: BodyEncoder<T>,
-        options: {
-            dontWaitForConnection?: boolean,
-            connectionId?: number,
-            timeout?: number;
-        } = {},
-    ): RpcMessageSubject {
-        const id = this.selfContext.next();
-
-        const connectionId = options && options.connectionId ? options.connectionId : this.transporter.connectionId;
-        const dontWaitForConnection = !!options.dontWaitForConnection;
-        // const timeout = options && options.timeout ? options.timeout : 0;
-
-        const continuation = <T>(type: number, body?: T, schema?: ReceiveType<T>) => {
-            if (connectionId === this.transporter.connectionId) {
-                //send a message with the same id. Don't use sendMessage() again as this would lead to a memory leak
-                // and a new id generated. We want to use the same id.
-                const message = createRpcMessage(id, type, body, undefined, schema);
-                this.transporter.send(message);
-            }
-        };
-
-        const subject = new RpcMessageSubject(continuation, () => {
-            this.replies.delete(id);
-        });
-
-        this.replies.set(id, subject);
-
-        const progress = ClientProgress.getNext();
-        if (progress) {
-            this.transporter.reader.registerProgress(id, progress.download);
-        }
-
-        if (dontWaitForConnection || this.transporter.isConnected()) {
-            // const message = options && options.peerId
-            //     ? createRpcMessagePeer(id, type, this.getId(), options.peerId, body, resolvedSchema)
-            //     : createRpcMessage(id, type, body, undefined, resolvedSchema);
-            const message = {};
-
-            this.transporter.send(message, progress?.upload);
-        } else {
-            this.connect().then(() => {
-                //this.getId() only now available
-                // const message = options && options.peerId
-                //     ? createRpcMessagePeer(id, type, this.getId(), options.peerId, body, resolvedSchema)
-                //     : createRpcMessage(id, type, body, undefined, resolvedSchema);
-                const message = createRpcMessage(
-                    MessageFlag.RouteClient,
-                    MessageFlag.ContextNew,
-                    0,
-                    {}
-                );
-
-                this.transporter.send(message, progress?.upload);
-            }, () => {
-                // we ignore errors here since created `RpcMessageSubject` receive them
-            });
-        }
-
-        return subject;
-    }
-
-    async connect(): Promise<this> {
-        await this.transporter.connect(this.token.get());
-        return this;
-    }
-
-    async disconnect() {
-        await this.transporter.disconnect();
-    }
-}
-
-export class RpcClient extends RpcBaseClient {
-    protected registeredAsPeer?: string;
-
-    /**
-     * For server->client (us) communication.
-     * This is automatically created when registerController is called.
-     * Set this property earlier to work with a custom RpcKernel.
-     */
-    public clientKernel?: RpcKernel;
-
-    /**
-     * Once the server starts actively with first RPC action for the client,
-     * a RPC connection is created.
-     */
-    protected clientKernelConnection?: RpcKernelConnection;
-
-    /**
-     * For peer->client(us) communication.
-     * This is automatically created when registerAsPeer is called.
-     * Set this property earlier to work with a custom RpcKernel.
-     */
-    public peerKernel?: RpcKernel;
-
-    protected peerConnections = new Map<string, RpcClientPeer>();
-
-    protected async onHandshake(): Promise<Uint8Array | undefined> {
-        this.clientKernelConnection = undefined;
-        if (this.transport.supportsPeers && !this.transport.supportsPeers()) return;
-
-        const reply = await this.sendMessage(RpcTypes.ClientId, undefined, undefined, { dontWaitForConnection: true })
-            .firstThenClose<rpcClientId>(RpcTypes.ClientIdResponse);
-        return reply.id;
-    }
-
-    protected peerKernelConnection = new Map<string, RpcKernelConnection>();
-
-    public async ping(): Promise<void> {
-        await this.sendMessage(RpcTypes.Ping).waitNext(RpcTypes.Pong);
-    }
-
-    protected onMessage(message: RpcMessage) {
-        //todo: this is too late. We want chunks also forwarded to the correct receiver
-        if (isRouteFlag(message.flags, MessageFlag.RouteDirect)) {
+        if (isRouteFlag(message[0], MessageFlag.RouteDirect)) {
             if (!this.peerKernel) return;
 
             // const peerId = message.getPeerId();
@@ -616,119 +459,241 @@ export class RpcClient extends RpcBaseClient {
             //     this.peerKernelConnection.set(peerId, connection);
             // }
             // connection.handleMessage(message);
-        } else {
-            if (isRouteFlag(message.flags, MessageFlag.RouteServer)) {
-                if (!this.clientKernel) {
-                    this.transporter.send(createErrorMessage(message.contextId, 'RpcClient has no controllers registered'));
-                    return;
-                }
-                if (!this.clientKernelConnection) {
-                    const c = this.clientKernel.createConnection({
-                        write: (answer: Uint8Array) => {
-                            setRouteFlag(answer[0], MessageFlag.RouteServer);
-                            this.transporter.send(answer);
-                        },
-                        close: () => {
-                            this.transporter.disconnect().catch(() => undefined);
-                        },
-                        clientAddress: () => {
-                            return this.transporter.clientAddress();
-                        },
-                        bufferedAmount: () => {
-                            return this.transporter.bufferedAmount();
-                        },
-                    });
-                    // Important to disable since transporter.send chunks already,
-                    // otherwise data is chunked twice and protocol breaks.
-                    c.transportOptions.chunkSize = 0;
-                    if (!(c instanceof RpcKernelConnection)) throw new RpcError('Expected RpcKernelConnection from clientKernel.createConnection');
-                    this.clientKernelConnection = c;
-                }
-                this.clientKernelConnection.handleMessage(message);
+        } else if (isRouteFlag(message[0], MessageFlag.RouteServer)) {
+            if (!this.clientKernel) {
+                // this.transporter.send(createErrorMessage(message.contextId, 'RpcClient has no controllers registered'));
                 return;
             }
-            super.onMessage(message);
-        }
-    }
-
-    public getId(): Uint8Array {
-        if (!this.transporter.id) throw new RpcError('Not fully connected yet');
-        return this.transporter.id;
-    }
-
-    /**
-     * Registers a new controller for the peer's RPC kernel.
-     * Use `registerAsPeer` first.
-     */
-    public registerPeerController<T>(classType: ClassType<T>, nameOrDefinition: string | ControllerDefinition<T>) {
-        if (!this.peerKernel) throw new RpcError('Not registered as peer. Call registerAsPeer() first');
-        this.peerKernel.registerController(classType, nameOrDefinition);
-    }
-
-    /**
-     * Registers a new controller for the server's RPC kernel.
-     * This is when the server wants to communicate actively with the client (us).
-     */
-    public registerController<T>(classType: ClassType<T>, nameOrDefinition: string | ControllerDefinition<T>) {
-        if (!this.clientKernel) this.clientKernel = new RpcKernel();
-        this.clientKernel.registerController(classType, nameOrDefinition);
-    }
-
-    public async registerAsPeer(id: string) {
-        if (this.registeredAsPeer) {
-            throw new RpcError('Already registered as a peer');
+            if (!this.clientKernelConnection) {
+                const c = this.clientKernel.createConnection({
+                    write: (answer: Uint8Array) => {
+                        setRouteFlag(answer, MessageFlag.RouteServer);
+                        this.transporter.send(answer);
+                    },
+                    close: () => {
+                        this.transporter.disconnect().catch(() => undefined);
+                    },
+                    clientAddress: () => {
+                        return this.transporter.clientAddress();
+                    },
+                    bufferedAmount: () => {
+                        return this.transporter.bufferedAmount();
+                    },
+                });
+                // Important to disable since transporter.send chunks already,
+                // otherwise data is chunked twice and protocol breaks.
+                c.transportOptions.chunkSize = 0;
+                if (!(c instanceof RpcKernelConnection)) throw new RpcError('Expected RpcKernelConnection from clientKernel.createConnection');
+                this.clientKernelConnection = c;
+            }
+            // this.clientKernelConnection.handleMessage(message);
+            return;
         }
 
-        this.peerKernel = new RpcKernel();
-
-        await this.sendMessage<rpcPeerRegister>(RpcTypes.PeerRegister, { id }).firstThenClose(RpcTypes.Ack);
-        this.registeredAsPeer = id;
-
-        return {
-            deregister: async () => {
-                await this.sendMessage<rpcPeerDeregister>(RpcTypes.PeerDeregister, { id }).firstThenClose(RpcTypes.Ack);
-                this.registeredAsPeer = undefined;
-            },
-        };
-    }
-
-    /**
-     * Creates a new peer connection, or re-uses an existing non-disconnected one.
-     *
-     * Make sure to call disconnect() on it once you're done using it, otherwise the peer
-     * will leak memory. (connection will be dropped if idle for too long automatically tough)
-     */
-    public peer(peerId: string): RpcClientPeer {
-        let peer = this.peerConnections.get(peerId);
-        if (peer) return peer;
-        peer = new RpcClientPeer(this.actionClient, peerId, () => {
-            //todo, send disconnect message so the peer can release its kernel connection
-            // also implement a timeout on peer side
-            this.peerConnections.delete(peerId);
-        });
-        this.peerConnections.set(peerId, peer);
-        return peer;
-    }
-
-    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: {
-        timeout?: number,
-        dontWaitForConnection?: true,
-        typeReuseDisabled?: boolean
-    } = {}): RemoteController<T> {
-        const controller = new RpcControllerState('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path);
-
-        options = options || {};
-        if ('undefined' === typeof options.typeReuseDisabled) {
-            options.typeReuseDisabled = this.typeReuseDisabled;
+        try {
+            if (hasContext(message[0])) {
+                const contextId = getContextId(message);
+                this.selfContext.dispatch(contextId, message);
+                return;
+            }
+        } catch (error) {
+            console.log('client.onMessage error', error);
         }
 
-        return new Proxy(this, {
-            get: (target, propertyName) => {
-                return (...args: any[]) => {
-                    return this.actionClient.action(controller, propertyName as string, args, options);
-                };
-            },
-        }) as any as RemoteController<T>;
+
+        // console.log('client: received message', message.id, message.type, RpcTypes[message.type], message.routeType);
+
+        // if (message.type === RpcAction.Entity) {
+        //     this.actionClient.entityState.handle(message);
+        // } else {
+        //     const subject = this.replies.get(message.contextId,
+        //     );
+        //     if (subject) subject.next(message);
+        // }
     }
 
+    write(message: Uint8Array) {
+        this.transporter.send(message);
+    }
+
+    // public sendMessage<T>(
+    //     type: number,
+    //     body?: T,
+    //     bodyEncoder?: BodyEncoder<T>,
+    //     options: {
+    //         dontWaitForConnection?: boolean,
+    //         connectionId?: number,
+    //         timeout?: number;
+    //     } = {},
+    // ): RpcMessageSubject {
+    //     const id = this.selfContext.next();
+    //
+    //     const connectionId = options && options.connectionId ? options.connectionId : this.transporter.connectionId;
+    //     const dontWaitForConnection = !!options.dontWaitForConnection;
+    //     // const timeout = options && options.timeout ? options.timeout : 0;
+    //
+    //     const continuation = <T>(type: number, body?: T, schema?: ReceiveType<T>) => {
+    //         if (connectionId === this.transporter.connectionId) {
+    //             //send a message with the same id. Don't use sendMessage() again as this would lead to a memory leak
+    //             // and a new id generated. We want to use the same id.
+    //             // const message = createRpcMessage(id, type, body, undefined, schema);
+    //             // this.transporter.send(message);
+    //         }
+    //     };
+    //
+    //     const subject = new RpcMessageSubject(continuation, () => {
+    //         this.replies.delete(id);
+    //     });
+    //
+    //     this.replies.set(id, subject);
+    //
+    //     const progress = ClientProgress.getNext();
+    //     if (progress) {
+    //         this.transporter.reader.registerProgress(id, progress.download);
+    //     }
+    //
+    //     if (dontWaitForConnection || this.transporter.isConnected()) {
+    //         // const message = options && options.peerId
+    //         //     ? createRpcMessagePeer(id, type, this.getId(), options.peerId, body, resolvedSchema)
+    //         //     : createRpcMessage(id, type, body, undefined, resolvedSchema);
+    //         const message = {};
+    //
+    //         // this.transporter.send(message, progress?.upload);
+    //     } else {
+    //         this.connect().then(() => {
+    //             //this.getId() only now available
+    //             // const message = options && options.peerId
+    //             //     ? createRpcMessagePeer(id, type, this.getId(), options.peerId, body, resolvedSchema)
+    //             //     : createRpcMessage(id, type, body, undefined, resolvedSchema);
+    //             const message = createRpcMessage(
+    //                 MessageFlag.RouteClient,
+    //                 MessageFlag.ContextNew,
+    //                 0,
+    //                 {}
+    //             );
+    //
+    //             this.transporter.send(message, progress?.upload);
+    //         }, () => {
+    //             // we ignore errors here since created `RpcMessageSubject` receive them
+    //         });
+    //     }
+    //
+    //     return subject;
+    // }
+
+    async connect(): Promise<this> {
+        await this.transporter.connect(this.token.get());
+        return this;
+    }
+
+    async disconnect() {
+        await this.transporter.disconnect();
+    }
 }
+
+// export class RpcClient2 extends RpcBaseClient {
+//     protected registeredAsPeer?: string;
+//
+//
+//     protected peerConnections = new Map<string, RpcClientPeer>();
+//
+//     // protected async onHandshake(): Promise<Uint8Array | undefined> {
+//     //     // this.clientKernelConnection = undefined;
+//     //     // if (this.transport.supportsPeers && !this.transport.supportsPeers()) return;
+//     //     //
+//     //     // const reply = await this.sendMessage(RpcAction.ClientId, undefined, undefined, { dontWaitForConnection: true })
+//     //     //     .firstThenClose<rpcClientId>(RpcAction.ClientIdResponse);
+//     //     // return reply.id;
+//     // }
+//
+//     protected peerKernelConnection = new Map<string, RpcKernelConnection>();
+//
+//     public async ping(): Promise<void> {
+//         // await this.sendMessage(RpcAction.Ping).waitNext(RpcAction.Pong);
+//     }
+//
+//     protected onMessage(message: Uint8Array) {
+//         //todo: this is too late. We want chunks also forwarded to the correct receiver
+//     }
+//
+//     public getId(): Uint8Array {
+//         if (!this.transporter.id) throw new RpcError('Not fully connected yet');
+//         return this.transporter.id;
+//     }
+//
+//     /**
+//      * Registers a new controller for the peer's RPC kernel.
+//      * Use `registerAsPeer` first.
+//      */
+//     public registerPeerController<T>(classType: ClassType<T>, nameOrDefinition: string | ControllerDefinition<T>) {
+//         if (!this.peerKernel) throw new RpcError('Not registered as peer. Call registerAsPeer() first');
+//         this.peerKernel.registerController(classType, nameOrDefinition);
+//     }
+//
+//     /**
+//      * Registers a new controller for the server's RPC kernel.
+//      * This is when the server wants to communicate actively with the client (us).
+//      */
+//     public registerController<T>(classType: ClassType<T>, nameOrDefinition: string | ControllerDefinition<T>) {
+//         if (!this.clientKernel) this.clientKernel = new RpcKernel();
+//         this.clientKernel.registerController(classType, nameOrDefinition);
+//     }
+//
+//     public async registerAsPeer(id: string) {
+//         if (this.registeredAsPeer) {
+//             throw new RpcError('Already registered as a peer');
+//         }
+//
+//         this.peerKernel = new RpcKernel();
+//
+//         await this.sendMessage<rpcPeerRegister>(RpcAction.PeerRegister, { id }).firstThenClose(RpcAction.Ack);
+//         this.registeredAsPeer = id;
+//
+//         return {
+//             deregister: async () => {
+//                 await this.sendMessage<rpcPeerDeregister>(RpcAction.PeerDeregister, { id }).firstThenClose(RpcAction.Ack);
+//                 this.registeredAsPeer = undefined;
+//             },
+//         };
+//     }
+//
+//     /**
+//      * Creates a new peer connection, or re-uses an existing non-disconnected one.
+//      *
+//      * Make sure to call disconnect() on it once you're done using it, otherwise the peer
+//      * will leak memory. (connection will be dropped if idle for too long automatically tough)
+//      */
+//     public peer(peerId: string): RpcClientPeer {
+//         let peer = this.peerConnections.get(peerId);
+//         if (peer) return peer;
+//         peer = new RpcClientPeer(this.actionClient, peerId, () => {
+//             //todo, send disconnect message so the peer can release its kernel connection
+//             // also implement a timeout on peer side
+//             this.peerConnections.delete(peerId);
+//         });
+//         this.peerConnections.set(peerId, peer);
+//         return peer;
+//     }
+//
+//     public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: {
+//         timeout?: number,
+//         dontWaitForConnection?: true,
+//         typeReuseDisabled?: boolean
+//     } = {}): RemoteController<T> {
+//         const controller = new RpcControllerState('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path);
+//
+//         options = options || {};
+//         if ('undefined' === typeof options.typeReuseDisabled) {
+//             options.typeReuseDisabled = this.typeReuseDisabled;
+//         }
+//
+//         return new Proxy(this, {
+//             get: (target, propertyName) => {
+//                 return (...args: any[]) => {
+//                     return this.actionClient.action(controller, propertyName as string, args, options);
+//                 };
+//             },
+//         }) as any as RemoteController<T>;
+//     }
+//
+// }

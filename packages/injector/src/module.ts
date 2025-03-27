@@ -487,8 +487,10 @@ export class InjectorModule<C extends InjectorModuleConfig = any> {
         return this;
     }
 
-    getOrCreateInjector(buildContext: BuildContext): Injector {
+    getOrCreateInjector(buildContext?: BuildContext): Injector {
         if (this.injector) return this.injector;
+
+        buildContext ||= new BuildContext;
 
         //notify everyone we know to prepare providers
         if (this.parent) this.parent.getPreparedProviders(buildContext);

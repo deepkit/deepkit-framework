@@ -9,16 +9,7 @@
  */
 
 import { arrayRemoveItem, ClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import {
-    EntityPatch,
-    EntitySubject,
-    IdType,
-    IdVersionInterface,
-    rpcEntityPatch,
-    rpcEntityRemove,
-    RpcError,
-    RpcTypes,
-} from '../model.js';
+import { EntityPatch, EntitySubject, IdType, IdVersionInterface, RpcAction, rpcEntityPatch, rpcEntityRemove, RpcError } from '../model.js';
 import { RpcMessage } from '../protocol.js';
 import { getPartialSerializeFunction, ReflectionClass, serializer, TypeObjectLiteral } from '@deepkit/type';
 
@@ -181,7 +172,7 @@ export class EntityState {
     }
 
     public createEntitySubject(classType: ClassType, bodySchema: TypeObjectLiteral, message: RpcMessage) {
-        if (message.type !== RpcTypes.ResponseEntity) throw new RpcError('Not a response entity message');
+        if (message.type !== RpcAction.ResponseEntity) throw new RpcError('Not a response entity message');
         const item = message.parseBody<{ v: any }>(bodySchema).v;
 
         const store = this.getStore(classType);
@@ -196,7 +187,7 @@ export class EntityState {
     public handle(entityMessage: RpcMessage) {
         for (const message of entityMessage.getBodies()) {
             switch (message.type) {
-                case RpcTypes.EntityPatch: {
+                case RpcAction.EntityPatch: {
                     //todo, use specialized ClassSchema, so we get correct instance types returned. We need however first deepkit/bson patch support
                     // at the moment this happens in onPatch using jsonSerializer
                     const body = message.parseBody<rpcEntityPatch>();
@@ -205,7 +196,7 @@ export class EntityState {
                     break;
                 }
 
-                case RpcTypes.EntityRemove: {
+                case RpcAction.EntityRemove: {
                     const body = message.parseBody<rpcEntityRemove>();
                     for (const id of body.ids) {
                         const store = this.getStoreByName(body.entityName);

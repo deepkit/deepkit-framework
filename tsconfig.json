@@ -1,6 +1,15 @@
 {
+  "compilerOptions": {
+    "rewriteRelativeImportExtensions": true,
+  },
   "files": [],
   "references": [
+    {
+      "path": "packages/run/tsconfig.json"
+    },
+    {
+      "path": "packages/bench/tsconfig.json"
+    },
     {
       "path": "packages/angular-ssr/tsconfig.json"
     },

@@ -24,9 +24,13 @@
       "es2021.weakref"
     ]
   },
-  "reflection": true,
+  "reflection": [
+    "./benchmarks/*",
+    "./src/model.ts"
+  ],
   "include": [
     "src",
+    "benchmarks",
     "index.ts"
   ],
   "exclude": [

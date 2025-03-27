@@ -197,8 +197,8 @@ export function isFunction(obj: any): obj is Function {
     return false;
 }
 
-const AsyncFunction = (async () => {
-}).constructor;
+export const AsyncFunction = (async () => {
+}).constructor as { new(...args: string[]): Function };
 
 /**
  * Returns true if given obj is a async function.
@@ -526,20 +526,32 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
  * ```
  *
  * @public
+ * @reflection never
  */
-export async function asyncOperation<T>(executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>): Promise<T> {
-    try {
-        return await new Promise<T>(async (resolve, reject) => {
+export function asyncOperation<T>(executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>): Promise<T> {
+    // const error = new Error;
+    // return new Promise<T>(function asyncOperation2(resolve, reject) {
+    //     try {
+    //         executor(resolve, reject);
+    //     } catch (e) {
+    //         reject(e);
+    //     }
+    // }).catch((e) => {
+    //     mergeStack(e, error.stack || '');
+    //     return e;
+    // });
+    // try {
+        return new Promise<T>(async function asyncOperationResolve(resolve, reject) {
             try {
                 await executor(resolve, reject);
             } catch (e) {
                 reject(e);
             }
         });
-    } catch (error: any) {
-        mergeStack(error, createStack());
-        throw error;
-    }
+    // } catch (error: any) {
+    //     mergeStack(error, createStack());
+    //     throw error;
+    // }
 }
 
 /**

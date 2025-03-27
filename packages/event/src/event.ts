@@ -445,7 +445,7 @@ function buildDispatcher(entries: EventListenerContainerEntry[], eventToken: Eve
             calls.push(listener.builtFn);
         } else if (isEventListenerContainerEntryService(listener)) {
             if (!listener.builtFn) {
-                const resolve = injector.resolve(listener.module, listener.classType);
+                const resolve = injector.resolver(listener.module, listener.classType);
                 listener.builtFn = (event, injector) => resolve(injector.scope)[listener.methodName](event);
             }
 

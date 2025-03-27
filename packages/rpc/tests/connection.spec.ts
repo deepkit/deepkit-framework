@@ -14,7 +14,7 @@ test('connect', async () => {
     const client = new RpcClient({
         connect(connection: TransportClientConnection) {
             const kernelConnection = kernel.createConnection({
-                writeBinary: (buffer) => connection.readBinary(buffer),
+                writeBinary: (buffer) => connection.read(buffer),
                 close: () => {
                     connection.onClose('');
                 },
