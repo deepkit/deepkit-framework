@@ -26,7 +26,8 @@
   },
   "reflection": [
     "./benchmarks/*",
-    "./src/model.ts"
+    "./src/model.ts",
+    "./tests/action.spec.ts"
   ],
   "include": [
     "src",

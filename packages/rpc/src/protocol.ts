@@ -7,9 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
+import { getBSONDeserializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
 import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
-import { RpcAction, RpcError, rpcError } from './model.js';
 
 export interface BodyDecoder<T> {
     type: Type;
@@ -220,97 +219,23 @@ export function getContextId(buffer: Uint8Array): number {
     return readUint16LE(buffer, offset);
 }
 
-export class RpcMessage {
-    protected source?: string;
-    protected destination?: string;
-
-    constructor(
-        public flags: MessageFlag,
-        public contextId: number,
-        public type: number,
-        public action: number = 0,
-        public bodyOffset: number = 0,
-        public bodySize: number = 0,
-        public buffer?: Uint8Array,
-    ) {
-    }
-
-    get routeType(): MessageFlag.RouteClient | MessageFlag.RouteServer | MessageFlag.RouteDirect {
-        return this.flags & 0b11;
-    }
-
-    get contextType(): MessageFlag.ContextNone | MessageFlag.ContextNew | MessageFlag.ContextExisting {
-        return this.flags & 0b1100;
-    }
-
-    get actionType(): MessageFlag.TypeAction | MessageFlag.TypeAck {
-        return this.flags & 0b110000;
-    }
-
-    debug() {
-        return {
-            type: this.type,
-            typeString: RpcAction[this.type],
-            id: this.contextId,
-            date: new Date,
-            body: this.bodySize ? this.parseGenericBody() : undefined,
-        };
-    }
-
-    getBuffer(): Uint8Array {
-        if (!this.buffer) throw new RpcError('No buffer');
-        return this.buffer;
-    }
-
-    getSource(): Uint8Array {
-        if (!this.buffer) throw new RpcError('No buffer');
-        if (!isRouteFlag(this.flags, MessageFlag.RouteDirect)) throw new RpcError(`Message is not routed via RouteDirect`);
-        return this.buffer.subarray(4 + 1, 4 + 1 + 16);
-    }
-
-    getDestination(): Uint8Array {
-        if (!this.buffer) throw new RpcError('No buffer');
-        if (!isRouteFlag(this.flags, MessageFlag.RouteDirect)) throw new RpcError(`Message is not routed via RouteDirect`);
-        return this.buffer.subarray(4 + 1 + 16, 4 + 1 + 16 + 16);
-    }
-
-    getError(): Error {
-        if (!this.buffer) throw new RpcError('No buffer');
-        const error = getBSONDeserializer<rpcError>()(this.buffer, this.bodyOffset);
-        return new Error;
-        // return rpcDecodeError(error);
-    }
-
-    isError(): boolean {
-        return false;
-    }
-
-    parseGenericBody(): object {
-        if (!this.bodySize) throw new RpcError('Message has no body');
-        if (!this.buffer) throw new RpcError('No buffer');
-
-        return deserializeBSONWithoutOptimiser(this.buffer, this.bodyOffset);
-    }
-
-    parseBody<T>(type?: ReceiveType<T>): T {
-        if (!this.bodySize) throw new RpcError('Message has no body');
-        if (!this.buffer) throw new RpcError('No buffer');
-        // console.log('parseBody raw', deserializeBSONWithoutOptimiser(this.buffer, this.bodyOffset));
-        return getBSONDeserializer<T>(undefined, type)(this.buffer, this.bodyOffset);
-    }
-
-    decodeBody<T>(decoder: BodyDecoder<T>): T {
-        if (!this.bodySize) throw new RpcError('Message has no body');
-        if (!this.buffer) throw new RpcError('No buffer');
-        return decoder(this.buffer, this.bodyOffset);
-    }
-}
-
 function noop(message: Uint8Array) {
 }
 
+function createArray(): Array<(msg: Uint8Array) => void> {
+    return [
+        noop, noop, noop, noop, noop, noop, noop, noop, noop, noop,
+        noop, noop, noop, noop, noop, noop, noop, noop, noop, noop,
+        noop, noop, noop, noop, noop, noop, noop, noop, noop, noop,
+        noop, noop, noop, noop, noop, noop, noop, noop, noop, noop,
+        noop, noop, noop, noop, noop, noop, noop, noop, noop, noop,
+        noop, noop, noop, noop, noop, noop, noop, noop, noop, noop,
+        noop, noop, noop, noop, noop, noop, noop, noop, noop, noop,
+    ];
+}
+
 export class ContextDispatcher {
-    private contexts = new Array<(msg: Uint8Array) => void>(200).fill(noop);
+    private contexts = createArray();
     private freeSlots: number[] = []; // Stack for free slots
     private currentSlot = 1;
 
@@ -321,7 +246,7 @@ export class ContextDispatcher {
     create(cb: (message: Uint8Array) => void): number {
         const context = this.freeSlots.pop() || this.currentSlot++;
         if (context >= this.contexts.length) {
-            this.contexts.push(...new Array(2000).fill(noop));
+            this.contexts.push(...createArray());
         }
         this.contexts[context] = cb;
         return context;

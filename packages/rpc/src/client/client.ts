@@ -10,12 +10,12 @@
 
 import { asyncOperation, CustomError, formatError, sleep } from '@deepkit/core';
 import { BehaviorSubject, Subject } from 'rxjs';
-import { RpcError, RpcStats } from '../model.js';
-import { BodyEncoder, ContextDispatcher, getContextId, hasContext, isRouteFlag, MessageFlag, setRouteFlag } from '../protocol.js';
+import { ControllerDefinition, RpcError, RpcStats } from '../model.js';
+import { ContextDispatcher, getContextId, hasContext, isRouteFlag, MessageFlag, setRouteFlag } from '../protocol.js';
 import { RpcKernel, RpcKernelConnection } from '../server/kernel.js';
 import { SingleProgress } from '../progress.js';
-import { RpcMessageSubject } from './message-subject.js';
 import { TransportClientConnection, TransportConnection, TransportOptions } from '../transport.js';
+import { RpcActionClient, RpcControllerState } from './action.js';
 
 export class OfflineError extends CustomError {
 }
@@ -38,16 +38,18 @@ export interface ClientTransportAdapter {
 export interface WritableClient {
     clientStats: RpcStats;
 
-    sendMessage<T>(
-        type: number,
-        body?: T,
-        bodyEncoder?: BodyEncoder<T>,
-        options?: {
-            dontWaitForConnection?: boolean,
-            connectionId?: number,
-            timeout?: number
-        },
-    ): RpcMessageSubject;
+    write(message: Uint8Array): void;
+
+    // sendMessage<T>(
+    //     type: number,
+    //     body?: T,
+    //     bodyEncoder?: BodyEncoder<T>,
+    //     options?: {
+    //         dontWaitForConnection?: boolean,
+    //         connectionId?: number,
+    //         timeout?: number
+    //     },
+    // ): RpcMessageSubject;
 }
 
 export class RpcClientToken {
@@ -316,8 +318,7 @@ export class RpcClientTransporter {
 //     }
 // }
 
-
-export class RpcClient {
+export class RpcClient implements WritableClient {
     public clientStats: RpcStats = new RpcStats;
 
     public readonly token = new RpcClientToken(undefined);
@@ -330,7 +331,7 @@ export class RpcClient {
     selfContext = new ContextDispatcher();
     protected remoteContext = new ContextDispatcher();
 
-    // public actionClient = new RpcActionClient(this, this.selfContext);
+    public actionClient = new RpcActionClient(this, this.selfContext);
 
     /**
      * For server->client (us) communication.
@@ -580,6 +581,28 @@ export class RpcClient {
     //
     //     return subject;
     // }
+
+    public controller<T>(nameOrDefinition: string | ControllerDefinition<T>, options: {
+        timeout?: number,
+        dontWaitForConnection?: true,
+        typeReuseDisabled?: boolean
+    } = {}): RemoteController<T> {
+        const controller = new RpcControllerState('string' === typeof nameOrDefinition ? nameOrDefinition : nameOrDefinition.path);
+
+        options = options || {};
+        if ('undefined' === typeof options.typeReuseDisabled) {
+            options.typeReuseDisabled = this.typeReuseDisabled;
+        }
+
+        return new Proxy(this, {
+            get: (target, propertyName) => {
+                return (...args: any[]) => {
+                    return this.actionClient.action(controller, propertyName as string, args, options);
+                };
+            },
+        }) as any as RemoteController<T>;
+    }
+
 
     async connect(): Promise<this> {
         await this.transporter.connect(this.token.get());

@@ -1,5 +1,5 @@
 import { ContextDispatcher } from '../src/protocol.js';
-import { add, run } from '@deepkit/bench';
+import { benchmark, run } from '@deepkit/bench';
 
 const message = new Uint8Array([1, 2, 3]);
 
@@ -64,10 +64,10 @@ function benchmarkSimple(dispatcher: ContextDispatcher) {
     };
 }
 
-add('BaseLine realistic', benchmarkReal(new BaseLine));
-add('ContextDispatcher realistic', benchmarkReal(new ContextDispatcher));
-add('BaseLine simple', benchmarkSimple(new ContextDispatcher));
-add('ContextDispatcher simple', benchmarkSimple(new ContextDispatcher));
-add('baseline', () => undefined);
+benchmark('BaseLine realistic', benchmarkReal(new BaseLine));
+benchmark('ContextDispatcher realistic', benchmarkReal(new ContextDispatcher));
+benchmark('BaseLine simple', benchmarkSimple(new ContextDispatcher));
+benchmark('ContextDispatcher simple', benchmarkSimple(new ContextDispatcher));
+benchmark('baseline', () => undefined);
 
 run();

@@ -40,6 +40,7 @@ import {
 } from '@deepkit/type';
 import { seekElementSize } from './continuation.js';
 import { BSONType, digitByteSize, isSerializable } from './utils.js';
+import { BaseParser } from './bson-parser.js';
 
 function getNameComparator(name: string): string {
     //todo: support utf8 names
@@ -74,55 +75,49 @@ export function deserializeAny(type: Type, state: TemplateState) {
     `);
 }
 
-export function deserializeNumber(type: Type, state: TemplateState) {
-    const readBigInt = type.kind === ReflectionKind.bigint ? `state.parser.parseBinaryBigInt()` : `Number(state.parser.parseBinaryBigInt())`;
+const numberParsers = createParserLookup(() => 0, [
+    [BSONType.INT, parser => parser.parseInt()],
+    [BSONType.NUMBER, parser => parser.parseNumber()],
+    [BSONType.LONG, parser => parser.parseLong()],
+    [BSONType.TIMESTAMP, parser => parser.parseLong()],
+    [BSONType.BOOLEAN, parser => parser.parseBoolean() ? 1 : 0],
+    [BSONType.BINARY, parser => Number(parser.parseBinaryBigInt())],
+    [BSONType.STRING, parser => Number(parser.parseString())],
+]);
 
+export function deserializeNumber(type: Type, state: TemplateState) {
+    state.setContext({ numberParsers });
     state.addCode(`
-        if (state.elementType === ${BSONType.INT}) {
-            ${state.setter} = state.parser.parseInt();
-        } else if (state.elementType === ${BSONType.NULL} || state.elementType === ${BSONType.UNDEFINED}) {
-            ${state.setter} = 0;
-        } else if (state.elementType === ${BSONType.NUMBER}) {
-            ${state.setter} = state.parser.parseNumber();
-        } else if (state.elementType === ${BSONType.LONG} || state.elementType === ${BSONType.TIMESTAMP}) {
-            ${state.setter} = state.parser.parseLong();
-        } else if (state.elementType === ${BSONType.BOOLEAN}) {
-            ${state.setter} = state.parser.parseBoolean() ? 1 : 0;
-        } else if (state.elementType === ${BSONType.BINARY}) {
-            ${state.setter} = ${readBigInt};
-        } else if (state.elementType === ${BSONType.STRING}) {
-            ${state.setter} = Number(state.parser.parseString());
-            if (isNaN(${state.setter})) {
-                ${throwInvalidBsonType(type, state)}
-            }
-        } else {
+        ${state.setter} = numberParsers[state.elementType](state.parser);
+        if (isNaN(${state.setter})) {
             ${throwInvalidBsonType(type, state)}
         }
     `);
 }
 
+const bigIntParsers = createParserLookup(() => 0n, [
+    [BSONType.INT, parser => BigInt(parser.parseInt())],
+    [BSONType.NUMBER, parser => BigInt(parser.parseNumber())],
+    [BSONType.LONG, parser => BigInt(parser.parseLong())],
+    [BSONType.TIMESTAMP, parser => BigInt(parser.parseLong())],
+    [BSONType.BOOLEAN, parser => BigInt(parser.parseBoolean() ? 1 : 0)],
+    [BSONType.BINARY, parser => parser.parseBinaryBigInt()],
+    [BSONType.STRING, parser => BigInt(parser.parseString())],
+]);
+
 export function deserializeBigInt(type: Type, state: TemplateState) {
     const binaryBigInt = binaryBigIntAnnotation.getFirst(type);
-    const parseBigInt = binaryBigInt === BinaryBigIntType.signed ? 'parseSignedBinaryBigInt' : 'parseBinaryBigInt';
+
+    state.setContext({ bigIntParsers });
+    let lookup = 'bigIntParsers';
+    if (binaryBigInt === BinaryBigIntType.signed) {
+        const customLookup = bigIntParsers.slice();
+        customLookup[BSONType.BINARY] = parser => parser.parseSignedBinaryBigInt();
+        lookup = state.setVariable('lookup', customLookup);
+    }
 
     state.addCode(`
-        if (state.elementType === ${BSONType.INT}) {
-            ${state.setter} = BigInt(state.parser.parseInt());
-        } else if (state.elementType === ${BSONType.NULL} || state.elementType === ${BSONType.UNDEFINED}) {
-            ${state.setter} = 0n;
-        } else if (state.elementType === ${BSONType.NUMBER}) {
-            ${state.setter} = BigInt(state.parser.parseNumber());
-        } else if (state.elementType === ${BSONType.LONG} || state.elementType === ${BSONType.TIMESTAMP}) {
-            ${state.setter} = BigInt(state.parser.parseLong());
-        } else if (state.elementType === ${BSONType.BOOLEAN}) {
-            ${state.setter} = BigInt(state.parser.parseBoolean() ? 1 : 0);
-        } else if (state.elementType === ${BSONType.BINARY} && ${binaryBigInt} !== undefined) {
-            ${state.setter} = state.parser.${parseBigInt}();
-        } else if (state.elementType === ${BSONType.STRING}) {
-            ${state.setter} = BigInt(state.parser.parseString());
-        } else {
-            ${throwInvalidBsonType(type, state)}
-        }
+    ${state.setter} = ${lookup}[state.elementType](state.parser);
     `);
 }
 
@@ -205,21 +200,36 @@ export function deserializeUndefined(type: Type, state: TemplateState) {
     `);
 }
 
+type Parse = (parser: BaseParser) => any;
+
+function createParserLookup(defaultParse: Parse, parsers: [elementType: BSONType, fn: Parse][]): Parse[] {
+    const result = [
+        defaultParse, defaultParse, defaultParse, defaultParse, defaultParse,
+        defaultParse, defaultParse, defaultParse, defaultParse, defaultParse,
+        defaultParse, defaultParse, defaultParse, defaultParse, defaultParse,
+        defaultParse, defaultParse, defaultParse, defaultParse, defaultParse,
+    ];
+    for (const [index, parse] of parsers) {
+        result[index] = parse;
+    }
+    return result;
+}
+
+const booleanParsers = createParserLookup(() => 0, [
+    [BSONType.BOOLEAN, parser => parser.parseBoolean()],
+    [BSONType.NULL, parser => 0],
+    [BSONType.UNDEFINED, parser => 0],
+    [BSONType.INT, parser => !!parser.parseInt()],
+    [BSONType.NUMBER, parser => !!parser.parseNumber()],
+    [BSONType.LONG, parser => !!parser.parseLong()],
+    [BSONType.TIMESTAMP, parser => !!parser.parseLong()],
+    [BSONType.STRING, parser => !!Number(parser.parseString())],
+]);
+
 export function deserializeBoolean(type: Type, state: TemplateState) {
+    state.setContext({ booleanParsers });
     state.addCode(`
-        if (state.elementType === ${BSONType.BOOLEAN}) {
-            ${state.setter} = state.parser.parseBoolean();
-        } else if (state.elementType === ${BSONType.NULL} || state.elementType === ${BSONType.UNDEFINED}) {
-            ${state.setter} = false;
-        } else if (state.elementType === ${BSONType.INT}) {
-            ${state.setter} = state.parser.parseInt() ? true : false;
-        } else if (state.elementType === ${BSONType.NUMBER}) {
-            ${state.setter} = state.parser.parseNumber() ? true : false;
-        } else if (state.elementType === ${BSONType.LONG} || state.elementType === ${BSONType.TIMESTAMP}) {
-            ${state.setter} = state.parser.parseLong() ? true : false;
-        } else {
-            ${throwInvalidBsonType(type, state)}
-        }
+        ${state.setter} = booleanParsers[state.elementType](state.parser);
     `);
 }
 
@@ -538,7 +548,10 @@ export function deserializeArray(type: TypeArray, state: TemplateState) {
     state.setContext({ digitByteSize });
 
     state.addCode(`
-        if (state.elementType && state.elementType !== ${BSONType.ARRAY}) ${throwInvalidBsonType({ kind: ReflectionKind.array, type: elementType }, state)}
+        if (state.elementType && state.elementType !== ${BSONType.ARRAY}) ${throwInvalidBsonType({
+        kind: ReflectionKind.array,
+        type: elementType,
+    }, state)}
         {
             var ${result} = [];
             const end = state.parser.eatUInt32() + state.parser.offset;

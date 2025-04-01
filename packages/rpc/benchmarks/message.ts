@@ -1,5 +1,5 @@
 import { getAction, getContextId, MessageFlag, writeAction, writeContextNoRoute } from '../src/protocol.js';
-import { add, run } from '@deepkit/bench';
+import { benchmark, run } from '@deepkit/bench';
 import { RpcAction } from '../src/model.js';
 
 const message = new Uint8Array(32);
@@ -8,13 +8,13 @@ const message = new Uint8Array(32);
 //  => ok fixed by using node 23
 // const b = writeContext;
 
-add('write', () => {
+benchmark('write', () => {
     message[0] = MessageFlag.RouteClient | MessageFlag.ContextExisting | MessageFlag.TypeAction;
     writeContextNoRoute(message, 1);
     writeAction(message, RpcAction.Ping);
 });
 
-add('read', () => {
+benchmark('read', () => {
     const contextId = getContextId(message);
     const action = getAction(message);
 });

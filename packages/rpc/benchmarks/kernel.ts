@@ -1,4 +1,4 @@
-import { add, run } from '@deepkit/bench';
+import { benchmark run } from '@deepkit/bench';
 import { rpc } from '../src/decorators.js';
 import { RpcKernel } from '../src/server/kernel.js';
 import { MessageFlag, writeAction } from '../src/protocol.js';
@@ -19,7 +19,7 @@ const message = new Uint8Array(32);
 message[0] = MessageFlag.TypeAction;
 writeAction(message, 0);
 
-add('kernel createConnection', () => {
+benchmark('kernel createConnection', () => {
     const connection = kernel.createConnection({
         bufferedAmount(): number {
             return 0;
@@ -55,12 +55,12 @@ connection.feed(message);
 connection.feed(message);
 console.log('calls', calls);
 
-add('connection.feed', () => {
+benchmark('connection.feed', () => {
     connection.feed(message);
 });
 
 let i = 0;
-add('test', () => {
+benchmark('test', () => {
     i++;
 });
 

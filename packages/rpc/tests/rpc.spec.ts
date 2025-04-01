@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { DirectClient } from '../src/client/client-direct.js';
 import { rpc } from '../src/decorators.js';
-import { createRpcMessage, MessageFlag, readBinaryRpcMessage, readUint32LE } from '../src/protocol.js';
+import { readUint32LE } from '../src/protocol.js';
 import { RpcKernel } from '../src/server/kernel.js';
 import { Writer } from '@deepkit/bson';
 import { RpcKernelSecurity } from '../src/server/security.js';
@@ -24,24 +24,20 @@ test('readUint32LE', () => {
     }
 });
 
-test('flags', () => {
-
-});
-
 test('protocol basics', () => {
     interface schema {
         name: string;
     }
 
-    {
-        const message = createRpcMessage(MessageFlag.RouteClient, MessageFlag.ContextExisting, MessageFlag.TypeOther, { contextId: 1024, type: 123 });
-        const parsed = readBinaryRpcMessage(message);
-        expect(parsed.contextId).toBe(1024);
-        expect(parsed.type).toBe(123);
-        expect(parsed.routeType).toBe(MessageFlag.RouteClient);
-        expect(parsed.bodySize).toBe(0);
-        expect(() => parsed.parseBody<schema>()).toThrowError('no body');
-    }
+    // {
+    //     const message = createRpcMessage(MessageFlag.RouteClient, MessageFlag.ContextExisting, MessageFlag.TypeOther, { contextId: 1024, type: 123 });
+    //     const parsed = readBinaryRpcMessage(message);
+    //     expect(parsed.contextId).toBe(1024);
+    //     expect(parsed.type).toBe(123);
+    //     expect(parsed.routeType).toBe(MessageFlag.RouteClient);
+    //     expect(parsed.bodySize).toBe(0);
+    //     expect(() => parsed.parseBody<schema>()).toThrowError('no body');
+    // }
 
     // {
     //     const message = createRpcMessage<schema>(1024, 130, { name: 'foo' });
@@ -326,77 +322,4 @@ test('rpc peer', async () => {
 //     const lastReceivedMessage = messages[0];
 //     const body = lastReceivedMessage.parseBody<schema>();
 //     expect(body.v).toBe(bigString);
-// });
-
-// Import functions
-function encodeVarintFullSet(value: number): Uint8Array {
-    if (value < 255) return new Uint8Array([value]);
-    let remainder = value - 255;
-    const remBytes: number[] = [];
-    // Encode remainder as little-endian.
-    do {
-        remBytes.push(remainder & 0xff);
-        remainder >>>= 8;
-    } while (remainder > 0);
-    return new Uint8Array([255, ...remBytes]);
-}
-
-function decodeVarintFullSet(bytes: Uint8Array): number {
-    if (bytes[0] < 255) return bytes[0];
-    let remainder = 0;
-    let multiplier = 1;
-    for (let i = 1; i < bytes.length; i++) {
-        remainder += bytes[i] * multiplier;
-        multiplier *= 256;
-    }
-    return 255 + remainder;
-}
-
-function debugUint8Array(binary: Uint8Array) {
-    //convert to bit string
-    let bits = '';
-    for (let i = 0; i < binary.length; i++) {
-        bits += binary[i].toString(2).padStart(8, '0');
-    }
-    return bits;
-}
-
-function debugEncoding(value: number) {
-    const binary = encodeVarintFullSet(value);
-    const decoded = decodeVarintFullSet(binary);
-    console.log('Value:', value, 'Binary:', debugUint8Array(binary), 'Decoded:', decoded);
-}
-
-test('asd', () => {
-    debugEncoding(128);
-    debugEncoding(129);
-    debugEncoding(254);
-    debugEncoding(255);
-    debugEncoding(256);
-    debugEncoding(300);
-    debugEncoding(65535);
-    debugEncoding(65536);
-    debugEncoding(65537);
-});
-
-// Jest Test Suite
-// describe("Varint Full-Set Encoding Tests", () => {
-//     const testCases: [number, number[]][] = [
-//         [127, [127]],
-//         [255, [255, 0]],
-//         [300, [255, 45]],
-//         [700, [255, 190]],
-//         [65535, [255, 254]],
-//         [1000000, [255, 255, 255, 232]],
-//     ];
-//
-//     testCases.forEach(([value, expectedEncoding]) => {
-//         test(`Encoding ${value} should produce ${expectedEncoding}`, () => {
-//             expect(Array.from(encodeVarintFullSet(value))).toEqual(expectedEncoding);
-//         });
-//
-//         test(`Decoding ${expectedEncoding} should return ${value}`, () => {
-//             expect(decodeVarintFullSet(new Uint8Array(expectedEncoding))).toBe(value);
-//         });
-//     });
 // });

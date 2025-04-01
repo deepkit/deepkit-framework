@@ -17,7 +17,7 @@ import { Logger, LoggerInterface } from '@deepkit/logger';
 import { rpcClass } from '../decorators.js';
 import { TransportConnection, TransportOptions } from '../transport.js';
 import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
-import { onRpcConnectionClose } from '../events.js';
+import { onRpcConnection, onRpcConnectionClose } from '../events.js';
 import {
     actionIdSize,
     ContextDispatcher,
@@ -306,10 +306,13 @@ export class RpcKernelConnection {
             if (isTypeFlag(message[0], MessageFlag.TypeAction)) {
                 if (isContextFlag(message[0], MessageFlag.ContextNew)) {
                     const id = this.selfContext.create(noop);
+
                     // todo: execute action
                     this.actionDispatcher.dispatch(message, this.injector.scope!);
+
                     this.fastReply[0] = MessageFlag.RouteClient | MessageFlag.TypeAck | MessageFlag.ContextEnd;
                     writeContext(this.fastReply, id);
+
                     this.selfContext.release(id);
                     this.transportConnection.write(this.fastReply);
                 } else {
@@ -336,7 +339,6 @@ export class RpcKernelConnections {
 }
 
 export type OnConnectionCallback = (connection: RpcKernelConnection, injector: InjectorContext, logger: LoggerInterface) => void;
-
 
 /**
  * The kernel is responsible for parsing the message header, redirecting to peer if necessary, loading the body parser,
@@ -460,9 +462,8 @@ export class RpcKernel {
         this.connections.connections.push(connection);
         this.setConnection(connection, injector.scope);
 
-        // for (const on of this.onConnectionListeners) on(connection, injector, this.logger);
-        // this.getEventDispatcher().dispatch(onRpcConnection, { context: { connection, injector } });
+        for (const on of this.onConnectionListeners) on(connection, injector, this.logger);
+        this.getEventDispatcher().dispatch(onRpcConnection, { context: { connection, injector } });
         return connection;
-        // return {};
     }
 }

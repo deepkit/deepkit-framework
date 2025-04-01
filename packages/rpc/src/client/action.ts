@@ -30,12 +30,13 @@ import {
     rpcResponseActionType,
     WrappedV,
 } from '../model.js';
-import { ContextId, rpcDecodeError, RpcMessage } from '../protocol.js';
 import { EntityState, EntitySubjectStore } from './entity-state.js';
 import { assertType, deserializeType, ReflectionKind, Type, TypeObjectLiteral, typeOf } from '@deepkit/type';
 import { RpcMessageSubject } from './message-subject.js';
 import { ClientProgress, Progress } from '../progress.js';
 import { ProgressTracker, ProgressTrackerState } from '@deepkit/core-rxjs';
+import { ContextDispatcher } from '../protocol.js';
+import { WritableClient } from './client.js';
 
 type ControllerStateActionTypes = {
     mode: ActionMode;
@@ -452,23 +453,9 @@ export class RpcActionClient {
     });
 
     constructor(
-        protected client: any,
-        protected context: ContextId,
+        protected client: WritableClient,
+        protected context: ContextDispatcher,
     ) {
-    }
-
-    public getAction<T>(controller: RpcControllerState, method: string, options: {
-        timeout?: number,
-        dontWaitForConnection?: true,
-        typeReuseDisabled?: boolean
-    }): (...args: any[]) => any {
-
-        // connection await and load types await
-        const prepare = {};
-
-        return async () => {
-            await prepare;
-        };
     }
 
     public action<T>(controller: RpcControllerState, method: string, args: any[], options: {
@@ -479,6 +466,7 @@ export class RpcActionClient {
         const progress = ClientProgress.getNext();
 
         return asyncOperation<any>(async (resolve, reject) => {
+            // todo: I think it's slower to fetch for 10 different actions always the type, then just initially loading once all types
             const types = controller.getState(method)?.types || await this.loadActionTypes(controller, method, options);
 
             // forwarded caught progress to client sendMessage
@@ -499,25 +487,31 @@ export class RpcActionClient {
             //     this.client.registerPromise(contextId);
             //     await this.client.sendActionType(actionId);
             // }
-            //
-            // {
-            //     const contextId = this.context.next();
-            //     this.client.registerContext(contextId, {
-            //         reply: (reply: RpcMessage) => {
-            //             actionProtocol(reply, subject, state);
-            //         },
-            //         error: (error: any) => {
-            //             rejectAction(state, error);
-            //         },
-            //     });
-            //     this.client.sendAction(actionId, args);
-            //     // this.client.registerContext(contextId)
-            //     //     .onRejected(function(error) {
-            //     //         rejectAction(state, error);
-            //     //     }).onReply(function(reply: RpcMessage, subject: RpcMessageSubject) {
-            //     //     actionProtocol(reply, subject, state);
-            //     // });
-            // }
+
+            {
+                const contextId = this.context.create((message) => {
+                    //todo: how to handle connection breaks in active contextx, like we had before with onRejected
+                });
+
+                // todo we want one buffer for all sends
+                this.client.write();
+
+                // this.client.registerContext(contextId, {
+                //     reply: (reply: RpcMessage) => {
+                //         actionProtocol(reply, subject, state);
+                //     },
+                //     error: (error: any) => {
+                //         rejectAction(state, error);
+                //     },
+                // });
+                // this.client.sendAction(actionId, args);
+                // this.client.registerContext(contextId)
+                //     .onRejected(function(error) {
+                //         rejectAction(state, error);
+                //     }).onReply(function(reply: RpcMessage, subject: RpcMessageSubject) {
+                //     actionProtocol(reply, subject, state);
+                // });
+            }
 
             // this.client.sendMessage(RpcTypes.Action, {
             //     controller: controller.controller,
