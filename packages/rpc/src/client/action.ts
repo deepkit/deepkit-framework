@@ -8,6 +8,9 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+/**
+ * @reflection never
+ */
 import { asyncOperation, ClassType, toFastProperties } from '@deepkit/core';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
 import { skip } from 'rxjs/operators';
@@ -16,25 +19,24 @@ import {
     ActionMode,
     ActionObservableTypes,
     IdInterface,
+    RpcAction,
     rpcActionObservableNext,
     rpcActionObservableSubscribeId,
-    rpcActionType,
     RpcError,
     rpcResponseActionCollectionRemove,
     rpcResponseActionCollectionSort,
     rpcResponseActionObservable,
     rpcResponseActionObservableSubscriptionError,
     rpcResponseActionType,
-    RpcTypes,
     WrappedV,
 } from '../model.js';
-import { rpcDecodeError, RpcMessage } from '../protocol.js';
-import type { WritableClient } from './client.js';
 import { EntityState, EntitySubjectStore } from './entity-state.js';
 import { assertType, deserializeType, ReflectionKind, Type, TypeObjectLiteral, typeOf } from '@deepkit/type';
 import { RpcMessageSubject } from './message-subject.js';
 import { ClientProgress, Progress } from '../progress.js';
 import { ProgressTracker, ProgressTrackerState } from '@deepkit/core-rxjs';
+import { ContextDispatcher } from '../protocol.js';
+import { WritableClient } from './client.js';
 
 type ControllerStateActionTypes = {
     mode: ActionMode;
@@ -96,33 +98,33 @@ interface ActionState {
 function handleCollection(entityStore: EntitySubjectStore<any>, types: ControllerStateActionTypes, collection: Collection<any>, messages: RpcMessage[]) {
     for (const next of messages) {
         switch (next.type) {
-            case RpcTypes.ResponseActionCollectionState: {
+            case RpcAction.ResponseActionCollectionState: {
                 const state = next.parseBody<CollectionState>();
                 collection.setState(state);
                 break;
             }
 
-            case RpcTypes.ResponseActionCollectionSort: {
+            case RpcAction.ResponseActionCollectionSort: {
                 const body = next.parseBody<rpcResponseActionCollectionSort>();
                 collection.setSort(body.ids);
                 break;
             }
 
-            case RpcTypes.ResponseActionCollectionModel: {
+            case RpcAction.ResponseActionCollectionModel: {
                 if (!types.collectionQueryModel) throw new RpcError('No collectionQueryModel set');
                 collection.model.set(next.parseBody(types.collectionQueryModel));
                 break;
             }
 
-            case RpcTypes.ResponseActionCollectionUpdate:
-            case RpcTypes.ResponseActionCollectionAdd: {
+            case RpcAction.ResponseActionCollectionUpdate:
+            case RpcAction.ResponseActionCollectionAdd: {
                 if (!types.collectionSchema) continue;
                 const incomingItems = next.parseBody<WrappedV>(types.collectionSchema).v as IdInterface[];
                 const items: IdInterface[] = [];
 
                 for (const item of incomingItems) {
                     if (!entityStore.isRegistered(item.id)) entityStore.register(item);
-                    if (next.type === RpcTypes.ResponseActionCollectionUpdate) {
+                    if (next.type === RpcAction.ResponseActionCollectionUpdate) {
                         entityStore.onSet(item.id, item);
                     }
 
@@ -141,21 +143,21 @@ function handleCollection(entityStore: EntitySubjectStore<any>, types: Controlle
                     });
                 }
 
-                if (next.type === RpcTypes.ResponseActionCollectionAdd) {
+                if (next.type === RpcAction.ResponseActionCollectionAdd) {
                     collection.add(items);
-                } else if (next.type === RpcTypes.ResponseActionCollectionUpdate) {
+                } else if (next.type === RpcAction.ResponseActionCollectionUpdate) {
                     collection.update(items);
                 }
                 break;
             }
 
-            case RpcTypes.ResponseActionCollectionRemove: {
+            case RpcAction.ResponseActionCollectionRemove: {
                 const ids = next.parseBody<rpcResponseActionCollectionRemove>().ids;
                 collection.remove(ids); //this unsubscribes its EntitySubject as well
                 break;
             }
 
-            case RpcTypes.ResponseActionCollectionSet: {
+            case RpcAction.ResponseActionCollectionSet: {
                 if (!types.collectionSchema) continue;
                 const incomingItems = next.parseBody<WrappedV>(types.collectionSchema).v as IdInterface[];
                 const items: IdInterface[] = [];
@@ -213,7 +215,7 @@ function actionProtocolError(reply: RpcMessage, subject: RpcMessageSubject, stat
 
 function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state: ActionState) {
     switch (reply.type) {
-        case RpcTypes.ResponseActionSimple: {
+        case RpcAction.ResponseActionSimple: {
             try {
                 const result = reply.parseBody<WrappedV>(state.types.resultSchema);
                 resolveAction(state, result.v);
@@ -226,13 +228,13 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
         }
 
 
-        case RpcTypes.ResponseEntity: {
+        case RpcAction.ResponseEntity: {
             if (!state.types.classType || !state.entityState) throw new RpcError('No classType returned by the rpc action');
             resolveAction(state, state.entityState.createEntitySubject(state.types.classType, state.types.resultSchema, reply));
             break;
         }
 
-        case RpcTypes.ResponseActionCollectionChange: {
+        case RpcAction.ResponseActionCollectionChange: {
             if (!state.collectionRef) throw new RpcError('No collection loaded yet');
             if (!state.types.collectionSchema) throw new RpcError('no collectionSchema loaded yet');
             if (!state.collectionEntityStore) throw new RpcError('no collectionEntityStore loaded yet');
@@ -245,7 +247,7 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
             break;
         }
 
-        case RpcTypes.ResponseActionCollection: {
+        case RpcAction.ResponseActionCollection: {
             if (!state.types.classType) throw new RpcError('No classType returned by the rpc action');
             if (!state.types.collectionQueryModel) throw new RpcError('No collectionQueryModel returned by the rpc action');
             if (!state.entityState) throw new RpcError('No entityState set');
@@ -254,11 +256,11 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
             state.collectionEntityStore = state.entityState.getStore(state.types.classType);
 
             collection.model.change.subscribe(() => {
-                subject.send(RpcTypes.ActionCollectionModel, collection!.model, state.types.collectionQueryModel);
+                subject.send(RpcAction.ActionCollectionModel, collection!.model, state.types.collectionQueryModel);
             });
 
             collection.addTeardown(() => {
-                subject.send(RpcTypes.ActionCollectionUnsubscribe);
+                subject.send(RpcAction.ActionCollectionUnsubscribe);
                 subject.release();
             });
 
@@ -268,7 +270,7 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
             break;
         }
 
-        case RpcTypes.ResponseActionObservableError: {
+        case RpcAction.ResponseActionObservableError: {
             const body = reply.parseBody<rpcResponseActionObservableSubscriptionError>();
             const error = rpcDecodeError(body);
             if (state.observableRef) {
@@ -281,7 +283,7 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
             break;
         }
 
-        case RpcTypes.ResponseActionObservableComplete: {
+        case RpcAction.ResponseActionObservableComplete: {
             const body = reply.parseBody<rpcActionObservableSubscribeId>();
 
             if (state.observableRef) {
@@ -294,7 +296,7 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
             break;
         }
 
-        case RpcTypes.ResponseActionObservableNext: {
+        case RpcAction.ResponseActionObservableNext: {
             if (!state.types.observableNextSchema) throw new RpcError('No observableNextSchema set');
 
             const body = reply.parseBody<rpcActionObservableNext>(state.types.observableNextSchema);
@@ -313,7 +315,7 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
             break;
         }
 
-        case RpcTypes.ResponseActionObservable: {
+        case RpcAction.ResponseActionObservable: {
             if (state.observableRef) break;
             const body = reply.parseBody<rpcResponseActionObservable>();
 
@@ -325,18 +327,18 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
                 const observable = new Observable((observer) => {
                     const id = state.subscriberId!++;
                     state.subscribers![id] = observer;
-                    subject.send<rpcActionObservableSubscribeId>(RpcTypes.ActionObservableSubscribe, { id });
+                    subject.send<rpcActionObservableSubscribeId>(RpcAction.ActionObservableSubscribe, { id });
 
                     return {
                         unsubscribe: () => {
                             delete state.subscribers![id];
-                            subject.send<rpcActionObservableSubscribeId>(RpcTypes.ActionObservableUnsubscribe, { id });
+                            subject.send<rpcActionObservableSubscribeId>(RpcAction.ActionObservableUnsubscribe, { id });
                         },
                     };
                 });
                 state.observableRef = new WeakRef(observable);
                 state.finalizer.register(observable, () => {
-                    subject.send(RpcTypes.ActionObservableDisconnect);
+                    subject.send(RpcAction.ActionObservableDisconnect);
                     subject.release();
                 });
                 resolveAction(state, observable);
@@ -351,7 +353,7 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
                     Subject.prototype.unsubscribe.call(this);
                     if (!freed) {
                         freed = true;
-                        subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
+                        subject.send(RpcAction.ActionObservableSubjectUnsubscribe);
                         state.finalizer.unregister(this);
                         subject.release();
                     }
@@ -361,7 +363,7 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
                     Subject.prototype.complete.call(this);
                     if (!freed) {
                         freed = true;
-                        subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
+                        subject.send(RpcAction.ActionObservableSubjectUnsubscribe);
                         state.finalizer.unregister(this);
                         subject.release();
                     }
@@ -373,7 +375,7 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
                 }
 
                 state.finalizer.register(observableSubject, () => {
-                    subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
+                    subject.send(RpcAction.ActionObservableSubjectUnsubscribe);
                     freed = true;
                     subject.release();
                 });
@@ -391,7 +393,7 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
                     Subject.prototype.unsubscribe.call(this);
                     if (!freed) {
                         freed = true;
-                        subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
+                        subject.send(RpcAction.ActionObservableSubjectUnsubscribe);
                         state.finalizer.unregister(this);
                     }
                 };
@@ -400,7 +402,7 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
                     Subject.prototype.complete.call(this);
                     if (!freed) {
                         freed = true;
-                        subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
+                        subject.send(RpcAction.ActionObservableSubjectUnsubscribe);
                         state.finalizer.unregister(this);
                     }
                 };
@@ -410,13 +412,13 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
                     // this is important to handle the stop signal.
                     const oldChanged = observableSubject.changed;
                     observableSubject.changed = function(this: ProgressTracker) {
-                        subject.send(RpcTypes.ActionObservableProgressNext, this.value, typeOf<ProgressTrackerState[]>());
+                        subject.send(RpcAction.ActionObservableProgressNext, this.value, typeOf<ProgressTrackerState[]>());
                         return oldChanged.apply(this);
                     };
                 }
 
                 state.finalizer.register(observableSubject, () => {
-                    subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
+                    subject.send(RpcAction.ActionObservableSubjectUnsubscribe);
                     subject.release();
                 });
                 resolveAction(state, observableSubject);
@@ -424,12 +426,12 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
 
             break;
         }
-        case RpcTypes.Error: {
+        case RpcAction.Error: {
             actionProtocolError(reply, subject, state);
             break;
         }
         default: {
-            console.log(`Unexpected type received ${reply.type} ${RpcTypes[reply.type]}`);
+            console.log(`Unexpected type received ${reply.type} ${RpcAction[reply.type]}`);
         }
     }
 }
@@ -438,7 +440,7 @@ function actionProtocol(reply: RpcMessage, subject: RpcMessageSubject, state: Ac
     try {
         actionProtocolFull(reply, subject, state);
     } catch (error) {
-        console.warn('reply error', reply.id, RpcTypes[reply.type], error);
+        console.warn('reply error', reply.contextId, RpcAction[reply.type], error);
         rejectAction(state, `Reply failed for ${state.action}: ${error}`);
     }
 }
@@ -450,7 +452,10 @@ export class RpcActionClient {
         heldValue();
     });
 
-    constructor(protected client: WritableClient) {
+    constructor(
+        protected client: WritableClient,
+        protected context: ContextDispatcher,
+    ) {
     }
 
     public action<T>(controller: RpcControllerState, method: string, args: any[], options: {
@@ -461,6 +466,7 @@ export class RpcActionClient {
         const progress = ClientProgress.getNext();
 
         return asyncOperation<any>(async (resolve, reject) => {
+            // todo: I think it's slower to fetch for 10 different actions always the type, then just initially loading once all types
             const types = controller.getState(method)?.types || await this.loadActionTypes(controller, method, options);
 
             // forwarded caught progress to client sendMessage
@@ -476,19 +482,50 @@ export class RpcActionClient {
                 progress,
             };
 
-            this.client.sendMessage(RpcTypes.Action, {
-                controller: controller.controller,
-                method: method,
-                args,
-            }, types.callSchema, {
-                peerId: controller.peerId,
-                dontWaitForConnection: options.dontWaitForConnection,
-                timeout: options.timeout,
-            }).onRejected((error) => {
-                rejectAction(state, error);
-            }).onReply(function(reply: RpcMessage, subject: RpcMessageSubject) {
-                actionProtocol(reply, subject, state);
-            });
+            // {
+            //     const contextId = this.context.next();
+            //     this.client.registerPromise(contextId);
+            //     await this.client.sendActionType(actionId);
+            // }
+
+            {
+                const contextId = this.context.create((message) => {
+                    //todo: how to handle connection breaks in active contextx, like we had before with onRejected
+                });
+
+                // todo we want one buffer for all sends
+                this.client.write();
+
+                // this.client.registerContext(contextId, {
+                //     reply: (reply: RpcMessage) => {
+                //         actionProtocol(reply, subject, state);
+                //     },
+                //     error: (error: any) => {
+                //         rejectAction(state, error);
+                //     },
+                // });
+                // this.client.sendAction(actionId, args);
+                // this.client.registerContext(contextId)
+                //     .onRejected(function(error) {
+                //         rejectAction(state, error);
+                //     }).onReply(function(reply: RpcMessage, subject: RpcMessageSubject) {
+                //     actionProtocol(reply, subject, state);
+                // });
+            }
+
+            // this.client.sendMessage(RpcTypes.Action, {
+            //     controller: controller.controller,
+            //     method: method,
+            //     args,
+            // }, types.callSchema, {
+            //     peerId: controller.peerId,
+            //     dontWaitForConnection: options.dontWaitForConnection,
+            //     timeout: options.timeout,
+            // }).onRejected((error) => {
+            //     rejectAction(state, error);
+            // }).onReply(function(reply: RpcMessage, subject: RpcMessageSubject) {
+            //     actionProtocol(reply, subject, state);
+            // });
         });
     }
 
@@ -508,7 +545,8 @@ export class RpcActionClient {
 
         state.promise = asyncOperation<ControllerStateActionTypes>(async (resolve, reject) => {
             try {
-                const a = this.client.sendMessage<rpcActionType>(RpcTypes.ActionType, {
+                //<rpcActionType>
+                const a = this.client.sendMessage(RpcAction.Types, {
                     controller: controller.controller,
                     method: method,
                     disableTypeReuse: typeReuseDisabled,
@@ -518,7 +556,8 @@ export class RpcActionClient {
                     timeout: options.timeout,
                 }).onRejected(reject);
 
-                const parsed = await a.firstThenClose<rpcResponseActionType>(RpcTypes.ResponseActionType, typeOf<rpcResponseActionType>());
+                //<rpcResponseActionType>
+                const parsed = await a.firstThenClose(RpcAction.ResponseActionType, typeOf<rpcResponseActionType>());
 
                 const returnType = deserializeType(parsed.type, { disableReuse: typeReuseDisabled });
 

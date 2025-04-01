@@ -34,6 +34,7 @@
     "dot-prop": "^5.1.1"
   },
   "devDependencies": {
+    "@deepkit/bench": "^1.0.3",
     "@deepkit/bson": "^1.0.3",
     "@deepkit/core": "^1.0.3",
     "@deepkit/core-rxjs": "^1.0.3",

@@ -20,14 +20,14 @@ export interface RpcHttpResponse {
 
 export class HttpRpcMessage extends RpcMessage {
     constructor(
-        public id: number,
+        public contextId: number,
         public composite: boolean,
         public type: number,
         public routeType: RpcMessageRouteType,
         public headers: RpcHttpRequest['headers'],
         public json?: any,
     ) {
-        super(id, composite, type, routeType);
+        super(contextId, composite, type, routeType);
     }
 
     getJson(): any {
@@ -78,7 +78,7 @@ export class HttpRpcMessage extends RpcMessage {
 
         const result: RpcMessage[] = [];
         for (const item of json) {
-            result.push(new HttpRpcMessage(this.id, false, item.type, this.routeType, this.headers, item.body));
+            result.push(new HttpRpcMessage(this.contextId, false, item.type, this.routeType, this.headers, item.body));
         }
 
         return result;

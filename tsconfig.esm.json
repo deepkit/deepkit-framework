@@ -2,6 +2,12 @@
   "files": [],
   "references": [
     {
+      "path": "packages/run/tsconfig.esm.json"
+    },
+    {
+      "path": "packages/bench/tsconfig.esm.json"
+    },
+    {
       "path": "packages/angular-ssr/tsconfig.esm.json"
     },
     {

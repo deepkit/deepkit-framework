@@ -159,4 +159,9 @@ export class FrameworkConfig {
      * @see HttpConfig
      */
     http: HttpConfig = new HttpConfig;
+
+    /**
+     * If true logs all routes and rpc controllers on startup.
+     */
+    logStartup: boolean = true;
 }

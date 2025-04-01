@@ -27,83 +27,44 @@ export interface IdVersionInterface extends IdInterface {
     version: number;
 }
 
-type Writeable<T> = { -readonly [P in keyof T]: T[P] };
-
 export type NumericKeys<T> = {
     [K in keyof T]: T[K] extends number ? K : never;
 }[keyof T];
 
 export class RpcTransportStats {
-    readonly incomingBytes: number = 0;
-    readonly outgoingBytes: number = 0;
+    incomingBytes: number = 0;
+    outgoingBytes: number = 0;
 
     /**
      * Amount of incoming and outgoing messages.
      */
-    public readonly incoming: number = 0;
-    public readonly outgoing: number = 0;
-
-    public increase(name: NumericKeys<RpcTransportStats>, count: number) {
-        (this as Writeable<this>)[name] += count;
-    }
+    public incoming: number = 0;
+    public outgoing: number = 0;
 }
 
 export class ActionStats {
-    readonly observables: number = 0;
-    readonly subjects: number = 0;
-    readonly behaviorSubjects: number = 0;
-    readonly progressTrackers: number = 0;
-    readonly subscriptions: number = 0;
-
-    public increase(name: NumericKeys<ActionStats>, count: number) {
-        (this as Writeable<this>)[name] += count;
-    }
-}
-
-export class ForwardedActionStats extends ActionStats {
-    constructor(protected forward: ActionStats) {
-        super();
-    }
-
-    public increase(name: NumericKeys<ActionStats>, count: number) {
-        this.forward.increase(name, count);
-        super.increase(name, count);
-    }
+    observables: number = 0;
+    subjects: number = 0;
+    behaviorSubjects: number = 0;
+    progressTrackers: number = 0;
+    subscriptions: number = 0;
 }
 
 export class RpcStats extends RpcTransportStats {
-    public readonly connections: number = 0;
-    public readonly totalConnections: number = 0;
+    public connections: number = 0;
+    public totalConnections: number = 0;
 
     /**
      * How many actions have been executed.
      */
-    public readonly actions: number = 0;
+    public actions: number = 0;
 
-    public readonly active: ActionStats = new ActionStats;
-    public readonly total: ActionStats = new ActionStats;
-
-    public increase(name: NumericKeys<RpcStats>, count: number) {
-        (this as Writeable<this>)[name] += count;
-    }
-}
-
-export class ForwardedRpcStats extends RpcStats {
-    public readonly active = new ForwardedActionStats(this.forward.active);
-    public readonly total = new ForwardedActionStats(this.forward.total);
-
-    constructor(protected forward: RpcStats) {
-        super();
-    }
-
-    public increase(name: NumericKeys<RpcStats>, count: number) {
-        this.forward.increase(name, count);
-        super.increase(name, count);
-    }
+    public active: ActionStats = new ActionStats;
+    public total: ActionStats = new ActionStats;
 }
 
 export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
-    public readonly appendSubject = new Subject<T>();
+    public appendSubject = new Subject<T>();
     protected nextChange?: Subject<void>;
 
     protected nextOnAppend = false;
@@ -237,8 +198,8 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
     /**
      * Patches are in class format.
      */
-    public readonly patches = new Subject<EntityPatch>();
-    public readonly delete = new Subject<boolean>();
+    public patches = new Subject<EntityPatch>();
+    public delete = new Subject<boolean>();
 
     [IsEntitySubject] = true;
 
@@ -294,26 +255,18 @@ export function ControllerSymbol<T>(path: string, entities: ClassType[] = []): C
 
 @entity.name('@error:json')
 export class JSONError {
-    constructor(public readonly json: any) {
+    constructor(public json: any) {
     }
 }
 
-export enum RpcTypes {
-    Ack,
-    Error,
-
-    //A batched chunk. Used when a single message exceeds a certain size. It's split up in multiple packages, allowing to track progress,
-    //cancel, and safe memory. Allows to send shorter messages between to not block the connection. Both ways.
-    Chunk,
-    ChunkAck,
-
+export enum RpcAction {
     Ping,
     Pong,
 
     //client -> server
     Authenticate,
-    ActionType,
-    Action, //T is the parameter type [t.string, t.number, ...] (typed arrays not supported yet)
+    Types,
+    Execute,
 
     PeerRegister,
     PeerDeregister,

@@ -8,13 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    BSON_BINARY_SUBTYPE_BYTE_ARRAY,
-    BSON_BINARY_SUBTYPE_UUID,
-    BSONType,
-    digitByteSize,
-    TWO_PWR_32_DBL_N,
-} from './utils.js';
+import { BSON_BINARY_SUBTYPE_BYTE_ARRAY, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, TWO_PWR_32_DBL_N } from './utils.js';
 import { decodeUTF8 } from './strings.js';
 import { nodeBufferToArrayBuffer, ReflectionKind, SerializationError, Type } from '@deepkit/type';
 import { hexTable } from './model.js';
@@ -32,16 +26,53 @@ export function decodeUTF8Parser(parser: BaseParser, size: number = parser.size 
     return s;
 }
 
+export function readUint32LE(buffer: Uint8Array, offset: number): number {
+    return (
+        buffer[offset] |
+        (buffer[offset + 1] << 8) |
+        (buffer[offset + 2] << 16) |
+        (buffer[offset + 3] << 24) >>> 0
+    );
+}
+
+export function readInt32LE(buffer: Uint8Array, offset: number): number {
+    return (
+        buffer[offset] |
+        (buffer[offset + 1] << 8) |
+        (buffer[offset + 2] << 16) |
+        (buffer[offset + 3] << 24)
+    );
+}
+
+const float64Buffer = new ArrayBuffer(8);
+const u32 = new Uint32Array(float64Buffer);
+const f64 = new Float64Array(float64Buffer);
+
+export function readFloat64LE(buffer: Uint8Array, offset: number): number {
+    u32[0] =
+        buffer[offset] |
+        (buffer[offset + 1] << 8) |
+        (buffer[offset + 2] << 16) |
+        (buffer[offset + 3] << 24);
+    u32[1] =
+        buffer[offset + 4] |
+        (buffer[offset + 5] << 8) |
+        (buffer[offset + 6] << 16) |
+        (buffer[offset + 7] << 24);
+    return f64[0];
+}
+
 /**
  * This is the (slowest) base parser which parses all property names as utf8.
  */
 export class BaseParser {
     public size: number;
-    public dataView: DataView;
 
-    constructor(public buffer: Uint8Array, public offset: number = 0) {
+    constructor(
+        public buffer: Uint8Array,
+        public offset: number = 0,
+    ) {
         this.size = buffer.byteLength;
-        this.dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     }
 
     peek(elementType: number, type?: Type) {
@@ -271,7 +302,7 @@ export class BaseParser {
     }
 
     peekUInt32(): number {
-        return this.dataView.getUint32(this.offset, true);
+        return readUint32LE(this.buffer, this.offset);
     }
 
     /**
@@ -304,18 +335,20 @@ export class BaseParser {
     }
 
     eatInt32(): number {
+        const value = readInt32LE(this.buffer, this.offset);
         this.offset += 4;
-        return this.dataView.getInt32(this.offset - 4, true);
+        return value;
     }
 
     eatUInt32(): number {
+        const value = readUint32LE(this.buffer, this.offset);
         this.offset += 4;
-        return this.dataView.getUint32(this.offset - 4, true);
+        return value;
     }
 
     eatDouble(): number {
+        const value = readFloat64LE(this.buffer, this.offset);
         this.offset += 8;
-        const value = this.dataView.getFloat64(this.offset - 8, true);
         if (isNaN(value)) return 0;
         return value;
     }

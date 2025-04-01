@@ -10,7 +10,7 @@
 
 import { asyncOperation, CustomError } from '@deepkit/core';
 import { ReceiveType } from '@deepkit/type';
-import { RpcError, RpcTypes } from '../model.js';
+import { RpcAction, RpcError } from '../model.js';
 import type { RpcMessage } from '../protocol.js';
 
 export class UnexpectedMessageType extends CustomError {
@@ -98,7 +98,7 @@ export class RpcMessageSubject {
                 this.release();
                 this.rejected = undefined;
 
-                if (next.type === RpcTypes.Ack) {
+                if (next.type === RpcAction.Ack) {
                     return resolve(undefined);
                 }
 

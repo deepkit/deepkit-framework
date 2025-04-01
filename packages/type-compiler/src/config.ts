@@ -304,7 +304,8 @@ export function getConfigResolver(
 
     const resolvedConfig: ResolvedConfig = {
         path: tsConfigPath,
-        compilerOptions: config.compilerOptions,
+        // we want to maintain options passed from tsc API (transpile, Program)
+        compilerOptions: Object.assign(config.compilerOptions, compilerOptions),
         exclude: config.exclude,
         reflection: config.reflection,
         mergeStrategy: config.mergeStrategy || defaultMergeStrategy,
