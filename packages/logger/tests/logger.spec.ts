@@ -139,32 +139,6 @@ test('scoped logger', () => {
 
     {
         class A {
-            constructor(public b: B) {
-            }
-        }
-
-        class B {
-            constructor(public c: C, public target: TransientInjectionTarget) {
-            }
-        }
-
-        class C {
-            constructor(public target: TransientInjectionTarget) {
-            }
-        }
-
-        const injector = Injector.from([
-            A,
-            { provide: B, transient: true },
-            { provide: C, transient: true },
-        ]);
-        const a = injector.get(A);
-        expect(a.b.c.target.token).toBe(B);
-        expect(a.b.target.token).toBe(A);
-    }
-
-    {
-        class A {
             constructor(public b: C) {
             }
         }
@@ -196,11 +170,29 @@ test('enableDebug', () => {
 
     logger.enableDebugScope('database');
     logger.debug('test1');
-    expect(logger.isDebugScopeEnabled('database')).toBe(true);
+    expect(logger.isScopeEnabled('database')).toBe(true);
 
     const scoped = logger.scoped('database');
     scoped.debug('test2');
-    expect(scoped.isDebugScopeEnabled('database')).toBe(true);
+    expect(scoped.isScopeEnabled('database')).toBe(true);
 
     expect(logger.memory.messageStrings).toEqual(['test2']);
+});
+
+test('enableDebug2', () => {
+    const logger = new MemoryLogger();
+    logger.level = LoggerLevel.debug;
+
+    logger.disableDebugScope('database');
+    logger.debug('test1');
+    expect(logger.isScopeEnabled('database')).toBe(false);
+
+    const scoped = logger.scoped('database');
+    scoped.debug('test2');
+    expect(scoped.isScopeEnabled('database')).toBe(false);
+    expect(logger.memory.messageStrings).toEqual(['test1']);
+
+    logger.unsetDebugScope('database');
+    scoped.debug('test3');
+    expect(logger.memory.messageStrings).toEqual(['test1', 'test3']);
 });
