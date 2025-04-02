@@ -503,18 +503,13 @@ export class Filesystem {
      * filesystem.writeFile('uploads', uploadedFile, {name: user.id});
      * ```
      */
-    async writeFile(directory: string, file: { path: string }, options: { name?: string, visibility?: string } = {}): Promise<string> {
+    async writeFile(directory: string, file: { path: string }, options: { name?: string, visibility?: FileVisibility } = {}): Promise<string> {
         const path = (options.name ? options.name : pathBasename(file.path));
         const content = await this.readLocalFile(file.path);
-        const extension = pathExtension(path);
-        if (!extension) {
-
-        }
-
-
         if (!content) throw new FilesystemError(`Can not write file, since ${file.path} not found`);
+
         const targetPath = resolveFilesystemPath([directory, path]);
-        await this.write(targetPath, content);
+        await this.write(targetPath, content, options.visibility);
         return targetPath;
     }
 
