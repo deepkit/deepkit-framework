@@ -25,6 +25,7 @@
     "to-fast-properties": "^3.0.1"
   },
   "devDependencies": {
+    "@deepkit/bench": "^1.0.3",
     "@types/dot-prop": "~4.2.0"
   },
   "scripts": {

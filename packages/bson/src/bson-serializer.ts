@@ -8,15 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    CompilerContext,
-    createBuffer,
-    hasProperty,
-    isArray,
-    isIterable,
-    isObject,
-    toFastProperties,
-} from '@deepkit/core';
+import { CompilerContext, createBuffer, hasProperty, isArray, isIterable, isObject, toFastProperties } from '@deepkit/core';
 import {
     binaryBigIntAnnotation,
     BinaryBigIntType,
@@ -100,14 +92,7 @@ import {
     deserializeUnion,
 } from './bson-deserializer-templates.js';
 import { seekElementSize } from './continuation.js';
-import {
-    BSON_BINARY_SUBTYPE_DEFAULT,
-    BSON_BINARY_SUBTYPE_UUID,
-    BSONType,
-    digitByteSize,
-    isSerializable,
-    TWO_PWR_32_DBL_N,
-} from './utils.js';
+import { BSON_BINARY_SUBTYPE_DEFAULT, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, isSerializable, TWO_PWR_32_DBL_N } from './utils.js';
 
 // BSON MAX VALUES
 const BSON_INT32_MAX = 0x7fffffff;
@@ -924,7 +909,7 @@ function sizerNumber(type: Type, state: TemplateState) {
     state.setContext({ getValueSize });
     //per default bigint will be serialized as long, to be compatible with default mongo driver and mongo database.
     //We should add a new annotation, maybe like `bigint & Binary` to make it binary (unlimited size)
-    sizerPropertyNameAware(type, state, `(typeof ${state.accessor} === 'number' || typeof ${state.accessor} === 'bigint') && !Number.isNaN(${state.accessor})`, `
+    sizerPropertyNameAware(type, state, `typeof ${state.accessor} === 'bigint' || (typeof ${state.accessor} === 'number' && !Number.isNaN(${state.accessor}))`, `
         state.size += getValueSize(${state.accessor});
     `);
 }
@@ -1001,7 +986,7 @@ function sizerBigInt(type: TypeBigInt, state: TemplateState) {
         const bigIntSize = binaryBigInt === BinaryBigIntType.unsigned ? 'getBinaryBigIntSize' : 'getSignedBinaryBigIntSize';
         //per default bigint will be serialized as long, to be compatible with default mongo driver and mongo database.
         //We should add a new annotation, maybe like `bigint & Binary` to make it binary (unlimited size)
-        sizerPropertyNameAware(type, state, `(typeof ${state.accessor} === 'number' || typeof ${state.accessor} === 'bigint') && !Number.isNaN(${state.accessor})`, `
+        sizerPropertyNameAware(type, state, `typeof ${state.accessor} === 'bigint' || (typeof ${state.accessor} === 'number' && !Number.isNaN(${state.accessor}))`, `
             state.size += ${bigIntSize}(${state.accessor});
         `);
     } else {
@@ -1015,7 +1000,7 @@ function serializeBigInt(type: TypeBigInt, state: TemplateState) {
     if (binaryBigInt !== undefined) {
         const writeBigInt = binaryBigInt === BinaryBigIntType.unsigned ? 'writeBigIntBinary' : 'writeSignedBigIntBinary';
         state.addCode(`
-        if (('bigint' === typeof ${state.accessor} || 'number' === typeof ${state.accessor}) && !Number.isNaN(${state.accessor})) {
+        if ('bigint' === typeof ${state.accessor} || ('number' === typeof ${state.accessor} && !Number.isNaN(${state.accessor}))) {
             //long
             state.writer.writeType(${BSONType.BINARY});
             state.writer.${writeBigInt}(${state.accessor});
@@ -1466,8 +1451,7 @@ function createBSONSerializer(type: Type, serializer: BSONBinarySerializer, nami
 
     const code = `
         state = state || {};
-        const size = sizer(data);
-        state.writer = state.writer || new Writer(createBuffer(size));
+        state.writer = state.writer || new Writer(createBuffer(sizer(data)));
 
         const unpopulatedCheck = typeSettings.unpopulatedCheck;
         typeSettings.unpopulatedCheck = UnpopulatedCheck.ReturnSymbol;

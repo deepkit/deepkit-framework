@@ -22,6 +22,7 @@ export enum LoggerLevel {
     log,
     info,
     debug,
+    debug2, // very verbose debug output
 }
 
 declare var process: {
@@ -197,6 +198,8 @@ export interface LoggerInterface {
     info(...message: any[]): void;
 
     debug(...message: any[]): void;
+
+    debug2(...message: any[]): void;
 }
 
 export class Logger implements LoggerInterface {
@@ -208,7 +211,7 @@ export class Logger implements LoggerInterface {
      */
     level: LoggerLevel = LoggerLevel.info;
 
-    protected debugScopes = new Set<string>();
+    protected scopeLevels = new Map<string, LoggerLevel>();
 
     protected logData?: LogData;
 
@@ -226,16 +229,20 @@ export class Logger implements LoggerInterface {
      *
      * This is useful to enable debug logs only for certain parts of your application.
      */
-    enableDebugScope(name: string) {
-        this.debugScopes.add(name);
+    enableDebugScope(...names: string[]) {
+        for (const name of names) this.scopeLevels.set(name, LoggerLevel.debug);
     }
 
-    disableDebugScope(name: string) {
-        this.debugScopes.delete(name);
+    disableDebugScope(...names: string[]) {
+        for (const name of names) this.scopeLevels.set(name, LoggerLevel.none);
     }
 
-    isDebugScopeEnabled(name: string): boolean {
-        return this.debugScopes.has(name);
+    unsetDebugScope(...names: string[]) {
+        for (const name of names) this.scopeLevels.delete(name);
+    }
+
+    isScopeEnabled(name: string): boolean {
+        return (this.scopeLevels.get(name) ?? this.level) > LoggerLevel.none;
     }
 
     /**
@@ -282,7 +289,7 @@ export class Logger implements LoggerInterface {
                 scope,
                 scopes: self.scopes,
                 logData: self.logData,
-                debugScopes: self.debugScopes,
+                scopeLevels: self.scopeLevels,
                 colorFormatter: self.colorFormatter,
                 removeColorFormatter: self.removeColorFormatter,
             }, Logger.prototype);
@@ -329,7 +336,11 @@ export class Logger implements LoggerInterface {
     }
 
     is(level: LoggerLevel): boolean {
-        return level <= this.level || (level === LoggerLevel.debug && this.debugScopes.has(this.scope));
+        const scopeCheck = this.scopeLevels.size > 0 && !!this.scope ? this.scopeLevels.get(this.scope) : undefined;
+
+        return scopeCheck !== undefined
+            ? scopeCheck > LoggerLevel.none && level <= scopeCheck
+            : level <= this.level;
     }
 
     protected send(messages: any[], level: LoggerLevel, data: LogData = {}) {
@@ -378,6 +389,10 @@ export class Logger implements LoggerInterface {
 
     debug(...message: any[]) {
         this.send(message, LoggerLevel.debug);
+    }
+
+    debug2(...message: any[]) {
+        this.send(message, LoggerLevel.debug2);
     }
 }
 

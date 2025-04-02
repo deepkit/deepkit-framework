@@ -552,7 +552,7 @@ export type FindType<T extends Type, LOOKUP extends ReflectionKind> = T extends 
 export type InlineRuntimeType<T extends ReflectionClass<any> | Type | number | string | boolean | bigint> = T extends ReflectionClass<infer K> ? K : any;
 
 export function isType(entry: any): entry is Type {
-    return 'object' === typeof entry && entry.constructor === Object && 'kind' in entry && 'number' === typeof entry.kind;
+    return entry && 'object' === typeof entry && 'number' === typeof entry.kind;
 }
 
 export function isBinary(type: Type): boolean {

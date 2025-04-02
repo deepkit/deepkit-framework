@@ -197,8 +197,8 @@ export function isFunction(obj: any): obj is Function {
     return false;
 }
 
-const AsyncFunction = (async () => {
-}).constructor;
+export const AsyncFunction = (async () => {
+}).constructor as { new(...args: string[]): Function };
 
 /**
  * Returns true if given obj is a async function.
@@ -526,6 +526,7 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
  * ```
  *
  * @public
+ * @reflection never
  */
 export async function asyncOperation<T>(executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>): Promise<T> {
     try {

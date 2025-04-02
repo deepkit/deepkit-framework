@@ -34,11 +34,12 @@ test('nominal alias types are unique', () => {
         provide<B>({ useValue: new Service('B') }),
     ]);
     const injector = new InjectorContext(rootModule);
+    expect(injector.get<A>().name).toBe('A');
+    expect(injector.get<B>().name).toBe('B');
+
     const database = injector.get(Manager);
     expect(database.service.name).toBe('A');
 
-    expect(injector.get<A>().name).toBe('A');
-    expect(injector.get<B>().name).toBe('B');
 });
 
 test('child implementation not override better match', () => {

@@ -1,4 +1,4 @@
-import { InjectorContext } from '@deepkit/injector';
+import { InjectorContext, Setter } from '@deepkit/injector';
 import { HttpRouter } from './router.js';
 import { EventDispatcher } from '@deepkit/event';
 import { LoggerInterface } from '@deepkit/logger';
@@ -34,6 +34,10 @@ interface HttpKernelMiddlewareOptions extends HttpKernelHandleOptions {
 }
 
 export class HttpKernel {
+    protected setHttpRequest: Setter<HttpRequest>;
+    protected setHttpResponse: Setter<HttpResponse>;
+    protected setInjectorContext: Setter<InjectorContext>;
+
     constructor(
         protected router: HttpRouter,
         protected eventDispatcher: EventDispatcher,
@@ -41,6 +45,9 @@ export class HttpKernel {
         protected logger: LoggerInterface,
         protected stopwatch?: Stopwatch,
     ) {
+        this.setHttpRequest = injectorContext.setter(undefined, HttpRequest);
+        this.setHttpResponse = injectorContext.setter(undefined, HttpResponse);
+        this.setInjectorContext = injectorContext.setter(undefined, InjectorContext);
     }
 
     /**
@@ -98,9 +105,11 @@ export class HttpKernel {
         const httpInjectorContext = this.injectorContext.createChildScope('http');
         const req = incomingMessageToHttpRequest(_req);
         const res = serverResponseToHttpResponse(_res);
-        httpInjectorContext.set(HttpRequest, req);
-        httpInjectorContext.set(HttpResponse, res);
-        httpInjectorContext.set(InjectorContext, httpInjectorContext);
+
+        this.setHttpRequest(req, httpInjectorContext.scope);
+        this.setHttpResponse(res, httpInjectorContext.scope);
+        this.setInjectorContext(httpInjectorContext, httpInjectorContext.scope);
+
         req.throwErrorOnNotFound = options.throwOnNotFound || false;
 
         const frame = this.stopwatch ? this.stopwatch.start(req.method + ' ' + req.getUrl(), FrameCategory.http, true) : undefined;
