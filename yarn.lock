@@ -3024,6 +3024,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@deepkit/core@workspace:packages/core"
   dependencies:
+    "@deepkit/bench": "npm:^1.0.3"
     "@types/dot-prop": "npm:~4.2.0"
     dot-prop: "npm:^5.1.1"
     to-fast-properties: "npm:^3.0.1"
