@@ -362,9 +362,7 @@ export class Filesystem {
      * Reads a file from local file system.
      */
     async readLocalFile(path: string): Promise<Uint8Array | undefined> {
-        const file = await this.adapter.get(path);
-        if (!file) return undefined;
-        return await readFile(file.path);
+        return await readFile(path);
     }
 
     /**
