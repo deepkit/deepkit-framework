@@ -909,7 +909,7 @@ function sizerNumber(type: Type, state: TemplateState) {
     state.setContext({ getValueSize });
     //per default bigint will be serialized as long, to be compatible with default mongo driver and mongo database.
     //We should add a new annotation, maybe like `bigint & Binary` to make it binary (unlimited size)
-    sizerPropertyNameAware(type, state, `(typeof ${state.accessor} === 'number' || typeof ${state.accessor} === 'bigint') && !Number.isNaN(${state.accessor})`, `
+    sizerPropertyNameAware(type, state, `typeof ${state.accessor} === 'bigint' || (typeof ${state.accessor} === 'number' && !Number.isNaN(${state.accessor}))`, `
         state.size += getValueSize(${state.accessor});
     `);
 }
@@ -986,7 +986,7 @@ function sizerBigInt(type: TypeBigInt, state: TemplateState) {
         const bigIntSize = binaryBigInt === BinaryBigIntType.unsigned ? 'getBinaryBigIntSize' : 'getSignedBinaryBigIntSize';
         //per default bigint will be serialized as long, to be compatible with default mongo driver and mongo database.
         //We should add a new annotation, maybe like `bigint & Binary` to make it binary (unlimited size)
-        sizerPropertyNameAware(type, state, `(typeof ${state.accessor} === 'number' || typeof ${state.accessor} === 'bigint') && !Number.isNaN(${state.accessor})`, `
+        sizerPropertyNameAware(type, state, `typeof ${state.accessor} === 'bigint' || (typeof ${state.accessor} === 'number' && !Number.isNaN(${state.accessor}))`, `
             state.size += ${bigIntSize}(${state.accessor});
         `);
     } else {
@@ -1000,7 +1000,7 @@ function serializeBigInt(type: TypeBigInt, state: TemplateState) {
     if (binaryBigInt !== undefined) {
         const writeBigInt = binaryBigInt === BinaryBigIntType.unsigned ? 'writeBigIntBinary' : 'writeSignedBigIntBinary';
         state.addCode(`
-        if (('bigint' === typeof ${state.accessor} || 'number' === typeof ${state.accessor}) && !Number.isNaN(${state.accessor})) {
+        if ('bigint' === typeof ${state.accessor} || ('number' === typeof ${state.accessor} && !Number.isNaN(${state.accessor}))) {
             //long
             state.writer.writeType(${BSONType.BINARY});
             state.writer.${writeBigInt}(${state.accessor});

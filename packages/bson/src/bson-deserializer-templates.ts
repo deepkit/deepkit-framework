@@ -78,8 +78,8 @@ export function deserializeAny(type: Type, state: TemplateState) {
 const numberParsers = createParserLookup(() => 0, [
     [BSONType.INT, parser => parser.parseInt()],
     [BSONType.NUMBER, parser => parser.parseNumber()],
-    [BSONType.LONG, parser => parser.parseLong()],
-    [BSONType.TIMESTAMP, parser => parser.parseLong()],
+    [BSONType.LONG, parser => Number(parser.parseLong())],
+    [BSONType.TIMESTAMP, parser => Number(parser.parseLong())],
     [BSONType.BOOLEAN, parser => parser.parseBoolean() ? 1 : 0],
     [BSONType.BINARY, parser => Number(parser.parseBinaryBigInt())],
     [BSONType.STRING, parser => Number(parser.parseString())],
