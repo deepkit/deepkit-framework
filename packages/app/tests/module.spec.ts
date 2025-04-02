@@ -387,7 +387,7 @@ test('scoped injector', () => {
 
     {
         const injector = serviceContainer.getInjector(module);
-        expect(() => injector.get(Service)).toThrow(`Service 'Service' is known but has no value`);
+        expect(() => injector.get(Service)).toThrow(`Service 'Service' is known but is not available in scope global. Available in scopes: http`);
     }
 
     {

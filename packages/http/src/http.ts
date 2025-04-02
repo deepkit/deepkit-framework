@@ -12,7 +12,7 @@ import { asyncOperation, ClassType, CustomError, getClassName, getClassTypeFromI
 import { OutgoingHttpHeaders, ServerResponse } from 'http';
 import { BaseEvent, eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpRequestPositionedParameters, HttpResponse } from './model.js';
-import { InjectorContext } from '@deepkit/injector';
+import { Injector, InjectorContext, Setter } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
 import { HttpRouter, RouteConfig, RouteParameterResolverForInjector } from './router.js';
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
@@ -536,12 +536,16 @@ export class HttpResultFormatter {
 }
 
 export class HttpListener {
+    protected setRouteConfig: Setter<RouteConfig>;
+
     constructor(
         protected router: HttpRouter,
         protected logger: LoggerInterface,
         protected resultFormatter: HttpResultFormatter,
+        protected injector: Injector,
         protected stopwatch?: Stopwatch,
     ) {
+        this.setRouteConfig = injector.createSetter(RouteConfig, {name: 'http'});
     }
 
     @eventDispatcher.listen(httpWorkflow.onRequest, 100)
@@ -617,7 +621,7 @@ export class HttpListener {
                     }
                 }
 
-                event.injectorContext.set(RouteConfig, resolved.routeConfig);
+                this.setRouteConfig(resolved.routeConfig, event.injectorContext.scope);
                 event.routeFound(resolved.routeConfig, resolved.parameters);
             }
         } catch (error) {

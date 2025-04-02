@@ -27,6 +27,7 @@
     "@deepkit/type": "^1.0.1"
   },
   "devDependencies": {
+    "@deepkit/bench": "^1.0.3",
     "@deepkit/core": "^1.0.3",
     "@deepkit/type": "^1.0.3",
     "benchmark": "^2.1.4"
