@@ -2951,6 +2951,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@deepkit/bench@npm:^1.0.3, @deepkit/bench@workspace:packages/bench":
+  version: 0.0.0-use.local
+  resolution: "@deepkit/bench@workspace:packages/bench"
+  languageName: unknown
+  linkType: soft
+
 "@deepkit/broker@npm:^1.0.1, @deepkit/broker@npm:^1.0.4, @deepkit/broker@workspace:packages/broker":
   version: 0.0.0-use.local
   resolution: "@deepkit/broker@workspace:packages/broker"
@@ -3458,6 +3464,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@deepkit/injector@workspace:packages/injector"
   dependencies:
+    "@deepkit/bench": "npm:^1.0.3"
     "@deepkit/core": "npm:^1.0.3"
     "@deepkit/type": "npm:^1.0.3"
     benchmark: "npm:^2.1.4"
@@ -3720,6 +3727,15 @@ __metadata:
     "@deepkit/logger": ^1.0.1
     "@deepkit/type": ^1.0.1
     rxjs: "*"
+  languageName: unknown
+  linkType: soft
+
+"@deepkit/run@workspace:packages/run":
+  version: 0.0.0-use.local
+  resolution: "@deepkit/run@workspace:packages/run"
+  dependencies:
+    ts-node: "npm:^10.9.1"
+    typescript: "npm:~5.7.3"
   languageName: unknown
   linkType: soft
 

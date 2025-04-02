@@ -144,7 +144,6 @@ export function arrayBufferFrom(data: string, encoding?: string): ArrayBuffer {
     return nodeBufferToArrayBuffer(Buffer.from(data, encoding as any));
 }
 
-
 /**
  * Same as Buffer.from(arrayBuffer).toString(encoding), but more in line with the current API.
  */
