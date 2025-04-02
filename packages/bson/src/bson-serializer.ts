@@ -8,15 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    CompilerContext,
-    createBuffer,
-    hasProperty,
-    isArray,
-    isIterable,
-    isObject,
-    toFastProperties,
-} from '@deepkit/core';
+import { CompilerContext, createBuffer, hasProperty, isArray, isIterable, isObject, toFastProperties } from '@deepkit/core';
 import {
     binaryBigIntAnnotation,
     BinaryBigIntType,
@@ -100,14 +92,7 @@ import {
     deserializeUnion,
 } from './bson-deserializer-templates.js';
 import { seekElementSize } from './continuation.js';
-import {
-    BSON_BINARY_SUBTYPE_DEFAULT,
-    BSON_BINARY_SUBTYPE_UUID,
-    BSONType,
-    digitByteSize,
-    isSerializable,
-    TWO_PWR_32_DBL_N,
-} from './utils.js';
+import { BSON_BINARY_SUBTYPE_DEFAULT, BSON_BINARY_SUBTYPE_UUID, BSONType, digitByteSize, isSerializable, TWO_PWR_32_DBL_N } from './utils.js';
 
 // BSON MAX VALUES
 const BSON_INT32_MAX = 0x7fffffff;
@@ -1466,8 +1451,7 @@ function createBSONSerializer(type: Type, serializer: BSONBinarySerializer, nami
 
     const code = `
         state = state || {};
-        const size = sizer(data);
-        state.writer = state.writer || new Writer(createBuffer(size));
+        state.writer = state.writer || new Writer(createBuffer(sizer(data)));
 
         const unpopulatedCheck = typeSettings.unpopulatedCheck;
         typeSettings.unpopulatedCheck = UnpopulatedCheck.ReturnSymbol;
