@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
+
+### Bug Fixes
+
+- **bson:** bigint with isNaN checks ([b46e228](https://github.com/deepkit/deepkit-framework/commit/b46e228428d6b09772a9a5161a7b261f93db585e))
+
+### Features
+
+- **bson:** convert if-else branch to lookup ([3589e62](https://github.com/deepkit/deepkit-framework/commit/3589e62f7d35b6462925758973fe54cb41aa8497))
+
 ## [1.0.3](https://github.com/deepkit/deepkit-framework/compare/v1.0.2...v1.0.3) (2025-03-13)
 
 ### Features

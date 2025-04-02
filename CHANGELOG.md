@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
+
+### Bug Fixes
+
+- **bson:** bigint with isNaN checks ([b46e228](https://github.com/deepkit/deepkit-framework/commit/b46e228428d6b09772a9a5161a7b261f93db585e))
+- **filesystem:** ensure readLocalFile reads from local FS ([ad948e6](https://github.com/deepkit/deepkit-framework/commit/ad948e63d2f513fe52816baed3f1d48e3c2a8ac1)), closes [#637](https://github.com/deepkit/deepkit-framework/issues/637)
+- **filesystem:** ensure writeFile forwards visibility ([57250a2](https://github.com/deepkit/deepkit-framework/commit/57250a20dc4051bad93b32830dc2f4015dcc6826)), closes [#638](https://github.com/deepkit/deepkit-framework/issues/638)
+- **http:** disable compression by default ([257cb61](https://github.com/deepkit/deepkit-framework/commit/257cb61ae6e3732e45a54a08ae5b751e3f28d8dd)), closes [#592](https://github.com/deepkit/deepkit-framework/issues/592)
+- **type:** remove Inject (moved to @deepkit/core ([06d650a](https://github.com/deepkit/deepkit-framework/commit/06d650acf5537fda36b73ad94e928009342cdad5)), closes [#587](https://github.com/deepkit/deepkit-framework/issues/587)
+- **type:** replace more Inject imports ([5a88760](https://github.com/deepkit/deepkit-framework/commit/5a88760d90533ef38bc73ba9ad9af17cc64c728f))
+
+### Features
+
+- **bench:** new @deepkit/bench package for doing benchmarks ([210bd84](https://github.com/deepkit/deepkit-framework/commit/210bd844e604a74502b1875e7a6794b059138d46))
+- **bson:** convert if-else branch to lookup ([3589e62](https://github.com/deepkit/deepkit-framework/commit/3589e62f7d35b6462925758973fe54cb41aa8497))
+- **core:** export AsyncFunction ([cebd164](https://github.com/deepkit/deepkit-framework/commit/cebd164671543e106dee4459e2741dfe12f00020))
+- **framework:** new option `logStartup` to control startup rpc/http endpoints logging ([7695822](https://github.com/deepkit/deepkit-framework/commit/7695822cd849915ece9d5d88ac94ca2aed9d304e))
+- **injector:** better docs ([7402f11](https://github.com/deepkit/deepkit-framework/commit/7402f117c230a6f23e892d0e5e91534f1b0bf005))
+- **injector:** refactor internal code to get big performance improvement ([f295c5e](https://github.com/deepkit/deepkit-framework/commit/f295c5e77507f234ae2ee3cffdd55561ef294998))
+- **logger:** add debug2 level + more control over scope log level ([be01b73](https://github.com/deepkit/deepkit-framework/commit/be01b7395336badef3f215dc5df7bfba0a8b4b22))
+- **run:** new @deepkit/run package to run typescript easily ([0b9246e](https://github.com/deepkit/deepkit-framework/commit/0b9246edaab9deb80b6855cba90f48baa4562e08))
+
 ## [1.0.4](https://github.com/deepkit/deepkit-framework/compare/v1.0.3...v1.0.4) (2025-03-13)
 
 ### Bug Fixes
