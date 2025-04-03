@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.6](https://github.com/deepkit/deepkit-framework/compare/v1.0.5...v1.0.6) (2025-04-03)
+
+**Note:** Version bump only for package @deepkit/orm-browser-gui
+
 ## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
 
 **Note:** Version bump only for package @deepkit/orm-browser-gui

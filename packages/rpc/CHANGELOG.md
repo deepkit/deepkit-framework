@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.6](https://github.com/deepkit/deepkit-framework/compare/v1.0.5...v1.0.6) (2025-04-03)
+
+### Bug Fixes
+
+- **rpc:** make sure client disconnect trigger transport disconnect ([89ae002](https://github.com/deepkit/deepkit-framework/commit/89ae002b693f52deb32dbd07db1025fc61a9d8ec))
+
 ## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
 
 ### Bug Fixes
