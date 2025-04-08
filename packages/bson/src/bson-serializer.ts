@@ -552,10 +552,9 @@ export class Writer {
             this.writeType(BSONType.DATE);
             this.writeLong(value.valueOf());
         } else if ('bigint' === typeof value) {
-            //this is only called for bigint in any structures.
-            //to make sure the deserializing yields a bigint as well, we have to always use binary representation
-            this.writeType(BSONType.BINARY);
-            this.writeBigIntBinary(value);
+            // This is only called for bigint in any structures.
+            this.writeType(BSONType.LONG);
+            this.writeBigIntLong(value);
         } else if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
             this.writeType(BSONType.BINARY);
             this.writeArrayBuffer(value);
