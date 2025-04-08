@@ -1,7 +1,7 @@
 import { DataEvent, EventToken, EventTokenSync } from '@deepkit/event';
 import { InjectorContext } from '@deepkit/injector';
-import { RpcKernelBaseConnection } from './server/kernel';
-import { RpcControllerAccess, Session } from './server/security';
+import { RpcKernelBaseConnection } from './server/kernel.js';
+import { RpcControllerAccess, Session } from './server/security.js';
 
 export type WithFail<T> = Omit<T, 'phase'> & { phase: 'fail'; error: Error };
 

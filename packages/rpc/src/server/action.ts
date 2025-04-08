@@ -61,7 +61,7 @@ import { RpcCache, RpcCacheAction, RpcKernelBaseConnection, RpcMessageBuilder } 
 import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security.js';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
-import { onRpcAction, onRpcControllerAccess, RpcActionTimings, RpcControllerAccessEventStart } from '../events';
+import { onRpcAction, onRpcControllerAccess, RpcActionTimings, RpcControllerAccessEventStart } from '../events.js';
 import { DataEvent, EventDispatcher } from '@deepkit/event';
 
 export type ActionTypes = {

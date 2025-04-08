@@ -57,7 +57,7 @@ import {
 import { HttpRpcMessage, RpcHttpRequest, RpcHttpResponse } from './http.js';
 import { SingleProgress } from '../progress.js';
 import { DataEvent, EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
-import { onRpcAuth, onRpcConnection, onRpcConnectionClose, RpcAuthEventStart } from '../events';
+import { onRpcAuth, onRpcConnection, onRpcConnectionClose, RpcAuthEventStart } from '../events.js';
 
 const anyType: Type = { kind: ReflectionKind.any };
 
