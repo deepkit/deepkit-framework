@@ -9,18 +9,8 @@
  */
 
 import { arrayRemoveItem, ClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import {
-    EntityPatch,
-    EntitySubject,
-    IdType,
-    IdVersionInterface,
-    rpcEntityPatch,
-    rpcEntityRemove,
-    RpcError,
-    RpcTypes,
-} from '../model.js';
-import { RpcMessage } from '../protocol.js';
-import { getPartialSerializeFunction, ReflectionClass, serializer, TypeObjectLiteral } from '@deepkit/type';
+import { EntityPatch, EntitySubject, IdType, IdVersionInterface, RpcError } from '../model.js';
+import { getPartialSerializeFunction, ReflectionClass, serializer } from '@deepkit/type';
 
 export class EntitySubjectStore<T extends IdVersionInterface> {
     store = new Map<IdType, { item: T, forks: EntitySubject<T>[] }>();
@@ -180,40 +170,40 @@ export class EntityState {
         return store;
     }
 
-    public createEntitySubject(classType: ClassType, bodySchema: TypeObjectLiteral, message: RpcMessage) {
-        if (message.type !== RpcTypes.ResponseEntity) throw new RpcError('Not a response entity message');
-        const item = message.parseBody<{ v: any }>(bodySchema).v;
-
-        const store = this.getStore(classType);
-        if (!store.isRegistered(item.id)) store.register(item);
-
-        return store.createFork(item.id);
-    }
+    // public createEntitySubject(classType: ClassType, bodySchema: TypeObjectLiteral, message: RpcMessage) {
+    //     if (message.type !== RpcAction.ResponseEntity) throw new RpcError('Not a response entity message');
+    //     const item = message.parseBody<{ v: any }>(bodySchema).v;
+    //
+    //     const store = this.getStore(classType);
+    //     if (!store.isRegistered(item.id)) store.register(item);
+    //
+    //     return store.createFork(item.id);
+    // }
 
     /**
      * Handles the RpcType.Entity, which is a composite per default.
      */
-    public handle(entityMessage: RpcMessage) {
-        for (const message of entityMessage.getBodies()) {
-            switch (message.type) {
-                case RpcTypes.EntityPatch: {
-                    //todo, use specialized ClassSchema, so we get correct instance types returned. We need however first deepkit/bson patch support
-                    // at the moment this happens in onPatch using jsonSerializer
-                    const body = message.parseBody<rpcEntityPatch>();
-                    const store = this.getStoreByName(body.entityName);
-                    store.onPatch(body.id, body.version, body.patch);
-                    break;
-                }
-
-                case RpcTypes.EntityRemove: {
-                    const body = message.parseBody<rpcEntityRemove>();
-                    for (const id of body.ids) {
-                        const store = this.getStoreByName(body.entityName);
-                        store.onDelete(id);
-                    }
-                    break;
-                }
-            }
-        }
-    }
+    // public handle(entityMessage: RpcMessage) {
+    //     for (const message of entityMessage.getBodies()) {
+    //         switch (message.type) {
+    //             case RpcAction.EntityPatch: {
+    //                 //todo, use specialized ClassSchema, so we get correct instance types returned. We need however first deepkit/bson patch support
+    //                 // at the moment this happens in onPatch using jsonSerializer
+    //                 const body = message.parseBody<rpcEntityPatch>();
+    //                 const store = this.getStoreByName(body.entityName);
+    //                 store.onPatch(body.id, body.version, body.patch);
+    //                 break;
+    //             }
+    //
+    //             case RpcAction.EntityRemove: {
+    //                 const body = message.parseBody<rpcEntityRemove>();
+    //                 for (const id of body.ids) {
+    //                     const store = this.getStoreByName(body.entityName);
+    //                     store.onDelete(id);
+    //                 }
+    //                 break;
+    //             }
+    //         }
+    //     }
+    // }
 }

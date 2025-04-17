@@ -5,7 +5,7 @@ import { RpcKernel, RpcKernelBaseConnection, RpcKernelConnection } from '../src/
 import { RpcControllerAccess, RpcKernelSecurity, Session } from '../src/server/security.js';
 import { AuthenticationError } from '../src/model.js';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
-import { Inject } from '@deepkit/core';
+import { Inject } from '@deepkit/injector';
 
 test('authentication basics', async () => {
     class Controller {

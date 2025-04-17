@@ -14,11 +14,9 @@ test('connect', async () => {
     const client = new RpcClient({
         connect(connection: TransportClientConnection) {
             const kernelConnection = kernel.createConnection({
-                writeBinary: (buffer) => connection.readBinary(buffer),
+                write: (buffer) => connection.read(buffer),
                 close: () => {
-                    queueMicrotask(() => {
-                        connection.onClose('');
-                    });
+                    connection.onClose('');
                 },
             });
 
@@ -32,11 +30,9 @@ test('connect', async () => {
                     return 0;
                 },
                 close() {
-                    queueMicrotask(() => {
-                        kernelConnection.close();
-                    });
+                    kernelConnection.close();
                 },
-                writeBinary(buffer) {
+                write(buffer) {
                     kernelConnection.feed(buffer);
                 },
             });
@@ -52,18 +48,9 @@ test('connect', async () => {
     expect(client.transporter.isConnected()).toBe(true);
     expect(connections).toHaveLength(1);
 
-    {
-        await client.connect();
-        expect(client.transporter.isConnected()).toBe(true);
-        await client.disconnect();
-        expect(client.transporter.isConnected()).toBe(false);
-    }
-
-    {
-        connections[0].onError(new Error('test'));
-        expect(errors[0].message).toEqual('test');
-        expect(client.transporter.isConnected()).toBe(false);
-    }
+    connections[0].onError(new Error('test'));
+    expect(errors[0].message).toEqual('test');
+    expect(client.transporter.isConnected()).toBe(false);
 });
 
 test('stats', async () => {

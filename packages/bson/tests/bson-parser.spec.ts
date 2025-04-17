@@ -9,6 +9,7 @@ import {
     PrimaryKey,
     Reference,
     ReflectionKind,
+    SerializedTypes,
     SignedBinaryBigInt,
     TypeObjectLiteral,
     typeOf,
@@ -16,7 +17,7 @@ import {
     UUID,
 } from '@deepkit/type';
 import { getClassName } from '@deepkit/core';
-import { serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
+import { getBSONSerializer, serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
 import { BSONType } from '../src/utils';
 import { deserializeBSONWithoutOptimiser } from '../src/bson-parser';
 
@@ -252,16 +253,22 @@ test('basic union two objects', () => {
 
 test('basic union with typed array', () => {
     const buffer = Buffer.allocUnsafe(16);
-    expect(deserializeBSON<{ v: string | Uint8Array }>(serialize({ v: new Binary(buffer, Binary.SUBTYPE_DEFAULT) }))).toEqual({ v: new Uint8Array(buffer) });
+    expect(deserializeBSON<{
+        v: string | Uint8Array
+    }>(serialize({ v: new Binary(buffer, Binary.SUBTYPE_DEFAULT) }))).toEqual({ v: new Uint8Array(buffer) });
     expect(deserializeBSON<{ v: string | Uint8Array }>(serialize({ v: 'abc' }))).toEqual({ v: 'abc' });
     expect(() => deserializeBSON<{ v: string | Uint8Array }>(serialize({ v: {} }))).toThrow('Cannot convert bson type OBJECT to string | Uint8Array');
 });
 
 test('basic union with arraybuffer', () => {
     const buffer = Buffer.allocUnsafe(16);
-    expect(deserializeBSON<{ v: string | ArrayBuffer }>(serialize({ v: new Binary(buffer, Binary.SUBTYPE_DEFAULT) }))).toEqual({ v: nodeBufferToArrayBuffer(buffer) });
+    expect(deserializeBSON<{
+        v: string | ArrayBuffer
+    }>(serialize({ v: new Binary(buffer, Binary.SUBTYPE_DEFAULT) }))).toEqual({ v: nodeBufferToArrayBuffer(buffer) });
     expect(deserializeBSON<{ v: string | ArrayBuffer }>(serialize({ v: 'abc' }))).toEqual({ v: 'abc' });
-    expect(() => deserializeBSON<{ v: string | ArrayBuffer }>(serialize({ v: {} }))).toThrow('Cannot convert bson type OBJECT to string | ArrayBuffer');
+    expect(() => deserializeBSON<{
+        v: string | ArrayBuffer
+    }>(serialize({ v: {} }))).toThrow('Cannot convert bson type OBJECT to string | ArrayBuffer');
 });
 
 test('basic union ', () => {
@@ -387,8 +394,12 @@ test('basic array', () => {
 test('basic array union', () => {
     const value = ['a', 'b', false, 'c', true];
     expect(deserializeBSON<{ v: (string | boolean)[] }>(serialize({ v: value }))).toEqual({ v: value });
-    expect(() => deserializeBSON<{ v: (string | boolean)[] }>(serialize({ v: 123 }))).toThrow('Cannot convert bson type INT to Array<string | boolean>');
-    expect(() => deserializeBSON<{ v: (string | boolean)[] }>(serialize({ v: ['a', {}] }))).toThrow('Cannot convert bson type OBJECT to string | boolean');
+    expect(() => deserializeBSON<{
+        v: (string | boolean)[]
+    }>(serialize({ v: 123 }))).toThrow('Cannot convert bson type INT to Array<string | boolean>');
+    expect(() => deserializeBSON<{
+        v: (string | boolean)[]
+    }>(serialize({ v: ['a', {}] }))).toThrow('Cannot convert bson type OBJECT to string | boolean');
 });
 
 test('basic two array union', () => {
@@ -710,24 +721,24 @@ test('any', () => {
         lastErrorObject: { n: 1, updatedExisting: true },
         value: {
             _id: '61df83e58a5e3ba77f8f1c0f',
-            id: 'bdcfb3a0-034a-4f07-8aff-b78e2822a5a8'
+            id: 'bdcfb3a0-034a-4f07-8aff-b78e2822a5a8',
         },
         ok: 1,
         '$clusterTime': {
             clusterTime: 7052500565351202817n,
             signature: {
                 hash: Buffer.alloc(16),
-                keyId: 0n
-            }
+                keyId: 0n,
+            },
         },
-        operationTime: 7052500565351202817n
+        operationTime: 7052500565351202817n,
     };
 
     const type: TypeObjectLiteral = copyAndSetParent({
         kind: ReflectionKind.objectLiteral,
         types: [
-            { kind: ReflectionKind.propertySignature, name: 'value', type: { kind: ReflectionKind.any } }
-        ]
+            { kind: ReflectionKind.propertySignature, name: 'value', type: { kind: ReflectionKind.any } },
+        ],
     });
 
     const bson = serializeBSONWithoutOptimiser(data);
@@ -761,13 +772,13 @@ test('additional are ignored', () => {
     };
     const bson = serializeBSONWithoutOptimiser(data);
 
-    interface IsMasterResponse  {
+    interface IsMasterResponse {
         ismaster: boolean;
     }
 
     const fn = getBSONDeserializer<IsMasterResponse>();
     const back = fn(bson);
-    expect(back).toEqual({ismaster: true});
+    expect(back).toEqual({ ismaster: true });
 });
 
 test('invalid buffer, string parse', () => {
@@ -785,4 +796,31 @@ test('invalid buffer, string parse', () => {
 
     const deserialize2 = getBSONDeserializer<{ [name: string]: Uint8Array }>();
     expect(() => deserialize2(buffer)).toThrow('Serialization failed. Unexpected end of buffer');
+});
+
+test('complex union', () => {
+    type T = {
+        [controllerName: string]: [actionName: string, action: number, mode: string, parameters: SerializedTypes, type: SerializedTypes][]
+    }
+
+    const serialize = getBSONSerializer<T>();
+    const deserialize = getBSONDeserializer<T>();
+
+    const buffer = serialize({
+        bla: [['actionName', 1, 'arbitrary',
+            [{ 'kind': 26, 'types': [{ 'kind': 27, 'name': 'value', 'type': 1 }] }, { 'kind': 5 }],
+            [{
+                kind: ReflectionKind.bigint,
+            }]]],
+    });
+
+    const back = deserialize(buffer);
+    expect(back).toEqual({
+        bla: [['actionName', 1, 'arbitrary',
+            [{
+                kind: ReflectionKind.tuple,
+                types: [{ kind: ReflectionKind.tupleMember, name: 'value', type: 1 }],
+            }, { kind: ReflectionKind.string }],
+            [{ kind: ReflectionKind.bigint }]]],
+    });
 });

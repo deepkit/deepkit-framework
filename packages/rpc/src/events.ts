@@ -1,13 +1,13 @@
 import { DataEvent, EventToken, EventTokenSync } from '@deepkit/event';
 import { InjectorContext } from '@deepkit/injector';
-import { RpcKernelBaseConnection } from './server/kernel';
+import { RpcKernelConnection } from './server/kernel';
 import { RpcControllerAccess, Session } from './server/security';
 
 export type WithFail<T> = Omit<T, 'phase'> & { phase: 'fail'; error: Error };
 
 export interface RpcConnectionEvent {
     context: {
-        connection: RpcKernelBaseConnection;
+        connection: RpcKernelConnection;
         injector: InjectorContext;
     };
 }

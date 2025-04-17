@@ -27,13 +27,13 @@ test('back controller', async () => {
     class MyRpcKernelConnection extends RpcKernelConnection {
         async onMessage(message: RpcMessage): Promise<void> {
             if (message.type === MyTypes.QueryAndAnswer) {
-                this.write(createRpcMessage<{ v: string }>(message.id, MyTypes.Answer, { v: '42 is the answer' }));
+                this.write(createRpcMessage<{ v: string }>(message.contextId, MyTypes.Answer, { v: '42 is the answer' }));
                 return;
             }
 
             if (message.type === MyTypes.BroadcastWithAck) {
                 broadcastWithAckCalled = message.parseBody<{v: string}>()
-                this.write(createRpcMessage(message.id, MyTypes.Ack));
+                this.write(createRpcMessage(message.contextId, MyTypes.Ack));
                 return;
             }
 

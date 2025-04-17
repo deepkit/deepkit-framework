@@ -1,6 +1,6 @@
 import { cast, entity, ReflectionClass } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { EntitySubject, rpcEntityPatch, RpcTypes } from '../src/model.js';
+import { EntitySubject, RpcAction, rpcEntityPatch } from '../src/model.js';
 import { DirectClient } from '../src/client/client-direct.js';
 import { EntitySubjectStore } from '../src/client/entity-state.js';
 import { rpc } from '../src/decorators.js';
@@ -86,8 +86,8 @@ test('controller', async () => {
 
             setTimeout(() => {
                 this.connection.createMessageBuilder()
-                    .composite(RpcTypes.Entity)
-                    .add<rpcEntityPatch>(RpcTypes.EntityPatch, {
+                    .composite(RpcAction.Entity)
+                    .add<rpcEntityPatch>(RpcAction.EntityPatch, {
                         entityName: ReflectionClass.from(MyModel).getName(),
                         id: model.id,
                         version: model.version + 1,

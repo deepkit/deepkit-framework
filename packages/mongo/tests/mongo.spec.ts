@@ -5,6 +5,7 @@ import {
     BackReference,
     cast,
     entity,
+    Index,
     MongoId,
     nodeBufferToArrayBuffer,
     PrimaryKey,
@@ -220,7 +221,7 @@ test('test patchAll', async () => {
     expect(await session.query(SimpleModel).filter({ name: { $regex: /^peter.*/ } }).count()).toBe(1);
 
     await session.query(SimpleModel).filter({ name: { $regex: /^myName?/ } }).patchMany({
-        name: 'peterNew'
+        name: 'peterNew',
     });
 
     expect(await session.query(SimpleModel).filter({ name: { $regex: /^myName?/ } }).count()).toBe(0);
@@ -634,7 +635,9 @@ test('batch', async () => {
 test('unique constraint 1', async () => {
     class Model {
         id: number & PrimaryKey & AutoIncrement = 0;
-        constructor(public username: string & Unique = '') {}
+
+        constructor(public username: string & Unique = '') {
+        }
     }
 
     const database = await databaseFactory([Model]);
@@ -656,15 +659,79 @@ test('unique constraint 1', async () => {
     }
 
     {
-        const m = await database.query(Model).filter({username: 'paul'}).findOne();
+        const m = await database.query(Model).filter({ username: 'paul' }).findOne();
         m.username = 'peter';
         await expect(database.persist(m)).rejects.toThrow('username dup key');
         await expect(database.persist(m)).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
 
     {
-        const p = database.query(Model).filter({username: 'paul'}).patchOne({username: 'peter'});
+        const p = database.query(Model).filter({ username: 'paul' }).patchOne({ username: 'peter' });
         await expect(p).rejects.toThrow('username dup key');
         await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
+});
+
+test('predefined pk', async () => {
+    class Account {
+        public version: bigint = 0n;
+        public balance: bigint = 0n;
+
+        constructor(
+            public _id: MongoId & PrimaryKey = '',
+            public name: string,
+        ) {
+        }
+    }
+
+    class Transaction {
+        public _id: MongoId & PrimaryKey = '';
+
+        constructor(
+            public account: Account & Reference & Index,
+            public name: string,
+        ) {
+        }
+    }
+
+    class Booking {
+        public _id: MongoId & PrimaryKey = '';
+
+        constructor(
+            public transaction: Transaction & Reference,
+            public from: Account & Reference,
+            public to: Account & Reference,
+            public amount: number,
+        ) {
+        }
+    }
+
+    function create(id: number, name: string): Account {
+        return new Account(id.toString(16).padStart(24, '0'), name);
+    }
+
+    const a1 = create(1, 'user1');
+    const a2 = create(2, 'user2');
+
+    const tx1 = new Transaction(a1, 'tx1');
+
+    const database = await databaseFactory([Account]);
+    await database.persist(a1, a2, tx1);
+
+    const t1 = await database.query(Transaction).filter({ name: 'tx1' }).findOne();
+
+    await database.persist(new Booking(t1, a1, a2, 100));
+
+    a1.version++;
+    a1.balance = 150n;
+
+    await database.persist(a1);
+
+    {
+        const a1db = await database.query(Account).filter({ _id: a1._id }).findOne();
+        expect(a1db.version).toBe(1n);
+        expect(a1db.balance).toBe(150n);
+    }
+
+    database.disconnect();
 });

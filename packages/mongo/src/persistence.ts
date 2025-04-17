@@ -107,8 +107,8 @@ export class MongoPersistence extends DatabasePersistence {
         if (autoIncrement) {
             const command = new FindAndModifyCommand(
                 this.ormSequences,
-                { name: classSchema.getCollectionName(), },
-                { $inc: { value: items.length } }
+                { name: classSchema.getCollectionName() },
+                { $inc: { value: items.length } },
             );
             command.returnNew = true;
             command.fields = ['value'];
@@ -152,7 +152,7 @@ export class MongoPersistence extends DatabasePersistence {
 
     async update<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
         const updates: { q: any, u: any, multi: boolean }[] = [];
-        const partialSerializer = getPartialSerializeFunction(classSchema.type, mongoSerializer.serializeRegistry)
+        const partialSerializer = getPartialSerializeFunction(classSchema.type, mongoSerializer.serializeRegistry);
 
         let hasAtomic = false;
         const primaryKeyName = classSchema.getPrimary().name;
@@ -199,7 +199,7 @@ export class MongoPersistence extends DatabasePersistence {
         const connection = await this.getConnection();
 
         try {
-            const command = new UpdateCommand(classSchema, updates)
+            const command = new UpdateCommand(classSchema, updates);
             command.commandOptions = this.commandOptions;
             const res = await connection.execute(command);
 
@@ -219,7 +219,7 @@ export class MongoPersistence extends DatabasePersistence {
             error = new DatabaseUpdateError(
                 classSchema,
                 changeSets,
-                `Could not update ${classSchema.getClassName()} in database`,
+                `Could not update ${classSchema.getClassName()} in database: ${formatError(error)}`,
                 { cause: error },
             );
             throw this.handleSpecificError(error);

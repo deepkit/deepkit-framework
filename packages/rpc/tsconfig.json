@@ -24,9 +24,16 @@
       "es2021.weakref"
     ]
   },
-  "reflection": true,
+  "reflection": [
+    "./benchmarks/*",
+    "./src/model.ts",
+    "./src/encoders.ts",
+    "./tests/action.spec.ts",
+    "./tests/rpc.spec.ts"
+  ],
   "include": [
     "src",
+    "benchmarks",
     "index.ts"
   ],
   "exclude": [

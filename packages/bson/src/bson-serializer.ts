@@ -267,12 +267,82 @@ export function wrapUUID(value: string) {
     return new ValueWithBSONSerializer(value, uuidIdType);
 }
 
+export function writeUint32LE(buffer: Uint8Array, offset: number, value: number) {
+    buffer[offset] = value & 0xff;
+    buffer[offset + 1] = (value >> 8) & 0xff;
+    buffer[offset + 2] = (value >> 16) & 0xff;
+    buffer[offset + 3] = (value >> 24) & 0xff;
+}
+
+export function writeInt32LE(buffer: Uint8Array, offset: number, value: number) {
+    // writing is the same as unsigned
+    return writeUint32LE(buffer, offset, value);
+}
+
+const float64Buffer = new ArrayBuffer(8);
+const u32 = new Uint32Array(float64Buffer);
+const f64 = new Float64Array(float64Buffer);
+
+export function writeFloat64LE(buffer: Uint8Array, offset: number, value: number): void {
+    f64[0] = value;
+    buffer[offset] = u32[0] & 0xff;
+    buffer[offset + 1] = (u32[0] >> 8) & 0xff;
+    buffer[offset + 2] = (u32[0] >> 16) & 0xff;
+    buffer[offset + 3] = (u32[0] >> 24) & 0xff;
+    buffer[offset + 4] = u32[1] & 0xff;
+    buffer[offset + 5] = (u32[1] >> 8) & 0xff;
+    buffer[offset + 6] = (u32[1] >> 16) & 0xff;
+    buffer[offset + 7] = (u32[1] >> 24) & 0xff;
+}
+
+export type AutoBufferSerializerState = { writer?: Writer };
+export type AutoBufferSerializer = (data: any, state: AutoBufferSerializerState) => void;
+
+export class AutoBuffer {
+    _buffer: Uint8Array = new Uint8Array(255);
+    state = { writer: new Writer(this._buffer) };
+
+    constructor(public prepend: number = 0) {
+    }
+
+    get buffer() {
+        return this._buffer.subarray(0, this.size);
+    }
+
+    get size() {
+        return this.state.writer.offset;
+    }
+
+    setOffset(offset: number) {
+        this.state.writer.offset = offset;
+    }
+
+    apply(serializer: AutoBufferSerializer, data: any) {
+        this.state.writer.offset = this.prepend;
+        serializer(data, this.state);
+        if (this.prepend + this.state.writer.offset > this._buffer.byteLength) {
+            // increase buffer and retry
+            const nextBuffer = new Uint8Array(this.prepend + this.state.writer.offset);
+            if (this.prepend) nextBuffer.set(this._buffer.subarray(0, this.prepend));
+            this._buffer = nextBuffer;
+
+            this.state.writer.buffer = this._buffer;
+            this.state.writer.reset();
+            this.state.writer.offset = this.prepend;
+            serializer(data, this.state);
+        }
+    }
+}
+
 export class Writer {
-    public dataView: DataView;
     public typeOffset: number = 0;
 
     constructor(public buffer: Uint8Array, public offset: number = 0) {
-        this.dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    }
+
+    reset() {
+        this.offset = 0;
+        this.typeOffset = 0;
     }
 
     /**
@@ -299,22 +369,22 @@ export class Writer {
     }
 
     writeUint32(v: number) {
-        this.dataView.setUint32(this.offset, v, true);
+        writeUint32LE(this.buffer, this.offset, v);
         this.offset += 4;
     }
 
     writeInt32(v: number) {
-        this.dataView.setInt32(this.offset, v, true);
+        writeInt32LE(this.buffer, this.offset, v);
         this.offset += 4;
     }
 
     writeDouble(v: number) {
-        this.dataView.setFloat64(this.offset, v, true);
+        writeFloat64LE(this.buffer, this.offset, v);
         this.offset += 8;
     }
 
     writeDelayedSize(v: number, position: number) {
-        this.dataView.setUint32(position, v, true);
+        writeUint32LE(this.buffer, position, v);
     }
 
     writeByte(v: number) {

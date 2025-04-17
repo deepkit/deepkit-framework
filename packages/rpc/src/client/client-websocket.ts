@@ -90,7 +90,8 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
         socket.binaryType = 'arraybuffer';
 
         socket.onmessage = (event: MessageEvent) => {
-            connection.readBinary(new Uint8Array(event.data));
+            // todo: make sure this does not copy in browsers
+            connection.read(new Uint8Array(event.data));
         };
 
         let errored = false;
@@ -123,7 +124,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
                 close() {
                     socket.close();
                 },
-                writeBinary(message) {
+                write(message) {
                     socket.send(message);
                 }
             });

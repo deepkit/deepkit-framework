@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, SessionState, TransportConnection } from '@deepkit/rpc';
+import { RpcKernel, RpcKernelConnection, SessionState, TransportConnection } from '@deepkit/rpc';
 import http, { Server } from 'http';
 import https from 'https';
 import type { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
@@ -95,7 +95,7 @@ export interface RpcServerListener {
 }
 
 export interface RpcServerCreateConnection {
-    (transport: TransportConnection, request?: HttpRequest): RpcKernelBaseConnection;
+    (transport: TransportConnection, request?: HttpRequest): RpcKernelConnection;
 }
 
 export interface RpcServerOptions {
@@ -114,7 +114,7 @@ export class RpcServer implements RpcServerInterface {
 
         server.on('connection', (ws, req: HttpRequest) => {
             const connection = createRpcConnection({
-                writeBinary(message) {
+                write(message) {
                     ws.send(message);
                 },
                 close() {
@@ -179,7 +179,6 @@ export function createRpcConnection(rootScopedContext: InjectorContext, rpcKerne
     const connection = rpcKernel.createConnection(transport, injector);
     injector.set(SessionState, connection.sessionState);
     injector.set(RpcKernelConnection, connection);
-    injector.set(RpcKernelBaseConnection, connection);
 
     return connection;
 }
