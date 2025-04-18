@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/mongo",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "description": "Deepkit ORM MongoDB adapter",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -33,7 +33,7 @@
     "saslprep-patch": "^1.0.4"
   },
   "devDependencies": {
-    "@deepkit/bson": "^1.0.5",
+    "@deepkit/bson": "^1.0.7",
     "@deepkit/core": "^1.0.5",
     "@deepkit/orm": "^1.0.5",
     "@deepkit/orm-integration": "^1.0.1",

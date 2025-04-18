@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.7](https://github.com/deepkit/deepkit-framework/compare/v1.0.6...v1.0.7) (2025-04-18)
+
+### Bug Fixes
+
+- **bson:** serialize bigint in any container as long ([8a67d96](https://github.com/deepkit/deepkit-framework/commit/8a67d96f3aab6285ce53dd48494bc4be15b02785))
+- **rpc:** missing .js extension on imports ([d0380c9](https://github.com/deepkit/deepkit-framework/commit/d0380c9dc665f3dca5c7901b8ed16f2abb4d0f49))
+- **vite:** broken esm build ([eb3baca](https://github.com/deepkit/deepkit-framework/commit/eb3baca767a922d6ac01aa4ab245205cd173e6cf))
+
 ## [1.0.6](https://github.com/deepkit/deepkit-framework/compare/v1.0.5...v1.0.6) (2025-04-03)
 
 ### Bug Fixes

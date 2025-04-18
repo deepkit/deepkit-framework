@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/bson",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "description": "Deepkit BSON parser",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
