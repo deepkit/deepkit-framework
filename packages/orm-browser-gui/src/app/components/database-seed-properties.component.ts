@@ -43,7 +43,8 @@ import { showTypeString } from '../utils';
                 </ng-container>
             </dui-table-column>
         </dui-table>
-    `
+    `,
+    standalone: false
 })
 export class DatabaseSeedPropertiesComponent {
     showTypeString = showTypeString;

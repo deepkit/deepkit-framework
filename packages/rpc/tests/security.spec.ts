@@ -4,11 +4,10 @@ import { rpc } from '../src/decorators.js';
 import { RpcKernel, RpcKernelBaseConnection, RpcKernelConnection } from '../src/server/kernel.js';
 import { RpcControllerAccess, RpcKernelSecurity, Session } from '../src/server/security.js';
 import { AuthenticationError } from '../src/model.js';
-import { Logger } from '@deepkit/logger';
-import { MemoryLoggerTransport } from '@deepkit/logger';
-import { Inject } from '@deepkit/injector';
+import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
+import { Inject } from '@deepkit/core';
 
-test('authentication', async () => {
+test('authentication basics', async () => {
     class Controller {
         @rpc.action()
         test(value: string): string {
@@ -48,7 +47,7 @@ test('authentication', async () => {
         await expect(controller.test('asd')).rejects.toThrow('Access denied');
         await expect(client.registerAsPeer('asd')).rejects.toThrowError('Access denied');
         await expect(client.peer('asd').controller<Controller>('controller').test('foo')).rejects.toThrowError('Access denied');
-        client.disconnect();
+        await client.disconnect();
 
         client.token.set('invalid');
         await expect(client.registerAsPeer('asd')).rejects.toThrowError('Authentication failed');
@@ -246,6 +245,7 @@ test('connection is available during authentication', async () => {
 
 test('connection is available in controller access information', async () => {
     let _controllerAccess: RpcControllerAccess | undefined;
+    let _connection: RpcKernelBaseConnection | undefined;
 
     class Controller {
         @rpc.action()
@@ -253,12 +253,12 @@ test('connection is available in controller access information', async () => {
     }
 
     class TestRpcKernelSecurity extends RpcKernelSecurity {
-        async hasControllerAccess(session: Session, controllerAccess: RpcControllerAccess): Promise<boolean> {
+        async hasControllerAccess(session: Session, controllerAccess: RpcControllerAccess, connection: RpcKernelBaseConnection): Promise<boolean> {
             _controllerAccess = controllerAccess;
+            _connection = connection;
             return true;
         }
     }
-
 
     const memoryLogger = new MemoryLoggerTransport;
     const kernel = new RpcKernel([{provide: RpcKernelSecurity, useClass: TestRpcKernelSecurity, scope: 'rpc'}], new Logger([memoryLogger]));
@@ -268,5 +268,6 @@ test('connection is available in controller access information', async () => {
     const controller = client.controller<Controller>('test');
     await controller.test();
 
-    expect(_controllerAccess?.connection).toBeInstanceOf(RpcKernelBaseConnection);
+    expect(_controllerAccess?.controllerClassType).toBe(Controller);
+    expect(_connection).toBeInstanceOf(RpcKernelBaseConnection);
 });

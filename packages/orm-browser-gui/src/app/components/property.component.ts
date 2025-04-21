@@ -71,7 +71,8 @@ import { isRequired } from '../utils';
             border: 1px solid var(--line-color-light);
             border-radius: 2px;
         }
-    `]
+    `],
+    standalone: false
 })
 export class PropertyComponent {
     @Input() model!: any;

@@ -8,7 +8,8 @@ import { isArray } from '@deepkit/core';
         <dui-button duiFilePicker (duiFilePickerChange)="chosen($event)">
             Choose file
         </dui-button>
-    `
+    `,
+    standalone: false
 })
 export class BinaryInputComponent implements OnInit, OnChanges {
     @Input() model: any;

@@ -4,7 +4,7 @@ export interface HttpParserOptions {
      *
      * @default 'utf-8'
      */
-    encoding?: BufferEncoding | undefined;
+    encoding?: string | undefined;
 
     /**
      * the directory for placing file uploads in. You can move them later by using fs.rename()
@@ -30,7 +30,7 @@ export interface HttpParserOptions {
     /**
      * the minium size of uploaded file
      *
-     * @default 1
+     * @default 0
      */
     minFileSize?: number | undefined;
 

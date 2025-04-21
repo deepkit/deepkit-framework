@@ -12,6 +12,7 @@ import { Component } from '@angular/core';
 
 @Component({
     selector: 'dui-window-footer',
+    standalone: false,
     template: '<ng-content></ng-content>',
     styleUrls: ['./window-footer.component.scss']
 })

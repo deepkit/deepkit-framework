@@ -1,13 +1,11 @@
 import { expect, test } from '@jest/globals';
-import {
-    entity, MongoId, PrimaryKey, ReflectionClass,
-} from '@deepkit/type';
+import { entity, MongoId, PrimaryKey, ReflectionClass } from '@deepkit/type';
 import { createDatabase } from './utils';
 import { AggregateCommand } from '../src/client/command/aggregate';
 
 Error.stackTraceLimit = 100;
 
-@entity.name('Model').collection('test_aggregate')
+@(entity.name('Model').collection('test_aggregate'))
 export class Model {
     _id: MongoId & PrimaryKey = '';
 

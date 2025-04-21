@@ -1,12 +1,11 @@
 import { ChangeDetectorRef, Component, Input } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { NgForOf, NgIf } from "@angular/common";
-import { ReactiveFormsModule } from "@angular/forms";
-import { SearchComponent } from "@app/app/components/search.component";
+import { NgIf } from '@angular/common';
+import { ReactiveFormsModule } from '@angular/forms';
+import { SearchComponent } from '@app/app/components/search.component';
 
 @Component({
     selector: 'dw-header',
-    standalone: true,
     template: `
         <div class="wrapper" [class.showMenu]="showMenu">
             <a class="logo"  routerLink="/"><img alt="logo" style="width: 24px; height: 30px;" src="/assets/images/deepkit_white.svg"/></a>
@@ -40,7 +39,6 @@ import { SearchComponent } from "@app/app/components/search.component";
     imports: [
         RouterLink,
         RouterLinkActive,
-        NgForOf,
         NgIf,
         ReactiveFormsModule,
         SearchComponent

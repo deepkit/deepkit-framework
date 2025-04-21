@@ -8,6 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+import { MongoError } from './error.js';
+
 type AuthMechanismProperties = { [name: string]: string | boolean };
 
 function parsePropertyValue(value: string): string | boolean {
@@ -16,37 +18,116 @@ function parsePropertyValue(value: string): string | boolean {
     return value;
 }
 
+type Milliseconds = number;
+
 export class ConnectionOptions {
+    /**
+     * The replica set name.
+     */
     replicaSet?: string;
-    connectTimeoutMS: number = 10000;
-    socketTimeoutMS: number = 36000;
 
+    /**
+     * TCP connection timeout. Default 30s.
+     *
+     * If the socket connect takes longer than this value, the connection is aborted.
+     */
+    connectTimeoutMS: Milliseconds = 30000;
 
-    w?: string;
-    wtimeoutMS?: number;
-    journal?: string;
+    /**
+     * TCP socket timeout. Default not set.
+     *
+     * If greater than 0 `Socket.setTimeout()` will be called.
+     */
+    socketTimeoutMS: Milliseconds = 0;
+
+    /**
+     * The interval in milliseconds between the heartbeat checks. Default 10s.
+     */
+    heartbeatFrequencyMS: Milliseconds = 10000;
+
+    /**
+     * The maximum number of connections in the connection pool
+     * How many connections per host are allowed on the pool.
+     * If this limit is reached, the connection acquisition waits until a connection is released.
+     * See also `connectionAcquisitionTimeout`.
+     */
+    maxPoolSize: number = 100;
+
+    /**
+     * The minimum number of connections in the connection pool.
+     */
+    minPoolSize: number = 0;
+
+    /**
+     * The maximum time in milliseconds that a thread can wait for a connection to become available
+     */
+    waitQueueTimeoutMS: Milliseconds = 0;
+
+    /**
+     * Close a connection after it has been idle for this duration.
+     * Default 60s.
+     */
+    maxIdleTimeMS: Milliseconds = 60 * 1000;
+
+    /**
+     * The maximum staleness to allow in milliseconds. Default 0 (no staleness check).
+     *
+     * I define this must be minimum 90 seconds:
+     *    `heartbeatFrequency`+`idleWritePeriodMS` (10"000ms from the spec).
+     *
+     * Don't choose too low value to ensure secondaries are not considered stale too aggressively.
+     */
+    maxStalenessSeconds: number = 0;
+
+    /**
+     * Command response timeout. Default 0.
+     *
+     * If greater than 0, the command is aborted if it takes longer than this value
+     * to answer. This might be tricky if you have very long-running queries.
+     */
+    commandTimeoutMS: Milliseconds = 0;
+
+    /**
+     * @see https://www.mongodb.com/docs/manual/reference/write-concern/#std-label-wc-j
+     */
+    w?: string | number;
+
+    /**
+     * If true the client sends operations to only the specified host.
+     * It doesn't attempt to discover any other members of the replica set.
+     */
+    directConnection: boolean = false;
+
+    /**
+     * Write concern timeout in milliseconds.
+     *
+     * @see https://www.mongodb.com/docs/manual/reference/write-concern/#wtimeout
+     */
+    wtimeout?: Milliseconds;
+
+    journal?: boolean;
 
     appName?: string;
+
     retryWrites: boolean = true;
     retryReads: boolean = true;
 
-    readConcernLevel: 'local' | 'majority' | 'linearizable' | 'available' = 'majority';
+    readConcernLevel?: 'local' | 'majority' | 'linearizable' | 'available' | 'snapshot';
 
-    //unknown is there to prevent Typescript generating wrong options.d.ts
-    readPreference: 'primary' | 'primaryPreferred' | 'secondary' | 'secondaryPreferred' | 'nearest' | 'unknown' = 'primary';
+    readPreference?: 'primary' | 'primaryPreferred' | 'secondary' | 'secondaryPreferred' | 'nearest';
 
-    maxStalenessSeconds?: number;
     readPreferenceTags?: string; //e.g. "dc:ny,rack:1"
     hedge?: boolean;
 
-    compressors?: 'snappy' | 'zlib' | 'zstd';
-    zlibCompressionLevel?: number;
+    // compressors?: 'snappy' | 'zlib' | 'zstd';
+    // zlibCompressionLevel?: number;
 
     authSource?: string;
     authMechanism?: 'SCRAM-SHA-1' | 'SCRAM-SHA-256' | 'MONGODB-X509' | 'GSSAPI' | 'PLAIN';
     authMechanismProperties?: string;
     gssapiServiceName?: string;
 
+    batchSize: number = 100_000;
 
     ssl?: boolean;
     tlsCertificateFile?: string;
@@ -58,24 +139,37 @@ export class ConnectionOptions {
     tlsAllowInvalidHostnames?: boolean;
     tlsInsecure?: boolean;
 
-    maxPoolSize: number = 20;
-    minPoolSize: number = 1;
-    maxIdleTimeMS: number = 100;
-    waitQueueTimeoutMS: number = 0;
+    /**
+     * In seconds.
+     */
+    srvCacheTimeout: number = 5 * 60;
 
     protected parsedReadPreferenceTags?: { [name: string]: string }[];
 
-    getReadPreferenceTags(): { [name: string]: string }[] {
-        if (!this.parsedReadPreferenceTags) {
-            this.parsedReadPreferenceTags = [];
-            if (this.readPreferenceTags) {
-                for (const tag of this.readPreferenceTags.split(',')) {
-                    const [name, value] = tag.split(':');
-                    this.parsedReadPreferenceTags.push({ [name]: value });
-                }
-            }
+    validate() {
+        const idleWritePeriodMS = 10_000; // 10 seconds as per spec
+        const maxStalenessMS = (this.maxStalenessSeconds || 0) * 1000;
+        const heartbeatFrequencyMS = this.heartbeatFrequencyMS;
+
+        // Ensure maxStalenessSeconds meets the minimum requirements
+        if (maxStalenessMS > 0 && maxStalenessMS < Math.max(90_000, heartbeatFrequencyMS + idleWritePeriodMS)) {
+            throw new MongoError(`maxStalenessSeconds must be at least ${Math.max(90, (heartbeatFrequencyMS + idleWritePeriodMS) / 1000)} seconds.`);
         }
-        return this.parsedReadPreferenceTags;
+    }
+
+    protected preferenceTagCache = new Map<string, { [name: string]: string }[]>;
+
+    parsePreferenceTags(tags: string): { [name: string]: string }[] {
+        let cache = this.preferenceTagCache.get(tags);
+        if (!cache) {
+            cache = [];
+            for (const tag of tags.split(',')) {
+                const [name, value] = tag.split(':');
+                cache.push({ [name]: value });
+            }
+            this.preferenceTagCache.set(tags, cache);
+        }
+        return cache;
     }
 
     getAuthMechanismProperties(): AuthMechanismProperties {
@@ -99,4 +193,15 @@ export class ConnectionOptions {
     get secondaryReadAllowed() {
         return this.readPreference === 'secondary' || this.readPreference === 'secondaryPreferred';
     }
+}
+
+export interface CommandOptions {
+    batchSize?: number;
+    readPreference?: ConnectionOptions['readPreference'];
+    readPreferenceTags?: string;
+    readConcernLevel?: ConnectionOptions['readConcernLevel'];
+
+    writeConcern?: string | number;
+    journal?: boolean;
+    wtimeout?: number;
 }

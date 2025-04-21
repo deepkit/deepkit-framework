@@ -1,4 +1,12 @@
-import { Component, ComponentFactoryResolver, ComponentRef, Input, OnChanges, OnDestroy, ViewContainerRef } from '@angular/core';
+import {
+    Component,
+    ComponentFactoryResolver,
+    ComponentRef,
+    Input,
+    OnChanges,
+    OnDestroy,
+    ViewContainerRef,
+} from '@angular/core';
 import { Type } from '@deepkit/type';
 import { cellRegistry } from '../../registry';
 import { TypeDecoration } from './utils';
@@ -10,7 +18,8 @@ import { TypeDecoration } from './utils';
         :host {
             display: none;
         }
-    `]
+    `],
+    standalone: false
 })
 export class CellComponent implements OnDestroy, OnChanges {
     @Input() type!: Type;

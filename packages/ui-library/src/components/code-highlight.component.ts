@@ -9,7 +9,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { removeIndent } from '../utils';
 
 @Directive({
-    selector: '[codeHighlight]'
+    selector: '[codeHighlight]',
+    standalone: false,
 })
 export class CodeHighlightComponent implements OnInit, OnChanges, AfterViewInit, DoCheck {
     @Input() codeHighlight: string = 'typescript';
@@ -18,13 +19,14 @@ export class CodeHighlightComponent implements OnInit, OnChanges, AfterViewInit,
 
     protected pre?: HTMLPreElement;
 
-    isBrowser = isPlatformBrowser(this.platformId);
+    isBrowser: boolean;
 
     constructor(
         protected elementRef: ElementRef<HTMLTextAreaElement | HTMLDivElement>,
         protected renderer: Renderer2,
         @Inject(PLATFORM_ID) protected platformId: any,
     ) {
+        this.isBrowser = isPlatformBrowser(platformId);
     }
 
     ngOnChanges(): void {

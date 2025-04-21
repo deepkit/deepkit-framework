@@ -1,4 +1,4 @@
-import { ExperimentalPendingTasks, inject, PLATFORM_ID } from '@angular/core';
+import { inject, PendingTasks, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser, isPlatformServer } from '@angular/common';
 
 export class PlatformHelper {
@@ -41,7 +41,7 @@ type ExtractMethodsNames<T> = {
  */
 export function waitForInit<T>(component: T, ref?: ExtractMethodsNames<T>) {
     const fn = ref || 'ngOnInit';
-    const taskService = inject(ExperimentalPendingTasks);
+    const taskService = inject(PendingTasks);
     const done = taskService.add();
     const ori = (component as any)[fn] as Function;
 

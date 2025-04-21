@@ -13,7 +13,7 @@ import { ControllerClient } from '../../client';
 import { Route, Workflow } from '@deepkit/framework-debug-api';
 
 @Component({
-  template: `
+    template: `
     <div class="header">
       <h4>HTTP Workflow</h4>
     </div>
@@ -54,7 +54,7 @@ import { Route, Workflow } from '@deepkit/framework-debug-api';
     <!--      </ng-container>-->
     <!--    </div>-->
   `,
-  styles: [`
+    styles: [`
     :host {
       display: flex;
       flex-direction: column;
@@ -69,7 +69,8 @@ import { Route, Workflow } from '@deepkit/framework-debug-api';
     .header dui-input {
       margin-left: auto;
     }
-  `]
+  `],
+    standalone: false
 })
 export class HttpComponent implements OnInit {
   public routes: Route[] = [];

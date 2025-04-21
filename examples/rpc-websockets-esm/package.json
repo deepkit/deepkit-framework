@@ -7,13 +7,13 @@
   },
   "dependencies": {
     "ws": "^8.13.0",
-    "@deepkit/type": "^1.0.1-alpha.97",
-    "@deepkit/rpc": "^1.0.1-alpha.97",
-    "@deepkit/rpc-tcp": "^1.0.1-alpha.97"
+    "@deepkit/type": "^1.0.1",
+    "@deepkit/rpc": "^1.0.1",
+    "@deepkit/rpc-tcp": "^1.0.1"
   },
   "devDependencies": {
-    "@deepkit/type-compiler": "^1.0.1-alpha.97",
-    "typescript": "^5.2.2",
+    "@deepkit/type-compiler": "^1.0.1",
+    "typescript": "~5.7.3",
     "ts-node": "^10.9.1"
   }
 }

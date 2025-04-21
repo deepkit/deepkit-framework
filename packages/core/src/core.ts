@@ -25,13 +25,15 @@ import { eachPair } from './iterators.js';
  */
 export class CustomError extends Error {
     public name: string;
-    public stack?: string;
-    public cause?: Error | any;
 
     constructor(...args: any[]) {
         super(...args);
         this.name = this.constructor.name;
     }
+}
+
+export interface CustomError {
+    cause?: unknown;
 }
 
 /**
@@ -195,8 +197,8 @@ export function isFunction(obj: any): obj is Function {
     return false;
 }
 
-const AsyncFunction = (async () => {
-}).constructor;
+export const AsyncFunction = (async () => {
+}).constructor as { new(...args: string[]): Function };
 
 /**
  * Returns true if given obj is a async function.
@@ -524,6 +526,7 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
  * ```
  *
  * @public
+ * @reflection never
  */
 export async function asyncOperation<T>(executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>): Promise<T> {
     try {
@@ -600,6 +603,13 @@ export function mergeStack(error: Error, stack: string) {
     if (error instanceof Error && error.stack) {
         error.stack += '\n' + stack;
     }
+}
+
+/**
+ * Makes sure the given value is an error. If it's not an error, it creates a new error with the given value as message.
+ */
+export function ensureError(error?: any, classType: ClassType = Error): Error {
+    return error instanceof Error || error instanceof AggregateError ? error : new classType(error);
 }
 
 export function collectForMicrotask<T>(callback: (args: T[]) => void): (arg: T) => void {
@@ -725,7 +735,8 @@ export function getInheritanceChain(classType: ClassType): ClassType[] {
 declare var v8debug: any;
 
 export function inDebugMode() {
-    return typeof v8debug === 'object' || /--debug|--inspect/.test(process.execArgv.join(' '));
+    return typeof v8debug === 'object' ||
+        (typeof process !== 'undefined' && /--debug|--inspect/.test(process.execArgv.join(' ')));
 }
 
 /**
@@ -851,6 +862,7 @@ export function zip<T extends (readonly unknown[])[]>(
  */
 export function forwardTypeArguments(x: any, y: any): void {
     y.Ω = x.Ω;
+    x.Ω = undefined;
 }
 
 export function formatError(error: any, withStack: boolean = false): string {

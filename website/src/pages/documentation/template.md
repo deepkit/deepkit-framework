@@ -13,7 +13,7 @@ In your tsconfig you have to adjust following settings: `jsx` and `jsxImportSour
   "compilerOptions": {
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "target": "ES2020",
+    "target": "es2020",
     "moduleResolution": "node",
 
     "jsx": "react-jsx",

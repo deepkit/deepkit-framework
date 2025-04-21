@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/sql",
-  "version": "1.0.1-alpha.154",
+  "version": "1.0.5",
   "description": "deepkit/orm base SQL",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -33,13 +33,13 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.13",
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/injector": "^1.0.1-alpha.13",
-    "@deepkit/logger": "^1.0.1-alpha.13",
-    "@deepkit/orm": "^1.0.1-alpha.13",
-    "@deepkit/stopwatch": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
+    "@deepkit/app": "^1.0.1",
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/injector": "^1.0.1",
+    "@deepkit/logger": "^1.0.1",
+    "@deepkit/orm": "^1.0.1",
+    "@deepkit/stopwatch": "^1.0.1",
+    "@deepkit/type": "^1.0.1",
     "jiti": "^2.4.2"
   },
   "dependencies": {
@@ -50,13 +50,13 @@
     "sqlstring-sqlite": "^0.1.1"
   },
   "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.154",
-    "@deepkit/core": "^1.0.1-alpha.154",
-    "@deepkit/injector": "^1.0.1-alpha.154",
-    "@deepkit/logger": "^1.0.1-alpha.154",
-    "@deepkit/orm": "^1.0.1-alpha.154",
-    "@deepkit/stopwatch": "^1.0.1-alpha.154",
-    "@deepkit/type": "^1.0.1-alpha.154"
+    "@deepkit/app": "^1.0.5",
+    "@deepkit/core": "^1.0.5",
+    "@deepkit/injector": "^1.0.5",
+    "@deepkit/logger": "^1.0.5",
+    "@deepkit/orm": "^1.0.5",
+    "@deepkit/stopwatch": "^1.0.5",
+    "@deepkit/type": "^1.0.5"
   },
   "jest": {
     "runner": "../../jest-serial-runner.js",

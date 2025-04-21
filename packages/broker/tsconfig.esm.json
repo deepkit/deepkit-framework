@@ -15,10 +15,16 @@
       "path": "../core-rxjs/tsconfig.esm.json"
     },
     {
+      "path": "../event/tsconfig.esm.json"
+    },
+    {
       "path": "../rpc/tsconfig.esm.json"
     },
     {
       "path": "../type/tsconfig.esm.json"
+    },
+    {
+      "path": "../app/tsconfig.esm.json"
     }
   ]
 }

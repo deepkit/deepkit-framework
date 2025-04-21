@@ -10,18 +10,22 @@
 
 import { asyncOperation, CustomError } from '@deepkit/core';
 import { ReceiveType } from '@deepkit/type';
-import { RpcTypes } from '../model.js';
+import { RpcError, RpcTypes } from '../model.js';
 import type { RpcMessage } from '../protocol.js';
 
 export class UnexpectedMessageType extends CustomError {
 }
 
+function noop() {}
+
 export class RpcMessageSubject {
     protected uncatchedNext?: RpcMessage;
 
-    protected onReplyCallback(next: RpcMessage) {
+    protected onReplyCallback(next: RpcMessage, subject: RpcMessageSubject) {
         this.uncatchedNext = next;
     }
+
+    protected rejected?: (error: any) => void;
 
     protected catchOnReplyCallback = this.onReplyCallback.bind(this);
 
@@ -35,14 +39,36 @@ export class RpcMessageSubject {
     ) {
     }
 
-    public next(next: RpcMessage) {
-        this.onReplyCallback(next);
+    /**
+     * Called when the underlying transport disconnected.
+     * This force-cleans everything up.
+     */
+    public disconnect(error?: Error) {
+        if (this.rejected) {
+            this.rejected(error || new RpcError('Connection closed'));
+            this.rejected = undefined;
+        }
+        this.onReplyCallback = noop;
+        this.release();
     }
 
-    public onReply(callback: (next: RpcMessage) => void): this {
+    public next(next: RpcMessage) {
+        this.onReplyCallback(next, this);
+    }
+
+    /**
+     * Registers a callback that is called to handle unexpected rejections,
+     * like disconnects, transport errors, or timeouts.
+     */
+    public onRejected(callback: (error: any) => void): this {
+        this.rejected = callback;
+        return this;
+    }
+
+    public onReply(callback: (next: RpcMessage, subject: RpcMessageSubject) => void): this {
         this.onReplyCallback = callback;
         if (this.uncatchedNext) {
-            callback(this.uncatchedNext);
+            callback(this.uncatchedNext, this);
             this.uncatchedNext = undefined;
         }
         return this;
@@ -66,9 +92,11 @@ export class RpcMessageSubject {
      */
     async ackThenClose(): Promise<undefined> {
         return asyncOperation<undefined>((resolve, reject) => {
+            this.rejected = reject;
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 this.release();
+                this.rejected = undefined;
 
                 if (next.type === RpcTypes.Ack) {
                     return resolve(undefined);
@@ -88,6 +116,7 @@ export class RpcMessageSubject {
      */
     async waitNextMessage<T>(): Promise<RpcMessage> {
         return asyncOperation<any>((resolve, reject) => {
+            this.rejected = reject;
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 return resolve(next);
@@ -100,6 +129,7 @@ export class RpcMessageSubject {
      */
     async waitNext<T>(type: number, schema?: ReceiveType<T>): Promise<T> {
         return asyncOperation<any>((resolve, reject) => {
+            this.rejected = reject;
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 if (next.type === type) {
@@ -120,7 +150,8 @@ export class RpcMessageSubject {
      * Waits for the first message of a specific type, then closes the subject.
      */
     async firstThenClose<T = RpcMessage>(type: number, schema?: ReceiveType<T>): Promise<T> {
-        return await asyncOperation<any>((resolve, reject) => {
+        return asyncOperation<any>((resolve, reject) => {
+            this.rejected = reject;
             this.onReply((next) => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 this.release();

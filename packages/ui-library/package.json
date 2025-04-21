@@ -1,32 +1,55 @@
 {
   "name": "@deepkit/ui-library",
-  "version": "1.0.1-alpha.56",
+  "version": "1.0.1",
   "description": "Collection of utilities for Deepkit's graphical user interfaces",
-  "type": "commonjs",
-  "main": "index.ts",
-  "module": "index.ts",
   "private": true,
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
+  "sideEffects": false,
+  "main": "dist/fesm2022/deepkit-ui-library.mjs",
+  "module": "dist/fesm2022/deepkit-ui-library.mjs",
+  "es2020": "dist/fesm2022/deepkit-ui-library.mjs",
+  "typings": "dist/index.d.ts",
+  "exports": {
+    "./package.json": {
+      "default": "./package.json"
+    },
+    "./src/styles/style-code.scss": {
+      "default": "./src/styles/style-code.scss"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "esm2020": "./dist/fesm2022/deepkit-ui-library.mjs",
+      "esm": "./dist/fesm2022/deepkit-ui-library.mjs",
+      "default": "./dist/fesm2022/deepkit-ui-library.mjs"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf .angular && ng-packagr --config tsconfig.prod.json && rm dist/.npmignore",
+    "watch": "ng-packagr --config tsconfig.prod.json --watch"
+  },
   "peerDependencies": {
-    "@angular/common": "^17.1.0",
-    "@angular/core": "^17.1.0",
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/desktop-ui": "^1.0.1-alpha.48",
-    "@deepkit/rpc": "^1.0.1-alpha.57",
-    "@deepkit/type": "^1.0.1-alpha.13"
+    "@angular/common": "^19.1.5",
+    "@angular/core": "^19.1.5",
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/desktop-ui": "^1.0.1",
+    "@deepkit/rpc": "^1.0.1",
+    "@deepkit/type": "^1.0.1"
   },
   "dependencies": {
     "prismjs": "^1.24.1"
   },
   "devDependencies": {
-    "@angular/common": "^17.1.0",
-    "@angular/core": "^17.1.0",
-    "@deepkit/core": "^1.0.1-alpha.52",
-    "@deepkit/desktop-ui": "^1.0.1-alpha.48",
-    "@deepkit/rpc": "^1.0.1-alpha.57",
-    "@deepkit/type": "^1.0.1-alpha.52",
+    "@angular/common": "^19.1.5",
+    "@angular/core": "^19.1.5",
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/desktop-ui": "^1.0.1",
+    "@deepkit/rpc": "^1.0.1",
+    "@deepkit/type": "^1.0.1",
+    "@types/hammerjs": "^2.0.36",
+    "hammerjs": "^2.0.8",
+    "ng-packagr": "^19.1.2",
     "rxjs": "~7.8.0"
   },
   "jest": {

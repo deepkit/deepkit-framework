@@ -5,15 +5,17 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "sourceMap": true,
+    "skipLibCheck": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2018",
+    "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
+    "isolatedModules": true,
     "types": [
       "bun-types"
     ]
@@ -26,9 +28,6 @@
     "tests"
   ],
   "references": [
-    {
-      "path": "../core/tsconfig.json"
-    },
     {
       "path": "../type-compiler/tsconfig.json"
     }

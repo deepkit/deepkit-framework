@@ -4,13 +4,13 @@ import { http, httpClass } from '../src/decorator.js';
 test('groups', async () => {
     {
         class Controller {
-            @http.GET('a').group('a')
+            @(http.GET('a').group('a'))
             a() {}
 
             @http.GET('b')
             b() {}
 
-            @http.GET('c').group('c')
+            @(http.GET('c').group('c'))
             c() {}
         }
 
@@ -24,13 +24,13 @@ test('groups', async () => {
     {
         @http.group('all')
         class Controller {
-            @http.GET('a').group('a')
+            @(http.GET('a').group('a'))
             a() {}
 
             @http.GET('b')
             b() {}
 
-            @http.GET('c').group('c')
+            @(http.GET('c').group('c'))
             c() {}
         }
 
@@ -42,9 +42,9 @@ test('groups', async () => {
     }
 
     {
-        @http.controller().group('group1', 'group2', 'duplicate')
+        @(http.controller().group('group1', 'group2', 'duplicate'))
         class Controller {
-            @http.GET().group('group3', 'group4', 'duplicate')
+            @(http.GET().group('group3', 'group4', 'duplicate'))
             action() {}
         }
         const httpData = httpClass._fetch(Controller);

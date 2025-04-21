@@ -33,6 +33,9 @@
       "path": "../event/tsconfig.esm.json"
     },
     {
+      "path": "../filesystem/tsconfig.esm.json"
+    },
+    {
       "path": "../http/tsconfig.esm.json"
     },
     {
@@ -52,9 +55,6 @@
     },
     {
       "path": "../sql/tsconfig.esm.json"
-    },
-    {
-      "path": "../sqlite/tsconfig.esm.json"
     },
     {
       "path": "../stopwatch/tsconfig.esm.json"

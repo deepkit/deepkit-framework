@@ -33,6 +33,7 @@ import { isRouteActive } from '../../core/utils';
 
 @Component({
     selector: 'dui-list-title',
+    standalone: false,
     template: `
         <ng-content></ng-content>`,
     styleUrls: ['./list-title.component.scss'],
@@ -44,6 +45,7 @@ export class ListTitleComponent {
 
 @Component({
     selector: 'dui-list',
+    standalone: false,
     template: `
         <ng-content></ng-content>
     `,
@@ -139,6 +141,7 @@ export class ListComponent extends ValueAccessorBase<any> {
 
 @Component({
     selector: 'dui-list-item',
+    standalone: false,
     template: `
         <ng-content></ng-content>
     `,

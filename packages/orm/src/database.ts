@@ -8,13 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    AbstractClassType,
-    ClassType,
-    forwardTypeArguments,
-    getClassName,
-    getClassTypeFromInstance,
-} from '@deepkit/core';
+import { AbstractClassType, ClassType, forwardTypeArguments, getClassName, getClassTypeFromInstance } from '@deepkit/core';
 import {
     entityAnnotation,
     EntityOptions,
@@ -29,7 +23,6 @@ import {
 } from '@deepkit/type';
 import { DatabaseAdapter, DatabaseEntityRegistry, MigrateOptions } from './database-adapter.js';
 import { DatabaseSession } from './database-session.js';
-import { DatabaseLogger } from './logger.js';
 import { Query } from './query.js';
 import { getReference } from './reference.js';
 import { OrmEntity } from './type.js';
@@ -38,6 +31,7 @@ import { Stopwatch } from '@deepkit/stopwatch';
 import { getClassState, getInstanceState, getNormalizedPrimaryKey } from './identity-map.js';
 import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
 import { DatabasePlugin, DatabasePluginRegistry } from './plugin/plugin.js';
+import { Logger } from '@deepkit/logger';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -141,16 +135,17 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     protected virtualForeignKeyConstraint: VirtualForeignKeyConstraint = new VirtualForeignKeyConstraint(this);
 
-    public logger: DatabaseLogger = new DatabaseLogger();
+    public logger: Logger = new Logger;
 
-    /** @reflection never */
     public eventDispatcher: EventDispatcher = new EventDispatcher();
+
     public pluginRegistry: DatabasePluginRegistry = new DatabasePluginRegistry();
 
     constructor(
         public readonly adapter: ADAPTER,
         schemas: (Type | ClassType | ReflectionClass<any>)[] = [],
     ) {
+        this.logger = adapter.logger;
         this.entityRegistry.add(...schemas);
         if (Database.registry) Database.registry.push(this);
 
@@ -180,6 +175,16 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         }
     }
 
+    setEventDispatcher(eventDispatcher: EventDispatcher) {
+        this.eventDispatcher = eventDispatcher;
+        this.adapter.setEventDispatcher(eventDispatcher);
+    }
+
+    setLogger(logger: Logger) {
+        this.logger = logger;
+        this.adapter.setLogger(logger);
+    }
+
     registerPlugin(...plugins: DatabasePlugin[]): void {
         for (const plugin of plugins) {
             this.pluginRegistry.add(plugin);
@@ -200,7 +205,12 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         return C;
     }
 
-    listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): EventDispatcherUnsubscribe {
+    /**
+     * Register a new event listener for given token.
+     *
+     * order: The lower the order, the sooner the listener is called. Default is 0.
+     */
+    listen<T extends EventToken<any>>(eventToken: T, callback: EventListenerCallback<T>, order: number = 0): EventDispatcherUnsubscribe {
         return this.eventDispatcher.listen(eventToken, callback, order);
     }
 
@@ -237,7 +247,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * ```
      */
     public createSession(): DatabaseSession<ADAPTER> {
-        return new DatabaseSession(this.adapter, this.entityRegistry, this.eventDispatcher.fork(), this.pluginRegistry, this.logger, this.stopwatch);
+        return new DatabaseSession(this.adapter, this.entityRegistry, this.eventDispatcher, this.pluginRegistry, this.logger, this.stopwatch);
     }
 
     /**

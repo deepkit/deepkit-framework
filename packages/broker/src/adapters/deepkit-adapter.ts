@@ -1,10 +1,4 @@
-import {
-    BrokerAdapter,
-    BrokerAdapterQueueProduceOptionsResolved,
-    BrokerQueueMessage,
-    BrokerTimeOptionsResolved,
-    Release,
-} from '../broker.js';
+import { BrokerAdapter, BrokerAdapterQueueProduceOptionsResolved, BrokerQueueMessage, BrokerTimeOptionsResolved, Release } from '../broker.js';
 import { getTypeJitContainer, ReflectionKind, Type, TypePropertySignature } from '@deepkit/type';
 import {
     brokerBusPublish,
@@ -32,16 +26,9 @@ import {
     BrokerType,
     QueueMessageProcessing,
 } from '../model.js';
-import {
-    ClientTransportAdapter,
-    createRpcMessage,
-    RpcBaseClient,
-    RpcMessage,
-    RpcMessageRouteType,
-    RpcWebSocketClientAdapter,
-} from '@deepkit/rpc';
+import { ClientTransportAdapter, createRpcMessage, RpcBaseClient, RpcMessage, RpcMessageRouteType, RpcWebSocketClientAdapter } from '@deepkit/rpc';
 import { deserializeBSON, getBSONDeserializer, getBSONSerializer, serializeBSON } from '@deepkit/bson';
-import { arrayRemoveItem } from '@deepkit/core';
+import { arrayRemoveItem, formatError } from '@deepkit/core';
 import { BrokerCacheItemOptionsResolved } from '../broker-cache.js';
 import { fastHash } from '../utils.js';
 import { BrokerKeyValueOptionsResolved } from '../broker-key-value.js';
@@ -66,7 +53,7 @@ function getSerializer(type: Type): TypeSerialize {
                 kind: ReflectionKind.propertySignature,
                 name: 'v',
                 type: type,
-            } as TypePropertySignature]
+            } as TypePropertySignature],
         };
 
         const decoder = getBSONDeserializer<any>(undefined, type);
@@ -89,7 +76,7 @@ function getSerializer(type: Type): TypeSerialize {
 
 export class BrokerDeepkitConnection extends RpcBaseClient {
     activeChannels = new Map<string, { listeners: number, callbacks: ((v: Uint8Array) => void)[] }>();
-    consumers = new Map<string, { listeners: number, callbacks: ((id: number, v: Uint8Array) => void)[] }>();
+    consumers = new Map<string, { listeners: number, callbacks: ((id: number, v: Uint8Array) => Promise<void>)[] }>();
 
     subscribedToInvalidations?: ((message: brokerInvalidateCacheMessage) => void)[];
 
@@ -113,7 +100,7 @@ export class BrokerDeepkitConnection extends RpcBaseClient {
                 const body = message.parseBody<BrokerQueueResponseHandleMessage>();
                 const consumer = this.consumers.get(body.c);
                 if (!consumer) return;
-                for (const callback of consumer.callbacks) callback(body.id, body.v);
+                for (const callback of consumer.callbacks) callback(body.id, body.v).catch(() => undefined);
             }
         } else {
             super.onMessage(message);
@@ -192,7 +179,11 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
     async setCache(key: string, value: any, options: BrokerCacheItemOptionsResolved, type: Type): Promise<void> {
         const serializer = getSerializer(type);
         const v = serializer.encode(value);
-        await this.pool.getConnection('cache/' + key).sendMessage<brokerSetCache>(BrokerType.SetCache, { n: key, v, ttl: options.ttl }).ackThenClose();
+        await this.pool.getConnection('cache/' + key).sendMessage<brokerSetCache>(BrokerType.SetCache, {
+            n: key,
+            v,
+            ttl: options.ttl,
+        }).ackThenClose();
     }
 
     async getCacheMeta(key: string): Promise<{ ttl: number } | undefined> {
@@ -353,7 +344,9 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
             } as BrokerQueuePublish).ackThenClose();
     }
 
-    async consume(key: string, callback: (message: BrokerQueueMessage<any>) => Promise<void>, options: { maxParallel: number }, type: Type): Promise<Release> {
+    async consume(key: string, callback: (message: BrokerQueueMessage<any>) => Promise<void>, options: {
+        maxParallel: number
+    }, type: Type): Promise<Release> {
         const connection = this.pool.getConnection('queue/' + key);
         // when this is acked, we start receiving messages via BrokerQueueResponseHandleMessage
         await connection.sendMessage<BrokerQueueSubscribe>(BrokerType.QueueSubscribe, { c: key, maxParallel: options.maxParallel })
@@ -364,7 +357,12 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
             callbacks: [async (id: number, next: Uint8Array) => {
                 const data = deserializeBSON(next, 0, undefined, type);
                 const message = new BrokerQueueMessage(key, data);
-                await callback(message);
+                try {
+                    await callback(message);
+                } catch (error: any) {
+                    // todo: decide what to do in this case
+                    console.warn(`Error in broker queue message processing ${callback.name}: ${formatError(error, true)}`);
+                }
 
                 await connection.sendMessage<BrokerQueueMessageHandled>(BrokerType.QueueMessageHandled, {
                     id, c: key,
@@ -372,7 +370,7 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
                     error: message.error ? String(message.error) : undefined,
                     delay: message.delayed,
                 }).ackThenClose();
-            }]
+            }],
         });
 
         return async () => {

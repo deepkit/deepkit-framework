@@ -37,7 +37,8 @@ import { arrayMoveItem } from '@deepkit/core';
         .item dui-icon {
             flex: 0;
         }
-    `]
+    `],
+    standalone: false
 })
 export class MapInputComponent implements OnInit, OnChanges {
     trackByIndex = trackByIndex;

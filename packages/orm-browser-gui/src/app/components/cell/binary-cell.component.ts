@@ -35,7 +35,8 @@ import { TypeDecoration } from './utils';
             font-size: 12px;
         }
 
-    `]
+    `],
+    standalone: false
 })
 export class BinaryCellComponent implements OnInit, OnChanges {
     @Input() model: any;

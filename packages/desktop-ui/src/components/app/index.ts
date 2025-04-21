@@ -8,7 +8,20 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ApplicationRef, Component, Directive, HostBinding, Inject, Injectable, Input, ModuleWithProviders, NgModule, Optional, Renderer2, RendererFactory2 } from '@angular/core';
+import {
+    ApplicationRef,
+    Component,
+    Directive,
+    HostBinding,
+    Inject,
+    Injectable,
+    Input,
+    ModuleWithProviders,
+    NgModule,
+    Optional,
+    Renderer2,
+    RendererFactory2,
+} from '@angular/core';
 import { MenuCheckboxDirective, MenuDirective, MenuItemDirective, MenuRadioDirective, MenuSeparatorDirective } from './menu.component';
 import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from './utils';
 import { ViewDirective } from './dui-view.directive';
@@ -49,6 +62,7 @@ export class BaseComponent {
 
 @Component({
     selector: 'ui-component',
+    standalone: false,
     template: `
         {{name}} disabled={{isDisabled}}
     `,
@@ -381,7 +395,7 @@ export class DuiAppModule {
             providers: [
                 DuiApp,
                 Storage,
-                { provide: EventDispatcher, useValue: new EventDispatcher().fork() },
+                { provide: EventDispatcher, useValue: new EventDispatcher },
                 { provide: IN_DIALOG, useValue: false },
                 {
                     provide: ELECTRON_WINDOW,

@@ -11,7 +11,8 @@ import { TypeDecoration } from '../../utils';
                    [(ngModel)]="model.value"
                    (ngModelChange)="modelChange.emit(this.model)"
         ></dui-input>
-    `
+    `,
+    standalone: false
 })
 export class StringInputComponent {
     String = String;

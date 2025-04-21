@@ -1,9 +1,16 @@
 import { ChangeDetectorRef, Component, Input, OnChanges } from '@angular/core';
 import { trackByIndex } from '@deepkit/ui-library';
 import { ApiAction } from '@deepkit/api-console-api';
-import { extractDataStructureFromParameters, RpcActionState, RpcClientConfiguration, RpcExecution, RpcExecutionSubscription, Store } from '../../store';
+import {
+    extractDataStructureFromParameters,
+    RpcActionState,
+    RpcClientConfiguration,
+    RpcExecution,
+    RpcExecutionSubscription,
+    Store,
+} from '../../store';
 import { DuiDialog } from '@deepkit/desktop-ui';
-import { DisconnectableObservable, RpcWebSocketClient } from '@deepkit/rpc';
+import { RpcWebSocketClient } from '@deepkit/rpc';
 import { ControllerClient } from '../../client';
 import { Observable, Subject } from 'rxjs';
 import { inspect, typeToTSJSONInterface } from '../../utils';
@@ -169,7 +176,8 @@ import { isSubject } from '@deepkit/core-rxjs';
             </div>
         </deepkit-toggle-box>
     `,
-    styleUrls: ['./rpc-detail.component.scss']
+    styleUrls: ['./rpc-detail.component.scss'],
+    standalone: false
 })
 export class RpcDetailComponent implements OnChanges {
     trackByIndex = trackByIndex;

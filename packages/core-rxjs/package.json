@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/core-rxjs",
-  "version": "1.0.1-alpha.154",
+  "version": "1.0.5",
   "description": "Deepkit core rxjs library",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -24,11 +24,11 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.0",
+    "@deepkit/core": "^1.0.1",
     "rxjs": "*"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.154",
+    "@deepkit/core": "^1.0.5",
     "rxjs": "~7.8.0"
   },
   "jest": {

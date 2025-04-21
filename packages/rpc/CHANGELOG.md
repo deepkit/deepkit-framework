@@ -3,6 +3,78 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.7](https://github.com/deepkit/deepkit-framework/compare/v1.0.6...v1.0.7) (2025-04-18)
+
+### Bug Fixes
+
+- **rpc:** missing .js extension on imports ([d0380c9](https://github.com/deepkit/deepkit-framework/commit/d0380c9dc665f3dca5c7901b8ed16f2abb4d0f49))
+
+## [1.0.6](https://github.com/deepkit/deepkit-framework/compare/v1.0.5...v1.0.6) (2025-04-03)
+
+### Bug Fixes
+
+- **rpc:** make sure client disconnect trigger transport disconnect ([89ae002](https://github.com/deepkit/deepkit-framework/commit/89ae002b693f52deb32dbd07db1025fc61a9d8ec))
+
+## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
+
+### Bug Fixes
+
+- **type:** replace more Inject imports ([5a88760](https://github.com/deepkit/deepkit-framework/commit/5a88760d90533ef38bc73ba9ad9af17cc64c728f))
+
+## [1.0.4](https://github.com/deepkit/deepkit-framework/compare/v1.0.3...v1.0.4) (2025-03-13)
+
+### Bug Fixes
+
+- **rpc:** export events ([829317c](https://github.com/deepkit/deepkit-framework/commit/829317c0e7ef2dfbabe7e844258b3c5cd8c8c7df))
+
+## [1.0.3](https://github.com/deepkit/deepkit-framework/compare/v1.0.2...v1.0.3) (2025-03-13)
+
+### Features
+
+- **rpc:** add utility functions to create Subject/Observable synchronously from an RPC controller ([349668f](https://github.com/deepkit/deepkit-framework/commit/349668fe0d2586831fc21d4b0d130bd1b8a2ffbb))
+- **rpc:** automatically garbage collect observables + new event system + stats collection ([d727232](https://github.com/deepkit/deepkit-framework/commit/d727232ca4b445a6bc82de8df31e25ba2d60d683))
+- **rpc:** improve disconnect handling and cleaning up RpcMessageSubject correctly ([9d9e29a](https://github.com/deepkit/deepkit-framework/commit/9d9e29ad2bffa91751a78486fe031d9b8a8fecf7))
+- **rpc:** improve performance by 25% ([f7e524f](https://github.com/deepkit/deepkit-framework/commit/f7e524fabafe1b54047a642744373a0db611ce93))
+
+## [1.0.2](https://github.com/deepkit/deepkit-framework/compare/v1.0.1...v1.0.2) (2025-02-24)
+
+### Features
+
+- **rpc:** allow to register hooks for rpc kernel and actions ([cb0102b](https://github.com/deepkit/deepkit-framework/commit/cb0102bf51a0b508dbacbc5d6010fbed058f52cd))
+
+## [1.0.1](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.160...v1.0.1) (2025-02-24)
+
+**Note:** Version bump only for package @deepkit/rpc
+
+## [1.0.1-alpha.160](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.159...v1.0.1-alpha.160) (2025-02-18)
+
+**Note:** Version bump only for package @deepkit/rpc
+
+## [1.0.1-alpha.158](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.157...v1.0.1-alpha.158) (2025-02-15)
+
+**Note:** Version bump only for package @deepkit/rpc
+
+## [1.0.1-alpha.157](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.156...v1.0.1-alpha.157) (2025-02-15)
+
+### Bug Fixes
+
+- **rpc:** ensure message size is reset to 0 after reaching a buffer that is too small ([c78a2a2](https://github.com/deepkit/deepkit-framework/commit/c78a2a26b98384ae6d1e6b87aa993e77026f4e7c))
+- tsconfig and tsc build ([ac71e83](https://github.com/deepkit/deepkit-framework/commit/ac71e838d542a3cab0e9b1cfc20b27637f1c01df))
+
+### Features
+
+- **rpc:** make binary parser more stable and throw better error message on decoding failure ([66e8f0d](https://github.com/deepkit/deepkit-framework/commit/66e8f0d196ed3f6c7ec2d7b4d106afb4e21d1d54))
+- **rpc:** show invalid binary message in hex on error ([1a7bf16](https://github.com/deepkit/deepkit-framework/commit/1a7bf16a04282125fd3c5c0154bad39beaf8e14d))
+- update to angular 19 and typescript 5.7.3, new @deepkit/angular-ssr package ([#627](https://github.com/deepkit/deepkit-framework/issues/627)) ([52333a7](https://github.com/deepkit/deepkit-framework/commit/52333a71f98c7e25a74f048dd57f1efba61098f5))
+
+## [1.0.1-alpha.156](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.155...v1.0.1-alpha.156) (2025-01-30)
+
+**Note:** Version bump only for package @deepkit/rpc
+
+## [1.0.1-alpha.155](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.154...v1.0.1-alpha.155) (2024-10-30)
+
+**Note:** Version bump only for package @deepkit/rpc
+
 ## [1.0.1-alpha.154](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.153...v1.0.1-alpha.154) (2024-09-06)
 
 ### Features

@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/mongo",
-  "version": "1.0.1-alpha.154",
+  "version": "1.0.7",
   "description": "Deepkit ORM MongoDB adapter",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -24,23 +24,23 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.13",
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/orm": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13"
+    "@deepkit/bson": "^1.0.1",
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/orm": "^1.0.1",
+    "@deepkit/type": "^1.0.1"
   },
   "dependencies": {
-    "saslprep": "^1.0.3"
+    "saslprep-patch": "^1.0.4"
   },
   "devDependencies": {
-    "@deepkit/bson": "^1.0.1-alpha.154",
-    "@deepkit/core": "^1.0.1-alpha.154",
-    "@deepkit/orm": "^1.0.1-alpha.154",
-    "@deepkit/orm-integration": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.154",
+    "@deepkit/bson": "^1.0.7",
+    "@deepkit/core": "^1.0.5",
+    "@deepkit/orm": "^1.0.5",
+    "@deepkit/orm-integration": "^1.0.1",
+    "@deepkit/type": "^1.0.5",
     "@types/mongodb": "3.5.25",
-    "@types/node": "20.6.0",
-    "mongodb": "3.6.0"
+    "@types/node": "^22.13.1",
+    "mongodb": "^6.14.2"
   },
   "jest": {
     "runner": "../../jest-serial-runner.js",
@@ -49,7 +49,7 @@
       "^.+\\.(ts|tsx)$": [
         "ts-jest",
         {
-          "tsconfig": "<rootDir>/tsconfig.spec.json"
+          "tsconfig": "<rootDir>/tests/tsconfig.json"
         }
       ]
     },

@@ -26,7 +26,7 @@ import {
     SimpleChanges,
     SkipSelf,
     TemplateRef,
-    ViewChild
+    ViewChild,
 } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
@@ -47,6 +47,7 @@ import { ButtonComponent } from '../button/button.component';
  */
 @Directive({
     selector: '[dynamicOption]',
+    standalone: false,
 })
 export class DynamicOptionDirective {
     constructor(
@@ -57,6 +58,7 @@ export class DynamicOptionDirective {
 
 @Component({
     selector: 'dui-option',
+    standalone: false,
     template: `
         <ng-content></ng-content>`
 })
@@ -73,6 +75,7 @@ export class OptionDirective {
 
 @Directive({
     selector: 'dui-option-separator',
+    standalone: false,
     providers: [{ provide: OptionDirective, useExisting: OptionSeparatorDirective }],
 })
 export class OptionSeparatorDirective {
@@ -85,6 +88,7 @@ class NotSelected {
 
 @Component({
     selector: 'dui-select',
+    standalone: false,
     template: `
         <ng-container *ngIf="button">
             <dui-button-group padding="none">

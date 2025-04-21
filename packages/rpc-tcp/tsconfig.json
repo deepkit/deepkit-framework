@@ -8,7 +8,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2021",
+    "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",

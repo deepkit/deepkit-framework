@@ -48,7 +48,6 @@ test('resolve import ts', () => {
         'logger': `export class Logger {}`
     });
 
-    console.log(res);
     expect(res.app).toContain('() => Logger');
     expect(res.logger).toContain('static __type');
 });
@@ -62,7 +61,6 @@ test('resolve import d.ts', () => {
         'logger.d.ts': `export declare class Logger {}`
     });
 
-    console.log(res);
     expect(res.app).toContain('() => Logger');
 });
 
@@ -75,7 +73,6 @@ test('resolve import node_modules', () => {
         'node_modules/logger/index.d.ts': `export declare class Logger {}`
     });
 
-    console.log(res);
     expect(res.app).toContain('() => Logger');
 });
 
@@ -89,7 +86,6 @@ test('pass type argument named function', () => {
         `
     });
 
-    console.log(res);
     expect(res.app).toContain(`(getType.Ω = `);
     expect(res.app).toContain(`, getType<string>())`);
 });

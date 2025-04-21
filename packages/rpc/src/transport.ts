@@ -7,7 +7,7 @@ import {
     serializeBinaryRpcMessage,
 } from './protocol.js';
 import { SingleProgress } from './progress.js';
-import { rpcChunk, RpcTypes } from './model.js';
+import { rpcChunk, RpcError, RpcTransportStats, RpcTypes } from './model.js';
 
 export class TransportOptions {
     /**
@@ -31,8 +31,11 @@ export class TransportOptions {
     public chunkSize: number = 100_000;
 }
 
+/**
+ * @see createWriter
+ */
 export interface TransportMessageWriter {
-    (message: RpcMessageDefinition, options: TransportOptions, progress?: SingleProgress): void;
+    (message: RpcMessageDefinition, options: TransportOptions, stats: RpcTransportStats, progress?: SingleProgress): void;
 }
 
 export interface TransportConnection {
@@ -132,15 +135,22 @@ export class TransportBinaryMessageChunkWriter {
 export function createWriter(transport: TransportConnection, options: TransportOptions, reader: RpcBinaryMessageReader): TransportMessageWriter {
     if (transport.writeBinary) {
         const chunkWriter = new TransportBinaryMessageChunkWriter(reader, options);
-        return (message, options, progress) => {
+        const writeBinary = transport.writeBinary;
+        return (message, options, stats, progress) => {
             const buffer = serializeBinaryRpcMessage(message);
-            chunkWriter.write(transport.writeBinary!, buffer, progress);
+            stats.increase('outgoing', 1);
+            stats.increase('outgoingBytes', buffer.byteLength);
+            chunkWriter.write(writeBinary, buffer, progress);
         };
     }
 
     if (transport.write) {
-        return transport.write;
+        const write = transport.write;
+        return (message, options, stats, progress) => {
+            stats.increase('outgoing', 1);
+            write(message, options, stats, progress);
+        };
     }
 
-    throw new Error('No write method found on transport');
+    throw new RpcError('No write method found on transport');
 }

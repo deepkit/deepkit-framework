@@ -8,11 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { asyncOperation, ClassType, CustomError, getClassName, getClassTypeFromInstance, isArray, isClassInstance } from '@deepkit/core';
+import { asyncOperation, ClassType, CustomError, getClassName, getClassTypeFromInstance, isArray, isClassInstance, isObject } from '@deepkit/core';
 import { OutgoingHttpHeaders, ServerResponse } from 'http';
-import { eventDispatcher } from '@deepkit/event';
+import { BaseEvent, eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpRequestPositionedParameters, HttpResponse } from './model.js';
-import { InjectorContext } from '@deepkit/injector';
+import { Injector, InjectorContext, Setter } from '@deepkit/injector';
 import { LoggerInterface } from '@deepkit/logger';
 import { HttpRouter, RouteConfig, RouteParameterResolverForInjector } from './router.js';
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
@@ -29,12 +29,12 @@ import {
     Type,
     typeSettings,
     UnpopulatedCheck,
-    ValidationError
+    ValidationError,
 } from '@deepkit/type';
 import stream from 'stream';
 
 export function isElementStruct(v: any): v is ElementStruct {
-    return 'object' === typeof v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes') && !v.slice;
+    return isObject(v) && 'hasOwnProperty' in v && v.hasOwnProperty('render') && v.hasOwnProperty('attributes');
 }
 
 let templateRender: typeof render;
@@ -122,17 +122,7 @@ export class HttpInternalServerError extends createHttpError(500, 'Internal serv
 export class HttpNotImplementedError extends createHttpError(501, 'Not implemented') {
 }
 
-export class HttpWorkflowEvent {
-    propagationStopped = false;
-
-    stopPropagation() {
-        this.propagationStopped = true;
-    }
-
-    isPropagationStopped() {
-        return this.propagationStopped;
-    }
-
+export class HttpWorkflowEvent extends BaseEvent {
     public nextState?: any;
     public nextStateEvent?: any;
 
@@ -161,6 +151,7 @@ export class HttpWorkflowEvent {
         public request: HttpRequest,
         public response: HttpResponse,
     ) {
+        super();
     }
 
     get url() {
@@ -545,12 +536,16 @@ export class HttpResultFormatter {
 }
 
 export class HttpListener {
+    protected setRouteConfig: Setter<RouteConfig>;
+
     constructor(
         protected router: HttpRouter,
         protected logger: LoggerInterface,
         protected resultFormatter: HttpResultFormatter,
+        protected injector: Injector,
         protected stopwatch?: Stopwatch,
     ) {
+        this.setRouteConfig = injector.createSetter(RouteConfig, {name: 'http'});
     }
 
     @eventDispatcher.listen(httpWorkflow.onRequest, 100)
@@ -626,7 +621,7 @@ export class HttpListener {
                     }
                 }
 
-                event.injectorContext.set(RouteConfig, resolved.routeConfig);
+                this.setRouteConfig(resolved.routeConfig, event.injectorContext.scope);
                 event.routeFound(resolved.routeConfig, resolved.parameters);
             }
         } catch (error) {
@@ -650,7 +645,11 @@ export class HttpListener {
         if (event.sent) return;
         if (event.hasNext()) return;
 
-        event.send(new HtmlResponse('Not found', 404));
+        if (event.request.throwErrorOnNotFound) {
+            throw new HttpNotFoundError;
+        } else {
+            event.send(new HtmlResponse('Not found', 404));
+        }
     }
 
     @eventDispatcher.listen(httpWorkflow.onAuth, 100)
@@ -775,6 +774,9 @@ export class HttpListener {
             }, 400).disableAutoSerializing());
             return;
         } else if (event.error instanceof HttpError) {
+            if (event.request.throwErrorOnNotFound && event.error.httpCode === 404) {
+                throw event.error;
+            }
             event.send(new JSONResponse({
                 message: event.error.message
             }, event.error.httpCode).disableAutoSerializing());

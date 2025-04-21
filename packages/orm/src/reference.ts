@@ -34,6 +34,8 @@ export function getReference<T>(
 
     const ref = createReference(ReferenceClass || reflectionClass, pk);
     if (pool) pool.set(pkHash, ref);
-    if (identityMap) identityMap.store(reflectionClass, ref);
+    if (identityMap) {
+        identityMap.store(reflectionClass, ref);
+    }
     return ref;
 }

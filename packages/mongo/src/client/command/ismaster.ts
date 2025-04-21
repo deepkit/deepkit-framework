@@ -15,7 +15,7 @@ import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
 
 export interface IsMasterResponse extends BaseResponse {
-    ismaster: boolean;
+    ismaster: number;
     maxBsonObjectSize: number;
     maxMessageSizeBytes: number;
     maxWriteBatchSize: number;
@@ -25,6 +25,7 @@ export interface IsMasterResponse extends BaseResponse {
     //indicates that the mongod or mongos is running in read-only mode
     readOnly?: boolean;
 
+
     compression?: string[];
     saslSupportedMechs?: string[];
 
@@ -32,17 +33,26 @@ export interface IsMasterResponse extends BaseResponse {
     msg?: string;
 
     //isMaster contains these fields when returned by a member of a replica set:
-    // hosts: string[];
+    hosts?: string[];
+    passives?: string[];
     setName?: string; //replica set name
     // setVersion: number; //replica set version
+    me?: string;
     secondary?: boolean;
     arbiterOnly?: boolean;
     hidden?: boolean;
+
+    lastWrite?: {
+        lastWriteDate: Date;
+    };
+
+    [k: string]: any;
 }
 
 interface IsMasterSchema {
     isMaster: number;
-    $db: string;
+    helloOk: boolean;
+    $db?: string;
 }
 
 export class IsMasterCommand extends Command<IsMasterResponse> {
@@ -51,8 +61,9 @@ export class IsMasterCommand extends Command<IsMasterResponse> {
     }
 
     async execute(config: MongoClientConfig, host: Host): Promise<IsMasterResponse> {
-        const cmd = {
+        const cmd: IsMasterSchema = {
             isMaster: 1,
+            helloOk: true,
             $db: config.getAuthSource(),
         };
 

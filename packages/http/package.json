@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/http",
-  "version": "1.0.1-alpha.154",
+  "version": "1.0.5",
   "description": "Deepkit HTTP server and router.",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -23,32 +23,33 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.13",
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/event": "^1.0.1-alpha.13",
-    "@deepkit/injector": "^1.0.1-alpha.13",
-    "@deepkit/logger": "^1.0.1-alpha.13",
-    "@deepkit/stopwatch": "^1.0.1-alpha.13",
-    "@deepkit/template": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/workflow": "^1.0.1-alpha.13"
+    "@deepkit/app": "^1.0.1",
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/event": "^1.0.1",
+    "@deepkit/injector": "^1.0.1",
+    "@deepkit/logger": "^1.0.1",
+    "@deepkit/stopwatch": "^1.0.1",
+    "@deepkit/template": "^1.0.1",
+    "@deepkit/type": "^1.0.1",
+    "@deepkit/workflow": "^1.0.1"
   },
   "dependencies": {
-    "formidable": "^2.0.1",
-    "qs": "^6.11.0",
-    "send": "^0.18.0"
+    "formidable": "^3.5.2",
+    "qs": "^6.14.0",
+    "send": "^1.1.0"
   },
   "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.154",
-    "@deepkit/core": "^1.0.1-alpha.154",
-    "@deepkit/event": "^1.0.1-alpha.154",
-    "@deepkit/injector": "^1.0.1-alpha.154",
-    "@deepkit/logger": "^1.0.1-alpha.154",
-    "@deepkit/stopwatch": "^1.0.1-alpha.154",
-    "@deepkit/template": "^1.0.1-alpha.154",
-    "@deepkit/type": "^1.0.1-alpha.154",
-    "@deepkit/workflow": "^1.0.1-alpha.154",
-    "@types/node": "20.6.0",
+    "@deepkit/app": "^1.0.5",
+    "@deepkit/core": "^1.0.5",
+    "@deepkit/event": "^1.0.5",
+    "@deepkit/injector": "^1.0.5",
+    "@deepkit/logger": "^1.0.5",
+    "@deepkit/stopwatch": "^1.0.5",
+    "@deepkit/template": "^1.0.5",
+    "@deepkit/type": "^1.0.5",
+    "@deepkit/workflow": "^1.0.5",
+    "@types/formidable": "^3.4.5",
+    "@types/node": "^22.13.1",
     "@types/send": "^0.14.6"
   },
   "jest": {

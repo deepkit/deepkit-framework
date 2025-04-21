@@ -22,19 +22,19 @@ import {
     isCustomTypeClass,
     isTypeClassOf,
     MapName,
-    metaAnnotation,
     PrimaryKey,
     Reference,
     ReflectionKind,
     SignedBinaryBigInt,
     stringifyResolvedType,
     Type,
+    typeAnnotation,
     TypeProperty,
     TypePropertySignature,
 } from '../src/reflection/type.js';
 import { createSerializeFunction, getSerializeFunction, NamingStrategy, Serializer, serializer, underscoreNamingStrategy } from '../src/serializer.js';
 import { cast, deserialize, patch, serialize } from '../src/serializer-facade.js';
-import { getClassName } from '@deepkit/core';
+import { getClassName, TypeAnnotation } from '@deepkit/core';
 import { entity, t } from '../src/decorator.js';
 import { Alphanumeric, MaxLength, MinLength, ValidationError } from '../src/validator.js';
 import { StatEnginePowerUnit, StatWeightUnit } from './types.js';
@@ -1256,10 +1256,10 @@ test('patch', () => {
 });
 
 test('extend with custom type', () => {
-    type StringifyTransport = { __meta?: never & ['stringifyTransport'] };
+    type StringifyTransport = TypeAnnotation<'stringifyTransport'>;
 
     function isStringifyTransportType(type: Type): boolean {
-        return !!metaAnnotation.getForName(type, 'stringifyTransport');
+        return !!typeAnnotation.getType(type, 'stringifyTransport');
     }
 
     serializer.serializeRegistry.addPostHook((type, state) => {

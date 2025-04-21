@@ -66,7 +66,8 @@ import { ControllerClient } from './client';
             </dui-window-content>
         </dui-window>
     `,
-    styleUrls: ['./app.component.scss']
+    styleUrls: ['./app.component.scss'],
+    standalone: false
 })
 export class AppComponent implements OnInit, OnDestroy {
     sidebarVisible: boolean = true;

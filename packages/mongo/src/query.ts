@@ -8,9 +8,20 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { OrmEntity, Query } from '@deepkit/orm';
-import { MongoQueryModel } from './query.model.js';
+import { DatabaseQueryModel, OrmEntity, Query, Sort } from '@deepkit/orm';
+import { CommandOptions } from './client/options.js';
+import { FilterQuery, MongoQueryModel } from './query.model.js';
 
-export class MongoDatabaseQuery<T extends OrmEntity,
-    MODEL extends MongoQueryModel<T> = MongoQueryModel<T>> extends Query<T> {
+export class MongoDatabaseQuery<T extends OrmEntity> extends Query<T> {
+    public model!: MongoQueryModel<T>;
+
+    protected createModel<T extends OrmEntity>(): DatabaseQueryModel<T, FilterQuery<T>, Sort<T, any>> {
+        return new MongoQueryModel<T>();
+    }
+
+    with(options: CommandOptions): this {
+        this.model = this.model.clone();
+        Object.assign(this.model.options, options);
+        return this;
+    }
 }

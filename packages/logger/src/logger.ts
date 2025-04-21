@@ -10,8 +10,8 @@
 
 import style from 'ansi-styles';
 import format from 'format-util';
-import { arrayRemoveItem, ClassType } from '@deepkit/core';
-import { Inject, TransientInjectionTarget } from '@deepkit/injector';
+import { arrayRemoveItem, ClassType, Inject } from '@deepkit/core';
+import { tokenLabel, TransientInjectionTarget } from '@deepkit/injector';
 import { MemoryLoggerTransport } from './memory-logger.js';
 
 export enum LoggerLevel {
@@ -22,7 +22,17 @@ export enum LoggerLevel {
     log,
     info,
     debug,
+    debug2, // very verbose debug output
 }
+
+declare var process: {
+    stdout: {
+        write: (v: string) => any;
+    };
+    stderr: {
+        write: (v: string) => any;
+    };
+};
 
 export type LogData = { [name: string]: any };
 
@@ -100,7 +110,7 @@ export class ColorFormatter implements LoggerFormatter {
         }
 
         if (message.message.includes('<')) {
-            message.message = message.message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
+            message.message = message.message.replace(/<(\/)?([a-zA-Z]+)>/g, function(a, end, color) {
                 if (!(style as any)[color]) return a;
                 if (end === '/') return (style as any)[color].close;
                 return (style as any)[color].open;
@@ -112,7 +122,7 @@ export class ColorFormatter implements LoggerFormatter {
 export class RemoveColorFormatter implements LoggerFormatter {
     format(message: LogMessage): void {
         if (message.message.includes('<')) {
-            message.message = message.message.replace(/<(\/)?([a-zA-Z]+)>/g, function (a, end, color) {
+            message.message = message.message.replace(/<(\/)?([a-zA-Z]+)>/g, function(a, end, color) {
                 return '';
             });
         }
@@ -188,6 +198,8 @@ export interface LoggerInterface {
     info(...message: any[]): void;
 
     debug(...message: any[]): void;
+
+    debug2(...message: any[]): void;
 }
 
 export class Logger implements LoggerInterface {
@@ -199,9 +211,10 @@ export class Logger implements LoggerInterface {
      */
     level: LoggerLevel = LoggerLevel.info;
 
+    protected scopeLevels = new Map<string, LoggerLevel>();
+
     protected logData?: LogData;
 
-    scopedLevel: { [scope: string]: LoggerLevel } = {};
     protected scopes: { [scope: string]: Logger } = {};
 
     constructor(
@@ -211,14 +224,77 @@ export class Logger implements LoggerInterface {
     ) {
     }
 
+    /**
+     * Enables debug logging for a given scope.
+     *
+     * This is useful to enable debug logs only for certain parts of your application.
+     */
+    enableDebugScope(...names: string[]) {
+        for (const name of names) this.scopeLevels.set(name, LoggerLevel.debug);
+    }
+
+    disableDebugScope(...names: string[]) {
+        for (const name of names) this.scopeLevels.set(name, LoggerLevel.none);
+    }
+
+    unsetDebugScope(...names: string[]) {
+        for (const name of names) this.scopeLevels.delete(name);
+    }
+
+    isScopeEnabled(name: string): boolean {
+        return (this.scopeLevels.get(name) ?? this.level) > LoggerLevel.none;
+    }
+
+    /**
+     * Sends additional log data for the very next log/error/alert/warning/etc call.
+     *
+     * @example
+     * ```typescript
+     *
+     * logger.data({user: user}).log('User logged in');
+     *
+     * //or
+     *
+     * //the given data is only used for the very next log (or error/alert/warning etc) call.
+     * logger.data({user: user})
+     * logger.log('User logged in');
+     *
+     * //at this point `data` is consumed, and for all other log calls not used anymore.
+     * logger.log('another message without data');
+     *
+     *
+     * ```
+     */
     data(data: LogData): this {
         this.logData = data;
         return this;
     }
 
+    /**
+     * Creates a new scoped logger. A scoped logger has the same log level, transports, and formatters as the parent logger,
+     * and references them directly. This means if you change the log level on the parent logger, it will also change for all
+     * scoped loggers.
+     */
     scoped(name: string): Logger {
-        const scopedLogger = (this.scopes[name] ||= new (this.constructor as any)(this.transporter, this.formatter, name));
-        scopedLogger.level = this.level;
+        let scopedLogger = this.scopes[name];
+        if (!scopedLogger) {
+            const self = this;
+            const scope = this.scope ? this.scope + '.' + name : name;
+            scopedLogger = Object.setPrototypeOf({
+                get level() {
+                    return self.level;
+                },
+                transporter: self.transporter,
+                formatter: self.formatter,
+                scope,
+                scopes: self.scopes,
+                logData: self.logData,
+                scopeLevels: self.scopeLevels,
+                colorFormatter: self.colorFormatter,
+                removeColorFormatter: self.removeColorFormatter,
+            }, Logger.prototype);
+            this.scopes[name] = scopedLogger;
+        }
         return scopedLogger;
     }
 
@@ -260,7 +336,11 @@ export class Logger implements LoggerInterface {
     }
 
     is(level: LoggerLevel): boolean {
-        return level <= this.level;
+        const scopeCheck = this.scopeLevels.size > 0 && !!this.scope ? this.scopeLevels.get(this.scope) : undefined;
+
+        return scopeCheck !== undefined
+            ? scopeCheck > LoggerLevel.none && level <= scopeCheck
+            : level <= this.level;
     }
 
     protected send(messages: any[], level: LoggerLevel, data: LogData = {}) {
@@ -310,6 +390,10 @@ export class Logger implements LoggerInterface {
     debug(...message: any[]) {
         this.send(message, LoggerLevel.debug);
     }
+
+    debug2(...message: any[]) {
+        this.send(message, LoggerLevel.debug2);
+    }
 }
 
 /**
@@ -317,7 +401,7 @@ export class Logger implements LoggerInterface {
  */
 export class ConsoleLogger extends Logger {
     constructor() {
-        super([new ConsoleTransport]);
+        super([new ConsoleTransport], [new DefaultFormatter]);
     }
 }
 
@@ -327,9 +411,15 @@ export class ConsoleLogger extends Logger {
 export class MemoryLogger extends Logger {
     public memory = new MemoryLoggerTransport();
 
-    constructor() {
-        super([]);
-        this.transporter.push(this.memory);
+    constructor(
+        transporter: LoggerTransport[] = [],
+        formatter: LoggerFormatter[] = [],
+        scope: string = '',
+    ) {
+        super(transporter || [], formatter, scope);
+        if (transporter.length === 0) {
+            this.transporter.push(this.memory);
+        }
     }
 
     getOutput(): string {
@@ -347,5 +437,5 @@ export const ScopedLogger = {
     provide: 'scoped-logger',
     transient: true,
     useFactory: (target: TransientInjectionTarget, logger: Logger = new Logger()) =>
-        logger.scoped(target.token?.name ?? String(target.token)),
+        logger.scoped(tokenLabel(target.token)),
 } as const;

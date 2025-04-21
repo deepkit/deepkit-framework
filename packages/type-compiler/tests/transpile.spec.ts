@@ -566,3 +566,29 @@ test('ReceiveType forward to type passing', () => {
     });
     console.log(res.app);
 });
+
+test('symbol function name', () => {
+    const res = transpile({
+        'app': `
+        const a = Symbol('a');
+        class MySet {
+            [a](): any {}
+            [Symbol.iterator](): any {}
+        }
+        `
+    });
+    console.log(res.app);
+    expect(res.app).toContain(`() => Symbol.iterator`);
+});
+
+test('infer type', () => {
+    const res = transpile({
+        'app': `
+        class A {
+            a = 1;
+        }
+        `
+    });
+    console.log(res.app);
+    expect(res.app).toContain(`'a'`);
+});

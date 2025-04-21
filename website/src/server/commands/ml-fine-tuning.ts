@@ -1,10 +1,14 @@
-import { OpenAI, toFile } from "openai";
-import { findParentPath } from "@deepkit/app";
-import { join } from "path";
-import { readFile, writeFile } from "fs/promises";
-import glob from "tiny-glob";
-import { getSystem } from "../questions";
-import { magicSeparator } from "@app/common/models";
+import { OpenAI, toFile } from 'openai';
+import { findParentPath } from '@deepkit/app';
+import { join } from 'path';
+import { readFile, writeFile } from 'fs/promises';
+import glob from 'tiny-glob';
+import { getSystem } from '../questions';
+import { magicSeparator } from '@app/common/models';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 class Context {
     messages: OpenAI.ChatCompletionMessageParam[] = [];

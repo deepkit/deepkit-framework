@@ -10,7 +10,8 @@ import { ReflectionKind, Type } from '@deepkit/type';
                    [(ngModel)]="model"
                    (ngModelChange)="modelChange.emit(this.model)"
         ></dui-input>
-    `
+    `,
+    standalone: false
 })
 export class StringInputComponent {
     @Input() model: any;

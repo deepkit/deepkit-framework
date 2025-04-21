@@ -9,7 +9,16 @@
  */
 
 import { arrayRemoveItem, ClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import { EntityPatch, EntitySubject, IdType, IdVersionInterface, rpcEntityPatch, rpcEntityRemove, RpcTypes } from '../model.js';
+import {
+    EntityPatch,
+    EntitySubject,
+    IdType,
+    IdVersionInterface,
+    rpcEntityPatch,
+    rpcEntityRemove,
+    RpcError,
+    RpcTypes,
+} from '../model.js';
 import { RpcMessage } from '../protocol.js';
 import { getPartialSerializeFunction, ReflectionClass, serializer, TypeObjectLiteral } from '@deepkit/type';
 
@@ -128,7 +137,7 @@ export class EntitySubjectStore<T extends IdVersionInterface> {
      */
     public createFork(id: IdType): EntitySubject<T> {
         let store = this.store.get(id);
-        if (!store) throw new Error('Could not create fork from unknown item ' + id);
+        if (!store) throw new RpcError('Could not create fork from unknown item ' + id);
 
         const fork = new EntitySubject<T>(store.item, () => {
             this.forkUnregistered(id, fork);
@@ -166,13 +175,13 @@ export class EntityState {
 
     public getStoreByName<T extends IdVersionInterface>(name: string): EntitySubjectStore<T> {
         let store = this.storeByName.get(name);
-        if (!store) throw new Error(`No store for entity ${name}`);
+        if (!store) throw new RpcError(`No store for entity ${name}`);
 
         return store;
     }
 
     public createEntitySubject(classType: ClassType, bodySchema: TypeObjectLiteral, message: RpcMessage) {
-        if (message.type !== RpcTypes.ResponseEntity) throw new Error('Not a response entity message');
+        if (message.type !== RpcTypes.ResponseEntity) throw new RpcError('Not a response entity message');
         const item = message.parseBody<{ v: any }>(bodySchema).v;
 
         const store = this.getStore(classType);

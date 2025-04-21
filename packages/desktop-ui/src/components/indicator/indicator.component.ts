@@ -14,6 +14,7 @@ import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'dui-indicator',
+    standalone: false,
     template: `
         <div [class.invisible]="step <= 0" [style.width.%]="step * 100" class="active"></div>
     `,
@@ -25,6 +26,7 @@ export class IndicatorComponent {
 
 
 @Component({
+    standalone: false,
     selector: 'dui-progress-indicator',
     styles: [`
         .indicator {

@@ -36,7 +36,7 @@ export class DatabaseInsertError extends DatabaseError {
     constructor(
         public readonly entity: ReflectionClass<any>,
         public readonly items: OrmEntity[],
-        ...args: ConstructorParameters<typeof Error>
+        ...args: ConstructorParameters<typeof DatabaseError>
     ) {
         super(...args);
     }
@@ -46,7 +46,7 @@ export class DatabaseUpdateError extends DatabaseError {
     constructor(
         public readonly entity: ReflectionClass<any>,
         public readonly changeSets: DatabasePersistenceChangeSet<any>[],
-        ...args: ConstructorParameters<typeof Error>
+        ...args: ConstructorParameters<typeof DatabaseError>
     ) {
         super(...args);
     }
@@ -57,7 +57,7 @@ export class DatabasePatchError extends DatabaseError {
         public readonly entity: ReflectionClass<any>,
         public readonly query: DatabaseQueryModel<any>,
         public readonly changeSets: Changes<any>,
-        ...args: ConstructorParameters<typeof Error>
+        ...args: ConstructorParameters<typeof DatabaseError>
     ) {
         super(...args);
     }
@@ -69,7 +69,7 @@ export class DatabaseDeleteError extends DatabaseError {
 
     constructor(
         public readonly entity: ReflectionClass<any>,
-        ...args: ConstructorParameters<typeof Error>
+        ...args: ConstructorParameters<typeof DatabaseError>
     ) {
         super(...args);
     }

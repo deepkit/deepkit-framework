@@ -3,6 +3,60 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
+
+### Bug Fixes
+
+- **type:** remove Inject (moved to @deepkit/core ([06d650a](https://github.com/deepkit/deepkit-framework/commit/06d650acf5537fda36b73ad94e928009342cdad5)), closes [#587](https://github.com/deepkit/deepkit-framework/issues/587)
+
+### Features
+
+- **injector:** refactor internal code to get big performance improvement ([f295c5e](https://github.com/deepkit/deepkit-framework/commit/f295c5e77507f234ae2ee3cffdd55561ef294998))
+
+## [1.0.3](https://github.com/deepkit/deepkit-framework/compare/v1.0.2...v1.0.3) (2025-03-13)
+
+### Features
+
+- **injector:** improve error messages, make it very clear what failed and where providers are located ([5866eda](https://github.com/deepkit/deepkit-framework/commit/5866eda8ece1705bb9d1df655d53c70cd77f43a8))
+- **rpc:** automatically garbage collect observables + new event system + stats collection ([d727232](https://github.com/deepkit/deepkit-framework/commit/d727232ca4b445a6bc82de8df31e25ba2d60d683))
+
+## [1.0.2](https://github.com/deepkit/deepkit-framework/compare/v1.0.1...v1.0.2) (2025-02-24)
+
+**Note:** Version bump only for package @deepkit/app
+
+## [1.0.1](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.160...v1.0.1) (2025-02-24)
+
+**Note:** Version bump only for package @deepkit/app
+
+## [1.0.1-alpha.160](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.159...v1.0.1-alpha.160) (2025-02-18)
+
+**Note:** Version bump only for package @deepkit/app
+
+## [1.0.1-alpha.158](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.157...v1.0.1-alpha.158) (2025-02-15)
+
+**Note:** Version bump only for package @deepkit/app
+
+## [1.0.1-alpha.157](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.156...v1.0.1-alpha.157) (2025-02-15)
+
+### Bug Fixes
+
+- tsconfig and tsc build ([ac71e83](https://github.com/deepkit/deepkit-framework/commit/ac71e838d542a3cab0e9b1cfc20b27637f1c01df))
+- **type:** convert TypeAnnotation into intrinsic type ([#629](https://github.com/deepkit/deepkit-framework/issues/629)) ([4d1a13e](https://github.com/deepkit/deepkit-framework/commit/4d1a13ec11536e1951f5e348bd0b43b2244cccca)), closes [#626](https://github.com/deepkit/deepkit-framework/issues/626)
+
+### Features
+
+- **event:** better doc blocks for listen ([452dc6a](https://github.com/deepkit/deepkit-framework/commit/452dc6abfc005cc99b2def853cc15251fb5c732d))
+- update to angular 19 and typescript 5.7.3, new @deepkit/angular-ssr package ([#627](https://github.com/deepkit/deepkit-framework/issues/627)) ([52333a7](https://github.com/deepkit/deepkit-framework/commit/52333a71f98c7e25a74f048dd57f1efba61098f5))
+- **website:** adjust docs createModule -> createModuleClass ([763bfa9](https://github.com/deepkit/deepkit-framework/commit/763bfa9a443a9342117c1f11519ba95c1e5b6b28))
+
+## [1.0.1-alpha.156](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.155...v1.0.1-alpha.156) (2025-01-30)
+
+**Note:** Version bump only for package @deepkit/app
+
+## [1.0.1-alpha.155](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.154...v1.0.1-alpha.155) (2024-10-30)
+
+**Note:** Version bump only for package @deepkit/app
+
 ## [1.0.1-alpha.154](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.153...v1.0.1-alpha.154) (2024-09-06)
 
 **Note:** Version bump only for package @deepkit/app

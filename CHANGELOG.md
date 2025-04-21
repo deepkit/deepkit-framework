@@ -3,6 +3,177 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.7](https://github.com/deepkit/deepkit-framework/compare/v1.0.6...v1.0.7) (2025-04-18)
+
+### Bug Fixes
+
+- **bson:** serialize bigint in any container as long ([8a67d96](https://github.com/deepkit/deepkit-framework/commit/8a67d96f3aab6285ce53dd48494bc4be15b02785))
+- **rpc:** missing .js extension on imports ([d0380c9](https://github.com/deepkit/deepkit-framework/commit/d0380c9dc665f3dca5c7901b8ed16f2abb4d0f49))
+- **vite:** broken esm build ([eb3baca](https://github.com/deepkit/deepkit-framework/commit/eb3baca767a922d6ac01aa4ab245205cd173e6cf))
+
+## [1.0.6](https://github.com/deepkit/deepkit-framework/compare/v1.0.5...v1.0.6) (2025-04-03)
+
+### Bug Fixes
+
+- **rpc:** make sure client disconnect trigger transport disconnect ([89ae002](https://github.com/deepkit/deepkit-framework/commit/89ae002b693f52deb32dbd07db1025fc61a9d8ec))
+
+## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
+
+### Bug Fixes
+
+- **bson:** bigint with isNaN checks ([b46e228](https://github.com/deepkit/deepkit-framework/commit/b46e228428d6b09772a9a5161a7b261f93db585e))
+- **filesystem:** ensure readLocalFile reads from local FS ([ad948e6](https://github.com/deepkit/deepkit-framework/commit/ad948e63d2f513fe52816baed3f1d48e3c2a8ac1)), closes [#637](https://github.com/deepkit/deepkit-framework/issues/637)
+- **filesystem:** ensure writeFile forwards visibility ([57250a2](https://github.com/deepkit/deepkit-framework/commit/57250a20dc4051bad93b32830dc2f4015dcc6826)), closes [#638](https://github.com/deepkit/deepkit-framework/issues/638)
+- **http:** disable compression by default ([257cb61](https://github.com/deepkit/deepkit-framework/commit/257cb61ae6e3732e45a54a08ae5b751e3f28d8dd)), closes [#592](https://github.com/deepkit/deepkit-framework/issues/592)
+- **type:** remove Inject (moved to @deepkit/core ([06d650a](https://github.com/deepkit/deepkit-framework/commit/06d650acf5537fda36b73ad94e928009342cdad5)), closes [#587](https://github.com/deepkit/deepkit-framework/issues/587)
+- **type:** replace more Inject imports ([5a88760](https://github.com/deepkit/deepkit-framework/commit/5a88760d90533ef38bc73ba9ad9af17cc64c728f))
+
+### Features
+
+- **bench:** new @deepkit/bench package for doing benchmarks ([210bd84](https://github.com/deepkit/deepkit-framework/commit/210bd844e604a74502b1875e7a6794b059138d46))
+- **bson:** convert if-else branch to lookup ([3589e62](https://github.com/deepkit/deepkit-framework/commit/3589e62f7d35b6462925758973fe54cb41aa8497))
+- **core:** export AsyncFunction ([cebd164](https://github.com/deepkit/deepkit-framework/commit/cebd164671543e106dee4459e2741dfe12f00020))
+- **framework:** new option `logStartup` to control startup rpc/http endpoints logging ([7695822](https://github.com/deepkit/deepkit-framework/commit/7695822cd849915ece9d5d88ac94ca2aed9d304e))
+- **injector:** better docs ([7402f11](https://github.com/deepkit/deepkit-framework/commit/7402f117c230a6f23e892d0e5e91534f1b0bf005))
+- **injector:** refactor internal code to get big performance improvement ([f295c5e](https://github.com/deepkit/deepkit-framework/commit/f295c5e77507f234ae2ee3cffdd55561ef294998))
+- **logger:** add debug2 level + more control over scope log level ([be01b73](https://github.com/deepkit/deepkit-framework/commit/be01b7395336badef3f215dc5df7bfba0a8b4b22))
+- **run:** new @deepkit/run package to run typescript easily ([0b9246e](https://github.com/deepkit/deepkit-framework/commit/0b9246edaab9deb80b6855cba90f48baa4562e08))
+
+## [1.0.4](https://github.com/deepkit/deepkit-framework/compare/v1.0.3...v1.0.4) (2025-03-13)
+
+### Bug Fixes
+
+- **rpc:** export events ([829317c](https://github.com/deepkit/deepkit-framework/commit/829317c0e7ef2dfbabe7e844258b3c5cd8c8c7df))
+
+## [1.0.3](https://github.com/deepkit/deepkit-framework/compare/v1.0.2...v1.0.3) (2025-03-13)
+
+### Bug Fixes
+
+- **api-console-module:** correctly parse HttpBodyValidation and HttpRequestParser ([3a5a048](https://github.com/deepkit/deepkit-framework/commit/3a5a04804dfce3a6b906e8e32fb524a62891e649))
+- **broker:** ensure no dangling Promise ([9056812](https://github.com/deepkit/deepkit-framework/commit/90568125151e7daafb1ea1bb81d1175c6343b50c))
+- **create-app:** update dep versions ([6d12d4a](https://github.com/deepkit/deepkit-framework/commit/6d12d4a9853ec5f9c922aaf5838a070450efc300))
+- **desktop-ui:** adjust to new event api ([38ef6b8](https://github.com/deepkit/deepkit-framework/commit/38ef6b8250b8544f90588dd29306f2653eaa749e))
+- **desktop-ui:** ng-packagr build and safari styling ([956ca9b](https://github.com/deepkit/deepkit-framework/commit/956ca9b7ff98e598c7ab9632eaf4303ef37070b7))
+- **http:** better defaults for new formidable version ([5c9788e](https://github.com/deepkit/deepkit-framework/commit/5c9788ebfb4b3ab3f056cbaa1ff79a109015f5ba))
+- **logger:** ensure scoped Logger maintain reference to log level ([3874148](https://github.com/deepkit/deepkit-framework/commit/387414895af893bbaa0a6874631d0ac47ab165c8))
+- **mongo:** hello command ([30cbad5](https://github.com/deepkit/deepkit-framework/commit/30cbad5e745d9e3a60d212cb0814da3c2758753e))
+- **mongo:** transactions ([e4781db](https://github.com/deepkit/deepkit-framework/commit/e4781db2a1f9766b811713f501b630adc384e6e7))
+
+### Features
+
+- **bson:** new BsonStreamReader ([3faa77a](https://github.com/deepkit/deepkit-framework/commit/3faa77a8fdf41315697670353c574b2954584dec))
+- **desktop-ui:** allow to pass ConnectedPosition strategy to dropdown component ([9ffd941](https://github.com/deepkit/deepkit-framework/commit/9ffd941092b347ed68108a758411edada20fff41))
+- **devtool:** new chrome devtool to debug rpc connections ([80c5105](https://github.com/deepkit/deepkit-framework/commit/80c5105dd7ceb2cb30c15d54b2aca14a35e5a9f3))
+- **devtool:** reduce needed permissions and make it explicit for each domain ([1cb03cd](https://github.com/deepkit/deepkit-framework/commit/1cb03cd30dfada89c5c66e91380d78cdb254516b))
+- **event:** align API with Event web standards ([0e1dca2](https://github.com/deepkit/deepkit-framework/commit/0e1dca28fd8bbfb5232f9f9df4654598744d77a0))
+- **event:** allow late event listening, new synchronous event dispatching with 15x performance improvement ([0cc6843](https://github.com/deepkit/deepkit-framework/commit/0cc68438b2b933ee8241bbcca310ac79fea2b5c9))
+- **event:** allow sync tokens with sync dispatching and sync listeners ([798dfb7](https://github.com/deepkit/deepkit-framework/commit/798dfb72670ce26d6d2904e48a2edded42fd4b46))
+- **injector:** improve error messages, make it very clear what failed and where providers are located ([5866eda](https://github.com/deepkit/deepkit-framework/commit/5866eda8ece1705bb9d1df655d53c70cd77f43a8))
+- **injector:** improve prepared resolver performance by 11x and dynamic `Injector.get` by 17x ([3906e2c](https://github.com/deepkit/deepkit-framework/commit/3906e2c013782fee2b27a3ff99da5b1e912b8458))
+- **mongo,orm,logger:** improve transaction safety and logging ([95faf2c](https://github.com/deepkit/deepkit-framework/commit/95faf2c0143a34ba3524db290719692cc93593d3))
+- **mongo:** add replica set support, rework connection handling ([7fe1a9a](https://github.com/deepkit/deepkit-framework/commit/7fe1a9aac6c799b33cdea7b1454464ebabc131d6))
+- **mongo:** add support for read preference via Query API ([c829762](https://github.com/deepkit/deepkit-framework/commit/c829762ef6ec1f4b9a57c89d19f09dce39e5b940))
+- **mongo:** more statistics, optimise error message when primary is not reachable ([0cd4e1e](https://github.com/deepkit/deepkit-framework/commit/0cd4e1eaf2127fb2ff7b4a729c3ef6eeb9f0d5fa))
+- **rpc:** add utility functions to create Subject/Observable synchronously from an RPC controller ([349668f](https://github.com/deepkit/deepkit-framework/commit/349668fe0d2586831fc21d4b0d130bd1b8a2ffbb))
+- **rpc:** automatically garbage collect observables + new event system + stats collection ([d727232](https://github.com/deepkit/deepkit-framework/commit/d727232ca4b445a6bc82de8df31e25ba2d60d683))
+- **rpc:** improve disconnect handling and cleaning up RpcMessageSubject correctly ([9d9e29a](https://github.com/deepkit/deepkit-framework/commit/9d9e29ad2bffa91751a78486fe031d9b8a8fecf7))
+- **rpc:** improve performance by 25% ([f7e524f](https://github.com/deepkit/deepkit-framework/commit/f7e524fabafe1b54047a642744373a0db611ce93))
+- **sql:** migration support for node v22 without ts-node dependency ([f939ea1](https://github.com/deepkit/deepkit-framework/commit/f939ea1bad49363b729a019f335cdf0253a619e9))
+
+### BREAKING CHANGES
+
+- **event:** stopPropagation() becomes stopImmediatePropagation().
+
+New BaseEvent.preventDefault() which replaces custom solutions like stop() in DatabaseEvent.
+
+## [1.0.2](https://github.com/deepkit/deepkit-framework/compare/v1.0.1...v1.0.2) (2025-02-24)
+
+### Bug Fixes
+
+- **type-compiler:** make sure not annotated properties get unknown as type ([b262534](https://github.com/deepkit/deepkit-framework/commit/b262534d5c516c975b9b7d818539f92043f5736e))
+- **website:** complete ssr and docker build ([90371f2](https://github.com/deepkit/deepkit-framework/commit/90371f2363f7d667a41e662c64be728bef92b4f8))
+
+### Features
+
+- **angular-ssr:** support server:start serving of angular routes ([ee3972c](https://github.com/deepkit/deepkit-framework/commit/ee3972cb07766299e315d885a1ee82ca6a49dda9))
+- **rpc:** allow to register hooks for rpc kernel and actions ([cb0102b](https://github.com/deepkit/deepkit-framework/commit/cb0102bf51a0b508dbacbc5d6010fbed058f52cd))
+
+## [1.0.1](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.160...v1.0.1) (2025-02-24)
+
+### Bug Fixes
+
+- **app:** remove deepkit-openapi since incompatible ([f825f27](https://github.com/deepkit/deepkit-framework/commit/f825f27d1ad691211333d9849b46045f3010ca21))
+- **framework-debug-gui:** hide broker menu ([ecf1b27](https://github.com/deepkit/deepkit-framework/commit/ecf1b27647567adcc8cd956c11de3d78955fbc72))
+- **type-compiler:** check in installer if file exists ([eb07783](https://github.com/deepkit/deepkit-framework/commit/eb0778318fb369b0eaabb9ee04d76f88d27f4f90)), closes [#630](https://github.com/deepkit/deepkit-framework/issues/630)
+- **ui-library:** missing module import ([30f80d3](https://github.com/deepkit/deepkit-framework/commit/30f80d345fe5cbf85f8722650c8fbdcc1bdfd8da))
+
+## [1.0.1-alpha.160](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.159...v1.0.1-alpha.160) (2025-02-18)
+
+### Bug Fixes
+
+- **angular-ssr:** remove usage of angular internals ([ae91295](https://github.com/deepkit/deepkit-framework/commit/ae91295e7da71b6f4c1e7672bcc5983b267f8ee7))
+- **type:** make typeAnnotation backwards compatible to metaAnnotation ([8be8b5e](https://github.com/deepkit/deepkit-framework/commit/8be8b5e154eca10fc7cd398347886209d2fa49ae))
+- **website:** docs about typeAnnotation ([83bab92](https://github.com/deepkit/deepkit-framework/commit/83bab92a01f2846aa8303359638414a935992820))
+
+## [1.0.1-alpha.159](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.158...v1.0.1-alpha.159) (2025-02-18)
+
+### Bug Fixes
+
+- **mongo:** update saslprep ([5413295](https://github.com/deepkit/deepkit-framework/commit/5413295aca72f3f75d672853d861aa662c43299b))
+
+## [1.0.1-alpha.158](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.157...v1.0.1-alpha.158) (2025-02-15)
+
+### Bug Fixes
+
+- **desktop-ui:** package scripts ([05e86f0](https://github.com/deepkit/deepkit-framework/commit/05e86f0a6ebbf77fcc293130489461482806a3e3))
+- **desktop-ui:** package scripts ([4b64f7f](https://github.com/deepkit/deepkit-framework/commit/4b64f7ff84b801227df009c880b95da95e38f1f2))
+
+## [1.0.1-alpha.157](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.156...v1.0.1-alpha.157) (2025-02-15)
+
+### Bug Fixes
+
+- **angular-ssr:** docs ([eae7291](https://github.com/deepkit/deepkit-framework/commit/eae729141372fc83492a9b66d479eb121eec7a0f))
+- **core:** disable reflection in indent.ts ([9bbc278](https://github.com/deepkit/deepkit-framework/commit/9bbc2780b904996f51f6ab97ac87566e86f02ddc))
+- **core:** pass correct global in indent.ts ([b1558e4](https://github.com/deepkit/deepkit-framework/commit/b1558e455271f7d6e282ff0668665da4eb8f4920))
+- **http:** isElementStruct with null ([04e54b0](https://github.com/deepkit/deepkit-framework/commit/04e54b0dd7888592fa9db1adbf3003b1e4abe4fa))
+- **rpc:** ensure message size is reset to 0 after reaching a buffer that is too small ([c78a2a2](https://github.com/deepkit/deepkit-framework/commit/c78a2a26b98384ae6d1e6b87aa993e77026f4e7c))
+- tsconfig and tsc build ([ac71e83](https://github.com/deepkit/deepkit-framework/commit/ac71e838d542a3cab0e9b1cfc20b27637f1c01df))
+- **type:** convert TypeAnnotation into intrinsic type ([#629](https://github.com/deepkit/deepkit-framework/issues/629)) ([4d1a13e](https://github.com/deepkit/deepkit-framework/commit/4d1a13ec11536e1951f5e348bd0b43b2244cccca)), closes [#626](https://github.com/deepkit/deepkit-framework/issues/626)
+- **type:** ensure union check in deserialize mode to handle property with default value correctly ([11c2116](https://github.com/deepkit/deepkit-framework/commit/11c21167a06e6eaee46941d4aee13323581caa52)), closes [#623](https://github.com/deepkit/deepkit-framework/issues/623)
+- **type:** remove debug code ([fefd9a3](https://github.com/deepkit/deepkit-framework/commit/fefd9a33a8c9c7edf0267ece2e6f33b4913cd173))
+
+### Features
+
+- **event:** better doc blocks for listen ([452dc6a](https://github.com/deepkit/deepkit-framework/commit/452dc6abfc005cc99b2def853cc15251fb5c732d))
+- **http:** update formidable to ^3.5.2 ([e4007c3](https://github.com/deepkit/deepkit-framework/commit/e4007c39a63dddeb7dadbdd8914cfaa954a059e7))
+- **rpc:** make binary parser more stable and throw better error message on decoding failure ([66e8f0d](https://github.com/deepkit/deepkit-framework/commit/66e8f0d196ed3f6c7ec2d7b4d106afb4e21d1d54))
+- **rpc:** show invalid binary message in hex on error ([1a7bf16](https://github.com/deepkit/deepkit-framework/commit/1a7bf16a04282125fd3c5c0154bad39beaf8e14d))
+- **sqlite:** update better-sqlite3 to 11.8.1 ([cb1eafd](https://github.com/deepkit/deepkit-framework/commit/cb1eafd48306bd6c656b392adc865d48dd425a02))
+- **type-compiler:** support trivially inferred types ([087b60a](https://github.com/deepkit/deepkit-framework/commit/087b60ae8f964dd4e9f477c9346234ef79ccef4a))
+- update to angular 19 and typescript 5.7.3, new @deepkit/angular-ssr package ([#627](https://github.com/deepkit/deepkit-framework/issues/627)) ([52333a7](https://github.com/deepkit/deepkit-framework/commit/52333a71f98c7e25a74f048dd57f1efba61098f5))
+- **website:** adjust docs createModule -> createModuleClass ([763bfa9](https://github.com/deepkit/deepkit-framework/commit/763bfa9a443a9342117c1f11519ba95c1e5b6b28))
+
+## [1.0.1-alpha.156](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.155...v1.0.1-alpha.156) (2025-01-30)
+
+### Bug Fixes
+
+- **bson:** initial random value of incremental counter of ObjectId ([fb1263d](https://github.com/deepkit/deepkit-framework/commit/fb1263dbd9fbaae0bd9ecbf40f840698e4523e0c))
+- **bson:** throw on invalid string data ([423df6c](https://github.com/deepkit/deepkit-framework/commit/423df6c681c226d8b4bff8c909ccd745c3c61c13))
+- don't process delete PKs if norows were affected ([#621](https://github.com/deepkit/deepkit-framework/issues/621)) ([f2f6ed0](https://github.com/deepkit/deepkit-framework/commit/f2f6ed03f21bf5d6a9424c644d899d269cd3a354))
+- **type:** make sure forwarded type arguments reset Ω at the origin ([3138671](https://github.com/deepkit/deepkit-framework/commit/31386718f3fc634983c0eedd652105765e3e6a75)), closes [#619](https://github.com/deepkit/deepkit-framework/issues/619)
+
+### Features
+
+- **bson:** decrease threshold to when TextDecoder is used to decoder utf8 ([4daed1c](https://github.com/deepkit/deepkit-framework/commit/4daed1c43e29a80c205aac35ab85317fdb936c9c))
+
+## [1.0.1-alpha.155](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.154...v1.0.1-alpha.155) (2024-10-30)
+
+### Bug Fixes
+
+- **framework:** di token to label ([0b37a21](https://github.com/deepkit/deepkit-framework/commit/0b37a21a6a0889bff3f82c8eb2d26884a26a3228))
+- **type:** add executeTypeArgumentAsArray + custom iterable example with manual implementation ([0781a1a](https://github.com/deepkit/deepkit-framework/commit/0781a1ab733a5b06b0c89ec854274e0a8115696a))
+- **type:** symbols as method names ([2be4ce6](https://github.com/deepkit/deepkit-framework/commit/2be4ce6e728197c55524fc1f009b6a2946af022f))
+
 ## [1.0.1-alpha.154](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.153...v1.0.1-alpha.154) (2024-09-06)
 
 ### Bug Fixes

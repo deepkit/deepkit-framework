@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/filesystem",
-  "version": "1.0.1-alpha.154",
+  "version": "1.0.5",
   "description": "Filesystem abstraction Deepkit",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -28,10 +28,10 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13"
+    "@deepkit/core": "^1.0.1"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.154"
+    "@deepkit/core": "^1.0.5"
   },
   "jest": {
     "testEnvironment": "node",

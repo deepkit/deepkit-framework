@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, getClassName } from '@deepkit/core';
+import { ClassType, getClassName, TypeAnnotation } from '@deepkit/core';
 import {
     ClassDecoratorResult,
     createClassDecoratorContext,
@@ -18,18 +18,16 @@ import {
     isDateType,
     isOptional,
     isReferenceType,
-    metaAnnotation,
     reflect,
     ReflectionClass,
     ReflectionFunction,
     ReflectionKind,
     stringifyType,
     Type,
-    TypeAnnotation,
+    typeAnnotation,
     TypeParameter,
     TypeProperty,
     TypePropertySignature,
-    typeToObject,
     validate,
     ValidationError,
 } from '@deepkit/type';
@@ -43,7 +41,12 @@ import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 /**
  * Flag is a command line argument that is prefixed with `--` and can have a value.
  */
-export type Flag<Options extends { char?: string, hidden?: boolean, description?: string, prefix?: string } = {}> = TypeAnnotation<'cli:flag', Options>;
+export type Flag<Options extends {
+    char?: string,
+    hidden?: boolean,
+    description?: string,
+    prefix?: string
+} = {}> = TypeAnnotation<'cli:flag', Options>;
 
 class CommandDecoratorDefinition {
     name: string = '';
@@ -148,7 +151,9 @@ export function getArgsFromEnvironment(): string[] {
     return [];
 }
 
-export function parseCliArgs(args: string[], aliases: { [name: string]: string } = {}): { [name: string]: boolean | string | string[] } {
+export function parseCliArgs(args: string[], aliases: { [name: string]: string } = {}): {
+    [name: string]: boolean | string | string[]
+} {
     const result: { [name: string]: boolean | string | string[] } = {};
     let current: string | undefined = undefined;
 
@@ -358,8 +363,8 @@ interface ParameterMeta {
 }
 
 function getParameterMeta(parameter: TypeParameter | TypeProperty | TypePropertySignature): ParameterMeta {
-    const metaFlag = metaAnnotation.getForName(parameter.type, 'cli:flag');
-    const flagOptions = metaFlag && metaFlag.length ? typeToObject(metaFlag[0]) : {};
+    const metaFlag = typeAnnotation.getOption(parameter.type, 'cli:flag');
+    const flagOptions = metaFlag || {};
 
     return {
         flag: !!metaFlag,
@@ -496,7 +501,19 @@ function collectCommandParameter(config: ParsedCliControllerConfig) {
             // split it into multiple flags, e.g. --name --age
             if (parameter.type.kind === ReflectionKind.objectLiteral || isCustomTypeClass(parameter.type)) {
                 if (isReferenceType(parameter.type)) {
-                    result.push({ name, defaultValue, char, hidden, optional, description, prefix, collectInto, kind: 'flag', flag: true, type: parameter.type });
+                    result.push({
+                        name,
+                        defaultValue,
+                        char,
+                        hidden,
+                        optional,
+                        description,
+                        prefix,
+                        collectInto,
+                        kind: 'flag',
+                        flag: true,
+                        type: parameter.type,
+                    });
                     return;
                 }
 
@@ -512,15 +529,51 @@ function collectCommandParameter(config: ParsedCliControllerConfig) {
                 }
             } else {
                 names.add(name);
-                result.push({ name, defaultValue, char, hidden, optional, description, prefix, collectInto, kind: 'flag', flag: true, type: parameter.type });
+                result.push({
+                    name,
+                    defaultValue,
+                    char,
+                    hidden,
+                    optional,
+                    description,
+                    prefix,
+                    collectInto,
+                    kind: 'flag',
+                    flag: true,
+                    type: parameter.type,
+                });
             }
         } else {
             names.add(name);
             //it's either a simple string|number positional argument or a service
             if (isSimple && !injectToken) {
-                result.push({ name, defaultValue, flag: false, char, optional, description, hidden, collectInto, prefix, kind: 'argument', type: parameter.type });
+                result.push({
+                    name,
+                    defaultValue,
+                    flag: false,
+                    char,
+                    optional,
+                    description,
+                    hidden,
+                    collectInto,
+                    prefix,
+                    kind: 'argument',
+                    type: parameter.type,
+                });
             } else {
-                result.push({ name, defaultValue, flag: false, char, optional, description, hidden, collectInto, prefix, kind: 'service', type: parameter.type });
+                result.push({
+                    name,
+                    defaultValue,
+                    flag: false,
+                    char,
+                    optional,
+                    description,
+                    hidden,
+                    collectInto,
+                    prefix,
+                    kind: 'service',
+                    type: parameter.type,
+                });
             }
         }
     }
@@ -588,7 +641,7 @@ export async function runCommand(
             try {
                 args.push(injector.get(injectToken || parameter.type));
             } catch (error) {
-                if (parameter.optional && error instanceof ServiceNotFoundError)  {
+                if (parameter.optional && error instanceof ServiceNotFoundError) {
                     continue;
                 }
                 handleConvertError(logger, parameter, parsedArgs[parameter.name], error);
@@ -655,7 +708,12 @@ export async function runCommand(
             }
         }
         exitCode = 'number' === typeof exitCode ? exitCode : 0;
-        await eventDispatcher.dispatch(onAppExecuted, { exitCode, command: config.name, parameters: parameterValues, injector });
+        await eventDispatcher.dispatch(onAppExecuted, {
+            exitCode,
+            command: config.name,
+            parameters: parameterValues,
+            injector,
+        });
         return exitCode;
     } catch (error) {
         await eventDispatcher.dispatch(onAppError, {

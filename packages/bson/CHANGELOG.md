@@ -3,6 +3,69 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.7](https://github.com/deepkit/deepkit-framework/compare/v1.0.6...v1.0.7) (2025-04-18)
+
+### Bug Fixes
+
+- **bson:** serialize bigint in any container as long ([8a67d96](https://github.com/deepkit/deepkit-framework/commit/8a67d96f3aab6285ce53dd48494bc4be15b02785))
+
+## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
+
+### Bug Fixes
+
+- **bson:** bigint with isNaN checks ([b46e228](https://github.com/deepkit/deepkit-framework/commit/b46e228428d6b09772a9a5161a7b261f93db585e))
+
+### Features
+
+- **bson:** convert if-else branch to lookup ([3589e62](https://github.com/deepkit/deepkit-framework/commit/3589e62f7d35b6462925758973fe54cb41aa8497))
+
+## [1.0.3](https://github.com/deepkit/deepkit-framework/compare/v1.0.2...v1.0.3) (2025-03-13)
+
+### Features
+
+- **bson:** new BsonStreamReader ([3faa77a](https://github.com/deepkit/deepkit-framework/commit/3faa77a8fdf41315697670353c574b2954584dec))
+
+## [1.0.2](https://github.com/deepkit/deepkit-framework/compare/v1.0.1...v1.0.2) (2025-02-24)
+
+**Note:** Version bump only for package @deepkit/bson
+
+## [1.0.1](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.160...v1.0.1) (2025-02-24)
+
+**Note:** Version bump only for package @deepkit/bson
+
+## [1.0.1-alpha.160](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.159...v1.0.1-alpha.160) (2025-02-18)
+
+**Note:** Version bump only for package @deepkit/bson
+
+## [1.0.1-alpha.158](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.157...v1.0.1-alpha.158) (2025-02-15)
+
+**Note:** Version bump only for package @deepkit/bson
+
+## [1.0.1-alpha.157](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.156...v1.0.1-alpha.157) (2025-02-15)
+
+### Bug Fixes
+
+- tsconfig and tsc build ([ac71e83](https://github.com/deepkit/deepkit-framework/commit/ac71e838d542a3cab0e9b1cfc20b27637f1c01df))
+
+### Features
+
+- update to angular 19 and typescript 5.7.3, new @deepkit/angular-ssr package ([#627](https://github.com/deepkit/deepkit-framework/issues/627)) ([52333a7](https://github.com/deepkit/deepkit-framework/commit/52333a71f98c7e25a74f048dd57f1efba61098f5))
+
+## [1.0.1-alpha.156](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.155...v1.0.1-alpha.156) (2025-01-30)
+
+### Bug Fixes
+
+- **bson:** initial random value of incremental counter of ObjectId ([fb1263d](https://github.com/deepkit/deepkit-framework/commit/fb1263dbd9fbaae0bd9ecbf40f840698e4523e0c))
+- **bson:** throw on invalid string data ([423df6c](https://github.com/deepkit/deepkit-framework/commit/423df6c681c226d8b4bff8c909ccd745c3c61c13))
+
+### Features
+
+- **bson:** decrease threshold to when TextDecoder is used to decoder utf8 ([4daed1c](https://github.com/deepkit/deepkit-framework/commit/4daed1c43e29a80c205aac35ab85317fdb936c9c))
+
+## [1.0.1-alpha.155](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.154...v1.0.1-alpha.155) (2024-10-30)
+
+**Note:** Version bump only for package @deepkit/bson
+
 ## [1.0.1-alpha.154](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.153...v1.0.1-alpha.154) (2024-09-06)
 
 ### Bug Fixes

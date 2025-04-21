@@ -8,7 +8,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "ES2020",
+    "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
@@ -21,7 +21,8 @@
     "src",
     "index.ts"
   ],
-  "exclude": ["tests"],
-  "references": [
-  ]
+  "exclude": [
+    "tests"
+  ],
+  "references": []
 }

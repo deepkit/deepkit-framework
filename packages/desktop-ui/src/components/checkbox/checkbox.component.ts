@@ -15,12 +15,13 @@ import {
     HostBinding,
     HostListener,
     Injector,
-    SkipSelf
+    SkipSelf,
 } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 
 @Component({
     selector: 'dui-checkbox',
+    standalone: false,
     template: `
         <span class="box">
             <dui-icon [size]="12" name="check"></dui-icon>

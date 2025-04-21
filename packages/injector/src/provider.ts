@@ -21,26 +21,26 @@ export interface ProviderBase {
 
 /** @reflection never */
 export interface ProviderScope {
-    scope?: 'module' | 'rpc' | 'http' | 'cli' | string;
+    scope?: 'rpc' | 'http' | 'cli' | string;
 }
 
 /** @reflection never */
-export type Token<T = any> = symbol | number | bigint | RegExp | boolean | string | AbstractClassType<T> | Type | TagProvider<T> | Function | T;
+export type Token<T = unknown> = symbol | number | bigint | boolean | string | AbstractClassType<T> | Type | TagProvider<T> | Function | T;
 
 export function provide<T>(
-    provider:
-        | (ProviderBase & ProviderScope &
-        (
-            | { useValue: T }
-            | { useClass: ClassType }
-            | { useExisting: any }
-            | { useFactory: (...args: any[]) => T | undefined }
-            ))
+    provider?:
+        | (ProviderBase & ProviderScope & (
+        | { useValue?: T }
+        | { useClass: ClassType }
+        | { useExisting: any }
+        | { useFactory: (...args: any[]) => T | undefined }
+        ))
         | ClassType
         | ((...args: any[]) => T)
     ,
     type?: ReceiveType<T>,
 ): NormalizedProvider {
+    if (!provider) return { provide: resolveReceiveType(type) };
     if (isClass(provider)) return { provide: resolveReceiveType(type), useClass: provider };
     if (isFunction(provider)) return { provide: resolveReceiveType(type), useFactory: provider };
     return { ...provider, provide: resolveReceiveType(type) };
@@ -109,7 +109,7 @@ interface TagRegistryEntry<T> {
 /** @reflection never */
 export class TagRegistry {
     constructor(
-        public tags: TagRegistryEntry<any>[] = []
+        public tags: TagRegistryEntry<any>[] = [],
     ) {
     }
 
@@ -137,7 +137,7 @@ export class Tag<T, TP extends TagProvider<T> = TagProvider<T>> {
     _2!: () => TP;
 
     constructor(
-        public readonly services: T[] = []
+        public readonly services: T[] = [],
     ) {
     }
 

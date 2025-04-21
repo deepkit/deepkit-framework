@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { AppModule, createModule } from '../src/module.js';
+import { AppModule, createModuleClass } from '../src/module.js';
 import { ServiceContainer } from '../src/service-container.js';
 import { InjectorContext } from '@deepkit/injector';
 
@@ -12,16 +12,16 @@ test('simple setup with import and overwrite', () => {
         }
     }
 
-    class DatabaseModule extends createModule({
+    class DatabaseModule extends createModuleClass({
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection]
-    }, 'database') {
+    }) {
     }
 
     class MyService {
     }
 
-    const myModule = new AppModule({
+    const myModule = new AppModule({}, {
         providers: [MyService],
         imports: [new DatabaseModule]
     });
@@ -49,7 +49,7 @@ test('simple setup with import and overwrite', () => {
         class OverwrittenConnection {
         }
 
-        const myModuleOverwritten = new AppModule({
+        const myModuleOverwritten = new AppModule({}, {
             providers: [MyService, { provide: Connection, useClass: OverwrittenConnection }],
             imports: [new DatabaseModule]
         });
@@ -68,9 +68,9 @@ test('deep', () => {
     class DeepService {
     }
 
-    const deepModule = new AppModule({
+    const deepModule = new AppModule({}, {
         providers: [DeepService]
-    }, 'deep');
+    });
 
     class Connection {
     }
@@ -78,16 +78,16 @@ test('deep', () => {
     class HiddenDatabaseService {
     }
 
-    const databaseModule = new AppModule({
+    const databaseModule = new AppModule({}, {
         providers: [Connection, HiddenDatabaseService],
         exports: [Connection],
         imports: [deepModule]
-    }, 'database');
+    });
 
     class MyService {
     }
 
-    const myModule = new AppModule({
+    const myModule = new AppModule({}, {
         providers: [MyService],
         imports: [databaseModule]
     });
@@ -111,14 +111,14 @@ test('scopes', () => {
     class SessionHandler {
     }
 
-    const myModule = new AppModule({
+    const myModule = new AppModule({}, {
         providers: [MyService, { provide: SessionHandler, scope: 'rpc' }],
     });
 
     const serviceContainer = new ServiceContainer(myModule);
     const sessionInjector = serviceContainer.getInjectorContext().createChildScope('rpc');
 
-    expect(() => serviceContainer.getInjectorContext().get(SessionHandler)).toThrow('not found');
+    expect(() => serviceContainer.getInjectorContext().get(SessionHandler)).toThrow(`Service 'SessionHandler' is known but is not available in scope global. Available in scopes: rpc`);
     expect(sessionInjector.get(SessionHandler)).toBeInstanceOf(SessionHandler);
 
     expect(serviceContainer.getInjectorContext().get(MyService)).toBeInstanceOf(MyService);
@@ -131,10 +131,10 @@ test('for root with exported module', () => {
     class SharedService {
     }
 
-    const SharedModule = new AppModule({
+    const SharedModule = new AppModule({}, {
         providers: [SharedService],
         exports: [SharedService]
-    }, 'shared');
+    });
 
     class BaseHandler {
         constructor(private sharedService: SharedService) {
@@ -142,14 +142,14 @@ test('for root with exported module', () => {
         }
     }
 
-    const myBaseModule = new AppModule({
+    const myBaseModule = new AppModule({}, {
         providers: [
             BaseHandler
         ],
         imports: [SharedModule],
-    }, 'base');
+    });
 
-    const myModule = new AppModule({
+    const myModule = new AppModule({}, {
         imports: [
             myBaseModule.forRoot()
         ]
@@ -176,7 +176,7 @@ test('module with config object', () => {
         }
     }
 
-    class ExchangeModule extends createModule({
+    class ExchangeModule extends createModuleClass({
         bootstrap: ExchangeModuleBootstrap,
         providers: [
             ExchangeConfig,
@@ -184,17 +184,17 @@ test('module with config object', () => {
         exports: [
             ExchangeConfig,
         ]
-    }, 'exchange') {
+    }) {
     }
 
-    const myBaseModule = new AppModule({
+    const myBaseModule = new AppModule({}, {
         imports: [new ExchangeModule]
-    }, 'base');
+    });
 
     {
         bootstrapMainCalledConfig = undefined;
 
-        const MyModule = new AppModule({
+        const MyModule = new AppModule({}, {
             imports: [myBaseModule.forRoot()]
         });
 
@@ -206,7 +206,7 @@ test('module with config object', () => {
     {
         bootstrapMainCalledConfig = undefined;
 
-        const MyModule = new AppModule({
+        const MyModule = new AppModule({}, {
             imports: [new ExchangeModule]
         });
 
@@ -220,7 +220,7 @@ test('module with config object', () => {
         const changedConfig = new ExchangeConfig();
         changedConfig.startOnBootstrap = false;
 
-        const MyModule = new AppModule({
+        const MyModule = new AppModule({}, {
             providers: [
                 { provide: ExchangeConfig, useValue: changedConfig }
             ],
@@ -238,7 +238,7 @@ test('exported module', () => {
     class DatabaseConnection {
     }
 
-    class DatabaseModule extends createModule({
+    class DatabaseModule extends createModuleClass({
         providers: [DatabaseConnection],
         exports: [
             DatabaseConnection
@@ -249,7 +249,7 @@ test('exported module', () => {
     class FSService {
     }
 
-    class FSModule extends createModule({
+    class FSModule extends createModuleClass({
         providers: [FSService],
         exports: [
             DatabaseModule
@@ -259,7 +259,7 @@ test('exported module', () => {
     }
 
     {
-        const myModule = new AppModule({
+        const myModule = new AppModule({}, {
             imports: [new FSModule]
         });
 
@@ -283,7 +283,7 @@ test('scoped InjectorContext access', () => {
         }
     }
 
-    const myModule = new AppModule({
+    const myModule = new AppModule({}, {
         providers: [
             { provide: MyService },
             { provide: RpcInjectorContext, scope: 'rpc', useValue: undefined },

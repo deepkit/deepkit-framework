@@ -40,7 +40,7 @@ export class RpcTcpServer {
             this.server.on('connection', (socket: Socket) => {
                 const connection = this.kernel?.createConnection({
                     write(b: RpcMessageDefinition) {
-                        connection!.sendBinary(b, (data) => socket.write(data));
+                        connection.sendBinary(b, (data) => socket.write(data));
                     },
                     clientAddress(): string {
                         return socket.remoteAddress || '';
@@ -54,15 +54,15 @@ export class RpcTcpServer {
                 });
 
                 socket.on('data', (data: Uint8Array) => {
-                    connection!.feed(data);
+                    connection.feed(data);
                 });
 
                 socket.on('close', () => {
-                    connection!.close();
+                    connection.close();
                 });
 
-                socket.on('error', () => {
-                    connection!.close();
+                socket.on('error', (error) => {
+                    connection.close(error);
                 });
             });
 
@@ -118,12 +118,16 @@ export class RpcWebSocketServer {
                 },
             });
 
-            ws.on('message', async (message: Uint8Array) => {
+            ws.on('message', (message: Uint8Array) => {
                 connection.feed(message);
             });
 
-            ws.on('close', async () => {
+            ws.on('close', () => {
                 connection.close();
+            });
+
+            ws.on('error', (error) => {
+                connection.close(error);
             });
         });
     }

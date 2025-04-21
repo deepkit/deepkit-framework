@@ -24,3 +24,5 @@ export * from './src/model.js';
 export * from './src/protocol.js';
 export * from './src/progress.js';
 export * from './src/transport.js';
+export * from './src/utils.js';
+export * from './src/events.js';

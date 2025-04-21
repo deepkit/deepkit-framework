@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/injector",
-  "version": "1.0.1-alpha.154",
+  "version": "1.0.5",
   "description": "Deepkit Dependency Injection",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -23,12 +23,13 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13"
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/type": "^1.0.1"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.154",
-    "@deepkit/type": "^1.0.1-alpha.154",
+    "@deepkit/bench": "^1.0.5",
+    "@deepkit/core": "^1.0.5",
+    "@deepkit/type": "^1.0.5",
     "benchmark": "^2.1.4"
   },
   "jest": {

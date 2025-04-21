@@ -7,7 +7,7 @@
  */
 
 import { dirname, join, relative } from 'path';
-import { readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 let to = process.argv[2] || process.cwd();
 
@@ -28,13 +28,22 @@ function getCode(deepkitDistPath: string, varName: string, id: string): string {
             if (typeTransformer) {
                 if (!customTransformers) ${varName} = {};
                 if (!${varName}.before) ${varName}.before = [];
-                if (!${varName}.before.includes(typeTransformer.transformer)) ${varName}.before.push(typeTransformer.transformer);
+                let alreadyPatched = false;
+                for (let fn of ${varName}.before) {
+                    if (fn && fn.name === 'deepkitTransformer') alreadyPatched = true;
+                }
+                if (!alreadyPatched) {
+                    if (!${varName}.before.includes(typeTransformer.transformer)) ${varName}.before.push(typeTransformer.transformer);
 
-                if (!${varName}.afterDeclarations) ${varName}.afterDeclarations = [];
-                if (!${varName}.afterDeclarations.includes(typeTransformer.declarationTransformer)) ${varName}.afterDeclarations.push(typeTransformer.declarationTransformer);
+                    if (!${varName}.afterDeclarations) ${varName}.afterDeclarations = [];
+                    if (!${varName}.afterDeclarations.includes(typeTransformer.declarationTransformer)) {
+                        ${varName}.afterDeclarations.push(typeTransformer.declarationTransformer);
+                    }
+                }
             }
         } catch (e) {
         }
+        //${getPatchId(id)}-end
     `;
 }
 
@@ -44,20 +53,12 @@ function isPatched(code: string, id: string) {
 
 function patchGetTransformers(deepkitDistPath: string, code: string): string {
     const id = 'patchGetTransformers';
-    if (isPatched(code, id)) return code;
+    if (isPatched(code, id)) return '';
 
-    code = code.replace(/function getTransformers\([^)]+\)\s*{/, function (a) {
-        return a + '\n    ' + getCode(deepkitDistPath, 'customTransformers', id);
-    });
+    const find = /function getTransformers\([^)]+\)\s*{/;
+    if (!code.match(find)) return '';
 
-    return code;
-}
-
-function patchCustomTransformers(deepkitDistPath: string, code: string): string {
-    const id = 'patchCustomTransformers';
-    if (isPatched(code, id)) return code;
-
-    code = code.replace(/var customTransformers = (.*);/, function (a) {
+    code = code.replace(find, function (a) {
         return a + '\n    ' + getCode(deepkitDistPath, 'customTransformers', id);
     });
 
@@ -71,17 +72,13 @@ if (to + '/dist/cjs' === __dirname) {
 const typeScriptPath = dirname(require.resolve('typescript', { paths: [to] }));
 const deepkitDistPath = relative(typeScriptPath, __dirname);
 
-{
-    let tscContent = readFileSync(join(typeScriptPath, 'tsc.js'), 'utf8');
-    tscContent = patchGetTransformers(deepkitDistPath, tscContent);
-    writeFileSync(join(typeScriptPath, 'tsc.js'), tscContent);
-}
+const paths = ['tsc.js', '_tsc.js', 'typescript.js'];
 
-{
-    let tscContent = readFileSync(join(typeScriptPath, 'typescript.js'), 'utf8');
-    tscContent = patchGetTransformers(deepkitDistPath, tscContent); //this breaks source-maps, since ts-jest loads the transformer then twice
-    // tscContent = patchCustomTransformers(deepkitDistPath, tscContent)
-    writeFileSync(join(typeScriptPath, 'typescript.js'), tscContent);
+for (const fileName of paths) {
+    const file = join(typeScriptPath, fileName);
+    if (!existsSync(file)) continue;
+    const content = patchGetTransformers(deepkitDistPath, readFileSync(file, 'utf8'));
+    if (!content) continue;
+    writeFileSync(file, content);
+    console.log('Deepkit Type: Injected TypeScript transformer at', file);
 }
-
-console.log('Deepkit Type: Injected TypeScript transformer at', typeScriptPath);

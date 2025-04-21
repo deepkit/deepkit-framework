@@ -84,7 +84,7 @@ This is required to use the dependency injection container and other features.
         "experimentalDecorators": true,
         "strict": true,
         "esModuleInterop": true,
-        "target": "ES2020",
+        "target": "es2020",
         "module": "CommonJS",
         "moduleResolution": "node"
     },

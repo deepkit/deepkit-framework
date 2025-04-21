@@ -1,5 +1,17 @@
 import { expect } from '@jest/globals';
-import { assertType, AutoIncrement, BackReference, cast, entity, PrimaryKey, Reference, ReflectionClass, ReflectionKind, UUID, uuid } from '@deepkit/type';
+import {
+    assertType,
+    AutoIncrement,
+    BackReference,
+    cast,
+    entity,
+    PrimaryKey,
+    Reference,
+    ReflectionClass,
+    ReflectionKind,
+    UUID,
+    uuid,
+} from '@deepkit/type';
 import { User, UserGroup } from './bookstore/user.js';
 import { UserCredentials } from './bookstore/user-credentials.js';
 import { atomicChange, DatabaseSession, getInstanceStateFromItem, Query } from '@deepkit/orm';
@@ -729,10 +741,28 @@ export const bookstoreTests = {
                 .findOne();
             expect(review.user.id).toBe(user.id);
             expect(review.book.id).toBe(book.id);
+            // this line breaks currently since review.book.author stays reference
+            // expect(review.book.author.name).toBe('Peter');
             expect(review.user.name).toBe('Peter');
             expect(review.book.title).toBe('Great');
             expect(review.status).toBe(ReviewStatus.hidden);
         }
+        // this fails but needs to be fixed
+        // {
+        //     // enables identity map which might break formatter
+        //     const session = database.createSession();
+        //     const review = await session.query(Review)
+        //         .innerJoinWith('book')
+        //         .innerJoinWith('user')
+        //         .findOne();
+        //     console.log('review', review);
+        //     console.log('review.user', review.user);
+        //     expect(review.user.id).toBe(user.id);
+        //     expect(review.book.id).toBe(book.id);
+        //     expect(review.user.name).toBe('Peter');
+        //     expect(review.book.title).toBe('Great');
+        //     expect(review.status).toBe(ReviewStatus.hidden);
+        // }
 
         {
             const review = await database.query(Review)

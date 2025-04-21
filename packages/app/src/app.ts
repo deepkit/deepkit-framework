@@ -10,15 +10,25 @@
 
 import { ClassType, ExtractClassType, isFunction, isObject, pathBasename, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container.js';
-import { ConfigureProviderOptions, InjectorContext, ResolveToken, Token } from '@deepkit/injector';
+import { ConfigureProviderOptions, injectedFunction, InjectorContext, ResolveToken, Token } from '@deepkit/injector';
 import { AppModule, RootModuleDefinition } from './module.js';
 import { EnvConfiguration } from './configuration.js';
-import { DataEventToken, EventDispatcher, EventListener, EventListenerCallback, EventOfEventToken, EventToken } from '@deepkit/event';
+import {
+    DataEventToken,
+    DispatchArguments,
+    EventDispatcher,
+    EventDispatcherDispatchType,
+    EventListener,
+    EventListenerCallback,
+    EventToken,
+} from '@deepkit/event';
 import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { Logger } from '@deepkit/logger';
 import { executeCommand, getArgsFromEnvironment, getBinFromEnvironment } from './command.js';
 
-export function setPartialConfig(target: { [name: string]: any }, partial: { [name: string]: any }, incomingPath: string = '') {
+export function setPartialConfig(target: { [name: string]: any }, partial: {
+    [name: string]: any
+}, incomingPath: string = '') {
     for (const i in partial) {
         const path = (incomingPath ? incomingPath + '.' : '') + i;
         if (isObject(partial[i])) {
@@ -29,7 +39,11 @@ export function setPartialConfig(target: { [name: string]: any }, partial: { [na
     }
 }
 
-type EnvNamingStrategy = 'same' | 'upper' | 'lower' | ((name: string) => string | 'same' | 'upper' | 'lower' | undefined);
+type EnvNamingStrategy =
+    'same'
+    | 'upper'
+    | 'lower'
+    | ((name: string) => string | 'same' | 'upper' | 'lower' | undefined);
 
 function camelToUpperCase(str: string) {
     return str.replace(/[A-Z]+/g, (letter: string) => `_${letter.toUpperCase()}`).toUpperCase();
@@ -210,14 +224,14 @@ export class App<T extends RootModuleDefinition> {
 
     public readonly serviceContainer: ServiceContainer;
 
-    public appModule: AppModule<T>;
+    public appModule: AppModule<ExtractClassType<T['config']>>;
 
     constructor(
         appModuleOptions: T,
         serviceContainer?: ServiceContainer,
         appModule?: AppModule<any>,
     ) {
-        this.appModule = appModule || new RootAppModule(appModuleOptions) as any;
+        this.appModule = appModule || new RootAppModule({}, appModuleOptions) as any;
         this.serviceContainer = serviceContainer || new ServiceContainer(this.appModule);
     }
 
@@ -247,6 +261,16 @@ export class App<T extends RootModuleDefinition> {
         return this;
     }
 
+    /**
+     * Calls a function immediately and resolves all parameters using the
+     * current service container.
+     */
+    call<T>(fn: (...args: any[]) => T, module?: AppModule<any>): T {
+        const injector = this.serviceContainer.getInjector(module || this.appModule);
+        const resolvedFunction = injectedFunction(fn, injector);
+        return resolvedFunction();
+    }
+
     command(name: string | ((...args: any[]) => any), callback?: (...args: any[]) => any): this {
         callback = isFunction(name) ? name : callback!;
         name = isFunction(name) ? '' : name;
@@ -264,14 +288,19 @@ export class App<T extends RootModuleDefinition> {
         return this;
     }
 
-    listen<T extends EventToken<any>, DEPS extends any[]>(eventToken: T, callback: EventListenerCallback<T['event']>, order: number = 0): this {
-        const listener: EventListener<any> = { callback, order, eventToken };
+    /**
+     * Register a new event listener for given token.
+     *
+     * order: The lower the order, the sooner the listener is called. Default is 0.
+     */
+    listen<T extends EventToken<any>>(eventToken: T, callback: EventListenerCallback<T>, order: number = 0): this {
+        const listener: EventListener = { callback, order, eventToken };
         this.appModule.listeners.push(listener);
         return this;
     }
 
-    public async dispatch<T extends EventToken<any>>(eventToken: T, event?: EventOfEventToken<T>, injector?: InjectorContext): Promise<void> {
-        return await this.get(EventDispatcher).dispatch(eventToken, event, injector);
+    dispatch<T extends EventToken<any>>(eventToken: T, ...args: DispatchArguments<T>): EventDispatcherDispatchType<T> {
+        return this.get(EventDispatcher).dispatch(eventToken, ...args);
     }
 
     /**

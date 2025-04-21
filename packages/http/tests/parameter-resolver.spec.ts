@@ -2,7 +2,7 @@ import { App, AppModule } from '@deepkit/app';
 import { expect, jest, test } from '@jest/globals';
 import { http } from '../src/decorator.js';
 import { HttpRequest } from '../src/model.js';
-import { RouteConfig, RouteParameterResolver, RouteParameterResolverContext, } from '../src/router.js';
+import { RouteConfig, RouteParameterResolver, RouteParameterResolverContext } from '../src/router.js';
 import { createHttpKernel } from './utils.js';
 import { HttpModule } from '../src/module.js';
 import { HttpKernel } from '../src/kernel.js';
@@ -17,7 +17,7 @@ test('parameter resolver by name', async () => {
 
     @http.controller()
     class Controller {
-        @http.GET().resolveParameterByName('value', Resolver)
+        @(http.GET().resolveParameterByName('value', Resolver))
         route(value: unknown) {
         }
     }
@@ -54,13 +54,13 @@ test('parameter resolver can be retrieved from parent module', async () => {
 
     @http.controller()
     class Controller {
-        @http.GET().resolveParameterByName('value', Resolver)
+        @(http.GET().resolveParameterByName('value', Resolver))
         route(value: unknown) {
             return value;
         }
     }
 
-    const module = new AppModule({
+    const module = new AppModule({}, {
         controllers: [Controller],
     });
 

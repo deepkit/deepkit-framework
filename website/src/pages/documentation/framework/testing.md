@@ -138,7 +138,7 @@ export class MyService {
     }
 }
 
-export AppCoreModule = new AppModule({
+export AppCoreModule = new AppModule({}, {
     config: config,
     provides: [MyService]
 }, 'core');

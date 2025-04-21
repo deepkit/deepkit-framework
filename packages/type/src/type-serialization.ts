@@ -234,6 +234,8 @@ export type SerializedType =
 
 export type SerializedTypes = SerializedType[];
 
+declare var window: any;
+
 const envGlobal: any = typeof globalThis !== "undefined"
     ? globalThis
     : typeof global !== "undefined"

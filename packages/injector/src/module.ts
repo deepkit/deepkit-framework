@@ -60,7 +60,7 @@ export class ConfigurationProviderRegistry {
         const results: ConfigureProviderEntry[] = [];
         for (const configure of this.configurations) {
             const lookup = isClass(token) ? resolveReceiveType(token) : token;
-            if (dependencyLookupMatcher(configure.type, lookup)) {
+            if (isType(lookup) && dependencyLookupMatcher(configure.type, lookup)) {
                 results.push(configure);
             }
         }
@@ -263,10 +263,14 @@ export function getScope(provider: ProviderWithScope): string {
     return (isClass(provider) ? '' : provider instanceof TagProvider ? provider.provider.scope : provider.scope) || '';
 }
 
+export type InjectorModuleConfig = { [name: string]: any } | undefined;
+
+type RemovedUndefined<T> = T extends undefined ? never : T;
+
 /**
  * @reflection never
  */
-export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = InjectorModule<any, any>> {
+export class InjectorModule<C extends InjectorModuleConfig = any> {
     public id: number = moduleIds++;
 
     /**
@@ -291,7 +295,7 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
     constructor(
         public providers: ProviderWithScope[] = [],
         public parent?: InjectorModule,
-        public config: C = {} as C,
+        public config: RemovedUndefined<C> = {} as RemovedUndefined<C>,
         public exports: ExportType[] = [],
     ) {
         if (this.parent) this.parent.registerAsChildren(this);
@@ -483,8 +487,10 @@ export class InjectorModule<C extends { [name: string]: any } = any, IMPORT = In
         return this;
     }
 
-    getOrCreateInjector(buildContext: BuildContext): Injector {
+    getOrCreateInjector(buildContext?: BuildContext): Injector {
         if (this.injector) return this.injector;
+
+        buildContext ||= new BuildContext;
 
         //notify everyone we know to prepare providers
         if (this.parent) this.parent.getPreparedProviders(buildContext);

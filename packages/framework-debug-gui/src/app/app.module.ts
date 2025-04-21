@@ -46,7 +46,14 @@ import { DeepkitUIModule } from '@deepkit/ui-library';
 import { FilesystemComponent } from './views/filesystem/filesystem.component';
 import { RpcWebSocketClient } from '@deepkit/rpc';
 import { State } from './state';
-import { MediaComponent, MediaFileCache, MediaFileDetail, MediaFileQuickLookCache, MediaFileThumbnail, MediaQuickLook } from './views/filesystem/media.component';
+import {
+    MediaComponent,
+    MediaFileCache,
+    MediaFileDetail,
+    MediaFileQuickLookCache,
+    MediaFileThumbnail,
+    MediaQuickLook,
+} from './views/filesystem/media.component';
 import { FileUploaderComponent } from './components/file-uploader.component';
 import { HttpRequestsComponent } from './views/http/http-requests.component';
 
@@ -108,3 +115,5 @@ import { HttpRequestsComponent } from './views/http/http-requests.component';
 })
 export class AppModule {
 }
+
+console.log('RpcWebSocketClient', RpcWebSocketClient);

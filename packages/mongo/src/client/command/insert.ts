@@ -8,39 +8,40 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command } from './command.js';
+import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { toFastProperties } from '@deepkit/core';
-import { InlineRuntimeType, ReflectionClass, typeOf, UUID } from '@deepkit/type';
+import { InlineRuntimeType, ReflectionClass, typeOf } from '@deepkit/type';
+import { CommandOptions } from '../options.js';
 
 interface InsertResponse extends BaseResponse {
     n: number;
 }
 
-interface InsertSchema {
+type InsertSchema = {
     insert: string;
     $db: string;
-    lsid?: { id: UUID };
-    txnNumber?: number;
-    autocommit?: boolean;
-    startTransaction?: boolean;
-}
+    documents: any[];
+} & WriteConcernMessage & TransactionalMessage;
 
 export class InsertCommand<T> extends Command<number> {
+    commandOptions: CommandOptions = {};
+
     constructor(
         protected schema: ReflectionClass<T>,
-        protected documents: T[]
+        protected documents: T[],
     ) {
         super();
     }
 
     async execute(config, host, transaction): Promise<number> {
-        const cmd: any = {
+        const cmd: InsertSchema = {
             insert: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             documents: this.documents,
         };
 
         if (transaction) transaction.applyTransaction(cmd);
+        if (!transaction) config.applyWriteConcern(cmd, this.commandOptions);
 
         const jit = this.schema.getJitContainer();
         let specialisedSchema = jit.mdbInsert;
@@ -55,7 +56,7 @@ export class InsertCommand<T> extends Command<number> {
             toFastProperties(jit);
         }
 
-        const res =  await this.sendAndWait<InsertSchema, InsertResponse>(cmd, specialisedSchema);
+        const res = await this.sendAndWait<InsertSchema, InsertResponse>(cmd, specialisedSchema);
         return res.n;
     }
 

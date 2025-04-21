@@ -17,5 +17,6 @@ export class AppConfig {
 
     discordToken: string = '';
     discordChannel: string = '1154848447116091494';
-    baseUrl: string = 'http://localhost:8080';
+
+    baseUrl: string = '';
 }

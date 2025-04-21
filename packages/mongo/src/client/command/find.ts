@@ -14,6 +14,7 @@ import { DEEP_SORT } from '../../query.model.js';
 import { InlineRuntimeType, ReflectionClass, ReflectionKind, typeOf, TypeUnion } from '@deepkit/type';
 import { MongoError } from '../error.js';
 import { GetMoreMessage } from './getMore.js';
+import { CommandOptions } from '../options.js';
 
 type FindSchema = {
     find: string;
@@ -24,10 +25,10 @@ type FindSchema = {
     filter: any;
     projection?: any;
     sort?: any;
-} & TransactionalMessage & ReadPreferenceMessage
+} & TransactionalMessage & ReadPreferenceMessage;
 
 export class FindCommand<T> extends Command<T[]> {
-    batchSize: number = 1_000_000;
+    commandOptions: CommandOptions = {};
 
     constructor(
         public schema: ReflectionClass<T>,
@@ -47,11 +48,12 @@ export class FindCommand<T> extends Command<T[]> {
             filter: this.filter,
             limit: this.limit,
             skip: this.skip,
-            batchSize: this.batchSize,
+            batchSize: config.options.batchSize,
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        config.applyReadPreference(cmd);
+
+        config.applyReadPreference(host, cmd, this.commandOptions, transaction);
 
         if (this.projection) cmd.projection = this.projection;
         if (this.sort) cmd.sort = this.sort;
@@ -136,7 +138,7 @@ export class FindCommand<T> extends Command<T[]> {
                 batchSize: cmd.batchSize,
             };
             if (transaction) transaction.applyTransaction(nextCommand);
-            config.applyReadPreference(nextCommand);
+            config.applyReadPreference(host, nextCommand, this.commandOptions, transaction);
             const next = await this.sendAndWait<GetMoreMessage, Response>(nextCommand, undefined, specialisedResponse);
 
             if (next.cursor.nextBatch) {

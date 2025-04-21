@@ -8,7 +8,8 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2018",
+    "target": "es2020",
+    "skipLibCheck": true,
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist",
@@ -29,34 +30,61 @@
   ],
   "references": [
     {
+      "path": "../app/tsconfig.json"
+    },
+    {
+      "path": "../broker/tsconfig.json"
+    },
+    {
+      "path": "../bson/tsconfig.json"
+    },
+    {
       "path": "../core/tsconfig.json"
     },
     {
       "path": "../core-rxjs/tsconfig.json"
     },
     {
-      "path": "../rpc/tsconfig.json"
+      "path": "../event/tsconfig.json"
+    },
+    {
+      "path": "../filesystem/tsconfig.json"
     },
     {
       "path": "../framework/tsconfig.json"
     },
     {
-      "path": "../app/tsconfig.json"
-    },
-    {
-      "path": "../type/tsconfig.json"
+      "path": "../http/tsconfig.json"
     },
     {
       "path": "../injector/tsconfig.json"
     },
     {
+      "path": "../logger/tsconfig.json"
+    },
+    {
       "path": "../orm/tsconfig.json"
+    },
+    {
+      "path": "../rpc/tsconfig.json"
+    },
+    {
+      "path": "../rpc-tcp/tsconfig.json"
     },
     {
       "path": "../sql/tsconfig.json"
     },
     {
       "path": "../sqlite/tsconfig.json"
+    },
+    {
+      "path": "../stopwatch/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../workflow/tsconfig.json"
     }
   ]
 }

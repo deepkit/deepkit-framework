@@ -184,7 +184,7 @@ export class SoftDeletePlugin implements DatabasePlugin {
             if (Query.is(event.query, SoftDeleteQuery) && event.query.includeSoftDeleted === true) return;
 
             //stop actual query delete query
-            event.stop();
+            event.preventDefault();
 
             const patch = { [deletedAtName]: new Date } as Partial<T>;
             if (hasDeletedBy && Query.is(event.query, SoftDeleteQuery) && event.query.setDeletedBy !== undefined) {
@@ -198,7 +198,7 @@ export class SoftDeletePlugin implements DatabasePlugin {
             if (event.classSchema !== schema) return; //do nothing
 
             //stop actual query delete query
-            event.stop();
+            event.preventDefault();
 
             //instead of removing, we move it into the current session (creating a new SessionRound)
             //to let the current commit know we want to rather update it, instead of deleting.

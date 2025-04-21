@@ -12,7 +12,14 @@ import { DatabaseSession, DatabaseTransaction } from './database-session.js';
 import { DatabaseQueryModel, GenericQueryResolver, Query } from './query.js';
 import { Changes, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath, serialize, Serializer } from '@deepkit/type';
 import { AbstractClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabasePersistence, DatabasePersistenceChangeSet, MigrateOptions } from './database-adapter.js';
+import {
+    DatabaseAdapter,
+    DatabaseAdapterQueryFactory,
+    DatabaseEntityRegistry,
+    DatabasePersistence,
+    DatabasePersistenceChangeSet,
+    MigrateOptions,
+} from './database-adapter.js';
 import { DeleteResult, OrmEntity, PatchResult } from './type.js';
 import { findQueryList } from './utils.js';
 import { convertQueryFilter } from './query-filter.js';
@@ -131,12 +138,16 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
         super();
     }
 
+    get scopedLogger() {
+        return this.adapter.logger.scoped('deepkit:orm:memory');
+    }
+
     createQuery<T extends OrmEntity>(classType?: ReceiveType<T> | AbstractClassType<T> | ReflectionClass<T>): MemoryQuery<T> {
         const schema = ReflectionClass.from(classType);
         const adapter = this.adapter;
+        const self = this;
 
         class Resolver extends GenericQueryResolver<T> {
-
             protected createFormatter(withIdentityMap: boolean = false) {
                 return new Formatter(
                     this.classSchema,
@@ -147,17 +158,13 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
             }
 
             async count(model: DatabaseQueryModel<T>): Promise<number> {
-                if (this.session.logger.logger) {
-                    this.session.logger.logger.log('count', model.filter);
-                }
+                self.scopedLogger.debug('count', model.filter);
                 const items = find(adapter, schema, model);
                 return items.length;
             }
 
             async delete(model: DatabaseQueryModel<T>, deleteResult: DeleteResult<T>): Promise<void> {
-                if (this.session.logger.logger) {
-                    this.session.logger.logger.log('delete', model.filter);
-                }
+                self.scopedLogger.debug('delete', model.filter);
                 const items = find(adapter, schema, model);
                 for (const item of items) {
                     deleteResult.primaryKeys.push(item);
@@ -167,9 +174,7 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
 
             async find(model: DatabaseQueryModel<T>): Promise<T[]> {
                 const items = find(adapter, schema, model);
-                if (this.session.logger.logger) {
-                    this.session.logger.logger.log('find', model.filter);
-                }
+                self.scopedLogger.debug('find', model.filter);
                 const formatter = this.createFormatter(model.withIdentityMap);
                 return items.map(v => formatter.hydrate(model, v));
             }

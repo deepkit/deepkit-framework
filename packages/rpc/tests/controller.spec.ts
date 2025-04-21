@@ -1,6 +1,6 @@
 import { assertType, entity, Minimum, Positive, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { DirectClient, RpcDirectClientAdapter } from '../src/client/client-direct.js';
+import { AsyncDirectClient, DirectClient, RpcDirectClientAdapter } from '../src/client/client-direct.js';
 import { getActions, rpc, RpcController } from '../src/decorators.js';
 import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
 import { Session, SessionState } from '../src/server/security.js';
@@ -11,6 +11,8 @@ import { Logger, MemoryLogger } from '@deepkit/logger';
 import { RpcClient } from '../src/client/client.js';
 import { InjectorContext } from '@deepkit/injector';
 import { RpcControllerState } from '../src/client/action.js';
+import { onRpcAction, onRpcAuth, onRpcConnection, onRpcConnectionClose, onRpcControllerAccess } from '../src/events.js';
+import { eventWatcher } from '@deepkit/event';
 
 test('default name', () => {
     @rpc.controller()
@@ -31,7 +33,7 @@ test('decorator', async () => {
         action(): void {
         }
 
-        @rpc.action().group('a')
+        @(rpc.action().group('a'))
         second(): void {
         }
     }
@@ -57,7 +59,7 @@ test('inheritance', async () => {
             return new User();
         }
 
-        @rpc.action().group('a')
+        @(rpc.action().group('a'))
         second(): User {
             return new User();
         }
@@ -65,12 +67,12 @@ test('inheritance', async () => {
 
     @rpc.controller('different')
     class Extended extends Controller {
-        @rpc.action().group('extended')
+        @(rpc.action().group('extended'))
         second() {
             return super.second();
         }
 
-        @rpc.action().group('b')
+        @(rpc.action().group('b'))
         third(): void {
         }
     }
@@ -365,7 +367,9 @@ test('connect disconnect', async () => {
 
         @rpc.action()
         bye(): void {
+            expect(this.connection.closed).toBe(false);
             this.connection.close();
+            expect(this.connection.closed).toBe(true);
         }
     }
 
@@ -393,7 +397,7 @@ test('connect disconnect', async () => {
 
     await controller.test();
     expect(client.transporter.isConnected()).toBe(true);
-    await controller.bye();
+    await expect(controller.bye()).rejects.toThrow('Connection closed');
     expect(client.transporter.isConnected()).toBe(false);
     expect(triggered).toBe(3);
 
@@ -688,7 +692,7 @@ test('missing types log warning', async () => {
 test('validation errors', async () => {
     @rpc.logValidationErrors(true)
     class Controller {
-        @rpc.action().logValidationErrors(false)
+        @(rpc.action().logValidationErrors(false))
         test1(value: number & Minimum<3>): any {
             return value;
         }
@@ -698,7 +702,7 @@ test('validation errors', async () => {
             return value;
         }
 
-        @rpc.action().logValidationErrors(true)
+        @(rpc.action().logValidationErrors(true))
         test3(value: number & Minimum<3>): any {
             return value;
         }
@@ -752,7 +756,7 @@ test('disable strict serialization', async () => {
             return 123 as any;
         }
 
-        @rpc.action().strictSerialization(false)
+        @(rpc.action().strictSerialization(false))
         test2(): { value: string } {
             return 123 as any;
         }
@@ -762,7 +766,7 @@ test('disable strict serialization', async () => {
             this.logger.log(`Got ${value}`);
         }
 
-        @rpc.action().strictSerialization(false)
+        @(rpc.action().strictSerialization(false))
         params2(value: { value: string }): void {
             this.logger.log(`Got ${value}`);
         }
@@ -776,6 +780,7 @@ test('disable strict serialization', async () => {
         getActionClient() {
             return this.actionClient;
         }
+
         constructor(rpcKernel: RpcKernel, injector?: InjectorContext) {
             super(new RpcDirectClientAdapter(rpcKernel, injector));
         }
@@ -849,3 +854,143 @@ test('Observable<Buffer>', async () => {
         expect(buffer!.toString()).toBe('1,2,3');
     }
 });
+
+test('events', async () => {
+    class Controller {
+        @rpc.action()
+        async test1(): Promise<string> {
+            await sleep(0.1);
+            return 'test1';
+        }
+
+        @rpc.action()
+        async test2(): Promise<void> {
+            throw new Error('test2');
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    kernel.listen(onRpcAuth, event => {
+        event.data.session = new Session('abc', event.data.token);
+    });
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    const watcher = eventWatcher(kernel.getEventDispatcher(), [
+        onRpcConnection,
+        onRpcAction,
+        onRpcConnectionClose,
+        onRpcControllerAccess,
+        onRpcAuth,
+    ]);
+
+    await controller.test1();
+
+    await client.disconnect();
+
+    expect(watcher.messages).toEqual([
+        'rpc.connection',
+        'rpc.action phase=start',
+        'rpc.controllerAccess phase=start',
+        'rpc.controllerAccess phase=success',
+        'rpc.action phase=success',
+        'rpc.connectionClose reason=closed',
+    ]);
+
+    expect(kernel.stats).toMatchObject({
+        actions: 1,
+        connections: 0,
+        totalConnections: 1,
+    });
+
+    expect(watcher.get(onRpcAction, (event) => event.phase === 'success').timing)
+        .toEqual({
+            start: expect.any(Number),
+            end: expect.any(Number),
+            types: expect.any(Number),
+            parseBody: expect.any(Number),
+            validate: expect.any(Number),
+            controllerAccess: expect.any(Number),
+        });
+
+    client.token.set('abc');
+    watcher.clear();
+    await controller.test1();
+    await client.disconnect();
+
+    expect(watcher.messages).toEqual([
+        'rpc.connection',
+        'rpc.auth phase=start token=abc',
+        'rpc.auth phase=success token=abc',
+        'rpc.action phase=start',
+        'rpc.controllerAccess phase=start',
+        'rpc.controllerAccess phase=success',
+        'rpc.action phase=success',
+        'rpc.connectionClose reason=closed',
+    ]);
+
+    expect(kernel.stats).toMatchObject({
+        actions: 2,
+        connections: 0,
+        totalConnections: 2,
+    });
+
+});
+
+test('connection disconnect client', async () => {
+    class Controller {
+        @rpc.action()
+        async action() {
+            await sleep(0.1);
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new AsyncDirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    await client.connect();
+    const promise = controller.action();
+    await client.disconnect();
+    await expect(promise).rejects.toThrow('Connection closed');
+});
+
+
+test('connection disconnect back-controller', async () => {
+    class ClientController {
+        @rpc.action()
+        async action() {
+            await sleep(0.1);
+            return true;
+        }
+    }
+
+    class ServerController {
+        constructor(private connection: RpcKernelConnection) {
+        }
+
+        @rpc.action()
+        async start() {
+            return this.connection.controller<ClientController>('client').action();
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(ServerController, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<ServerController>('myController');
+
+    await client.connect();
+    await expect(controller.start()).rejects.toThrow('RpcClient has no controllers registered');
+
+    client.registerController(ClientController, 'client');
+    await expect(controller.start()).resolves.toBe(true);
+
+    const promise = controller.start();
+    await client.disconnect();
+    await expect(promise).rejects.toThrow('Connection closed');
+});
+
+

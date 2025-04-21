@@ -40,10 +40,10 @@ import {
     UnitOfWorkEvent,
     UnitOfWorkUpdateEvent,
 } from './event.js';
-import { DatabaseLogger } from './logger.js';
 import { Stopwatch } from '@deepkit/stopwatch';
-import { EventDispatcher, EventDispatcherInterface, EventToken } from '@deepkit/event';
+import { EventDispatcherInterface, EventToken } from '@deepkit/event';
 import { DatabasePluginRegistry } from './plugin/plugin.js';
+import { Logger } from '@deepkit/logger';
 
 function resolveReferenceToEntity(type: Type, entityRegistry: DatabaseEntityRegistry): ReflectionClass<any> {
     if (type.kind === ReflectionKind.class) {
@@ -75,7 +75,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         protected round: number = 0,
         protected session: DatabaseSession<any>,
         protected eventDispatcher: EventDispatcherInterface,
-        public logger: DatabaseLogger,
+        public logger: Logger,
         protected identityMap?: IdentityMap,
     ) {
 
@@ -190,7 +190,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
             if (this.eventDispatcher.hasListeners(DatabaseSession.onDeletePre)) {
                 const event = new UnitOfWorkEvent(classSchema, this.session, items);
                 await this.eventDispatcher.dispatch(DatabaseSession.onDeletePre, event);
-                if (event.stopped) return;
+                if (event.defaultPrevented) return;
             }
 
             await persistence.remove(classSchema, items);
@@ -252,7 +252,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                     if (this.eventDispatcher.hasListeners(DatabaseSession.onInsertPre)) {
                         const event = new UnitOfWorkEvent(group.type, this.session, inserts);
                         await this.eventDispatcher.dispatch(DatabaseSession.onInsertPre, event);
-                        if (event.stopped) doInsert = false;
+                        if (event.defaultPrevented) doInsert = false;
                     }
                     if (doInsert) {
                         try {
@@ -276,7 +276,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                     if (this.eventDispatcher.hasListeners(DatabaseSession.onUpdatePre)) {
                         const event = new UnitOfWorkUpdateEvent(group.type, this.session, changeSets);
                         await this.eventDispatcher.dispatch(DatabaseSession.onUpdatePre, event);
-                        if (event.stopped) doUpdate = false;
+                        if (event.defaultPrevented) doUpdate = false;
                     }
 
                     if (doUpdate) {
@@ -378,10 +378,10 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
 
     constructor(
         public readonly adapter: ADAPTER,
-        public readonly entityRegistry: DatabaseEntityRegistry = new DatabaseEntityRegistry(),
-        public readonly eventDispatcher: EventDispatcherInterface = new EventDispatcher(),
-        public pluginRegistry: DatabasePluginRegistry = new DatabasePluginRegistry,
-        public logger: DatabaseLogger = new DatabaseLogger,
+        public readonly entityRegistry: DatabaseEntityRegistry,
+        public readonly eventDispatcher: EventDispatcherInterface,
+        public pluginRegistry: DatabasePluginRegistry,
+        public logger: Logger,
         public stopwatch?: Stopwatch,
     ) {
         const queryFactory = this.adapter.queryFactory(this);
@@ -426,9 +426,10 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
     }
 
     /**
-     * Commits all open changes (pending inserts, updates, deletions) in optimized batches.
+     * Saves all open changes (pending inserts, updates, deletions) in optimized batches to the database.
      *
      * If a transaction is assigned, this will automatically call a transaction commit and the transaction released.
+     *
      * Use flush() if you don't want to end the transaction and keep making changes to the current transaction.
      */
     public async commit() {
@@ -524,12 +525,13 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
      *
      * This works like Git: you add files, and later commit all in one batch.
      */
-    public add(...items: OrmEntity[]): void {
+    public add(...items: OrmEntity[]): this {
         if (this.getCurrentRound().isInCommit()) {
             this.enterNewRound();
         }
 
         this.getCurrentRound().add(items);
+        return this;
     }
 
     /**
@@ -537,34 +539,37 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
      *
      * This works like Git: you add files, and later commit all in one batch.
      */
-    public addAs<T extends OrmEntity>(items: T[], type?: ReceiveType<T> | ReflectionClass<any>) {
+    public addAs<T extends OrmEntity>(items: T[], type?: ReceiveType<T> | ReflectionClass<any>): this {
         if (this.getCurrentRound().isInCommit()) {
             this.enterNewRound();
         }
 
         this.getCurrentRound().add(items, ReflectionClass.from(type));
+        return this;
     }
 
     /**
      * Adds item to the remove queue. Use session.commit() to remove queued items from the database all at once.
      */
-    public remove(...items: OrmEntity[]) {
+    public remove(...items: OrmEntity[]): this {
         if (this.getCurrentRound().isInCommit()) {
             this.enterNewRound();
         }
 
         this.getCurrentRound().remove(items);
+        return this;
     }
 
     /**
      * Adds item to the remove queue for a particular type. Use session.commit() to remove queued items from the database all at once.
      */
-    public removeAs<T extends OrmEntity>(items: T[], type?: ReceiveType<T> | ReflectionClass<any>) {
+    public removeAs<T extends OrmEntity>(items: T[], type?: ReceiveType<T> | ReflectionClass<any>): this {
         if (this.getCurrentRound().isInCommit()) {
             this.enterNewRound();
         }
 
         this.getCurrentRound().remove(items, ReflectionClass.from(type));
+        return this;
     }
 
 
@@ -610,7 +615,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
     }
 
     /**
-     * Commits all open changes (pending inserts, updates, deletions) in optimized batches.
+     * Saves all open changes (pending inserts, updates, deletions) in optimized batches to the database.
      *
      * The transaction (if there is any) is still alive. You can call flush() multiple times in an active transaction.
      * commit() does the same as flush() but also automatically commits and closes the transaction.
@@ -639,7 +644,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
             if (this.eventDispatcher.hasListeners(DatabaseSession.onCommitPre)) {
                 const event = new UnitOfWorkCommitEvent(this);
                 await this.eventDispatcher.dispatch(DatabaseSession.onCommitPre, event);
-                if (event.stopped) return;
+                if (event.defaultPrevented) return;
             }
 
             //we need to iterate via for i, because hooks might add additional rounds dynamically

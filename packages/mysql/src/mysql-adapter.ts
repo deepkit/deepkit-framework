@@ -29,7 +29,6 @@ import {
 } from '@deepkit/sql';
 import {
     DatabaseDeleteError,
-    DatabaseLogger,
     DatabasePatchError,
     DatabasePersistenceChangeSet,
     DatabaseSession,
@@ -43,17 +42,11 @@ import {
     UniqueConstraintFailure,
 } from '@deepkit/orm';
 import { MySQLPlatform } from './mysql-platform.js';
-import {
-    Changes,
-    getPatchSerializeFunction,
-    getSerializeFunction,
-    ReceiveType,
-    ReflectionClass,
-    resolvePath,
-} from '@deepkit/type';
+import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
 import { AbstractClassType, asyncOperation, ClassType, empty, isArray } from '@deepkit/core';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { parseConnectionString } from './config.js';
+import { Logger } from '@deepkit/logger';
 
 /**
  * Converts a specific database error to a more specific error, if possible.
@@ -75,8 +68,10 @@ function handleSpecificError(session: DatabaseSession, error: Error): Error {
     return error;
 }
 
+const scope = 'deepkit:orm:mysql';
+
 export class MySQLStatement extends SQLStatement {
-    constructor(protected logger: DatabaseLogger, protected sql: string, protected connection: PoolConnection, protected stopwatch?: Stopwatch) {
+    constructor(protected logger: Logger, protected sql: string, protected connection: PoolConnection, protected stopwatch?: Stopwatch) {
         super();
     }
 
@@ -89,11 +84,11 @@ export class MySQLStatement extends SQLStatement {
             const rows = await asyncOperation<any[]>((resolve, reject) => {
                 this.connection.query(this.sql, params).then(resolve).catch(reject);
             });
-            this.logger.logQuery(this.sql, params);
+            this.logger.scoped(scope).debug(this.sql, params);
             return rows[0];
         } catch (error: any) {
             error = ensureDatabaseError(error);
-            this.logger.failedQuery(error, this.sql, params);
+            this.logger.scoped(scope).debug(error, this.sql, params);
             throw error;
         } finally {
             if (frame) frame.end();
@@ -109,11 +104,11 @@ export class MySQLStatement extends SQLStatement {
             const rows = await asyncOperation<any[]>((resolve, reject) => {
                 this.connection.query(this.sql, params).then(resolve).catch(reject);
             });
-            this.logger.logQuery(this.sql, params);
+            this.logger.scoped(scope).debug(this.sql, params);
             return rows;
         } catch (error: any) {
             error = ensureDatabaseError(error);
-            this.logger.failedQuery(error, this.sql, params);
+            this.logger.scoped(scope).debug(error, this.sql, params);
             throw error;
         } finally {
             if (frame) frame.end();
@@ -127,12 +122,11 @@ export class MySQLStatement extends SQLStatement {
 export class MySQLConnection extends SQLConnection {
     protected changes: number = 0;
     public lastExecResult?: UpsertResult[];
-    protected connector?: Promise<PoolConnection>;
 
     constructor(
         public connection: PoolConnection,
         connectionPool: SQLConnectionPool,
-        logger?: DatabaseLogger,
+        logger: Logger,
         transaction?: DatabaseTransaction,
         stopwatch?: Stopwatch,
     ) {
@@ -149,11 +143,11 @@ export class MySQLConnection extends SQLConnection {
         try {
             if (frame) frame.data({ sql, sqlParams: params });
             const res = (await this.connection.query(sql, params)) as UpsertResult[] | UpsertResult;
-            this.logger.logQuery(sql, params);
+            this.logger.scoped(scope).debug(sql, params);
             this.lastExecResult = isArray(res) ? res : [res];
         } catch (error: any) {
             error = ensureDatabaseError(error);
-            this.logger.failedQuery(error, sql, params);
+            this.logger.scoped(scope).debug(error, sql, params);
             throw error;
         } finally {
             if (frame) frame.end();
@@ -221,18 +215,22 @@ export class MySQLDatabaseTransaction extends DatabaseTransaction {
 }
 
 export class MySQLConnectionPool extends SQLConnectionPool {
-    constructor(protected pool: Pool) {
-        super();
+    constructor(
+        protected pool: Pool,
+        protected logger: Logger,
+        protected stopwatch?: Stopwatch,
+    ) {
+        super(logger);
     }
 
-    async getConnection(logger?: DatabaseLogger, transaction?: MySQLDatabaseTransaction, stopwatch?: Stopwatch): Promise<MySQLConnection> {
+    async getConnection(transaction?: MySQLDatabaseTransaction): Promise<MySQLConnection> {
         //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
         //and only release the connection when the transaction is commit/rollback is executed.
 
         if (transaction && transaction.connection) return transaction.connection;
 
         this.activeConnections++;
-        const connection = new MySQLConnection(await this.pool.getConnection(), this, logger, transaction, stopwatch);
+        const connection = new MySQLConnection(await this.pool.getConnection(), this, this.logger, transaction, this.stopwatch);
         if (transaction) {
             transaction.connection = connection;
             try {
@@ -416,7 +414,7 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const select = sqlBuilder.select(this.classSchema, model, { select: [`${tableName}.${pkField}`] });
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(this.session.assignedTransaction);
         try {
             const sql = `
                 WITH _ AS (${select.sql})
@@ -427,9 +425,12 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
             `;
 
             const rows = await connection.execAndReturnAll(sql, select.params);
-            const returning = rows[1];
-            const pk = returning[0]['@_pk'];
-            if (pk) deleteResult.primaryKeys = JSON.parse(pk).map(primaryKeyConverted);
+            const affectedRows = rows[0].affectedRows;
+            if (affectedRows) {
+                const returning = rows[1];
+                const pk = returning[0]['@_pk'];
+                deleteResult.primaryKeys = JSON.parse(pk).map(primaryKeyConverted);
+            }
             deleteResult.modified = deleteResult.primaryKeys.length;
         } catch (error: any) {
             error = new DatabaseDeleteError(this.classSchema, 'Could not delete in database', { cause: error });
@@ -531,7 +532,7 @@ export class MySQLQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T>
             ${selectVarsSQL}
         `;
 
-        const connection = await this.connectionPool.getConnection(this.session.logger, this.session.assignedTransaction, this.session.stopwatch);
+        const connection = await this.connectionPool.getConnection(this.session.assignedTransaction);
         try {
             const result = await connection.execAndReturnAll(sql, params);
             const packet = result[0];
@@ -583,14 +584,19 @@ export class MySQLDatabaseAdapter extends SQLDatabaseAdapter {
             insertIdAsNumber: true,
             decimalAsNumber: true,
             bigIntAsNumber: true,
-        }
+        };
 
         options = typeof options === 'string' ? parseConnectionString(options) : options;
         this.options = Object.assign(defaults, options, additional);
 
         this.pool = createPool(this.options);
-        this.connectionPool = new MySQLConnectionPool(this.pool);
+        this.connectionPool = new MySQLConnectionPool(this.pool, this.logger, this.stopwatch);
         this.platform = new MySQLPlatform(this.pool);
+    }
+
+    setLogger(logger: Logger) {
+        super.setLogger(logger);
+        this.connectionPool.setLogger(logger);
     }
 
     getName(): string {

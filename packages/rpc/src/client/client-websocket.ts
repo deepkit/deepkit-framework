@@ -11,6 +11,9 @@
 import { ClassType } from '@deepkit/core';
 import { ClientTransportAdapter, RpcClient } from './client.js';
 import { TransportClientConnection } from '../transport.js';
+import { RpcError } from '../model.js';
+
+declare const location: { protocol: string, host: string, origin: string };
 
 /**
  * A RpcClient that connects via WebSocket transport.
@@ -58,23 +61,15 @@ export function createRpcWebSocketClientProvider(baseUrl: string = typeof locati
 }
 
 export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
-    protected webSocketConstructor?: typeof WebSocket;
-
-    constructor(public url: string) {
+    constructor(
+        public url: string,
+        protected webSocketConstructor: typeof WebSocket = WebSocket,
+    ) {
     }
 
     async getWebSocketConstructor(): Promise<typeof WebSocket> {
-        if (this.webSocketConstructor) return this.webSocketConstructor;
-        const wsPackage = 'ws';
-        this.webSocketConstructor = 'undefined' === typeof WebSocket ? (await import(wsPackage)).WebSocket : WebSocket;
-
         if (!this.webSocketConstructor) {
-            this.webSocketConstructor = (await import(wsPackage)).default;
-        }
-
-        if (!this.webSocketConstructor) {
-            console.log('webSocketConstructor is undefined', this.webSocketConstructor, await import(wsPackage));
-            throw new Error('No WebSocket implementation found.');
+            throw new RpcError('No WebSocket implementation found.');
         }
 
         return this.webSocketConstructor;
@@ -87,7 +82,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
             const socket = new webSocketConstructor(this.url);
             this.mapSocket(socket, connection);
         } catch (error: any) {
-            throw new Error(`Could not connect to ${this.url}. ${error.message}`);
+            throw new RpcError(`Could not connect to ${this.url}. ${error.message}`);
         }
     }
 
@@ -105,7 +100,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
             const reason = `code ${event.code} reason ${event.reason || 'unknown'}`;
             const message = connected ? `abnormal error: ${reason}` : `Could not connect: ${reason}`;
             if (errored) {
-                connection.onError(new Error(message));
+                connection.onError(new RpcError(message));
             } else {
                 connection.onClose(reason);
             }

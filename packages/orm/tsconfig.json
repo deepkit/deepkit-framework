@@ -1,5 +1,4 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "forceConsistentCasingInFileNames": true,
     "strict": true,
@@ -9,14 +8,19 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2018",
+    "target": "es2020",
     "module": "CommonJS",
+    "lib": [
+      "es2020",
+      "es2022.error"
+    ],
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
     "types": [
-      "sqlstring"
+      "sqlstring",
+      "node"
     ]
   },
   "reflection": true,
@@ -34,6 +38,9 @@
     },
     {
       "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../event/tsconfig.json"
     },
     {
       "path": "../injector/tsconfig.json"

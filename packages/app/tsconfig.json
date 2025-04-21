@@ -15,7 +15,9 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": []
+    "types": [
+      "node"
+    ]
   },
   "reflection": true,
   "include": [
@@ -34,6 +36,9 @@
     },
     {
       "path": "../injector/tsconfig.json"
+    },
+    {
+      "path": "../logger/tsconfig.json"
     },
     {
       "path": "../stopwatch/tsconfig.json"

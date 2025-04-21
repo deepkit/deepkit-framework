@@ -39,7 +39,11 @@ test('http parse config', async () => {
     });
 
     const httpKernel = test.app.get(HttpKernel);
-    const response = await httpKernel.request(HttpRequest.POST('/add').json({ field1: 'foo', field2: 42 }));
+    const request = HttpRequest.POST('/add');
+    request.header('content-type', 'application/x-www-form-urlencoded');
+    request.body('field1=foo&field2=42');
+    //note: JSON fields are not handled by formidable.maxFields
+    const response = await httpKernel.request(request);
     expect(response.text).toBe('Internal error');
 
     expect(test.getLogMessages().some(v => v.message.includes('options.maxFields (1) exceeded'))).toBe(true);

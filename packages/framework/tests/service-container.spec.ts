@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { rpc } from '@deepkit/rpc';
-import { App, AppModule, createModule, ServiceContainer } from '@deepkit/app';
+import { App, AppModule, createModuleClass, ServiceContainer } from '@deepkit/app';
 import { FrameworkModule } from '../src/module.js';
 import { Database, DatabaseEvent, DatabaseRegistry, MemoryDatabaseAdapter, Query } from '@deepkit/orm';
 import { EventDispatcher } from '@deepkit/event';
@@ -27,7 +27,7 @@ test('controller', () => {
     }
 
     {
-        const myModule = new AppModule({
+        const myModule = new AppModule({}, {
             providers: [MyService],
             controllers: [MyController],
             imports: [
@@ -63,17 +63,18 @@ test('controller in module and overwrite service', () => {
         }
     }
 
-    class ControllerModule extends createModule({
+    class ControllerModule extends createModuleClass({
+        name: 'controller',
         providers: [MyService],
         controllers: [MyController],
         exports: [
             MyService
         ]
-    }, 'controller') {
+    }) {
     }
 
     {
-        const myModule = new AppModule({
+        const myModule = new AppModule({}, {
             imports: [new ControllerModule, new FrameworkModule()],
         });
 
@@ -85,7 +86,7 @@ test('controller in module and overwrite service', () => {
     }
 
     {
-        const myModule = new AppModule({
+        const myModule = new AppModule({}, {
             providers: [
                 { provide: MyService, useValue: new MyService('different') }
             ],

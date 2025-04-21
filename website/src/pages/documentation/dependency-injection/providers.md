@@ -71,7 +71,7 @@ new App({
 Primitive provider tokens must be declared with the Inject type as a dependency.
 
 ```typescript
-import { Inject } from '@deepkit/injector';
+import { Inject } from '@deepkit/core';
 
 class EmailService {
     constructor(public domain: Inject<string, 'domain'>) {}
@@ -81,7 +81,7 @@ class EmailService {
 The combination of an inject alias and primitive provider tokens can also be used to provide dependencies from packages that do not contain runtime type information.
 
 ```typescript
-import { Inject } from '@deepkit/injector';
+import { Inject } from '@deepkit/core';
 import { Stripe } from 'stripe';
 
 export type StripeService = Inject<Stripe, '_stripe'>;

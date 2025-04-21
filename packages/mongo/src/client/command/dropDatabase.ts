@@ -8,22 +8,27 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Command } from './command.js';
+import { Command, WriteConcernMessage } from './command.js';
+import { CommandOptions } from '../options.js';
 
-interface DropDatabase {
+type DropDatabase = {
     dropDatabase: 1;
     $db: string;
-}
+} & WriteConcernMessage;
 
 export class DropDatabaseCommand<T> extends Command<void> {
+    commandOptions: CommandOptions = {};
+
     constructor(protected dbName: any) {
         super();
     }
 
     async execute(config): Promise<void> {
-        await this.sendAndWait<DropDatabase>({
-            dropDatabase: 1, $db: this.dbName
-        });
+        const cmd: DropDatabase = {
+            dropDatabase: 1, $db: this.dbName,
+        };
+        config.applyWriteConcern(cmd, this.commandOptions);
+        await this.sendAndWait<DropDatabase>(cmd);
     }
 
     needsWritableHost(): boolean {

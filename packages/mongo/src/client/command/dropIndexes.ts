@@ -8,31 +8,35 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command } from './command.js';
+import { BaseResponse, Command, WriteConcernMessage } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
+import { CommandOptions } from '../options.js';
 
-interface RequestSchema {
+type RequestSchema = {
     dropIndexes: string;
     $db: string;
     index: string[];
-}
+} & WriteConcernMessage;
 
 export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command<BaseResponse> {
+    commandOptions: CommandOptions = {};
+
     constructor(
         public schema: T,
-        public names: string[]
+        public names: string[],
     ) {
         super();
     }
 
     async execute(config, host, transaction): Promise<BaseResponse> {
-        const cmd: any = {
+        const cmd: RequestSchema = {
             dropIndexes: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
-            index: this.names
+            index: this.names,
         };
 
         // if (transaction) transaction.applyTransaction(cmd);
+        config.applyWriteConcern(cmd, this.commandOptions);
 
         try {
             return await this.sendAndWait<RequestSchema>(cmd);

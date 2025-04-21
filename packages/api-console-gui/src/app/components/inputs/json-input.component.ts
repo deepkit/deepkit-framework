@@ -19,7 +19,8 @@ import { DataStructure } from '../../store';
             width: 100%;
             flex: 1;
         }
-    `]
+    `],
+    standalone: false
 })
 export class JsonInputComponent {
     @Input() model!: DataStructure;

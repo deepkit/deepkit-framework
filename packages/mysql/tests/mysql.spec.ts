@@ -4,6 +4,7 @@ import { MySQLConnectionPool } from '../src/mysql-adapter.js';
 import { AutoIncrement, cast, entity, PrimaryKey, Unique } from '@deepkit/type';
 import { databaseFactory } from './factory.js';
 import { UniqueConstraintFailure } from '@deepkit/orm';
+import { Logger } from '@deepkit/logger';
 
 test('connection MySQLConnectionPool', async () => {
     const pool = createPool({
@@ -12,7 +13,7 @@ test('connection MySQLConnectionPool', async () => {
         database: 'default',
         password: process.env.MYSQL_PW
     });
-    const connectionPool = new MySQLConnectionPool(pool);
+    const connectionPool = new MySQLConnectionPool(pool, new Logger());
 
     for (let i = 0; i < 50; i++) {
         const connection = await connectionPool.getConnection();
@@ -343,4 +344,44 @@ test('non-object null unions should not render as JSON', async () => {
         {name: 'Christopher', nickName: 'Chris'},
         {name: 'Thomas', nickName: 'Tom', birthdate: new Date('1960-02-10T00:00:00Z')},
     ]);
+});
+
+test('updates & deletes should ignore previous @_pk session variable if no rows were affected', async () => {
+    @entity.name('model7')
+    class Model {
+        id: number & PrimaryKey & AutoIncrement = 0;
+
+        constructor(public name: string) {}
+    }
+
+    const database = await databaseFactory([Model]);
+    const model = new Model('Peter');
+    await database.persist(model);
+    expect(model.id).toEqual(expect.any(Number));
+
+    // perform update & delete in single database connection to ensure @_pk session variable is shared
+    // between multiple queries. outside a transaction, this is luck of the draw based on connection pooling.
+    await database.transaction(async txn => {
+        {
+            const result = await txn.query(Model).filter({id: model.id}).patchMany({name: 'Paul'});
+            expect(result.primaryKeys[0]).toEqual({ id: model.id });
+        }
+
+        {
+            const result = await txn.query(Model).filter({id: model.id}).deleteMany();
+            expect(result.primaryKeys[0]).toEqual({ id: model.id });
+        }
+
+        // there should be no ID returned if we try to update a non-existent record
+        {
+            const result = await txn.query(Model).filter({id: model.id}).patchMany({name: 'Simon'});
+            expect(result.primaryKeys[0]).toBeUndefined();
+        }
+
+        // there should be no ID returned if we try to delete a non-existent record
+        {
+            const result = await txn.query(Model).filter({id: model.id}).deleteMany();
+            expect(result.primaryKeys[0]).toBeUndefined();
+        }
+    });
 });

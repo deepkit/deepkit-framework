@@ -29,7 +29,7 @@ import {
     ViewContainerRef,
 } from '@angular/core';
 import { TemplatePortal } from '@angular/cdk/portal';
-import { Overlay, OverlayConfig, OverlayRef, PositionStrategy } from '@angular/cdk/overlay';
+import { ConnectedPosition, Overlay, OverlayConfig, OverlayRef, PositionStrategy } from '@angular/cdk/overlay';
 import { Subscription } from 'rxjs';
 import { WindowRegistry } from '../window/window-state';
 import { focusWatcher } from '../../core/utils';
@@ -40,6 +40,7 @@ import { ButtonComponent } from './button.component';
 
 @Component({
     selector: 'dui-dropdown',
+    standalone: false,
     template: `
         <ng-template #dropdownTemplate>
             <div class="dui-body dui-dropdown" tabindex="1" #dropdown>
@@ -97,6 +98,8 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     @Input() overlay: boolean | '' = false;
 
     @Input() show?: boolean;
+    @Input() connectedPositions: ConnectedPosition[] = [];
+
     @Output() showChange = new EventEmitter<boolean>();
 
     @Output() shown = new EventEmitter();
@@ -204,6 +207,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 .withPush(true)
                 .withDefaultOffsetY(this.overlay !== false ? 15 : 0)
                 .withPositions([
+                    ...this.connectedPositions,
                     {
                         originX: 'start',
                         originY: 'bottom',
@@ -231,6 +235,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 .withPush(true)
                 .withDefaultOffsetY(this.overlay !== false ? 15 : 0)
                 .withPositions([
+                    ...this.connectedPositions,
                     {
                         originX: this.center ? 'center' : 'start',
                         originY: 'bottom',
@@ -406,6 +411,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
  */
 @Directive({
     'selector': '[openDropdown]',
+    standalone: false,
 })
 export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
     @Input() openDropdown?: DropdownComponent;
@@ -450,6 +456,7 @@ export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
  */
 @Directive({
     'selector': '[openDropdownHover]',
+    standalone: false,
 })
 export class OpenDropdownHoverDirective implements OnDestroy {
     @Input() openDropdownHover?: DropdownComponent;
@@ -506,6 +513,7 @@ export class OpenDropdownHoverDirective implements OnDestroy {
  */
 @Directive({
     'selector': '[contextDropdown]',
+    standalone: false,
 })
 export class ContextDropdownDirective {
     @Input() contextDropdown?: DropdownComponent;
@@ -523,6 +531,7 @@ export class ContextDropdownDirective {
 
 @Component({
     selector: 'dui-dropdown-splitter,dui-dropdown-separator',
+    standalone: false,
     template: `
         <div></div>
     `,
@@ -556,6 +565,7 @@ export class DropdownSplitterComponent {
  */
 @Directive({
     'selector': '[dropdownContainer]',
+    standalone: false,
 })
 export class DropdownContainerDirective {
     constructor(protected dropdown: DropdownComponent, public template: TemplateRef<any>) {
@@ -565,6 +575,7 @@ export class DropdownContainerDirective {
 
 @Component({
     selector: 'dui-dropdown-item',
+    standalone: false,
     template: `
         <dui-icon [size]="14" class="selected" *ngIf="selected" name="check"></dui-icon>
         <ng-content></ng-content>

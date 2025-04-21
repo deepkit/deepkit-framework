@@ -1,20 +1,15 @@
-import { ChangeDetectorRef, Component, Input } from "@angular/core";
-import { FormsModule } from "@angular/forms";
-import { ControllerClient } from "@app/app/client";
-import { Router } from "@angular/router";
-import { Content } from "@app/common/models";
-import { NgIf } from "@angular/common";
-import { ContentRenderComponent } from "@app/app/components/content-render.component";
-import { AppTitle } from "@app/app/components/title";
+import { ChangeDetectorRef, Component, Input } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ControllerClient } from '@app/app/client';
+import { Router } from '@angular/router';
+import { Content } from '@app/common/models';
+import { ContentRenderComponent } from '@app/app/components/content-render.component';
 
 @Component({
     selector: 'app-ask',
-    standalone: true,
     imports: [
         FormsModule,
-        NgIf,
         ContentRenderComponent,
-        AppTitle
     ],
     styles: [`
         .ask-question {

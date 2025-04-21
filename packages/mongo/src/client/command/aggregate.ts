@@ -9,11 +9,12 @@
  */
 
 import { toFastProperties } from '@deepkit/core';
-import { BaseResponse, Command, ReadPreferenceMessage, TransactionalMessage } from './command.js';
+import { BaseResponse, Command, ReadPreferenceMessage, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { getTypeJitContainer, InlineRuntimeType, isType, ReflectionClass, Type, typeOf } from '@deepkit/type';
 import { MongoError } from '../error.js';
 import { GetMoreMessage } from './getMore.js';
 import { MongoClientConfig } from '../config.js';
+import { CommandOptions } from '../options.js';
 
 type AggregateMessage = {
     aggregate: string;
@@ -22,11 +23,11 @@ type AggregateMessage = {
     cursor: {
         batchSize: number,
     },
-} & TransactionalMessage & ReadPreferenceMessage;
+} & TransactionalMessage & WriteConcernMessage & ReadPreferenceMessage;
 
 export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
     partial: boolean = false;
-    batchSize: number = 1_000_000;
+    commandOptions: CommandOptions = {};
 
     constructor(
         public schema: ReflectionClass<T>,
@@ -42,12 +43,14 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             pipeline: this.pipeline,
             cursor: {
-                batchSize: this.batchSize,
+                batchSize: config.options.batchSize,
             },
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        config.applyReadPreference(cmd);
+        config.applyReadPreference(host, cmd, this.commandOptions, transaction);
+        if (!transaction) config.applyWriteConcern(cmd, this.commandOptions);
+
         let resultSchema = this.resultSchema || this.schema;
         if (resultSchema && !isType(resultSchema)) resultSchema = resultSchema.type;
 
@@ -100,7 +103,7 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
                 batchSize: cmd.cursor.batchSize,
             };
             if (transaction) transaction.applyTransaction(nextCommand);
-            config.applyReadPreference(nextCommand);
+            config.applyReadPreference(host, nextCommand, this.commandOptions, transaction);
             const next = await this.sendAndWait<GetMoreMessage, Response>(nextCommand, undefined, specialisedResponse);
 
             if (next.cursor.nextBatch) {

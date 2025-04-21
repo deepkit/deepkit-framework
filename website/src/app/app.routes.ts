@@ -30,10 +30,10 @@ export const routes: Routes = [
     redirect('documentation/type/serialization', 'documentation/runtime-types/serialization'),
     redirect('documentation/framework/rpc/controller', 'documentation/rpc/getting-started'),
 
-    {
-        path: 'benchmarks',
-        loadChildren: () => import('./benchmarks/benchmarks.module').then(m => m.BenchmarksModule),
-    },
+    // {
+    //     path: 'benchmarks',
+    //     loadChildren: () => import('./benchmarks/benchmarks.module').then(m => m.BenchmarksModule),
+    // },
 
     { path: '', pathMatch: 'full', component: StartpageComponent },
     { path: 'library', component: LibrariesComponent },

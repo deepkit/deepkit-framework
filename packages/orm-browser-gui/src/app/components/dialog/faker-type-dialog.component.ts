@@ -38,7 +38,8 @@ import { DialogComponent } from '@deepkit/desktop-ui';
             flex-direction: column;
             height: 100%;
         }
-    `]
+    `],
+    standalone: false
 })
 export class FakerTypeDialogComponent implements OnInit {
     static dialogDefaults = {

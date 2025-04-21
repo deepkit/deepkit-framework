@@ -1,12 +1,11 @@
 import 'reflect-metadata';
-import { AutoIncrement, Entity, entity, PrimaryKey, uuid } from '@deepkit/type';
+import { AutoIncrement, Entity, entity, PrimaryKey, Reference, uuid, UUID } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { User, UserGroup } from './bookstore/user.js';
 import { Group } from './bookstore/group.js';
 import { UserCredentials } from './bookstore/user-credentials.js';
-import { Reference } from '@deepkit/type';
-import { UUID } from '@deepkit/type';
+
 //import { MongoDatabaseAdapter } from '@deepkit/mongo';
 
 
@@ -81,4 +80,4 @@ const database = new Database(new SQLiteDatabaseAdapter('./example.sqlite'), [Us
 // const database = new Database(new MySQLDatabaseAdapter({database: 'orm-example', user: 'root'}), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
 // const database = new Database(new PostgresDatabaseAdapter({database: 'orm-example', user: 'postgres'}), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
 //const database = new Database(new MongoDatabaseAdapter('mongodb://localhost'), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
-database.logger.enableLogging();
+database.enableLogging();

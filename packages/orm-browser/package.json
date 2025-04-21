@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/orm-browser",
-  "version": "1.0.1-alpha.154",
+  "version": "1.0.7",
   "description": "ORM Browser",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -23,34 +23,34 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.43",
-    "@deepkit/broker": "^1.0.1-alpha.43",
-    "@deepkit/bson": "^1.0.1-alpha.43",
-    "@deepkit/core": "^1.0.1-alpha.43",
-    "@deepkit/framework": "^1.0.1-alpha.43",
-    "@deepkit/http": "^1.0.1-alpha.43",
-    "@deepkit/injector": "^1.0.1-alpha.43",
-    "@deepkit/logger": "^1.0.1-alpha.43",
-    "@deepkit/orm": "^1.0.1-alpha.43",
-    "@deepkit/rpc": "^1.0.1-alpha.43",
-    "@deepkit/type": "^1.0.1-alpha.43"
+    "@deepkit/app": "^1.0.1",
+    "@deepkit/broker": "^1.0.1",
+    "@deepkit/bson": "^1.0.1",
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/framework": "^1.0.1",
+    "@deepkit/http": "^1.0.1",
+    "@deepkit/injector": "^1.0.1",
+    "@deepkit/logger": "^1.0.1",
+    "@deepkit/orm": "^1.0.1",
+    "@deepkit/rpc": "^1.0.1",
+    "@deepkit/type": "^1.0.1"
   },
   "dependencies": {
-    "@deepkit/orm-browser-gui": "^1.0.1-alpha.154"
+    "@deepkit/orm-browser-gui": "^1.0.7"
   },
   "devDependencies": {
-    "@deepkit/app": "^1.0.1-alpha.154",
-    "@deepkit/broker": "^1.0.1-alpha.154",
-    "@deepkit/bson": "^1.0.1-alpha.154",
-    "@deepkit/core": "^1.0.1-alpha.154",
-    "@deepkit/framework": "^1.0.1-alpha.154",
-    "@deepkit/http": "^1.0.1-alpha.154",
-    "@deepkit/injector": "^1.0.1-alpha.154",
-    "@deepkit/logger": "^1.0.1-alpha.154",
-    "@deepkit/orm": "^1.0.1-alpha.154",
-    "@deepkit/rpc": "^1.0.1-alpha.154",
-    "@deepkit/type": "^1.0.1-alpha.154",
-    "@types/node": "20.6.0",
+    "@deepkit/app": "^1.0.5",
+    "@deepkit/broker": "^1.0.7",
+    "@deepkit/bson": "^1.0.7",
+    "@deepkit/core": "^1.0.5",
+    "@deepkit/framework": "^1.0.7",
+    "@deepkit/http": "^1.0.5",
+    "@deepkit/injector": "^1.0.5",
+    "@deepkit/logger": "^1.0.5",
+    "@deepkit/orm": "^1.0.5",
+    "@deepkit/rpc": "^1.0.7",
+    "@deepkit/type": "^1.0.5",
+    "@types/node": "^22.13.1",
     "rxjs": "~7.8.0"
   },
   "jest": {

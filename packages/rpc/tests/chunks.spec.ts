@@ -4,20 +4,8 @@ import { DirectClient } from '../src/client/client-direct.js';
 import { rpc } from '../src/decorators.js';
 import { RpcKernel } from '../src/server/kernel.js';
 import { ClientProgress } from '../src/progress.js';
-import { RpcBinaryBufferReader } from '../src/protocol.js';
 import { asyncOperation } from '@deepkit/core';
 
-test('buffer read does not do copy', async () => {
-    const data = Buffer.from('hello world');
-    data.writeUint32LE(data.length, 0);
-    let received: Uint8Array | undefined = undefined;
-
-    new RpcBinaryBufferReader((p) => {
-        received = p;
-    }).feed(data);
-
-    expect(received!.buffer === data.buffer).toBe(true);
-});
 
 test('chunks', async () => {
     @rpc.controller('test')
@@ -126,10 +114,12 @@ test('back controller', async () => {
     const kernel = new RpcKernel();
 
     const res = await asyncOperation<Uint8Array>(async (resolve) => {
-        kernel.onConnection(async (connection) => {
-            const ctrl = connection.controller<TestController>('test');
-            const res = await ctrl.downloadBig(105_000);
-            resolve(res);
+        kernel.onConnection((connection) => {
+            queueMicrotask(async () => {
+                const ctrl = connection.controller<TestController>('test');
+                const res = await ctrl.downloadBig(105_000);
+                resolve(res);
+            });
         });
 
         const client = new DirectClient(kernel);

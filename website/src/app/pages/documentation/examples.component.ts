@@ -9,7 +9,6 @@ import { waitForInit } from '@app/app/utils';
 
 
 @Component({
-    standalone: true,
     imports: [
         AppDescription,
         AppTitle,
@@ -57,7 +56,7 @@ import { waitForInit } from '@app/app/utils';
                 </div>
             }
         </div>
-    `,
+    `
 })
 export class ExamplesComponent implements OnInit {
     projectMap = projectMap;

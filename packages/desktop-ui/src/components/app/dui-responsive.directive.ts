@@ -13,6 +13,7 @@ import { nextTick } from '@deepkit/core';
 
 @Directive({
     selector: '[duiClassMin]',
+    standalone: false,
 })
 export class DuiResponsiveDirective implements OnInit {
     clazz: { [className: string]: boolean } = {};

@@ -1,12 +1,11 @@
-import { Component } from "@angular/core";
-import { RouterLink } from "@angular/router";
-import { ImageComponent } from "@app/app/components/image.component";
-import { AppImagesComponent } from "@app/app/components/images.component";
-import { AppTitle } from "@app/app/components/title";
+import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { ImageComponent } from '@app/app/components/image.component';
+import { AppImagesComponent } from '@app/app/components/images.component';
+import { AppTitle } from '@app/app/components/title';
 
 
 @Component({
-    standalone: true,
     styles: [`
         .app-boxes {
             margin-top: 50px;
@@ -25,7 +24,7 @@ import { AppTitle } from "@app/app/components/title";
             text-align: left;
             display: block;
 
-            color: white;
+            color: white !important;
 
             &:hover {
                 text-decoration: none;

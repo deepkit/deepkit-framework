@@ -46,7 +46,7 @@ export class StringCollectionWrapper {
     }
 }
 
-@entity.name('SimpleModel').index(['name', 'type'], { unique: true })
+@(entity.name('SimpleModel').index(['name', 'type'], { unique: true }))
 export class SimpleModel {
     id: UUID & PrimaryKey = uuid();
 

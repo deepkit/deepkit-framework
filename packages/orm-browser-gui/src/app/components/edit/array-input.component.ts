@@ -31,7 +31,8 @@ import { trackByIndex } from '../../utils';
             flex: 0;
             margin-left: 3px;
         }
-    `]
+    `],
+    standalone: false
 })
 export class ArrayInputComponent implements OnInit, OnChanges {
     trackByIndex = trackByIndex;

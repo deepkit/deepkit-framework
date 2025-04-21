@@ -3,6 +3,55 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
+
+**Note:** Version bump only for package @deepkit/event
+
+## [1.0.3](https://github.com/deepkit/deepkit-framework/compare/v1.0.2...v1.0.3) (2025-03-13)
+
+### Features
+
+- **event:** align API with Event web standards ([0e1dca2](https://github.com/deepkit/deepkit-framework/commit/0e1dca28fd8bbfb5232f9f9df4654598744d77a0))
+- **event:** allow late event listening, new synchronous event dispatching with 15x performance improvement ([0cc6843](https://github.com/deepkit/deepkit-framework/commit/0cc68438b2b933ee8241bbcca310ac79fea2b5c9))
+- **event:** allow sync tokens with sync dispatching and sync listeners ([798dfb7](https://github.com/deepkit/deepkit-framework/commit/798dfb72670ce26d6d2904e48a2edded42fd4b46))
+
+### BREAKING CHANGES
+
+- **event:** stopPropagation() becomes stopImmediatePropagation().
+
+New BaseEvent.preventDefault() which replaces custom solutions like stop() in DatabaseEvent.
+
+## [1.0.2](https://github.com/deepkit/deepkit-framework/compare/v1.0.1...v1.0.2) (2025-02-24)
+
+**Note:** Version bump only for package @deepkit/event
+
+## [1.0.1](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.160...v1.0.1) (2025-02-24)
+
+**Note:** Version bump only for package @deepkit/event
+
+## [1.0.1-alpha.160](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.159...v1.0.1-alpha.160) (2025-02-18)
+
+**Note:** Version bump only for package @deepkit/event
+
+## [1.0.1-alpha.158](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.157...v1.0.1-alpha.158) (2025-02-15)
+
+**Note:** Version bump only for package @deepkit/event
+
+## [1.0.1-alpha.157](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.156...v1.0.1-alpha.157) (2025-02-15)
+
+### Features
+
+- **event:** better doc blocks for listen ([452dc6a](https://github.com/deepkit/deepkit-framework/commit/452dc6abfc005cc99b2def853cc15251fb5c732d))
+- update to angular 19 and typescript 5.7.3, new @deepkit/angular-ssr package ([#627](https://github.com/deepkit/deepkit-framework/issues/627)) ([52333a7](https://github.com/deepkit/deepkit-framework/commit/52333a71f98c7e25a74f048dd57f1efba61098f5))
+
+## [1.0.1-alpha.156](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.155...v1.0.1-alpha.156) (2025-01-30)
+
+**Note:** Version bump only for package @deepkit/event
+
+## [1.0.1-alpha.155](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.154...v1.0.1-alpha.155) (2024-10-30)
+
+**Note:** Version bump only for package @deepkit/event
+
 ## [1.0.1-alpha.154](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.153...v1.0.1-alpha.154) (2024-09-06)
 
 **Note:** Version bump only for package @deepkit/event

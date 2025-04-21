@@ -69,7 +69,7 @@ import { Router } from '@angular/router';
                         <dui-list-item routerLink="/modules">Modules</dui-list-item>
                         <dui-list-item routerLink="/profiler">Profiler</dui-list-item>
                         <dui-list-item routerLink="/api/console">API</dui-list-item>
-                        <dui-list-item routerLink="/broker">Broker</dui-list-item>
+<!--                        <dui-list-item routerLink="/broker">Broker</dui-list-item>-->
                         <dui-list-item routerLink="/http/request">HTTP Requests</dui-list-item>
 
                         <dui-list-title>Filesystem</dui-list-title>
@@ -104,7 +104,8 @@ import { Router } from '@angular/router';
             </dui-window-content>
         </dui-window>
     `,
-    styleUrls: ['./app.component.scss']
+    styleUrls: ['./app.component.scss'],
+    standalone: false
 })
 export class AppComponent implements OnInit, OnDestroy {
     databases: Database[] = [];

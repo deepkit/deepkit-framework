@@ -8,7 +8,7 @@ import { MigrationUpCommand } from './cli/migration-up-command.js';
 import { MigrationPendingCommand } from './cli/migration-pending-command.js';
 import { MigrationProvider } from './migration/migration-provider.js';
 
-export const appModule = new AppModule({
+export const appModule = new AppModule({}, {
     providers: [
         MigrationProvider,
         { provide: DatabaseRegistry, useFactory: (ic: InjectorContext) => new DatabaseRegistry(ic) },

@@ -1,9 +1,6 @@
 import { reflect, ReflectionKind, Type } from '@deepkit/type';
 import { getParentClass } from '@deepkit/core';
 
-export type InjectMeta<T = never> = { __meta?: never & ['inject', T] }
-export type Inject<Type, Token = never> = Type & InjectMeta<Token>
-
 /**
  * Checks if given type is nominally compatible with the given interface.
  *

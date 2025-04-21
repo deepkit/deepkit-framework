@@ -5,12 +5,12 @@ import {
     injectedFunction,
     Injector,
     InjectorContext,
-    TransientInjectionTarget,
     PartialFactory,
+    TransientInjectionTarget,
 } from '../src/injector.js';
 import { InjectorModule } from '../src/module.js';
-import { ReflectionClass, ReflectionKind } from '@deepkit/type';
-import { Inject } from '../src/types.js';
+import { Inject } from '@deepkit/core';
+import { ReflectionClass, ReflectionKind, typeOf } from '@deepkit/type';
 import { provide } from '../src/provider.js';
 
 export const a = 'asd';
@@ -28,13 +28,33 @@ test('injector basics', () => {
     const injector = Injector.from([MyServer, Connection]);
     expect(injector.get(Connection)).toBeInstanceOf(Connection);
     expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
+    expect(injector.get<Connection>()).toBeInstanceOf(Connection);
 });
 
-test('type injection', () => {
+test('useExisting 1', () => {
     class Service {}
     const injector = Injector.from([Service, { provide: 'token', useExisting: Service }]);
+    expect(injector.get(Service)).toBeInstanceOf(Service);
     expect(injector.get<Service>()).toBeInstanceOf(Service);
     expect(injector.get<Service>('token')).toBeInstanceOf(Service);
+});
+
+test('useExisting 2', () => {
+    class Service {}
+    class Service2 {}
+    const injector = Injector.from([Service, provide<Service2>({useExisting: Service})]);
+    expect(injector.get(Service)).toBeInstanceOf(Service);
+    expect(injector.get<Service>()).toBeInstanceOf(Service);
+});
+
+test('useExisting 3', () => {
+    class Service {}
+    class Service2 {}
+    const injector = Injector.from([provide<Service>(), provide<Service2>({useExisting: typeOf<Service>()})]);
+    expect(injector.get(Service)).toBeInstanceOf(Service);
+    expect(injector.get(Service2)).toBeInstanceOf(Service);
+    expect(injector.get<Service>()).toBeInstanceOf(Service);
+    expect(injector.get<Service2>()).toBeInstanceOf(Service);
 });
 
 test('missing dep', () => {
@@ -416,7 +436,7 @@ test('injector optional dependency', () => {
 
     {
         const injector = Injector.from([MyServer]);
-        expect(() => injector.get(Connection)).toThrow(`Service 'Connection' in InjectorModule not found`);
+        expect(() => injector.get(Connection)).toThrow(`Service 'Connection' not found`);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
     }
 });
@@ -479,6 +499,36 @@ test('injector overwrite provider', () => {
         expect(injector.get(Connection)).toBeInstanceOf(Connection2);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
     }
+});
+
+declare var asd: any;
+
+test('invalid constructor 1', () => {
+    class Service {}
+
+    class MyServer {
+        constructor() {
+            asd.asd = [];
+        }
+    }
+
+    const injector = Injector.from([MyServer]);
+    expect(() => injector.get(MyServer)).toThrow(`asd is not defined`);
+    expect(() => injector.get(MyServer)).toThrow(`asd is not defined`);
+});
+
+test('invalid constructor 2', () => {
+    class Service {}
+
+    class MyServer {
+        constructor(private service: Service) {
+            asd.asd = [];
+        }
+    }
+
+    const injector = Injector.from([MyServer, Service]);
+    expect(() => injector.get(MyServer)).toThrow(`asd is not defined`);
+    expect(() => injector.get(MyServer)).toThrow(`asd is not defined`);
 });
 
 test('injector direct circular dependency', () => {
@@ -944,7 +994,7 @@ test('PartialFactory', () => {
         }
 
         const injector = Injector.from([B]);
-        const factory = injector.get<PartialFactory<A>>();
+        const factory = injector.getResolver<PartialFactory<A>>()();
 
         const a = factory({
             num: 5,

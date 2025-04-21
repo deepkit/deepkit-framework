@@ -11,7 +11,6 @@ import {
     ViewContainerRef,
 } from '@angular/core';
 import { Content } from '@app/common/models';
-import { NgForOf, NgIf } from '@angular/common';
 import { ScreenComponent, ScreensComponent } from '@app/app/components/screens.component';
 import { HighlightCodeComponent } from '@app/app/components/highlight-code.component';
 import { Router } from '@angular/router';
@@ -155,14 +154,12 @@ type ContentCreated = { hostView?: any, type?: any, node: Node };
 
 @Component({
     selector: 'app-render-content',
-    standalone: true,
-    imports: [NgForOf, NgIf, ScreensComponent, ScreenComponent, HighlightCodeComponent, ContentRenderBox, ContentRenderFeature],
     styles: [`
         :host {
             display: inline;
         }
     `],
-    template: ``,
+    template: ``
 })
 export class ContentRenderComponent implements OnInit, OnChanges {
     @Input() content!: (Content | string)[] | Content | string;

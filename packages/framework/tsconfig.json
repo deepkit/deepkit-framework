@@ -1,5 +1,4 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "forceConsistentCasingInFileNames": true,
     "strict": true,
@@ -11,7 +10,7 @@
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "preserveSymlinks": true,
-    "target": "es2018",
+    "target": "es2020",
     "module": "CommonJS",
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -68,6 +67,9 @@
       "path": "../event/tsconfig.json"
     },
     {
+      "path": "../filesystem/tsconfig.json"
+    },
+    {
       "path": "../http/tsconfig.json"
     },
     {
@@ -89,9 +91,6 @@
       "path": "../sql/tsconfig.json"
     },
     {
-      "path": "../sqlite/tsconfig.json"
-    },
-    {
       "path": "../stopwatch/tsconfig.json"
     },
     {
@@ -102,9 +101,6 @@
     },
     {
       "path": "../workflow/tsconfig.json"
-    },
-    {
-      "path": "../filesystem/tsconfig.json"
     }
   ]
 }

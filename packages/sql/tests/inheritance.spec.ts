@@ -1,11 +1,11 @@
-import { AutoIncrement, DatabaseField, entity, PrimaryKey, ReflectionKind } from '@deepkit/type';
+import { AutoIncrement, entity, PrimaryKey, ReflectionKind } from '@deepkit/type';
 import { SchemaParser } from '../src/reverse/schema-parser.js';
 import { DatabaseModel } from '../src/schema/table.js';
 import { DefaultPlatform } from '../src/platform/default-platform.js';
 import { expect, test } from '@jest/globals';
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 
-@entity.name('person').collection('persons')
+@(entity.name('person').collection('persons'))
 abstract class Person {
     id: number & PrimaryKey & AutoIncrement = 0;
     firstName?: string;
@@ -13,13 +13,13 @@ abstract class Person {
     abstract type: string;
 }
 
-@entity.name('employee').singleTableInheritance()
+@(entity.name('employee').singleTableInheritance())
 class Employee extends Person {
     email?: string;
     type: 'employee' = 'employee';
 }
 
-@entity.name('freelancer').singleTableInheritance()
+@(entity.name('freelancer').singleTableInheritance())
 class Freelance extends Person {
     token?: string;
 

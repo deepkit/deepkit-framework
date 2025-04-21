@@ -8,11 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { bufferConcat, ClassType, isObject } from '@deepkit/core';
+import { bufferConcat, ClassType, CustomError, isObject } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
 import { arrayBufferTo, entity } from '@deepkit/type';
 import { BehaviorSubject, Observable, Subject, TeardownLogic } from 'rxjs';
 import { skip } from 'rxjs/operators';
+
+export class RpcError extends CustomError {
+}
 
 export type IdType = string | number;
 
@@ -22,6 +25,81 @@ export interface IdInterface {
 
 export interface IdVersionInterface extends IdInterface {
     version: number;
+}
+
+type Writeable<T> = { -readonly [P in keyof T]: T[P] };
+
+export type NumericKeys<T> = {
+    [K in keyof T]: T[K] extends number ? K : never;
+}[keyof T];
+
+export class RpcTransportStats {
+    readonly incomingBytes: number = 0;
+    readonly outgoingBytes: number = 0;
+
+    /**
+     * Amount of incoming and outgoing messages.
+     */
+    public readonly incoming: number = 0;
+    public readonly outgoing: number = 0;
+
+    public increase(name: NumericKeys<RpcTransportStats>, count: number) {
+        (this as Writeable<this>)[name] += count;
+    }
+}
+
+export class ActionStats {
+    readonly observables: number = 0;
+    readonly subjects: number = 0;
+    readonly behaviorSubjects: number = 0;
+    readonly progressTrackers: number = 0;
+    readonly subscriptions: number = 0;
+
+    public increase(name: NumericKeys<ActionStats>, count: number) {
+        (this as Writeable<this>)[name] += count;
+    }
+}
+
+export class ForwardedActionStats extends ActionStats {
+    constructor(protected forward: ActionStats) {
+        super();
+    }
+
+    public increase(name: NumericKeys<ActionStats>, count: number) {
+        this.forward.increase(name, count);
+        super.increase(name, count);
+    }
+}
+
+export class RpcStats extends RpcTransportStats {
+    public readonly connections: number = 0;
+    public readonly totalConnections: number = 0;
+
+    /**
+     * How many actions have been executed.
+     */
+    public readonly actions: number = 0;
+
+    public readonly active: ActionStats = new ActionStats;
+    public readonly total: ActionStats = new ActionStats;
+
+    public increase(name: NumericKeys<RpcStats>, count: number) {
+        (this as Writeable<this>)[name] += count;
+    }
+}
+
+export class ForwardedRpcStats extends RpcStats {
+    public readonly active = new ForwardedActionStats(this.forward.active);
+    public readonly total = new ForwardedActionStats(this.forward.total);
+
+    constructor(protected forward: RpcStats) {
+        super();
+    }
+
+    public increase(name: NumericKeys<RpcStats>, count: number) {
+        this.forward.increase(name, count);
+        super.increase(name, count);
+    }
 }
 
 export class StreamBehaviorSubject<T> extends BehaviorSubject<T> {
@@ -185,7 +263,7 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
             return {
                 unsubscribe(): void {
                     sub.unsubscribe();
-                }
+                },
             };
         });
     }
@@ -205,7 +283,7 @@ export class EntitySubject<T extends IdInterface> extends StreamBehaviorSubject<
 export class ControllerDefinition<T> {
     constructor(
         public path: string,
-        public entities: ClassType[] = []
+        public entities: ClassType[] = [],
     ) {
     }
 }
@@ -259,7 +337,11 @@ export enum RpcTypes {
     ActionObservableSubjectUnsubscribe,
 
     ResponseActionObservable,
+    /**
+     * @deprecated not used anymore
+     */
     ResponseActionBehaviorSubject,
+
     ResponseActionObservableNext,
     ResponseActionObservableComplete,
     ResponseActionObservableError,
@@ -399,10 +481,7 @@ export interface rpcEntityPatch {
     };
 }
 
-export class AuthenticationError extends Error {
-    constructor(message: string = 'Authentication failed') {
-        super(message);
-    }
+export class AuthenticationError extends CustomError {
 }
 
 export interface WrappedV {

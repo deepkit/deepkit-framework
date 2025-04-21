@@ -1,5 +1,7 @@
 node_modules
 dist
-.angular
+website/dist
+website/node_modules
+website/.angular
 .dockerignore
 Dockerfile

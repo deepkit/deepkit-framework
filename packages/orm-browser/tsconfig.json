@@ -8,7 +8,8 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2018",
+    "skipLibCheck": true,
+    "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
@@ -35,6 +36,9 @@
       "path": "../core/tsconfig.json"
     },
     {
+      "path": "../framework/tsconfig.json"
+    },
+    {
       "path": "../http/tsconfig.json"
     },
     {
@@ -42,6 +46,9 @@
     },
     {
       "path": "../logger/tsconfig.json"
+    },
+    {
+      "path": "../orm/tsconfig.json"
     },
     {
       "path": "../rpc/tsconfig.json"

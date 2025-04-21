@@ -17,6 +17,7 @@ import {
     RpcMessage,
     RpcMessageBuilder,
     RpcMessageRouteType,
+    RpcStats,
     TransportConnection,
 } from '@deepkit/rpc';
 import { Logger } from '@deepkit/logger';
@@ -52,6 +53,8 @@ import cluster from 'cluster';
 import { closeSync, openSync, renameSync, writeSync } from 'fs';
 import { snapshotState } from './snapshot.js';
 import { handleMessageDeduplication } from './utils.js';
+import { InjectorContext } from '@deepkit/injector';
+import { EventDispatcher } from '@deepkit/event';
 
 export interface Queue {
     currentId: number;
@@ -64,15 +67,17 @@ export interface Queue {
 export class BrokerConnection extends RpcKernelBaseConnection {
     protected subscribedChannels: string[] = [];
     protected locks = new Map<number, ProcessLock>();
-    protected replies = new Map<number, ((message: RpcMessage) => void)>();
 
     constructor(
+        stats: RpcStats,
         logger: Logger,
         transportConnection: TransportConnection,
-        protected connections: RpcKernelConnections,
+        connections: RpcKernelConnections,
+        injector: InjectorContext,
+        eventDispatcher: EventDispatcher,
         protected state: BrokerState,
     ) {
-        super(logger, transportConnection, connections);
+        super(stats, logger, transportConnection, connections, injector, eventDispatcher);
     }
 
     public close(): void {
@@ -93,7 +98,7 @@ export class BrokerConnection extends RpcKernelBaseConnection {
         const promises: Promise<void>[] = [];
 
         for (const connection of this.connections.connections) {
-            if (connection === this) continue;
+            if ((connection as any) === this) continue;
             promises.push(connection.sendMessage<brokerEntityFields>(BrokerType.EntityFields, {
                 name,
                 fields,
@@ -570,6 +575,6 @@ export class BrokerKernel extends RpcKernel {
     protected state: BrokerState = new BrokerState;
 
     createConnection(transport: TransportConnection): BrokerConnection {
-        return new BrokerConnection(this.logger, transport, this.connections, this.state);
+        return new BrokerConnection(this.stats, this.logger, transport, this.connections, this.injector, this.getEventDispatcher(), this.state);
     }
 }

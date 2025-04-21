@@ -35,7 +35,19 @@ import {
     ViewChild,
     ViewChildren,
 } from '@angular/core';
-import { arrayClear, arrayHasItem, arrayRemoveItem, eachPair, empty, first, getPathValue, indexOf, isArray, isNumber, nextTick } from '@deepkit/core';
+import {
+    arrayClear,
+    arrayHasItem,
+    arrayRemoveItem,
+    eachPair,
+    empty,
+    first,
+    getPathValue,
+    indexOf,
+    isArray,
+    isNumber,
+    nextTick,
+} from '@deepkit/core';
 import { isObservable, Observable } from 'rxjs';
 import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { DropdownComponent } from '../button';
@@ -55,6 +67,7 @@ import { findParentWithClass, getHammer } from '../../core/utils';
  */
 @Directive({
     selector: '[duiTableCell]',
+    standalone: false,
 })
 export class TableCellDirective {
     constructor(public template: TemplateRef<any>) {
@@ -66,6 +79,7 @@ export class TableCellDirective {
  */
 @Directive({
     selector: 'dui-dropdown[duiTableCustomHeaderContextMenu]',
+    standalone: false,
 })
 export class TableCustomHeaderContextMenuDirective {
     constructor(public readonly dropdown: DropdownComponent) {
@@ -78,6 +92,7 @@ export class TableCustomHeaderContextMenuDirective {
  */
 @Directive({
     selector: 'dui-dropdown[duiTableCustomRowContextMenu]',
+    standalone: false,
 })
 export class TableCustomRowContextMenuDirective {
     constructor(public readonly dropdown: DropdownComponent) {
@@ -97,6 +112,7 @@ export class TableCustomRowContextMenuDirective {
  */
 @Directive({
     selector: '[duiTableHeader]',
+    standalone: false,
 })
 export class TableHeaderDirective {
     constructor(public template: TemplateRef<any>) {
@@ -107,7 +123,8 @@ export class TableHeaderDirective {
  * Defines a new column.
  */
 @Directive({
-    selector: 'dui-table-column'
+    selector: 'dui-table-column',
+    standalone: false,
 })
 export class TableColumnDirective {
     /**
@@ -189,6 +206,7 @@ export class TableColumnDirective {
 
 @Component({
     selector: 'dui-table',
+    standalone: false,
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <dui-dropdown #headerDropdown>

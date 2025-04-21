@@ -1,5 +1,4 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "forceConsistentCasingInFileNames": true,
     "strict": true,
@@ -9,13 +8,17 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2021",
+    "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
     "baseUrl": ".",
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
+    "lib": [
+      "es2020",
+      "es2022.error"
+    ],
     "types": [
       "dot-prop",
       "node"

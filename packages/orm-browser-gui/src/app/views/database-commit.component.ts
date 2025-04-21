@@ -54,7 +54,8 @@ import { ControllerClient } from '../client';
         table td {
             padding: 2px 5px;
         }
-    `]
+    `],
+    standalone: false
 })
 export class DatabaseCommitComponent {
     @Output() stateChange = new EventEmitter();

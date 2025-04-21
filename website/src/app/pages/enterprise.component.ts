@@ -1,10 +1,9 @@
-import { Component } from "@angular/core";
-import { RouterLink } from "@angular/router";
-import { AppTitle } from "@app/app/components/title";
+import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { AppTitle } from '@app/app/components/title';
 
 
 @Component({
-    standalone: true,
     styles: [`
         .offering {
             text-align: center;
@@ -84,11 +83,6 @@ import { AppTitle } from "@app/app/components/title";
         .how {
             margin-top: 50px;
             text-align: left;
-
-            p {
-                //max-width: 680px;
-                //text-align: justify;
-            }
 
             h3 {
                 font-weight: bold;

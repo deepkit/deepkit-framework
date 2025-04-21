@@ -1,16 +1,15 @@
-import {ChangeDetectorRef, Component, OnInit} from "@angular/core";
-import {CommunityQuestion, DocPageResult, link} from "@app/common/models";
-import {ControllerClient} from "@app/app/client";
-import {ActivatedRoute, Router, RouterLink} from "@angular/router";
-import {debounceTime, distinctUntilChanged, Subject} from "rxjs";
-import {LoadingComponent} from "@app/app/components/loading";
-import {NgForOf, NgIf} from "@angular/common";
-import {FormsModule} from "@angular/forms";
-import {ContentRenderComponent} from "@app/app/components/content-render.component";
-import {SearchResultQuestion} from "@app/app/components/search.component";
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { CommunityQuestion, DocPageResult, link } from '@app/common/models';
+import { ControllerClient } from '@app/app/client';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
+import { LoadingComponent } from '@app/app/components/loading';
+import { NgForOf, NgIf } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ContentRenderComponent } from '@app/app/components/content-render.component';
+import { SearchResultQuestion } from '@app/app/components/search.component';
 
 @Component({
-    standalone: true,
     imports: [
         LoadingComponent,
         NgIf,

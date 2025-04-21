@@ -11,7 +11,7 @@
 import { Command } from './command.js';
 import { IsMasterResponse } from './ismaster.js';
 import { MongoClientConfig } from '../config.js';
-import { Host, HostType } from '../host.js';
+import { Host } from '../host.js';
 import { Sha1ScramAuth, Sha256ScramAuth } from './auth/scram.js';
 import { ClassType } from '@deepkit/core';
 import { MongoError } from '../error.js';
@@ -20,12 +20,13 @@ import { X509Auth } from './auth/x509.js';
 
 interface IsMasterSchema {
     isMaster: number;
+    helloOk: boolean;
     $db: string;
     saslSupportedMechs?: string;
     client: {
-        // application: {
-        //     name: t.string,
-        // },
+        application: {
+            name: string,
+        },
         driver: {
             name: string;
             version: string;
@@ -83,17 +84,18 @@ export class HandshakeCommand extends Command<boolean> {
         const db = config.getAuthSource();
         const cmd: IsMasterSchema = {
             isMaster: 1,
+            helloOk: true,
             $db: db,
             client: {
-                // application: {
-                //     name: 'undefined'
-                // },
+                application: {
+                    name: config.options.appName || 'deepkit'
+                },
                 driver: {
-                    name: 'deepkit/mongo',
+                    name: 'deepkit',
                     version: '1.0.0'
                 },
                 os: {
-                    type: 'Darwin'
+                    type: 'Linux'
                 }
             }
         };
@@ -104,10 +106,9 @@ export class HandshakeCommand extends Command<boolean> {
 
         const response = await this.sendAndWait<IsMasterSchema, IsMasterResponse>(cmd);
         const hostType = host.getTypeFromIsMasterResult(response);
-
         host.setType(hostType);
-        if (hostType === HostType.arbiter) {
-            //If the server is of type RSArbiter, no authentication is possible and the handshake is complete.
+        if (hostType === 'arbiter') {
+            // If the server is of type RSArbiter, no authentication is possible and the handshake is complete.
             return true;
         }
 

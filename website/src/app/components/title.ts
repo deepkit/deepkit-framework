@@ -1,4 +1,4 @@
-import { Component, Injectable, Input, NgZone, OnChanges, OnDestroy, OnInit } from '@angular/core';
+import { Component, Injectable, Input, OnChanges, OnDestroy, OnInit } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
 import { arrayRemoveItem } from '@deepkit/core';
 
@@ -7,13 +7,8 @@ type Type = { type: string, value?: any };
 @Injectable()
 export class AppMetaStack {
     stack: Type[] = [];
-    stable = false;
 
-    constructor(private title: Title, private meta: Meta, private ngZone: NgZone) {
-        ngZone.onStable.subscribe(() => {
-            this.stable = true;
-            this.update();
-        });
+    constructor(private title: Title, private meta: Meta) {
     }
 
     register(appTitle: Type) {
@@ -27,8 +22,6 @@ export class AppMetaStack {
     }
 
     update() {
-        if (!this.stable) return;
-
         const titles = this.stack.filter(v => v.type === 'title');
         const descriptions = this.stack.filter(v => v.type === 'description');
 

@@ -13,12 +13,8 @@
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "importHelpers": true,
-    "target": "es2018",
+    "target": "es2020",
     "module": "es2020",
-    "lib": [
-      "es2018",
-      "dom"
-    ],
     "types": []
   },
   "angularCompilerOptions": {
@@ -30,6 +26,12 @@
   "references": [
     {
       "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../rpc/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.json"
     }
   ]
 }

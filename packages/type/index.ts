@@ -29,6 +29,8 @@ export * from './src/default.js';
 export * from './src/mixin.js';
 
 export * from './src/reflection/type.js';
+export { typeAnnotation as metaAnnotation } from './src/reflection/type.js';
+
 export * from './src/reflection/processor.js';
 export * from './src/reflection/type.js';
 export * from './src/reflection/extends.js';

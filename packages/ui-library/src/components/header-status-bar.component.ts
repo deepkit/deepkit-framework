@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
 import { DuiApp } from '@deepkit/desktop-ui';
-import { DeepkitClient } from '@deepkit/rpc';
+import { RpcWebSocketClient } from '@deepkit/rpc';
 
 @Component({
     selector: 'deepkit-header-status-bar',
+    standalone: false,
     template: `
         <div class="connection-info">
             <div class="connected" *ngIf="client.transporter.connection|asyncRender as connected">
@@ -42,6 +43,6 @@ import { DeepkitClient } from '@deepkit/rpc';
     `]
 })
 export class HeaderStatusBarComponent {
-    constructor(public client: DeepkitClient, public duiApp: DuiApp) {
+    constructor(public client: RpcWebSocketClient, public duiApp: DuiApp) {
     }
 }

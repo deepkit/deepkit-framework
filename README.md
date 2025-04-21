@@ -49,6 +49,7 @@ npm init @deepkit/app@latest my-deepkit-app
 - [Deepkit Webpack](https://github.com/marcj/deepkit-webpack): Type Compiler with Webpack.
 - [Deepkit GraphQL](https://github.com/marcus-sa/deepkit-graphql/tree/main/examples/orm-integration): Deepkit GraphQL server application with ORM integration
 - [Deepkit Remix](https://github.com/marcus-sa/deepkit-modules/tree/main/apps/example-remix): Remix application using Deepkit as the server
+- [Deepkit Angular](https://github.com/marcus-sa/deepkit-angular-template): Angular SSR application using Deepkit as the server with RPC
 
 ## Contributing
 

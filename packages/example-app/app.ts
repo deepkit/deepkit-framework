@@ -9,7 +9,7 @@ import { App } from '@deepkit/app';
 import { RpcController } from './src/controller/rpc.controller.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { OrmBrowserModule } from '@deepkit/orm-browser';
-import { OpenAPIModule } from 'deepkit-openapi';
+// import { OpenAPIModule } from 'deepkit-openapi';
 
 const bookStoreCrud = createCrudRoutes([Author, Book]);
 
@@ -28,7 +28,9 @@ const app = new App({
         createCrudRoutes([User], { identifier: 'username', identifierChangeable: true }),
         bookStoreCrud,
 
-        new OpenAPIModule({ prefix: '/openapi/' }),
+        // this doesn't support newest deepkit
+        // new OpenAPIModule({ prefix: '/openapi/' }),
+
         new OrmBrowserModule({ path: '/data' }),
         new ApiConsoleModule({ path: '/api' }).filter(filter => filter.excludeModules(bookStoreCrud)),
         new ApiConsoleModule({

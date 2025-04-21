@@ -8,14 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command } from './command.js';
-import { ReflectionClass, UUID } from '@deepkit/type';
+import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
+import { ReflectionClass } from '@deepkit/type';
+import { CommandOptions } from '../options.js';
 
 interface UpdateResponse extends BaseResponse {
     n: number;
 }
 
-interface UpdateSchema {
+type UpdateSchema = {
     update: string;
     $db: string;
     updates: {
@@ -24,13 +25,11 @@ interface UpdateSchema {
         u: any,
         multi: boolean,
     }[],
-    lsid?: { id: UUID };
-    txnNumber?: number,
-    autocommit?: boolean,
-    startTransaction?: boolean;
-}
+} & TransactionalMessage & WriteConcernMessage;
 
 export class UpdateCommand<T extends ReflectionClass<any>> extends Command<number> {
+    commandOptions: CommandOptions = {};
+
     constructor(
         public schema: T,
         public updates: { q: any, u: any, multi: boolean }[] = [],
@@ -42,9 +41,11 @@ export class UpdateCommand<T extends ReflectionClass<any>> extends Command<numbe
         const cmd = {
             update: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
-            updates: this.updates
+            updates: this.updates,
         };
+
         if (transaction) transaction.applyTransaction(cmd);
+        if (!transaction) config.applyWriteConcern(cmd, this.commandOptions);
 
         const res = await this.sendAndWait<UpdateSchema, UpdateResponse>(cmd);
         return res.n;

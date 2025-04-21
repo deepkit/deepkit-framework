@@ -1,9 +1,11 @@
 import { ClientTransportAdapter, RpcClient } from './client.js';
 import { TransportClientConnection } from '../transport.js';
 import { RpcMessageDefinition } from '../protocol.js';
-import { RpcTypes } from '../model.js';
+import { RpcError, RpcTypes } from '../model.js';
 import { HttpRpcMessage } from '../server/http.js';
 import { serialize } from '@deepkit/type';
+
+declare const location: { protocol: string, host: string, origin: string };
 
 export interface RpcHttpResponseInterface {
     status: number;
@@ -74,12 +76,12 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
                 let body: any = undefined;
 
                 if (message.type === RpcTypes.ActionType) {
-                    if (!message.body) throw new Error('No body given');
+                    if (!message.body) throw new RpcError('No body given');
                     const body = message.body.body as { controller: string, method: string, };
                     path = body.controller + '/' + encodeURIComponent(body.method) + '.type';
                     method = 'GET';
                 } else if (message.type === RpcTypes.Action) {
-                    if (!message.body) throw new Error('No body given');
+                    if (!message.body) throw new RpcError('No body given');
                     const messageBody = serialize(message.body.body, undefined, undefined, undefined, message.body.type) as {
                         controller: string,
                         method: string,
@@ -97,7 +99,7 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
                         method = 'POST';
                     }
                 } else {
-                    throw new Error('Unsupported message type ' + message.type + ' for Http adapter');
+                    throw new RpcError('Unsupported message type ' + message.type + ' for Http adapter');
                 }
 
                 const res = await this.http.fetch(this.url + '/' + path + '?' + qs.join('&'), {

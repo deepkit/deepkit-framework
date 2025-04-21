@@ -189,8 +189,8 @@ export function getPartialType(type: TypeClass | TypeObjectLiteral) {
     const jitContainer = getTypeJitContainer(type);
     if (jitContainer.partialType) return jitContainer.partialType;
     type = copyAndSetParent(type);
-    const reflection = ReflectionClass.from(type);
-    type.types = reflection.type.types.map(v => ({ ...v })) as any;
+    // we have to copy members manually, since we want to modify them
+    type.types = type.types.map(v => ({ ...v })) as any;
     for (const member of type.types) {
         if (member.kind === ReflectionKind.propertySignature || member.kind === ReflectionKind.property) {
             member.optional = true;
@@ -220,10 +220,10 @@ export function getSerializeFunction(type: Type, registry: TemplateRegistry, nam
     return jit[id];
 }
 
-export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string = '', jitStack = new JitStack()): SerializeFunction {
+export function createSerializeFunction(type: Type, registry: TemplateRegistry, namingStrategy: NamingStrategy = new NamingStrategy(), path: string | RuntimeCode | (string | RuntimeCode)[] = '', jitStack = new JitStack()): SerializeFunction {
     const compiler = new CompilerContext();
 
-    const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, path ? [path] : []);
+    const state = new TemplateState('result', 'data', compiler, registry, namingStrategy, jitStack, isArray(path) ? path : path ? [path] : []);
     if (state.registry === state.registry.serializer.deserializeRegistry) {
         state.target = 'deserialize';
     }
@@ -546,7 +546,7 @@ export class TemplateState {
             if (error instanceof SerializationError) {
                 error.path = ${collapsePath(this.path)} + (error.path ? '.' + error.path : '');
             }
-            throw error;
+            ${this.throwCode('any', 'error.message', this.accessor)};
         }
         `);
     }
@@ -1404,7 +1404,11 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 
                 lines.push(`let ${checkValid} = false;` + template);
             } else {
-                const optionalCheck = member.optional
+                let optional = isOptional(member);
+                if (state.validation === 'loose' && member.kind === ReflectionKind.property && member.default) {
+                    optional = true;
+                }
+                let optionalCheck = optional
                     ? `${propertyAccessor} !== undefined && ` + (!isNullable(member) ? `${propertyAccessor} !== null && ` : '')
                     : '';
                 existing.push(readName);
@@ -1491,15 +1495,17 @@ export function typeGuardObjectLiteral(type: TypeObjectLiteral | TypeClass, stat
 export function serializeArray(type: TypeArray, state: TemplateState) {
     state.setContext({ isIterable });
     const v = state.compilerContext.reserveName('v');
+    const tempIterable = state.compilerContext.reserveName('tempIterable');
     const i = state.compilerContext.reserveName('i');
     const item = state.compilerContext.reserveName('item');
 
     //we just use `a.length` to check whether its array-like, because Array.isArray() is way too slow.
     state.addCodeForSetter(`
          if (isIterable(${state.accessor})) {
+            const ${tempIterable} = ${state.accessor};
             ${state.setter} = [];
             let ${i} = 0;
-            for (const ${item} of ${state.accessor}) {
+            for (const ${item} of ${tempIterable}) {
                 let ${v};
                 ${executeTemplates(state.fork(v, item).extendPath(new RuntimeCode(i)), type.type)}
                 ${state.setter}.push(${v});
@@ -1641,11 +1647,9 @@ export function getSetTypeToArray(type: TypeClass): TypeArray {
 
     const value = type.arguments?.[0] || { kind: ReflectionKind.any };
 
-    jit.forwardSetToArray = {
+    return jit.forwardSetToArray = {
         kind: ReflectionKind.array, type: value,
-    };
-
-    return jit.forwardSetToArray;
+    } as TypeArray;
 }
 
 export function getMapTypeToArray(type: TypeClass): TypeArray {
@@ -1665,6 +1669,22 @@ export function getMapTypeToArray(type: TypeClass): TypeArray {
     };
 
     return jit.forwardMapToArray;
+}
+
+export function getNTypeToArray(type: TypeClass, n: number): TypeArray {
+    const jit = getTypeJitContainer(type);
+    const name = `forwardNTypeToArray${n}`;
+    if (jit[name]) return jit[name];
+
+    const value = type.arguments?.[n] || { kind: ReflectionKind.any };
+
+    return jit[name] = {
+        kind: ReflectionKind.array, type: value,
+    } as TypeArray;
+}
+
+export function executeTypeArgumentAsArray(type: TypeClass, typeIndex: number, state: TemplateState) {
+    executeTemplates(state, getNTypeToArray(type, typeIndex), true, false);
 }
 
 export function forwardSetToArray(type: TypeClass, state: TemplateState) {
@@ -1760,6 +1780,7 @@ export function handleUnion(type: TypeUnion, state: TemplateState) {
 
         //when validation=true and not all specificalities are included, we only use 1, which is used for strict validation()/is().
         if (state.validation === 'strict' && specificality !== 1) continue;
+        const validation = !state.validation ? 'loose' : state.validation;
 
         for (const t of type.types) {
             const fn = createTypeGuardFunction(
@@ -1768,7 +1789,7 @@ export function handleUnion(type: TypeUnion, state: TemplateState) {
                     .forRegistry(typeGuard)
                     //if validation is not set, we are in deserialize mode, so we need to activate validation
                     //for this state.
-                    .withValidation(!state.validation ? 'loose' : state.validation)
+                    .withValidation(validation)
                     .includeAllSpecificalities(state.registry.serializer.typeGuards),
                 undefined, false,
             );

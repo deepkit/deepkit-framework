@@ -32,7 +32,7 @@ for (let i = 0; i < 256; i++) {
  * in types like t.any.
  */
 export class ObjectId {
-    static index: number = Math.ceil(Math.random() & 0xffffff);
+    static index: number = Math.ceil(Math.random() * 0xffffff);
 
     static generate(time?: number): string {
         if (!time) time = Math.ceil(Date.now() / 1000);

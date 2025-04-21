@@ -8,13 +8,15 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2018",
+    "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": []
+    "types": [
+      "node"
+    ]
   },
   "reflection": true,
   "include": [
@@ -35,10 +37,16 @@
       "path": "../core-rxjs/tsconfig.json"
     },
     {
+      "path": "../event/tsconfig.json"
+    },
+    {
       "path": "../rpc/tsconfig.json"
     },
     {
       "path": "../type/tsconfig.json"
+    },
+    {
+      "path": "../app/tsconfig.json"
     }
   ]
 }

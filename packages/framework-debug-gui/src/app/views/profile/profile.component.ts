@@ -1,10 +1,19 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    HostListener,
+    OnDestroy,
+    OnInit,
+    ViewChild,
+} from '@angular/core';
 import { ControllerClient } from '../../client';
 import { decodeFrameData, decodeFrames } from '@deepkit/framework-debug-api';
 import { Application, Container, Graphics, InteractionEvent, Rectangle, Text, TextStyle } from 'pixi.js';
 import { FrameCategory, FrameEnd, FrameStart } from '@deepkit/stopwatch';
 import * as Hammer from 'hammerjs';
-import { ChangeFeed, Crunch, formatTime, FrameItem, FrameParser, getCrunchX, getFrameX, getFrameXCanvas, ViewState } from './frame';
+import { ChangeFeed, Crunch, formatTime, FrameItem, FrameParser, getFrameX, ViewState } from './frame';
 import { CrunchContainer, FrameContainer } from './frame-container';
 import { Subject } from 'rxjs';
 import { ClientProgress } from '@deepkit/rpc';
@@ -452,7 +461,8 @@ class ProfilerContainer extends Container {
             <!--            </div>-->
         </div>
     `,
-    styleUrls: ['./profile.component.scss']
+    styleUrls: ['./profile.component.scss'],
+    standalone: false
 })
 export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
     getFrameX = getFrameX;

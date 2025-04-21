@@ -18,6 +18,10 @@ import { Questions } from '@app/server/questions';
 import { MarkdownParser } from '@app/common/markdown';
 import { PageProcessor } from '@app/server/page-processor';
 import { Database } from '@deepkit/orm';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function different(a?: string | Content, b?: string | Content): boolean {
     if ('string' === typeof a || 'undefined' === typeof a) {

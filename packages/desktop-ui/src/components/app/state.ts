@@ -1,5 +1,23 @@
-import { deserialize, Excluded, metaAnnotation, ReflectionClass, ReflectionKind, resolveTypeMembers, serialize, Serializer, Type, TypeAnnotation, TypeClass } from '@deepkit/type';
-import { ClassType, getClassTypeFromInstance, getPathValue, setPathValue, throttleTime } from '@deepkit/core';
+import {
+    deserialize,
+    Excluded,
+    ReflectionClass,
+    ReflectionKind,
+    resolveTypeMembers,
+    serialize,
+    Serializer,
+    Type,
+    typeAnnotation,
+    TypeClass,
+} from '@deepkit/type';
+import {
+    ClassType,
+    getClassTypeFromInstance,
+    getPathValue,
+    setPathValue,
+    throttleTime,
+    TypeAnnotation,
+} from '@deepkit/core';
 import { EventToken } from '@deepkit/event';
 import { ApplicationRef, Injector } from '@angular/core';
 import { NavigationEnd, ResolveEnd, Router } from '@angular/router';
@@ -101,7 +119,7 @@ export function findPartsOfUrlForType(type: Type, paths: string[] = [], prefix: 
             if (property.type.kind === ReflectionKind.class || property.type.kind === ReflectionKind.objectLiteral) {
                 findPartsOfUrlForType(property.type, paths, (prefix ? prefix + '.' : '') + String(property.name), state);
             } else {
-                const meta = metaAnnotation.getForName(property.type, 'partOfUrl');
+                const meta = typeAnnotation.getType(property.type, 'partOfUrl');
                 if (meta) {
                     paths.push((prefix ? prefix + '.' : '') + String(property.name));
                 }

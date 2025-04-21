@@ -1,12 +1,12 @@
 import { expect, test } from '@jest/globals';
 import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/router.js';
 import { getActions, http, httpClass } from '../src/decorator.js';
-import { HtmlResponse, HttpAccessDeniedError, HttpBadRequestError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
+import { HtmlResponse, HttpAccessDeniedError, HttpBadRequestError, HttpNotFoundError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest, HttpRequestParser } from '../src/model.js';
-import { getClassName, isObject, sleep } from '@deepkit/core';
+import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest, HttpRequestParser, MemoryHttpResponse } from '../src/model.js';
+import { getClassName, isObject, sleep, TypeAnnotation } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
-import { Excluded, Group, integer, JSONEntity, Maximum, metaAnnotation, MinLength, Positive, PrimaryKey, Reference, serializer, Type, typeSettings, UnpopulatedCheck } from '@deepkit/type';
+import { Excluded, Group, integer, JSONEntity, Maximum, MinLength, Positive, PrimaryKey, Reference, serializer, Type, typeAnnotation, typeSettings, UnpopulatedCheck } from '@deepkit/type';
 import { Readable } from 'stream';
 import { provide } from '@deepkit/injector';
 
@@ -267,7 +267,7 @@ test('router parameter resolver by class', async () => {
             return [user.username];
         }
 
-        @http.GET('user/:user/group/:group').resolveParameter(Group, GroupResolver)
+        @(http.GET('user/:user/group/:group').resolveParameter(Group, GroupResolver))
         route3(user: User, group: Group) {
             return [user.username, group.name];
         }
@@ -337,12 +337,12 @@ test('router parameter resolver by name', async () => {
             return [user.username];
         }
 
-        @http.GET('user/:user/group/:group').resolveParameterByName('group', GroupResolver)
+        @(http.GET('user/:user/group/:group').resolveParameterByName('group', GroupResolver))
         route3(user: User, group: Group) {
             return [user.username, group.name];
         }
 
-        @http.GET('nonClass').resolveParameterByName('auth', AuthResolver)
+        @(http.GET('nonClass').resolveParameterByName('auth', AuthResolver))
         nonClass(auth: any) {
             return [auth.name, getClassName(auth)];
         }
@@ -535,7 +535,7 @@ test('serializer options', async () => {
     }
 
     class Controller {
-        @http.GET().serialization({ groupsExclude: ['sensitive'] })
+        @(http.GET().serialization({ groupsExclude: ['sensitive'] }))
         anyReq(): User {
             return { username: 'Peter', password: 'secret' };
         }
@@ -553,7 +553,7 @@ test('hook after serializer', async () => {
     }
 
     class Controller {
-        @http.GET().serialization({ groupsExclude: ['sensitive'] })
+        @(http.GET().serialization({ groupsExclude: ['sensitive'] }))
         async anyReq(): Promise<User> {
             await sleep(0.1);
             return { username: 'Peter', password: 'secret' };
@@ -711,7 +711,7 @@ test('race condition', async () => {
 
 test('multiple methods', async () => {
     class Controller {
-        @http.GET('/one').POST()
+        @(http.GET('/one').POST())
         one() {
             return true;
         }
@@ -786,32 +786,32 @@ test('router url resolve', async () => {
     }
 
     class Controller {
-        @http.GET('').name('first')
+        @(http.GET('').name('first'))
         first() {
             return '';
         }
 
-        @http.GET(':peter').name('second')
+        @(http.GET(':peter').name('second'))
         second(peter: string) {
             return '';
         }
 
-        @http.GET('').name('secondQuery')
+        @(http.GET('').name('secondQuery'))
         secondQuery(peter: HttpQuery<string>) {
             return '';
         }
 
-        @http.GET('').name('secondQuery2')
+        @(http.GET('').name('secondQuery2'))
         secondQuery2(peter: HttpQuery<string, { name: 'changed' }>) {
             return '';
         }
 
-        @http.GET('third').name('third')
+        @(http.GET('third').name('third'))
         third(params: HttpQueries<AnyReqQuery>) {
             return params;
         }
 
-        @http.GET('third2').name('third2')
+        @(http.GET('third2').name('third2'))
         third2(params: HttpQueries<AnyReqQuery, { name: 'deep' }>) {
             return params;
         }
@@ -865,14 +865,14 @@ test('use http.response for serialization', async () => {
             return [{ title: 'a' }, { title: '1' }];
         }
 
-        @http.GET('/action2').response<DefaultResponse[]>(200, `List`)
+        @(http.GET('/action2').response<DefaultResponse[]>(200, `List`))
         action2() {
             return [{ title: 'a' }, { title: 1 }];
         }
 
-        @http.GET('/action3')
+        @(http.GET('/action3')
             .response<DefaultResponse[]>(200, `List`)
-            .response<ErrorResponse[]>(400, `Error`)
+            .response<ErrorResponse[]>(400, `Error`))
         action3() {
             return new JSONResponse([{ message: 'error' }, { message: 1 }]).status(400);
         }
@@ -1011,7 +1011,7 @@ test('unpopulated entity without type information', async () => {
             return [o];
         }
 
-        @http.GET('/3').response<User[]>(200)
+        @(http.GET('/3').response<User[]>(200))
         async action3() {
             const o = new User(2, undefined as any);
             disableReference(o);
@@ -1034,10 +1034,10 @@ test('unpopulated entity without type information', async () => {
 });
 
 test('extend with custom type', async () => {
-    type StringifyTransport = { __meta?: never & ['stringifyTransport'] };
+    type StringifyTransport = TypeAnnotation<'stringifyTransport'>;
 
     function isStringifyTransportType(type: Type): boolean {
-        return !!metaAnnotation.getForName(type, 'stringifyTransport');
+        return !!typeAnnotation.getType(type, 'stringifyTransport');
     }
 
     serializer.serializeRegistry.addPostHook((type, state) => {
@@ -1727,6 +1727,25 @@ test('required fields in body should be required', async () => {
     expect((await httpKernel.request(HttpRequest.POST('/').json({ a: 'a', b: 'asd' }))).json).toEqual(['a', 'asd']);
 });
 
+test('query validator withing HttpQuery', async () => {
+    class Controller {
+        @http.GET('do')
+        async do(
+            a: HttpQuery<string & MinLength<8>>,
+            b: HttpQuery<string>,
+        ) {
+            return { valid: true };
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    //todo: fix this, see https://github.com/deepkit/deepkit-framework/issues/614
+    // expect((await httpKernel.request(HttpRequest.GET('/do').query('a=aaaaaaaa&b=bbbb'))).json).toMatchObject({
+    //     valid: true
+    // });
+});
+
 test('http body deep optional union', async () => {
     interface AdTitleAndBasicAttributes {
         title: string;
@@ -1792,4 +1811,74 @@ test('http body deep optional union', async () => {
         ademeQuery: ['a', 'b'],
     }));
     expect(res.statusCode).toBe(200);
+});
+
+test('handleRequest', async () => {
+    class Controller {
+        @http.GET('/test')
+        test() {
+            return 'test';
+        }
+        @http.GET('/nope')
+        nope() {
+            throw new HttpNotFoundError();
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+    {
+        const res = await httpKernel.request(HttpRequest.GET('/test'));
+        expect(res.statusCode).toBe(200);
+    }
+    {
+        const res = await httpKernel.request(HttpRequest.GET('/nope'));
+        expect(res.statusCode).toBe(404);
+    }
+    {
+        const res = await httpKernel.request(HttpRequest.GET('/test'), { throwOnNotFound: true });
+        expect(res.statusCode).toBe(200);
+    }
+    {
+        await expect(() => httpKernel.request(HttpRequest.GET('/nope'), { throwOnNotFound: true })).rejects.toThrow(HttpNotFoundError);
+    }
+    {
+        await expect(() => httpKernel.request(HttpRequest.GET('/44040'), { throwOnNotFound: true })).rejects.toThrow(HttpNotFoundError);
+    }
+    {
+        const req = HttpRequest.GET('/test').build();
+        const res = new MemoryHttpResponse(req);
+        await httpKernel.handleRequest(req, res);
+        expect(res.statusCode).toBe(200);
+    }
+    {
+        const req = HttpRequest.GET('/test').build();
+        const res = new MemoryHttpResponse(req);
+        const middleware = httpKernel.createMiddleware({ fallThroughOnNotFound: false });
+        await middleware(req, res, () => {});
+        expect(res.statusCode).toBe(200);
+    }
+    {
+        const req = HttpRequest.GET('/nope').build();
+        const res = new MemoryHttpResponse(req);
+        const middleware = httpKernel.createMiddleware({ fallThroughOnNotFound: false });
+        let called = false;
+        await middleware(req, res, (error) => {
+            expect(error).toBeUndefined();
+            called = true;
+        });
+        expect(res.statusCode).toBe(404);
+        expect(called).toBe(true);
+    }
+    {
+        const req = HttpRequest.GET('/nope').build();
+        const res = new MemoryHttpResponse(req);
+        const middleware = httpKernel.createMiddleware({ fallThroughOnNotFound: true });
+        let called = false;
+        await middleware(req, res, (error) => {
+            expect(error).toBeUndefined();
+            called = true;
+        });
+        expect(res.statusCode).toBe(200); //unchanged
+        expect(called).toBe(true);
+    }
 });

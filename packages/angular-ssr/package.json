@@ -1,0 +1,47 @@
+{
+  "name": "@deepkit/angular-ssr",
+  "version": "1.0.5",
+  "description": "Deepkit + angular SSR",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cjs/index.d.ts",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "scripts": {
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+  },
+  "peerDependencies": {
+    "@angular/ssr": "^19.1.6",
+    "@deepkit/app": "^1.0.1",
+    "@deepkit/http": "^1.0.1"
+  },
+  "devDependencies": {
+    "@angular/ssr": "^19.1.7",
+    "@deepkit/app": "^1.0.5",
+    "@deepkit/http": "^1.0.5"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ]
+  }
+}

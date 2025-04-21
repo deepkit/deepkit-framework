@@ -30,9 +30,9 @@
               "src/assets"
             ],
             "styles": [
-              "@deepkit/desktop-ui/src/scss/all.scss",
-              "@deepkit/desktop-ui/src/scss/icon.scss",
-              "@deepkit/ui-library/src/styles/style-code.scss",
+              "../desktop-ui/src/scss/all.scss",
+              "../desktop-ui/src/scss/icon.scss",
+              "../ui-library/src/styles/style-code.scss",
               "src/styles.scss"
             ],
             "scripts": []
@@ -54,6 +54,9 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "watch": true
+          },
           "configurations": {
             "production": {
               "buildTarget": "api-console-gui:build:production"

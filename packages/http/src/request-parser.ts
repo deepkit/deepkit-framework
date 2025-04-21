@@ -7,67 +7,64 @@ import {
     getValidatorFunction,
     hasDefaultValue,
     isOptional,
-    metaAnnotation,
     ReflectionKind,
     ReflectionParameter,
     resolveReceiveType,
     serializer,
     stringifyType,
     Type,
+    typeAnnotation,
     typeToObject,
     ValidationError,
 } from '@deepkit/type';
 import { BodyValidationError, createRequestWithCachedBody, getRegExp, HttpRequest, ValidatedBody } from './model.js';
 import { getRouteActionLabel, RouteConfig, UploadedFile, UploadedFileSymbol } from './router.js';
-
-//@ts-ignore
 import qs from 'qs';
-
-// @ts-ignore
-import formidable from 'formidable';
+import formidable, { Fields, Files, Options } from 'formidable';
 import { HttpParserOptions } from './module.config.js';
-
 
 function parseBody(
     options: HttpParserOptions,
     req: HttpRequest, foundFiles: { [name: string]: UploadedFile }) {
-    const form = formidable(Object.assign(options, {
+
+    const form = formidable(Object.assign({
+        allowEmptyFiles: true,
+        minFileSize: 0,
+    }, options as Options, {
         multiples: true,
     }));
-    return asyncOperation((resolve, reject) => {
-        function parseData(err: any, fields: any, files: any) {
-            if (err) {
-                reject(err);
-            } else {
-                const fileEntries = Object.entries(files);
+    return asyncOperation(async (resolve, reject) => {
+        function parseData(fields: Fields, files: Files) {
+            const fileEntries = Object.entries(files);
 
-                // formidable turns JSON arrays into numerically keyed objects, so we convert them back
-                if ('0' in fields && fileEntries.length === 0 && Object.keys(fields).every((key, idx) => parseInt(key) === idx)) {
-                    return resolve(Object.values(fields));
-                }
-
-                for (const [name, file] of fileEntries as any) {
-                    if (!file.filepath || 'string' !== typeof file.filepath) continue;
-                    if (!file.size || 'number' !== typeof file.size) continue;
-                    if (file.lastModifiedDate && !(file.lastModifiedDate instanceof Date)) continue;
-
-                    foundFiles[name] = {
-                        validator: UploadedFileSymbol,
-                        size: file.size,
-                        path: file.filepath,
-                        name: file.originalFilename || null,
-                        type: file.mimetype || null,
-                        lastModifiedDate: file.lastModifiedDate || null,
-                    };
-                }
-                const body = { ...fields, ...foundFiles };
-                resolve(body);
+            // formidable turns JSON arrays into numerically keyed objects, so we convert them back
+            if ('0' in fields && fileEntries.length === 0 && Object.keys(fields).every((key, idx) => parseInt(key) === idx)) {
+                return resolve(Object.values(fields));
             }
+
+            for (const [name, files] of fileEntries) {
+                if (!files) continue;
+                const file = files[0];
+                if (!file) continue;
+                if (!file.filepath || 'string' !== typeof file.filepath) continue;
+                if (!file.size || 'number' !== typeof file.size) continue;
+
+                foundFiles[name] = {
+                    validator: UploadedFileSymbol,
+                    size: file.size,
+                    path: file.filepath,
+                    name: file.originalFilename || null,
+                    type: file.mimetype || null,
+                    lastModifiedDate: null,
+                };
+            }
+            const body = { ...fields, ...foundFiles };
+            resolve(body);
         }
 
         if (req.body) {
-            form.parse(createRequestWithCachedBody(req, req.body), parseData);
-            return;
+            const [fields, files] = await form.parse(createRequestWithCachedBody(req, req.body));
+            parseData(fields, files);
         }
 
         const chunks: Buffer[] = [];
@@ -83,7 +80,8 @@ function parseBody(
         });
         req.once('error', () => req.off('data', read));
 
-        form.parse(req, parseData);
+        const [fields, files] = await form.parse(req);
+        parseData(fields, files);
     });
 }
 
@@ -96,21 +94,21 @@ export class ParameterForRequestParser {
     }
 
     get body() {
-        return metaAnnotation.getForName(this.parameter.type, 'httpBody') !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpBody') !== undefined;
     }
 
     get requestParser() {
-        return metaAnnotation.getForName(this.parameter.type, 'httpRequestParser') !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpRequestParser') !== undefined;
     }
 
     get bodyValidation() {
-        return metaAnnotation.getForName(this.parameter.type, 'httpBodyValidation') !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpBodyValidation') !== undefined;
     }
 
     getType(): Type {
-        const parser = metaAnnotation.getForName(this.parameter.type, 'httpRequestParser');
-        if (parser && parser[0]) {
-            return parser[0];
+        const parser = typeAnnotation.getType(this.parameter.type, 'httpRequestParser');
+        if (parser) {
+            return parser;
         }
 
         if (this.bodyValidation) {
@@ -123,22 +121,22 @@ export class ParameterForRequestParser {
     }
 
     get header() {
-        return metaAnnotation.getForName(this.parameter.type, 'httpHeader') !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpHeader') !== undefined;
     }
 
     get query() {
-        return metaAnnotation.getForName(this.parameter.type, 'httpQuery') !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpQuery') !== undefined;
     }
 
     get queries() {
-        return metaAnnotation.getForName(this.parameter.type, 'httpQueries') !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpQueries') !== undefined;
     }
 
     get typePath(): string | undefined {
-        const typeOptions = metaAnnotation.getForName(this.parameter.type, 'httpQueries') || metaAnnotation.getForName(this.parameter.type, 'httpQuery')
-            || metaAnnotation.getForName(this.parameter.type, 'httpPath') || metaAnnotation.getForName(this.parameter.type, 'httpHeader');
+        const typeOptions = typeAnnotation.getType(this.parameter.type, 'httpQueries') || typeAnnotation.getType(this.parameter.type, 'httpQuery')
+            || typeAnnotation.getType(this.parameter.type, 'httpPath') || typeAnnotation.getType(this.parameter.type, 'httpHeader');
         if (!typeOptions) return;
-        const options = typeToObject(typeOptions[0]);
+        const options = typeToObject(typeOptions);
         if (isObject(options)) return options.name;
         return;
     }
@@ -148,7 +146,7 @@ export class ParameterForRequestParser {
     }
 
     isPartOfPath(): boolean {
-        return metaAnnotation.getForName(this.parameter.type, 'httpPath') !== undefined || this.regexPosition !== undefined;
+        return typeAnnotation.getType(this.parameter.type, 'httpPath') !== undefined || this.regexPosition !== undefined;
     }
 }
 
@@ -356,7 +354,7 @@ export function getRequestParserCodeForParameters(
                 requiresAsyncParameters = true;
                 let instanceFetcher = '';
                 if (config.module && config.module.injector) {
-                    const resolverResolverVar = compiler.reserveVariable('resolverProvideToken', config.module.injector.createResolver(resolveReceiveType(resolverType)));
+                    const resolverResolverVar = compiler.reserveVariable('resolverProvideToken', config.module.injector.getResolver(resolveReceiveType(resolverType)));
                     instanceFetcher = `${resolverResolverVar}(${injector}.scope)`;
                 } else {
                     const resolverProvideTokenVar = compiler.reserveVariable('resolverProvideToken', resolverType);
@@ -389,7 +387,7 @@ export function getRequestParserCodeForParameters(
                 const resolverVar = compiler.reserveVariable('resolver');
                 let injectorGet = `
                 if (!${resolverVar}) ${resolverVar} = ${injector}.resolve(${moduleRawVar}, ${injectorTokenVar});
-                parameters.${parameter.parameter.name} = ${resolverVar}(${injector}.scope);
+                parameters.${parameter.parameter.name} = ${resolverVar}(${injector}.scope, true);
                 `;
                 if (!parameter.parameter.isOptional()) {
                     injectorGet += `

@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 @Component({
     selector: 'dui-tab',
+    standalone: false,
     template: `
         <div class="content">
             <ng-content></ng-content>

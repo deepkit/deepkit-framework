@@ -1,4 +1,4 @@
-import { createModule, findParentPath } from '@deepkit/app';
+import { createModuleClass, findParentPath } from '@deepkit/app';
 import { HttpRouteFilter, normalizeDirectory, registerStaticHttpController } from '@deepkit/http';
 import { ApiConsoleApi } from '@deepkit/api-console-api';
 import { Config } from './module.config.js';
@@ -7,9 +7,10 @@ import { ApiConsoleController } from './controller.js';
 import { dirname } from 'path';
 import { getCurrentFileName } from '@deepkit/core';
 
-export class ApiConsoleModule extends createModule({
+export class ApiConsoleModule extends createModuleClass({
+    name: 'apiConsole',
     config: Config,
-}, 'apiConsole') {
+}) {
     protected routeFilter = new HttpRouteFilter().excludeRoutes({group: 'app-static'});
 
     filter(cb: (filter: HttpRouteFilter) => any): this {

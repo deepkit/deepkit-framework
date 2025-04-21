@@ -11,5 +11,9 @@
 export * from './src/model.js';
 export * from './src/bson-parser.js';
 export { BaseParser } from './src/bson-parser.js';
+export { seekElementSize } from './src/continuation.js';
+export { BSONType } from './src/utils.js';
 export * from './src/bson-deserializer.js';
 export * from './src/bson-serializer.js';
+export * from './src/strings.js';
+export * from './src/stream.js';

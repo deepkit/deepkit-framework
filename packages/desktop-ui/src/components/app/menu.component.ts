@@ -17,7 +17,7 @@ import {
     Input,
     OnDestroy,
     Output,
-    QueryList
+    QueryList,
 } from '@angular/core';
 import { WindowMenuState } from '../window/window-menu';
 import { arrayHasItem } from '@deepkit/core';
@@ -135,6 +135,7 @@ export class MenuBase implements AfterViewInit {
 
 @Directive({
     selector: 'dui-menu-item',
+    standalone: false,
     providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuItemDirective) }]
 })
 export class MenuItemDirective extends MenuBase {
@@ -142,6 +143,7 @@ export class MenuItemDirective extends MenuBase {
 
 @Directive({
     selector: 'dui-menu-checkbox',
+    standalone: false,
     providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuCheckboxDirective) }]
 })
 export class MenuCheckboxDirective extends MenuBase {
@@ -156,6 +158,7 @@ export class MenuCheckboxDirective extends MenuBase {
 
 @Directive({
     selector: 'dui-menu-radio',
+    standalone: false,
     providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuRadioDirective) }]
 })
 export class MenuRadioDirective extends MenuBase {
@@ -170,6 +173,7 @@ export class MenuRadioDirective extends MenuBase {
 
 @Directive({
     selector: 'dui-menu-separator',
+    standalone: false,
     providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuSeparatorDirective) }]
 })
 export class MenuSeparatorDirective extends MenuBase {
@@ -177,7 +181,8 @@ export class MenuSeparatorDirective extends MenuBase {
 }
 
 @Directive({
-    selector: 'dui-menu'
+    selector: 'dui-menu',
+    standalone: false,
 })
 export class MenuDirective extends MenuBase implements OnDestroy, AfterViewInit {
     @Input() position: number = 0;

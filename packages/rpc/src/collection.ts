@@ -16,7 +16,7 @@
 import { ClassType, getClassName, isArray } from '@deepkit/core';
 import { tearDown } from '@deepkit/core-rxjs';
 import { ReplaySubject, Subject, TeardownLogic } from 'rxjs';
-import { EntitySubject, IdInterface } from './model.js';
+import { EntitySubject, IdInterface, RpcError } from './model.js';
 
 export type FilterParameters = { [name: string]: any | undefined };
 
@@ -358,7 +358,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
     public loaded() {
         if (this.isStopped) {
-            throw new Error('Collection already unsubscribed');
+            throw new RpcError('Collection already unsubscribed');
         }
         this.next(this.items);
 
@@ -443,7 +443,7 @@ export class Collection<T extends IdInterface> extends ReplaySubject<T[]> {
 
     public add(items: T | T[], withEvent = true) {
         if (!items) {
-            throw new Error(`Trying to insert a ${getClassName(this.classType)} collection item without value`);
+            throw new RpcError(`Trying to insert a ${getClassName(this.classType)} collection item without value`);
         }
 
         items = isArray(items) ? items : [items];

@@ -16,7 +16,8 @@ import { Subscription } from 'rxjs';
             <span class="for-root">— for root</span>
         </div>
     `,
-    styleUrls: ['./modules.component.scss']
+    styleUrls: ['./modules.component.scss'],
+    standalone: false
 })
 export class ModulesComponent implements OnDestroy {
     public apiModule = new LiveSubject<ModuleApi>(subject => {

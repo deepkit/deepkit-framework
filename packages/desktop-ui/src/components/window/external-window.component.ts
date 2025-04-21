@@ -54,6 +54,7 @@ function PopupCenter(url: string, title: string, w: number, h: number): Window {
 }
 
 @Component({
+    standalone: false,
     template: `
         <ng-container *ngIf="component"
                       #renderComponentDirective
@@ -100,6 +101,7 @@ export class ExternalDialogWrapperComponent {
 
 @Component({
     selector: 'dui-external-dialog',
+    standalone: false,
     template: `
         <ng-template #template>
             <ng-content></ng-content>
@@ -341,6 +343,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
  */
 @Directive({
     'selector': '[externalDialogContainer]',
+    standalone: false,
 })
 export class ExternalDialogDirective {
     constructor(protected dialog: ExternalWindowComponent, public template: TemplateRef<any>) {

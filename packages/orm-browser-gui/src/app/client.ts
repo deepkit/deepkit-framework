@@ -9,7 +9,7 @@
  */
 
 import { Injectable } from '@angular/core';
-import { DeepkitClient } from '@deepkit/rpc';
+import { RpcWebSocketClient } from '@deepkit/rpc';
 import { BrowserControllerInterface, DatabaseInfo } from '@deepkit/orm-browser-api';
 import { asyncOperation } from '@deepkit/core';
 
@@ -19,7 +19,7 @@ export class ControllerClient {
 
     public browser = this.client.controller(BrowserControllerInterface);
 
-    constructor(public client: DeepkitClient) {
+    constructor(public client: RpcWebSocketClient) {
     }
 
     static getServerHost(): string {

@@ -1,6 +1,5 @@
 import { expect, jest, test } from '@jest/globals';
 import { MongoClient } from '../../src/client/client.js';
-import { HostType } from '../../src/client/host.js';
 import { IsMasterCommand } from '../../src/client/command/ismaster.js';
 import { sleep } from '@deepkit/core';
 import { ConnectionOptions } from '../../src/client/options.js';
@@ -8,18 +7,18 @@ import { cast, validatedDeserialize } from '@deepkit/type';
 import { createConnection } from 'net';
 import { fail } from 'assert';
 import { MongoConnectionError } from '../../src/client/error.js';
-import { createCommand } from '../../index.js';
+import { createCommand, MongoConnectionStatus } from '../../index.js';
 
 jest.setTimeout(60000);
 
 test('ConnectionOptions', async () => {
     {
         const options = cast<ConnectionOptions>({});
-        expect(options.readConcernLevel).toBe('majority');
+        expect(options.readConcernLevel).toBe(undefined);
     }
     {
         const options = validatedDeserialize<ConnectionOptions>({});
-        expect(options.readConcernLevel).toBe('majority');
+        expect(options.readConcernLevel).toBe(undefined);
     }
 });
 
@@ -60,6 +59,7 @@ test('test localhost', async () => {
             reject(error);
         });
         await sleep(0.1);
+        socket.end();
         resolve(undefined);
     });
 });
@@ -75,6 +75,7 @@ test('custom command', async () => {
     const client = new MongoClient('mongodb://127.0.0.1/');
     const res = await client.execute(command);
     expect(res).toEqual({ ismaster: true, ok: 1 });
+    client.close();
 });
 
 test('connect handshake', async () => {
@@ -82,7 +83,7 @@ test('connect handshake', async () => {
     await client.connect();
 
     const type = client.config.hosts[0].getType();
-    const rightType = type === HostType.primary || type === HostType.standalone;
+    const rightType = type === 'primary' || type === 'standalone';
     expect(rightType).toBe(true);
 
     client.close();
@@ -90,10 +91,8 @@ test('connect handshake', async () => {
 
 test('connect isMaster command', async () => {
     const client = new MongoClient('mongodb://127.0.0.1/');
-
     const response = await client.execute(new IsMasterCommand);
-
-    expect(response.ismaster).toBe(true);
+    expect(response.ismaster).toBe(1);
     client.close();
 });
 
@@ -167,7 +166,7 @@ test('connection pool 1', async () => {
     const promises: Promise<any>[] = [];
 
     async function test() {
-        const c = await client.connectionPool.getConnection();
+        const c = await client.pool.getConnection();
         await sleep(0.1 * Math.random());
         c.release();
     }
@@ -180,7 +179,7 @@ test('connection pool 1', async () => {
 
     expect(client.stats.connectionsCreated).toBe(1);
     expect(client.stats.connectionsReused).toBe(10);
-    expect(client.stats.connectionsQueued).toBe(9);
+    expect(client.stats.connectionsQueued).toBe(10);
 
     client.close();
 });
@@ -192,13 +191,13 @@ test('connection pool stress test', async () => {
     const promises: Promise<any>[] = [];
 
     async function test() {
-        const c = await client.connectionPool.getConnection();
+        const c = await client.pool.getConnection();
         await sleep(0.001 * Math.random());
         c.release();
     }
 
     const batch = 500;
-    for (let i = 0; i < 5_000; i++) {
+    for (let i = 0; i < 5000; i++) {
         promises.push(test());
         if (i % batch === 0) {
             await Promise.all(promises);
@@ -208,49 +207,69 @@ test('connection pool stress test', async () => {
     }
 
     await Promise.all(promises);
+    client.close();
 
     expect(client.stats.connectionsCreated).toBe(2);
     expect(client.stats.connectionsReused).toBe(4999);
-
-    client.close();
 });
 
 test('connection pool 10', async () => {
     const client = new MongoClient('mongodb://127.0.0.1?maxPoolSize=10');
 
     {
-        const c1 = await client.connectionPool.getConnection();
-        const c2 = await client.connectionPool.getConnection();
+        const c1 = await client.pool.getConnection();
+        const c2 = await client.pool.getConnection();
+
+        expect(c1.status).toBe(MongoConnectionStatus.connected);
+        expect(c2.status).toBe(MongoConnectionStatus.connected);
 
         expect(c1 === c2).toBe(false);
 
         c1.release();
         c2.release();
 
-        const c3 = await client.connectionPool.getConnection();
+        const c3 = await client.pool.getConnection();
         expect(c3 === c1).toBe(true);
         c3.release();
     }
 
     {
-        const c1 = await client.connectionPool.getConnection();
-        const c2 = await client.connectionPool.getConnection();
-        const c3 = await client.connectionPool.getConnection();
-        const c4 = await client.connectionPool.getConnection();
-        const c5 = await client.connectionPool.getConnection();
-        const c6 = await client.connectionPool.getConnection();
-        const c7 = await client.connectionPool.getConnection();
-        const c8 = await client.connectionPool.getConnection();
-        const c9 = await client.connectionPool.getConnection();
-        const c10 = await client.connectionPool.getConnection();
+        const host = client.config.hosts[0];
+        expect(host.connections.length).toBe(2);
+        expect(host.freeConnections).toBe(2);
+        expect(host.freeConnections).toBe(2);
+
+        const c1 = await client.pool.getConnection();
+        expect(host.connections.length).toBe(2);
+        expect(host.freeConnections).toBe(1);
+
+        const c2 = await client.pool.getConnection();
+        expect(host.freeConnections).toBe(0);
+        expect(host.connections.length).toBe(2);
+
+        const c3 = await client.pool.getConnection();
+        expect(host.connections.length).toBe(3);
+        const c4 = await client.pool.getConnection();
+        expect(host.connections.length).toBe(4);
+        const c5 = await client.pool.getConnection();
+        expect(host.connections.length).toBe(5);
+        const c6 = await client.pool.getConnection();
+        expect(host.connections.length).toBe(6);
+        const c7 = await client.pool.getConnection();
+        expect(host.connections.length).toBe(7);
+        const c8 = await client.pool.getConnection();
+        expect(host.connections.length).toBe(8);
+        const c9 = await client.pool.getConnection();
+        expect(host.connections.length).toBe(9);
+        const c10 = await client.pool.getConnection();
         // this blocks
         let c11: any;
-        client.connectionPool.getConnection().then((c) => {
+        client.pool.getConnection().then((c) => {
             c11 = c;
             expect(c11.id).toBe(0);
         });
         let c12: any;
-        client.connectionPool.getConnection().then((c) => {
+        client.pool.getConnection().then((c) => {
             c12 = c;
             expect(c12.id).toBe(1);
         });

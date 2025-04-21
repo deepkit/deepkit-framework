@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/app",
-  "version": "1.0.1-alpha.154",
+  "version": "1.0.5",
   "description": "Deepkit App, CLI framework and service container",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -23,22 +23,22 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.13",
-    "@deepkit/event": "^1.0.1-alpha.13",
-    "@deepkit/injector": "^1.0.1-alpha.13",
-    "@deepkit/logger": "^1.0.1-alpha.13",
-    "@deepkit/stopwatch": "^1.0.1-alpha.13",
-    "@deepkit/type": "^1.0.1-alpha.13",
-    "@deepkit/workflow": "^1.0.1-alpha.13"
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/event": "^1.0.1",
+    "@deepkit/injector": "^1.0.1",
+    "@deepkit/logger": "^1.0.1",
+    "@deepkit/stopwatch": "^1.0.1",
+    "@deepkit/type": "^1.0.1",
+    "@deepkit/workflow": "^1.0.1"
   },
   "devDependencies": {
-    "@deepkit/core": "^1.0.1-alpha.154",
-    "@deepkit/event": "^1.0.1-alpha.154",
-    "@deepkit/injector": "^1.0.1-alpha.154",
-    "@deepkit/logger": "^1.0.1-alpha.154",
-    "@deepkit/stopwatch": "^1.0.1-alpha.154",
-    "@deepkit/type": "^1.0.1-alpha.154",
-    "@deepkit/workflow": "^1.0.1-alpha.154",
+    "@deepkit/core": "^1.0.5",
+    "@deepkit/event": "^1.0.5",
+    "@deepkit/injector": "^1.0.5",
+    "@deepkit/logger": "^1.0.5",
+    "@deepkit/stopwatch": "^1.0.5",
+    "@deepkit/type": "^1.0.5",
+    "@deepkit/workflow": "^1.0.5",
     "conditional-type-checks": "^1.0.5"
   },
   "jest": {

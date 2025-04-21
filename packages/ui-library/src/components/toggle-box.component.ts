@@ -2,6 +2,7 @@ import { ChangeDetectorRef, Component, EventEmitter, Input, Output, SkipSelf } f
 
 @Component({
     selector: 'deepkit-toggle-box',
+    standalone: false,
     template: `
         <dui-splitter *ngIf="visible" (modelChange)="changeHeight($event)" position="top"></dui-splitter>
 

@@ -8,32 +8,31 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { UUID } from '@deepkit/type';
-import { BaseResponse, Command } from './command.js';
+import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
+import { CommandOptions } from '../options.js';
 
-interface Request {
-    commitTransaction: number;
+type CommitTransaction = TransactionalMessage & WriteConcernMessage & {
     $db: string;
-    lsid?: { id: UUID };
-    txnNumber?: number;
-    autocommit?: boolean;
-}
+};
 
 export class CommitTransactionCommand extends Command<BaseResponse> {
+    commandOptions: CommandOptions = {};
+
     needsWritableHost() {
         return false;
     }
 
     async execute(config: MongoClientConfig, host: Host, transaction): Promise<BaseResponse> {
-        const cmd: any = {
+        const cmd: CommitTransaction = {
             commitTransaction: 1,
-            $db: 'admin',
+            $db: 'admin'
         };
 
         if (transaction) transaction.applyTransaction(cmd);
+        config.applyWriteConcern(cmd, this.commandOptions);
 
-        return await this.sendAndWait<Request>(cmd);
+        return await this.sendAndWait<CommitTransaction>(cmd);
     }
 }

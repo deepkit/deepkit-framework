@@ -51,7 +51,7 @@
 //         }
 //     }
 //
-//     const AppModule = createModule({
+//     const AppModule = createModuleClass({
 //         controllers: [TestController],
 //         providers: [
 //             {

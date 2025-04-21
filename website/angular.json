@@ -12,7 +12,7 @@
         "@schematics/angular:component": {
           "inlineTemplate": true,
           "inlineStyle": true,
-          "style": "scss",
+          "style": "css",
           "skipTests": true,
           "standalone": true
         },
@@ -50,19 +50,25 @@
             "outputPath": "dist/app",
             "index": "src/index.html",
             "server": "src/main.server.ts",
-            "ssr": true,
+            "outputMode": "server",
+            "ssr": {
+              "entry": "src/server/app.ts"
+            },
             "browser": "src/main.ts",
             "preserveSymlinks": true,
             "tsConfig": "tsconfig.app.json",
-            "inlineStyleLanguage": "scss",
+            "inlineStyleLanguage": "css",
             "assets": [
               "src/favicon.ico",
               "src/assets"
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.css"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "*"
+            ]
           },
           "configurations": {
             "production": {
@@ -102,7 +108,7 @@
             "main": "src/main.server.ts",
             "preserveSymlinks": true,
             "tsConfig": "tsconfig.ssr.json",
-            "inlineStyleLanguage": "scss"
+            "inlineStyleLanguage": "css"
           },
           "configurations": {
             "production": {

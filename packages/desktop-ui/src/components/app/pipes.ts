@@ -18,7 +18,7 @@ import { humanBytes } from '@deepkit/core';
  * Almost the same as |async pipe, but renders directly (detectChanges() instead of marking it only(markForCheck())
  * on ChangeDetectorRef.
  */
-@Pipe({ name: 'asyncRender', pure: false })
+@Pipe({ name: 'asyncRender', standalone: false, pure: false })
 export class AsyncRenderPipe implements OnDestroy, PipeTransform {
     protected subscription?: Subscription;
     protected lastValue?: any;
@@ -55,7 +55,7 @@ export class AsyncRenderPipe implements OnDestroy, PipeTransform {
     }
 }
 
-@Pipe({name: 'objectURL'})
+@Pipe({name: 'objectURL', standalone: false})
 export class ObjectURLPipe implements PipeTransform, OnDestroy {
     protected lastUrl?: string;
 
@@ -75,7 +75,7 @@ export class ObjectURLPipe implements PipeTransform, OnDestroy {
     }
 }
 
-@Pipe({name: 'fileSize'})
+@Pipe({name: 'fileSize', standalone: false})
 export class HumanFileSizePipe implements PipeTransform {
     transform(bytes: number, si: boolean = false): string {
         return humanBytes(bytes, si);

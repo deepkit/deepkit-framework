@@ -90,7 +90,8 @@ import { DebugRequest, Workflow } from '@deepkit/framework-debug-api';
             opacity: 0.3;
         }
 
-    `]
+    `],
+    standalone: false
 })
 export class HttpRequestComponent {
     public request?: EntitySubject<DebugRequest>;

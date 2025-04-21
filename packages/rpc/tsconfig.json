@@ -8,22 +8,20 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "target": "es2018",
+    "target": "es2020",
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "lib": [
-      "es2021",
-      "es2022.error",
-      "dom",
-      "dom.iterable"
-    ],
     "types": [
       "dot-prop",
       "fs-extra",
       "node"
+    ],
+    "lib": [
+      "es2020",
+      "es2021.weakref"
     ]
   },
   "reflection": true,
@@ -31,7 +29,9 @@
     "src",
     "index.ts"
   ],
-  "exclude": ["tests"],
+  "exclude": [
+    "tests"
+  ],
   "references": [
     {
       "path": "../bson/tsconfig.json"

@@ -1,8 +1,12 @@
-import { Database } from "@deepkit/orm";
-import { findParentPath } from "@deepkit/app";
-import { readdir } from "fs/promises";
-import { PageProcessor } from "@app/server/page-processor";
-import { CommunityMessage } from "@app/common/models";
+import { Database } from '@deepkit/orm';
+import { findParentPath } from '@deepkit/app';
+import { readdir } from 'fs/promises';
+import { PageProcessor } from '@app/server/page-processor';
+import { CommunityMessage } from '@app/common/models';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export async function importExamples(
     database: Database,

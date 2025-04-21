@@ -9,7 +9,7 @@ import { HttpRouterRegistry } from '../src/router.js';
 export function createHttpKernel(
     controllers: (ClassType | { module: AppModule<any>, controller: ClassType })[] | ((registry: HttpRouterRegistry) => void) = [],
     providers: ProviderWithScope[] = [],
-    listeners: (EventListener<any> | ClassType)[] = [],
+    listeners: (EventListener | ClassType)[] = [],
     middlewares: MiddlewareFactory[] = [],
     modules: AppModule<any>[] = []
 ) {
@@ -21,7 +21,7 @@ export function createHttpKernel(
 export function createHttpApp(
     controllers: (ClassType | { module: AppModule<any>, controller: ClassType })[] | ((registry: HttpRouterRegistry) => void) = [],
     providers: ProviderWithScope[] = [],
-    listeners: (EventListener<any> | ClassType)[] = [],
+    listeners: (EventListener | ClassType)[] = [],
     middlewares: MiddlewareFactory[] = [],
     modules: AppModule<any>[] = []
 ) {
@@ -36,7 +36,7 @@ export function createHttpApp(
         }
     }
 
-    const module = new AppModule({
+    const module = new AppModule({}, {
         controllers: isArray(controllers) ? controllers.map(v => isClass(v) ? v : v.controller) : [],
         imports,
         providers,

@@ -12,8 +12,8 @@ import { IncomingMessage, OutgoingHttpHeader, OutgoingHttpHeaders, ServerRespons
 import { UploadedFile } from './router.js';
 import * as querystring from 'querystring';
 import { Writable } from 'stream';
-import { metaAnnotation, ReflectionKind, Type, TypeAnnotation, ValidationErrorItem } from '@deepkit/type';
-import { asyncOperation, isArray } from '@deepkit/core';
+import { ReflectionKind, Type, typeAnnotation, ValidationErrorItem } from '@deepkit/type';
+import { asyncOperation, isArray, TypeAnnotation } from '@deepkit/core';
 
 export class HttpResponse extends ServerResponse {
     status(code: number) {
@@ -276,13 +276,13 @@ export type HttpQueries<T, Options extends { name?: string } = {}> = T & TypeAnn
  * }
  * ```
  */
-export type HttpRegExp<T, Pattern extends string | RegExp> = T & { __meta?: never & ['httpRegExp', Pattern] };
+export type HttpRegExp<T, Pattern extends string | RegExp> = T & TypeAnnotation<'httpRegExp', Pattern>;
 
 export function getRegExp(type: Type): string | RegExp | undefined {
-    const options = metaAnnotation.getForName(type, 'httpRegExp');
-    if (!options || !options[0]) return;
-    if (options[0].kind === ReflectionKind.literal && 'string' === typeof options[0].literal) return options[0].literal;
-    if (options[0].kind === ReflectionKind.literal && options[0].literal instanceof RegExp) return options[0].literal;
+    const options = typeAnnotation.getType(type, 'httpRegExp');
+    if (!options) return;
+    if (options.kind === ReflectionKind.literal && 'string' === typeof options.literal) return options.literal;
+    if (options.kind === ReflectionKind.literal && options.literal instanceof RegExp) return options.literal;
     return;
 }
 
@@ -365,8 +365,12 @@ Content-Type: application/json\r
         return this;
     }
 
-    query(query: any): this {
-        this.queryPath = querystring.stringify(query);
+    query(query: any | string): this {
+        if ('string' === typeof query) {
+            this.queryPath = query;
+        } else {
+            this.queryPath = querystring.stringify(query);
+        }
         return this;
     }
 }
@@ -378,6 +382,8 @@ export class HttpRequest extends IncomingMessage {
     public store: { [name: string]: any } = {};
 
     public uploadedFiles: { [name: string]: UploadedFile } = {};
+
+    public throwErrorOnNotFound: boolean = false;
 
     /**
      * The router sets the body when it was read.
@@ -436,6 +442,20 @@ export class HttpRequest extends IncomingMessage {
     getRemoteAddress(): string {
         return this.socket.remoteAddress || '';
     }
+}
+
+export function incomingMessageToHttpRequest(request: IncomingMessage): HttpRequest {
+    if (request instanceof HttpRequest) return request;
+    Object.setPrototypeOf(request, HttpRequest.prototype);
+    HttpRequest.constructor.call(request);
+    return request as HttpRequest;
+}
+
+export function serverResponseToHttpResponse(response: ServerResponse): HttpResponse {
+    if (response instanceof HttpResponse) return response;
+    Object.setPrototypeOf(response, HttpResponse.prototype);
+    MemoryHttpResponse.constructor.call(response);
+    return response as HttpResponse;
 }
 
 export class MemoryHttpResponse extends HttpResponse {

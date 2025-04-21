@@ -858,3 +858,59 @@ test('constructor property not assigned as property', () => {
     });
     expect(back).toEqual(derived);
 });
+
+test('custom symbol names as method names', () => {
+    class Model {
+        [Symbol.for('foo')]() {
+            return 'bar';
+        }
+    }
+
+    const type = ReflectionClass.from(Model);
+    const method = type.getMethod(Symbol.for('foo'));
+    expect(method).toBeDefined();
+});
+
+test('global symbol names as method names', () => {
+    class Model {
+        [Symbol.iterator]() {
+            return [];
+        }
+    }
+
+    const type = ReflectionClass.from(Model);
+    const method = type.getMethod(Symbol.iterator);
+    expect(method).toBeDefined();
+});
+
+test('union with optional fields', () => {
+    class Foo {
+        __kind!: 'Foo';
+        a?: string;
+    }
+
+    class Bar {
+        __kind!: 'Bar';
+    }
+
+    expect(deserializeFromJson<Bar | Foo>({__kind: 'Bar'})).toEqual({__kind: 'Bar'});
+    expect(deserializeFromJson<Bar | Foo>({__kind: 'Foo', a: 'a'})).toEqual({__kind: 'Foo', a: 'a'});
+    expect(deserializeFromJson<Bar | Foo>({__kind: 'Foo'})).toEqual({__kind: 'Foo'});
+});
+
+test('union with default fields', () => {
+    class Foo {
+        __kind!: 'Foo';
+        a: string = 'a';
+    }
+
+    class Bar {
+        __kind!: 'Bar';
+    }
+
+    type t = Bar | Foo;
+
+    expect(deserializeFromJson<t>({__kind: 'Bar'})).toEqual({__kind: 'Bar'});
+    expect(deserializeFromJson<t>({__kind: 'Foo', a: 'b'})).toEqual({__kind: 'Foo', a: 'b'});
+    expect(deserializeFromJson<t>({__kind: 'Foo'})).toEqual({__kind: 'Foo', a: 'a'});
+});

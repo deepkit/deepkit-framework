@@ -61,7 +61,7 @@ export class MigrationPendingCommand extends BaseCommand {
                     }
                 }
             } else {
-                this.logger.log(`Database <red>${database.name}</red>: No pending migrations`);
+                this.logger.log(`Database <green>${database.name}</green>: No pending migrations. Everything is up to date.`);
             }
         }
     }
