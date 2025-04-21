@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType, isEsm } from '@deepkit/core';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
 import glob from 'fast-glob';
@@ -18,10 +17,7 @@ export class MigrationProvider {
     protected databaseMap = new Map<string, Database<any>>();
     protected migrationDir: string = 'migrations/';
 
-    constructor(
-        public databases: DatabaseRegistry,
-    ) {
-    }
+    constructor(public databases: DatabaseRegistry) {}
 
     getMigrationDir(): string {
         return this.migrationDir;
@@ -51,26 +47,20 @@ export class MigrationProvider {
         return migrationsPerDatabase;
     }
 
-    // FIXME: esm imports doesn't work
-    private async registerTsNode() {
+    private async createJiti() {
         const esm = isEsm();
-        const { register } = await import('ts-node');
-        register({
-            esm,
-            preferTsExts: true,
-            experimentalTsImportSpecifiers: true,
-            compilerOptions: {
-                experimentalDecorators: true,
-                module: esm ? 'ESNext' : 'CommonJS',
-            },
-            transpileOnly: true,
-        });
+        const { createJiti } = await import('jiti');
+        return createJiti(
+            esm
+                ? // @ts-expect-error esm only
+                  import.meta.url
+                : __filename,
+        );
     }
 
     async addDatabase(path: string): Promise<void> {
-        if (path.endsWith('.ts')) await this.registerTsNode();
-
-        const exports = Object.values((await import(join(process.cwd(), path)) || {}));
+        const jiti = await this.createJiti();
+        const exports = Object.values((await jiti.import(join(process.cwd(), path))) || {});
         if (!exports.length) {
             throw new Error(`No database found in path ${path}`);
         }
@@ -90,7 +80,9 @@ export class MigrationProvider {
 
         if (!databaseInstance) {
             if (foundDatabaseClass) {
-                throw new Error(`Found database class ${foundDatabaseClass.name} in path ${path} but it has to be instantiated an exported. export const database = new ${foundDatabaseClass.name}(/* ... */);`);
+                throw new Error(
+                    `Found database class ${foundDatabaseClass.name} in path ${path} but it has to be instantiated an exported. export const database = new ${foundDatabaseClass.name}(/* ... */);`,
+                );
             }
             throw new Error(`No database found in path ${path}`);
         }
@@ -99,26 +91,22 @@ export class MigrationProvider {
     }
 
     async getMigrations(migrationDir: string): Promise<Migration[]> {
-        let migrations: Migration[] = [];
+        const jiti = await this.createJiti();
 
-        let files = await glob('**/!(*.d).ts', { cwd: migrationDir });
-        if (files.length) {
-            await this.registerTsNode();
-        } else {
-            files = await glob('**/*.js', { cwd: migrationDir });
-        }
+        const files = await glob('**/!(*.d).+(ts|js)', { cwd: migrationDir });
+        let migrations: Migration[] = [];
 
         for (const file of files) {
             const path = join(process.cwd(), migrationDir, file);
             const name = basename(file.replace('.ts', '').replace('.js', ''));
-            const { SchemaMigration } = (await import(path) || {});
+            const { SchemaMigration } = (await jiti.import<{ SchemaMigration?: ClassType<Migration> }>(path)) || {};
             if (SchemaMigration) {
-                const jo = new class extends (SchemaMigration as ClassType<Migration>) {
+                const jo = new (class extends (SchemaMigration as ClassType<Migration>) {
                     constructor() {
                         super();
                         if (!this.name) this.name = name;
                     }
-                };
+                })();
                 migrations.push(jo);
             }
         }
