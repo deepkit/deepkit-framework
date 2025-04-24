@@ -146,6 +146,7 @@ export class FrameworkModule extends createModuleClass({
         BrokerLock,
         BrokerQueue,
         BrokerBus,
+        BrokerKeyValue,
         BrokerServer,
 
         FilesystemRegistry,
