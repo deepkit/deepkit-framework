@@ -1,8 +1,5 @@
 import { reflect, ReflectionKind, Type } from '@deepkit/type';
-import { getParentClass, TypeAnnotation } from '@deepkit/core';
-
-export type InjectMeta<T = never> = TypeAnnotation<'inject', T>;
-export type Inject<Type, Token = never> = Type & InjectMeta<Token>
+import { getParentClass } from '@deepkit/core';
 
 /**
  * Checks if given type is nominally compatible with the given interface.

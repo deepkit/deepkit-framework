@@ -1,0 +1,26 @@
+{
+  "name": "@deepkit/bench",
+  "version": "1.0.5",
+  "description": "Deepkit Bench",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cjs/index.d.ts",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+  },
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT"
+}

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
+
+### Bug Fixes
+
+- **type:** remove Inject (moved to @deepkit/core ([06d650a](https://github.com/deepkit/deepkit-framework/commit/06d650acf5537fda36b73ad94e928009342cdad5)), closes [#587](https://github.com/deepkit/deepkit-framework/issues/587)
+
+### Features
+
+- **logger:** add debug2 level + more control over scope log level ([be01b73](https://github.com/deepkit/deepkit-framework/commit/be01b7395336badef3f215dc5df7bfba0a8b4b22))
+
 ## [1.0.3](https://github.com/deepkit/deepkit-framework/compare/v1.0.2...v1.0.3) (2025-03-13)
 
 ### Bug Fixes

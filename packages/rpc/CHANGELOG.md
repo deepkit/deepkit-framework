@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.7](https://github.com/deepkit/deepkit-framework/compare/v1.0.6...v1.0.7) (2025-04-18)
+
+### Bug Fixes
+
+- **rpc:** missing .js extension on imports ([d0380c9](https://github.com/deepkit/deepkit-framework/commit/d0380c9dc665f3dca5c7901b8ed16f2abb4d0f49))
+
+## [1.0.6](https://github.com/deepkit/deepkit-framework/compare/v1.0.5...v1.0.6) (2025-04-03)
+
+### Bug Fixes
+
+- **rpc:** make sure client disconnect trigger transport disconnect ([89ae002](https://github.com/deepkit/deepkit-framework/commit/89ae002b693f52deb32dbd07db1025fc61a9d8ec))
+
+## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
+
+### Bug Fixes
+
+- **type:** replace more Inject imports ([5a88760](https://github.com/deepkit/deepkit-framework/commit/5a88760d90533ef38bc73ba9ad9af17cc64c728f))
+
 ## [1.0.4](https://github.com/deepkit/deepkit-framework/compare/v1.0.3...v1.0.4) (2025-03-13)
 
 ### Bug Fixes

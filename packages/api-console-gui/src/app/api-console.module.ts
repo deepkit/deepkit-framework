@@ -93,7 +93,6 @@ import { RpcInspectMessageComponent } from './views/rpc/rpc-inspect-message.comp
     providers: [
         {
             provide: RpcWebSocketClient, useFactory: () => {
-                console.log('wtf');
                 return new RpcWebSocketClient(ControllerClient.getServerHost());
             },
         },

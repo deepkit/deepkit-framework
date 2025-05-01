@@ -79,13 +79,13 @@ export const onServerWorkerShutdown = new EventToken('server.worker.shutdown', S
 type ApplicationServerConfig = Pick<FrameworkConfig, 'server' | 'port' | 'host' | 'httpsPort' |
     'ssl' | 'sslKey' | 'sslCertificate' | 'sslCa' | 'sslCrl' |
     'varPath' | 'selfSigned' | 'workers' | 'publicDir' |
-    'debug' | 'debugUrl' | 'gracefulShutdownTimeout' | 'compression' | 'http'>;
+    'debug' | 'debugUrl' | 'gracefulShutdownTimeout' | 'compression' | 'http' | 'logStartup'>;
 
 function needsHttpWorker(config: { publicDir?: string }, rpcControllers: RpcControllers, router: HttpRouter) {
     return Boolean(config.publicDir || rpcControllers.controllers.size || router.getRoutes().length);
 }
 
-export class ApplicationServerListener {
+export class LogStartupListener {
     constructor(
         protected logger: LoggerInterface,
         protected rpcControllers: RpcControllers,
@@ -117,8 +117,6 @@ export class ApplicationServerListener {
             }
         }
 
-        const httpActive = needsHttpWorker(this.config, this.rpcControllers, this.router);
-
         if (this.config.server) {
             this.logger.log(`Server up and running`);
         } else {
@@ -136,7 +134,6 @@ export class ApplicationServerListener {
                 }
             }
         }
-
     }
 }
 
@@ -214,7 +211,7 @@ export class ApplicationServer {
         if (this.started) throw new Error('ApplicationServer already started');
         this.started = true;
 
-        if (cluster.isMaster) {
+        if (cluster.isMaster && this.config.logStartup) {
             if (this.config.workers) {
                 this.logger.log(`Start server, using ${this.config.workers} workers ...`);
             } else {
@@ -341,7 +338,7 @@ export class ApplicationServer {
             await this.eventDispatcher.dispatch(onServerMainBootstrapDone, new ServerBootstrapEvent());
         }
 
-        if (cluster.isMaster) {
+        if (cluster.isMaster && this.config.logStartup) {
             this.logger.log(`Server started.`);
         }
 

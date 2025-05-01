@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.7](https://github.com/deepkit/deepkit-framework/compare/v1.0.6...v1.0.7) (2025-04-18)
+
+**Note:** Version bump only for package @deepkit/framework
+
+## [1.0.6](https://github.com/deepkit/deepkit-framework/compare/v1.0.5...v1.0.6) (2025-04-03)
+
+**Note:** Version bump only for package @deepkit/framework
+
+## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
+
+### Bug Fixes
+
+- **http:** disable compression by default ([257cb61](https://github.com/deepkit/deepkit-framework/commit/257cb61ae6e3732e45a54a08ae5b751e3f28d8dd)), closes [#592](https://github.com/deepkit/deepkit-framework/issues/592)
+
+### Features
+
+- **framework:** new option `logStartup` to control startup rpc/http endpoints logging ([7695822](https://github.com/deepkit/deepkit-framework/commit/7695822cd849915ece9d5d88ac94ca2aed9d304e))
+
 ## [1.0.4](https://github.com/deepkit/deepkit-framework/compare/v1.0.3...v1.0.4) (2025-03-13)
 
 **Note:** Version bump only for package @deepkit/framework

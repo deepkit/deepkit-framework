@@ -192,6 +192,7 @@ export class RpcClientTransporter {
         this.disconnected.next(id);
     }
 
+    // this is overridden in RpcClient
     public onClose(error?: Error) {
 
     }
@@ -225,7 +226,7 @@ export class RpcClientTransporter {
 
         if (this.transportConnection) {
             this.transportConnection.close();
-            this.transportConnection = undefined;
+            this.onDisconnect();
         }
     }
 

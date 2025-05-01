@@ -16,7 +16,9 @@ test('connect', async () => {
             const kernelConnection = kernel.createConnection({
                 writeBinary: (buffer) => connection.readBinary(buffer),
                 close: () => {
-                    connection.onClose('');
+                    queueMicrotask(() => {
+                        connection.onClose('');
+                    });
                 },
             });
 
@@ -30,7 +32,9 @@ test('connect', async () => {
                     return 0;
                 },
                 close() {
-                    kernelConnection.close();
+                    queueMicrotask(() => {
+                        kernelConnection.close();
+                    });
                 },
                 writeBinary(buffer) {
                     kernelConnection.feed(buffer);
@@ -48,9 +52,18 @@ test('connect', async () => {
     expect(client.transporter.isConnected()).toBe(true);
     expect(connections).toHaveLength(1);
 
-    connections[0].onError(new Error('test'));
-    expect(errors[0].message).toEqual('test');
-    expect(client.transporter.isConnected()).toBe(false);
+    {
+        await client.connect();
+        expect(client.transporter.isConnected()).toBe(true);
+        await client.disconnect();
+        expect(client.transporter.isConnected()).toBe(false);
+    }
+
+    {
+        connections[0].onError(new Error('test'));
+        expect(errors[0].message).toEqual('test');
+        expect(client.transporter.isConnected()).toBe(false);
+    }
 });
 
 test('stats', async () => {

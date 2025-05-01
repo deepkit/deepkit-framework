@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
+
+### Bug Fixes
+
+- **type:** remove Inject (moved to @deepkit/core ([06d650a](https://github.com/deepkit/deepkit-framework/commit/06d650acf5537fda36b73ad94e928009342cdad5)), closes [#587](https://github.com/deepkit/deepkit-framework/issues/587)
+
+### Features
+
+- **injector:** better docs ([7402f11](https://github.com/deepkit/deepkit-framework/commit/7402f117c230a6f23e892d0e5e91534f1b0bf005))
+- **injector:** refactor internal code to get big performance improvement ([f295c5e](https://github.com/deepkit/deepkit-framework/commit/f295c5e77507f234ae2ee3cffdd55561ef294998))
+
 ## [1.0.3](https://github.com/deepkit/deepkit-framework/compare/v1.0.2...v1.0.3) (2025-03-13)
 
 ### Features

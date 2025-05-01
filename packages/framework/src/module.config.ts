@@ -45,9 +45,12 @@ export class FrameworkConfig {
 
     /**
      * The compression level to use when using the zlib module.
+     *
      * 0 means no compression, and 9 is the maximum compression.
+     *
+     * Disabled (0) per default. 6 is a good default value if you want to enable compression.
      */
-    compression: number = 6;
+    compression: number = 0;
 
     /**
      * @description A value of 0 means the main process handles requests alone. A value of > 0 means the main process does not handle any requests and anything is redirected to workers.
@@ -159,4 +162,9 @@ export class FrameworkConfig {
      * @see HttpConfig
      */
     http: HttpConfig = new HttpConfig;
+
+    /**
+     * If true logs all routes and rpc controllers on startup.
+     */
+    logStartup: boolean = true;
 }
