@@ -3774,6 +3774,7 @@ __metadata:
     "@deepkit/orm": ^1.0.1
     "@deepkit/stopwatch": ^1.0.1
     "@deepkit/type": ^1.0.1
+    jiti: ^2.4.2
   bin:
     deepkit-sql: ./bin/deepkit-sql.js
   languageName: unknown
@@ -14213,15 +14214,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"get-tsconfig@npm:^4.7.5":
-  version: 4.8.1
-  resolution: "get-tsconfig@npm:4.8.1"
-  dependencies:
-    resolve-pkg-maps: "npm:^1.0.0"
-  checksum: 536ee85d202f604f4b5fb6be81bcd6e6d9a96846811e83e9acc6de4a04fb49506edea0e1b8cf1d5ee7af33e469916ec2809d4c5445ab8ae015a7a51fbd1572f9
-  languageName: node
-  linkType: hard
-
 "getpass@npm:^0.1.1":
   version: 0.1.7
   resolution: "getpass@npm:0.1.7"
@@ -16609,6 +16601,15 @@ __metadata:
   bin:
     jiti: bin/jiti.js
   checksum: 77b61989c758ff32407cdae8ddc77f85e18e1a13fc4977110dbd2e05fc761842f5f71bce684d9a01316e1c4263971315a111385759951080bbfe17cbb5de8f7a
+  languageName: node
+  linkType: hard
+
+"jiti@npm:^2.4.2":
+  version: 2.4.2
+  resolution: "jiti@npm:2.4.2"
+  bin:
+    jiti: lib/jiti-cli.mjs
+  checksum: 4ceac133a08c8faff7eac84aabb917e85e8257f5ad659e843004ce76e981c457c390a220881748ac67ba1b940b9b729b30fb85cbaf6e7989f04b6002c94da331
   languageName: node
   linkType: hard
 
@@ -22309,6 +22310,7 @@ __metadata:
     commitlint: "npm:^18.4.3"
     coveralls: "npm:^3.0.3"
     jest: "npm:^29.2.1"
+    jiti: "npm:^2.4.2"
     lefthook: "npm:^1.5.5"
     lerna: "npm:^7.4.2"
     madge: "npm:^4.0.0"
@@ -22316,7 +22318,6 @@ __metadata:
     ts-jest: "npm:^29.0.3"
     ts-node: "npm:^10.9.1"
     ts-node-dev: "npm:^2.0.0"
-    tsx: "npm:^4.19.1"
     typedoc: "npm:^0.23.17"
     typescript: "npm:~5.7.3"
   languageName: unknown
@@ -24398,22 +24399,6 @@ __metadata:
   peerDependencies:
     typescript: ">=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta"
   checksum: 02f19e458ec78ead8fffbf711f834ad8ecd2cc6ade4ec0320790713dccc0a412b99e7fd907c4cda2a1dc602c75db6f12e0108e87a5afad4b2f9e90a24cabd5a2
-  languageName: node
-  linkType: hard
-
-"tsx@npm:^4.19.1":
-  version: 4.19.1
-  resolution: "tsx@npm:4.19.1"
-  dependencies:
-    esbuild: "npm:~0.23.0"
-    fsevents: "npm:~2.3.3"
-    get-tsconfig: "npm:^4.7.5"
-  dependenciesMeta:
-    fsevents:
-      optional: true
-  bin:
-    tsx: dist/cli.mjs
-  checksum: cbea9baf57e7406fa0ecc2c03b9bb2501ee740dc28c938f949180a646a28e5d65e7cccbfba340508923bfd45e90320ef9eef7f815cae4515b6ef2ee429edc7ee
   languageName: node
   linkType: hard
 
