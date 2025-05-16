@@ -12,6 +12,4 @@ runs:
 
     - name: Run yarn install
       shell: bash
-      run: yarn --frozen-lockfile
-      env:
-        CI: 'true'
+      run: yarn --immutable
