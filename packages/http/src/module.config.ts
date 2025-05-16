@@ -1,4 +1,4 @@
-export interface HttpParserOptions {
+export interface FormidableOptions {
     /**
      * sets encoding for incoming form fields
      *
@@ -78,15 +78,16 @@ export interface HttpParserOptions {
     hashAlgorithm?: string | false | undefined;
 
     /**
-     * when you call the .parse method, the files argument (of the callback) will contain arrays of
-     * files for inputs which submit multiple files using the HTML5 multiple attribute. Also, the
-     * fields argument will contain arrays of values for fields that have names ending with '[]'
-     *
-     * @default false
+     * plugin imports from formidable package
      */
-    multiples?: boolean | undefined;
+    enabledPlugins?: any[] | undefined;
+}
 
-    enabledPlugins?: string[] | undefined;
+export interface HttpParserOptions extends FormidableOptions {
+    /**
+     * allow extracting JSON from a multipart/form-data request
+     */
+    multipartJsonKey?: string | undefined;
 }
 
 export class HttpConfig {

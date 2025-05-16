@@ -329,22 +329,31 @@ export class RequestBuilder {
         return this;
     }
 
-    multiPart(items: { name: string, file?: Uint8Array, fileName?: string, json?: any }[]): this {
+    multiPart(items: ({ name: string } & (
+        { file: Uint8Array, fileName?: string, contentType?: string } |
+        { json: any } |
+        { value: any }
+    ))[]): this {
         const boundary = '--------------------------' + Math.random().toString(36).substr(2, 10);
         this._headers['content-type'] = 'multipart/form-data; boundary=' + boundary;
         const parts = items.map(item => {
-            if (item.file) {
+            if ('file' in item) {
                 const header = Buffer.from(`--${boundary}\r
 Content-Disposition: form-data; name="${item.name}"; filename="${item.fileName || 'file'}"\r
-Content-Type: application/octet-stream\r
+Content-Type: ${item.contentType ?? 'application/octet-stream'}\r
 \r\n`, 'utf8');
                 return Buffer.concat([header, item.file, Buffer.from('\r\n', 'utf8')]);
-            } else if (item.json) {
+            } else if ('json' in item) {
                 const header = Buffer.from(`--${boundary}\r
 Content-Disposition: form-data; name="${item.name}"\r
 Content-Type: application/json\r
 \r\n`, 'utf8');
                 return Buffer.concat([header, Buffer.from(JSON.stringify(item.json) + '\r\n', 'utf8')]);
+            } else if ('value' in item) {
+                const header = Buffer.from(`--${boundary}\r
+Content-Disposition: form-data; name="${item.name}"\r
+\r\n`, 'utf8');
+                return Buffer.concat([header, Buffer.from(item.value + '\r\n', 'utf8')]);
             } else {
                 throw new Error('Invalid multiPart item');
             }
