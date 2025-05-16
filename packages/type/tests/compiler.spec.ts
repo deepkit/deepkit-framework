@@ -644,6 +644,30 @@ test('emit function types in objects', () => {
     } as Type);
 });
 
+test('emit optional for method signatures', () => {
+    const code = `
+    interface Wrap {
+        maybe?(item: string): any;
+    }
+    return typeOf<Wrap>();
+    `;
+    const js = transpile(code);
+    console.log('js', js);
+    const type = transpileAndReturn(code);
+    expectEqualType(type, {
+        kind: ReflectionKind.objectLiteral,
+        types: [
+            {
+                kind: ReflectionKind.methodSignature,
+                name: 'maybe',
+                optional: true,
+                parameters: [{ kind: ReflectionKind.parameter, name: 'item', type: { kind: ReflectionKind.string } }],
+                return: { kind: ReflectionKind.any }
+            }
+        ]
+    } as Type);
+});
+
 test('emit class extends types', () => {
     const code = `
         class ClassA<T> { item: T; }

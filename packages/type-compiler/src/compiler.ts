@@ -1778,6 +1778,10 @@ export class ReflectionTransformer implements CustomTransformer {
                                 ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name),
                 );
 
+                if ((isMethodSignature(narrowed) || isMethodDeclaration(narrowed)) && narrowed.questionToken) {
+                    program.pushOp(ReflectionOp.optional);
+                }
+
                 if (isMethodDeclaration(narrowed)) {
                     if (hasModifier(narrowed, SyntaxKind.PrivateKeyword)) program.pushOp(ReflectionOp.private);
                     if (hasModifier(narrowed, SyntaxKind.ProtectedKeyword)) program.pushOp(ReflectionOp.protected);
