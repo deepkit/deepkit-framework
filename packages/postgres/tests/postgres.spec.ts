@@ -1,13 +1,8 @@
 import { expect, test } from '@jest/globals';
 import pg from 'pg';
-
-
-
 import { assertInstanceOf } from '@deepkit/core';
 import { DatabaseError, DatabaseInsertError, UniqueConstraintFailure } from '@deepkit/orm';
 import { AutoIncrement, DatabaseField, PrimaryKey, UUID, Unique, cast, entity, uuid } from '@deepkit/type';
-
-
 
 import { databaseFactory } from './factory.js';
 
