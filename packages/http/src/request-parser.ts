@@ -22,24 +22,49 @@ import { getRouteActionLabel, RouteConfig, UploadedFile, UploadedFileSymbol } fr
 import qs from 'qs';
 import formidable, { Fields, Files, Options } from 'formidable';
 import { HttpParserOptions } from './module.config.js';
+import type IncomingForm from 'formidable/Formidable.js';
+
+// formidable returns arrays for values when the type is multipart or formdata
+// adapted from https://www.npmjs.com/package/formidable/v/3.5.4#helpers
+// https://github.com/node-formidable/formidable/blob/v3.5.3/src/helpers/firstValues.js
+// keeps arrays with more than one element
+function extractValues(form: IncomingForm, fields: Fields): Record<string, unknown> {
+    const formType = (form as any).type;
+    if (formType !== 'multipart' && formType !== 'form-data') return fields;
+    return Object.fromEntries(
+        Object.entries(fields).map(([key, value]) => {
+            if (!Array.isArray(value)) {
+                return [key, value];
+            } else if (value.length === 1) {
+                return [key, value[0]];
+            } else {
+                return [key, value];
+            }
+        }),
+    );
+}
 
 function parseBody(
     options: HttpParserOptions,
     req: HttpRequest, foundFiles: { [name: string]: UploadedFile }) {
-
+    const { multipartJsonKey, ...formidableOptions } = options;
     const form = formidable(Object.assign({
         allowEmptyFiles: true,
         minFileSize: 0,
-    }, options as Options, {
-        multiples: true,
-    }));
+    }, formidableOptions as Options));
     return asyncOperation(async (resolve, reject) => {
         function parseData(fields: Fields, files: Files) {
+            let extractedFields = extractValues(form, fields);
             const fileEntries = Object.entries(files);
 
-            // formidable turns JSON arrays into numerically keyed objects, so we convert them back
-            if ('0' in fields && fileEntries.length === 0 && Object.keys(fields).every((key, idx) => parseInt(key) === idx)) {
-                return resolve(Object.values(fields));
+            if (multipartJsonKey && typeof extractedFields[multipartJsonKey] === 'string') {
+                try {
+                    const { [multipartJsonKey]: json, ...otherFields } = extractedFields;
+                    const parsed = JSON.parse(extractedFields[multipartJsonKey]);
+                    extractedFields = { ...otherFields, ...parsed };
+                } catch (e) {
+                    // couldn't parse JSON, ignore
+                }
             }
 
             for (const [name, files] of fileEntries) {
@@ -58,7 +83,7 @@ function parseBody(
                     lastModifiedDate: null,
                 };
             }
-            const body = { ...fields, ...foundFiles };
+            const body = { ...extractedFields, ...foundFiles };
             resolve(body);
         }
 
