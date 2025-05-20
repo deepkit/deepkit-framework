@@ -224,25 +224,20 @@ export class Logger implements LoggerInterface {
     ) {
     }
 
-    /**
-     * Enables debug logging for a given scope.
-     *
-     * This is useful to enable debug logs only for certain parts of your application.
-     */
-    enableDebugScope(...names: string[]) {
-        for (const name of names) this.scopeLevels.set(name, LoggerLevel.debug);
-    }
-
-    disableDebugScope(...names: string[]) {
-        for (const name of names) this.scopeLevels.set(name, LoggerLevel.none);
-    }
-
-    unsetDebugScope(...names: string[]) {
-        for (const name of names) this.scopeLevels.delete(name);
-    }
-
     isScopeEnabled(name: string): boolean {
         return (this.scopeLevels.get(name) ?? this.level) > LoggerLevel.none;
+    }
+
+    setScopeLevel(name: string, level: LoggerLevel) {
+        this.scopeLevels.set(name, level);
+    }
+
+    unsetScopeLevel(name: string) {
+        this.scopeLevels.delete(name);
+    }
+
+    getScopeLevel(name: string): number {
+        return this.scopeLevels.get(name) ?? this.level;
     }
 
     /**

@@ -168,12 +168,13 @@ test('scoped logger', () => {
 test('enableDebug', () => {
     const logger = new MemoryLogger();
 
-    logger.enableDebugScope('database');
+    logger.setScopeLevel('database', LoggerLevel.debug);
     logger.debug('test1');
-    expect(logger.isScopeEnabled('database')).toBe(true);
+    expect(logger.getScopeLevel('database')).toBe(LoggerLevel.debug);
 
     const scoped = logger.scoped('database');
     scoped.debug('test2');
+    expect(scoped.getScopeLevel('database')).toBe(LoggerLevel.debug);
     expect(scoped.isScopeEnabled('database')).toBe(true);
 
     expect(logger.memory.messageStrings).toEqual(['test2']);
@@ -183,16 +184,16 @@ test('enableDebug2', () => {
     const logger = new MemoryLogger();
     logger.level = LoggerLevel.debug;
 
-    logger.disableDebugScope('database');
+    logger.setScopeLevel('database', LoggerLevel.error);
     logger.debug('test1');
-    expect(logger.isScopeEnabled('database')).toBe(false);
+    expect(logger.getScopeLevel('database')).toBe(LoggerLevel.error);
 
     const scoped = logger.scoped('database');
     scoped.debug('test2');
-    expect(scoped.isScopeEnabled('database')).toBe(false);
+    expect(logger.getScopeLevel('database')).toBe(LoggerLevel.error);
     expect(logger.memory.messageStrings).toEqual(['test1']);
 
-    logger.unsetDebugScope('database');
+    logger.unsetScopeLevel('database');
     scoped.debug('test3');
     expect(logger.memory.messageStrings).toEqual(['test1', 'test3']);
 });
