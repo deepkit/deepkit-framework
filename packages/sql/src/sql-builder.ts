@@ -125,7 +125,12 @@ export class SqlBuilder {
                 if (property.isDatabaseSkipped(model.adapterName)) continue;
                 if (model.isLazyLoaded(property.name)) continue;
 
-                this.sqlSelect.push(tableName + '.' + prepared.fieldMap[property.name].columnNameEscaped + ' AS ' + this.platform.quoteIdentifier(property.name));
+                const preparedField = prepared.fieldMap[property.name];
+                if (preparedField.name !== preparedField.columnName) {
+                    this.sqlSelect.push(tableName + '.' + preparedField.columnNameEscaped + ' AS ' + this.platform.quoteIdentifier(preparedField.name));
+                } else {
+                    this.sqlSelect.push(tableName + '.' + preparedField.columnNameEscaped);
+                }
             }
         }
     }
