@@ -282,6 +282,7 @@ export function deserializeUnion(bsonTypeGuards: TypeGuardRegistry, type: TypeUn
 
     state.addCodeForSetter(`
     {
+        // deserializeUnion
         if (!state.elementType) state.elementType = ${BSONType.OBJECT};
         const oldElementType = state.elementType;
         if (false) {
@@ -316,9 +317,11 @@ export function bsonTypeGuardUnion(bsonTypeGuards: TypeGuardRegistry, type: Type
 
     state.addCodeForSetter(`
         {
+            // bsonTypeGuardUnion
             if (!state.elementType) state.elementType = ${BSONType.OBJECT};
 
             const oldElementType = state.elementType;
+            ${state.setter} = false;
             if (false) {
             } ${lines.join(' ')}
 
@@ -404,6 +407,7 @@ export function deserializeTuple(type: TypeTuple, state: TemplateState) {
     }
 
     state.addCode(`
+        // deserializeTuple
         if (state.elementType && state.elementType !== ${BSONType.ARRAY}) ${throwInvalidBsonType({ kind: ReflectionKind.array, type: type }, state)}
         {
             var ${result} = [];
@@ -511,6 +515,7 @@ export function bsonTypeGuardTuple(type: TypeTuple, state: TemplateState) {
     }
 
     state.addCode(`
+        // bsonTypeGuardTuple
         let ${valid} = state.elementType && state.elementType === ${BSONType.ARRAY};
         if (${valid}){
             let ${length} = 0;
@@ -826,6 +831,7 @@ export function deserializeObjectLiteral(type: TypeClass | TypeObjectLiteral, st
     // }
 
     state.addCode(`
+        // deserializeObjectLiteral
         if (state.elementType && state.elementType !== ${BSONType.OBJECT}) ${throwInvalidBsonType(type, state)}
         var ${object} = ${initializeObject};
         ${handleEmbeddedClasses.map(v => `const ${v.containerVar} = {};`).join('\n')}
@@ -1019,7 +1025,12 @@ export function bsonTypeGuardForBsonTypes(types: BSONType[]): (type: Type, state
 
 export function bsonTypeGuardLiteral(type: TypeLiteral, state: TemplateState) {
     const literal = state.setVariable('literal', type.literal);
-    state.addSetter(`state.parser.read(state.elementType) === ${literal}`);
+    state.addCodeForSetter(`
+    {
+        const literal = state.parser.read(state.elementType);
+        ${state.setter} = literal === ${literal};
+    }
+    `);
 }
 
 export function bsonTypeGuardTemplateLiteral(type: TypeTemplateLiteral, state: TemplateState) {

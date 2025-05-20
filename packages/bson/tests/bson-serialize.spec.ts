@@ -1,6 +1,30 @@
 import { expect, test } from '@jest/globals';
-import { getBSONSerializer, getBSONSizer, getValueSize, hexToByte, serializeBSONWithoutOptimiser, uuidStringToByte, wrapObjectId, wrapUUID, wrapValue } from '../src/bson-serializer.js';
-import { BinaryBigInt, createReference, Excluded, hasCircularReference, MongoId, nodeBufferToArrayBuffer, PrimaryKey, Reference, SignedBinaryBigInt, typeOf, uuid, UUID } from '@deepkit/type';
+import {
+    AutoBuffer,
+    getBSONSerializer,
+    getBSONSizer,
+    getValueSize,
+    hexToByte,
+    serializeBSONWithoutOptimiser,
+    uuidStringToByte,
+    wrapObjectId,
+    wrapUUID,
+    wrapValue,
+} from '../src/bson-serializer.js';
+import {
+    BinaryBigInt,
+    createReference,
+    Excluded,
+    hasCircularReference,
+    MongoId,
+    nodeBufferToArrayBuffer,
+    PrimaryKey,
+    Reference,
+    SignedBinaryBigInt,
+    typeOf,
+    uuid,
+    UUID,
+} from '@deepkit/type';
 import bson from 'bson';
 import { randomBytes } from 'crypto';
 import { BSON_BINARY_SUBTYPE_DEFAULT, BSONType } from '../src/utils.js';
@@ -1542,7 +1566,7 @@ test('utf8', () => {
     const messages = {
         '— feel free to": "— それまでご自由に': '— feel free to": "— それまでご自由に',
         'Schoolismの1年間のサブスクリプションを勝つチャンスを得るために、ツアーを必ず完全に終了してください！ 体験は約10分で完了します': 'Schoolismの1年間のサブスクリプションを勝つチャンスを得るために、ツアーを必ず完全に終了してください！ 体験は約10分で完了します',
-    }
+    };
 
     for (const [_, msg] of Object.entries(messages)) {
         {
@@ -1578,4 +1602,45 @@ test('utf8', () => {
             expect(back).toEqual({ [_]: msg });
         }
     }
+});
+
+test('AutoSerializer string', () => {
+    const auto = new AutoBuffer(0, 0);
+    const serializer = getBSONSerializer<string>();
+    const buffer = auto._buffer;
+    expect(auto.size).toBe(0);
+
+    auto.apply(serializer, 'asd');
+    expect(auto.size).toBe(8);
+    expect(buffer !== auto._buffer).toBe(true);
+    const buffer2 = auto._buffer;
+    auto.apply(serializer, 'asd');
+    expect(auto.size).toBe(8);
+    expect(buffer2 === auto._buffer).toBe(true);
+
+    auto.apply(serializer, 'a');
+    expect(auto.size).toBe(6);
+    expect(buffer2 === auto._buffer).toBe(true);
+});
+
+test('AutoSerializer object', () => {
+    const auto = new AutoBuffer(0, 0);
+    const serializer = getBSONSerializer<{ a: string }>();
+    const buffer = auto._buffer;
+    expect(auto.size).toBe(0);
+
+    auto.apply(serializer, { a: 'asd' });
+    expect(deserializeBSONWithoutOptimiser(auto._buffer)).toEqual({ a: 'asd' });
+    expect(auto.size).toBe(4 + 2 + 1 + 8 + 1);
+    expect(buffer !== auto._buffer).toBe(true);
+    const buffer2 = auto._buffer;
+    auto.apply(serializer, { a: 'asd' });
+    expect(deserializeBSONWithoutOptimiser(auto._buffer)).toEqual({ a: 'asd' });
+    expect(auto.size).toBe(4 + 2 + 1 + 8 + 1);
+    expect(buffer2 === auto._buffer).toBe(true);
+
+    auto.apply(serializer, { a: 'a' });
+    expect(deserializeBSONWithoutOptimiser(auto._buffer)).toEqual({ a: 'a' });
+    expect(auto.size).toBe(4 + 2 + 1 + 6 + 1);
+    expect(buffer2 === auto._buffer).toBe(true);
 });
