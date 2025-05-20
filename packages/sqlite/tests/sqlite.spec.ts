@@ -1,29 +1,38 @@
 import { expect, test } from '@jest/globals';
-import { SQLitePlatform } from '../src/sqlite-platform.js';
-import { databaseFactory } from './factory.js';
-import { User, UserCredentials } from '@deepkit/orm-integration';
-import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter.js';
+
+
+
 import { sleep } from '@deepkit/core';
+import { DatabaseEntityRegistry, UniqueConstraintFailure } from '@deepkit/orm';
+import { User, UserCredentials } from '@deepkit/orm-integration';
+import { sql } from '@deepkit/sql';
 import {
     AutoIncrement,
     BackReference,
-    cast,
+    DatabaseField,
     Entity,
+    PrimaryKey,
+    Reference,
+    ReflectionClass,
+    UUID,
+    Unique,
+    cast,
     entity,
     getPrimaryKeyExtractor,
     getPrimaryKeyHashGenerator,
     isReferenceInstance,
-    PrimaryKey,
-    Reference,
-    ReflectionClass,
     serialize,
     typeOf,
-    Unique,
-    UUID,
     uuid,
+    MapName,
 } from '@deepkit/type';
-import { DatabaseEntityRegistry, UniqueConstraintFailure } from '@deepkit/orm';
-import { sql } from '@deepkit/sql';
+
+
+
+import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter.js';
+import { SQLitePlatform } from '../src/sqlite-platform.js';
+import { databaseFactory } from './factory.js';
+
 
 test('reflection circular reference', () => {
     const user = ReflectionClass.from(User);
@@ -990,4 +999,22 @@ test('forward raw types', async () => {
     const r2: any = await q2.findOne();
 
     expect(r1.count1).toEqual(r2.count2);
+});
+
+test('database field name with filter', async () => {
+    class User {
+        constructor(public id: UUID & PrimaryKey & DatabaseField<{ name: 'uuid' }>) {
+        }
+    }
+
+    const database = await databaseFactory([User]);
+
+    const user = new User(uuid());
+
+    await database.persist(user);
+
+    {
+        const dbUser = await database.query(User).filterField('id', user.id).findOne();
+        expect(dbUser.id).toEqual(user.id);
+    }
 });

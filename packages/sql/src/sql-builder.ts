@@ -125,7 +125,7 @@ export class SqlBuilder {
                 if (property.isDatabaseSkipped(model.adapterName)) continue;
                 if (model.isLazyLoaded(property.name)) continue;
 
-                this.sqlSelect.push(tableName + '.' + prepared.fieldMap[property.name].columnNameEscaped);
+                this.sqlSelect.push(tableName + '.' + prepared.fieldMap[property.name].columnNameEscaped + ' AS ' + this.platform.quoteIdentifier(property.name));
             }
         }
     }
@@ -402,6 +402,7 @@ export class SqlBuilder {
         for (const join of this.joins) {
             if (!join.join.query.model.sort) continue;
             const prepared = getPreparedEntity(this.adapter, join.join.query.classSchema);
+            // @ts-ignore
             for (const [name, sort] of Object.entries(join.join.query.model.sort)) {
                 order.push(`${join.join.as}.${prepared.fieldMap[name]?.columnNameEscaped || this.platform.quoteIdentifier(name)} ${sort}`);
             }

@@ -1,9 +1,11 @@
-import { AutoIncrement, cast, entity, PrimaryKey, Unique } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
 import pg from 'pg';
-import { databaseFactory } from './factory.js';
-import { DatabaseError, DatabaseInsertError, UniqueConstraintFailure } from '@deepkit/orm';
 import { assertInstanceOf } from '@deepkit/core';
+import { DatabaseError, DatabaseInsertError, UniqueConstraintFailure } from '@deepkit/orm';
+import { AutoIncrement, DatabaseField, PrimaryKey, UUID, Unique, cast, entity, uuid } from '@deepkit/type';
+
+import { databaseFactory } from './factory.js';
+
 
 test('count', async () => {
     const pool = new pg.Pool({
@@ -229,5 +231,23 @@ test('unique constraint 1', async () => {
         const p = database.query(Model).filter({username: 'paul'}).patchOne({username: 'peter'});
         await expect(p).rejects.toThrow('Key (username)=(peter) already exists');
         await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+});
+
+test('database field name with filter', async () => {
+    class User {
+        constructor(public id: UUID & PrimaryKey & DatabaseField<{ name: 'uuid' }>) {
+        }
+    }
+
+    const database = await databaseFactory([User]);
+
+    const user = new User(uuid());
+
+    await database.persist(user);
+
+    {
+        const dbUser = await database.query(User).filterField('id', user.id).findOne();
+        expect(dbUser.id).toEqual(user.id);
     }
 });
