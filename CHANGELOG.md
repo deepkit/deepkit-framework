@@ -21,25 +21,20 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### BREAKING CHANGES
 
-- **logger:** ```
+- **logger:** 
+```
   // old
   logger.enableDebugScope('database')
   //new
   logger.setScopeLevel('database', LoggerLevel.debug);
-
 ```
 
 ```
-
 // old
 logger.disableDebugScope('database')
 //new
 logger.setScopeLevel('database', LoggerLevel.info);
-
 ```
-
-
-
 
 
 ## [1.0.7](https://github.com/deepkit/deepkit-framework/compare/v1.0.6...v1.0.7) (2025-04-18)
