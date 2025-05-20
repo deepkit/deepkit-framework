@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
+
+### Bug Fixes
+
+- **vite:** ensure correct typing ([0cf7511](https://github.com/deepkit/deepkit-framework/commit/0cf75110d07009967ffd3f1d8d580fedbe385564)), closes [#645](https://github.com/deepkit/deepkit-framework/issues/645)
+
 ## [1.0.7](https://github.com/deepkit/deepkit-framework/compare/v1.0.6...v1.0.7) (2025-04-18)
 
 ### Bug Fixes

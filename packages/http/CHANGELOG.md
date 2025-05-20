@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
+
+### Bug Fixes
+
+- **http:** proper handling of form & multipart values, plus multipart JSON field support ([#649](https://github.com/deepkit/deepkit-framework/issues/649)) ([7383c73](https://github.com/deepkit/deepkit-framework/commit/7383c7354a770076f92ffffa27eb4772b1fa434e))
+- **http:** support array json request bodies ([2d3274e](https://github.com/deepkit/deepkit-framework/commit/2d3274e61f5c3fb10eabc186e8a8cfd66846a06f))
+
 ## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
 
 ### Features

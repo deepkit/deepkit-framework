@@ -3,6 +3,45 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
+
+### Bug Fixes
+
+- **framework:** add missing BrokerKeyValue provider export ([5a58776](https://github.com/deepkit/deepkit-framework/commit/5a58776010cda5ff88196753f73d53d76bfaa940))
+- **http:** proper handling of form & multipart values, plus multipart JSON field support ([#649](https://github.com/deepkit/deepkit-framework/issues/649)) ([7383c73](https://github.com/deepkit/deepkit-framework/commit/7383c7354a770076f92ffffa27eb4772b1fa434e))
+- **http:** support array json request bodies ([2d3274e](https://github.com/deepkit/deepkit-framework/commit/2d3274e61f5c3fb10eabc186e8a8cfd66846a06f))
+- **sql:** only alias a select when necessary ([26bc9fa](https://github.com/deepkit/deepkit-framework/commit/26bc9fa0a185538da291e53076375fec38718f10))
+- **vite:** ensure correct typing ([0cf7511](https://github.com/deepkit/deepkit-framework/commit/0cf75110d07009967ffd3f1d8d580fedbe385564)), closes [#645](https://github.com/deepkit/deepkit-framework/issues/645)
+
+### Features
+
+- **bson:** add AutoBuffer to allow very fast buffer reuse in BSON serialization ([d8cdd6b](https://github.com/deepkit/deepkit-framework/commit/d8cdd6b44ac2ba880398407e4e53f3965ec71508))
+- **logger:** allow setting a log level per scope ([c8177b2](https://github.com/deepkit/deepkit-framework/commit/c8177b21b7ceda751292aae0fc21c8682d701c6e))
+- **sql:** support custom database field name filtering ([#650](https://github.com/deepkit/deepkit-framework/issues/650)) ([453f347](https://github.com/deepkit/deepkit-framework/commit/453f34712d41f575ae068382765232f769b24a9d))
+
+### BREAKING CHANGES
+
+- **logger:** ```
+  // old
+  logger.enableDebugScope('database')
+  //new
+  logger.setScopeLevel('database', LoggerLevel.debug);
+
+```
+
+```
+
+// old
+logger.disableDebugScope('database')
+//new
+logger.setScopeLevel('database', LoggerLevel.info);
+
+```
+
+
+
+
+
 ## [1.0.7](https://github.com/deepkit/deepkit-framework/compare/v1.0.6...v1.0.7) (2025-04-18)
 
 ### Bug Fixes
@@ -668,3 +707,4 @@ New BaseEvent.preventDefault() which replaces custom solutions like stop() in Da
 - **type-compiler:** wrong import ([caad2b3](https://github.com/deepkit/deepkit-framework/commit/caad2b39972d284e4eab9a8cedf9c3e95997c789))
 - **type:** do not interfere with type checking when intersecting multiple type annotations. ([af85f1f](https://github.com/deepkit/deepkit-framework/commit/af85f1ff48c4be9fbd9a2ecd46e7f97b0bbb28c7))
 - **type:** test ([c335466](https://github.com/deepkit/deepkit-framework/commit/c3354667f996586964643d561687ed246901091c))
+```

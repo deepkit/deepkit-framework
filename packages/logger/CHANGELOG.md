@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
+
+### Features
+
+- **logger:** allow setting a log level per scope ([c8177b2](https://github.com/deepkit/deepkit-framework/commit/c8177b21b7ceda751292aae0fc21c8682d701c6e))
+
+### BREAKING CHANGES
+
+- **logger:** ```
+  // old
+  logger.enableDebugScope('database')
+  //new
+  logger.setScopeLevel('database', LoggerLevel.debug);
+
+```
+
+```
+
+// old
+logger.disableDebugScope('database')
+//new
+logger.setScopeLevel('database', LoggerLevel.info);
+
+```
+
+
+
+
+
 ## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
 
 ### Bug Fixes
@@ -206,3 +235,4 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ## [1.0.1-alpha.105](https://github.com/deepkit/deepkit-framework/compare/v1.0.1-alpha.103...v1.0.1-alpha.105) (2023-10-23)
 
 **Note:** Version bump only for package @deepkit/logger
+```

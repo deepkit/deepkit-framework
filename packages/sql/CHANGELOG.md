@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
+
+### Bug Fixes
+
+- **sql:** only alias a select when necessary ([26bc9fa](https://github.com/deepkit/deepkit-framework/commit/26bc9fa0a185538da291e53076375fec38718f10))
+
+### Features
+
+- **sql:** support custom database field name filtering ([#650](https://github.com/deepkit/deepkit-framework/issues/650)) ([453f347](https://github.com/deepkit/deepkit-framework/commit/453f34712d41f575ae068382765232f769b24a9d))
+
 ## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
 
 **Note:** Version bump only for package @deepkit/sql

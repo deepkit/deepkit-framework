@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
+
+### Features
+
+- **bson:** add AutoBuffer to allow very fast buffer reuse in BSON serialization ([d8cdd6b](https://github.com/deepkit/deepkit-framework/commit/d8cdd6b44ac2ba880398407e4e53f3965ec71508))
+
 ## [1.0.7](https://github.com/deepkit/deepkit-framework/compare/v1.0.6...v1.0.7) (2025-04-18)
 
 ### Bug Fixes
