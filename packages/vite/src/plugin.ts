@@ -1,6 +1,7 @@
 import { createFilter } from '@rollup/pluginutils';
-import ts from 'typescript';
+import * as ts from 'typescript';
 import { declarationTransformer, transformer } from '@deepkit/type-compiler';
+import type { Plugin } from 'vite';
 
 export interface Options {
     include?: string;
@@ -29,7 +30,7 @@ export function deepkitType(options: Options = {}) {
                 }, options.compilerOptions || {}),
                 fileName,
                 //@ts-ignore
-                transformers
+                transformers,
             });
 
             return {
@@ -37,5 +38,5 @@ export function deepkitType(options: Options = {}) {
                 map: transformed.sourceMapText,
             };
         },
-    };
+    } as Plugin;
 }

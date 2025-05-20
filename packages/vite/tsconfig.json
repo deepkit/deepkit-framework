@@ -10,6 +10,7 @@
     "moduleResolution": "node",
     "target": "es2018",
     "module": "CommonJS",
+    "skipLibCheck": true,
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
