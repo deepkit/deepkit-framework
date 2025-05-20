@@ -54,9 +54,14 @@ function parseBody(
     }, formidableOptions as Options));
     return asyncOperation(async (resolve, reject) => {
         function parseData(fields: Fields, files: Files) {
-            let extractedFields = extractValues(form, fields);
             const fileEntries = Object.entries(files);
 
+            // formidable turns JSON arrays into numerically keyed objects, so we convert them back
+            if ('0' in fields && fileEntries.length === 0 && Object.keys(fields).every((key, idx) => parseInt(key) === idx)) {
+                return resolve(Object.values(fields));
+            }
+
+            let extractedFields = extractValues(form, fields);
             if (multipartJsonKey && typeof extractedFields[multipartJsonKey] === 'string') {
                 try {
                     const { [multipartJsonKey]: json, ...otherFields } = extractedFields;

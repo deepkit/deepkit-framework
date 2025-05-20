@@ -1,12 +1,47 @@
 import { expect, test } from '@jest/globals';
 import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/router.js';
 import { getActions, http, httpClass } from '../src/decorator.js';
-import { HtmlResponse, HttpAccessDeniedError, HttpBadRequestError, HttpNotFoundError, HttpUnauthorizedError, httpWorkflow, JSONResponse, Response } from '../src/http.js';
+import {
+    HtmlResponse,
+    HttpAccessDeniedError,
+    HttpBadRequestError,
+    HttpNotFoundError,
+    HttpUnauthorizedError,
+    httpWorkflow,
+    JSONResponse,
+    Response,
+} from '../src/http.js';
 import { eventDispatcher } from '@deepkit/event';
-import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest, HttpRequestParser, MemoryHttpResponse } from '../src/model.js';
+import {
+    HttpBody,
+    HttpBodyValidation,
+    HttpHeader,
+    HttpPath,
+    HttpQueries,
+    HttpQuery,
+    HttpRegExp,
+    HttpRequest,
+    HttpRequestParser,
+    MemoryHttpResponse,
+} from '../src/model.js';
 import { getClassName, isObject, sleep, TypeAnnotation } from '@deepkit/core';
 import { createHttpKernel } from './utils.js';
-import { Excluded, Group, integer, JSONEntity, Maximum, MinLength, Positive, PrimaryKey, Reference, serializer, Type, typeAnnotation, typeSettings, UnpopulatedCheck } from '@deepkit/type';
+import {
+    Excluded,
+    Group,
+    integer,
+    JSONEntity,
+    Maximum,
+    MinLength,
+    Positive,
+    PrimaryKey,
+    Reference,
+    serializer,
+    Type,
+    typeAnnotation,
+    typeSettings,
+    UnpopulatedCheck,
+} from '@deepkit/type';
 import { Readable } from 'stream';
 import { provide } from '@deepkit/injector';
 
@@ -952,7 +987,7 @@ test('BodyValidation', async () => {
                 return users.value;
             }
 
-            throw new HttpBadRequestError('Invalid: ' + users.error.getErrorMessageForPath('0.username'));
+            throw new HttpBadRequestError('Invalid: ' + users.error.getErrors().join(', '));
         }
     }
 
