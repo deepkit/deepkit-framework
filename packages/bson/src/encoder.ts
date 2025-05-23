@@ -11,7 +11,7 @@ import {
 import { getBSONDeserializer } from './bson-deserializer.js';
 import { BSONSerializer, BSONSerializerState, getBSONSerializer } from './bson-serializer.js';
 
-interface TypeEncoder {
+interface BsonEncoder {
     encode: BSONSerializer;
 
     decode(v: Uint8Array, offset?: number): any;
@@ -27,7 +27,7 @@ interface Options {
  *
  * This abstraction also calls validation on the decoded and encoded values.
  */
-export function getBsonEncoder(type: Type, options: Partial<Options> = {}): TypeEncoder {
+export function getBsonEncoder(type: Type, options: Partial<Options> = {}): BsonEncoder {
     options = Object.assign({ validation: true }, options) as Options;
 
     const container = getTypeJitContainer(type);
