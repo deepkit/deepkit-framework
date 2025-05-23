@@ -298,9 +298,8 @@ export class MongoConnectionPool {
 
                 host.lastUpdateTime = new Date;
                 host.latency = Date.now() - start;
-                const hostType = host.getTypeFromIsMasterResult(data);
                 host.dead = false;
-                host.setType(hostType);
+                host.setType(host.getTypeFromIsMasterResult(data));
                 host.replicaSetName = data.setName;
                 host.id = data.me ? data.me : host.hostname + ':' + host.port;
                 host.hosts = data.hosts || [];
@@ -314,8 +313,13 @@ export class MongoConnectionPool {
                 }
 
                 this.scopedLogger.debug(`Heartbeat host ${host.id}:`, data);
+                host.subsequentHeartbeatErrors = 0;
             } catch (error) {
-                this.scopedLogger.warn(`Mongo heartbeat connection error for host ${host.label}: ${formatError(error)}`);
+                host.subsequentHeartbeatErrors++;
+                if (host.subsequentHeartbeatErrors <= 10) {
+                    const errors = `${host.subsequentHeartbeatErrors}/10`;
+                    this.scopedLogger.warn(`Mongo heartbeat connection error for host ${host.label} (${errors}): ${formatError(error)}}}`);
+                }
                 host.status = 'heartbeat(): ' + formatError(error);
                 host.dead = true;
                 host.type = 'unknown';

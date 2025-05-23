@@ -92,6 +92,8 @@ export class Host {
     // all members of the replica set that are arbiters
     arbiters: string[] = [];
 
+    subsequentHeartbeatErrors: number = 0;
+
     // priority=0
     passive: boolean = false;
     hidden: boolean = false;
