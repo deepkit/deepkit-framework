@@ -664,17 +664,16 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
     }
 
     async commit() {
-        console.log('transaction commit');
         if (!this.connection) return;
         if (this.ended) throw new MongoError('Transaction ended already');
 
         await this.connection.execute(new CommitTransactionCommand());
         this.ended = true;
         this.connection.release();
+        this.monitor.finalizer.unregister(this);
     }
 
     async rollback() {
-        console.log('transaction rollback');
         if (!this.connection) return;
         if (this.ended) throw new MongoError('Transaction ended already');
         if (!this.started) return;
@@ -682,6 +681,7 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
         await this.connection.execute(new AbortTransactionCommand());
         this.ended = true;
         this.connection.release();
+        this.monitor.finalizer.unregister(this);
     }
 }
 
