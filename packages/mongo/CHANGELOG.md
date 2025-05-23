@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.9](https://github.com/deepkit/deepkit-framework/compare/v1.0.8...v1.0.9) (2025-05-23)
+
+### Bug Fixes
+
+- **mongo:** make sure finalizer is removed when transaction committed/rolled back ([14365f8](https://github.com/deepkit/deepkit-framework/commit/14365f8ac3d8ee6a72b3a4790f084e74ecb1d53c))
+- **mongo:** only log heartbeat error max 10 times ([064f964](https://github.com/deepkit/deepkit-framework/commit/064f964e9f87166d0b9c2b1d57e667f68f24a226))
+
 ## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
 
 **Note:** Version bump only for package @deepkit/mongo

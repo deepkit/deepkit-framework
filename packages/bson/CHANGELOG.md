@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.9](https://github.com/deepkit/deepkit-framework/compare/v1.0.8...v1.0.9) (2025-05-23)
+
+### Bug Fixes
+
+- **bson:** rename type to BsonEncoder ([815f9a0](https://github.com/deepkit/deepkit-framework/commit/815f9a0f7f058455cddc2fe16cb4fa999ec56585))
+
+### Features
+
+- **bson:** add TypeEncoder to encode all BSON types (not only container types) to BSON ([3f2aaf9](https://github.com/deepkit/deepkit-framework/commit/3f2aaf99be71a1c052c66243ac5308b1c7ae3a96))
+- **bson:** make TypeEncoder also validate on encode and on the decoded value to ([d803bfb](https://github.com/deepkit/deepkit-framework/commit/d803bfbac57a36d746c9650a483a437a65ce992d))
+
 ## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
 
 ### Features

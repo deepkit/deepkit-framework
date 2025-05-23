@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.9](https://github.com/deepkit/deepkit-framework/compare/v1.0.8...v1.0.9) (2025-05-23)
+
+### Features
+
+- **logger:** add setLevel(string) to easily set log level without import LogLevel enum ([1162317](https://github.com/deepkit/deepkit-framework/commit/1162317b405afe237f8729628c22bf90f00fb7c9))
+
 ## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
 
 ### Features

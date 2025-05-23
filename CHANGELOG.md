@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.9](https://github.com/deepkit/deepkit-framework/compare/v1.0.8...v1.0.9) (2025-05-23)
+
+### Bug Fixes
+
+- **bson:** rename type to BsonEncoder ([815f9a0](https://github.com/deepkit/deepkit-framework/commit/815f9a0f7f058455cddc2fe16cb4fa999ec56585))
+- **mongo:** make sure finalizer is removed when transaction committed/rolled back ([14365f8](https://github.com/deepkit/deepkit-framework/commit/14365f8ac3d8ee6a72b3a4790f084e74ecb1d53c))
+- **mongo:** only log heartbeat error max 10 times ([064f964](https://github.com/deepkit/deepkit-framework/commit/064f964e9f87166d0b9c2b1d57e667f68f24a226))
+- **sqlite:** ensure logger is passed to adapter and first connection ([cf77b0f](https://github.com/deepkit/deepkit-framework/commit/cf77b0f6e906792f28dba5adc53167fdb33e410b))
+- **website:** make sure docker build works + update angular ([5645721](https://github.com/deepkit/deepkit-framework/commit/5645721bd074f32bbcaf585e989cf5fcd10bceca))
+
+### Features
+
+- **broker:** add Subject<T> abstraction for decoupled and easy broker bus access ([4923b84](https://github.com/deepkit/deepkit-framework/commit/4923b846b548ef7823d9f827dd4a1690147a4345))
+- **bson:** add TypeEncoder to encode all BSON types (not only container types) to BSON ([3f2aaf9](https://github.com/deepkit/deepkit-framework/commit/3f2aaf99be71a1c052c66243ac5308b1c7ae3a96))
+- **bson:** make TypeEncoder also validate on encode and on the decoded value to ([d803bfb](https://github.com/deepkit/deepkit-framework/commit/d803bfbac57a36d746c9650a483a437a65ce992d))
+- **logger:** add setLevel(string) to easily set log level without import LogLevel enum ([1162317](https://github.com/deepkit/deepkit-framework/commit/1162317b405afe237f8729628c22bf90f00fb7c9))
+
 ## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
 
 ### Bug Fixes
@@ -21,7 +38,8 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### BREAKING CHANGES
 
-- **logger:** 
+- **logger:**
+
 ```
   // old
   logger.enableDebugScope('database')
@@ -35,7 +53,6 @@ logger.disableDebugScope('database')
 //new
 logger.setScopeLevel('database', LoggerLevel.info);
 ```
-
 
 ## [1.0.7](https://github.com/deepkit/deepkit-framework/compare/v1.0.6...v1.0.7) (2025-04-18)
 
@@ -702,4 +719,7 @@ New BaseEvent.preventDefault() which replaces custom solutions like stop() in Da
 - **type-compiler:** wrong import ([caad2b3](https://github.com/deepkit/deepkit-framework/commit/caad2b39972d284e4eab9a8cedf9c3e95997c789))
 - **type:** do not interfere with type checking when intersecting multiple type annotations. ([af85f1f](https://github.com/deepkit/deepkit-framework/commit/af85f1ff48c4be9fbd9a2ecd46e7f97b0bbb28c7))
 - **type:** test ([c335466](https://github.com/deepkit/deepkit-framework/commit/c3354667f996586964643d561687ed246901091c))
+
+```
+
 ```

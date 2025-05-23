@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.9](https://github.com/deepkit/deepkit-framework/compare/v1.0.8...v1.0.9) (2025-05-23)
+
+### Bug Fixes
+
+- **sqlite:** ensure logger is passed to adapter and first connection ([cf77b0f](https://github.com/deepkit/deepkit-framework/commit/cf77b0f6e906792f28dba5adc53167fdb33e410b))
+
 ## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
 
 ### Features

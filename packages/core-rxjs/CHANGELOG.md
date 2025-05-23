@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.9](https://github.com/deepkit/deepkit-framework/compare/v1.0.8...v1.0.9) (2025-05-23)
+
+### Bug Fixes
+
+- **website:** make sure docker build works + update angular ([5645721](https://github.com/deepkit/deepkit-framework/commit/5645721bd074f32bbcaf585e989cf5fcd10bceca))
+
 ## [1.0.5](https://github.com/deepkit/deepkit-framework/compare/v1.0.4...v1.0.5) (2025-04-02)
 
 **Note:** Version bump only for package @deepkit/core-rxjs

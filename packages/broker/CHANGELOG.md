@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.9](https://github.com/deepkit/deepkit-framework/compare/v1.0.8...v1.0.9) (2025-05-23)
+
+### Features
+
+- **broker:** add Subject<T> abstraction for decoupled and easy broker bus access ([4923b84](https://github.com/deepkit/deepkit-framework/commit/4923b846b548ef7823d9f827dd4a1690147a4345))
+
 ## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
 
 **Note:** Version bump only for package @deepkit/broker
