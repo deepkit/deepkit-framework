@@ -6,7 +6,7 @@ It can be used in microservices, monoliths, or any other kind of application. Pe
 
 It is different to the Deepkit Event system, which is used for in-process events. The Broker Bus is used for events that need to be sent to other processes or servers. Broker Bus is also perfectly suited when you want to communicate between several workers that were automatically started by FrameworkModule, e.g. `new FrameworkModule({workers: 4})`.
 
-The system is designed to be type-safe and automatically serializes and deserializes messages (using BSON).
+The system is designed to be type-safe and automatically serializes and deserializes messages (using BSON). If you add [validation](../runtime-types/validation.md) to your message types, it will also validate the messages before sending and after receiving them. This ensures that the messages are always in the correct format and contain the expected data.
 
 ## Usage
 
@@ -43,9 +43,9 @@ See the Getting started page for more information.
 ### Subject
 
 The default approach to send and listen to messages is using rxjs `Subject` type. It's `subscribe` and `next` methods return nothing and silently ignore errors.
-They lifetime is managed by the framework and once the Subject is garbage collected, the subscription is removed from the broker backend (e.g. Redis).
+Their lifetime is managed by the framework and once the Subject is garbage collected, the subscription is removed from the broker backend (e.g. Redis).
 
-Override BusBroker to handle handel `publishFailed` or `subscribeFailed` cases.
+Override BusBroker to handle `publishFailed` or `subscribeFailed` cases.
 
 This approach nicely decouples your business code with the broker server and allows you to use the same code in a test environment without a broker server.
 

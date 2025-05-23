@@ -117,11 +117,13 @@ class Controller {
     }
 }
 
-
 class MyKernelSecurity extends RpcKernelSecurity {
     async hasControllerAccess(session: Session, controllerAccess: RpcControllerAccess): Promise<boolean> {
         if (controllerAccess.actionGroups.includes('secret')) {
-            //todo: check
+            if (session instanceof UserSession) {
+                //todo: check
+                return session.username === 'admin';
+            }
             return false;
         }
         return true;
