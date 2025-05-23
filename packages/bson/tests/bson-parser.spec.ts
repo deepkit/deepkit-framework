@@ -4,6 +4,7 @@ import { deserializeBSON, getBSONDeserializer } from '../src/bson-deserializer.j
 import {
     BinaryBigInt,
     copyAndSetParent,
+    MinLength,
     MongoId,
     nodeBufferToArrayBuffer,
     PrimaryKey,
@@ -843,14 +844,28 @@ test('Encoder', () => {
         expect(encoder.decode(encoder.encode([123, 'abc']))).toEqual([123, 'abc']);
     }
     {
-        type T = {a: number, b: string};
+        type T = { a: number, b: string };
         const encoder = getBsonEncoder(typeOf<T>());
-        expect(encoder.decode(encoder.encode({a: 123, b: 'abc'}))).toEqual({a: 123, b: 'abc'});
+        expect(encoder.decode(encoder.encode({ a: 123, b: 'abc' }))).toEqual({ a: 123, b: 'abc' });
     }
     {
         type T = string | number;
         const encoder = getBsonEncoder(typeOf<T>());
         expect(encoder.decode(encoder.encode('abc'))).toEqual('abc');
         expect(encoder.decode(encoder.encode(123))).toEqual(123);
+    }
+    {
+        type T = string & MinLength<3>;
+        const encoder = getBsonEncoder(typeOf<T>());
+        expect(() => encoder.encode('ab')).toThrow('Min length is 3');
+        const bson = serializeBSONWithoutOptimiser({ v: 'b' });
+        expect(() => encoder.decode(bson)).toThrow('Min length is 3');
+    }
+    {
+        type T = { v: string & MinLength<3> };
+        const encoder = getBsonEncoder(typeOf<T>());
+        expect(() => encoder.encode({ v: 'ab' })).toThrow('Min length is 3');
+        const bson = serializeBSONWithoutOptimiser({ v: 'b' });
+        expect(() => encoder.decode(bson)).toThrow('Min length is 3');
     }
 });
