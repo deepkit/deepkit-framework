@@ -1,10 +1,12 @@
 import { afterEach, expect, jest, test } from '@jest/globals';
-import { BrokerAdapter, BrokerBus, BrokerLock, BrokerQueue } from '../src/broker.js';
+import { BrokerAdapter, BrokerBus, BrokerBusChannel, BrokerLock, BrokerQueue, provideBusChannel, provideBusSubject } from '../src/broker.js';
 import { BrokerMemoryAdapter } from '../src/adapters/memory-adapter.js';
 import { sleep } from '@deepkit/core';
 import { BrokerCache } from '../src/broker-cache.js';
 import { QueueMessageProcessing } from '../src/model.js';
 import { BrokerKeyValue } from '../src/broker-key-value.js';
+import { InjectorContext, InjectorModule, provide } from '@deepkit/injector';
+import { Subject } from 'rxjs';
 
 jest.setTimeout(10000);
 
@@ -86,7 +88,7 @@ test('cache2', async () => {
 });
 
 test('cache3', async () => {
-    const adapter = await adapterFactory()
+    const adapter = await adapterFactory();
     const cache = new BrokerCache(adapter);
 
     let build = 0;
@@ -113,7 +115,7 @@ test('cache3', async () => {
     await adapter.disconnect();
 });
 
-test('bus', async () => {
+test('bus channel', async () => {
     const bus = new BrokerBus(await adapterFactory());
 
     type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
@@ -125,6 +127,85 @@ test('bus', async () => {
     });
 
     await channel.publish({ type: 'user-created', id: 2 });
+});
+
+test('bus channel injector', async () => {
+    const bus = new BrokerBus(await adapterFactory());
+
+    type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
+    type EventChannel = BrokerBusChannel<Events>;
+
+    const module = new InjectorModule([
+        provide<BrokerBus>({ useValue: bus }),
+        provideBusChannel<EventChannel>('user-events'),
+    ]);
+    const injector = new InjectorContext(module);
+
+    const channel1 = injector.get<EventChannel>();
+    const channel2 = injector.get<EventChannel>();
+    expect(channel1 === channel2).toBe(true);
+    const events: Events[] = [];
+    await channel2.subscribe((event) => {
+        events.push(event);
+    });
+    await channel1.publish({ type: 'user-created', id: 2 });
+    await sleep(0.1);
+    expect(events.length).toBe(1);
+});
+
+test('bus subject', async () => {
+    const bus = new BrokerBus(await adapterFactory());
+    const handles: BrokerBus['subjectHandles'] = (bus as any).subjectHandles;
+
+    type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
+
+    const caughtEvents: Events[] = [];
+
+    async function call() {
+        const subject1 = bus.subject<Events>('/events');
+        const subject2 = bus.subject<Events>('/events');
+        subject2.subscribe((event) => {
+            caughtEvents.push(event);
+        });
+        subject1.next({ type: 'user-created', id: 2 });
+        await sleep(0.1);
+    }
+
+    await call();
+    expect(handles.size).toBe(1);
+    expect(caughtEvents.length).toBe(1);
+    await sleep(0.1);
+    (global as any).gc();
+    await sleep(0.1);
+    expect(handles.size).toBe(0);
+});
+
+test('bus subject injector', async () => {
+    const bus = new BrokerBus(await adapterFactory());
+
+    type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
+    type EventSubject = Subject<Events>;
+    type EventSubject2 = Subject<{ type: 'another' }>;
+
+    const module = new InjectorModule([
+        provide<BrokerBus>({ useValue: bus }),
+        provideBusSubject<EventSubject>('user-events'),
+        provideBusSubject<EventSubject2>('another'),
+    ]);
+    const injector = new InjectorContext(module);
+
+    const subject1 = injector.get<EventSubject>();
+    const events: Events[] = [];
+    subject1.subscribe((event) => {
+        events.push(event);
+    });
+    const subject2 = injector.get<EventSubject>();
+    expect(subject1 === subject2).toBe(false);
+    subject2.next({ type: 'user-created', id: 2 });
+    await sleep(0.1);
+    expect(events).toEqual([
+        { type: 'user-created', id: 2 },
+    ]);
 });
 
 test('lock', async () => {
@@ -149,7 +230,7 @@ test('lock dispose', async () => {
     const lock1 = lock.item('my-lock', { ttl: 500 });
 
     {
-        await using hold = await lock1.hold();
+            await using hold = await lock1.hold();
         expect(lock1.acquired).toBe(true);
     }
 

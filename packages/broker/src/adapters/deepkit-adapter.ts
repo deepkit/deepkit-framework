@@ -1,5 +1,5 @@
 import { BrokerAdapter, BrokerAdapterQueueProduceOptionsResolved, BrokerQueueMessage, BrokerTimeOptionsResolved, Release } from '../broker.js';
-import { getTypeJitContainer, ReflectionKind, Type, TypePropertySignature } from '@deepkit/type';
+import { Type } from '@deepkit/type';
 import {
     brokerBusPublish,
     brokerBusResponseHandleMessage,
@@ -27,52 +27,12 @@ import {
     QueueMessageProcessing,
 } from '../model.js';
 import { ClientTransportAdapter, createRpcMessage, RpcBaseClient, RpcMessage, RpcMessageRouteType, RpcWebSocketClientAdapter } from '@deepkit/rpc';
-import { deserializeBSON, getBSONDeserializer, getBSONSerializer, serializeBSON } from '@deepkit/bson';
+import { deserializeBSON, getBsonEncoder, serializeBSON } from '@deepkit/bson';
 import { arrayRemoveItem, formatError } from '@deepkit/core';
 import { BrokerCacheItemOptionsResolved } from '../broker-cache.js';
 import { fastHash } from '../utils.js';
 import { BrokerKeyValueOptionsResolved } from '../broker-key-value.js';
 
-interface TypeSerialize {
-    encode(v: any): Uint8Array;
-
-    decode(v: Uint8Array, offset: number): any;
-}
-
-function getSerializer(type: Type): TypeSerialize {
-    const container = getTypeJitContainer(type);
-    if (container.brokerSerializer) return container.brokerSerializer;
-
-    const standaloneType = type.kind === ReflectionKind.objectLiteral || (type.kind === ReflectionKind.class && type.types.length);
-
-    if (!standaloneType) {
-        //BSON only supports objects, so we wrap it into a {v: type} object.
-        type = {
-            kind: ReflectionKind.objectLiteral,
-            types: [{
-                kind: ReflectionKind.propertySignature,
-                name: 'v',
-                type: type,
-            } as TypePropertySignature],
-        };
-
-        const decoder = getBSONDeserializer<any>(undefined, type);
-        const encoder = getBSONSerializer(undefined, type);
-
-        return container.brokerSerializer = {
-            decode: (v: Uint8Array, offset: number) => decoder(v, offset).v,
-            encode: (v: any) => encoder({ v }),
-        };
-    }
-
-    const decoder = getBSONDeserializer<any>(undefined, type);
-    const encoder = getBSONSerializer(undefined, type);
-
-    return container.brokerSerializer = {
-        decode: (v: Uint8Array, offset: number) => decoder(v, offset),
-        encode: (v: any) => encoder(v),
-    };
-}
 
 export class BrokerDeepkitConnection extends RpcBaseClient {
     activeChannels = new Map<string, { listeners: number, callbacks: ((v: Uint8Array) => void)[] }>();
@@ -177,8 +137,8 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
     }
 
     async setCache(key: string, value: any, options: BrokerCacheItemOptionsResolved, type: Type): Promise<void> {
-        const serializer = getSerializer(type);
-        const v = serializer.encode(value);
+        const encoder = getBsonEncoder(type);
+        const v = encoder.encode(value);
         await this.pool.getConnection('cache/' + key).sendMessage<brokerSetCache>(BrokerType.SetCache, {
             n: key,
             v,
@@ -208,12 +168,12 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
             .sendMessage<brokerGetCache>(BrokerType.GetCache, { n: key })
             .firstThenClose<brokerResponseGetCache>(BrokerType.ResponseGetCache);
 
-        const serializer = getSerializer(type);
-        return first.v && first.ttl !== undefined ? { value: serializer.decode(first.v, 0), ttl: first.ttl } : undefined;
+        const encoder = getBsonEncoder(type);
+        return first.v && first.ttl !== undefined ? { value: encoder.decode(first.v, 0), ttl: first.ttl } : undefined;
     }
 
     async set(key: string, value: any, options: BrokerKeyValueOptionsResolved, type: Type): Promise<void> {
-        const serializer = getSerializer(type);
+        const serializer = getBsonEncoder(type);
         const v = serializer.encode(value);
         await this.pool.getConnection('key/' + key).sendMessage<brokerSet>(BrokerType.Set, { n: key, v, ttl: options.ttl }).ackThenClose();
     }
@@ -223,7 +183,7 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
             .sendMessage<brokerGet>(BrokerType.Get, { n: key })
             .firstThenClose<brokerResponseGet>(BrokerType.ResponseGet);
         if (first.v) {
-            const serializer = getSerializer(type);
+            const serializer = getBsonEncoder(type);
             return serializer.decode(first.v, 0);
         }
     }
@@ -277,7 +237,7 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
     }
 
     async publish(key: string, message: any, type: Type): Promise<void> {
-        const serializer = getSerializer(type);
+        const serializer = getBsonEncoder(type);
         const v = serializer.encode(message);
 
         await this.pool.getConnection('bus/' + key)
@@ -293,7 +253,7 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
     }
 
     protected async _subscribe(connection: BrokerDeepkitConnection, key: string, callback: (message: any) => void, type: Type): Promise<Release> {
-        const serializer = getSerializer(type);
+        const serializer = getBsonEncoder(type);
 
         const parsedCallback = (next: Uint8Array) => {
             try {

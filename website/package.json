@@ -2,7 +2,7 @@
   "name": "website",
   "version": "0.0.0",
   "scripts": {
-    "start": "NODE_OPTIONS=--preserve-symlinks ng serve",
+    "dev": "NODE_OPTIONS=--preserve-symlinks ng serve",
     "ng:build:dev": "NODE_OPTIONS=--preserve-symlinks ng build --watch --configuration development",
     "ng:test": "NODE_OPTIONS=--preserve-symlinks ng test",
     "app": "NODE_OPTIONS=--preserve-symlinks TS_NODE_PROJECT=tsconfig.server.json node -r ts-node/register -r tsconfig-paths/register src/server/app.ts",

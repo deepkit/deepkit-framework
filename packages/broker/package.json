@@ -26,11 +26,10 @@
     "js-xxhash": "3.0.1"
   },
   "peerDependencies": {
-    "@deepkit/app": "^1.0.1",
     "@deepkit/bson": "^1.0.1",
     "@deepkit/core": "^1.0.1",
-    "@deepkit/core-rxjs": "^1.0.1",
     "@deepkit/event": "^1.0.1",
+    "@deepkit/injector": "^1.0.1",
     "@deepkit/rpc": "^1.0.1",
     "@deepkit/type": "^1.0.1",
     "rxjs": "*"
@@ -40,8 +39,10 @@
     "@deepkit/core": "^1.0.5",
     "@deepkit/core-rxjs": "^1.0.5",
     "@deepkit/event": "^1.0.8",
+    "@deepkit/injector": "^1.0.8",
     "@deepkit/rpc": "^1.0.8",
-    "@deepkit/type": "^1.0.8"
+    "@deepkit/type": "^1.0.8",
+    "rxjs": "*"
   },
   "jest": {
     "testEnvironment": "node",

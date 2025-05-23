@@ -4,24 +4,12 @@ You are looking to change documentation? Go to ./src/pages/documentation
 
 ### Dev
 
-Requires node v20.
+Requires node v22.
+
+Make sure `deepkit-website2` database exists in your local postgres.
 
 ```sh
-# frontend watcher
-npm run app:start
-
-# server watcher
-npm run server:watch 
-```
-
-Or just `npm run dev`.
-
-## SSR build
-
-```
-npm run app:build
-npm run ssr:build
-npm run server
+npm run dev
 ```
 
 ## Build Docker image

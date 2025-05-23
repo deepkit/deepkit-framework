@@ -1,9 +1,13 @@
-import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
+import { assertType, ReceiveType, ReflectionKind, resolveReceiveType, stringifyType, Type } from '@deepkit/type';
 import { EventToken } from '@deepkit/event';
 import { parseTime } from './utils.js';
 import { BrokerAdapterCache } from './broker-cache.js';
 import { QueueMessageProcessing } from './model.js';
 import { BrokerAdapterKeyValue } from './broker-key-value.js';
+import { Logger } from '@deepkit/logger';
+import { Subject } from 'rxjs';
+import { arrayRemoveItem, formatError } from '@deepkit/core';
+import { provide, Provider } from '@deepkit/injector';
 
 export interface BrokerTimeOptions {
     /**
@@ -107,6 +111,8 @@ export interface BrokerInvalidateCacheMessage {
 
 export interface BrokerAdapterBase {
     disconnect(): Promise<void>;
+
+    logger?: Logger;
 }
 
 export interface BrokerAdapterLock extends BrokerAdapterBase {
@@ -174,7 +180,8 @@ export type BrokerQueueChannelOptionsResolved = BrokerQueueMessageProcessingOpti
 export class BrokerQueue {
     constructor(
         public adapter: BrokerAdapterQueue,
-    ) {}
+    ) {
+    }
 
     public channel<T>(name: string, options?: BrokerQueueChannelOptions, type?: ReceiveType<T>): BrokerQueueChannel<T> {
         type = resolveReceiveType(type);
@@ -211,6 +218,41 @@ export class BrokerQueueChannel<T> {
 }
 
 export class BrokerBus {
+    protected subjectHandles = new Map<string, {
+        channel: BrokerBusChannel<unknown>;
+        release: Promise<Release | void>;
+        observer: (message: unknown) => void;
+        receiving: boolean;
+        subjects: WeakRef<Subject<unknown>>[];
+    }>();
+
+    protected finalizer = new FinalizationRegistry<{
+        path: string,
+        subjectRef: WeakRef<Subject<unknown>>;
+    }>((handle) => {
+        const subjectHandle = this.subjectHandles.get(handle.path);
+        if (!subjectHandle) return;
+        arrayRemoveItem(subjectHandle.subjects, handle.subjectRef);
+        if (subjectHandle.subjects.length === 0) {
+            subjectHandle.release.then(() => {
+                this.subjectHandles.delete(handle.path);
+            }).catch(() => {
+                // ignore
+            });
+            this.subjectHandles.delete(handle.path);
+        }
+    });
+
+    protected publishFailed(path: string, message: unknown, type: Type, error: Error) {
+        if (!this.adapter.logger) return;
+        this.adapter.logger.error(`Error while publishing message to channel ${path}: ${formatError(error)}`);
+    }
+
+    protected subscribeFailed(path: string, error: Error) {
+        if (!this.adapter.logger) return;
+        this.adapter.logger.error(`Error while subscribing to channel ${path}: ${formatError(error)}`);
+    }
+
     constructor(public adapter: BrokerAdapterBus) {
     }
 
@@ -218,6 +260,87 @@ export class BrokerBus {
         type = resolveReceiveType(type);
         return new BrokerBusChannel(path, this.adapter, type);
     }
+
+    /**
+     * Creates a Subject that automatically subscribes to the given channel,
+     * and unsubscribes when the subject is garbage collected.
+     *
+     * Calling .next() on the subject will publish the message to the channel.
+     *
+     * This is ignoring any errors that might happen when publishing the message,
+     * or when subscribing to the channel.
+     */
+    public subject<T>(path: string, type?: ReceiveType<T>): Subject<T> {
+        const resolvedType = resolveReceiveType(type);
+        let subjectHandle = this.subjectHandles.get(path);
+        if (!subjectHandle) {
+            const channel = this.channel(path, type);
+            subjectHandle = {
+                channel,
+                receiving: false,
+                observer: (message: unknown) => {
+                    if (subjectHandle!.receiving) return;
+                    channel.publish(message as T).catch((e) => {
+                        this.publishFailed(path, message, resolvedType, e);
+                    });
+                },
+                release: channel.subscribe((message) => {
+                    subjectHandle!.receiving = true;
+                    try {
+                        for (const subjectRef of subjectHandle!.subjects) {
+                            const subject = subjectRef.deref();
+                            if (!subject) continue;
+                            subject.next(message);
+                        }
+                    } finally {
+                        subjectHandle!.receiving = false;
+                    }
+                }).catch((e) => {
+                    this.subscribeFailed(path, e);
+                }),
+                subjects: [],
+            };
+            this.subjectHandles.set(path, subjectHandle);
+        }
+        const busSubject = new Subject<unknown>();
+        busSubject.subscribe(subjectHandle.observer);
+        const subjectRef = new WeakRef(busSubject);
+        subjectHandle.subjects.push(subjectRef);
+        this.finalizer.register(busSubject, { path, subjectRef });
+        return busSubject as Subject<T>;
+    }
+}
+
+/**
+ * Provides a bus channel for the given path for @deepkit/injector modules.
+ *
+ * @see BrokerBusChannel
+ */
+export function provideBusChannel<T extends BrokerBusChannel<any>>(path: string, type?: ReceiveType<T>): Provider {
+    type = resolveReceiveType(type);
+    assertType(type, ReflectionKind.class);
+    const messageType = type.arguments?.[0];
+    if (!messageType) {
+        throw new Error(`Type ${stringifyType(type)} does not have a message type defined`);
+    }
+    return provide((bus: BrokerBus) => bus.channel(path, messageType), type);
+}
+
+/**
+ * Provides a bus Subject for the given channel path for @deepkit/injector modules.
+ * This returns a transient provider, meaning that each time you inject it, a new subject is created.
+ * The Subject automatically subscribes to the broker channel and unsubscribes when all subjects are garbage collected.
+ *
+ * @see BrokerBus.subject
+ */
+export function provideBusSubject<T extends Subject<any>>(path: string, type?: ReceiveType<T>): Provider {
+    type = resolveReceiveType(type);
+    assertType(type, ReflectionKind.class);
+    const messageType = type.typeArguments?.[0];
+    if (!messageType) {
+        throw new Error(`Type ${stringifyType(type)} does not have a message type defined`);
+    }
+    return { provide: resolveReceiveType(type), useFactory: (bus: BrokerBus) => bus.subject(path, messageType), transient: true };
 }
 
 export class BrokerBusChannel<T> {
@@ -243,7 +366,7 @@ export class BrokerLockError extends Error {
 
 export class BrokerLock {
     constructor(
-        public adapter: BrokerAdapterLock
+        public adapter: BrokerAdapterLock,
     ) {
     }
 
@@ -265,7 +388,7 @@ export class BrokerLockItem {
     ) {
     }
 
-    async [Symbol.asyncDispose] () {
+    async [Symbol.asyncDispose]() {
         await this.release();
     }
 
