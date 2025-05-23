@@ -5,3 +5,4 @@ website/node_modules
 website/.angular
 .dockerignore
 Dockerfile
+website/Dockerfile

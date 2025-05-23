@@ -89,7 +89,7 @@ SELECT *,
        ((ts_rank(title_tsvector, to_tsquery('english', ${search})) * 4.5) +
                 ts_rank(content_tsvector, to_tsquery('english', ${search}))) as rank
 FROM community_message
-WHERE (type = 'example' OR type = 'answer') AND (content_tsvector || title_tsvector @@ to_tsquery('english', ${search}))
+WHERE (type = 'example') AND (content_tsvector || title_tsvector @@ to_tsquery('english', ${search}))
 ORDER BY rank DESC;
 `).find();
 

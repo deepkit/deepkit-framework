@@ -53,6 +53,7 @@ This approach nicely decouples your business code with the broker server and all
 import { BrokerBus, BrokerBusChannel, provideBusSubject } from '@deepkit/broker';
 import { FrameworkModule } from '@deepkit/framework';
 import { Subject } from 'rxjs';
+import { decoupleSubject } from '@deepkit/core-rxjs';
 
 // move this type to a shared file
 type MyChannel = Subject<{
@@ -75,7 +76,22 @@ class Service {
     }
 }
 
+@rpc.controller('my-controller')
+class MyRpcController {
+    constructor(private channel: MyChannel) {
+    }
+
+    @rpc.action()
+    getChannelData(): MyChannel {
+        // this creates a new subject, forwarding all messages from the broker
+        // to the connected client. `decoupleSubject` is needed in order
+        // to no close the Subject when the client disconnects.
+        return decoupleSubject(this.channel);
+    }
+}
+
 const app = new App({
+    controllers: [MyRpcController],
     providers: [
         Service,
         provideBusSubject<MyChannel>('my-channel'),
@@ -101,26 +117,26 @@ type MyChannel = BrokerBusChannel<{
 }>;
 
 class Service {
-  constructor(private channel: MyChannel) {
-      this.channel.subscribe((message) => {
-          console.log('received message', message);
-      }).catch(e => {
-        console.error('Error while subscribing', e);
-      });
-  }
+    constructor(private channel: MyChannel) {
+        this.channel.subscribe((message) => {
+            console.log('received message', message);
+        }).catch(e => {
+            console.error('Error while subscribing', e);
+        });
+    }
 
-  async update() {
-    await this.channel.publish({ id: 1, name: 'Peter' });
-  }
+    async update() {
+        await this.channel.publish({ id: 1, name: 'Peter' });
+    }
 }
 
 const app = new App({
-  providers: [
-    Service,
-    provideBusChannel<MyChannel>('my-channel'),
-  ],
-  imports: [
-    new FrameworkModule(),
-  ],
+    providers: [
+        Service,
+        provideBusChannel<MyChannel>('my-channel'),
+    ],
+    imports: [
+        new FrameworkModule(),
+    ],
 });
 ```

@@ -21,6 +21,7 @@ export class PageProcessor {
     }
 
     async parse(url: string): Promise<Page> {
+        await this.parser.load();
         const content = await this.read(url);
         const page = this.parser.parse(content);
         page.url = url;

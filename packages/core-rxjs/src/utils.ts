@@ -219,7 +219,8 @@ export async function throttleMessages<T, R>(observable: Observable<T>, handler:
  * Clone a given subject (BehaviourSubject or ProgressTracker or Subject) and decouple it from the source,
  * so that when the new object is completed or errored, the source is not affected.
  *
- * This is handy if you want to hand out a subject to a consumer, but you don't want the consumer to be able to complete or error the subject.
+ * This is handy if you want to hand out a subject to a consumer, but you don't want the consumer to be
+ * able to complete or error the subject, which is usually requires for RPC controllers.
  */
 export function decoupleSubject<T extends Observable<any> | undefined>(observable: T): T {
     if (observable instanceof ProgressTracker) {

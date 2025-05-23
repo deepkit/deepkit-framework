@@ -1,7 +1,7 @@
 #!/bin/sh
-node dist/src/server/app.js migrate
-node dist/src/server/app.js search:index
-node dist/src/server/app.js import:questions
-node dist/src/server/app.js import:examples
+node dist/app/server/server.mjs migrate
+node dist/app/server/server.mjs search:index
+node dist/app/server/server.mjs import:questions
+node dist/app/server/server.mjs import:examples
 
 app_environment=prod app_framework_port=$PORT node dist/app/server/server.mjs server:start
