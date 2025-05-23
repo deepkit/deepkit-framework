@@ -1572,7 +1572,8 @@ export function serializeBSONWithoutOptimiser(data: any): Uint8Array {
     return writer.buffer;
 }
 
-export type BSONSerializer = (data: any, state?: { writer?: Writer }) => Uint8Array;
+export type BSONSerializerState = { writer?: Writer };
+export type BSONSerializer = (data: any, state?: BSONSerializerState) => Uint8Array;
 export type BSONSizer = (data: any) => number;
 
 export function getBSONSerializer<T>(serializer: BSONBinarySerializer = bsonBinarySerializer, receiveType?: ReceiveType<T>): BSONSerializer {

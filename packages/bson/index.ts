@@ -17,3 +17,4 @@ export * from './src/bson-deserializer.js';
 export * from './src/bson-serializer.js';
 export * from './src/strings.js';
 export * from './src/stream.js';
+export * from './src/encoder.js';

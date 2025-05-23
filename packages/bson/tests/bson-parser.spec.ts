@@ -20,6 +20,7 @@ import { getClassName } from '@deepkit/core';
 import { getBSONSerializer, serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
 import { BSONType } from '../src/utils';
 import { deserializeBSONWithoutOptimiser } from '../src/bson-parser';
+import { getBsonEncoder } from '../src/encoder.js';
 
 const { deserialize, serialize } = bson;
 
@@ -823,4 +824,33 @@ test('complex union', () => {
             }, { kind: ReflectionKind.string }],
             [{ kind: ReflectionKind.bigint }]]],
     });
+});
+
+test('Encoder', () => {
+    {
+        type T = string;
+        const encoder = getBsonEncoder(typeOf<T>());
+        expect(encoder.decode(encoder.encode('abc'))).toEqual('abc');
+    }
+    {
+        type T = number;
+        const encoder = getBsonEncoder(typeOf<T>());
+        expect(encoder.decode(encoder.encode(123))).toEqual(123);
+    }
+    {
+        type T = [number, string];
+        const encoder = getBsonEncoder(typeOf<T>());
+        expect(encoder.decode(encoder.encode([123, 'abc']))).toEqual([123, 'abc']);
+    }
+    {
+        type T = {a: number, b: string};
+        const encoder = getBsonEncoder(typeOf<T>());
+        expect(encoder.decode(encoder.encode({a: 123, b: 'abc'}))).toEqual({a: 123, b: 'abc'});
+    }
+    {
+        type T = string | number;
+        const encoder = getBsonEncoder(typeOf<T>());
+        expect(encoder.decode(encoder.encode('abc'))).toEqual('abc');
+        expect(encoder.decode(encoder.encode(123))).toEqual(123);
+    }
 });
