@@ -224,6 +224,10 @@ export class Logger implements LoggerInterface {
     ) {
     }
 
+    setLevel(level: keyof typeof LoggerLevel) {
+        this.level = LoggerLevel[level];
+    }
+
     isScopeEnabled(name: string): boolean {
         return (this.scopeLevels.get(name) ?? this.level) > LoggerLevel.none;
     }

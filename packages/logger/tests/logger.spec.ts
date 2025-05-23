@@ -197,3 +197,11 @@ test('enableDebug2', () => {
     scoped.debug('test3');
     expect(logger.memory.messageStrings).toEqual(['test1', 'test3']);
 });
+
+test('setLevel', () => {
+    const logger = new MemoryLogger();
+    logger.setLevel('debug');
+    expect(logger.level).toBe(LoggerLevel.debug);
+    logger.debug('test');
+    expect(logger.memory.messageStrings).toEqual(['test']);
+});
