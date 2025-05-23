@@ -228,6 +228,13 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
         return new SQLiteConnection(this, this.dbPath, this.logger, transaction, this.stopwatch);
     }
 
+    override setLogger(logger: Logger) {
+        super.setLogger(logger);
+        if (this.firstConnection) {
+            this.firstConnection.logger = logger;
+        }
+    }
+
     async getConnection(transaction?: SQLiteDatabaseTransaction): Promise<SQLiteConnection> {
         //when a transaction object is given, it means we make the connection sticky exclusively to that transaction
         //and only release the connection when the transaction is commit/rollback is executed.

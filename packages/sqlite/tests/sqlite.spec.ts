@@ -1,7 +1,4 @@
 import { expect, test } from '@jest/globals';
-
-
-
 import { sleep } from '@deepkit/core';
 import { DatabaseEntityRegistry, UniqueConstraintFailure } from '@deepkit/orm';
 import { User, UserCredentials } from '@deepkit/orm-integration';
@@ -9,29 +6,28 @@ import { sql } from '@deepkit/sql';
 import {
     AutoIncrement,
     BackReference,
+    cast,
     DatabaseField,
     Entity,
-    PrimaryKey,
-    Reference,
-    ReflectionClass,
-    UUID,
-    Unique,
-    cast,
     entity,
     getPrimaryKeyExtractor,
     getPrimaryKeyHashGenerator,
     isReferenceInstance,
+    PrimaryKey,
+    Reference,
+    ReflectionClass,
     serialize,
     typeOf,
+    Unique,
+    UUID,
     uuid,
-    MapName,
 } from '@deepkit/type';
-
 
 
 import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter.js';
 import { SQLitePlatform } from '../src/sqlite-platform.js';
 import { databaseFactory } from './factory.js';
+import { MemoryLogger } from '@deepkit/logger';
 
 
 test('reflection circular reference', () => {
@@ -1017,4 +1013,79 @@ test('database field name with filter', async () => {
         const dbUser = await database.query(User).filterField('id', user.id).findOne();
         expect(dbUser.id).toEqual(user.id);
     }
+});
+
+test('one to one', async () => {
+    class PhoneNumber {
+        id: number & PrimaryKey & AutoIncrement = 0;
+
+        details?: SimDetails & BackReference;
+
+        constructor(
+            public msisdn: string,
+        ) {
+        }
+
+        country: string = '';
+        active: boolean = true;
+    }
+
+    class SimDetails {
+        company?: Company & Reference;
+
+        constructor(
+            public number: PhoneNumber & Reference & PrimaryKey,
+        ) {
+        }
+
+        iccid: string = '';
+        imsi: string = '';
+        pin: string = '';
+        puk: string = '';
+    }
+
+    class Company {
+        id: number & PrimaryKey & AutoIncrement = 0;
+
+        constructor(public name: string) {
+        }
+    }
+
+    const database = await databaseFactory([PhoneNumber, SimDetails, Company]);
+
+    const phoneNumber = new PhoneNumber('1234567890');
+    const simDetails = new SimDetails(phoneNumber);
+    simDetails.iccid = 'ICCID1234567890';
+    simDetails.imsi = 'IMSI1234567890';
+    simDetails.pin = '1234';
+    const company = new Company('MyCompany');
+    simDetails.company = company;
+
+    await database.persist(phoneNumber, simDetails, company);
+
+    const result = await database.query(PhoneNumber).innerJoinWith('details', (details) => {
+        return details.innerJoinWith('company', (company) => {
+            return company.filter({ name: 'MyCompany' });
+        });
+    }).findOneOrUndefined();
+
+    expect(result!.msisdn).toEqual('1234567890');
+    expect(result!.details!.pin).toEqual('1234');
+});
+
+test('logger', async () => {
+    class Entity {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        constructor(public name: string) {
+        }
+    }
+
+    const database = await databaseFactory([Entity]);
+    const logger = new MemoryLogger();
+    database.setLogger(logger);
+    database.logger.setLevel('debug');
+
+    await database.persist(new Entity('test1'));
+
+    expect(logger.getOutput()).toContain(`INSERT INTO "Entity"`);
 });
