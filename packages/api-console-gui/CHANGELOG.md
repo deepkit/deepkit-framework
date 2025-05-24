@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.10](https://github.com/deepkit/deepkit-framework/compare/v1.0.9...v1.0.10) (2025-05-24)
+
+### Bug Fixes
+
+- **rpc:** remove ObservableDisconnect and fix api-console-gui disconnecting observable ([a0cf750](https://github.com/deepkit/deepkit-framework/commit/a0cf7503558a1f2a4d6014b34cc01af70cea8c09))
+
 ## [1.0.9](https://github.com/deepkit/deepkit-framework/compare/v1.0.8...v1.0.9) (2025-05-23)
 
 **Note:** Version bump only for package @deepkit/api-console-gui

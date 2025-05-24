@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.10](https://github.com/deepkit/deepkit-framework/compare/v1.0.9...v1.0.10) (2025-05-24)
+
+### Features
+
+- **broker:** make sure bus channel is only subscribed upon first subject subscriptions ([98cab64](https://github.com/deepkit/deepkit-framework/commit/98cab647b423aea8f41ac4c2f626a007d9a094dc))
+
 ## [1.0.9](https://github.com/deepkit/deepkit-framework/compare/v1.0.8...v1.0.9) (2025-05-23)
 
 ### Features

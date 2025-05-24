@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.10](https://github.com/deepkit/deepkit-framework/compare/v1.0.9...v1.0.10) (2025-05-24)
+
+### Bug Fixes
+
+- **rpc:** correctly unsubscribe Subject subscription created by action abstraction ([0e2424f](https://github.com/deepkit/deepkit-framework/commit/0e2424f7d5d2dc7b391748ca3af3016b4422006f))
+- **rpc:** remove ObservableDisconnect and fix api-console-gui disconnecting observable ([a0cf750](https://github.com/deepkit/deepkit-framework/commit/a0cf7503558a1f2a4d6014b34cc01af70cea8c09))
+
+### Features
+
+- **broker:** make sure bus channel is only subscribed upon first subject subscriptions ([98cab64](https://github.com/deepkit/deepkit-framework/commit/98cab647b423aea8f41ac4c2f626a007d9a094dc))
+
+### BREAKING CHANGES
+
+- **rpc:** RPC will now longer call Subject.complete()/Subject.unsubscribe() on the Subject on the server when client does Subject.complete()/Subject.unsubscribe() or client disconnects. Instead, it just unsubscribes the single subscription created when the Subject is returned by the RPC controller. The Subject on the server can be monitored manually itself (by e.g. checking Subject.observed)
+- **rpc:** Removed `disconnectObservable` as not needed anymore thanks to GC monitoring. Also, removed `instantObservable` (use defer() with switchMap() instead)
+
+This allows to reuse now subjects that live longer than the rpc controller/connection.
+
 ## [1.0.9](https://github.com/deepkit/deepkit-framework/compare/v1.0.8...v1.0.9) (2025-05-23)
 
 ### Bug Fixes

@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/api-console-module",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "API Console",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -34,18 +34,18 @@
     "@deepkit/type": "^1.0.1"
   },
   "dependencies": {
-    "@deepkit/api-console-api": "^1.0.9",
-    "@deepkit/api-console-gui": "^1.0.9"
+    "@deepkit/api-console-api": "^1.0.10",
+    "@deepkit/api-console-gui": "^1.0.10"
   },
   "devDependencies": {
     "@deepkit/app": "^1.0.9",
-    "@deepkit/broker": "^1.0.9",
+    "@deepkit/broker": "^1.0.10",
     "@deepkit/bson": "^1.0.9",
     "@deepkit/core": "^1.0.5",
     "@deepkit/http": "^1.0.9",
     "@deepkit/injector": "^1.0.8",
     "@deepkit/logger": "^1.0.9",
-    "@deepkit/rpc": "^1.0.9",
+    "@deepkit/rpc": "^1.0.10",
     "@deepkit/type": "^1.0.8",
     "rxjs": "~7.8.0"
   },

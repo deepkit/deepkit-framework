@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/broker",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -40,7 +40,7 @@
     "@deepkit/core-rxjs": "^1.0.9",
     "@deepkit/event": "^1.0.8",
     "@deepkit/injector": "^1.0.8",
-    "@deepkit/rpc": "^1.0.9",
+    "@deepkit/rpc": "^1.0.10",
     "@deepkit/type": "^1.0.8",
     "rxjs": "*"
   },
