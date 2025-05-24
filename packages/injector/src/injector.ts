@@ -257,8 +257,10 @@ function* forEachDependency(provider: NormalizedProvider): Generator<{ type: Typ
         const reflectionClass = ReflectionClass.from(useClass);
 
         const constructor = reflectionClass.getMethodOrUndefined('constructor');
+        const constructorProperties: string[] = [];
         if (constructor) {
             for (const parameter of constructor.getParameters()) {
+                if (parameter.getVisibility() !== undefined) constructorProperties.push(parameter.name);
                 const tokenType = getInjectOptions(parameter.getType() as Type);
                 const type = tokenType || parameter.getType() as Type;
                 yield { type, optional: !parameter.isValueRequired() };
@@ -266,6 +268,7 @@ function* forEachDependency(provider: NormalizedProvider): Generator<{ type: Typ
         }
 
         for (const property of reflectionClass.getProperties()) {
+            if (constructorProperties.includes(property.name)) continue;
             const tokenType = getInjectOptions(property.type);
             if (!tokenType) continue;
             yield { type: tokenType, optional: !property.isValueRequired() };
@@ -922,8 +925,10 @@ export class Injector {
         let dependencies: number = 0;
 
         const constructor = reflectionClass.getMethodOrUndefined('constructor');
+        const constructorProperties: string[] = [];
         if (constructor) {
             for (const parameter of constructor.getParameters()) {
+                if (parameter.getVisibility() !== undefined) constructorProperties.push(parameter.name);
                 dependencies++;
                 const tokenType = getInjectOptions(parameter.getType() as Type);
                 args.push(this.createFactoryProperty({
@@ -935,6 +940,7 @@ export class Injector {
         }
 
         for (const property of reflectionClass.getProperties()) {
+            if (constructorProperties.includes(property.name)) continue; // already assigned in constructor
             const tokenType = getInjectOptions(property.type);
             if (!tokenType) continue;
 
@@ -1257,7 +1263,7 @@ export class Injector {
         if (type.kind === ReflectionKind.function && type.typeName === 'PartialFactory') {
             const factoryType = type.typeArguments?.[0];
             const factory = partialFactory(factoryType, this);
-            return ((scopeIn?: Scope) => factory(scopeIn)) as any
+            return ((scopeIn?: Scope) => factory(scopeIn)) as any;
         }
 
         if (isWithAnnotations(type)) {
@@ -1359,6 +1365,7 @@ export class BuildContext {
 
 export interface Resolver<T> {
     (scope: Scope | undefined, optional: true): T | undefined;
+
     (scope?: Scope, optional?: boolean): T;
 }
 
@@ -1514,8 +1521,10 @@ export function partialFactory(
 
         const args: { name: string; resolve: (scope?: Scope) => ReturnType<Resolver<any>> }[] = [];
         const constructor = reflectionClass.getMethodOrUndefined('constructor');
+        const constructorProperties: string[] = [];
         if (constructor) {
             for (const parameter of constructor.getParameters()) {
+                if (parameter.getVisibility() !== undefined) constructorProperties.push(parameter.name);
                 args.push({
                     name: parameter.name,
                     resolve: createLazyResolver(parameter.getType() as Type, parameter.name),
@@ -1525,6 +1534,7 @@ export function partialFactory(
 
         const properties = new Map<keyof any, (scope?: Scope) => ReturnType<Resolver<any>>>();
         for (const property of reflectionClass.getProperties()) {
+            if (constructorProperties.includes(property.name)) continue; // already assigned in constructor
             const tokenType = getInjectOptions(property.type);
             if (!tokenType) continue;
 

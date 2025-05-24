@@ -2,6 +2,8 @@ import { expect, test } from '@jest/globals';
 import { InjectorModule } from '../src/module.js';
 import { Injector, InjectorContext } from '../src/injector.js';
 import { provide } from '../src/provider.js';
+import { Inject } from '@deepkit/core';
+import { Logger } from '@deepkit/logger';
 
 test('class + scope support', () => {
     class ServiceA {
@@ -248,4 +250,30 @@ test('inject module', () => {
     const scope = injector.createChildScope('http');
     const httpRequest = scope.get(HttpRequest);
     expect(httpRequest.module == frameworkModule).toBe(true);
+});
+
+test('constructor properties only handled once', () => {
+    let created = 0;
+
+    type InjectServiceB = Inject<any, 'scoped-logger'>;
+
+    class ServiceA {
+        constructor(public serviceB: InjectServiceB) {
+        }
+    }
+
+    const module = new InjectorModule([
+        { provide: ServiceA },
+        Logger,
+        {
+            provide: 'scoped-logger', transient: true, useFactory() {
+                created++;
+                return {};
+            },
+        },
+    ]);
+
+    const injector = new InjectorContext(module);
+    const a1 = injector.get(ServiceA);
+    expect(created).toBe(1);
 });

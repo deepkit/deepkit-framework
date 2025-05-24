@@ -220,7 +220,7 @@ export class Logger implements LoggerInterface {
     constructor(
         protected transporter: LoggerTransport[] = [],
         protected formatter: LoggerFormatter[] = [],
-        protected scope: string = '',
+        public scope: string = '',
     ) {
     }
 
@@ -431,10 +431,11 @@ export class MemoryLogger extends Logger {
     }
 }
 
-export type ScopedLogger = Inject<LoggerInterface, 'scoped-logger'>;
+export type ScopedLogger = Inject<Logger, 'scoped-logger'>;
 export const ScopedLogger = {
     provide: 'scoped-logger',
     transient: true,
-    useFactory: (target: TransientInjectionTarget, logger: Logger = new Logger()) =>
-        logger.scoped(tokenLabel(target.token)),
+    useFactory(target: TransientInjectionTarget, logger: Logger = new Logger) {
+        return logger.scoped(tokenLabel(target.token));
+    },
 } as const;
