@@ -6,7 +6,7 @@ import { BrokerCache } from '../src/broker-cache.js';
 import { QueueMessageProcessing } from '../src/model.js';
 import { BrokerKeyValue } from '../src/broker-key-value.js';
 import { InjectorContext, InjectorModule, provide } from '@deepkit/injector';
-import { Subject } from 'rxjs';
+import { skip, Subject } from 'rxjs';
 
 jest.setTimeout(10000);
 
@@ -153,7 +153,7 @@ test('bus channel injector', async () => {
     expect(events.length).toBe(1);
 });
 
-test('bus subject', async () => {
+test('bus subject gc', async () => {
     const bus = new BrokerBus(await adapterFactory());
     const handles: BrokerBus['subjectHandles'] = (bus as any).subjectHandles;
 
@@ -176,6 +176,59 @@ test('bus subject', async () => {
     expect(caughtEvents.length).toBe(1);
     await sleep(0.1);
     (global as any).gc();
+    await sleep(0.1);
+    expect(handles.size).toBe(0);
+});
+
+test('bus subject 1', async () => {
+
+    const bus = new BrokerBus(await adapterFactory());
+    const handles: BrokerBus['subjectHandles'] = (bus as any).subjectHandles;
+
+    type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
+
+    const caughtEvents: Events[] = [];
+
+    const subject1 = bus.subject<Events>('/events');
+    const subject2 = bus.subject<Events>('/events');
+    expect(handles.get('/events')!.isSubscribed).toBe(false);
+    const sub = subject2.subscribe((event) => {
+        caughtEvents.push(event);
+    });
+    expect(handles.get('/events')!.isSubscribed).toBe(true);
+
+    subject1.next({ type: 'user-created', id: 2 });
+    await sleep(0.1);
+    expect(handles.size).toBe(1);
+    expect(caughtEvents.length).toBe(1);
+    sub.unsubscribe();
+    await sleep(0.1);
+    expect(handles.size).toBe(0);
+});
+
+test('bus subject 2', async () => {
+
+    const bus = new BrokerBus(await adapterFactory());
+    const handles: BrokerBus['subjectHandles'] = (bus as any).subjectHandles;
+
+    type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
+
+    const caughtEvents: Events[] = [];
+
+    const subject1 = bus.subject<Events>('/events');
+    const subject2 = bus.subject<Events>('/events');
+    expect(handles.get('/events')!.isSubscribed).toBe(false);
+    const sub = subject2.pipe(skip(1)).subscribe((event) => {
+        caughtEvents.push(event);
+    });
+    expect(handles.get('/events')!.isSubscribed).toBe(true);
+
+    subject1.next({ type: 'user-created', id: 2 });
+    subject1.next({ type: 'user-created', id: 3 });
+    await sleep(0.1);
+    expect(handles.size).toBe(1);
+    expect(caughtEvents.length).toBe(1);
+    sub.unsubscribe();
     await sleep(0.1);
     expect(handles.size).toBe(0);
 });
@@ -275,7 +328,6 @@ test('queue', async () => {
 
     const p = new Promise<any>(async (resolve) => {
         await channel.consume(async (message) => {
-            console.log(message);
             resolve(message.data);
         });
     });

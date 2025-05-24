@@ -42,10 +42,9 @@ See the Getting started page for more information.
 
 ### Subject
 
-The default approach to send and listen to messages is using rxjs `Subject` type. It's `subscribe` and `next` methods return nothing and silently ignore errors.
-Their lifetime is managed by the framework and once the Subject is garbage collected, the subscription is removed from the broker backend (e.g. Redis).
+The default approach to send and listen to messages is using rxjs `Subject` type. Its `subscribe` and `next` methods allow you to send and receive messages in a type-safe way. All Subject instances are managed by the broker and once the Subject is garbage collected, the subscription is removed from the broker backend (e.g. Redis).
 
-Override BusBroker to handle `publishFailed` or `subscribeFailed` cases.
+Override BrokerBus' `BusBrokerErrorHandler` to handle failures in publishing or subscribing to messages.
 
 This approach nicely decouples your business code with the broker server and allows you to use the same code in a test environment without a broker server.
 
@@ -53,7 +52,6 @@ This approach nicely decouples your business code with the broker server and all
 import { BrokerBus, BrokerBusChannel, provideBusSubject } from '@deepkit/broker';
 import { FrameworkModule } from '@deepkit/framework';
 import { Subject } from 'rxjs';
-import { decoupleSubject } from '@deepkit/core-rxjs';
 
 // move this type to a shared file
 type MyChannel = Subject<{
@@ -83,10 +81,7 @@ class MyRpcController {
 
     @rpc.action()
     getChannelData(): MyChannel {
-        // this creates a new subject, forwarding all messages from the broker
-        // to the connected client. `decoupleSubject` is needed in order
-        // to no close the Subject when the client disconnects.
-        return decoupleSubject(this.channel);
+        return this.channel;
     }
 }
 

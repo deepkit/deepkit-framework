@@ -5,8 +5,8 @@ import { BrokerAdapterCache } from './broker-cache.js';
 import { QueueMessageProcessing } from './model.js';
 import { BrokerAdapterKeyValue } from './broker-key-value.js';
 import { Logger } from '@deepkit/logger';
-import { Subject } from 'rxjs';
-import { arrayRemoveItem, formatError } from '@deepkit/core';
+import { Subject, Subscription } from 'rxjs';
+import { arrayRemoveItem, ensureError, formatError } from '@deepkit/core';
 import { provide, Provider } from '@deepkit/injector';
 
 export interface BrokerTimeOptions {
@@ -217,43 +217,140 @@ export class BrokerQueueChannel<T> {
     }
 }
 
-export class BrokerBus {
-    protected subjectHandles = new Map<string, {
-        channel: BrokerBusChannel<unknown>;
-        release: Promise<Release | void>;
-        observer: (message: unknown) => void;
-        receiving: boolean;
-        subjects: WeakRef<Subject<unknown>>[];
-    }>();
+export class RefCountedSubject<T> extends Subject<T> {
+    private refCount = 0;
+    private readonly onFirst: () => void;
+    private readonly onLast: () => void;
+    public skipPublish = 0;
 
-    protected finalizer = new FinalizationRegistry<{
-        path: string,
-        subjectRef: WeakRef<Subject<unknown>>;
-    }>((handle) => {
-        const subjectHandle = this.subjectHandles.get(handle.path);
-        if (!subjectHandle) return;
-        arrayRemoveItem(subjectHandle.subjects, handle.subjectRef);
-        if (subjectHandle.subjects.length === 0) {
-            subjectHandle.release.then(() => {
-                this.subjectHandles.delete(handle.path);
-            }).catch(() => {
-                // ignore
-            });
-            this.subjectHandles.delete(handle.path);
+    constructor(onFirst: () => void, onLast: () => void) {
+        super();
+        this.onFirst = onFirst;
+        this.onLast = onLast;
+    }
+
+    // @ts-ignore
+    override subscribe(...args: Parameters<Subject<T>['subscribe']>): Subscription {
+        if (this.refCount++ === 1) {
+            // We skip 1
+            this.onFirst();
         }
-    });
 
-    protected publishFailed(path: string, message: unknown, type: Type, error: Error) {
-        if (!this.adapter.logger) return;
-        this.adapter.logger.error(`Error while publishing message to channel ${path}: ${formatError(error)}`);
+        const sub = super.subscribe(...args);
+        sub.add(() => {
+            if (--this.refCount === 1) {
+                this.onLast();
+            }
+        });
+        return sub;
+    }
+}
+
+const subjectFinalizer = new FinalizationRegistry<{
+    handle: BrokerBusSubjectHandle;
+    subjectRef: WeakRef<RefCountedSubject<unknown>>;
+}>((handle) => {
+    handle.handle.releaseSubject(handle.subjectRef);
+});
+
+class BrokerBusSubjectHandle {
+    protected subjects: WeakRef<RefCountedSubject<unknown>>[] = [];
+
+    protected releaseChannel?: Promise<Release | void>;
+
+    constructor(
+        private channel: BrokerBusChannel<unknown>,
+        private errorHandler: BusBrokerErrorHandler,
+        private release: () => void,
+    ) {
     }
 
-    protected subscribeFailed(path: string, error: Error) {
-        if (!this.adapter.logger) return;
-        this.adapter.logger.error(`Error while subscribing to channel ${path}: ${formatError(error)}`);
+    get isSubscribed(): boolean {
+        return this.releaseChannel !== undefined;
     }
 
-    constructor(public adapter: BrokerAdapterBus) {
+    protected ensureSubscribed() {
+        if (this.releaseChannel) return;
+
+        this.releaseChannel = this.channel.subscribe(value => {
+            for (const subjectRef of this.subjects) {
+                const subject = subjectRef.deref();
+                if (subject) {
+                    subject.skipPublish++;
+                    subject.next(value);
+                }
+            }
+        }).catch((e) => {
+            this.errorHandler.subscribeFailed(this.channel.name, ensureError(e));
+        });
+    }
+
+    createSubject(): RefCountedSubject<unknown> {
+        let subjectRef: WeakRef<RefCountedSubject<unknown>> | undefined = undefined;
+        const subject = new RefCountedSubject<unknown>(
+            () => {
+                this.subjects.push(subjectRef!);
+                this.ensureSubscribed();
+            },
+            () => {
+                this.releaseSubject(subjectRef!);
+            },
+        );
+        subjectRef = new WeakRef(subject);
+        subjectFinalizer.register(subject, {
+            handle: this,
+            subjectRef,
+        });
+        subject.subscribe(value => {
+            if (subject.skipPublish) {
+                subject.skipPublish--;
+                return;
+            }
+            this.publish(value);
+        });
+        return subject;
+    }
+
+    releaseSubject(subject: WeakRef<RefCountedSubject<unknown>>) {
+        arrayRemoveItem(this.subjects, subject);
+        if (this.subjects.length === 0) {
+            this.releaseChannel?.then(release => {
+                release?.();
+                this.releaseChannel = undefined;
+            });
+            this.release();
+        }
+    }
+
+    publish(message: unknown) {
+        this.channel.publish(message).catch((e) => {
+            this.errorHandler.publishFailed(this.channel.name, message, this.channel.type, ensureError(e));
+        });
+    }
+}
+
+export class BusBrokerErrorHandler {
+    constructor(protected logger?: Logger) {
+    }
+
+    publishFailed(path: string, message: unknown, type: Type, error: Error) {
+        this.logger?.error(`Error while publishing message to channel ${path}: ${formatError(error)}`);
+    }
+
+    subscribeFailed(path: string, error: Error) {
+        this.logger?.error(`Error while subscribing to channel ${path}: ${formatError(error)}`);
+    }
+}
+
+export class BrokerBus {
+    protected subjectHandles = new Map<string, BrokerBusSubjectHandle>();
+    protected errorHandler: BusBrokerErrorHandler;
+
+    constructor(
+        public adapter: BrokerAdapterBus,
+        errorHandler?: BusBrokerErrorHandler,
+    ) {
+        this.errorHandler = errorHandler ?? new BusBrokerErrorHandler(adapter.logger);
     }
 
     public channel<T>(path: string, type?: ReceiveType<T>): BrokerBusChannel<T> {
@@ -271,43 +368,15 @@ export class BrokerBus {
      * or when subscribing to the channel.
      */
     public subject<T>(path: string, type?: ReceiveType<T>): Subject<T> {
-        const resolvedType = resolveReceiveType(type);
-        let subjectHandle = this.subjectHandles.get(path);
-        if (!subjectHandle) {
-            const channel = this.channel(path, type);
-            subjectHandle = {
-                channel,
-                receiving: false,
-                observer: (message: unknown) => {
-                    if (subjectHandle!.receiving) return;
-                    channel.publish(message as T).catch((e) => {
-                        this.publishFailed(path, message, resolvedType, e);
-                    });
-                },
-                release: channel.subscribe((message) => {
-                    subjectHandle!.receiving = true;
-                    try {
-                        for (const subjectRef of subjectHandle!.subjects) {
-                            const subject = subjectRef.deref();
-                            if (!subject) continue;
-                            subject.next(message);
-                        }
-                    } finally {
-                        subjectHandle!.receiving = false;
-                    }
-                }).catch((e) => {
-                    this.subscribeFailed(path, e);
-                }),
-                subjects: [],
-            };
-            this.subjectHandles.set(path, subjectHandle);
+        let handle = this.subjectHandles.get(path);
+        if (!handle) {
+            const resolvedType = resolveReceiveType(type);
+            handle = new BrokerBusSubjectHandle(this.channel(path, resolvedType), this.errorHandler, () => {
+                this.subjectHandles.delete(path);
+            });
+            this.subjectHandles.set(path, handle);
         }
-        const busSubject = new Subject<unknown>();
-        busSubject.subscribe(subjectHandle.observer);
-        const subjectRef = new WeakRef(busSubject);
-        subjectHandle.subjects.push(subjectRef);
-        this.finalizer.register(busSubject, { path, subjectRef });
-        return busSubject as Subject<T>;
+        return handle.createSubject() as Subject<T>;
     }
 }
 
@@ -346,17 +415,17 @@ export function provideBusSubject<T extends Subject<any>>(path: string, type?: R
 export class BrokerBusChannel<T> {
     constructor(
         public name: string,
-        private adapter: BrokerAdapterBus,
-        private type: Type,
+        protected adapter: BrokerAdapterBus,
+        public type: Type,
     ) {
     }
 
     async publish(message: T) {
-        return this.adapter.publish(this.name, message, this.type);
+        return await this.adapter.publish(this.name, message, this.type);
     }
 
     async subscribe(callback: (message: T) => void): Promise<Release> {
-        return this.adapter.subscribe(this.name, callback, this.type);
+        return await this.adapter.subscribe(this.name, callback, this.type);
     }
 }
 
