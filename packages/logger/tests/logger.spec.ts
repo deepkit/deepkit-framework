@@ -108,7 +108,35 @@ test('scope catches late changes', () => {
     expect(logger.memory.messageStrings).toEqual(['(database) test', '(database) test2', 'test3' ]);
 });
 
-test('scoped logger', () => {
+test('scoped logger 1', () => {
+    class MyProvider {
+        constructor(public logger: ScopedLogger) {
+        }
+    }
+
+    class AnotherProvider {
+        constructor(public myProvider: MyProvider, public logger: ScopedLogger) {
+        }
+    }
+
+    {
+        const injector = Injector.from([
+            MyProvider,
+            AnotherProvider,
+            Logger, // optional base logger used by ScopedLogger
+            ScopedLogger,
+        ]);
+        const logger = injector.get(Logger);
+        expect(logger).toBeInstanceOf(Logger);
+
+        const anotherProvider = injector.get(AnotherProvider);
+        expect(anotherProvider.logger).toBeInstanceOf(Logger);
+        expect(anotherProvider.myProvider.logger.scope).toBe('MyProvider');
+        expect(anotherProvider.logger.scope).toBe('AnotherProvider');
+    }
+});
+
+test('scoped logger 2', () => {
     class MyProvider {
         constructor(public logger: ScopedLogger) {
         }

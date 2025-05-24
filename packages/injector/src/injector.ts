@@ -545,9 +545,11 @@ export class Injector {
                     clear.push(`${varName} = undefined;`);
 
                     let setDestination = ``;
+                    let resetDestination = ``;
                     if (code.needsDestination) {
                         const tokenVar = compiler.reserveConst(prepared.token, 'token');
-                        setDestination = `runtimeContext.destination = { token: ${tokenVar} };`;
+                        setDestination = `const oldContext = runtimeContext.destination; runtimeContext.destination = { token: ${tokenVar} };`;
+                        resetDestination = `runtimeContext.destination = oldContext;`;
                     }
 
                     let circularCheckBefore = '';
@@ -583,6 +585,7 @@ export class Injector {
                     ${code.code}
                     ${state}.count++;
                     } finally {
+                        ${resetDestination}
                         ${state}.creating = 0;
                     }
                     ${circularCheckAfter}
