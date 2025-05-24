@@ -131,13 +131,17 @@ const anyParametersType: Type = {
 const rpcActionTypeDecoder = createBodyDecoder<rpcActionType>();
 const rpcActionDecoder = createBodyDecoder<rpcAction>();
 
+export interface RpcServerActionObservableSubject {
+    subject: Subject<any>,
+    trackingType: NumericKeys<ActionStats>,
+    completed: boolean,
+    completedByClient: boolean,
+    subscription: Subscription
+}
+
 export class RpcServerAction {
     protected observableSubjects: {
-        [id: number]: {
-            subject: Subject<any>,
-            completedByClient: boolean,
-            subscription: Subscription
-        }
+        [id: number]: RpcServerActionObservableSubject
     } = {};
 
     protected collections: {
@@ -196,9 +200,11 @@ export class RpcServerAction {
                 if (sub.sub && !sub.sub.closed) sub.sub.unsubscribe();
             }
         }
-
         for (const subject of Object.values(this.observableSubjects)) {
-            if (!subject.subject.closed) subject.subject.complete();
+            if (!subject.completed) {
+                subject.completed = true;
+                subject.subscription.unsubscribe();
+            }
         }
 
         this.collections = {};
@@ -451,8 +457,11 @@ export class RpcServerAction {
             case RpcTypes.ActionObservableSubjectUnsubscribe: { //aka completed
                 const subject = this.observableSubjects[message.id];
                 if (!subject) return response.error(new RpcError('No subject to unsubscribe found'));
+                if (subject.completed) return;
                 subject.completedByClient = true;
-                subject.subject.complete();
+                subject.completed = true;
+                this.stats.active.increase(subject.trackingType, -1);
+                subject.subscription.unsubscribe();
                 delete this.observableSubjects[message.id];
                 break;
             }
@@ -664,8 +673,10 @@ export class RpcServerAction {
                         }
                     }
 
-                    this.observableSubjects[message.id] = {
+                    const v = this.observableSubjects[message.id] = {
                         subject: result,
+                        trackingType,
+                        completed: false,
                         completedByClient: false,
                         subscription: result.subscribe((next) => {
                             response.reply(RpcTypes.ResponseActionObservableNext, {
@@ -673,6 +684,8 @@ export class RpcServerAction {
                                 v: next,
                             }, types.observableNextSchema);
                         }, (error) => {
+                            if (v.completed) return;
+                            v.completed = true;
                             this.stats.active.increase(trackingType, -1);
                             const extracted = rpcEncodeError(this.security.transformError(error));
                             response.reply<rpcResponseActionObservableSubscriptionError>(RpcTypes.ResponseActionObservableError, {
@@ -680,14 +693,15 @@ export class RpcServerAction {
                                 id: message.id,
                             });
                         }, () => {
+                            if (v.completed) return;
+                            v.completed = true;
                             this.stats.active.increase(trackingType, -1);
-                            const v = this.observableSubjects[message.id];
-                            if (v && v.completedByClient) return; //we don't send ResponseActionObservableComplete when the client issued unsubscribe
+                            if (v.completedByClient) return; //we don't send ResponseActionObservableComplete when the client issued unsubscribe
                             response.reply<rpcActionObservableSubscribeId>(RpcTypes.ResponseActionObservableComplete, {
                                 id: message.id,
                             });
                         }),
-                    };
+                    } as RpcServerActionObservableSubject;
                 }
 
                 this.stats.active.increase(trackingType, 1);

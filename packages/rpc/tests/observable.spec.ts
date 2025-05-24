@@ -1,12 +1,12 @@
 import { sleep } from '@deepkit/core';
 import { entity } from '@deepkit/type';
 import { expect, test } from '@jest/globals';
-import { BehaviorSubject, Observable, Subject, Subscription, toArray } from 'rxjs';
+import { BehaviorSubject, defer, Observable, Subject, Subscription, switchMap, toArray } from 'rxjs';
 import { first, take } from 'rxjs/operators';
 import { DirectClient } from '../src/client/client-direct.js';
 import { rpc } from '../src/decorators.js';
 import { RpcKernel } from '../src/server/kernel.js';
-import { createSubject, instantObservable, instantSubject } from '../src/utils';
+import { createSubject } from '../src/utils.js';
 
 test('observable basics', async () => {
     @entity.name('model')
@@ -162,16 +162,12 @@ test('promise Subject', async () => {
     }
 });
 
-test('subject completes automatically when connection closes', async () => {
-    let unsubscribed = false;
+test('subject not completes automatically when connection closes', async () => {
+    const subject = new Subject<string>();
 
     class Controller {
         @rpc.action()
         strings(): Subject<string> {
-            const subject = new Subject<string>();
-            subject.subscribe().add(() => {
-                unsubscribed = true;
-            });
             return subject;
         }
     }
@@ -185,39 +181,31 @@ test('subject completes automatically when connection closes', async () => {
     {
         const o = await controller.strings();
         expect(o).toBeInstanceOf(Subject);
-        expect(unsubscribed).toBe(false);
+        expect(subject.observed).toBe(true);
         o.unsubscribe();
-        await sleep(0);
-        expect(unsubscribed).toBe(true);
+        await sleep(0.1);
+        expect(subject.closed).toBe(false);
+        expect(subject.observed).toBe(false);
     }
 
     {
-        unsubscribed = false;
         const o = await controller.strings();
         expect(o).toBeInstanceOf(Subject);
-        expect(unsubscribed).toBe(false);
-        client.disconnect();
-        await sleep(0);
-        expect(unsubscribed).toBe(true);
+        expect(subject.observed).toBe(true);
+        await client.disconnect();
+        await sleep(0.1);
+        expect(subject.closed).toBe(false);
+        expect(subject.observed).toBe(false);
     }
 });
 
 test('subject redirect of global subject', async () => {
     const globalSubject = new Subject<string>();
-    const subjects: Subject<string>[] = [];
-    let completes: number = 0;
 
     class Controller {
         @rpc.action()
         strings(): Subject<string> {
-            const subject = new Subject<string>();
-            subjects.push(subject);
-            const sub = globalSubject.subscribe(subject);
-            subject.subscribe().add(() => {
-                completes++;
-                sub.unsubscribe();
-            });
-            return subject;
+            return globalSubject;
         }
     }
 
@@ -231,42 +219,11 @@ test('subject redirect of global subject', async () => {
         const o = await controller.strings();
         expect(o).toBeInstanceOf(Subject);
         expect(globalSubject.isStopped).toBe(false);
-        expect(completes).toBe(0);
+        expect(globalSubject.observed).toBe(true);
         o.unsubscribe();
         await sleep(0);
-        expect(completes).toBe(1);
+        expect(globalSubject.observed).toBe(false);
         expect(globalSubject.isStopped).toBe(false);
-        for (const subject of subjects) {
-            expect(subject.isStopped).toBe(true);
-        }
-    }
-
-    {
-        const o = await controller.strings();
-        expect(o).toBeInstanceOf(Subject);
-        expect(globalSubject.isStopped).toBe(false);
-        expect(completes).toBe(1);
-        o.unsubscribe();
-        await sleep(0);
-        expect(completes).toBe(2);
-        expect(globalSubject.isStopped).toBe(false);
-        for (const subject of subjects) {
-            expect(subject.isStopped).toBe(true);
-        }
-    }
-
-    {
-        const o = await controller.strings();
-        expect(o).toBeInstanceOf(Subject);
-        expect(globalSubject.isStopped).toBe(false);
-        expect(completes).toBe(2);
-        o.complete();
-        await sleep(0);
-        expect(completes).toBe(3);
-        expect(globalSubject.isStopped).toBe(false);
-        for (const subject of subjects) {
-            expect(subject.isStopped).toBe(true);
-        }
     }
 });
 
@@ -538,62 +495,6 @@ test('observable complete', async () => {
     }
 });
 
-test('createSubject basic', async () => {
-    let teardowns = 0;
-
-    class Controller {
-        @rpc.action()
-        async subscribeChats() {
-            return createSubject<string>((subject) => {
-                subject.next('hello');
-                subject.next('world');
-            }, () => teardowns++);
-        }
-    }
-
-    const kernel = new RpcKernel();
-    kernel.registerController(Controller, 'myController');
-
-    const client = new DirectClient(kernel);
-    const controller = client.controller<Controller>('myController');
-
-    {
-        const o = await controller.subscribeChats();
-        expect(kernel.stats.active.subjects).toBe(1);
-        expect(kernel.stats.total.subjects).toBe(1);
-        expect(o).toBeInstanceOf(Subject);
-        const values = await o.pipe(take(2), toArray()).toPromise();
-        expect(values).toEqual(['hello', 'world']);
-        o.complete();
-        await sleep(0);
-        expect(kernel.stats.active.subjects).toBe(0);
-        expect(kernel.stats.total.subjects).toBe(1);
-        expect(teardowns).toBe(1);
-    }
-
-    {
-        const s = instantSubject(controller.subscribeChats());
-        const values = await s.pipe(take(2), toArray()).toPromise();
-        expect(kernel.stats.active.subjects).toBe(1);
-        expect(kernel.stats.total.subjects).toBe(2);
-        expect(values).toEqual(['hello', 'world']);
-        s.complete();
-        await sleep(0);
-        expect(kernel.stats.active.subjects).toBe(0);
-        expect(kernel.stats.total.subjects).toBe(2);
-        expect(teardowns).toBe(2);
-    }
-
-    {
-        const s = instantSubject(() => controller.subscribeChats());
-        const values = await s.pipe(take(2), toArray()).toPromise();
-        expect(values).toEqual(['hello', 'world']);
-        s.complete();
-        await sleep(0);
-        expect(teardowns).toBe(3);
-    }
-});
-
 test('garbage collection', async () => {
     let teardowns = 0;
 
@@ -693,15 +594,8 @@ test('instantObservable', async () => {
 
     {
         expect(teardowns).toBe(1);
-        const values = await instantObservable(controller.subscribeChats('b')).pipe(take(3), toArray()).toPromise();
-        expect(teardowns).toBe(2);
+        const values = await defer(() => controller.subscribeChats('b')).pipe(switchMap(v => v), take(3), toArray()).toPromise();
         expect(values).toEqual(['b', 'hello', 'world']);
-    }
-
-    {
         expect(teardowns).toBe(2);
-        const values = await instantObservable(() => controller.subscribeChats('b')).pipe(take(3), toArray()).toPromise();
-        expect(teardowns).toBe(3);
-        expect(values).toEqual(['b', 'hello', 'world']);
     }
 });
