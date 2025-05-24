@@ -4,7 +4,7 @@ Deepkit has its own powerful database abstraction library called Deepkit ORM. It
 
 Although you can use any database library, we recommend Deepkit ORM as it is the fastest TypeScript database abstraction library that is perfectly integrated with the Deepkit framework and has many features that will improve your workflow and efficiency.
 
-This chapter explains how to use Deepkit ORM with your Deepkit Framework application. To get all the information about Deepkit ORM, see the [Database](../database.md) chapter.
+This chapter explains how to use Deepkit ORM with your Deepkit Framework application. To get all the information about Deepkit ORM, see the [ORM](../orm.md) chapter.
 
 ## Database Classes
 
@@ -163,7 +163,7 @@ If you click on `User` in the left sidebar, you can manage its content. Click th
 
 ## Learn More
 
-To learn more about how `SQLiteDatabase` works, please read the chapter [Database](../database.md) and its subchapters, such as querying data, manipulating data via sessions, defining relations and much more.
+To learn more about how `SQLiteDatabase` works, please read the chapter [Database](../orm.md) and its subchapters, such as querying data, manipulating data via sessions, defining relations and much more.
 Please note that the chapters there refer to the standalone library `@deepkit/orm` and do not include documentation about the part of the deepkit framework you read above in this chapter. In the standalone library, you instantiate your database class manually, for example via `new SQLiteDatabase()`. However, in your Deepkit framework application, this is done automatically using the Dependency Injection container.
 
 ## Migration
