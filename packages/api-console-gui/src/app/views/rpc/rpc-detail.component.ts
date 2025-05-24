@@ -276,7 +276,7 @@ export class RpcDetailComponent implements OnChanges {
 
     disconnectObservable(execution: RpcExecution) {
         if (!execution.observable) return;
-        execution.observable.disconnect();
+        // GC will take care of it
         execution.observable = undefined;
         this.cd.detectChanges();
     }
@@ -400,7 +400,7 @@ export class RpcDetailComponent implements OnChanges {
                 execution.type = 'subject';
                 this.subscribe(execution, result);
             } else if (result instanceof Observable) {
-                execution.observable = result as any;
+                execution.observable = result;
                 execution.type = 'observable';
             } else {
                 execution.result = inspect(result);

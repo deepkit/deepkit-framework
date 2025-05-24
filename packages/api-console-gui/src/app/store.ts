@@ -1,5 +1,5 @@
 import { ApiAction, ApiRoute } from '@deepkit/api-console-api';
-import { DisconnectableObservable, RemoteController, RpcClient, RpcClientEventIncomingMessage, RpcClientEventOutgoingMessage } from '@deepkit/rpc';
+import { RemoteController, RpcClient, RpcClientEventIncomingMessage, RpcClientEventOutgoingMessage } from '@deepkit/rpc';
 import { Observable, Subject, Subscription } from 'rxjs';
 import {
     deserialize,
@@ -255,7 +255,7 @@ export class RpcExecution {
     }
 
     public subject?: Subject<any> & Excluded;
-    public observable?: DisconnectableObservable<any> & Excluded;
+    public observable?: Observable<unknown>;
 
     public subscriptionsId: number & Excluded = 0;
     public subscriptions: RpcExecutionSubscription[] & Excluded = [];

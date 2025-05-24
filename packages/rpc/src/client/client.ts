@@ -10,7 +10,7 @@
 
 import { asyncOperation, ClassType, CustomError, formatError, sleep } from '@deepkit/core';
 import { ReceiveType, resolveReceiveType, ValidationError } from '@deepkit/type';
-import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import {
     ControllerDefinition,
     rpcAuthenticate,
@@ -44,16 +44,6 @@ type PromisifyFn<T extends ((...args: any[]) => any)> = (...args: Parameters<T>)
 export type RemoteController<T> = {
     [P in keyof T]: T[P] extends (...args: any[]) => any ? PromisifyFn<T[P]> : never
 };
-
-export interface ObservableDisconnect {
-    /**
-     * Unsubscribes all active subscriptions and cleans the stored Observable instance on the server.
-     * This signals the server that the created observable from the RPC action is no longer needed.
-     */
-    disconnect(): void;
-}
-
-export type DisconnectableObservable<T> = Observable<T> & ObservableDisconnect;
 
 export interface ClientTransportAdapter {
     connect(connection: TransportClientConnection): Promise<void> | void;
