@@ -219,30 +219,32 @@ export class BrokerQueueChannel<T> {
 
 export class RefCountedSubject<T> extends Subject<T> {
     private refCount = 0;
-    private readonly onFirst: () => void;
-    private readonly onLast: () => void;
-    public skipPublish = 0;
 
-    constructor(onFirst: () => void, onLast: () => void) {
+    constructor(protected onFirst: () => void, protected onLast: () => void, protected onPublish: (value: T) => void) {
         super();
-        this.onFirst = onFirst;
-        this.onLast = onLast;
     }
 
     // @ts-ignore
     override subscribe(...args: Parameters<Subject<T>['subscribe']>): Subscription {
-        if (this.refCount++ === 1) {
-            // We skip 1
+        if (this.refCount++ === 0) {
             this.onFirst();
         }
 
         const sub = super.subscribe(...args);
         sub.add(() => {
-            if (--this.refCount === 1) {
+            if (--this.refCount === 0) {
                 this.onLast();
             }
         });
         return sub;
+    }
+
+    override next(value: T, publish = true): void {
+        if (publish) {
+            this.onPublish(value);
+        } else {
+            super.next(value);
+        }
     }
 }
 
@@ -275,10 +277,7 @@ class BrokerBusSubjectHandle {
         this.releaseChannel = this.channel.subscribe(value => {
             for (const subjectRef of this.subjects) {
                 const subject = subjectRef.deref();
-                if (subject) {
-                    subject.skipPublish++;
-                    subject.next(value);
-                }
+                if (subject) subject.next(value, false);
             }
         }).catch((e) => {
             this.errorHandler.subscribeFailed(this.channel.name, ensureError(e));
@@ -295,18 +294,14 @@ class BrokerBusSubjectHandle {
             () => {
                 this.releaseSubject(subjectRef!);
             },
+            (value) => {
+                this.publish(value);
+            },
         );
         subjectRef = new WeakRef(subject);
         subjectFinalizer.register(subject, {
             handle: this,
             subjectRef,
-        });
-        subject.subscribe(value => {
-            if (subject.skipPublish) {
-                subject.skipPublish--;
-                return;
-            }
-            this.publish(value);
         });
         return subject;
     }

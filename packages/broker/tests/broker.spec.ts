@@ -181,13 +181,13 @@ test('bus subject gc', async () => {
 });
 
 test('bus subject 1', async () => {
-
     const bus = new BrokerBus(await adapterFactory());
     const handles: BrokerBus['subjectHandles'] = (bus as any).subjectHandles;
 
     type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
 
     const caughtEvents: Events[] = [];
+    const caughtEvents2: Events[] = [];
 
     const subject1 = bus.subject<Events>('/events');
     const subject2 = bus.subject<Events>('/events');
@@ -195,18 +195,52 @@ test('bus subject 1', async () => {
     const sub = subject2.subscribe((event) => {
         caughtEvents.push(event);
     });
+    const sub2 = subject1.subscribe((event) => {
+        caughtEvents2.push(event);
+    });
     expect(handles.get('/events')!.isSubscribed).toBe(true);
 
     subject1.next({ type: 'user-created', id: 2 });
     await sleep(0.1);
     expect(handles.size).toBe(1);
     expect(caughtEvents.length).toBe(1);
+    expect(caughtEvents2.length).toBe(1);
     sub.unsubscribe();
+    sub2.unsubscribe();
     await sleep(0.1);
     expect(handles.size).toBe(0);
 });
 
 test('bus subject 2', async () => {
+    const adapter = await adapterFactory();
+    const bus1 = new BrokerBus(adapter);
+    const bus2 = new BrokerBus(adapter);
+
+    type Events = { type: 'user-created', id: number } | { type: 'user-deleted', id: number };
+
+    const caughtEvents: Events[] = [];
+    const caughtEvents2: Events[] = [];
+
+    const subject1 = bus1.subject<Events>('/events');
+    const subject2 = bus2.subject<Events>('/events');
+    const sub = subject2.subscribe((event) => {
+        caughtEvents.push(event);
+    });
+    const sub2 = subject1.subscribe((event) => {
+        caughtEvents2.push(event);
+    });
+
+    await sleep(0.1);
+    subject1.next({ type: 'user-created', id: 2 });
+    await sleep(0.1);
+    expect(caughtEvents.length).toBe(1);
+    expect(caughtEvents2.length).toBe(1);
+    sub.unsubscribe();
+    sub2.unsubscribe();
+    await sleep(0.1);
+});
+
+test('bus subject 3', async () => {
 
     const bus = new BrokerBus(await adapterFactory());
     const handles: BrokerBus['subjectHandles'] = (bus as any).subjectHandles;
