@@ -9,8 +9,7 @@ import {
     TypeUnion,
     isSameType,
     metaAnnotation,
-    stringifyType,
-    typeOf,
+    stringifyType
 } from '@deepkit/type';
 
 import { OpenApiSchemaNameConflict } from './errors';

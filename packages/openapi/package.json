@@ -33,15 +33,16 @@
     "@deepkit/event": "^1.0.1",
     "@deepkit/http": "^1.0.1",
     "@deepkit/injector": "^1.0.1",
-    "@deepkit/type": "^1.0.1",
-    "@types/lodash.clonedeepwith": "4.5.9"
+    "@deepkit/type": "^1.0.1"
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.5",
     "@deepkit/event": "^1.0.8",
     "@deepkit/http": "^1.0.1",
     "@deepkit/injector": "^1.0.8",
-    "@deepkit/type": "^1.0.8"
+    "@deepkit/type": "^1.0.8",
+    "@types/lodash": "4.17.17",
+    "@types/lodash.clonedeepwith": "4.5.9"
   },
   "jest": {
     "testEnvironment": "node",

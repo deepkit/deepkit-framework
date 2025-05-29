@@ -1,9 +1,8 @@
 import camelCase from 'camelcase';
-// @ts-ignore
 import cloneDeepWith from 'lodash.clonedeepwith';
 
 import { ClassType } from '@deepkit/core';
-import { RouteClassControllerAction, RouteConfig, parseRouteControllerAction } from '@deepkit/http';
+import { RouteConfig, parseRouteControllerAction } from '@deepkit/http';
 import { ScopedLogger } from '@deepkit/logger';
 import { ReflectionKind } from '@deepkit/type';
 
@@ -14,9 +13,7 @@ import { resolveTypeSchema } from './type-schema-resolver';
 import {
     HttpMethod,
     OpenAPI,
-    OpenAPIResponse,
     Operation,
-    ParsedRoute,
     RequestMediaTypeName,
     Responses,
     Schema,
@@ -106,7 +103,6 @@ export class OpenAPIDocument {
     }
 
     serializeDocument(): OpenAPI {
-        // @ts-ignore
         return cloneDeepWith(this.getDocument(), c => {
             if (c && typeof c === 'object') {
                 if (c.__type === 'schema' && c.__registryKey && !c.__isComponent) {
@@ -129,6 +125,8 @@ export class OpenAPIDocument {
                     if (key.startsWith('__')) delete c[key];
                 }
             }
+
+            return c;
         });
     }
 

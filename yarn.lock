@@ -4370,6 +4370,8 @@ __metadata:
     "@deepkit/http": "npm:^1.0.1"
     "@deepkit/injector": "npm:^1.0.8"
     "@deepkit/type": "npm:^1.0.8"
+    "@types/lodash": "npm:4.17.17"
+    "@types/lodash.clonedeepwith": "npm:4.5.9"
     camelcase: "npm:8.0.0"
     lodash.clonedeepwith: "npm:4.5.0"
     send: "npm:1.2.0"
@@ -4381,7 +4383,6 @@ __metadata:
     "@deepkit/http": ^1.0.1
     "@deepkit/injector": ^1.0.1
     "@deepkit/type": ^1.0.1
-    "@types/lodash.clonedeepwith": 4.5.9
   languageName: unknown
   linkType: soft
 
@@ -10081,6 +10082,22 @@ __metadata:
   version: 0.0.29
   resolution: "@types/json5@npm:0.0.29"
   checksum: 6bf5337bc447b706bb5b4431d37686aa2ea6d07cfd6f79cc31de80170d6ff9b1c7384a9c0ccbc45b3f512bae9e9f75c2e12109806a15331dc94e8a8db6dbb4ac
+  languageName: node
+  linkType: hard
+
+"@types/lodash.clonedeepwith@npm:4.5.9":
+  version: 4.5.9
+  resolution: "@types/lodash.clonedeepwith@npm:4.5.9"
+  dependencies:
+    "@types/lodash": "npm:*"
+  checksum: 64077f4a77ab80918404af74a9186bf943a4b39589bb48f4ad09603625c2ac0df1641bf66a3254d5731a86259ba2bf6154c20ce136fd470ee4e59cee14a84abc
+  languageName: node
+  linkType: hard
+
+"@types/lodash@npm:*, @types/lodash@npm:4.17.17":
+  version: 4.17.17
+  resolution: "@types/lodash@npm:4.17.17"
+  checksum: 8e75df02a15f04d4322c5a503e4efd0e7a92470570ce80f17e9f11ce2b1f1a7c994009c9bcff39f07e0f9ffd8ccaff09b3598997c404b801abd5a7eee5a639dc
   languageName: node
   linkType: hard
 
