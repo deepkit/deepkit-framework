@@ -654,6 +654,9 @@ function hasStack(stack: StackEntry[], left: Type, right: Type): boolean {
 export function isSameType(a: Type, b: Type, stack: StackEntry[] = []): boolean {
     if (a === b) return true;
 
+    // If one type has a decorator, we treat it as unique
+    if (a.decorators?.length || b.decorators?.length) return false;
+
     if (hasStack(stack, a, b)) return true;
 
     stack.push({ left: a, right: b });

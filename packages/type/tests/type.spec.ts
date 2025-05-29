@@ -1,5 +1,14 @@
 import { describe, expect, test } from '@jest/globals';
-import { hasCircularReference, ReceiveType, reflect, ReflectionClass, reflectOrUndefined, resolveReceiveType, typeOf, visit } from '../src/reflection/reflection.js';
+import {
+    hasCircularReference,
+    ReceiveType,
+    reflect,
+    ReflectionClass,
+    reflectOrUndefined,
+    resolveReceiveType,
+    typeOf,
+    visit,
+} from '../src/reflection/reflection.js';
 import {
     assertType,
     Embedded,
@@ -63,6 +72,16 @@ test('type annotation', () => {
     const type = typeOf<Username>();
     const data = typeAnnotation.getType(type, 'myAnnotation');
     expect(data).toEqual(undefined);
+});
+
+test('type annotation non-flattening', () => {
+    type MyAnnotation = { __meta?: never & ['myAnnotation'] };
+    type Username = string & MyAnnotation;
+    const type = typeOf<Username | string>();
+    // we treat Annotation as unique types
+    assertType(type, ReflectionKind.union);
+    expect(type.types.length).toBe(2);
+    expect(stringifyType(type)).toBe('Username | string');
 });
 
 test('type annotation with option', () => {
