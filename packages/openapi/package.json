@@ -29,16 +29,16 @@
     "yaml": "2.8.0"
   },
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1",
-    "@deepkit/event": "^1.0.1",
-    "@deepkit/http": "^1.0.1",
-    "@deepkit/injector": "^1.0.1",
-    "@deepkit/type": "^1.0.1"
+    "@deepkit/core": "^1.0.5",
+    "@deepkit/event": "^1.0.8",
+    "@deepkit/http": "^1.0.9",
+    "@deepkit/injector": "1.0.8",
+    "@deepkit/type": "^1.0.8"
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.5",
     "@deepkit/event": "^1.0.8",
-    "@deepkit/http": "^1.0.1",
+    "@deepkit/http": "^1.0.9",
     "@deepkit/injector": "^1.0.8",
     "@deepkit/type": "^1.0.8",
     "@types/lodash": "4.17.17",
