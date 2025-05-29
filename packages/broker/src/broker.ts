@@ -217,20 +217,26 @@ export class BrokerQueueChannel<T> {
     }
 }
 
-export class RefCountedSubject<T> extends Subject<T> {
+export class BrokerBusSubject<T> extends Subject<T> {
     private refCount = 0;
 
-    constructor(protected onFirst: () => void, protected onLast: () => void, protected onPublish: (value: T) => void) {
+    constructor(
+        public handle: BrokerBusSubjectHandle,
+        protected onFirst: () => void,
+        protected onLast: () => void,
+        protected onPublish: (value: T) => void,
+    ) {
         super();
     }
 
     // @ts-ignore
     override subscribe(...args: Parameters<Subject<T>['subscribe']>): Subscription {
+        const sub = super.subscribe(...args);
+
         if (this.refCount++ === 0) {
             this.onFirst();
         }
 
-        const sub = super.subscribe(...args);
         sub.add(() => {
             if (--this.refCount === 0) {
                 this.onLast();
@@ -250,15 +256,15 @@ export class RefCountedSubject<T> extends Subject<T> {
 
 const subjectFinalizer = new FinalizationRegistry<{
     handle: BrokerBusSubjectHandle;
-    subjectRef: WeakRef<RefCountedSubject<unknown>>;
+    subjectRef: WeakRef<BrokerBusSubject<unknown>>;
 }>((handle) => {
     handle.handle.releaseSubject(handle.subjectRef);
 });
 
 class BrokerBusSubjectHandle {
-    protected subjects: WeakRef<RefCountedSubject<unknown>>[] = [];
-
+    protected subjects: WeakRef<BrokerBusSubject<unknown>>[] = [];
     protected releaseChannel?: Promise<Release | void>;
+    protected buffer: unknown[] = [];
 
     constructor(
         private channel: BrokerBusChannel<unknown>,
@@ -271,25 +277,65 @@ class BrokerBusSubjectHandle {
         return this.releaseChannel !== undefined;
     }
 
-    protected ensureSubscribed() {
+    /**
+     * Ensures the broker channel is actively subscribed and starts buffering messages.
+     * The messages will be replayed to the first subject subscriber.
+     *
+     * This method is useful when you need to make sure all events
+     * from this point forward are not lost, e.g. to synchronize
+     * a local state with broker data.
+     *
+     * @throws Error when the channel could not be subscribed to.
+     */
+    async ensureSubscribed(): Promise<void> {
         if (this.releaseChannel) return;
 
-        this.releaseChannel = this.channel.subscribe(value => {
+        const promise = this.releaseChannel = this.channel.subscribe(value => {
+            if (this.subjects.length === 0) {
+                this.buffer.push(value);
+                return;
+            }
             for (const subjectRef of this.subjects) {
                 const subject = subjectRef.deref();
                 if (subject) subject.next(value, false);
             }
-        }).catch((e) => {
-            this.errorHandler.subscribeFailed(this.channel.name, ensureError(e));
         });
+        await promise;
     }
 
-    createSubject(): RefCountedSubject<unknown> {
-        let subjectRef: WeakRef<RefCountedSubject<unknown>> | undefined = undefined;
-        const subject = new RefCountedSubject<unknown>(
+    /**
+     * Creates a new RefCountedSubject bound to this handle.
+     * The subject starts broker subscription on first observer,
+     * and automatically cleans up when no observers remain.
+     *
+     * Messages received before the first observer will be buffered
+     * and replayed.
+     *
+     * @example
+     * ```typescript
+     * const subject = handle.createSubject();
+     * subject.subscribe(value => console.log(value));
+     * subject.next("msg");
+     * ```
+     */
+    createSubject(): BrokerBusSubject<unknown> {
+        let subjectRef: WeakRef<BrokerBusSubject<unknown>> | undefined = undefined;
+        const subject = new BrokerBusSubject<unknown>(
+            this,
             () => {
                 this.subjects.push(subjectRef!);
-                this.ensureSubscribed();
+
+                if (this.buffer.length) {
+                    for (const value of this.buffer) {
+                        subject.next(value, false);
+                    }
+                    this.buffer = [];
+                }
+
+                // Implicit subscribing must not throw
+                this.ensureSubscribed().catch((e) => {
+                    this.errorHandler.subscribeFailed(this.channel.name, ensureError(e));
+                });
             },
             () => {
                 this.releaseSubject(subjectRef!);
@@ -306,7 +352,7 @@ class BrokerBusSubjectHandle {
         return subject;
     }
 
-    releaseSubject(subject: WeakRef<RefCountedSubject<unknown>>) {
+    releaseSubject(subject: WeakRef<BrokerBusSubject<unknown>>) {
         arrayRemoveItem(this.subjects, subject);
         if (this.subjects.length === 0) {
             this.releaseChannel?.then(release => {
@@ -348,21 +394,36 @@ export class BrokerBus {
         this.errorHandler = errorHandler ?? new BusBrokerErrorHandler(adapter.logger);
     }
 
-    public channel<T>(path: string, type?: ReceiveType<T>): BrokerBusChannel<T> {
+    /**
+     * Creates a broker channel handle for a given path and type.
+     *
+     * @param path Unique identifier of the broker channel.
+     * @param type Optional message type for type-safe handling.
+     */
+    channel<T>(path: string, type?: ReceiveType<T>): BrokerBusChannel<T> {
         type = resolveReceiveType(type);
         return new BrokerBusChannel(path, this.adapter, type);
     }
 
     /**
-     * Creates a Subject that automatically subscribes to the given channel,
-     * and unsubscribes when the subject is garbage collected.
+     * Creates a Subject for the given broker channel.
+     * Subscription to the broker is delayed until the first observer subscribes.
      *
-     * Calling .next() on the subject will publish the message to the channel.
+     * Calling `.next()` publishes a message to the broker and does not forward
+     * it to its observers immediately. Only messages from the broker are forwarded to observers.
+     * This is to ensure consistent behaviour with other broker subjects from the same path.
      *
-     * This is ignoring any errors that might happen when publishing the message,
-     * or when subscribing to the channel.
+     * @param path Unique broker path.
+     * @param type Optional type for strongly typed messages.
+     *
+     * @example
+     * ```typescript
+     * const subject = bus.subject<string>('updates');
+     * subject.subscribe(console.log);
+     * subject.next('hello');
+     * ```
      */
-    public subject<T>(path: string, type?: ReceiveType<T>): Subject<T> {
+    subject<T>(path: string, type?: ReceiveType<T>): Subject<T> {
         let handle = this.subjectHandles.get(path);
         if (!handle) {
             const resolvedType = resolveReceiveType(type);
@@ -372,6 +433,32 @@ export class BrokerBus {
             this.subjectHandles.set(path, handle);
         }
         return handle.createSubject() as Subject<T>;
+    }
+
+    /**
+     * Ensures the provided Subject is actively subscribed to the broker.
+     * This guarantees that all messages from this point forward will be buffered,
+     * and replayed to the first observer to avoid data loss.
+     *
+     * The subject unsubscribes from the broker automatically when all observers
+     * are gone. To make it active, you need to subscribe to it first or call `activateSubject`.
+     *
+     * @throws Error when the channel could not be subscribed to.
+     *
+     * @example
+     * ```typescript
+     * const subject = bus.subject<string>('updates');
+     * await bus.activateSubject(subject);
+     * subject.subscribe(value => {
+     *    // receives all messages from the time of activation
+     * });
+     * ```
+     */
+    async activateSubject<T extends Subject<any>>(subject: T): Promise<T> {
+        if (subject instanceof BrokerBusSubject) {
+            await subject.handle.ensureSubscribed();
+        }
+        return subject;
     }
 }
 

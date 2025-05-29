@@ -267,6 +267,23 @@ test('bus subject 3', async () => {
     expect(handles.size).toBe(0);
 });
 
+test('bus subject activation', async () => {
+    const bus = new BrokerBus(await adapterFactory());
+    type Event = string;
+    const caughtEvents: Event[] = [];
+
+    const subject1 = bus.subject<Event>('/events');
+    await bus.activateSubject(subject1);
+
+    const subject2 = bus.subject<Event>('/events');
+    subject2.next('a');
+    subject2.next('b');
+
+    const sub = subject1.subscribe(event => caughtEvents.push(event));
+    expect(caughtEvents).toEqual(['a', 'b']);
+    sub.unsubscribe();
+});
+
 test('bus subject injector', async () => {
     const bus = new BrokerBus(await adapterFactory());
 
