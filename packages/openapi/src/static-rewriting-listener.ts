@@ -3,7 +3,7 @@ import { dirname, join } from 'path';
 import send from 'send';
 import { stringify } from 'yaml';
 
-import { urlJoin } from '@deepkit/core';
+import { asyncOperation, urlJoin } from '@deepkit/core';
 import { eventDispatcher } from '@deepkit/event';
 import { HttpRequest, HttpResponse, RouteConfig, httpWorkflow, normalizeDirectory } from '@deepkit/http';
 
@@ -58,8 +58,7 @@ export class OpenApiStaticRewritingListener {
         `;
     }
 
-    // @ts-ignore
-    serve(path: string, request: HttpRequest, response: HttpResponse) {
+    async serve(path: string, request: HttpRequest, response: HttpResponse): Promise<void> {
         if (path.endsWith('/swagger-initializer.js')) {
             response.setHeader('content-type', 'application/javascript; charset=utf-8');
             response.end(this.swaggerInitializer);
@@ -74,7 +73,7 @@ export class OpenApiStaticRewritingListener {
             response.setHeader('content-type', 'text/yaml; charset=utf-8');
             response.end(s);
         } else {
-            return new Promise(async (resolve, reject) => {
+            await asyncOperation(async (resolve) => {
                 const relativePath = urlJoin('/', request.url!.substring(this.prefix.length));
                 if (relativePath === '') {
                     response.setHeader('location', this.prefix + 'index.html');
