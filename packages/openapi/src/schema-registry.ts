@@ -1,6 +1,5 @@
 import camelcase from 'camelcase';
 
-import { HttpBody, HttpBodyValidation, HttpQueries } from '@deepkit/http';
 import {
     ReflectionKind,
     Type,
@@ -39,8 +38,6 @@ export class SchemaRegistry {
         if (nameAnnotation?.options.kind === ReflectionKind.literal) {
             return nameAnnotation.options.literal as string;
         }
-
-        isSameType(t, typeOf<HttpQueries<any>>());
 
         // HttpQueries<T>
         if (
