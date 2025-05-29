@@ -28,7 +28,7 @@ import { deserializeBSON } from '../src/bson-deserializer.js';
 import { deserializeBSONWithoutOptimiser } from '../src/bson-parser.js';
 import { serializeBSON, serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
 
-(BigInt.prototype as any).toJSON = function () {
+(BigInt.prototype as any).toJSON = function() {
     return this.toString();
 };
 
@@ -49,7 +49,7 @@ export function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
     if (needsWrapper(type)) {
         const t: Type = copyAndSetParent({
             kind: ReflectionKind.objectLiteral,
-            types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }]
+            types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }],
         });
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
@@ -71,7 +71,7 @@ export function serializeToJson<T>(value: T | any, type?: ReceiveType<T>): T {
     if (needsWrapper(type)) {
         const t: Type = copyAndSetParent({
             kind: ReflectionKind.objectLiteral,
-            types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }]
+            types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }],
         });
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
@@ -91,7 +91,7 @@ export function deserializeFromJson<T>(value: any, type?: ReceiveType<T>): T {
     if (needsWrapper(type)) {
         const t: Type = copyAndSetParent({
             kind: ReflectionKind.objectLiteral,
-            types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }]
+            types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: { kind: ReflectionKind.never } }],
         });
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
@@ -335,7 +335,7 @@ test('model 1', () => {
             filter: undefined,
             skip: undefined,
             limit: undefined,
-            sort: undefined
+            sort: undefined,
         };
         expect(roundTrip<Model>(model as any)).toEqual(model);
     }
@@ -441,7 +441,7 @@ test('relation 2', () => {
                 name: 'Marc 1',
                 id: 3,
                 version: 0,
-            })
+            }),
         ];
 
         expect(roundTrip<User[]>(items)).toEqual(items);
@@ -520,7 +520,7 @@ test('partial returns the model at second level', () => {
 
     expect(roundTrip<Partial<Model>>({ id: 23, config: config } as any)).toEqual({
         id: 23,
-        config: { big: false, color: 'red' }
+        config: { big: false, color: 'red' },
     });
     expect(roundTrip<Partial<Model>>({ id: 23, config: config } as any).config).toBeInstanceOf(Config);
 });
@@ -671,7 +671,7 @@ test('omit circular reference 1', () => {
         another?: Model;
 
         constructor(
-            public id: number = 0
+            public id: number = 0,
         ) {
         }
     }
@@ -1011,10 +1011,10 @@ test('dynamic properties', () => {
         }
     }
 
-    const back1 = deserializeFromJson<A>({'~type': 'abc'});
+    const back1 = deserializeFromJson<A>({ '~type': 'abc' });
     expect(back1.getType()).toBe('abc');
 
-    const back2 = deserializeFromJson<A>({'type': 'abc'});
+    const back2 = deserializeFromJson<A>({ 'type': 'abc' });
     expect(back2.getType()).toBe('abc');
 });
 
@@ -1030,8 +1030,8 @@ test('class with statics', () => {
         }
     }
 
-    expect(deserializeFromJson<PilotId>({value: 34})).toEqual({value: 34});
-    expect(serializeToJson<PilotId>({value: 33})).toEqual({value: 33});
+    expect(deserializeFromJson<PilotId>({ value: 34 })).toEqual({ value: 34 });
+    expect(serializeToJson<PilotId>({ value: 33 })).toEqual({ value: 33 });
 });
 
 test('array with mongoid', () => {
@@ -1040,11 +1040,11 @@ test('array with mongoid', () => {
     }
 
     expect(deserializeFromJson<Model>({ references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }] })).toEqual({
-        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }]
+        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }],
     });
 
     expect(serializeToJson<Model>({ references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }] })).toEqual({
-        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }]
+        references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }],
     });
 });
 
@@ -1105,3 +1105,4 @@ test('constructor property not assigned as property', () => {
     });
     expect(back).toEqual(derived);
 });
+

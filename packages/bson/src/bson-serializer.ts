@@ -1431,7 +1431,7 @@ export class BSONBinarySerializer extends Serializer {
         //many deserializes support other types as well as fallback, we register them under specificality > 1
         this.bsonTypeGuards.register(1.5, ReflectionKind.undefined, bsonTypeGuardForBsonTypes([BSONType.NULL]));
         this.bsonTypeGuards.register(1.5, ReflectionKind.void, bsonTypeGuardForBsonTypes([BSONType.NULL]));
-        this.bsonTypeGuards.register(2, ReflectionKind.string, bsonTypeGuardForBsonTypes([BSONType.TIMESTAMP, BSONType.STRING, BSONType.NULL, BSONType.UNDEFINED, BSONType.BOOLEAN]));
+        this.bsonTypeGuards.register(2, ReflectionKind.string, bsonTypeGuardForBsonTypes([BSONType.TIMESTAMP, BSONType.STRING, BSONType.NULL, BSONType.UNDEFINED, BSONType.BOOLEAN, BSONType.OID, ...numberTypes]));
         this.bsonTypeGuards.register(2, ReflectionKind.number, bsonTypeGuardForBsonTypes([BSONType.TIMESTAMP, BSONType.STRING, BSONType.NULL, BSONType.UNDEFINED, BSONType.BOOLEAN, BSONType.BINARY]));
         this.bsonTypeGuards.register(2, ReflectionKind.bigint, bsonTypeGuardForBsonTypes([BSONType.TIMESTAMP, BSONType.STRING, BSONType.NULL, BSONType.UNDEFINED, BSONType.BOOLEAN]));
         this.bsonTypeGuards.register(2, ReflectionKind.boolean, bsonTypeGuardForBsonTypes([BSONType.TIMESTAMP, BSONType.STRING, BSONType.NULL, BSONType.UNDEFINED]));

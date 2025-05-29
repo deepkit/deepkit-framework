@@ -17,7 +17,6 @@ import {
     isNullable,
     isOptional,
     isPropertyMemberType,
-    mongoIdAnnotation,
     ReflectionClass,
     ReflectionKind,
     resolveTypeMembers,
@@ -129,11 +128,6 @@ export function deserializeString(type: Type, state: TemplateState) {
          } else if (state.elementType === ${BSONType.BINARY}) {
             ${state.setter} = state.parser.parseBinary();
         `);
-    } else if (mongoIdAnnotation.getFirst(type)) {
-        branches.push(`
-         } else if (state.elementType === ${BSONType.OID}) {
-            ${state.setter} = state.parser.parseOid();
-        `);
     }
 
     state.addCode(`
@@ -149,6 +143,8 @@ export function deserializeString(type: Type, state: TemplateState) {
             ${state.setter} = '' + state.parser.parseNumber();
         } else if (state.elementType === ${BSONType.LONG} || state.elementType === ${BSONType.TIMESTAMP}) {
             ${state.setter} = '' + state.parser.parseLong();
+         } else if (state.elementType === ${BSONType.OID}) {
+            ${state.setter} = state.parser.parseOid();
         ${branches.join('\n')}
         } else {
             ${throwInvalidBsonType(type, state)}

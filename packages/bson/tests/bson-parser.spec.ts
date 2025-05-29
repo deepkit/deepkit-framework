@@ -18,7 +18,7 @@ import {
     UUID,
 } from '@deepkit/type';
 import { getClassName } from '@deepkit/core';
-import { getBSONSerializer, serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
+import { getBSONSerializer, serializeBSON, serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
 import { BSONType } from '../src/utils';
 import { deserializeBSONWithoutOptimiser } from '../src/bson-parser';
 import { getBsonEncoder } from '../src/encoder.js';
@@ -323,10 +323,13 @@ test('basic uuid', () => {
     expect(deserializeBSON<{ v: UUID }>(serialize({ v: myUuid }))).toEqual({ v: myUuid });
     expect(() => deserializeBSON<{ v: UUID }>(serialize({ v: 'asd' }))).toThrow('Cannot convert asd to UUID');
     expect(() => deserializeBSON<{ v: UUID }>(serialize({ v: 0 }))).toThrow('Cannot convert 0 to UUID');
+    expect(deserializeBSON<{ v: string }>(serialize({ v: 23 }))).toEqual({ v: '23' });
 });
 
 test('basic mongoId', () => {
     const myObjectId = '507f1f77bcf86cd799439011';
+    const bson = serializeBSON<{v: MongoId}>({v: myObjectId});
+    expect(deserializeBSON<{ v: string }>(bson)).toEqual({ v: myObjectId });
     expect(deserializeBSON<{ v: MongoId }>(serialize({ v: myObjectId }))).toEqual({ v: myObjectId });
     expect(() => deserializeBSON<{ v: MongoId }>(serialize({ v: 'asd' }))).toThrow('Cannot convert asd to MongoId.');
     expect(() => deserializeBSON<{ v: MongoId }>(serialize({ v: 0 }))).toThrow('Cannot convert 0 to MongoId.');
@@ -336,6 +339,7 @@ test('basic union with string | uuid', () => {
     const myUuid = uuid();
     expect(deserializeBSON<{ v: string | UUID }>(serialize({ v: 'abc' }))).toEqual({ v: 'abc' });
     expect(deserializeBSON<{ v: string | UUID }>(serialize({ v: myUuid }))).toEqual({ v: myUuid });
+    expect(deserializeBSON<{ v: string }>(serialize({ v: 23 }))).toEqual({ v: '23' });
     expect(deserializeBSON<{ v: string | UUID }>(serialize({ v: 23 }))).toEqual({ v: '23' });
 });
 
@@ -406,7 +410,7 @@ test('basic array union', () => {
 
 test('basic two array union', () => {
     const value = ['a', 'b', false, 'c', true];
-    type MyType = (string | boolean)[] | number[];
+    type MyType = number[] | (string | boolean)[];
     expect(deserializeBSON<{ v: MyType }>(serialize({ v: value }))).toEqual({ v: value });
     expect(deserializeBSON<{ v: MyType }>(serialize({ v: [1, 2] }))).toEqual({ v: [1, 2] });
     expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: 123 }))).toThrow('Cannot convert bson type INT to MyType');
@@ -418,8 +422,7 @@ test('basic loosely array union', () => {
     type MyType = (string | boolean)[] | number;
     expect(deserializeBSON<{ v: MyType }>(serialize({ v: value }))).toEqual({ v: value });
 
-    //when resolving an complicated union, we do not use loosely type guards
-    expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: [1, 2] }))).toThrow('Cannot convert bson type ARRAY to MyType');
+    expect(deserializeBSON<{ v: MyType }>(serialize({ v: [1, 2] }))).toEqual({ v: ['1', '2'] });
 
     expect(deserializeBSON<{ v: MyType }>(serialize({ v: 123 }))).toEqual({ v: 123 });
     expect(() => deserializeBSON<{ v: MyType }>(serialize({ v: ['a', {}] }))).toThrow('Cannot convert bson type ARRAY to MyType');

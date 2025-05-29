@@ -1644,3 +1644,29 @@ test('AutoSerializer object', () => {
     expect(auto.size).toBe(4 + 2 + 1 + 6 + 1);
     expect(buffer2 === auto._buffer).toBe(true);
 });
+
+test('MongoId in union', () => {
+    type T = { v: (MongoId | string)[] };
+    {
+        const bson = getBSONSerializer<T>()({ v: ['507f191e810c19729de860ea', 'abc'] });
+        const back1 = deserialize(bson);
+        console.log(back1);
+        expect(back1.v[0]).toBeInstanceOf(OfficialObjectId);
+        expect(back1.v[1]).toBe('abc');
+
+        const back2 = deserializeBSONWithoutOptimiser(bson);
+        expect(back2.v).toEqual(['507f191e810c19729de860ea', 'abc']);
+
+        const back3 = getBSONDeserializer<T>()(bson);
+        expect(back3.v).toEqual(['507f191e810c19729de860ea', 'abc']);
+    }
+});
+
+test('string fallback from number', () => {
+    type T = { v: (MongoId | string)[] };
+    {
+        const bson = serialize({ v: [1, '2'] });
+        const back2 = getBSONDeserializer<T>()(bson);
+        expect(back2.v).toEqual(['1', '2']);
+    }
+});
