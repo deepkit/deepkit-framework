@@ -1,0 +1,66 @@
+{
+  "name": "@deepkit/openapi",
+  "version": "0.0.1",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cjs/index.d.ts",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "repository": "https://github.com/deepkit/deepkit-framework",
+  "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+  },
+  "dependencies": {
+    "camelcase": "8.0.0",
+    "lodash.clonedeepwith": "4.5.0",
+    "send": "1.2.0",
+    "swagger-ui-dist": "5.22.0",
+    "yaml": "2.8.0"
+  },
+  "peerDependencies": {
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/event": "^1.0.1",
+    "@deepkit/http": "^1.0.1",
+    "@deepkit/injector": "^1.0.1",
+    "@deepkit/type": "^1.0.1",
+    "@types/lodash.clonedeepwith": "4.5.9"
+  },
+  "devDependencies": {
+    "@deepkit/core": "^1.0.5",
+    "@deepkit/event": "^1.0.8",
+    "@deepkit/http": "^1.0.1",
+    "@deepkit/injector": "^1.0.8",
+    "@deepkit/type": "^1.0.8"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.(ts|tsx)$": [
+        "ts-jest",
+        {
+          "tsconfig": "<rootDir>/tsconfig.spec.json"
+        }
+      ]
+    },
+    "moduleNameMapper": {
+      "(.+)\\.js": "$1"
+    },
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ],
+    "setupFiles": [
+      "<rootDir>/../../jest-setup-runtime.js"
+    ]
+  }
+}
