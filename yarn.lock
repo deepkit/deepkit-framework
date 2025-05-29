@@ -4372,6 +4372,7 @@ __metadata:
     "@deepkit/type": "npm:^1.0.8"
     "@types/lodash": "npm:4.17.17"
     "@types/lodash.clonedeepwith": "npm:4.5.9"
+    "@types/send": "npm:0.17.4"
     camelcase: "npm:8.0.0"
     lodash.clonedeepwith: "npm:4.5.0"
     send: "npm:1.2.0"
@@ -10287,7 +10288,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/send@npm:*":
+"@types/send@npm:*, @types/send@npm:0.17.4":
   version: 0.17.4
   resolution: "@types/send@npm:0.17.4"
   dependencies:
