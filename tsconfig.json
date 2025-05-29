@@ -47,6 +47,9 @@
       "path": "packages/framework/tsconfig.json"
     },
     {
+      "path": "packages/openapi/tsconfig.json"
+    },
+    {
       "path": "packages/type/tsconfig.json"
     },
     {
