@@ -29,4 +29,8 @@ export class OpenAPIModule extends createModuleClass({
         configure(this.routeFilter);
         return this;
     }
+
+    process() {
+        this.addProvider({ provide: HttpRouteFilter, useValue: this.routeFilter });
+    }
 }
