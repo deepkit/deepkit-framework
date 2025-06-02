@@ -66,3 +66,13 @@ MongoDB adapter works a bit different since it's not based on SQL queries but on
 A command could be an aggregation pipeline, a find query, or a write command.
 
 ```typescript
+import { MongoDatabaseAdapter } from '@deepkit/mongo';
+
+const database = new Database(MongoDatabaseAdapter('mongodb://localhost:27017/mydatabase'));
+
+// first argument is entry point collection, second is the command's return type
+const items = await database.raw<ChatMessage, { count: number }>([
+    { $match: { roomId: 'room1' } },
+    { $group: { _id: '$userId', count: { $sum: 1 } } },
+]).find();
+```

@@ -69,7 +69,7 @@ class MongoRawCommandQuery<T> implements FindQuery<T> {
         }
     }
 
-    async findOneOrUndefined(): Promise<T> {
+    async findOneOrUndefined(): Promise<T | undefined> {
         try {
             const res = await this.client.execute(this.command);
             if (isArray(res)) return res[0];
