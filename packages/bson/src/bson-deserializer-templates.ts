@@ -87,7 +87,7 @@ const numberParsers = createParserLookup(() => 0, [
 export function deserializeNumber(type: Type, state: TemplateState) {
     state.setContext({ numberParsers });
     state.addCode(`
-        ${state.setter} = numberParsers[state.elementType](state.parser);
+        ${state.setter} = numberParsers[state.elementType](state.parser, state.elementType);
         if (isNaN(${state.setter})) {
             ${throwInvalidBsonType(type, state)}
         }
@@ -116,7 +116,7 @@ export function deserializeBigInt(type: Type, state: TemplateState) {
     }
 
     state.addCode(`
-    ${state.setter} = ${lookup}[state.elementType](state.parser);
+    ${state.setter} = ${lookup}[state.elementType](state.parser, state.elementType);
     `);
 }
 
@@ -196,9 +196,16 @@ export function deserializeUndefined(type: Type, state: TemplateState) {
     `);
 }
 
-type Parse = (parser: BaseParser) => any;
+type Parse = (parser: BaseParser, elementType: BSONType) => any;
 
-function createParserLookup(defaultParse: Parse, parsers: [elementType: BSONType, fn: Parse][]): Parse[] {
+/**
+ * @note make sure any user of this code is tested in `createParserLookup from invalid object`
+ */
+function createParserLookup(defaultReturn: () => any, parsers: [elementType: BSONType, fn: Parse][]): Parse[] {
+    const defaultParse = function(parser: BaseParser, elementType: BSONType) {
+        seekElementSize(elementType, parser);
+        return defaultReturn();
+    };
     const result = [
         defaultParse, defaultParse, defaultParse, defaultParse, defaultParse,
         defaultParse, defaultParse, defaultParse, defaultParse, defaultParse,
@@ -211,7 +218,7 @@ function createParserLookup(defaultParse: Parse, parsers: [elementType: BSONType
     return result;
 }
 
-const booleanParsers = createParserLookup(() => 0, [
+const booleanParsers = createParserLookup(() => false, [
     [BSONType.BOOLEAN, parser => parser.parseBoolean()],
     [BSONType.NULL, parser => 0],
     [BSONType.UNDEFINED, parser => 0],
@@ -225,7 +232,7 @@ const booleanParsers = createParserLookup(() => 0, [
 export function deserializeBoolean(type: Type, state: TemplateState) {
     state.setContext({ booleanParsers });
     state.addCode(`
-        ${state.setter} = booleanParsers[state.elementType](state.parser);
+        ${state.setter} = booleanParsers[state.elementType](state.parser, state.elementType);
     `);
 }
 

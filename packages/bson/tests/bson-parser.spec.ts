@@ -328,7 +328,7 @@ test('basic uuid', () => {
 
 test('basic mongoId', () => {
     const myObjectId = '507f1f77bcf86cd799439011';
-    const bson = serializeBSON<{v: MongoId}>({v: myObjectId});
+    const bson = serializeBSON<{ v: MongoId }>({ v: myObjectId });
     expect(deserializeBSON<{ v: string }>(bson)).toEqual({ v: myObjectId });
     expect(deserializeBSON<{ v: MongoId }>(serialize({ v: myObjectId }))).toEqual({ v: myObjectId });
     expect(() => deserializeBSON<{ v: MongoId }>(serialize({ v: 'asd' }))).toThrow('Cannot convert asd to MongoId.');
@@ -871,4 +871,11 @@ test('Encoder', () => {
         const bson = serializeBSONWithoutOptimiser({ v: 'b' });
         expect(() => encoder.decode(bson)).toThrow('Min length is 3');
     }
+});
+
+test('createParserLookup from invalid object', () => {
+    const bson = serializeBSONWithoutOptimiser({ v: { a: 1 } });
+    expect(deserializeBSON<{ v: number }>(bson).v).toEqual(0);
+    expect(deserializeBSON<{ v: bigint }>(bson).v).toEqual(BigInt(0));
+    expect(deserializeBSON<{ v: boolean }>(bson).v).toEqual(false);
 });
