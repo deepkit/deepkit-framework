@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.11](https://github.com/deepkit/deepkit-framework/compare/v1.0.10...v1.0.11) (2025-06-02)
+
+### Bug Fixes
+
+- **mongo:** raw command return type of findOneOrUndefined ([9cc14ae](https://github.com/deepkit/deepkit-framework/commit/9cc14ae10755627a083cd2fd21e507876fab5459))
+
 ## [1.0.9](https://github.com/deepkit/deepkit-framework/compare/v1.0.8...v1.0.9) (2025-05-23)
 
 ### Bug Fixes

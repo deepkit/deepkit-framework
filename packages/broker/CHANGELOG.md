@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.11](https://github.com/deepkit/deepkit-framework/compare/v1.0.10...v1.0.11) (2025-06-02)
+
+### Bug Fixes
+
+- **broker:** issue with wrongly intercepting Subject next and publish ([b82b334](https://github.com/deepkit/deepkit-framework/commit/b82b334e50e7e67cf25edd51f05c5f9a313dcf89))
+
+### Features
+
+- **broker:** add BrokerBus.activateSubject(Subject) to manually subscribe and buffer a bus subject to the broker server ([8ce5a70](https://github.com/deepkit/deepkit-framework/commit/8ce5a70ce30743f528aa844fc50b188b3a01812b))
+
 ## [1.0.10](https://github.com/deepkit/deepkit-framework/compare/v1.0.9...v1.0.10) (2025-05-24)
 
 ### Features

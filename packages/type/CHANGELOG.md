@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.11](https://github.com/deepkit/deepkit-framework/compare/v1.0.10...v1.0.11) (2025-06-02)
+
+### Bug Fixes
+
+- **type:** don't flatten union members that are annotated ([9f83f6c](https://github.com/deepkit/deepkit-framework/commit/9f83f6cf12afbbbe031d82ab6e4ac9a5dd049cd7))
+
 ## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
 
 **Note:** Version bump only for package @deepkit/type

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.11](https://github.com/deepkit/deepkit-framework/compare/v1.0.10...v1.0.11) (2025-06-02)
+
+### Bug Fixes
+
+- **injector:** ensure transient context is reset to previous one to maintain old state ([822314d](https://github.com/deepkit/deepkit-framework/commit/822314d873e5df0a67658a0fc4d6662026405da8)), closes [#651](https://github.com/deepkit/deepkit-framework/issues/651)
+- **injector:** make sure Inject<T> providers are not injected twice ([8ae437d](https://github.com/deepkit/deepkit-framework/commit/8ae437d6b412abfcf74d728290c6b0948b8bae88)), closes [#651](https://github.com/deepkit/deepkit-framework/issues/651)
+
 ## [1.0.8](https://github.com/deepkit/deepkit-framework/compare/v1.0.7...v1.0.8) (2025-05-20)
 
 **Note:** Version bump only for package @deepkit/injector

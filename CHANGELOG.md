@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.11](https://github.com/deepkit/deepkit-framework/compare/v1.0.10...v1.0.11) (2025-06-02)
+
+### Bug Fixes
+
+- **broker:** issue with wrongly intercepting Subject next and publish ([b82b334](https://github.com/deepkit/deepkit-framework/commit/b82b334e50e7e67cf25edd51f05c5f9a313dcf89))
+- **injector:** ensure transient context is reset to previous one to maintain old state ([822314d](https://github.com/deepkit/deepkit-framework/commit/822314d873e5df0a67658a0fc4d6662026405da8)), closes [#651](https://github.com/deepkit/deepkit-framework/issues/651)
+- **injector:** make sure Inject<T> providers are not injected twice ([8ae437d](https://github.com/deepkit/deepkit-framework/commit/8ae437d6b412abfcf74d728290c6b0948b8bae88)), closes [#651](https://github.com/deepkit/deepkit-framework/issues/651)
+- **mongo:** raw command return type of findOneOrUndefined ([9cc14ae](https://github.com/deepkit/deepkit-framework/commit/9cc14ae10755627a083cd2fd21e507876fab5459))
+- **type:** don't flatten union members that are annotated ([9f83f6c](https://github.com/deepkit/deepkit-framework/commit/9f83f6cf12afbbbe031d82ab6e4ac9a5dd049cd7))
+
+### Features
+
+- **broker:** add BrokerBus.activateSubject(Subject) to manually subscribe and buffer a bus subject to the broker server ([8ce5a70](https://github.com/deepkit/deepkit-framework/commit/8ce5a70ce30743f528aa844fc50b188b3a01812b))
+- **bson:** support deserialization of OID and all number types to string as fallback union member matcher ([83020c2](https://github.com/deepkit/deepkit-framework/commit/83020c24dd89a711f5719175692f122f8f8308c6))
+
 ## [1.0.10](https://github.com/deepkit/deepkit-framework/compare/v1.0.9...v1.0.10) (2025-05-24)
 
 ### Bug Fixes

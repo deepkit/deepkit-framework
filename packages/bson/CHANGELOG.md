@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.11](https://github.com/deepkit/deepkit-framework/compare/v1.0.10...v1.0.11) (2025-06-02)
+
+### Features
+
+- **bson:** support deserialization of OID and all number types to string as fallback union member matcher ([83020c2](https://github.com/deepkit/deepkit-framework/commit/83020c24dd89a711f5719175692f122f8f8308c6))
+
 ## [1.0.9](https://github.com/deepkit/deepkit-framework/compare/v1.0.8...v1.0.9) (2025-05-23)
 
 ### Bug Fixes
