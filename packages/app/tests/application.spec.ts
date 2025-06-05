@@ -66,8 +66,8 @@ test('loadConfigFromEnvVariable', async () => {
     process.env.APP_CONFIG = JSON.stringify({
         token: 'changed3',
         base: {
-            db: 'changed4'
-        }
+            db: 'changed4',
+        },
     });
     const app = new App({ config: Config, providers: [Service], imports: [new BaseModule] });
     app.loadConfigFromEnvVariable('APP_CONFIG');
@@ -153,7 +153,7 @@ test('required value can be set via env or setupConfig', async () => {
 
     {
         const app = new App({
-            imports: [new BaseModule({ log: true })]
+            imports: [new BaseModule({ log: true })],
         });
         app.serviceContainer.process();
     }
@@ -162,7 +162,7 @@ test('required value can be set via env or setupConfig', async () => {
         const app = new App({
             imports: [new BaseModule().setupConfig((module, config) => {
                 config.log = true;
-            })]
+            })],
         });
         app.serviceContainer.process();
     }
@@ -305,8 +305,8 @@ test('listen() with dependencies', async () => {
                 if (!(service instanceof MyService)) throw new Error('Got no service');
                 expect(env).toBe('dev');
                 gotEvents.push(event.data.id);
-            })
-        ]
+            }),
+        ],
     });
 
     const app = new App({ imports: [myModule] });
@@ -325,7 +325,7 @@ test('non-forRoot module with fn listeners works without exports', async () => {
     const myModule = new AppModule({}, {
         listeners: [myEvent.listen(() => {
             executed = true;
-        })]
+        })],
     });
     const app = new App({ imports: [myModule] });
     await app.get(EventDispatcher).dispatch(myEvent, new BaseEvent());
@@ -380,7 +380,7 @@ test('cli controllers in sub modules are in correct injector context', async () 
         const app = new App({
             imports: [new MyModule().setup((module) => {
                 module.addProvider({ provide: 'onlyInCLI', scope: 'cli', useValue: false });
-            })]
+            })],
         });
         const res = await app.execute(['test']);
         expect(res).toBe(10);
@@ -408,14 +408,14 @@ test('config deps and @inject() in FactoryProvider', async () => {
             {
                 provide: MyClass, useFactory(config: MyClassConfig) {
                     return new MyClass(config.host);
-                }
+                },
             },
             {
                 provide: 'configHost', useFactory(host: Config['host']) {
                     return host;
-                }
+                },
             },
-        ]
+        ],
     });
 
     {
@@ -431,9 +431,9 @@ test('config deps and @inject() in FactoryProvider', async () => {
                 {
                     provide: 'undefinedDep', useFactory(host: string) {
                         return host;
-                    }
+                    },
                 },
-            ]
+            ],
         });
         const app = App.fromModule(module);
         expect(() => app.get('undefinedDep')).toThrow(`Undefined dependency "host: string" of useFactory(?). Type has no provider`);
@@ -503,7 +503,7 @@ test('service container hooks', () => {
 
         const baseModule = new AppModule({}, {
             controllers: [Controller],
-            providers: [Service]
+            providers: [Service],
         });
 
         const m = new MyModule;
@@ -524,8 +524,8 @@ test('App.get generic', () => {
             provide: 'service', useClass: class {
                 add() {
                 }
-            }
-        }]
+            },
+        }],
     });
 
     const service = app.get<Service>('service' as any);
@@ -548,7 +548,7 @@ test('event dispatch', () => {
     }
 
     const app = new App({
-        providers: [Logger]
+        providers: [Logger],
     });
 
     const UserAddedEvent = new EventToken<DataEvent<User>>('user-added');

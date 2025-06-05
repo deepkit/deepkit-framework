@@ -10,7 +10,7 @@
 
 import { ClassType, ExtractClassType, isFunction, isObject, pathBasename, setPathValue } from '@deepkit/core';
 import { ConfigLoader, ServiceContainer } from './service-container.js';
-import { ConfigureProviderOptions, injectedFunction, InjectorContext, ResolveToken, Token } from '@deepkit/injector';
+import { ConfigureProviderOptions, injectedFunction, InjectorContext, ResolveToken, Scope, Token } from '@deepkit/injector';
 import { AppModule, RootModuleDefinition } from './module.js';
 import { EnvConfiguration } from './configuration.js';
 import {
@@ -359,8 +359,16 @@ export class App<T extends RootModuleDefinition> {
         if (exitCode > 0) process.exit(exitCode);
     }
 
-    get<T>(token?: ReceiveType<T> | Token<T>, moduleOrClass?: AppModule<any> | ClassType<AppModule<any>>): ResolveToken<T> {
-        return this.serviceContainer.getInjector(moduleOrClass || this.appModule).get(token) as ResolveToken<T>;
+    get<T>(
+        token?: ReceiveType<T> | Token<T>,
+        moduleOrClass?: AppModule<any> | ClassType<AppModule<any>>,
+        scope?: Scope,
+    ): ResolveToken<T> {
+        return this.serviceContainer.getInjector(moduleOrClass || this.appModule).get(token, scope) as ResolveToken<T>;
+    }
+
+    getInjector<T>(moduleOrClass?: AppModule<any> | ClassType<AppModule<any>>) {
+        return this.serviceContainer.getInjector(moduleOrClass || this.appModule);
     }
 
     public getInjectorContext(): InjectorContext {
@@ -379,11 +387,12 @@ export class App<T extends RootModuleDefinition> {
         const eventDispatcher = this.get(EventDispatcher);
         const logger = this.get(Logger);
 
+        function unhandledRejectionHandler(error: any) {
+            logger.error('unhandledRejection', error);
+        }
+
         if ('undefined' !== typeof process) {
-            process.on('unhandledRejection', error => {
-                // Will print "unhandledRejection err is not defined"
-                logger.error('unhandledRejection', error);
-            });
+            process.on('unhandledRejection', unhandledRejectionHandler);
         }
 
         const scopedInjectorContext = this.getInjectorContext().createChildScope('cli');
@@ -395,11 +404,17 @@ export class App<T extends RootModuleDefinition> {
             bin = `${binary} ${file}`;
         }
 
-        return await executeCommand(
-            bin, argv || getArgsFromEnvironment(),
-            eventDispatcher, logger,
-            scopedInjectorContext,
-            this.serviceContainer.cliControllerRegistry.controllers,
-        );
+        try {
+            return await executeCommand(
+                bin, argv || getArgsFromEnvironment(),
+                eventDispatcher, logger,
+                scopedInjectorContext,
+                this.serviceContainer.cliControllerRegistry.controllers,
+            );
+        } finally {
+            if ('undefined' !== typeof process) {
+                process.removeListener('unhandledRejection', unhandledRejectionHandler);
+            }
+        }
     }
 }

@@ -4,6 +4,7 @@ import { provide } from '@deepkit/injector';
 import { ServiceContainer } from '../src/service-container.js';
 import { ClassType } from '@deepkit/core';
 import { AppModule, createModuleClass } from '../src/module.js';
+import { App } from '../src/app.js';
 
 class MyModuleConfig {
     param1!: string & MinLength<5>;
@@ -425,4 +426,33 @@ test('functional modules', () => {
     const serviceContainer = new ServiceContainer(module);
 
     expect(serviceContainer.getInjectorContext().get('title')).toBe('Peter');
+});
+
+test('module infer config from extend', async () => {
+    class MyConfig {
+        host: string = '';
+    }
+
+    class Server {
+        constructor(public host: MyConfig['host']) {
+        }
+    }
+
+    class MyModule extends AppModule<MyConfig> {
+        process() {
+            this.addProvider(Server);
+            this.addExport(Server);
+        }
+    }
+
+    const app = new App({
+        imports: [
+            new MyModule({ host: 'localhost' }),
+        ],
+    });
+
+    expect(app.getInjector(MyModule).module.config).toEqual({ host: 'localhost' });
+
+    const server = app.get(Server);
+    expect(server.host).toBe('localhost');
 });

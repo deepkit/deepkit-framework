@@ -70,21 +70,20 @@ import { isWithDeferredDecorators } from '../decorator.js';
 import { SerializedTypes, serializeType } from '../type-serialization.js';
 
 /**
- * Receives the runtime type of template argument.
+ * Receives the runtime type of template argument or runtime symbols like
+ * class references, functions, or packed types.
  *
  * Use
  *
  * ```typescript
- *
  * function f<T>(type?: ReceiveType<T>): Type {
  *     return resolveReceiveType(type);
  * }
- *
  * ```
  */
 export type ReceiveType<T> = Packed | Type | ClassType<T>;
 
-export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractClassType | ReflectionClass<any>): Type {
+export function resolveReceiveType(type?: Packed | Type | Function | ClassType | AbstractClassType | ReflectionClass<any>): Type {
     if (!type) throw new NoTypeReceived();
     let typeFn: Function | undefined = undefined;
 
@@ -118,6 +117,7 @@ export function resolveReceiveType(type?: Packed | Type | ClassType | AbstractCl
         }
         return resolveRuntimeType(type) as Type;
     }
+    if (isFunction(type)) return resolveRuntimeType(type) as Type;
     return resolvePacked(type, undefined, { reuseCached: true });
 }
 

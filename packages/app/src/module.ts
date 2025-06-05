@@ -12,10 +12,17 @@ import { InjectorModule, InjectorModuleConfig, NormalizedProvider, ProviderWithS
 import { AbstractClassType, ClassType, CustomError, ExtractClassType, isClass } from '@deepkit/core';
 import { EventListener, EventToken } from '@deepkit/event';
 import { WorkflowDefinition } from '@deepkit/workflow';
-import { getPartialSerializeFunction, reflect, ReflectionFunction, ReflectionMethod, serializer, Type, TypeClass } from '@deepkit/type';
+import {
+    getPartialSerializeFunction,
+    ReflectionFunction,
+    ReflectionKind,
+    ReflectionMethod,
+    resolveReceiveType,
+    serializer,
+    Type,
+    TypeClass,
+} from '@deepkit/type';
 import { ControllerConfig } from './service-container.js';
-
-export type DefaultObject<T> = T extends undefined ? {} : T;
 
 export interface MiddlewareConfig {
     getClassTypes(): ClassType[];
@@ -214,7 +221,7 @@ export interface AppModuleClass<C extends InjectorModuleConfig> {
  * });
  * ```
  */
-export function createModuleClass<C extends InjectorModuleConfig>(options: CreateModuleDefinition & { config?: ClassType<C>}): AppModuleClass<C> {
+export function createModuleClass<C extends InjectorModuleConfig>(options: CreateModuleDefinition & { config?: ClassType<C> }): AppModuleClass<C> {
     /** @reflection never */
     return class AnonAppModule extends AppModule<any> {
         constructor(config?: any) {
@@ -246,6 +253,38 @@ export function createModule<T extends CreateModuleDefinition>(options: T): AppM
 }
 
 export type ListenerType = EventListener | ClassType;
+
+function extractConfigFromModuleClass(moduleClass: ClassType): ClassType | undefined {
+    if (moduleClass === AppModule) {
+        // This is not supported right now `new AppModule<MyConfig>()`
+        const type = resolveReceiveType(moduleClass);
+        if (type.kind !== ReflectionKind.class) return;
+        if (AppModule.isPrototypeOf(type.classType) || type.classType === AppModule) {
+            // This is the AppModule class itself, not a module extending it.
+            return;
+        }
+        return type.classType;
+    }
+    let current: ClassType | undefined = moduleClass;
+    // Find classType that extends AppModule
+    while (current) {
+        const parent = Object.getPrototypeOf(current) as ClassType | undefined;
+        if (parent === AppModule) {
+            const type = resolveReceiveType(current);
+            if (type.kind !== ReflectionKind.class) return;
+            const extendArgument = type.extendsArguments?.[0];
+            if (!extendArgument) return;
+            if (extendArgument.kind !== ReflectionKind.class) return;
+            if (AppModule.isPrototypeOf(extendArgument.classType) || extendArgument.classType === AppModule) {
+                // This is the AppModule class itself, not a module extending it.
+                return;
+            }
+            return extendArgument.classType;
+        }
+        current = parent;
+    }
+    return;
+}
 
 /**
  * The AppModule is the base class for all modules.
@@ -300,13 +339,11 @@ export class AppModule<C extends InjectorModuleConfig = any> extends InjectorMod
 
         if (this.options.config) {
             this.setConfigDefinition(this.options.config);
-            // this.configDefinition = this.options.config;
-            //apply defaults
-            // const defaults: any = jsonSerializer.for(this.options.config.schema).deserialize({});
-            // //we iterate over so we have the name available on the object, even if its undefined
-            // for (const property of this.options.config.schema.getProperties()) {
-            //     (this.config as any)[property.name] = defaults[property.name];
-            // }
+        } else {
+            const configFromClass = extractConfigFromModuleClass(this.constructor as ClassType);
+            if (configFromClass) {
+                this.setConfigDefinition(configFromClass);
+            }
         }
         this.configure(config as Partial<C>);
     }
@@ -324,6 +361,10 @@ export class AppModule<C extends InjectorModuleConfig = any> extends InjectorMod
     /**
      * When all configuration loaders have been loaded, this method is called.
      * It allows to further manipulate the module state depending on the final config.
+     * Possible use-cases:
+     *  - Add more providers depending on the configuration.
+     *  - Change the module imports depending on the configuration.
+     *  - Change provider setup via this.configureProvider<Provider>(provider => {}) depending on the configuration.
      */
     process() {
 
@@ -461,8 +502,8 @@ export class AppModule<C extends InjectorModuleConfig = any> extends InjectorMod
      * Sets configured values.
      */
     configure(config: Partial<C>): this {
-        if (this.options.config) {
-            const configNormalized = getPartialSerializeFunction(reflect(this.options.config) as TypeClass, serializer.deserializeRegistry)(config);
+        if (this.configDefinition) {
+            const configNormalized = getPartialSerializeFunction(resolveReceiveType(this.configDefinition) as TypeClass, serializer.deserializeRegistry)(config);
             Object.assign(this.config, configNormalized);
         }
 
