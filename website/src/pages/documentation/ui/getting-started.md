@@ -58,7 +58,6 @@ import {
     DuiAppModule,
     DuiDialogModule,
     DuiSliderModule,
-    DuiEmojiModule,
 } from '@deepkit/desktop-ui';
 
 @NgModule({
@@ -85,7 +84,6 @@ import {
         DuiTableModule,
         DuiButtonModule,
         DuiDialogModule,
-        DuiEmojiModule,
         DuiSliderModule,
     ],
     providers: [],

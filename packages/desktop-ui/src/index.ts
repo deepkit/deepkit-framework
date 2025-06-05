@@ -27,7 +27,6 @@ export * from './components/table';
 export * from './components/splitter';
 export * from './components/dialog';
 export * from './components/core';
-export * from './components/emoji';
 export * from './components/slider';
 export * from './components/indicator';
 export * from './components/tabs';
