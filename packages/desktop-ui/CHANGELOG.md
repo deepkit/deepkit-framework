@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.12](https://github.com/deepkit/deepkit-framework/compare/v1.0.11...v1.0.12) (2025-06-05)
+
+### Bug Fixes
+
+- **bson:** ensure to seek over invalid elements in parser element lookup ([378a922](https://github.com/deepkit/deepkit-framework/commit/378a922c12cebdc93944a527892c33c79538f064))
+
 ## [1.0.11](https://github.com/deepkit/deepkit-framework/compare/v1.0.10...v1.0.11) (2025-06-02)
 
 **Note:** Version bump only for package @deepkit/desktop-ui

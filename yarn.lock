@@ -3651,8 +3651,8 @@ __metadata:
   resolution: "@deepkit/angular-ssr@workspace:packages/angular-ssr"
   dependencies:
     "@angular/ssr": "npm:^19.1.7"
-    "@deepkit/app": "npm:^1.0.11"
-    "@deepkit/http": "npm:^1.0.11"
+    "@deepkit/app": "npm:^1.0.12"
+    "@deepkit/http": "npm:^1.0.12"
   peerDependencies:
     "@angular/ssr": ^19.1.6
     "@deepkit/app": ^1.0.1
@@ -3660,16 +3660,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/api-console-api@npm:^1.0.11, @deepkit/api-console-api@workspace:packages/api-console-api":
+"@deepkit/api-console-api@npm:^1.0.12, @deepkit/api-console-api@workspace:packages/api-console-api":
   version: 0.0.0-use.local
   resolution: "@deepkit/api-console-api@workspace:packages/api-console-api"
   dependencies:
-    "@deepkit/bson": "npm:^1.0.11"
+    "@deepkit/bson": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/rpc": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/rpc": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
   peerDependencies:
     "@deepkit/bson": ^1.0.1
     "@deepkit/core": ^1.0.1
@@ -3680,7 +3680,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/api-console-gui@npm:^1.0.11, @deepkit/api-console-gui@workspace:packages/api-console-gui":
+"@deepkit/api-console-gui@npm:^1.0.12, @deepkit/api-console-gui@workspace:packages/api-console-gui":
   version: 0.0.0-use.local
   resolution: "@deepkit/api-console-gui@workspace:packages/api-console-gui"
   dependencies:
@@ -3696,17 +3696,17 @@ __metadata:
     "@angular/platform-browser": "npm:^19.1.5"
     "@angular/platform-browser-dynamic": "npm:^19.1.5"
     "@angular/router": "npm:^19.1.5"
-    "@deepkit/api-console-api": "npm:^1.0.11"
-    "@deepkit/bson": "npm:^1.0.11"
+    "@deepkit/api-console-api": "npm:^1.0.12"
+    "@deepkit/bson": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
     "@deepkit/core-rxjs": "npm:^1.0.9"
-    "@deepkit/desktop-ui": "npm:^1.0.11"
-    "@deepkit/event": "npm:^1.0.11"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/rpc": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/desktop-ui": "npm:^1.0.12"
+    "@deepkit/event": "npm:^1.0.12"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/rpc": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     "@deepkit/type-compiler": "npm:^1.0.8"
     "@deepkit/ui-library": "npm:^1.0.1"
     "@types/jasmine": "npm:~4.3.0"
@@ -3728,21 +3728,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/api-console-module@npm:^1.0.1, @deepkit/api-console-module@npm:^1.0.11, @deepkit/api-console-module@workspace:packages/api-console-module":
+"@deepkit/api-console-module@npm:^1.0.1, @deepkit/api-console-module@npm:^1.0.12, @deepkit/api-console-module@workspace:packages/api-console-module":
   version: 0.0.0-use.local
   resolution: "@deepkit/api-console-module@workspace:packages/api-console-module"
   dependencies:
-    "@deepkit/api-console-api": "npm:^1.0.11"
-    "@deepkit/api-console-gui": "npm:^1.0.11"
-    "@deepkit/app": "npm:^1.0.11"
-    "@deepkit/broker": "npm:^1.0.11"
-    "@deepkit/bson": "npm:^1.0.11"
+    "@deepkit/api-console-api": "npm:^1.0.12"
+    "@deepkit/api-console-gui": "npm:^1.0.12"
+    "@deepkit/app": "npm:^1.0.12"
+    "@deepkit/broker": "npm:^1.0.12"
+    "@deepkit/bson": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/http": "npm:^1.0.11"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/rpc": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/http": "npm:^1.0.12"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/rpc": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     rxjs: "npm:~7.8.0"
   peerDependencies:
     "@deepkit/app": ^1.0.1
@@ -3757,17 +3757,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/app@npm:^1.0.1, @deepkit/app@npm:^1.0.11, @deepkit/app@workspace:packages/app":
+"@deepkit/app@npm:^1.0.1, @deepkit/app@npm:^1.0.12, @deepkit/app@workspace:packages/app":
   version: 0.0.0-use.local
   resolution: "@deepkit/app@workspace:packages/app"
   dependencies:
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/event": "npm:^1.0.11"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
-    "@deepkit/workflow": "npm:^1.0.11"
+    "@deepkit/event": "npm:^1.0.12"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
+    "@deepkit/workflow": "npm:^1.0.12"
     conditional-type-checks: "npm:^1.0.5"
   peerDependencies:
     "@deepkit/core": ^1.0.1
@@ -3786,17 +3786,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/broker@npm:^1.0.1, @deepkit/broker@npm:^1.0.11, @deepkit/broker@workspace:packages/broker":
+"@deepkit/broker@npm:^1.0.1, @deepkit/broker@npm:^1.0.12, @deepkit/broker@workspace:packages/broker":
   version: 0.0.0-use.local
   resolution: "@deepkit/broker@workspace:packages/broker"
   dependencies:
-    "@deepkit/bson": "npm:^1.0.11"
+    "@deepkit/bson": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
     "@deepkit/core-rxjs": "npm:^1.0.9"
-    "@deepkit/event": "npm:^1.0.11"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/rpc": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/event": "npm:^1.0.12"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/rpc": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     "@lukeed/ms": "npm:^2.0.1"
     js-xxhash: "npm:3.0.1"
     rxjs: "npm:*"
@@ -3811,12 +3811,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/bson@npm:^1.0.1, @deepkit/bson@npm:^1.0.11, @deepkit/bson@npm:^1.0.2, @deepkit/bson@workspace:packages/bson":
+"@deepkit/bson@npm:^1.0.1, @deepkit/bson@npm:^1.0.12, @deepkit/bson@npm:^1.0.2, @deepkit/bson@workspace:packages/bson":
   version: 0.0.0-use.local
   resolution: "@deepkit/bson@workspace:packages/bson"
   dependencies:
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/type": "npm:^1.0.12"
     "@types/bson": "npm:^4.0.3"
     "@types/node": "npm:^22.13.1"
     bson: "npm:^4.4.0"
@@ -3865,10 +3865,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@deepkit/create-app@workspace:packages/create-app"
   dependencies:
-    "@deepkit/app": "npm:^1.0.11"
+    "@deepkit/app": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     "@types/fs-extra": "npm:^9.0.13"
     fs-extra: "npm:^9.1.0"
   bin:
@@ -3876,7 +3876,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/desktop-ui@npm:^1.0.1, @deepkit/desktop-ui@npm:^1.0.11, @deepkit/desktop-ui@npm:^1.0.2, @deepkit/desktop-ui@workspace:packages/desktop-ui":
+"@deepkit/desktop-ui@npm:^1.0.1, @deepkit/desktop-ui@npm:^1.0.12, @deepkit/desktop-ui@npm:^1.0.2, @deepkit/desktop-ui@workspace:packages/desktop-ui":
   version: 0.0.0-use.local
   resolution: "@deepkit/desktop-ui@workspace:packages/desktop-ui"
   dependencies:
@@ -3894,8 +3894,8 @@ __metadata:
     "@angular/router": "npm:^19.1.5"
     "@deepkit/core": "npm:^1.0.5"
     "@deepkit/core-rxjs": "npm:^1.0.9"
-    "@deepkit/event": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/event": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     "@types/fs-extra": "npm:^8.0.1"
     "@types/hammerjs": "npm:^2.0.36"
     "@types/node": "npm:^22.13.1"
@@ -3968,13 +3968,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/event@npm:^1.0.1, @deepkit/event@npm:^1.0.11, @deepkit/event@npm:^1.0.2, @deepkit/event@workspace:packages/event":
+"@deepkit/event@npm:^1.0.1, @deepkit/event@npm:^1.0.12, @deepkit/event@npm:^1.0.2, @deepkit/event@workspace:packages/event":
   version: 0.0.0-use.local
   resolution: "@deepkit/event@workspace:packages/event"
   dependencies:
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
   peerDependencies:
     "@deepkit/core": ^1.0.1
     "@deepkit/injector": ^1.0.1
@@ -4070,18 +4070,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/framework-debug-api@npm:^1.0.11, @deepkit/framework-debug-api@workspace:packages/framework-debug-api":
+"@deepkit/framework-debug-api@npm:^1.0.12, @deepkit/framework-debug-api@workspace:packages/framework-debug-api":
   version: 0.0.0-use.local
   resolution: "@deepkit/framework-debug-api@workspace:packages/framework-debug-api"
   dependencies:
-    "@deepkit/bson": "npm:^1.0.11"
+    "@deepkit/bson": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
     "@deepkit/core-rxjs": "npm:^1.0.9"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/rpc": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/rpc": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     rxjs: "npm:~7.8.0"
   peerDependencies:
     "@deepkit/bson": ^1.0.1
@@ -4095,7 +4095,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/framework-debug-gui@npm:^1.0.11, @deepkit/framework-debug-gui@workspace:packages/framework-debug-gui":
+"@deepkit/framework-debug-gui@npm:^1.0.12, @deepkit/framework-debug-gui@workspace:packages/framework-debug-gui":
   version: 0.0.0-use.local
   resolution: "@deepkit/framework-debug-gui@workspace:packages/framework-debug-gui"
   dependencies:
@@ -4111,23 +4111,23 @@ __metadata:
     "@angular/platform-browser": "npm:^19.1.5"
     "@angular/platform-browser-dynamic": "npm:^19.1.5"
     "@angular/router": "npm:^19.1.5"
-    "@deepkit/api-console-api": "npm:^1.0.11"
-    "@deepkit/api-console-gui": "npm:^1.0.11"
-    "@deepkit/bson": "npm:^1.0.11"
+    "@deepkit/api-console-api": "npm:^1.0.12"
+    "@deepkit/api-console-gui": "npm:^1.0.12"
+    "@deepkit/bson": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
     "@deepkit/core-rxjs": "npm:^1.0.9"
-    "@deepkit/desktop-ui": "npm:^1.0.11"
-    "@deepkit/event": "npm:^1.0.11"
-    "@deepkit/framework-debug-api": "npm:^1.0.11"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/orm": "npm:^1.0.11"
-    "@deepkit/orm-browser-api": "npm:^1.0.11"
-    "@deepkit/orm-browser-gui": "npm:^1.0.11"
-    "@deepkit/rpc": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
+    "@deepkit/desktop-ui": "npm:^1.0.12"
+    "@deepkit/event": "npm:^1.0.12"
+    "@deepkit/framework-debug-api": "npm:^1.0.12"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/orm": "npm:^1.0.12"
+    "@deepkit/orm-browser-api": "npm:^1.0.12"
+    "@deepkit/orm-browser-gui": "npm:^1.0.12"
+    "@deepkit/rpc": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
     "@deepkit/topsort": "npm:^1.0.1"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/type": "npm:^1.0.12"
     "@deepkit/type-compiler": "npm:^1.0.8"
     "@types/dagre": "npm:^0.7.44"
     "@types/file-saver": "npm:^2.0.1"
@@ -4191,33 +4191,33 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/framework@npm:^1.0.1, @deepkit/framework@npm:^1.0.11, @deepkit/framework@workspace:packages/framework":
+"@deepkit/framework@npm:^1.0.1, @deepkit/framework@npm:^1.0.12, @deepkit/framework@workspace:packages/framework":
   version: 0.0.0-use.local
   resolution: "@deepkit/framework@workspace:packages/framework"
   dependencies:
-    "@deepkit/api-console-module": "npm:^1.0.11"
-    "@deepkit/app": "npm:^1.0.11"
-    "@deepkit/broker": "npm:^1.0.11"
-    "@deepkit/bson": "npm:^1.0.11"
+    "@deepkit/api-console-module": "npm:^1.0.12"
+    "@deepkit/app": "npm:^1.0.12"
+    "@deepkit/broker": "npm:^1.0.12"
+    "@deepkit/bson": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
     "@deepkit/core-rxjs": "npm:^1.0.9"
-    "@deepkit/event": "npm:^1.0.11"
+    "@deepkit/event": "npm:^1.0.12"
     "@deepkit/filesystem": "npm:^1.0.5"
-    "@deepkit/framework-debug-api": "npm:^1.0.11"
-    "@deepkit/framework-debug-gui": "npm:^1.0.11"
-    "@deepkit/http": "npm:^1.0.11"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/orm": "npm:^1.0.11"
-    "@deepkit/orm-browser-api": "npm:^1.0.11"
-    "@deepkit/orm-browser-gui": "npm:^1.0.11"
-    "@deepkit/rpc": "npm:^1.0.11"
-    "@deepkit/rpc-tcp": "npm:^1.0.11"
-    "@deepkit/sql": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
-    "@deepkit/template": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
-    "@deepkit/workflow": "npm:^1.0.11"
+    "@deepkit/framework-debug-api": "npm:^1.0.12"
+    "@deepkit/framework-debug-gui": "npm:^1.0.12"
+    "@deepkit/http": "npm:^1.0.12"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/orm": "npm:^1.0.12"
+    "@deepkit/orm-browser-api": "npm:^1.0.12"
+    "@deepkit/orm-browser-gui": "npm:^1.0.12"
+    "@deepkit/rpc": "npm:^1.0.12"
+    "@deepkit/rpc-tcp": "npm:^1.0.12"
+    "@deepkit/sql": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
+    "@deepkit/template": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
+    "@deepkit/workflow": "npm:^1.0.12"
     "@types/clone": "npm:^0.1.30"
     "@types/faker": "npm:^5.1.6"
     "@types/fs-extra": "npm:^9.0.1"
@@ -4259,19 +4259,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/http@npm:^1.0.1, @deepkit/http@npm:^1.0.11, @deepkit/http@workspace:packages/http":
+"@deepkit/http@npm:^1.0.1, @deepkit/http@npm:^1.0.12, @deepkit/http@workspace:packages/http":
   version: 0.0.0-use.local
   resolution: "@deepkit/http@workspace:packages/http"
   dependencies:
-    "@deepkit/app": "npm:^1.0.11"
+    "@deepkit/app": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/event": "npm:^1.0.11"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
-    "@deepkit/template": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
-    "@deepkit/workflow": "npm:^1.0.11"
+    "@deepkit/event": "npm:^1.0.12"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
+    "@deepkit/template": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
+    "@deepkit/workflow": "npm:^1.0.12"
     "@types/formidable": "npm:^3.4.5"
     "@types/node": "npm:^22.13.1"
     "@types/send": "npm:^0.14.6"
@@ -4291,13 +4291,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/injector@npm:^1.0.1, @deepkit/injector@npm:^1.0.11, @deepkit/injector@npm:^1.0.2, @deepkit/injector@workspace:packages/injector":
+"@deepkit/injector@npm:^1.0.1, @deepkit/injector@npm:^1.0.12, @deepkit/injector@npm:^1.0.2, @deepkit/injector@workspace:packages/injector":
   version: 0.0.0-use.local
   resolution: "@deepkit/injector@workspace:packages/injector"
   dependencies:
     "@deepkit/bench": "npm:^1.0.5"
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/type": "npm:^1.0.12"
     benchmark: "npm:^2.1.4"
   peerDependencies:
     "@deepkit/core": ^1.0.1
@@ -4305,12 +4305,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/logger@npm:^1.0.1, @deepkit/logger@npm:^1.0.11, @deepkit/logger@npm:^1.0.2, @deepkit/logger@workspace:packages/logger":
+"@deepkit/logger@npm:^1.0.1, @deepkit/logger@npm:^1.0.12, @deepkit/logger@npm:^1.0.2, @deepkit/logger@workspace:packages/logger":
   version: 0.0.0-use.local
   resolution: "@deepkit/logger@workspace:packages/logger"
   dependencies:
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/injector": "npm:^1.0.11"
+    "@deepkit/injector": "npm:^1.0.12"
     "@types/format-util": "npm:^1.0.1"
     ansi-styles: "npm:^4.3.0"
     format-util: "npm:^1.0.5"
@@ -4324,11 +4324,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@deepkit/mongo@workspace:packages/mongo"
   dependencies:
-    "@deepkit/bson": "npm:^1.0.11"
+    "@deepkit/bson": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/orm": "npm:^1.0.11"
+    "@deepkit/orm": "npm:^1.0.12"
     "@deepkit/orm-integration": "npm:^1.0.1"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/type": "npm:^1.0.12"
     "@types/mongodb": "npm:3.5.25"
     "@types/node": "npm:^22.13.1"
     mongodb: "npm:^6.14.2"
@@ -4346,11 +4346,11 @@ __metadata:
   resolution: "@deepkit/mysql@workspace:packages/mysql"
   dependencies:
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/orm": "npm:^1.0.11"
+    "@deepkit/orm": "npm:^1.0.12"
     "@deepkit/orm-integration": "npm:^1.0.1"
-    "@deepkit/sql": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/sql": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     mariadb: "npm:^3.2.3"
   peerDependencies:
     "@deepkit/core": ^1.0.1
@@ -4361,13 +4361,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/orm-browser-api@npm:^1.0.11, @deepkit/orm-browser-api@workspace:packages/orm-browser-api":
+"@deepkit/orm-browser-api@npm:^1.0.12, @deepkit/orm-browser-api@workspace:packages/orm-browser-api":
   version: 0.0.0-use.local
   resolution: "@deepkit/orm-browser-api@workspace:packages/orm-browser-api"
   dependencies:
-    "@deepkit/rpc": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/rpc": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
   peerDependencies:
     "@deepkit/rpc": ^1.0.1
     "@deepkit/stopwatch": ^1.0.1
@@ -4375,7 +4375,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/orm-browser-gui@npm:^1.0.11, @deepkit/orm-browser-gui@workspace:packages/orm-browser-gui":
+"@deepkit/orm-browser-gui@npm:^1.0.12, @deepkit/orm-browser-gui@workspace:packages/orm-browser-gui":
   version: 0.0.0-use.local
   resolution: "@deepkit/orm-browser-gui@workspace:packages/orm-browser-gui"
   dependencies:
@@ -4391,19 +4391,19 @@ __metadata:
     "@angular/platform-browser": "npm:^19.1.5"
     "@angular/platform-browser-dynamic": "npm:^19.1.5"
     "@angular/router": "npm:^19.1.5"
-    "@deepkit/bson": "npm:^1.0.11"
+    "@deepkit/bson": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
     "@deepkit/core-rxjs": "npm:^1.0.9"
-    "@deepkit/desktop-ui": "npm:^1.0.11"
-    "@deepkit/event": "npm:^1.0.11"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/orm": "npm:^1.0.11"
-    "@deepkit/orm-browser-api": "npm:^1.0.11"
-    "@deepkit/rpc": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
+    "@deepkit/desktop-ui": "npm:^1.0.12"
+    "@deepkit/event": "npm:^1.0.12"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/orm": "npm:^1.0.12"
+    "@deepkit/orm-browser-api": "npm:^1.0.12"
+    "@deepkit/rpc": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
     "@deepkit/topsort": "npm:^1.0.1"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/type": "npm:^1.0.12"
     "@deepkit/type-compiler": "npm:^1.0.8"
     "@types/dagre": "npm:^0.7.44"
     "@types/file-saver": "npm:^2.0.2"
@@ -4430,18 +4430,18 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@deepkit/orm-browser@workspace:packages/orm-browser"
   dependencies:
-    "@deepkit/app": "npm:^1.0.11"
-    "@deepkit/broker": "npm:^1.0.11"
-    "@deepkit/bson": "npm:^1.0.11"
+    "@deepkit/app": "npm:^1.0.12"
+    "@deepkit/broker": "npm:^1.0.12"
+    "@deepkit/bson": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/framework": "npm:^1.0.11"
-    "@deepkit/http": "npm:^1.0.11"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/orm": "npm:^1.0.11"
-    "@deepkit/orm-browser-gui": "npm:^1.0.11"
-    "@deepkit/rpc": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/framework": "npm:^1.0.12"
+    "@deepkit/http": "npm:^1.0.12"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/orm": "npm:^1.0.12"
+    "@deepkit/orm-browser-gui": "npm:^1.0.12"
+    "@deepkit/rpc": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     "@types/node": "npm:^22.13.1"
     rxjs: "npm:~7.8.0"
   peerDependencies:
@@ -4475,17 +4475,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/orm@npm:^1.0.1, @deepkit/orm@npm:^1.0.11, @deepkit/orm@workspace:packages/orm":
+"@deepkit/orm@npm:^1.0.1, @deepkit/orm@npm:^1.0.12, @deepkit/orm@workspace:packages/orm":
   version: 0.0.0-use.local
   resolution: "@deepkit/orm@workspace:packages/orm"
   dependencies:
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/event": "npm:^1.0.11"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
+    "@deepkit/event": "npm:^1.0.12"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
     "@deepkit/topsort": "npm:^1.0.1"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/type": "npm:^1.0.12"
     "@types/sqlstring": "npm:^2.2.1"
     conditional-type-checks: "npm:^1.0.5"
     sift: "npm:^7.0.1"
@@ -4504,11 +4504,11 @@ __metadata:
   resolution: "@deepkit/postgres@workspace:packages/postgres"
   dependencies:
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/orm": "npm:^1.0.11"
+    "@deepkit/orm": "npm:^1.0.12"
     "@deepkit/orm-integration": "npm:^1.0.1"
-    "@deepkit/sql": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/sql": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     "@types/pg": "npm:^7.14.7"
     "@types/sqlstring": "npm:^2.2.1"
     pg: "npm:^8.5.1"
@@ -4522,11 +4522,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/rpc-tcp@npm:^1.0.1, @deepkit/rpc-tcp@npm:^1.0.11, @deepkit/rpc-tcp@workspace:packages/rpc-tcp":
+"@deepkit/rpc-tcp@npm:^1.0.1, @deepkit/rpc-tcp@npm:^1.0.12, @deepkit/rpc-tcp@workspace:packages/rpc-tcp":
   version: 0.0.0-use.local
   resolution: "@deepkit/rpc-tcp@workspace:packages/rpc-tcp"
   dependencies:
-    "@deepkit/rpc": "npm:^1.0.11"
+    "@deepkit/rpc": "npm:^1.0.12"
     "@types/ws": "npm:^8.5.3"
     ws: "npm:^8.6.0"
   peerDependencies:
@@ -4535,16 +4535,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/rpc@npm:^1.0.1, @deepkit/rpc@npm:^1.0.11, @deepkit/rpc@npm:^1.0.2, @deepkit/rpc@workspace:packages/rpc":
+"@deepkit/rpc@npm:^1.0.1, @deepkit/rpc@npm:^1.0.12, @deepkit/rpc@npm:^1.0.2, @deepkit/rpc@workspace:packages/rpc":
   version: 0.0.0-use.local
   resolution: "@deepkit/rpc@workspace:packages/rpc"
   dependencies:
-    "@deepkit/bson": "npm:^1.0.11"
+    "@deepkit/bson": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
     "@deepkit/core-rxjs": "npm:^1.0.9"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     "@types/dot-prop": "npm:^5.0.1"
     "@types/fs-extra": "npm:^9.0.1"
     "@types/node": "npm:^22.13.1"
@@ -4580,17 +4580,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/sql@npm:^1.0.1, @deepkit/sql@npm:^1.0.11, @deepkit/sql@workspace:packages/sql":
+"@deepkit/sql@npm:^1.0.1, @deepkit/sql@npm:^1.0.12, @deepkit/sql@workspace:packages/sql":
   version: 0.0.0-use.local
   resolution: "@deepkit/sql@workspace:packages/sql"
   dependencies:
-    "@deepkit/app": "npm:^1.0.11"
+    "@deepkit/app": "npm:^1.0.12"
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/logger": "npm:^1.0.11"
-    "@deepkit/orm": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/logger": "npm:^1.0.12"
+    "@deepkit/orm": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     "@types/sqlstring": "npm:^2.2.1"
     date-fns: "npm:^2.17.0"
     fast-glob: "npm:^3.2.5"
@@ -4614,11 +4614,11 @@ __metadata:
   resolution: "@deepkit/sqlite@workspace:packages/sqlite"
   dependencies:
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/orm": "npm:^1.0.11"
+    "@deepkit/orm": "npm:^1.0.12"
     "@deepkit/orm-integration": "npm:^1.0.1"
-    "@deepkit/sql": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/sql": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     "@types/better-sqlite3": "npm:^7.6.12"
     better-sqlite3: "npm:^11.8.1"
     sqlstring-sqlite: "npm:^0.1.1"
@@ -4631,26 +4631,26 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/stopwatch@npm:^1.0.1, @deepkit/stopwatch@npm:^1.0.11, @deepkit/stopwatch@npm:^1.0.2, @deepkit/stopwatch@workspace:packages/stopwatch":
+"@deepkit/stopwatch@npm:^1.0.1, @deepkit/stopwatch@npm:^1.0.12, @deepkit/stopwatch@npm:^1.0.2, @deepkit/stopwatch@workspace:packages/stopwatch":
   version: 0.0.0-use.local
   resolution: "@deepkit/stopwatch@workspace:packages/stopwatch"
   dependencies:
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/type": "npm:^1.0.12"
   peerDependencies:
     "@deepkit/core": ^1.0.1
     "@deepkit/type": ^1.0.1
   languageName: unknown
   linkType: soft
 
-"@deepkit/template@npm:^1.0.1, @deepkit/template@npm:^1.0.11, @deepkit/template@workspace:packages/template":
+"@deepkit/template@npm:^1.0.1, @deepkit/template@npm:^1.0.12, @deepkit/template@workspace:packages/template":
   version: 0.0.0-use.local
   resolution: "@deepkit/template@workspace:packages/template"
   dependencies:
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
     "@types/estree": "npm:^0.0.45"
     abstract-syntax-tree: "npm:^2.9.4"
   peerDependencies:
@@ -4676,7 +4676,7 @@ __metadata:
     "@angular/forms": "npm:19.1.5"
     "@angular/platform-browser": "npm:^19.1.5"
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/type": "npm:^1.0.12"
     rxjs: "npm:*"
   peerDependencies:
     "@deepkit/core": ^1.0.1
@@ -4712,7 +4712,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/type@npm:^1.0.1, @deepkit/type@npm:^1.0.11, @deepkit/type@npm:^1.0.2, @deepkit/type@workspace:packages/type":
+"@deepkit/type@npm:^1.0.1, @deepkit/type@npm:^1.0.12, @deepkit/type@npm:^1.0.2, @deepkit/type@workspace:packages/type":
   version: 0.0.0-use.local
   resolution: "@deepkit/type@workspace:packages/type"
   dependencies:
@@ -4768,15 +4768,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@deepkit/workflow@npm:^1.0.1, @deepkit/workflow@npm:^1.0.11, @deepkit/workflow@workspace:packages/workflow":
+"@deepkit/workflow@npm:^1.0.1, @deepkit/workflow@npm:^1.0.12, @deepkit/workflow@workspace:packages/workflow":
   version: 0.0.0-use.local
   resolution: "@deepkit/workflow@workspace:packages/workflow"
   dependencies:
     "@deepkit/core": "npm:^1.0.5"
-    "@deepkit/event": "npm:^1.0.11"
-    "@deepkit/injector": "npm:^1.0.11"
-    "@deepkit/stopwatch": "npm:^1.0.11"
-    "@deepkit/type": "npm:^1.0.11"
+    "@deepkit/event": "npm:^1.0.12"
+    "@deepkit/injector": "npm:^1.0.12"
+    "@deepkit/stopwatch": "npm:^1.0.12"
+    "@deepkit/type": "npm:^1.0.12"
   peerDependencies:
     "@deepkit/core": ^1.0.1
     "@deepkit/event": ^1.0.1

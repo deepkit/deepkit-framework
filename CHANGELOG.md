@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.12](https://github.com/deepkit/deepkit-framework/compare/v1.0.11...v1.0.12) (2025-06-05)
+
+### Bug Fixes
+
+- **bson:** ensure to seek over invalid elements in parser element lookup ([378a922](https://github.com/deepkit/deepkit-framework/commit/378a922c12cebdc93944a527892c33c79538f064))
+
+### Features
+
+- **app:** infer AppModule config from extend expression, make sure to unsubscribe unhandledRejection when command is done ([c81841b](https://github.com/deepkit/deepkit-framework/commit/c81841beb0df2710a13acf6922d65bc63057b5ca))
+
 ## [1.0.11](https://github.com/deepkit/deepkit-framework/compare/v1.0.10...v1.0.11) (2025-06-02)
 
 ### Bug Fixes
