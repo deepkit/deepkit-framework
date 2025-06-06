@@ -9,11 +9,12 @@ import {
     TypeUnion,
     isSameType,
     metaAnnotation,
-    stringifyType
+    stringifyType,
 } from '@deepkit/type';
 
-import { OpenApiSchemaNameConflict } from './errors';
-import { Schema } from './types';
+import { OpenApiSchemaNameConflictError } from './errors.js';
+import { TypeSchemaResolver } from './type-schema-resolver.js';
+import { Schema } from './types.js';
 
 export interface SchemeEntry {
     name: string;
@@ -27,6 +28,7 @@ export type SchemaKeyFn = (t: RegistrableSchema) => string | undefined;
 
 export class SchemaRegistry {
     store: Map<string, SchemeEntry> = new Map();
+    types: WeakMap<Type, TypeSchemaResolver> = new WeakMap();
 
     constructor(private customSchemaKeyFn?: SchemaKeyFn) {}
 
@@ -39,11 +41,7 @@ export class SchemaRegistry {
         }
 
         // HttpQueries<T>
-        if (
-            t.typeName === 'HttpQueries' ||
-            t.typeName === 'HttpBody' ||
-            t.typeName === 'HttpBodyValidation'
-        ) {
+        if (t.typeName === 'HttpQueries' || t.typeName === 'HttpBody' || t.typeName === 'HttpBodyValidation') {
             return this.getSchemaKey(
                 ((t as RegistrableSchema).typeArguments?.[0] ??
                     (t as RegistrableSchema).originTypes?.[0]) as RegistrableSchema,
@@ -74,37 +72,37 @@ export class SchemaRegistry {
             t.kind === ReflectionKind.undefined
         ) {
             return stringifyType(t);
-        } else if (
+        }
+
+        if (
             t.kind === ReflectionKind.class ||
             t.kind === ReflectionKind.objectLiteral ||
             t.kind === ReflectionKind.enum ||
             t.kind === ReflectionKind.union
         ) {
             return this.getSchemaKey(t);
-        } else if (t.kind === ReflectionKind.array) {
+        }
+
+        if (t.kind === ReflectionKind.array) {
             return camelcase([this.getTypeKey(t.type), 'Array'], {
                 pascalCase: false,
             });
-        } else {
-            // Complex types not named
-            return '';
         }
+
+        return '';
     }
 
     registerSchema(name: string, type: Type, schema: Schema) {
         const currentEntry = this.store.get(name);
 
         if (currentEntry && !isSameType(type, currentEntry?.type)) {
-            throw new OpenApiSchemaNameConflict(type, currentEntry.type, name);
+            throw new OpenApiSchemaNameConflictError(type, currentEntry.type, name);
         }
 
         this.store.set(name, {
             type,
             name,
-            schema: {
-                ...schema,
-                nullable: undefined,
-            },
+            schema,
         });
         schema.__registryKey = name;
     }

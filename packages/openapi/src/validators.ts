@@ -1,7 +1,7 @@
 import { TypeLiteral } from '@deepkit/type';
 
-import { TypeNotSupported } from './errors';
-import { Schema, SchemaMapper } from './types';
+import { OpenApiTypeNotSupportedError } from './errors';
+import { Schema, SchemaMapper } from './types.js';
 
 export const validators: Record<string, SchemaMapper> = {
     pattern(s, type: TypeLiteral & { literal: RegExp }): Schema {
@@ -41,7 +41,7 @@ export const validators: Record<string, SchemaMapper> = {
         };
     },
     multipleOf(s, num: TypeLiteral & { literal: number }): Schema {
-        if (num.literal === 0) throw new TypeNotSupported(num, `multiple cannot be 0`);
+        if (num.literal === 0) throw new OpenApiTypeNotSupportedError(num, `multiple cannot be 0`);
 
         return {
             ...s,
@@ -49,7 +49,7 @@ export const validators: Record<string, SchemaMapper> = {
         };
     },
     minLength(s, length: TypeLiteral & { literal: number }): Schema {
-        if (length.literal < 0) throw new TypeNotSupported(length, `length cannot be less than 0`);
+        if (length.literal < 0) throw new OpenApiTypeNotSupportedError(length, `length cannot be less than 0`);
 
         return {
             ...s,
@@ -57,7 +57,7 @@ export const validators: Record<string, SchemaMapper> = {
         };
     },
     maxLength(s, length: TypeLiteral & { literal: number }): Schema {
-        if (length.literal < 0) throw new TypeNotSupported(length, `length cannot be less than 0`);
+        if (length.literal < 0) throw new OpenApiTypeNotSupportedError(length, `length cannot be less than 0`);
 
         return {
             ...s,
@@ -65,10 +65,10 @@ export const validators: Record<string, SchemaMapper> = {
         };
     },
     includes(s, include: TypeLiteral): Schema {
-        throw new TypeNotSupported(include, `includes is not supported. `);
+        throw new OpenApiTypeNotSupportedError(include, `includes is not supported. `);
     },
     excludes(s, exclude: TypeLiteral): Schema {
-        throw new TypeNotSupported(exclude, `excludes is not supported. `);
+        throw new OpenApiTypeNotSupportedError(exclude, `excludes is not supported. `);
     },
     minimum(s, min: TypeLiteral & { literal: number | bigint }): Schema {
         return {

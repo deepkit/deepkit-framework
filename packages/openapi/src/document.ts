@@ -4,9 +4,11 @@ import cloneDeepWith from 'lodash.clonedeepwith';
 import { ClassType } from '@deepkit/core';
 import { RouteConfig, parseRouteControllerAction } from '@deepkit/http';
 import { ScopedLogger } from '@deepkit/logger';
-import { ReflectionKind } from '@deepkit/type';
+import { ReflectionKind, serialize } from '@deepkit/type';
 
-import { OpenApiControllerNameConflict, OpenApiOperationNameConflict, TypeError } from './errors';
+import { OpenAPIConfig } from './config';
+import { httpOpenApiController } from './decorator.js';
+import { OpenApiControllerNameConflictError, OpenApiOperationNameConflictError, OpenApiTypeError } from './errors';
 import { ParametersResolver } from './parameters-resolver';
 import { SchemaKeyFn, SchemaRegistry } from './schema-registry';
 import { resolveTypeSchema } from './type-schema-resolver';
@@ -17,6 +19,7 @@ import {
     RequestMediaTypeName,
     Responses,
     Schema,
+    SerializedOpenAPI,
     Tag,
 } from './types';
 import { resolveOpenApiPath } from './utils';
@@ -27,23 +30,25 @@ export class OpenAPICoreConfig {
 }
 
 export class OpenAPIDocument {
-    schemaRegistry = new SchemaRegistry(this.config.customSchemaKeyFn);
+    schemaRegistry: SchemaRegistry;
 
     operations: Operation[] = [];
 
     tags: Tag[] = [];
 
-    errors: TypeError[] = [];
+    errors: OpenApiTypeError[] = [];
 
     constructor(
         private routes: RouteConfig[],
         private log: ScopedLogger,
-        private config: OpenAPICoreConfig = {},
-    ) {}
+        private config: OpenAPIConfig,
+    ) {
+        this.schemaRegistry = new SchemaRegistry(this.config.customSchemaKeyFn);
+    }
 
     getControllerName(controller: ClassType) {
-        // TODO: Allow customized name
-        return camelCase(controller.name.replace(/Controller$/, ''));
+        const t = httpOpenApiController._fetch(controller);
+        return t?.name || camelCase(controller.name.replace(/Controller$/, ''));
     }
 
     registerTag(controller: ClassType) {
@@ -55,7 +60,7 @@ export class OpenAPIDocument {
         const currentTag = this.tags.find(tag => tag.name === name);
         if (currentTag) {
             if (currentTag.__controller !== controller) {
-                throw new OpenApiControllerNameConflict(controller, currentTag.__controller, name);
+                throw new OpenApiControllerNameConflictError(controller, currentTag.__controller, name);
             }
         } else {
             this.tags.push(newTag);
@@ -72,10 +77,9 @@ export class OpenAPIDocument {
         const openapi: OpenAPI = {
             openapi: '3.0.3',
             info: {
-                title: 'OpenAPI',
-                contact: {},
-                license: { name: 'MIT' },
-                version: '0.0.1',
+                title: this.config.title,
+                description: this.config.description,
+                version: this.config.version,
             },
             servers: [],
             paths: {},
@@ -102,8 +106,8 @@ export class OpenAPIDocument {
         return openapi;
     }
 
-    serializeDocument(): OpenAPI {
-        return cloneDeepWith(this.getDocument(), c => {
+    serializeDocument(): SerializedOpenAPI {
+        const clonedDocument = cloneDeepWith(this.getDocument(), c => {
             if (c && typeof c === 'object') {
                 if (c.__type === 'schema' && c.__registryKey && !c.__isComponent) {
                     const ret = {
@@ -119,21 +123,23 @@ export class OpenAPIDocument {
 
                     return ret;
                 }
-
-                for (const key of Object.keys(c)) {
-                    // Remove internal keys.
-                    if (key.startsWith('__')) delete c[key];
-                }
             }
 
             return c;
         });
+
+        return serialize<OpenAPI>(clonedDocument);
     }
 
     registerRouteSafe(route: RouteConfig) {
         try {
             this.registerRoute(route);
-        } catch (err: any) {
+        } catch (err) {
+            // FIXME: determine why infinite loop is occurring
+            if (err instanceof RangeError && err.message.includes('Maximum call stack size exceeded')) {
+                console.error('Maximum call stack size exceeded', route.getFullPath());
+                return;
+            }
             this.log.error(`Failed to register route ${route.httpMethods.join(',')} ${route.getFullPath()}`, err);
         }
     }
@@ -163,20 +169,28 @@ export class OpenAPIDocument {
 
             const slash = route.path.length === 0 || route.path.startsWith('/') ? '' : '/';
 
+            if (parametersResolver.parameters === null) {
+                throw new Error('Parameters resolver returned null');
+            }
+
             const operation: Operation = {
                 __path: `${route.baseUrl}${slash}${route.path}`,
                 __method: method.toLowerCase(),
                 tags: [tag.name],
                 operationId: camelCase([method, tag.name, route.action.methodName]),
-                parameters: parametersResolver.parameters.length > 0 ? parametersResolver.parameters : undefined,
-                requestBody: parametersResolver.requestBody,
                 responses,
                 description: route.description,
                 summary: route.name,
             };
+            if (parametersResolver.parameters.length > 0) {
+                operation.parameters = parametersResolver.parameters;
+            }
+            if (parametersResolver.requestBody) {
+                operation.requestBody = parametersResolver.requestBody;
+            }
 
             if (this.operations.find(p => p.__path === operation.__path && p.__method === operation.__method)) {
-                throw new OpenApiOperationNameConflict(operation.__path, operation.__method);
+                throw new OpenApiOperationNameConflictError(operation.__path, operation.__method);
             }
 
             this.operations.push(operation);
@@ -196,7 +210,7 @@ export class OpenAPIDocument {
             this.errors.push(...schemaResult.errors);
 
             responses[200] = {
-                description: '',
+                description: route.description,
                 content: {
                     'application/json': {
                         schema: schemaResult.result,
@@ -216,7 +230,7 @@ export class OpenAPIDocument {
 
             if (!responses[response.statusCode]) {
                 responses[response.statusCode] = {
-                    description: '',
+                    description: response.description,
                     content: { 'application/json': schema ? { schema } : undefined },
                 };
             }

@@ -1,6 +1,6 @@
 import { ReflectionKind } from '@deepkit/type';
 
-import { OpenApiError, TypeError } from './errors';
+import { OpenApiError, OpenApiTypeError } from './errors';
 import { SchemaRegistry } from './schema-registry';
 import { resolveTypeSchema } from './type-schema-resolver';
 import { MediaType, Parameter, ParsedRoute, RequestBody, RequestMediaTypeName } from './types';
@@ -8,7 +8,7 @@ import { MediaType, Parameter, ParsedRoute, RequestBody, RequestMediaTypeName } 
 export class ParametersResolver {
     parameters: Parameter[] = [];
     requestBody?: RequestBody;
-    errors: TypeError[] = [];
+    errors: OpenApiTypeError[] = [];
 
     constructor(
         private parsedRoute: ParsedRoute,
@@ -50,7 +50,7 @@ export class ParametersResolver {
                         });
                     } else {
                         this.errors.push(
-                            new TypeError(
+                            new OpenApiTypeError(
                                 `Parameter name ${JSON.stringify(name)} is repeated. Please consider renaming them. `,
                             ),
                         );

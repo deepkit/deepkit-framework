@@ -1,5 +1,5 @@
-import { stat } from 'fs/promises';
-import { dirname, join } from 'path';
+import { stat } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import send from 'send';
 import { stringify } from 'yaml';
 
@@ -10,8 +10,13 @@ import { HttpRequest, HttpResponse, RouteConfig, httpWorkflow, normalizeDirector
 import { OpenAPIConfig } from './config';
 import { OpenAPIModule } from './module';
 import { OpenAPIService } from './service';
+import { SerializedOpenAPI } from './types';
 
 export class OpenApiStaticRewritingListener {
+    private serialized?: SerializedOpenAPI;
+    private serializedYaml?: string;
+    private serializedJson?: string;
+
     constructor(
         private openApi: OpenAPIService,
         private config: OpenAPIConfig,
@@ -19,6 +24,7 @@ export class OpenApiStaticRewritingListener {
     ) {}
 
     serialize() {
+        if (this.serialized) return this.serialized;
         const openApi = this.openApi.serialize();
 
         openApi.info.title = this.config.title;
@@ -26,6 +32,7 @@ export class OpenApiStaticRewritingListener {
         openApi.info.version = this.config.version;
 
         this.module.configureOpenApiFunction(openApi);
+        this.serialized = openApi;
         return openApi;
     }
 
@@ -41,7 +48,7 @@ export class OpenApiStaticRewritingListener {
         return `
           window.onload = function() {
             window.ui = SwaggerUIBundle({
-              url: ${JSON.stringify(this.prefix + 'openapi.yml')},
+              url: ${JSON.stringify(`${this.prefix}openapi.yml`)},
               dom_id: '#swagger-ui',
               deepLinking: true,
               presets: [
@@ -63,20 +70,24 @@ export class OpenApiStaticRewritingListener {
             response.setHeader('content-type', 'application/javascript; charset=utf-8');
             response.end(this.swaggerInitializer);
         } else if (path.endsWith('/openapi.json')) {
-            const s = JSON.stringify(this.serialize(), undefined, 2);
+            const s = this.serializedJson ?? JSON.stringify(this.serialize(), undefined, 2);
+            if (!this.serializedJson) this.serializedJson = s;
             response.setHeader('content-type', 'application/json; charset=utf-8');
             response.end(s);
         } else if (path.endsWith('/openapi.yaml') || path.endsWith('/openapi.yml')) {
-            const s = stringify(this.serialize(), {
-                aliasDuplicateObjects: false,
-            });
+            const s =
+                this.serializedYaml ??
+                stringify(this.serialize(), {
+                    aliasDuplicateObjects: false,
+                });
+            if (!this.serializedYaml) this.serializedYaml = s;
             response.setHeader('content-type', 'text/yaml; charset=utf-8');
             response.end(s);
         } else {
-            await asyncOperation(async (resolve) => {
+            await asyncOperation(async resolve => {
                 const relativePath = urlJoin('/', request.url!.substring(this.prefix.length));
                 if (relativePath === '') {
-                    response.setHeader('location', this.prefix + 'index.html');
+                    response.setHeader('location', `${this.prefix}index.html`);
                     response.status(301);
                     return;
                 }
@@ -111,7 +122,10 @@ export class OpenApiStaticRewritingListener {
                 module: this.module,
                 methodName: 'serve',
             }),
-            () => ({ arguments: [relativePath, event.request, event.response], parameters: {} }),
+            () => ({
+                arguments: [relativePath, event.request, event.response],
+                parameters: {},
+            }),
         );
     }
 }

@@ -1,12 +1,10 @@
 import { createModuleClass } from '@deepkit/app';
-import {
-    HttpRouteFilter,
-} from '@deepkit/http';
+import { HttpRouteFilter } from '@deepkit/http';
 
 import { OpenAPIConfig } from './config';
 import { OpenAPIService } from './service';
 import { OpenApiStaticRewritingListener } from './static-rewriting-listener';
-import { OpenAPI } from './types';
+import { SerializedOpenAPI } from './types';
 
 export class OpenAPIModule extends createModuleClass({
     config: OpenAPIConfig,
@@ -18,9 +16,9 @@ export class OpenAPIModule extends createModuleClass({
         group: 'app-static',
     });
 
-    configureOpenApiFunction: (openApi: OpenAPI) => void = () => {};
+    configureOpenApiFunction: (openApi: SerializedOpenAPI) => void = () => {};
 
-    configureOpenApi(configure: (openApi: OpenAPI) => void) {
+    configureOpenApi(configure: (openApi: SerializedOpenAPI) => void) {
         this.configureOpenApiFunction = configure;
         return this;
     }
@@ -30,7 +28,7 @@ export class OpenAPIModule extends createModuleClass({
         return this;
     }
 
-    process() {
+    override process() {
         this.addProvider({ provide: HttpRouteFilter, useValue: this.routeFilter });
     }
 }

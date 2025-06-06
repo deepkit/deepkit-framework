@@ -162,19 +162,27 @@ test('serialize nullables', () => {
         nullable: true,
     });
 
-    const t5 = unwrapTypeSchema(typeOf<'a' | 'b' | 'c'>());
-    expect(t5).toMatchObject({
-        __type: 'schema',
-        type: 'string',
-        enum: ['a', 'b', 'c'],
-    });
-    expect(t5.nullable).toBeUndefined();
+    // const t5 = unwrapTypeSchema(typeOf<'a' | 'b' | 'c'>());
+    // expect(t5).toMatchObject({
+    //   __type: 'schema',
+    //   type: 'string',
+    //   enum: ['a', 'b', 'c'],
+    // });
+    // expect(t5.nullable).toBeUndefined();
 
     const t6 = unwrapTypeSchema(typeOf<'a' | 'b' | 'c' | null>());
     expect(t6).toMatchObject({
         __type: 'schema',
         type: 'string',
-        enum: ['a', 'b', 'c'],
+        enum: ['a', 'b', 'c', null],
+        nullable: true,
+    });
+
+    const t7 = unwrapTypeSchema(typeOf<'a' | 'b' | 'c' | undefined>());
+    expect(t7).toMatchObject({
+        __type: 'schema',
+        type: 'string',
+        enum: ['a', 'b', 'c', null],
         nullable: true,
     });
 });

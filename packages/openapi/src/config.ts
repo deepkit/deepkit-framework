@@ -1,9 +1,9 @@
-import { OpenAPICoreConfig } from './document';
+import { OpenAPICoreConfig } from './document.js';
 
 export class OpenAPIConfig extends OpenAPICoreConfig {
-    title: string = 'OpenAPI';
-    description: string = '';
-    version: string = '1.0.0';
+    title = 'OpenAPI';
+    description = '';
+    version = '1.0.0';
     // Prefix for all OpenAPI related controllers
-    prefix: string = '/openapi/';
+    prefix = '/openapi/';
 }

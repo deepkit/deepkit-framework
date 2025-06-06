@@ -1,20 +1,21 @@
 import { ClassType } from '@deepkit/core';
 import type { parseRouteControllerAction } from '@deepkit/http';
+import { Excluded, JSONEntity } from '@deepkit/type';
 
 export type SchemaMapper = (s: Schema, ...args: any[]) => Schema;
 
 export type SimpleType = string | number | boolean | null | bigint;
 
 export type Schema = {
-    __type: 'schema';
-    __registryKey?: string;
-    __isComponent?: boolean;
-    __isUndefined?: boolean;
+    __type: 'schema' & Excluded;
+    __registryKey?: string & Excluded;
+    __isComponent?: boolean & Excluded;
     type?: string;
     not?: Schema;
     pattern?: string;
     multipleOf?: number;
     minLength?: number;
+    description?: string;
     maxLength?: number;
     minimum?: number | bigint;
     exclusiveMinimum?: number | bigint;
@@ -33,16 +34,25 @@ export type Schema = {
 
 export const AnySchema: Schema = { __type: 'schema' };
 
-export const NumberSchema: Schema = { __type: 'schema', type: 'number' };
+export const NumberSchema: Schema = {
+    __type: 'schema',
+    type: 'number',
+};
 
-export const StringSchema: Schema = { __type: 'schema', type: 'string' };
+export const StringSchema: Schema = {
+    __type: 'schema',
+    type: 'string',
+};
 
-export const BooleanSchema: Schema = { __type: 'schema', type: 'boolean' };
+export const BooleanSchema: Schema = {
+    __type: 'schema',
+    type: 'boolean',
+};
 
 export type RequestMediaTypeName = 'application/x-www-form-urlencoded' | 'multipart/form-data' | 'application/json';
 
 export type Tag = {
-    __controller: ClassType;
+    __controller: ClassType & Excluded;
     name: string;
 };
 
@@ -56,8 +66,8 @@ export type OpenAPIResponse = {
 export type Responses = Record<string, OpenAPIResponse>;
 
 export type Operation = {
-    __path: string;
-    __method: string;
+    __path: string & Excluded;
+    __method: string & Excluded;
     tags: string[];
     summary?: string;
     description?: string;
@@ -111,8 +121,10 @@ export type Info = {
     title: string;
     description?: string;
     termsOfService?: string;
-    contact: {};
-    license: {};
+    contact?: {
+        name: string;
+    };
+    license?: unknown;
     version: string;
 };
 
@@ -120,10 +132,13 @@ export type Components = {
     schemas?: Record<string, Schema>;
 };
 
+// TODO: rename to Internal
 export type OpenAPI = {
     openapi: string;
     info: Info;
-    servers: {}[];
+    servers: { url: string }[];
     paths: Record<string, Path>;
     components: Components;
 };
+
+export type SerializedOpenAPI = JSONEntity<OpenAPI>;
