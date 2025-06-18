@@ -11,7 +11,7 @@
 /**
  * @reflection never
  */
-import { Observable, Subscription } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { ChangeDetectorRef, EventEmitter } from '@angular/core';
 import { ActivatedRoute, Router, UrlTree } from '@angular/router';
 import { nextTick } from '@deepkit/core';
@@ -107,17 +107,7 @@ export function isTargetChildOf(target: HTMLElement | EventTarget | null, parent
 
     if (target === parent) return true;
 
-    if (target instanceof HTMLElement) {
-        let targetElement: HTMLElement = target;
-        while (targetElement.parentElement) {
-            if (targetElement.parentElement === parent) {
-                return true;
-            }
-            targetElement = targetElement.parentElement;
-        }
-    }
-
-    return false;
+    return parent.contains(target as Node);
 }
 
 export function isMacOs() {
@@ -150,69 +140,88 @@ export function triggerResize() {
     });
 }
 
-export function focusWatcher(target: HTMLElement, allowedFocuses: HTMLElement[] = [], customChecker?: (currentlyFocused: HTMLElement | null) => boolean): Observable<void> {
-    if (target.ownerDocument!.body.tabIndex === -1) target.ownerDocument!.body.tabIndex = 1;
+type FocusWatcherUnsubscribe = () => void;
 
-    return new Observable<void>((observer) => {
-        let currentlyFocused: HTMLElement | null = target;
+/**
+ * Observes focus changes on target elements and emits when focus is lost.
+ *
+ * This is used to track multi-element focus changes, such as when a user clicks from a dropdown toggle into the dropdown menu.
+ */
+export function focusWatcher(
+    target: HTMLElement, allowedFocuses: HTMLElement[] = [],
+    onBlur: () => void,
+    customChecker?: (currentlyFocused: HTMLElement | null) => boolean,
+): FocusWatcherUnsubscribe {
+    const doc = target.ownerDocument;
+    if (doc.body.tabIndex === -1) doc.body.tabIndex = 1;
 
-        function isFocusAllowed() {
-            if (!currentlyFocused) {
-                return false;
-            }
+    let currentlyFocused: HTMLElement | null = target;
 
-            if (isTargetChildOf(currentlyFocused, target)) {
+    let subscribed = true;
+
+    function isFocusAllowed() {
+        if (!currentlyFocused) {
+            return false;
+        }
+
+        if (currentlyFocused === target || target.contains(currentlyFocused)) {
+            return true;
+        }
+
+        for (const focus of allowedFocuses) {
+            if (currentlyFocused === focus || focus.contains(currentlyFocused)) {
                 return true;
             }
-
-            for (const focus of allowedFocuses) {
-                if (isTargetChildOf(currentlyFocused, focus)) {
-                    return true;
-                }
-            }
-
-            return customChecker ? customChecker(currentlyFocused) : false;
         }
 
-        function check() {
-            if (!currentlyFocused) {
-                //shouldn't be possible to have no element at all with focus.
-                //this means usually that the item that had previously focus was deleted.
-                currentlyFocused = target;
-            }
-            if (!isFocusAllowed()) {
-                observer.next();
-                observer.complete();
-            }
+        return customChecker ? customChecker(currentlyFocused) : false;
+    }
+
+    function emitBlurIfNeeded() {
+        if (!currentlyFocused) {
+            // Shouldn't be possible to have no element at all with focus.
+            // This means usually that the item that had previously focus was deleted.
+            currentlyFocused = target;
         }
-
-        function onFocusOut() {
-            currentlyFocused = null;
-            check();
+        if (subscribed && !isFocusAllowed()) {
+            onBlur();
+            unsubscribe();
+            return true;
         }
+        return false;
+    }
 
-        function onFocusIn(event: FocusEvent) {
-            currentlyFocused = event.target as any;
-            check();
+    function onFocusOut() {
+        currentlyFocused = null;
+        emitBlurIfNeeded();
+    }
+
+    function onFocusIn(event: FocusEvent) {
+        currentlyFocused = event.target as any;
+        emitBlurIfNeeded();
+    }
+
+    function onMouseDown(event: FocusEvent) {
+        currentlyFocused = event.target as any;
+        if (emitBlurIfNeeded()) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
         }
+    }
 
-        function onMouseDown(event: FocusEvent) {
-            currentlyFocused = event.target as any;
-            check();
-        }
+    doc.addEventListener('mousedown', onMouseDown, true);
+    doc.addEventListener('focusin', onFocusIn);
+    doc.addEventListener('focusout', onFocusOut);
 
-        target.ownerDocument!.addEventListener('mousedown', onMouseDown, true);
-        target.ownerDocument!.addEventListener('focusin', onFocusIn);
-        target.ownerDocument!.addEventListener('focusout', onFocusOut);
+    function unsubscribe() {
+        if (!subscribed) return;
+        subscribed = false;
+        doc.removeEventListener('mousedown', onMouseDown);
+        doc.removeEventListener('focusin', onFocusIn);
+        doc.removeEventListener('focusout', onFocusOut);
+    }
 
-        function unsubscribe(): void {
-            target.ownerDocument!.removeEventListener('mousedown', onMouseDown);
-            target.ownerDocument!.removeEventListener('focusin', onFocusIn);
-            target.ownerDocument!.removeEventListener('focusout', onFocusOut);
-        }
-
-        return { unsubscribe: unsubscribe };
-    });
+    return unsubscribe;
 }
 
 interface RouteLike {

@@ -42,27 +42,27 @@ import { ButtonComponent } from './button.component';
     selector: 'dui-dropdown',
     standalone: false,
     template: `
-        <ng-template #dropdownTemplate>
-            <div class="dui-body dui-dropdown" tabindex="1" #dropdown>
-                <!--                <div *ngIf="overlay !== false" class="dui-dropdown-arrow"></div>-->
-                <div class="content" [class.overlay-scrollbar-small]="scrollbars">
-                    <ng-container *ngIf="!container">
-                        <ng-content></ng-content>
-                    </ng-container>
-                    <ng-container *ngIf="container" [ngTemplateOutlet]="container"></ng-container>
-                </div>
-            </div>
-        </ng-template>
+      <ng-template #dropdownTemplate>
+        <div class="dui-body dui-dropdown" tabindex="1" #dropdown>
+          <!--                <div *ngIf="overlay !== false" class="dui-dropdown-arrow"></div>-->
+          <div class="content" [class.overlay-scrollbar-small]="scrollbars">
+            <ng-container *ngIf="!container">
+              <ng-content></ng-content>
+            </ng-container>
+            <ng-container *ngIf="container" [ngTemplateOutlet]="container"></ng-container>
+          </div>
+        </div>
+      </ng-template>
     `,
     host: {
         '[class.overlay]': 'overlay !== false',
     },
-    styleUrls: ['./dropdown.component.scss']
+    styleUrls: ['./dropdown.component.scss'],
 })
 export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     public isOpen = false;
     public overlayRef?: OverlayRef;
-    protected lastFocusWatcher?: Subscription;
+    protected lastFocusWatcher?: ReturnType<typeof focusWatcher>;
 
     @Input() host?: HTMLElement | ElementRef;
 
@@ -108,7 +108,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
     @ViewChild('dropdownTemplate', {
         static: false,
-        read: TemplateRef
+        read: TemplateRef,
     }) dropdownTemplate!: TemplateRef<any>;
     @ViewChild('dropdown', { static: false, read: ElementRef }) dropdown!: ElementRef<HTMLElement>;
 
@@ -164,9 +164,14 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         this.container = container;
     }
 
-    public open(target?: HTMLElement | ElementRef | MouseEvent | 'center', initiator?: HTMLElement | ElementRef | { x: number, y: number, width: number, height: number }) {
+    public open(target?: HTMLElement | ElementRef | MouseEvent | 'center', initiator?: HTMLElement | ElementRef | {
+        x: number,
+        y: number,
+        width: number,
+        height: number
+    }) {
         if (this.lastFocusWatcher) {
-            this.lastFocusWatcher.unsubscribe();
+            this.lastFocusWatcher();
         }
 
         if (!target) {
@@ -219,7 +224,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                         originY: 'bottom',
                         overlayX: 'end',
                         overlayY: 'top',
-                    }
+                    },
                 ]);
         } else if (target === 'center') {
 
@@ -253,7 +258,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                         originY: 'bottom',
                         overlayX: 'end',
                         overlayY: 'top',
-                    }
+                    },
                 ]);
         }
 
@@ -268,7 +273,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 maxHeight: '90%',
                 hasBackdrop: false,
                 scrollStrategy: overlay.scrollStrategies.reposition(),
-                positionStrategy: position
+                positionStrategy: position,
             };
 
             if (this.width) options.width = this.width;
@@ -322,24 +327,26 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
         if (this.show === undefined) {
             this.overlayRef.hostElement.focus();
+            this.lastFocusWatcher = focusWatcher(
+                this.overlayRef.overlayElement,
+                [...allowedFocus, target as HTMLElement],
+                () => {
+                    if (!this.keepOpen) {
+                        this.close();
+                        ReactiveChangeDetectionModule.tick();
+                    }
+                },
+                (element) => {
+                    // If the element is a dialog as well, we don't close
+                    if (!element) return false;
 
-            this.lastFocusWatcher = focusWatcher(this.dropdown.nativeElement, [...allowedFocus, target as any], (element) => {
-                //if the element is a dialog as well, we don't close
+                    if (this.lastOverlayStackItem) {
+                        // When there's an overlay above ours we keep it open
+                        if (!this.lastOverlayStackItem.isLast()) return true;
+                    }
 
-                if (!element) return false;
-
-                if (this.lastOverlayStackItem) {
-                    //when there's a overlay above ours we keep it open
-                    if (!this.lastOverlayStackItem.isLast()) return true;
-                }
-
-                return false;
-            }).subscribe(() => {
-                if (!this.keepOpen) {
-                    this.close();
-                    ReactiveChangeDetectionModule.tick();
-                }
-            });
+                    return false;
+                });
         }
     }
 
@@ -360,7 +367,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             x: initiator.x - overlayRect.x,
             y: initiator.y - overlayRect.y,
             width: initiator.width / overlayRect.width,
-            height: initiator.height / overlayRect.height
+            height: initiator.height / overlayRect.height,
         };
     }
 
@@ -391,7 +398,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 this.hidden.emit();
                 this.showChange.emit(false);
                 overlayElement.removeEventListener('transitionend', transitionEnd);
-            }
+            };
 
             overlayElement.addEventListener('transitionend', transitionEnd);
         } else {
@@ -533,7 +540,7 @@ export class ContextDropdownDirective {
     selector: 'dui-dropdown-splitter,dui-dropdown-separator',
     standalone: false,
     template: `
-        <div></div>
+      <div></div>
     `,
     styles: [`
         :host {
@@ -544,7 +551,7 @@ export class ContextDropdownDirective {
         div {
             border-top: 1px solid var(--line-color-light);
         }
-    `]
+    `],
 })
 export class DropdownSplitterComponent {
 }
@@ -577,14 +584,14 @@ export class DropdownContainerDirective {
     selector: 'dui-dropdown-item',
     standalone: false,
     template: `
-        <dui-icon [size]="14" class="selected" *ngIf="selected" name="check"></dui-icon>
-        <ng-content></ng-content>
+      <dui-icon [size]="14" class="selected" *ngIf="selected" name="check"></dui-icon>
+      <ng-content></ng-content>
     `,
     host: {
         '[class.selected]': 'selected !== false',
         '[class.disabled]': 'disabled !== false',
     },
-    styleUrls: ['./dropdown-item.component.scss']
+    styleUrls: ['./dropdown-item.component.scss'],
 })
 export class DropdownItemComponent {
     @Input() selected = false;
