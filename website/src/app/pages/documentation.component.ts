@@ -27,9 +27,9 @@ import { PlatformHelper } from '@app/app/utils';
                 <div style="margin-bottom: 25px;">
                     <a routerLinkActive="active" routerLink="/documentation/introduction">Introduction</a>
 <!--                    <a routerLinkActive="active" routerLink="/documentation/questions">Questions & Answers</a>-->
+                    <a href="https://api.framework.deepkit.io" target="_blank">API Reference</a>
                     <a routerLinkActive="active" routerLink="/documentation/examples">Examples</a>
                     <a href="https://discord.com/invite/PtfVf7B8UU" target="_blank">Join Discord</a>
-<!--                    <a routerLinkActive="active" routerLink="/documentation/learn-typescript">Learn TypeScript</a>-->
                 </div>
 
                 <div class="category">
