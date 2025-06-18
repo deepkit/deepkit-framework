@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/framework",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -44,11 +44,11 @@
     "@deepkit/workflow": "^1.0.1"
   },
   "dependencies": {
-    "@deepkit/api-console-module": "^1.0.12",
+    "@deepkit/api-console-module": "^1.0.13",
     "@deepkit/framework-debug-api": "^1.0.12",
-    "@deepkit/framework-debug-gui": "^1.0.12",
+    "@deepkit/framework-debug-gui": "^1.0.13",
     "@deepkit/orm-browser-api": "^1.0.12",
-    "@deepkit/orm-browser-gui": "^1.0.12",
+    "@deepkit/orm-browser-gui": "^1.0.13",
     "@types/ws": "^7.4.0",
     "buffer": "^5.2.1",
     "compression": "^1.7.4",

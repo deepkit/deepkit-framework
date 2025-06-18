@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.13](https://github.com/deepkit/deepkit-framework/compare/v1.0.12...v1.0.13) (2025-06-18)
+
+### Bug Fixes
+
+- **desktop-ui:** focusWatcher support for svg and other elements ([c54d118](https://github.com/deepkit/deepkit-framework/commit/c54d118172a076a0a5c35f97a77219906b5f7261))
+
 ## [1.0.12](https://github.com/deepkit/deepkit-framework/compare/v1.0.11...v1.0.12) (2025-06-05)
 
 ### Bug Fixes
