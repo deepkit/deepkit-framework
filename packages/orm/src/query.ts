@@ -247,8 +247,7 @@ export class BaseQuery<T extends OrmEntity> {
      * ```
      * @reflection never
      */
-    use<Q, R, A extends any[]>(modifier: (query: Q, ...args: A) => R, ...args: A) : this
-    {
+    use<Q, R, A extends any[]>(modifier: (query: Q, ...args: A) => R, ...args: A): this {
         return modifier(this as any, ...args) as any;
     }
 
@@ -537,7 +536,7 @@ export class BaseQuery<T extends OrmEntity> {
      */
     join<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(
         field: K, type: 'left' | 'inner' = 'left', populate: boolean = false,
-        configure?: Configure<ENTITY>
+        configure?: Configure<ENTITY>,
     ): this {
         return this.addJoin(field, type, populate, configure)[0];
     }
@@ -547,7 +546,7 @@ export class BaseQuery<T extends OrmEntity> {
      */
     protected addJoin<K extends keyof ReferenceFields<T>, ENTITY extends OrmEntity = FindEntity<T[K]>>(
         field: K, type: 'left' | 'inner' = 'left', populate: boolean = false,
-        configure?: Configure<ENTITY>
+        configure?: Configure<ENTITY>,
     ): [thisQuery: this, joinQuery: BaseQuery<ENTITY>] {
         const propertySchema = this.classSchema.getProperty(field as string);
         if (!propertySchema.isReference() && !propertySchema.isBackReference()) {
@@ -637,6 +636,8 @@ export class BaseQuery<T extends OrmEntity> {
     }
 }
 
+export type QueryExplainOp = 'count' | 'find' | 'findOne' | 'delete' | 'patch';
+
 export abstract class GenericQueryResolver<T extends object, ADAPTER extends DatabaseAdapter = DatabaseAdapter, MODEL extends DatabaseQueryModel<T> = DatabaseQueryModel<T>> {
     constructor(
         protected classSchema: ReflectionClass<T>,
@@ -653,6 +654,10 @@ export abstract class GenericQueryResolver<T extends object, ADAPTER extends Dat
     abstract delete(model: MODEL, deleteResult: DeleteResult<T>): Promise<void>;
 
     abstract patch(model: MODEL, value: Changes<T>, patchResult: PatchResult<T>): Promise<void>;
+
+    explain(model: MODEL, op: QueryExplainOp, option?: unknown): Promise<any> {
+        throw new Error(`explain() is not implemented for ${this.classSchema.name}`);
+    }
 }
 
 export interface FindQuery<T> {
@@ -664,6 +669,12 @@ export interface FindQuery<T> {
 }
 
 export type Methods<T> = { [K in keyof T]: K extends keyof Query<any> ? never : T[K] extends ((...args: any[]) => any) ? K : never }[keyof T];
+
+export type ExplainParameters<T extends GenericQueryResolver<any>> = T extends {
+    explain: (model: any, op: any, ...options: infer A) => any
+} ? A : never;
+
+export type ExplainResult<T extends GenericQueryResolver<any>> = T extends { explain: (...args: any[]) => infer R } ? R : never;
 
 /**
  * This a generic query abstraction which should supports most basics database interactions.
@@ -689,10 +700,31 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     constructor(
         classSchema: ReflectionClass<T>,
         protected session: DatabaseSession<any>,
-        protected resolver: GenericQueryResolver<T>,
+        public resolver: GenericQueryResolver<T>,
     ) {
         super(classSchema);
         this.model.withIdentityMap = session.withIdentityMap;
+    }
+
+    /**
+     * Returns the explain query result for the given operation.
+     *
+     * Use explainLog('...') of explain() to log the explain result instead of returning it.
+     */
+    async explain(op: QueryExplainOp, ...args: ExplainParameters<this['resolver']>): Promise<ExplainResult<this['resolver']>> {
+        return await this.resolver.explain(this.model, op, args[0]);
+    }
+
+    /**
+     * Logs the explain query result of the given operation to the logger.
+     */
+    explainLog(op: QueryExplainOp, ...args: ExplainParameters<this['resolver']>): this {
+        this.resolver.explain(this.model, op, args[0]).then(v => {
+            this.session.logger.debug(`Explain ${op} for ${this.classSchema.getClassName()} ${op}:`, v);
+        }).catch(error => {
+            this.session.logger.error(`Explain ${op} for ${this.classSchema.getClassName()} failed:`, error);
+        });
+        return this;
     }
 
     static from<Q extends Query<any> & {
@@ -1111,7 +1143,7 @@ export class JoinDatabaseQuery<T extends OrmEntity, PARENT extends BaseQuery<any
         // important to have this as first argument, since clone() uses it
         classSchema: ReflectionClass<any>,
         public query: BaseQuery<any>,
-        public parentQuery?: PARENT
+        public parentQuery?: PARENT,
     ) {
         super(classSchema);
         if (query) this.model = query.model;

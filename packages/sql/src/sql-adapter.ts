@@ -445,7 +445,7 @@ export class SQLDatabaseQuery<T extends OrmEntity> extends Query<T> {
     constructor(
         classSchema: ReflectionClass<T>,
         protected databaseSession: DatabaseSession<DatabaseAdapter>,
-        protected resolver: SQLQueryResolver<T>,
+        public resolver: SQLQueryResolver<T>,
     ) {
         super(classSchema, databaseSession, resolver);
         if (!databaseSession.withIdentityMap) this.model.withIdentityMap = false;
