@@ -8,9 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
+import { BaseResponse, CollationMessage, Command, HintMessage, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
-import { CommandOptions } from '../options.js';
+import type { MongoClientConfig } from '../config.js';
+import type { Host } from '../host.js';
+import type { MongoDatabaseTransaction } from '../connection.js';
 
 interface FindAndModifyResponse extends BaseResponse {
     value: any;
@@ -24,10 +26,11 @@ type FindAndModifySchema = {
     new: boolean;
     upsert: boolean;
     fields: Record<string, number>;
+    collation?: CollationMessage;
+    hint?: HintMessage;
 } & WriteConcernMessage & TransactionalMessage;
 
 export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Command<FindAndModifyResponse> {
-    commandOptions: CommandOptions = {};
     upsert = false;
     fields: string[] = [];
     returnNew: boolean = false;
@@ -40,7 +43,7 @@ export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Comman
         super();
     }
 
-    async execute(config, host, transaction): Promise<FindAndModifyResponse> {
+    getCommand(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction) {
         const fields = {};
         for (const name of this.fields) fields[name] = 1;
 
@@ -55,8 +58,15 @@ export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Comman
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        if (!transaction) config.applyWriteConcern(cmd, this.commandOptions);
+        if (!transaction) config.applyWriteConcern(cmd, this.options);
+        if (undefined !== this.options.hint) cmd.hint = this.options.hint;
+        if (undefined !== this.options.collation) cmd.collation = this.options.collation;
 
+        return cmd;
+    }
+
+    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<FindAndModifyResponse> {
+        const cmd = this.getCommand(config, host, transaction);
         return await this.sendAndWait<FindAndModifySchema, FindAndModifyResponse>(cmd);
     }
 

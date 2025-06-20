@@ -36,6 +36,7 @@ import { Command } from './client/command/command.js';
 import { AggregateCommand } from './client/command/aggregate.js';
 import { EventDispatcher } from '@deepkit/event';
 import { Logger } from '@deepkit/logger';
+import { CommandOptions } from './client/options.js';
 
 export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     constructor(
@@ -57,6 +58,14 @@ class MongoRawCommandQuery<T> implements FindQuery<T> {
         protected client: MongoClient,
         protected command: Command<any>,
     ) {
+    }
+
+    /**
+     * Sets Mongo specific options for this query like `collation`, `hint`, `readPreference`, `allowDiskUse` and more.
+     */
+    withOptions(options: CommandOptions): this {
+        Object.assign(this.command.options, options);
+        return this;
     }
 
     async find(): Promise<T[]> {

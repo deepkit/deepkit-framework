@@ -52,6 +52,21 @@ export interface WriteConcernMessage {
     writeConcern?: { w?: string | number, j?: boolean, wtimeout?: number };
 }
 
+export interface CollationMessage {
+    locale: string;
+    caseLevel?: boolean;
+    caseFirst?: string;
+    strength?: number;
+    numericOrdering?: boolean;
+    alternate?: string;
+    maxVariable?: string;
+    backwards?: boolean;
+}
+
+export type HintMessage = string | {
+    [name: string]: number;
+};
+
 export interface ReadPreferenceMessage {
     readConcern?: { level: ConnectionOptions['readConcernLevel'] };
 
@@ -64,6 +79,7 @@ export interface ReadPreferenceMessage {
 }
 
 export abstract class Command<T> {
+    options: CommandOptions = {};
     protected current?: { responseType?: Type, resolve: Function, reject: Function };
 
     public sender?: <T>(schema: Type, message: T) => void;
@@ -124,7 +140,7 @@ export abstract class Command<T> {
                         }
                     }
 
-                    this.current.reject(new MongoError(`Could not deserialize type ${stringifyType(this.current.responseType)}: ${error}`));
+                    this.current.reject(new MongoError(`Could not deserialize type ${stringifyType(this.current.responseType)}: ${error}`, { cause: error }));
                     return;
                 }
             }
@@ -166,12 +182,10 @@ export function createCommand<Request extends { [name: string]: any }, Response>
     typeResponse = typeOf<FullTypeResponse>();
 
     class DynamicCommand extends Command<Response> {
-        commandOptions: CommandOptions = {};
-
-        async execute(config: MongoClientConfig, host, transaction?): Promise<Response & BaseResponse> {
+        async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<Response & BaseResponse> {
             const cmd = 'function' === typeof request ? request(config) : request;
             if (options.transactional && transaction) transaction.applyTransaction(cmd);
-            if (options.readPreference) config.applyReadPreference(host, cmd as any, this.commandOptions, transaction);
+            if (options.readPreference) config.applyReadPreference(host, cmd as any, this.options, transaction);
             return await this.sendAndWait(cmd, typeRequest, typeResponse as Type) as any;
         }
 

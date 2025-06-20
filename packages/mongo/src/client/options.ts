@@ -9,6 +9,7 @@
  */
 
 import { MongoError } from './error.js';
+import { CollationMessage, HintMessage } from './command/command.js';
 
 type AuthMechanismProperties = { [name: string]: string | boolean };
 
@@ -109,6 +110,11 @@ export class ConnectionOptions {
 
     appName?: string;
 
+    /**
+     * If set, this is used for all find commands.
+     */
+    allowDiskUse?: boolean;
+
     retryWrites: boolean = true;
     retryReads: boolean = true;
 
@@ -204,4 +210,9 @@ export interface CommandOptions {
     writeConcern?: string | number;
     journal?: boolean;
     wtimeout?: number;
+
+    allowDiskUse?: boolean;
+
+    hint?: HintMessage;
+    collation?: CollationMessage;
 }

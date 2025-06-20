@@ -10,6 +10,9 @@
 
 import { BaseResponse, Command } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
+import type { MongoClientConfig } from '../config.js';
+import type { Host } from '../host.js';
+import type { MongoDatabaseTransaction } from '../connection.js';
 
 interface RequestSchema {
     create: string;
@@ -23,7 +26,7 @@ export class CreateCollectionCommand<T extends ReflectionClass<any>> extends Com
         super();
     }
 
-    async execute(config, host, transaction): Promise<BaseResponse> {
+    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<BaseResponse> {
         const cmd: any = {
             create: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',

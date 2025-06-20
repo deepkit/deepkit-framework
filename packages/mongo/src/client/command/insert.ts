@@ -11,7 +11,9 @@
 import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { toFastProperties } from '@deepkit/core';
 import { InlineRuntimeType, ReflectionClass, typeOf } from '@deepkit/type';
-import { CommandOptions } from '../options.js';
+import type { MongoClientConfig } from '../config.js';
+import type { Host } from '../host.js';
+import type { MongoDatabaseTransaction } from '../connection.js';
 
 interface InsertResponse extends BaseResponse {
     n: number;
@@ -24,8 +26,6 @@ type InsertSchema = {
 } & WriteConcernMessage & TransactionalMessage;
 
 export class InsertCommand<T> extends Command<number> {
-    commandOptions: CommandOptions = {};
-
     constructor(
         protected schema: ReflectionClass<T>,
         protected documents: T[],
@@ -33,7 +33,7 @@ export class InsertCommand<T> extends Command<number> {
         super();
     }
 
-    async execute(config, host, transaction): Promise<number> {
+    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<number> {
         const cmd: InsertSchema = {
             insert: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
@@ -41,7 +41,7 @@ export class InsertCommand<T> extends Command<number> {
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        if (!transaction) config.applyWriteConcern(cmd, this.commandOptions);
+        if (!transaction) config.applyWriteConcern(cmd, this.options);
 
         const jit = this.schema.getJitContainer();
         let specialisedSchema = jit.mdbInsert;

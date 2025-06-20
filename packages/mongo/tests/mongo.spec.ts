@@ -220,7 +220,7 @@ test('test patchAll', async () => {
     expect(await session.query(SimpleModel).filter({ name: { $regex: /^peter.*/ } }).count()).toBe(1);
 
     await session.query(SimpleModel).filter({ name: { $regex: /^myName?/ } }).patchMany({
-        name: 'peterNew'
+        name: 'peterNew',
     });
 
     expect(await session.query(SimpleModel).filter({ name: { $regex: /^myName?/ } }).count()).toBe(0);
@@ -634,7 +634,9 @@ test('batch', async () => {
 test('unique constraint 1', async () => {
     class Model {
         id: number & PrimaryKey & AutoIncrement = 0;
-        constructor(public username: string & Unique = '') {}
+
+        constructor(public username: string & Unique = '') {
+        }
     }
 
     const database = await databaseFactory([Model]);
@@ -656,15 +658,104 @@ test('unique constraint 1', async () => {
     }
 
     {
-        const m = await database.query(Model).filter({username: 'paul'}).findOne();
+        const m = await database.query(Model).filter({ username: 'paul' }).findOne();
         m.username = 'peter';
         await expect(database.persist(m)).rejects.toThrow('username dup key');
         await expect(database.persist(m)).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
 
     {
-        const p = database.query(Model).filter({username: 'paul'}).patchOne({username: 'peter'});
+        const p = database.query(Model).filter({ username: 'paul' }).patchOne({ username: 'peter' });
         await expect(p).rejects.toThrow('username dup key');
         await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
+    }
+});
+
+test('collation', async () => {
+    class User {
+        _id: MongoId & PrimaryKey = '';
+
+        constructor(public name: string) {
+        }
+    }
+
+    const database = await databaseFactory([User]);
+
+    await database.persist(new User('eclair'), new User('éclair'), new User('Napoleon'));
+
+    {
+        const users = await database.query(User)
+            .filter({ name: 'eclair' })
+            .withOptions({ collation: { locale: 'en', strength: 1 } })
+            .select('name')
+            .find();
+        expect(users).toEqual([{ name: 'eclair' }, { name: 'éclair' }]);
+    }
+    {
+        const users = await database.query(User)
+            .filter({ name: 'eclair' })
+            .withOptions({ collation: { locale: 'en', strength: 1 } })
+            .count();
+        expect(users).toBe(2);
+    }
+
+    {
+        const users = await database.query(User)
+            .filter({ name: 'eclair' })
+            .select('name')
+            .find();
+        expect(users).toEqual([{ name: 'eclair' }]);
+    }
+
+    {
+        const users = await database.raw<User, { name: string }>([
+            { $match: { name: 'eclair' } },
+            { $project: { name: 1 } },
+        ]).find();
+        expect(users).toEqual([{ name: 'eclair' }]);
+    }
+
+    {
+        const users = await database.raw<User, { name: string }>([
+            { $match: { name: 'eclair' } },
+            { $project: { name: 1 } },
+        ])
+            .withOptions({ collation: { locale: 'en', strength: 1 } })
+            .find();
+        expect(users).toEqual([{ name: 'eclair' }, { name: 'éclair' }]);
+    }
+
+    {
+        const users = await database.raw<User, { name: string }>([
+            { $match: { name: 'eclair' } },
+            { $project: { name: 1 } },
+        ])
+            .withOptions({ collation: { locale: 'en', strength: 1 } })
+            .find();
+        expect(users).toEqual([{ name: 'eclair' }, { name: 'éclair' }]);
+    }
+
+    {
+        const users = await database.query(User)
+            .filter({ name: 'eclair' })
+            .withOptions({ collation: { locale: 'en', strength: 1 } })
+            .explain('find');
+        expect(users.queryPlanner.winningPlan.stage).toBe('COLLSCAN');
+    }
+
+    {
+        const users = await database.query(User)
+            .filter({ name: 'eclair' })
+            .withOptions({ collation: { locale: 'en', strength: 1 } })
+            .explain('find', 'queryPlanner');
+        expect(users.queryPlanner.winningPlan.stage).toBe('COLLSCAN');
+    }
+
+    {
+        const users = await database.query(User)
+            .filter({ name: 'eclair' })
+            .withOptions({ collation: { locale: 'en', strength: 1 } })
+            .explain('find', 'executionStats');
+        expect(users.queryPlanner.winningPlan.stage).toBe('COLLSCAN');
     }
 });

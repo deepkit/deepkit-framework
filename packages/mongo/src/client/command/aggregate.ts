@@ -9,12 +9,13 @@
  */
 
 import { toFastProperties } from '@deepkit/core';
-import { BaseResponse, Command, ReadPreferenceMessage, TransactionalMessage, WriteConcernMessage } from './command.js';
+import { BaseResponse, CollationMessage, Command, HintMessage, ReadPreferenceMessage, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { getTypeJitContainer, InlineRuntimeType, isType, ReflectionClass, Type, typeOf } from '@deepkit/type';
 import { MongoError } from '../error.js';
 import { GetMoreMessage } from './getMore.js';
 import { MongoClientConfig } from '../config.js';
-import { CommandOptions } from '../options.js';
+import type { Host } from '../host.js';
+import type { MongoDatabaseTransaction } from '../connection.js';
 
 type AggregateMessage = {
     aggregate: string;
@@ -23,11 +24,12 @@ type AggregateMessage = {
     cursor: {
         batchSize: number,
     },
+    collation?: CollationMessage;
+    hint?: HintMessage;
 } & TransactionalMessage & WriteConcernMessage & ReadPreferenceMessage;
 
 export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
     partial: boolean = false;
-    commandOptions: CommandOptions = {};
 
     constructor(
         public schema: ReflectionClass<T>,
@@ -37,7 +39,7 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
         super();
     }
 
-    async execute(config: MongoClientConfig, host, transaction): Promise<R[]> {
+    getCommand(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction) {
         const cmd: AggregateMessage = {
             aggregate: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
@@ -48,9 +50,15 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        config.applyReadPreference(host, cmd, this.commandOptions, transaction);
-        if (!transaction) config.applyWriteConcern(cmd, this.commandOptions);
+        config.applyReadPreference(host, cmd, this.options, transaction);
+        if (!transaction) config.applyWriteConcern(cmd, this.options);
+        if (undefined !== this.options.hint) cmd.hint = this.options.hint;
+        if (undefined !== this.options.collation) cmd.collation = this.options.collation;
+        return cmd;
+    }
 
+    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<R[]> {
+        const cmd = this.getCommand(config, host, transaction);
         let resultSchema = this.resultSchema || this.schema;
         if (resultSchema && !isType(resultSchema)) resultSchema = resultSchema.type;
 
@@ -103,7 +111,7 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
                 batchSize: cmd.cursor.batchSize,
             };
             if (transaction) transaction.applyTransaction(nextCommand);
-            config.applyReadPreference(host, nextCommand, this.commandOptions, transaction);
+            config.applyReadPreference(host, nextCommand, this.options, transaction);
             const next = await this.sendAndWait<GetMoreMessage, Response>(nextCommand, undefined, specialisedResponse);
 
             if (next.cursor.nextBatch) {

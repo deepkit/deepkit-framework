@@ -11,15 +11,20 @@
 import { DatabaseQueryModel, OrmEntity, Query, Sort } from '@deepkit/orm';
 import { CommandOptions } from './client/options.js';
 import { FilterQuery, MongoQueryModel } from './query.model.js';
+import { MongoQueryResolver } from './query.resolver.js';
 
 export class MongoDatabaseQuery<T extends OrmEntity> extends Query<T> {
     public model!: MongoQueryModel<T>;
+    public resolver!: MongoQueryResolver<T>;
 
     protected createModel<T extends OrmEntity>(): DatabaseQueryModel<T, FilterQuery<T>, Sort<T, any>> {
         return new MongoQueryModel<T>();
     }
 
-    with(options: CommandOptions): this {
+    /**
+     * Sets Mongo specific options for this query like `collation`, `hint`, `readPreference`, `allowDiskUse` and more.
+     */
+    withOptions(options: CommandOptions): this {
         this.model = this.model.clone();
         Object.assign(this.model.options, options);
         return this;

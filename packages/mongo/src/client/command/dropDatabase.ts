@@ -9,7 +9,9 @@
  */
 
 import { Command, WriteConcernMessage } from './command.js';
-import { CommandOptions } from '../options.js';
+import type { MongoClientConfig } from '../config.js';
+import type { Host } from '../host.js';
+import type { MongoDatabaseTransaction } from '../connection.js';
 
 type DropDatabase = {
     dropDatabase: 1;
@@ -17,17 +19,15 @@ type DropDatabase = {
 } & WriteConcernMessage;
 
 export class DropDatabaseCommand<T> extends Command<void> {
-    commandOptions: CommandOptions = {};
-
     constructor(protected dbName: any) {
         super();
     }
 
-    async execute(config): Promise<void> {
+    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<void> {
         const cmd: DropDatabase = {
             dropDatabase: 1, $db: this.dbName,
         };
-        config.applyWriteConcern(cmd, this.commandOptions);
+        config.applyWriteConcern(cmd, this.options);
         await this.sendAndWait<DropDatabase>(cmd);
     }
 

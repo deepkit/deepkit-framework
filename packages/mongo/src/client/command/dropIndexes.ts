@@ -10,7 +10,9 @@
 
 import { BaseResponse, Command, WriteConcernMessage } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
-import { CommandOptions } from '../options.js';
+import type { MongoClientConfig } from '../config.js';
+import type { Host } from '../host.js';
+import type { MongoDatabaseTransaction } from '../connection.js';
 
 type RequestSchema = {
     dropIndexes: string;
@@ -19,8 +21,6 @@ type RequestSchema = {
 } & WriteConcernMessage;
 
 export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command<BaseResponse> {
-    commandOptions: CommandOptions = {};
-
     constructor(
         public schema: T,
         public names: string[],
@@ -28,7 +28,7 @@ export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command<
         super();
     }
 
-    async execute(config, host, transaction): Promise<BaseResponse> {
+    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<BaseResponse> {
         const cmd: RequestSchema = {
             dropIndexes: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
@@ -36,7 +36,7 @@ export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command<
         };
 
         // if (transaction) transaction.applyTransaction(cmd);
-        config.applyWriteConcern(cmd, this.commandOptions);
+        config.applyWriteConcern(cmd, this.options);
 
         try {
             return await this.sendAndWait<RequestSchema>(cmd);

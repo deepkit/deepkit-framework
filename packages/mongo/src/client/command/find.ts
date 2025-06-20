@@ -8,13 +8,15 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command, ReadPreferenceMessage, TransactionalMessage } from './command.js';
+import { BaseResponse, CollationMessage, Command, HintMessage, ReadPreferenceMessage, TransactionalMessage } from './command.js';
 import { toFastProperties } from '@deepkit/core';
 import { DEEP_SORT } from '../../query.model.js';
 import { InlineRuntimeType, ReflectionClass, ReflectionKind, typeOf, TypeUnion } from '@deepkit/type';
 import { MongoError } from '../error.js';
 import { GetMoreMessage } from './getMore.js';
-import { CommandOptions } from '../options.js';
+import type { MongoClientConfig } from '../config.js';
+import type { Host } from '../host.js';
+import type { MongoDatabaseTransaction } from '../connection.js';
 
 type FindSchema = {
     find: string;
@@ -25,11 +27,12 @@ type FindSchema = {
     filter: any;
     projection?: any;
     sort?: any;
+    allowDiskUse?: boolean;
+    collation?: CollationMessage;
+    hint?: HintMessage;
 } & TransactionalMessage & ReadPreferenceMessage;
 
 export class FindCommand<T> extends Command<T[]> {
-    commandOptions: CommandOptions = {};
-
     constructor(
         public schema: ReflectionClass<T>,
         public filter: { [name: string]: any } = {},
@@ -41,7 +44,7 @@ export class FindCommand<T> extends Command<T[]> {
         super();
     }
 
-    async execute(config, host, transaction): Promise<T[]> {
+    getCommand(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction) {
         const cmd: FindSchema = {
             find: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
@@ -51,12 +54,22 @@ export class FindCommand<T> extends Command<T[]> {
             batchSize: config.options.batchSize,
         };
 
+        const allowDiskUse = config.options.allowDiskUse ?? config.options.allowDiskUse;
+        if (undefined !== allowDiskUse) cmd.allowDiskUse = allowDiskUse;
+        if (undefined !== this.options.hint) cmd.hint = this.options.hint;
+        if (undefined !== this.options.collation) cmd.collation = this.options.collation;
+
         if (transaction) transaction.applyTransaction(cmd);
 
-        config.applyReadPreference(host, cmd, this.commandOptions, transaction);
+        config.applyReadPreference(host, cmd, this.options, transaction);
 
         if (this.projection) cmd.projection = this.projection;
         if (this.sort) cmd.sort = this.sort;
+        return cmd;
+    }
+
+    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<T[]> {
+        const cmd = this.getCommand(config, host, transaction);
 
         const jit = this.schema.getJitContainer();
 
@@ -138,7 +151,7 @@ export class FindCommand<T> extends Command<T[]> {
                 batchSize: cmd.batchSize,
             };
             if (transaction) transaction.applyTransaction(nextCommand);
-            config.applyReadPreference(host, nextCommand, this.commandOptions, transaction);
+            config.applyReadPreference(host, nextCommand, this.options, transaction);
             const next = await this.sendAndWait<GetMoreMessage, Response>(nextCommand, undefined, specialisedResponse);
 
             if (next.cursor.nextBatch) {

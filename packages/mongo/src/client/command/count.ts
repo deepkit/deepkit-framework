@@ -8,9 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command, ReadPreferenceMessage, TransactionalMessage } from './command.js';
+import { BaseResponse, CollationMessage, Command, HintMessage, ReadPreferenceMessage, TransactionalMessage } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
-import { CommandOptions } from '../options.js';
+import type { MongoClientConfig } from '../config.js';
+import type { Host } from '../host.js';
+import type { MongoDatabaseTransaction } from '../connection.js';
 
 interface CountResponse extends BaseResponse {
     n: number;
@@ -22,11 +24,11 @@ type CountSchema = {
     limit?: number;
     query: any;
     skip?: number;
+    collation?: CollationMessage;
+    hint?: HintMessage;
 } & TransactionalMessage & ReadPreferenceMessage;
 
 export class CountCommand<T extends ReflectionClass<any>> extends Command<number> {
-    commandOptions: CommandOptions = {};
-
     constructor(
         public schema: T,
         public query: { [name: string]: any } = {},
@@ -36,8 +38,8 @@ export class CountCommand<T extends ReflectionClass<any>> extends Command<number
         super();
     }
 
-    async execute(config, host, transaction): Promise<number> {
-        const cmd: any = {
+    getCommand(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction) {
+        const cmd: CountSchema = {
             count: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             query: this.query,
@@ -46,8 +48,14 @@ export class CountCommand<T extends ReflectionClass<any>> extends Command<number
         };
 
         if (transaction) transaction.applyTransaction(cmd);
-        config.applyReadPreference(host, cmd, this.commandOptions, transaction);
+        config.applyReadPreference(host, cmd, this.options, transaction);
+        if (undefined !== this.options.hint) cmd.hint = this.options.hint;
+        if (undefined !== this.options.collation) cmd.collation = this.options.collation;
+        return cmd;
+    }
 
+    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<number> {
+        const cmd = this.getCommand(config, host, transaction);
         const res = await this.sendAndWait<CountSchema, CountResponse>(cmd);
         return res.n;
     }

@@ -97,7 +97,7 @@ describe('replica set, primary secondary', () => {
         expect(client.config.hosts[0].stats.commandsExecuted).toBe(5);
         expect(client.config.hosts[1].stats.commandsExecuted).toBe(2);
 
-        await database.query(User).with({ readPreference: 'secondary' }).find();
+        await database.query(User).withOptions({ readPreference: 'secondary' }).find();
 
         // +1 find
         expect(client.config.hosts[0].stats.commandsExecuted).toBe(5);
@@ -146,7 +146,7 @@ describe('replica set, primary secondary', () => {
         const session = database.createSession();
         session.useTransaction();
 
-        await session.query(User).with({ readPreference: 'secondary' }).find();
+        await session.query(User).withOptions({ readPreference: 'secondary' }).find();
     });
 
     test('leaky transaction detection', async () => {
@@ -162,7 +162,7 @@ describe('replica set, primary secondary', () => {
             session.useTransaction();
             await session.add(new User('user1')).flush();
 
-            const user = await session.query(User).with({ readPreference: 'secondary' }).findOne();
+            const user = await session.query(User).withOptions({ readPreference: 'secondary' }).findOne();
             expect(user.username).toBe('user1');
         }
 
@@ -274,7 +274,7 @@ describe.skip('local replica', () => {
         const reflection = ReflectionClass.from(User);
         const connection = await client.getConnection({ readPreference: 'secondary' });
         const command = new FindCommand(reflection);
-        command.commandOptions = { readPreference: 'secondary' };
+        command.options = { readPreference: 'secondary' };
         const rows = await connection.execute(command);
 
         console.log('rows', rows);

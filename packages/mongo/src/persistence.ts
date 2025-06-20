@@ -84,7 +84,7 @@ export class MongoPersistence extends DatabasePersistence {
         }
 
         try {
-            command.commandOptions = this.commandOptions;
+            command.options = this.commandOptions;
             await (await this.getConnection()).execute(command);
         } catch (error: any) {
             error = new DatabaseDeleteError(
@@ -116,7 +116,7 @@ export class MongoPersistence extends DatabasePersistence {
 
             //we do not use the same connection for ormSequences if it has a transaction, since
             //sequences need to behave like AUTO_INCREMENT does in SQL databases (they increase no matter if transaction is aborted or not)
-            command.commandOptions = this.commandOptions;
+            command.options = this.commandOptions;
             const res = await (this.session.assignedTransaction ? this.client : connection).execute(command);
             autoIncrementValue = res.value['value'] - items.length;
         }
@@ -137,7 +137,7 @@ export class MongoPersistence extends DatabasePersistence {
 
         try {
             const command = new InsertCommand(classSchema, insert);
-            command.commandOptions = this.commandOptions;
+            command.options = this.commandOptions;
             await connection.execute(command);
         } catch (error: any) {
             error = new DatabaseInsertError(
@@ -200,12 +200,12 @@ export class MongoPersistence extends DatabasePersistence {
 
         try {
             const command = new UpdateCommand(classSchema, updates)
-            command.commandOptions = this.commandOptions;
+            command.options = this.commandOptions;
             const res = await connection.execute(command);
 
             if (res > 0 && hasAtomic) {
                 const command = new FindCommand(classSchema, { [primaryKeyName]: { $in: pks } }, projection);
-                command.commandOptions = this.commandOptions;
+                command.options = this.commandOptions;
                 const returnings = await connection.execute(command);
                 for (const returning of returnings) {
                     const r = assignReturning[returning[primaryKeyName]];
