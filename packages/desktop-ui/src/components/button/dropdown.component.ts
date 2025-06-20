@@ -224,6 +224,18 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                         overlayX: 'end',
                         overlayY: 'top',
                     },
+                    {
+                        originX: 'start',
+                        originY: 'top',
+                        overlayX: 'start',
+                        overlayY: 'bottom',
+                    },
+                    {
+                        originX: 'end',
+                        originY: 'top',
+                        overlayX: 'end',
+                        overlayY: 'bottom',
+                    },
                 ]);
         } else if (target === 'center') {
 
