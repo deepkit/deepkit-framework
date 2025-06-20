@@ -143,6 +143,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
     ngOnDestroy(): void {
         this.close();
+        this.lastFocusWatcher?.();
     }
 
     @HostListener('window:keyup', ['$event'])
@@ -170,9 +171,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         width: number,
         height: number
     }) {
-        if (this.lastFocusWatcher) {
-            this.lastFocusWatcher();
-        }
+        this.lastFocusWatcher?.();
 
         if (!target) {
             target = this.host!;
@@ -377,10 +376,10 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     }
 
     public close() {
+        this.lastFocusWatcher?.();
         if (!this.isOpen) return;
         if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
         this.isOpen = false;
-
 
         if (this.relativeToInitiator && this.overlayRef) {
             const overlayElement = this.overlayRef.overlayElement;
