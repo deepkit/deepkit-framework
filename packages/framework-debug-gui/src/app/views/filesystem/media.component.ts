@@ -779,7 +779,6 @@ export class MediaComponent implements OnInit, OnDestroy {
 
     @HostListener('keydown', ['$event'])
     keyDown(event: KeyboardEvent) {
-        console.log('keydown', event.key, this.renameFile);
         if (this.renameFile) return;
 
         if (event.key === 'Enter') {
