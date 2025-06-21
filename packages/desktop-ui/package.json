@@ -28,6 +28,9 @@
     "./src/scss/icon.scss": {
       "default": "./src/scss/icon.scss"
     },
+    "./src/scss/reset.scss": {
+      "default": "./src/scss/reset.scss"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "esm2020": "./dist/fesm2022/deepkit-desktop-ui.mjs",

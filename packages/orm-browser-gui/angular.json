@@ -31,6 +31,7 @@
             ],
             "styles": [
               "src/styles.scss",
+              "@deepkit/desktop-ui/src/scss/reset.scss",
               "@deepkit/desktop-ui/src/scss/all.scss",
               "@deepkit/desktop-ui/src/scss/icon.scss"
             ],

@@ -30,6 +30,7 @@
               "src/assets"
             ],
             "styles": [
+              "../desktop-ui/src/scss/reset.scss",
               "../desktop-ui/src/scss/all.scss",
               "../desktop-ui/src/scss/icon.scss",
               "../ui-library/src/styles/style-code.scss",

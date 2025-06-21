@@ -29,6 +29,7 @@ Include the styles and icons:
                         "index": "src/index.html",
                         "main": "src/main.ts",
                         "styles": [
+                            "node_modules/@deepkit/desktop-ui/src/scss/reset.scss",
                             "node_modules/@deepkit/desktop-ui/src/scss/all.scss",
                             "node_modules/@deepkit/desktop-ui/src/scss/icon.scss",
                             "src/styles.scss"
