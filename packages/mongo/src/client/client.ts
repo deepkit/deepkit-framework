@@ -92,12 +92,13 @@ export class MongoClient {
     public async execute<T extends Command<unknown>>(
         command: T,
         request: Partial<ConnectionRequest> = {},
+        transaction?: MongoDatabaseTransaction
     ): Promise<ReturnType<T['execute']>> {
         if (command.needsWritableHost()) request.writable = true;
 
         const maxRetries = 10;
         for (let i = 1; i <= maxRetries; i++) {
-            const connection = await this.pool.getConnection(request);
+            const connection = await this.getConnection(request, transaction);
 
             try {
                 return await connection.execute(command);

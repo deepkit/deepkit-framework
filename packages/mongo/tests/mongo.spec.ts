@@ -1,4 +1,4 @@
-import { expect, test } from '@jest/globals';
+import { expect, jest, test } from '@jest/globals';
 import {
     arrayBufferFrom,
     AutoIncrement,
@@ -19,11 +19,11 @@ import {
 import { Database, getInstanceStateFromItem, UniqueConstraintFailure } from '@deepkit/orm';
 import { SimpleModel, SuperSimple } from './entities.js';
 import { createDatabase } from './utils.js';
-import { databaseFactory } from './factory.js';
 import { MongoDatabaseAdapter } from '../src/adapter.js';
 import { MemoryLogger } from '@deepkit/logger';
 
 Error.stackTraceLimit = 100;
+jest.setTimeout(10000);
 
 test('logger', async () => {
     const database = new Database(new MongoDatabaseAdapter('mongodb://invalid-host'));
@@ -35,7 +35,7 @@ test('logger', async () => {
 });
 
 test('test save undefined values', async () => {
-    const session = await createDatabase('test save undefined values');
+    const database = await createDatabase('test save undefined values');
 
     @entity.name('undefined-model-value')
     class Model {
@@ -65,73 +65,76 @@ test('test save undefined values', async () => {
 });
 
 test('query patch', async () => {
-    const db = await createDatabase('testing');
+    const database = await createDatabase('testing');
 
     const item = new SimpleModel('foo');
-    await db.persist(item);
+    await database.persist(item);
 
-    const dbItem = await db.query(SimpleModel).filter({ name: 'foo' }).findOne();
+    const dbItem = await database.query(SimpleModel).filter({ name: 'foo' }).findOne();
     expect(dbItem).not.toBe(item);
 
-    const patched = await db.query(SimpleModel).filter({ name: 'foo' }).patchOne({ name: 'bar' });
+    const patched = await database.query(SimpleModel).filter({ name: 'foo' }).patchOne({ name: 'bar' });
     expect(patched.modified).toBe(1);
-    expect(await db.query(SimpleModel).filter({ name: 'foo' }).has()).toBe(false);
-    expect(await db.query(SimpleModel).filter({ name: 'bar' }).has()).toBe(true);
+    expect(await database.query(SimpleModel).filter({ name: 'foo' }).has()).toBe(false);
+    expect(await database.query(SimpleModel).filter({ name: 'bar' }).has()).toBe(true);
+    database.disconnect();
 });
 
 test('query filter with undefined filter', async () => {
-    const db = await createDatabase('testing');
+    const database = await createDatabase('testing');
 
     const item1 = new SuperSimple();
     const item2 = new SuperSimple();
     item2.name = 'foo';
 
-    await db.persist(item1, item2);
+    await database.persist(item1, item2);
 
     {
-        const items = await db.query(SuperSimple).find();
+        const items = await database.query(SuperSimple).find();
         expect(items.length).toBe(2);
-        expect(await db.query(SuperSimple).has()).toBe(true);
+        expect(await database.query(SuperSimple).has()).toBe(true);
     }
 
     {
-        const items = await db.query(SuperSimple).filter({ name: undefined }).find();
+        const items = await database.query(SuperSimple).filter({ name: undefined }).find();
         expect(items.length).toBe(1); //only one item has name: undefined
-        expect(await db.query(SuperSimple).filter({ name: undefined }).count()).toBe(1); //only one item has name: undefined
-        expect(await db.query(SuperSimple).filter({ name: undefined }).has()).toBe(true);
+        expect(await database.query(SuperSimple).filter({ name: undefined }).count()).toBe(1); //only one item has name: undefined
+        expect(await database.query(SuperSimple).filter({ name: undefined }).has()).toBe(true);
     }
 
     {
-        await db.query(SuperSimple).patchMany({ name: undefined });
-        expect(await db.query(SuperSimple).filter({ name: undefined }).count()).toBe(2);
+        await database.query(SuperSimple).patchMany({ name: undefined });
+        expect(await database.query(SuperSimple).filter({ name: undefined }).count()).toBe(2);
     }
+    database.disconnect();
 });
 
 test('uof sets undefined for optional field', async () => {
-    const db = await createDatabase('testing');
+    const database = await createDatabase('testing');
 
     const item1 = new SuperSimple();
     item1.name = 'foo';
 
-    await db.persist(item1);
+    await database.persist(item1);
 
-    expect(await db.query(SuperSimple).filter({ name: undefined }).count()).toBe(0);
+    expect(await database.query(SuperSimple).filter({ name: undefined }).count()).toBe(0);
 
     {
-        const session = db.createSession();
+        const session = database.createSession();
         const item = await session.query(SuperSimple).findOne();
         expect(item.name).toBe('foo');
 
         item.name = undefined;
         await session.commit();
 
-        expect(await db.query(SuperSimple).filter({ name: undefined }).count()).toBe(1);
+        expect(await database.query(SuperSimple).filter({ name: undefined }).count()).toBe(1);
     }
+    database.disconnect();
 });
 
 test('uow patch', async () => {
-    const db = await createDatabase('testing');
-    const session = db.createSession();
+    const database = await createDatabase('testing');
+    const session = database.createSession();
 
     const item = new SimpleModel('foo');
     session.add(item);
@@ -140,13 +143,14 @@ test('uow patch', async () => {
     item.name = 'bar';
     await session.commit();
 
-    expect(await db.query(SimpleModel).filter({ name: 'foo' }).has()).toBe(false);
-    expect(await db.query(SimpleModel).filter({ name: 'bar' }).has()).toBe(true);
+    expect(await database.query(SimpleModel).filter({ name: 'foo' }).has()).toBe(false);
+    expect(await database.query(SimpleModel).filter({ name: 'bar' }).has()).toBe(true);
+    database.disconnect();
 });
 
 test('save model', async () => {
-    const db = await createDatabase('testing');
-    const session = db.createSession();
+    const database = await createDatabase('testing');
+    const session = database.createSession();
 
     const instance = cast<SimpleModel>({ name: 'myName' });
     expect(instance).toBeInstanceOf(SimpleModel);
@@ -203,18 +207,19 @@ test('save model', async () => {
     }
 
     instance.name = 'New Name';
-    await db.persist(instance);
+    await database.persist(instance);
     expect(await session.query(SimpleModel).filter({ name: 'MyName' }).has()).toBe(false);
     expect(await session.query(SimpleModel).filter({ name: 'New Name' }).has()).toBe(true);
+    database.disconnect();
 });
 
 test('test patchAll', async () => {
-    const db = await createDatabase('testing');
-    const session = db.createSession();
+    const database = await createDatabase('testing');
+    const session = database.createSession();
 
-    await db.persist(new SimpleModel('myName1'));
-    await db.persist(new SimpleModel('myName2'));
-    await db.persist(new SimpleModel('peter'));
+    await database.persist(new SimpleModel('myName1'));
+    await database.persist(new SimpleModel('myName2'));
+    await database.persist(new SimpleModel('peter'));
 
     expect(await session.query(SimpleModel).filter({ name: { $regex: /^myName?/ } }).count()).toBe(2);
     expect(await session.query(SimpleModel).filter({ name: { $regex: /^peter.*/ } }).count()).toBe(1);
@@ -234,11 +239,12 @@ test('test patchAll', async () => {
     expect(fieldRows[0].name).toBe('peterNew');
     expect(fieldRows[1].name).toBe('peterNew');
     expect(fieldRows[2].name).toBe('peter');
+    database.disconnect();
 });
 
 test('test delete', async () => {
-    const db = await createDatabase('testing');
-    const session = db.createSession();
+    const database = await createDatabase('testing');
+    const session = database.createSession();
 
     const instance1 = new SimpleModel('myName1');
     const instance2 = new SimpleModel('myName2');
@@ -298,16 +304,17 @@ test('test delete', async () => {
 
     await session.query(SimpleModel).filter({ name: { $regex: /myName[0-9]/ } }).deleteOne();
     expect(await session.query(SimpleModel).count()).toBe(0);
+    database.disconnect();
 });
 
 test('test super simple model', async () => {
-    const db = await createDatabase('testing-simple-model');
-    const session = db.createSession();
+    const database = await createDatabase('testing-simple-model');
+    const session = database.createSession();
 
     const instance = new SuperSimple('myName');
 
     expect(instance._id).toBe('');
-    await db.persist(instance);
+    await database.persist(instance);
     expect(instance._id).not.toBeUndefined();
 
     {
@@ -316,6 +323,7 @@ test('test super simple model', async () => {
         expect(items[0]._id).toBe(instance._id);
         expect(items[0].name).toBe(instance.name);
     }
+    database.disconnect();
 });
 
 test('test databaseName', async () => {
@@ -340,10 +348,11 @@ test('test databaseName', async () => {
     const items = await database.query(DifferentDatabase).find();
     expect(items[0]._id).toBe(instance._id);
     expect(items[0].name).toBe(instance.name);
+    database.disconnect();
 });
 
 test('no id', async () => {
-    const db = await createDatabase('testing');
+    const database = await createDatabase('testing');
 
     @entity.name('NoId')
     class NoId {
@@ -354,13 +363,14 @@ test('no id', async () => {
     const instance = cast<NoId>({ name: 'myName' });
 
     //works as mongodb doesn't need any primary key to work correctly: for the moment
-    await db.persist(instance);
+    await database.persist(instance);
+    database.disconnect();
 });
 
 
 test('second object id', async () => {
-    const db = await createDatabase('testing');
-    const session = db.createSession();
+    const database = await createDatabase('testing');
+    const session = database.createSession();
 
     @entity.name('SecondObjectId')
     class SecondObjectId {
@@ -396,11 +406,12 @@ test('second object id', async () => {
     // expect(mongoItem[0].secondId).toBeInstanceOf(mongodb.ObjectID);
     // expect(mongoItem[0]._id.toHexString()).toBe(instance._id);
     // expect(mongoItem[0].secondId.toHexString()).toBe(instance.secondId);
+    database.disconnect();
 });
 
 test('references back', async () => {
-    const db = await createDatabase('testing-references-back');
-    const session = db.createSession();
+    const database = await createDatabase('testing-references-back');
+    const session = database.createSession();
 
     @entity.name('user1')
     class User {
@@ -520,11 +531,12 @@ test('references back', async () => {
         expect(image2.user).toBeInstanceOf(User);
         expect(image2.user.name).toBe('marc');
     }
+    database.disconnect();
 });
 
 test('test identityMap', async () => {
-    const db = await createDatabase('testing');
-    const session = db.createSession();
+    const database = await createDatabase('testing');
+    const session = database.createSession();
 
     const item = new SimpleModel('myName1');
     session.add(item);
@@ -537,6 +549,7 @@ test('test identityMap', async () => {
     const dbItem = await session.query(SimpleModel).filter({ name: 'myName1' }).findOne();
     expect(dbItem === item).toBe(true);
     expect(dbItem).toBe(item);
+    database.disconnect();
 });
 
 test('aggregation without accumulators', async () => {
@@ -552,22 +565,22 @@ test('aggregation without accumulators', async () => {
         }
     }
 
-    const db = await createDatabase('aggregation');
+    const database = await createDatabase('aggregation');
 
-    await db.persist(cast<File>({ path: 'file1', category: 'images' }),
+    await database.persist(cast<File>({ path: 'file1', category: 'images' }),
         cast<File>({ path: 'file2', category: 'images' }),
         cast<File>({ path: 'file3', category: 'pdfs' }));
 
-    await db.query(File).filter({ path: 'file1' }).patchOne({ $inc: { downloads: 15 } });
-    await db.query(File).filter({ path: 'file2' }).patchOne({ $inc: { downloads: 5 } });
+    await database.query(File).filter({ path: 'file1' }).patchOne({ $inc: { downloads: 15 } });
+    await database.query(File).filter({ path: 'file2' }).patchOne({ $inc: { downloads: 5 } });
 
-    const res = await db.query(File)
+    const res = await database.query(File)
         .groupBy('category')
         .orderBy('category', 'asc')
         .find();
     expect(res).toEqual([{ category: 'images' }, { category: 'pdfs' }]);
 
-    const res2 = await db.query(File)
+    const res2 = await database.query(File)
         .withSum('downloads', 'downloadsSum')
         .groupBy('category')
         .orderBy('category', 'asc')
@@ -577,6 +590,7 @@ test('aggregation without accumulators', async () => {
         { downloadsSum: 20, category: 'images' },
         { downloadsSum: 0, category: 'pdfs' },
     ]);
+    database.disconnect();
 });
 
 test('raw', async () => {
@@ -587,20 +601,21 @@ test('raw', async () => {
         }
     }
 
-    const db = await createDatabase('raw');
+    const database = await createDatabase('raw');
 
     {
-        const session = db.createSession();
+        const session = database.createSession();
         for (let i = 0; i < 1000; i++) session.add(new Model(i));
         await session.commit();
     }
 
-    const result = await db.raw<Model, { count: number }>([{ $match: { id: { $gt: 500 } } }, { $count: 'count' }]).findOne();
+    const result = await database.raw<Model, { count: number }>([{ $match: { id: { $gt: 500 } } }, { $count: 'count' }]).findOne();
     expect(result.count).toBe(499);
 
-    const items = await db.raw<Model>([{ $match: { id: { $lt: 500 } } }]).find();
+    const items = await database.raw<Model>([{ $match: { id: { $lt: 500 } } }]).find();
     expect(items.length).toBe(500);
     expect(items[0]).toBeInstanceOf(Model);
+    database.disconnect();
 });
 
 test('batch', async () => {
@@ -611,24 +626,26 @@ test('batch', async () => {
         }
     }
 
-    const db = await createDatabase('batch');
+    const database = await createDatabase('batch');
     {
-        const session = db.createSession();
+        const session = database.createSession();
         for (let i = 0; i < 1000; i++) session.add(new Model(i));
         await session.commit();
     }
 
     {
-        const items = await db.query(Model).withBatchSize(10).find();
+        const items = await database.query(Model).withBatchSize(10).find();
         expect(items.length).toBe(1000);
     }
 
     {
-        const session = db.createSession();
+        const session = database.createSession();
         session.useTransaction();
         const items = await session.query(Model).withBatchSize(10).find();
         expect(items.length).toBe(1000);
+        await session.commit();
     }
+    database.disconnect();
 });
 
 test('unique constraint 1', async () => {
@@ -639,7 +656,9 @@ test('unique constraint 1', async () => {
         }
     }
 
-    const database = await databaseFactory([Model]);
+    const database = await createDatabase('unique');
+    database.registerEntity(Model);
+    await database.migrate();
 
     await database.persist(new Model('peter'));
     await database.persist(new Model('paul'));
@@ -669,6 +688,7 @@ test('unique constraint 1', async () => {
         await expect(p).rejects.toThrow('username dup key');
         await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
+    database.disconnect();
 });
 
 test('collation', async () => {
@@ -679,7 +699,7 @@ test('collation', async () => {
         }
     }
 
-    const database = await databaseFactory([User]);
+    const database = await createDatabase('collation');
     const logger = new MemoryLogger();
     database.setLogger(logger);
 
@@ -738,6 +758,16 @@ test('collation', async () => {
     }
 
     {
+        const users = await database.raw<User, { name: string }>([
+            { $match: { name: 'eclair' } },
+            { $project: { name: 1 } },
+        ])
+            .withOptions({ collation: { locale: 'en', strength: 1 } })
+            .explain();
+        expect(users.queryPlanner.winningPlan.stage).toBe('PROJECTION_SIMPLE');
+    }
+
+    {
         const users = await database.query(User)
             .filter({ name: 'eclair' })
             .withOptions({ collation: { locale: 'en', strength: 1 } })
@@ -771,4 +801,40 @@ test('collation', async () => {
         expect(users).toHaveLength(2);
         expect(logger.getOutput()).toContain(`winningPlan: { stage: 'COLLSCAN`);
     }
+    database.disconnect();
+});
+
+test('allowDiskUse', async () => {
+    class User {
+        _id: MongoId & PrimaryKey = '';
+
+        constructor(public name: string) {
+        }
+    }
+
+    const database = await createDatabase('allowDiskUse');
+    const logger = new MemoryLogger();
+    database.setLogger(logger);
+
+    await database.persist(new User('eclair'), new User('éclair'), new User('Napoleon'));
+
+    {
+        const users = await database.query(User)
+            .filter({ name: 'eclair' })
+            .withOptions({ allowDiskUse: true })
+            .find();
+
+        expect(users[0]).toMatchObject({ name: 'eclair' });
+    }
+
+    {
+        const users = await database.raw<User, { name: string }>([
+            { $match: { name: 'eclair' } },
+            { $project: { name: 1 } },
+        ])
+            .withOptions({ allowDiskUse: true })
+            .find();
+        expect(users).toEqual([{ name: 'eclair' }]);
+    }
+    database.disconnect();
 });

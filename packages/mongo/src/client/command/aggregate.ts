@@ -24,6 +24,7 @@ type AggregateMessage = {
     cursor: {
         batchSize: number,
     },
+    allowDiskUse?: boolean;
     collation?: CollationMessage;
     hint?: HintMessage;
 } & TransactionalMessage & WriteConcernMessage & ReadPreferenceMessage;
@@ -52,6 +53,10 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
         if (transaction) transaction.applyTransaction(cmd);
         config.applyReadPreference(host, cmd, this.options, transaction);
         if (!transaction) config.applyWriteConcern(cmd, this.options);
+
+        const allowDiskUse = config.options.allowDiskUse ?? config.options.allowDiskUse;
+        if (undefined !== allowDiskUse) cmd.allowDiskUse = allowDiskUse;
+
         if (undefined !== this.options.hint) cmd.hint = this.options.hint;
         if (undefined !== this.options.collation) cmd.collation = this.options.collation;
         return cmd;

@@ -37,6 +37,10 @@ import { AggregateCommand } from './client/command/aggregate.js';
 import { EventDispatcher } from '@deepkit/event';
 import { Logger } from '@deepkit/logger';
 import { CommandOptions } from './client/options.js';
+import { ExplainCommand } from './client/command/explain.js';
+import { FindCommand } from './client/command/find.js';
+
+export type MongoExplainVerbosity = 'queryPlanner' | 'executionStats' | 'allPlansExecution';
 
 export class MongoDatabaseQueryFactory extends DatabaseAdapterQueryFactory {
     constructor(
@@ -66,6 +70,14 @@ class MongoRawCommandQuery<T> implements FindQuery<T> {
     withOptions(options: CommandOptions): this {
         Object.assign(this.command.options, options);
         return this;
+    }
+
+    async explain(verbosity: MongoExplainVerbosity = 'allPlansExecution') {
+        if (!(this.command instanceof AggregateCommand) && !(this.command instanceof FindCommand)) {
+            throw new Error('Explain is only supported for AggregateCommand and FindCommand. Use ExplainCommand to explain other commands.');
+        }
+        const command = new ExplainCommand(this.command, verbosity);
+        return await this.client.execute(command, this.command.options, this.session.assignedTransaction);
     }
 
     async find(): Promise<T[]> {

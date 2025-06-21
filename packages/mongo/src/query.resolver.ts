@@ -42,7 +42,7 @@ import { UpdateCommand } from './client/command/update.js';
 import { convertClassQueryToMongo } from './mapping.js';
 import { DEEP_SORT, FilterQuery, MongoQueryModel } from './query.model.js';
 import { MongoConnection } from './client/connection.js';
-import { MongoDatabaseAdapter } from './adapter.js';
+import { MongoDatabaseAdapter, MongoExplainVerbosity } from './adapter.js';
 import { empty, formatError } from '@deepkit/core';
 import { mongoSerializer } from './mongo-serializer.js';
 import { handleSpecificError } from './error.js';
@@ -67,9 +67,7 @@ interface CountSchema {
     count: number;
 }
 
-
 export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolver<T, DatabaseAdapter, MongoQueryModel<T>> {
-
     protected countSchema = ReflectionClass.from(typeOf<CountSchema>());
 
     constructor(
@@ -84,14 +82,9 @@ export class MongoQueryResolver<T extends OrmEntity> extends GenericQueryResolve
         return await this.count(model) > 0;
     }
 
-    async explain(model: MongoQueryModel<T>, op: QueryExplainOp, option: 'queryPlanner' | 'executionStats' | 'allPlansExecution' = 'allPlansExecution'): Promise<MongoExplain> {
+    async explain(model: MongoQueryModel<T>, op: QueryExplainOp, option: MongoExplainVerbosity = 'allPlansExecution'): Promise<MongoExplain> {
         const command = this.getExplainCommand(model, op, option);
-        const connection = await this.client.getConnection(model.getCommandOptions(), this.session.assignedTransaction);
-        try {
-            return await connection.execute(command);
-        } finally {
-            connection.release();
-        }
+        return await this.client.execute(command, model.getCommandOptions(), this.session.assignedTransaction);
     }
 
     protected getExplainCommand(model: MongoQueryModel<T>, op: QueryExplainOp, verbosity: 'queryPlanner' | 'executionStats' | 'allPlansExecution'): ExplainCommand {

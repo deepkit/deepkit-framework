@@ -403,13 +403,40 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
     }
 
     /**
-     * Marks this session as transactional. On the next query or flush/commit() a transaction on the database adapter is started.
+     * Marks this session as transactional. On the next query or flush()/commit() a transaction on the database adapter is started.
      * Use flush(), commit(), and rollback() to control the transaction behavior. All created query objects from this session
      * are running in this transaction as well.
      *
-     * The transaction is released when commit()/rollback is executed. When the transaction is released then
+     * The transaction is released when commit()/rollback() is executed.
+     *
+     * YOU MUST USE COMMIT() OR ROLLBACK() TO RELEASE THE TRANSACTION.
+     *
+     * When the transaction is released then
      * this session is not marked as transactional anymore. You have to use useTransaction() again if you want to
      * have a new transaction on this session.
+     *
+     * @example
+     * ```typescript
+     * const session = database.createSession();
+     * session.useTransaction();
+     * try {
+     *    // add some data
+     *    session.add(new User('New User'));
+     *
+     *    // flush in-between changes to the database
+     *    // without closing the transaction
+     *    await session.flush();
+     *
+     *    // query some data
+     *    const users = await session.query(User).filter({ id: 1 }).find();
+     *
+     *    // finish transaction
+     *    await session.commit();
+     * } catch (error) {
+     *     await session.rollback();
+     *     throw error;
+     * }
+     *```
      */
     useTransaction(): ReturnType<this['adapter']['createTransaction']> {
         if (!this.assignedTransaction) {
