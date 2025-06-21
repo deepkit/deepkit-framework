@@ -468,8 +468,9 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
 
     /**
      * If a transaction is assigned, a transaction rollback is executed and the transaction released.
+     * You have to use useTransaction() again or create a new session with useTransaction() to start a new transaction.
      *
-     * This does not rollback changes made to objects in memory.
+     * This does not roll back changes made to objects in memory.
      */
     async rollback(): Promise<void> {
         if (!this.assignedTransaction) return;
