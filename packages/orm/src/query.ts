@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ClassType, EmitterEvent, empty, EventEmitter } from '@deepkit/core';
+import { ClassType, EmitterEvent, empty, EventEmitter, formatError } from '@deepkit/core';
 import {
     assertType,
     Changes,
@@ -697,6 +697,8 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
         return v.lifts.includes(type) || v instanceof type;
     }
 
+    protected explainingEnabled?: { options: unknown };
+
     constructor(
         classSchema: ReflectionClass<T>,
         protected session: DatabaseSession<any>,
@@ -709,22 +711,27 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     /**
      * Returns the explain query result for the given operation.
      *
-     * Use explainLog('...') of explain() to log the explain result instead of returning it.
+     * Use `logExplain` instead to log the explain result on the next operation.
      */
     async explain(op: QueryExplainOp, ...args: ExplainParameters<this['resolver']>): Promise<ExplainResult<this['resolver']>> {
         return await this.resolver.explain(this.model, op, args[0]);
     }
 
     /**
-     * Logs the explain query result of the given operation to the logger.
+     * Logs the explain query result of the next operation to the logger.
      */
-    explainLog(op: QueryExplainOp, ...args: ExplainParameters<this['resolver']>): this {
-        this.resolver.explain(this.model, op, args[0]).then(v => {
-            this.session.logger.debug(`Explain ${op} for ${this.classSchema.getClassName()} ${op}:`, v);
-        }).catch(error => {
-            this.session.logger.error(`Explain ${op} for ${this.classSchema.getClassName()} failed:`, error);
-        });
+    logExplain(...args: ExplainParameters<this['resolver']>): this {
+        this.explainingEnabled = { options: args[0] };
         return this;
+    }
+
+    protected explainLogIfNeeded(op: QueryExplainOp): Promise<void> | undefined {
+        if (!this.explainingEnabled) return;
+        return this.resolver.explain(this.model, op, this.explainingEnabled.options).then(v => {
+            this.session.logger.log(`Explain ${op} for ${this.classSchema.getClassName()} ${op}:`, v);
+        }).catch(error => {
+            this.session.logger.error(`Explain ${op} for ${this.classSchema.getClassName()} failed:`, formatError(error));
+        });
     }
 
     static from<Q extends Query<any> & {
@@ -820,6 +827,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
      * @throws DatabaseError
      */
     public async count(fromHas: boolean = false): Promise<number> {
+        await this.explainLogIfNeeded('count');
         let query: Query<any> | undefined = undefined;
 
         const frame = this.session.stopwatch?.start((fromHas ? 'Has:' : 'Count:') + this.classSchema.getClassName(), FrameCategory.database);
@@ -843,6 +851,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
      * @throws DatabaseError
      */
     public async find(): Promise<Resolve<this>[]> {
+        await this.explainLogIfNeeded('find');
         const frame = this.session.stopwatch?.start('Find:' + this.classSchema.getClassName(), FrameCategory.database);
         let query: Query<any> | undefined = undefined;
 
@@ -866,6 +875,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
      * @throws DatabaseError
      */
     public async findOneOrUndefined(): Promise<Resolve<this> | undefined> {
+        await this.explainLogIfNeeded('findOne');
         const frame = this.session.stopwatch?.start('FindOne:' + this.classSchema.getClassName(), FrameCategory.database);
         let query: Query<any> | undefined = undefined;
 
@@ -913,6 +923,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     }
 
     protected async delete(query: Query<any>): Promise<DeleteResult<T>> {
+        await this.explainLogIfNeeded('delete');
         const hasEvents = this.session.eventDispatcher.hasListeners(Query.onDeletePre) || this.session.eventDispatcher.hasListeners(Query.onDeletePost);
 
         const deleteResult: DeleteResult<T> = {
@@ -982,6 +993,7 @@ export class Query<T extends OrmEntity> extends BaseQuery<T> {
     }
 
     protected async patch(query: Query<any>, patch: DeepPartial<T> | ChangesInterface<T>): Promise<PatchResult<T>> {
+        await this.explainLogIfNeeded('patch');
         const frame = this.session.stopwatch ? this.session.stopwatch.start('Patch:' + this.classSchema.getClassName(), FrameCategory.database) : undefined;
         if (frame) frame.data({ collection: this.classSchema.getCollectionName(), className: this.classSchema.getClassName() });
 

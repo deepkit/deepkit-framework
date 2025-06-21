@@ -680,6 +680,8 @@ test('collation', async () => {
     }
 
     const database = await databaseFactory([User]);
+    const logger = new MemoryLogger();
+    database.setLogger(logger);
 
     await database.persist(new User('eclair'), new User('éclair'), new User('Napoleon'));
 
@@ -757,5 +759,16 @@ test('collation', async () => {
             .withOptions({ collation: { locale: 'en', strength: 1 } })
             .explain('find', 'executionStats');
         expect(users.queryPlanner.winningPlan.stage).toBe('COLLSCAN');
+    }
+
+    {
+        logger.clear();
+        const users = await database.query(User)
+            .filter({ name: 'eclair' })
+            .withOptions({ collation: { locale: 'en', strength: 1 } })
+            .logExplain()
+            .find();
+        expect(users).toHaveLength(2);
+        expect(logger.getOutput()).toContain(`winningPlan: { stage: 'COLLSCAN`);
     }
 });
