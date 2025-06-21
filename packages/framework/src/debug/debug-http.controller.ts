@@ -6,6 +6,8 @@ import { Jimp } from 'jimp';
 
 //@ts-ignore
 import * as imageSize from 'probe-image-size';
+import { Logger } from '@deepkit/logger';
+import { formatError } from '@deepkit/core';
 
 function send(response: HttpResponse, data: Uint8Array, name: string, mimeType?: string, lastModified?: Date) {
     response.setHeader('Cache-Control', 'max-age=31536000');
@@ -24,6 +26,7 @@ function send(response: HttpResponse, data: Uint8Array, name: string, mimeType?:
 export class DebugHttpController {
     constructor(
         protected filesystemRegistry: FilesystemRegistry,
+        protected logger: Logger,
     ) {
     }
 
@@ -61,11 +64,12 @@ export class DebugHttpController {
             const size = imageSize.sync(Buffer.from(data));
             if (size.width || 0 > 400 || size.height || 0 > 400) {
                 try {
-                    const img = await Jimp.read("asd");
-                    const buffer = await img.resize({w: 800, h: 800}).getBuffer(mimeType as any);
+                    const img = await Jimp.read(data);
+                    const buffer = await img.scaleToFit({w: 800, h: 800}).getBuffer(mimeType as any);
                     send(response, buffer, file.name, mimeType, file.lastModified);
                     return;
                 } catch (error: any) {
+                    this.logger.log(`Error resizing image ${path}: ${formatError(error)}`);
                     return response.status(404);
                 }
             }
