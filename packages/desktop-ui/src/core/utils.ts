@@ -169,7 +169,7 @@ export function focusWatcher(
         }
 
         for (const focus of allowedFocuses) {
-            if (currentlyFocused === focus || focus.contains(currentlyFocused)) {
+            if (focus && currentlyFocused === focus || focus.contains(currentlyFocused)) {
                 return true;
             }
         }
@@ -216,7 +216,7 @@ export function focusWatcher(
     function unsubscribe() {
         if (!subscribed) return;
         subscribed = false;
-        doc.removeEventListener('mousedown', onMouseDown);
+        doc.removeEventListener('mousedown', onMouseDown, true);
         doc.removeEventListener('focusin', onFocusIn);
         doc.removeEventListener('focusout', onFocusOut);
     }

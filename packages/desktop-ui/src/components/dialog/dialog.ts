@@ -122,6 +122,7 @@ export class DuiDialog {
 
             const comp = overlayRef.attach(portal);
             comp.instance.closed.subscribe((v) => {
+                comp.destroy();
                 overlayRef.dispose();
             });
 

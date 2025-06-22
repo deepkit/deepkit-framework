@@ -291,7 +291,10 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     protected beforeUnload() {
         if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
 
+        this.wrapperComponentRef?.destroy();
+
         if (this.overlayRef) {
+            this.overlayRef.detach();
             this.overlayRef.dispose();
             this.overlayRef = undefined;
         }

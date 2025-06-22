@@ -10,10 +10,11 @@
 
 import {
     AfterViewInit,
-    ChangeDetectorRef,
+    ChangeDetectionStrategy,
     Component,
     Directive,
     ElementRef,
+    EmbeddedViewRef,
     EventEmitter,
     HostListener,
     Injector,
@@ -23,7 +24,6 @@ import {
     Optional,
     Output,
     SimpleChanges,
-    SkipSelf,
     TemplateRef,
     ViewChild,
     ViewContainerRef,
@@ -34,7 +34,7 @@ import { Subscription } from 'rxjs';
 import { WindowRegistry } from '../window/window-state';
 import { focusWatcher } from '../../core/utils';
 import { isArray } from '@deepkit/core';
-import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app';
+import { OverlayStack, OverlayStackItem, unsubscribe } from '../app';
 import { ButtonComponent } from './button.component';
 
 
@@ -57,11 +57,13 @@ import { ButtonComponent } from './button.component';
     host: {
         '[class.overlay]': 'overlay !== false',
     },
+    changeDetection: ChangeDetectionStrategy.OnPush,
     styleUrls: ['./dropdown.component.scss'],
 })
 export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     public isOpen = false;
     public overlayRef?: OverlayRef;
+    public portalViewRef?: EmbeddedViewRef<any>;
     protected lastFocusWatcher?: ReturnType<typeof focusWatcher>;
 
     @Input() host?: HTMLElement | ElementRef;
@@ -71,7 +73,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     /**
      * For debugging purposes.
      */
-    @Input() keepOpen?: true;
+    @Input() keepOpen?: boolean;
 
     @Input() height?: number | string;
 
@@ -109,22 +111,22 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     @ViewChild('dropdownTemplate', {
         static: false,
         read: TemplateRef,
-    }) dropdownTemplate!: TemplateRef<any>;
-    @ViewChild('dropdown', { static: false, read: ElementRef }) dropdown!: ElementRef<HTMLElement>;
+    }) dropdownTemplate?: TemplateRef<any>;
+    @ViewChild('dropdown', { static: false, read: ElementRef }) dropdown?: ElementRef<HTMLElement>;
 
     container?: TemplateRef<any> | undefined;
 
     relativeToInitiator?: HTMLElement;
 
     protected lastOverlayStackItem?: OverlayStackItem;
+    protected positionStrategy?: PositionStrategy;
+    protected templatePortal?: TemplatePortal;
 
     constructor(
         protected overlayService: Overlay,
         protected injector: Injector,
         protected overlayStack: OverlayStack,
         protected viewContainerRef: ViewContainerRef,
-        protected cd: ChangeDetectorRef,
-        @SkipSelf() protected cdParent: ChangeDetectorRef,
         @Optional() protected registry?: WindowRegistry,
     ) {
     }
@@ -137,6 +139,8 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     }
 
     ngAfterViewInit() {
+        if (!this.dropdownTemplate) return;
+        this.templatePortal = new TemplatePortal(this.dropdownTemplate, this.viewContainerRef);
         if (this.show === true) this.open();
         if (this.show === false) this.close();
     }
@@ -171,10 +175,15 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         width: number,
         height: number
     }) {
+        if (this.isOpen) return;
         this.lastFocusWatcher?.();
+        if (this.positionStrategy) {
+            this.positionStrategy.dispose();
+        }
+        if (!this.templatePortal) return;
 
         if (!target) {
-            target = this.host!;
+            target = this.host;
         }
 
         target = target instanceof ElementRef ? target.nativeElement : target;
@@ -182,7 +191,6 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         if (!target) {
             throw new Error('No target or host specified for dropdown');
         }
-        let position: PositionStrategy | undefined;
 
         //this is necessary for multi-window environments, but doesn't work yet.
         // const document = this.registry.getCurrentViewContainerRef().element.nativeElement.ownerDocument;
@@ -199,11 +207,9 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         //     document,
         //     this.injector.get(Directionality),
         // );
-        const overlay = this.overlayService;
-
         if (target instanceof MouseEvent) {
             const mousePosition = { x: target.pageX, y: target.pageY };
-            position = overlay
+            this.positionStrategy = this.overlayService
                 .position()
                 .flexibleConnectedTo(mousePosition)
                 .withFlexibleDimensions(false)
@@ -238,12 +244,11 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                     },
                 ]);
         } else if (target === 'center') {
-
-            position = overlay
+            this.positionStrategy = this.overlayService
                 .position()
                 .global().centerHorizontally().centerVertically();
         } else {
-            position = overlay
+            this.positionStrategy = this.overlayService
                 .position()
                 .flexibleConnectedTo(target)
                 .withFlexibleDimensions(false)
@@ -274,7 +279,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         }
 
         if (this.overlayRef) {
-            this.overlayRef.updatePositionStrategy(position);
+            this.overlayRef.updatePositionStrategy(this.positionStrategy);
             this.overlayRef.updatePosition();
         } else {
             this.isOpen = true;
@@ -283,8 +288,8 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 maxWidth: 450,
                 maxHeight: '90%',
                 hasBackdrop: false,
-                scrollStrategy: overlay.scrollStrategies.reposition(),
-                positionStrategy: position,
+                scrollStrategy: this.overlayService.scrollStrategies.reposition(),
+                positionStrategy: this.positionStrategy,
             };
 
             if (this.width) options.width = this.width;
@@ -294,16 +299,12 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             if (this.maxWidth) options.maxWidth = this.maxWidth;
             if (this.maxHeight) options.maxHeight = this.maxHeight;
 
-            this.overlayRef = overlay.create(options);
+            this.overlayRef = this.overlayService.create(options);
 
-            if (!this.dropdownTemplate) throw new Error('No dropdownTemplate set');
-            const portal = new TemplatePortal(this.dropdownTemplate, this.viewContainerRef);
+            if (this.portalViewRef) this.portalViewRef.destroy();
+            this.portalViewRef = this.overlayRef.attach(this.templatePortal);
 
-            this.overlayRef!.attach(portal);
-
-            this.cd.detectChanges();
-
-            this.overlayRef!.updatePosition();
+            this.overlayRef.updatePosition();
             this.shown.emit();
             this.showChange.emit(true);
             // console.log('this.overlayRef', initiator, this.overlayRef.overlayElement);
@@ -344,7 +345,6 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 () => {
                     if (!this.keepOpen) {
                         this.close();
-                        ReactiveChangeDetectionModule.tick();
                     }
                 },
                 (element) => {
@@ -390,7 +390,10 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     public close() {
         this.lastFocusWatcher?.();
         if (!this.isOpen) return;
-        if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
+        if (this.lastOverlayStackItem) {
+            this.lastOverlayStackItem.release();
+            this.lastOverlayStackItem = undefined;
+        }
         this.isOpen = false;
 
         if (this.relativeToInitiator && this.overlayRef) {
@@ -401,25 +404,31 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             this.relativeToInitiator = undefined;
 
             const transitionEnd = () => {
+                this.hidden.emit();
+                this.showChange.emit(false);
                 if (this.overlayRef) {
+                    this.portalViewRef?.detach();
+                    this.portalViewRef?.destroy();
+                    this.overlayRef.detach();
                     this.overlayRef.dispose();
                     this.overlayRef = undefined;
                 }
-                this.cd.detectChanges();
-                this.hidden.emit();
-                this.showChange.emit(false);
+                if (this.positionStrategy) this.positionStrategy.dispose();
                 overlayElement.removeEventListener('transitionend', transitionEnd);
             };
 
-            overlayElement.addEventListener('transitionend', transitionEnd);
+            overlayElement.addEventListener('transitionend', transitionEnd, { once: true });
         } else {
+            this.hidden.emit();
+            this.showChange.emit(false);
             if (this.overlayRef) {
+                this.portalViewRef?.detach();
+                this.portalViewRef?.destroy();
+                this.overlayRef.detach();
                 this.overlayRef.dispose();
                 this.overlayRef = undefined;
             }
-            this.cd.detectChanges();
-            this.hidden.emit();
-            this.showChange.emit(false);
+            if (this.positionStrategy) this.positionStrategy.dispose();
         }
     }
 }
@@ -484,13 +493,10 @@ export class OpenDropdownHoverDirective implements OnDestroy {
      */
     @Input() openDropdownHoverCloseTimeout: number = 80;
 
-    @unsubscribe()
-    openSub?: Subscription;
-
-    @unsubscribe()
-    hiddenSub?: Subscription;
-
-    lastHide?: any;
+    protected hiddenSub?: Subscription;
+    protected lastHide?: ReturnType<typeof setTimeout>;
+    protected enter = () => this.onHover();
+    protected leave = () => this.onLeave();
 
     constructor(
         protected elementRef: ElementRef,
@@ -498,21 +504,28 @@ export class OpenDropdownHoverDirective implements OnDestroy {
     }
 
     ngOnDestroy() {
+        this.cleanup();
+    }
+
+    protected cleanup() {
+        clearTimeout(this.lastHide);
+        this.lastHide = undefined;
+        this.hiddenSub?.unsubscribe();
     }
 
     @HostListener('mouseenter')
     onHover() {
-        clearTimeout(this.lastHide);
-        this.lastHide = undefined;
+        this.cleanup();
 
         if (this.openDropdownHover && !this.openDropdownHover.isOpen) {
             this.openDropdownHover.open(this.elementRef);
-            if (this.openDropdownHover.overlayRef) {
-                this.openDropdownHover.overlayRef.hostElement.addEventListener('mouseenter', () => {
-                    this.onHover();
-                });
-                this.openDropdownHover.overlayRef.hostElement.addEventListener('mouseleave', () => {
-                    this.onLeave();
+            const overlayRef = this.openDropdownHover.overlayRef;
+            if (overlayRef) {
+                overlayRef.hostElement.addEventListener('mouseenter', this.enter);
+                overlayRef.hostElement.addEventListener('mouseleave', this.leave);
+                this.hiddenSub = this.openDropdownHover.hidden.subscribe(() => {
+                    overlayRef.hostElement.removeEventListener('mouseenter', this.enter);
+                    overlayRef.hostElement.removeEventListener('mouseleave', this.leave);
                 });
             }
         }
@@ -520,8 +533,10 @@ export class OpenDropdownHoverDirective implements OnDestroy {
 
     @HostListener('mouseleave')
     onLeave() {
+        this.cleanup();
         this.lastHide = setTimeout(() => {
             if (this.openDropdownHover && this.lastHide) this.openDropdownHover.close();
+            this.cleanup();
         }, this.openDropdownHoverCloseTimeout);
     }
 }
