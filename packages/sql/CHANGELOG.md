@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.14](https://github.com/deepkit/deepkit-framework/compare/v1.0.13...v1.0.14) (2025-06-22)
+
+### Features
+
+- **orm:** add explain() API ([c34370a](https://github.com/deepkit/deepkit-framework/commit/c34370aa7da1ee4d5ca9f7e3ff8ad240fc7aa999))
+
 ## [1.0.12](https://github.com/deepkit/deepkit-framework/compare/v1.0.11...v1.0.12) (2025-06-05)
 
 **Note:** Version bump only for package @deepkit/sql

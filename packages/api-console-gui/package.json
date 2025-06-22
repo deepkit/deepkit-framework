@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/api-console-gui",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "API Console GUI",
   "scripts": {
     "ng": "ng",
@@ -38,7 +38,7 @@
     "@deepkit/bson": "^1.0.12",
     "@deepkit/core": "^1.0.5",
     "@deepkit/core-rxjs": "^1.0.9",
-    "@deepkit/desktop-ui": "^1.0.13",
+    "@deepkit/desktop-ui": "^1.0.14",
     "@deepkit/event": "^1.0.12",
     "@deepkit/injector": "^1.0.12",
     "@deepkit/logger": "^1.0.12",

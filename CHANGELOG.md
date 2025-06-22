@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.14](https://github.com/deepkit/deepkit-framework/compare/v1.0.13...v1.0.14) (2025-06-22)
+
+### Bug Fixes
+
+- **desktop-ui:** dui-table[autoHeight] width correct styling and behaviour ([d541724](https://github.com/deepkit/deepkit-framework/commit/d541724c4417153bb4c6a59cc113d33e20d1e3e5))
+- **desktop-ui:** make sure focusWatcher always closes ([d06ebb5](https://github.com/deepkit/deepkit-framework/commit/d06ebb5ec9478bdf91e1c67eeac2506f9bdc6700))
+- **desktop-ui:** more fallback positions for dropdown ([74581eb](https://github.com/deepkit/deepkit-framework/commit/74581eb3add46059ac2bd67733b55e94fd7994e5))
+- **desktop-ui:** resource leak of embedded view refs of dropdown/dialog ([7867335](https://github.com/deepkit/deepkit-framework/commit/78673352227a9b8ecb1e35abec0d8fde0b5336bf))
+- **framework-debug-gui:** rename file, remove resize of textarea ([b21c921](https://github.com/deepkit/deepkit-framework/commit/b21c9213ffb0981cd069da0b47780b57ef803755))
+- **framework:** correctly read media preview data ([359822c](https://github.com/deepkit/deepkit-framework/commit/359822c1ebc9ca23997e1ec2d133cc4805e38c56))
+
+### Features
+
+- **desktop-ui:** decouple reset.scss from all.scss ([e882221](https://github.com/deepkit/deepkit-framework/commit/e8822210b447b254ad28453082c33c4ffad419f2))
+- **mongo:** explain() and allowDiskUse on aggregations ([cefcd96](https://github.com/deepkit/deepkit-framework/commit/cefcd96ce3cbc10d7c521edc0bf6e03aef85759e))
+- **mongo:** implement Query.logExplain, to log the explain() query on next operation ([aae9a64](https://github.com/deepkit/deepkit-framework/commit/aae9a642da141495eb83c9334bafb9d890051601))
+- **mongo:** support collation/hint option and new explain() API ([77dfde8](https://github.com/deepkit/deepkit-framework/commit/77dfde8d0f39b9a35af28a886b97e5cf5dce9341))
+- **orm:** add explain() API ([c34370a](https://github.com/deepkit/deepkit-framework/commit/c34370aa7da1ee4d5ca9f7e3ff8ad240fc7aa999))
+
 ## [1.0.13](https://github.com/deepkit/deepkit-framework/compare/v1.0.12...v1.0.13) (2025-06-18)
 
 ### Bug Fixes

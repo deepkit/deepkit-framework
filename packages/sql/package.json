@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/sql",
-  "version": "1.0.12",
+  "version": "1.0.14",
   "description": "deepkit/orm base SQL",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -53,7 +53,7 @@
     "@deepkit/core": "^1.0.5",
     "@deepkit/injector": "^1.0.12",
     "@deepkit/logger": "^1.0.12",
-    "@deepkit/orm": "^1.0.12",
+    "@deepkit/orm": "^1.0.14",
     "@deepkit/stopwatch": "^1.0.12",
     "@deepkit/type": "^1.0.12"
   },

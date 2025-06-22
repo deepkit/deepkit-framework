@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.14](https://github.com/deepkit/deepkit-framework/compare/v1.0.13...v1.0.14) (2025-06-22)
+
+### Bug Fixes
+
+- **framework-debug-gui:** rename file, remove resize of textarea ([b21c921](https://github.com/deepkit/deepkit-framework/commit/b21c9213ffb0981cd069da0b47780b57ef803755))
+
+### Features
+
+- **desktop-ui:** decouple reset.scss from all.scss ([e882221](https://github.com/deepkit/deepkit-framework/commit/e8822210b447b254ad28453082c33c4ffad419f2))
+
 ## [1.0.13](https://github.com/deepkit/deepkit-framework/compare/v1.0.12...v1.0.13) (2025-06-18)
 
 **Note:** Version bump only for package @deepkit/framework-debug-gui

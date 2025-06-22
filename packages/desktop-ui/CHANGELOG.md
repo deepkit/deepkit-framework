@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.14](https://github.com/deepkit/deepkit-framework/compare/v1.0.13...v1.0.14) (2025-06-22)
+
+### Bug Fixes
+
+- **desktop-ui:** dui-table[autoHeight] width correct styling and behaviour ([d541724](https://github.com/deepkit/deepkit-framework/commit/d541724c4417153bb4c6a59cc113d33e20d1e3e5))
+- **desktop-ui:** make sure focusWatcher always closes ([d06ebb5](https://github.com/deepkit/deepkit-framework/commit/d06ebb5ec9478bdf91e1c67eeac2506f9bdc6700))
+- **desktop-ui:** more fallback positions for dropdown ([74581eb](https://github.com/deepkit/deepkit-framework/commit/74581eb3add46059ac2bd67733b55e94fd7994e5))
+- **desktop-ui:** resource leak of embedded view refs of dropdown/dialog ([7867335](https://github.com/deepkit/deepkit-framework/commit/78673352227a9b8ecb1e35abec0d8fde0b5336bf))
+
+### Features
+
+- **desktop-ui:** decouple reset.scss from all.scss ([e882221](https://github.com/deepkit/deepkit-framework/commit/e8822210b447b254ad28453082c33c4ffad419f2))
+
 ## [1.0.13](https://github.com/deepkit/deepkit-framework/compare/v1.0.12...v1.0.13) (2025-06-18)
 
 ### Bug Fixes

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.14](https://github.com/deepkit/deepkit-framework/compare/v1.0.13...v1.0.14) (2025-06-22)
+
+### Features
+
+- **mongo:** explain() and allowDiskUse on aggregations ([cefcd96](https://github.com/deepkit/deepkit-framework/commit/cefcd96ce3cbc10d7c521edc0bf6e03aef85759e))
+- **mongo:** implement Query.logExplain, to log the explain() query on next operation ([aae9a64](https://github.com/deepkit/deepkit-framework/commit/aae9a642da141495eb83c9334bafb9d890051601))
+- **mongo:** support collation/hint option and new explain() API ([77dfde8](https://github.com/deepkit/deepkit-framework/commit/77dfde8d0f39b9a35af28a886b97e5cf5dce9341))
+
 ## [1.0.12](https://github.com/deepkit/deepkit-framework/compare/v1.0.11...v1.0.12) (2025-06-05)
 
 **Note:** Version bump only for package @deepkit/mongo
