@@ -209,130 +209,126 @@ export class TableColumnDirective {
     standalone: false,
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
-        <dui-dropdown #headerDropdown>
-            <dui-dropdown-item
-                *ngFor="let column of sortedColumnDefs; trackBy: trackByColumn"
-                [selected]="!column.isHidden()"
-                (mousedown)="column.toggleHidden(); storePreference(); sortColumnDefs(); headerDropdown.close()"
-            >
-                <div *ngIf="column.hideable">
-                    <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
-                        {{column.header || column.name}}
-                    </ng-container>
-                    <ng-container
-                        *ngIf="column.name !== undefined && column.headerDirective"
-                        [ngTemplateOutlet]="column.headerDirective.template"
-                        [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
-                </div>
-            </dui-dropdown-item>
-            <dui-dropdown-separator></dui-dropdown-separator>
-            <dui-dropdown-item (click)="resetAll()">Reset all</dui-dropdown-item>
-        </dui-dropdown>
+      <dui-dropdown #headerDropdown>
+        <dui-dropdown-item
+          *ngFor="let column of sortedColumnDefs; trackBy: trackByColumn"
+          [selected]="!column.isHidden()"
+          (mousedown)="column.toggleHidden(); storePreference(); sortColumnDefs(); headerDropdown.close()"
+        >
+          <div *ngIf="column.hideable">
+            <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
+              {{ column.header || column.name }}
+            </ng-container>
+            <ng-container
+              *ngIf="column.name !== undefined && column.headerDirective"
+              [ngTemplateOutlet]="column.headerDirective.template"
+              [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+          </div>
+        </dui-dropdown-item>
+        <dui-dropdown-separator></dui-dropdown-separator>
+        <dui-dropdown-item (click)="resetAll()">Reset all</dui-dropdown-item>
+      </dui-dropdown>
 
-        <div class="frame" [style.minHeight.px]="itemHeight">
-            <div class="header" *ngIf="showHeader" #header
-                 [contextDropdown]="customHeaderDropdown ? customHeaderDropdown.dropdown : headerDropdown">
-                <div class="th"
-                     *ngFor="let column of visibleColumns; trackBy: trackByColumn; let columnIndex = index;"
-                     [style.width]="column.getWidth()"
-                     (mouseup)="sortBy(column.name || '', $event)"
+      <div class="frame" [style.minHeight.px]="itemHeight">
+        <div class="header" *ngIf="showHeader" #header
+             [contextDropdown]="customHeaderDropdown ? customHeaderDropdown.dropdown : headerDropdown">
+          <div class="th"
+               *ngFor="let column of visibleColumns; trackBy: trackByColumn; let columnIndex = index;"
+               [style.width]="column.getWidth()"
+               (mouseup)="sortBy(column.name || '', $event)"
+               [class.freeze]="columnIndex < freezeColumns"
+               [style.left.px]="columnIndex < freezeColumns ? freezeLeft(visibleColumns, columnIndex) : undefined"
+               [attr.name]="column.name"
+               [style.top]="scrollTop + 'px'"
+               #th>
+            <ng-container
+              *ngIf="column.headerDirective"
+              [ngTemplateOutlet]="column.headerDirective.template"
+              [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+
+            <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
+              {{ column.header || column.name }}
+            </ng-container>
+
+            <ng-container *ngIf="sort[column.name]">
+              <dui-icon *ngIf="sort[column.name] === 'desc'" [size]="12" name="arrow_down"></dui-icon>
+              <dui-icon *ngIf="sort[column.name] === 'asc'" [size]="12" name="arrow_up"></dui-icon>
+            </ng-container>
+
+            <dui-splitter (modelChange)="setColumnWidth(column, $event)"
+                          indicator position="right"></dui-splitter>
+          </div>
+        </div>
+
+        <div class="body" [class.with-header]="showHeader" (click)="clickCell($event)" (dblclick)="dblClickCell($event)">
+          <ng-container *ngIf="autoHeight">
+            <div class="table-row {{rowClass ? rowClass(row) : ''}}"
+                 *ngFor="let row of filterSorted(sorted); trackBy: trackByFn; let i = index; odd as isOdd"
+                 [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
+                 [class.selected]="selectedMap.has(row)"
+                 [class.odd]="isOdd"
+                 (mousedown)="select(row, $event)"
+                 (contextmenu)="select(row, $event)"
+                 (dblclick)="dbclick.emit(row)"
+            >
+              <div class="table-cell"
+                   *ngFor="let column of visibleColumns; trackBy: trackByColumn; let columnIndex = index"
+                   [class]="column.class + (cellClass ?  ' ' + cellClass(row, column.name) : '')"
+                   [attr.row-column]="column.name"
+                   [class.freeze]="columnIndex < freezeColumns"
+                   [style.left.px]="columnIndex < freezeColumns ? freezeLeft(visibleColumns, columnIndex) : undefined"
+                   [class.freeze-last]="columnIndex === freezeColumns - 1"
+                   [attr.row-i]="i"
+                   [style.width]="column.getWidth()"
+              >
+                <ng-container *ngIf="column.cell">
+                  <ng-container [ngTemplateOutlet]="column.cell!.template"
+                                [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
+                </ng-container>
+                <ng-container *ngIf="!column.cell">
+                  {{ column.name ? valueFetcher(row, column.name) : '' }}
+                </ng-container>
+              </div>
+            </div>
+          </ng-container>
+
+          <cdk-virtual-scroll-viewport #viewportElement
+                                       class="overlay-scrollbar-small"
+                                       [itemSize]="itemHeight" *ngIf="!autoHeight">
+            <ng-container
+              *cdkVirtualFor="let row of filterSorted(sorted); trackBy: trackByFn; let i = index; odd as isOdd">
+              <div class="table-row {{rowClass ? rowClass(row) : ''}}"
+                   [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
+                   [class.selected]="selectedMap.has(row)"
+                   [class.odd]="isOdd"
+                   [style.height.px]="itemHeight"
+                   (mousedown)="select(row, $event)"
+                   (contextmenu)="select(row, $event)"
+                   (dblclick)="dbclick.emit(row)"
+              >
+                <div class="table-cell"
+                     *ngFor="let column of visibleColumns; trackBy: trackByColumn; let columnIndex = index"
+                     [class]="column.class + (cellClass ?  ' ' + cellClass(row, column.name) : '')"
+                     [attr.row-column]="column.name"
                      [class.freeze]="columnIndex < freezeColumns"
                      [style.left.px]="columnIndex < freezeColumns ? freezeLeft(visibleColumns, columnIndex) : undefined"
-                     [attr.name]="column.name"
-                     [style.top]="scrollTop + 'px'"
-                     #th>
-                    <ng-container
-                        *ngIf="column.headerDirective"
-                        [ngTemplateOutlet]="column.headerDirective.template"
-                        [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
-
-                    <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
-                        {{column.header || column.name}}
-                    </ng-container>
-
-                    <ng-container *ngIf="sort[column.name]">
-                        <dui-icon *ngIf="sort[column.name] === 'desc'" [size]="12" name="arrow_down"></dui-icon>
-                        <dui-icon *ngIf="sort[column.name] === 'asc'" [size]="12" name="arrow_up"></dui-icon>
-                    </ng-container>
-
-                    <dui-splitter (modelChange)="setColumnWidth(column, $event)"
-                                  indicator position="right"></dui-splitter>
-                </div>
-            </div>
-
-            <div class="body" [class.with-header]="showHeader" (click)="clickCell($event)" (dblclick)="dblClickCell($event)">
-                <ng-container *ngIf="autoHeight">
-                    <div class="table-row {{rowClass ? rowClass(row) : ''}}"
-                         *ngFor="let row of filterSorted(sorted); trackBy: trackByFn; let i = index; odd as isOdd"
-                         [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
-                         [class.selected]="selectedMap.has(row)"
-                         [class.odd]="isOdd"
-                         [style.height.px]="itemHeight"
-                         (mousedown)="select(row, $event)"
-                         (contextmenu)="select(row, $event)"
-                         (dblclick)="dbclick.emit(row)"
-                    >
-                        <div class="table-cell"
-                             *ngFor="let column of visibleColumns; trackBy: trackByColumn; let columnIndex = index"
-                             [class]="column.class + (cellClass ?  ' ' + cellClass(row, column.name) : '')"
-                             [attr.row-column]="column.name"
-                             [class.freeze]="columnIndex < freezeColumns"
-                             [style.left.px]="columnIndex < freezeColumns ? freezeLeft(visibleColumns, columnIndex) : undefined"
-                             [class.freeze-last]="columnIndex === freezeColumns - 1"
-                             [attr.row-i]="i"
-                             [style.width]="column.getWidth()"
-                        >
-                            <ng-container *ngIf="column.cell">
-                                <ng-container [ngTemplateOutlet]="column.cell!.template"
-                                              [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
-                            </ng-container>
-                            <ng-container *ngIf="!column.cell">
-                                {{ column.name ? valueFetcher(row, column.name) : '' }}
-                            </ng-container>
-                        </div>
-                    </div>
-                </ng-container>
-
-                <cdk-virtual-scroll-viewport #viewportElement
-                                             class="overlay-scrollbar-small"
-                                             [itemSize]="itemHeight"
+                     [class.freeze-last]="columnIndex === freezeColumns - 1"
+                     [attr.row-i]="i"
+                     [style.width]="column.getWidth()"
                 >
-                    <ng-container *ngIf="!autoHeight">
-                        <ng-container
-                            *cdkVirtualFor="let row of filterSorted(sorted); trackBy: trackByFn; let i = index; odd as isOdd">
-                            <div class="table-row {{rowClass ? rowClass(row) : ''}}"
-                                 [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
-                                 [class.selected]="selectedMap.has(row)"
-                                 [class.odd]="isOdd"
-                                 [style.height.px]="itemHeight"
-                                 (mousedown)="select(row, $event)"
-                                 (contextmenu)="select(row, $event)"
-                                 (dblclick)="dbclick.emit(row)"
-                            >
-                                <div class="table-cell"
-                                     *ngFor="let column of visibleColumns; trackBy: trackByColumn; let columnIndex = index"
-                                     [class]="column.class + (cellClass ?  ' ' + cellClass(row, column.name) : '')"
-                                     [attr.row-column]="column.name"
-                                     [class.freeze]="columnIndex < freezeColumns"
-                                     [style.left.px]="columnIndex < freezeColumns ? freezeLeft(visibleColumns, columnIndex) : undefined"
-                                     [class.freeze-last]="columnIndex === freezeColumns - 1"
-                                     [attr.row-i]="i"
-                                     [style.width]="column.getWidth()"
-                                >
-                                    <ng-container *ngIf="column.cell">
-                                        <ng-container [ngTemplateOutlet]="column.cell!.template"
-                                                      [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
-                                    </ng-container>
-                                    <ng-container *ngIf="!column.cell">
-                                        {{ column.name ? valueFetcher(row, column.name) : '' }}
-                                    </ng-container>
-                                </div>
-                            </div>
-                        </ng-container>
-                    </ng-container>
-                </cdk-virtual-scroll-viewport>
-            </div>
+                  <ng-container *ngIf="column.cell">
+                    <ng-container [ngTemplateOutlet]="column.cell!.template"
+                                  [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
+                  </ng-container>
+                  <ng-container *ngIf="!column.cell">
+                    {{ column.name ? valueFetcher(row, column.name) : '' }}
+                  </ng-container>
+                </div>
+              </div>
+            </ng-container>
+          </cdk-virtual-scroll-viewport>
         </div>
+      </div>
     `,
     styleUrls: ['./table.component.scss'],
     host: {
@@ -366,6 +362,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
     /**
      * Whether the table height just prints all rows, or if virtual scrolling is enabled.
+     * If true, the row height depends on the content.
      */
     @Input() public autoHeight: boolean = false;
 
@@ -511,8 +508,8 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     @ContentChild(TableCustomHeaderContextMenuDirective, { static: false }) customHeaderDropdown?: TableCustomHeaderContextMenuDirective;
     @ContentChild(TableCustomRowContextMenuDirective, { static: false }) customRowDropdown?: TableCustomRowContextMenuDirective;
 
-    @ViewChild(CdkVirtualScrollViewport, { static: true }) viewport!: CdkVirtualScrollViewport;
-    @ViewChild('viewportElement', { static: true, read: ElementRef }) viewportElement!: ElementRef;
+    @ViewChild(CdkVirtualScrollViewport, { static: true }) viewport?: CdkVirtualScrollViewport;
+    @ViewChild('viewportElement', { static: true, read: ElementRef }) viewportElement?: ElementRef;
 
     public sortedColumnDefs: TableColumnDirective[] = [];
 
@@ -563,7 +560,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     @HostListener('window:resize')
     onResize() {
         nextTick(() => {
-            this.viewport.checkViewportSize();
+            this.viewport?.checkViewportSize();
         });
     }
 
@@ -587,7 +584,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
             preferences[column.name] = {
                 width: column.width,
                 order: column.overwrittenPosition,
-                hidden: column.hidden
+                hidden: column.hidden,
             };
         }
         this.visibleColumns = this.getVisibleColumns(this.sortedColumnDefs);
@@ -872,13 +869,14 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     }
 
     ngAfterViewInit(): void {
-        this.viewport.renderedRangeStream.subscribe(() => {
+        this.viewport?.renderedRangeStream.subscribe(() => {
             this.cd.detectChanges();
         });
 
         this.zone.runOutsideAngular(() => {
+            if (!this.viewportElement) return;
             this.viewportElement.nativeElement.addEventListener('scroll', () => {
-                const scrollLeft = this.viewportElement.nativeElement.scrollLeft;
+                const scrollLeft = this.viewportElement!.nativeElement.scrollLeft;
                 this.header!.nativeElement.scrollLeft = scrollLeft;
             });
         });
@@ -954,18 +952,18 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
                     this.rawItems = items;
                     this.sorted = items;
                     this.doSort();
-                    this.viewport.checkViewportSize();
+                    this.viewport?.checkViewportSize();
                 });
             } else if (isArray(this.items)) {
                 this.rawItems = this.items;
                 this.sorted = this.items;
                 this.doSort();
-                this.viewport.checkViewportSize();
+                this.viewport?.checkViewportSize();
             } else {
                 this.rawItems = [];
                 this.sorted = [];
                 this.doSort();
-                this.viewport.checkViewportSize();
+                this.viewport?.checkViewportSize();
             }
         }
 
@@ -980,7 +978,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
         this.visibleColumns = this.getVisibleColumns(this.sortedColumnDefs);
         setTimeout(() => {
-            this.viewport.checkViewportSize();
+            this.viewport?.checkViewportSize();
         });
     }
 
@@ -1097,18 +1095,20 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
                 // } else {
                 this.select(item);
 
-                const scrollTop = this.viewport.measureScrollOffset();
-                const viewportSize = this.viewport.getViewportSize();
-                const itemTop = this.itemHeight * index;
+                if (this.viewport) {
+                    const scrollTop = this.viewport.measureScrollOffset();
+                    const viewportSize = this.viewport.getViewportSize();
+                    const itemTop = this.itemHeight * index;
 
-                if (itemTop + this.itemHeight > viewportSize + scrollTop) {
-                    const diff = (itemTop + this.itemHeight) - (viewportSize + scrollTop);
-                    this.viewport.scrollToOffset(scrollTop + diff);
-                }
+                    if (itemTop + this.itemHeight > viewportSize + scrollTop) {
+                        const diff = (itemTop + this.itemHeight) - (viewportSize + scrollTop);
+                        this.viewport.scrollToOffset(scrollTop + diff);
+                    }
 
-                if (itemTop < scrollTop) {
-                    const diff = (itemTop) - (scrollTop);
-                    this.viewport.scrollToOffset(scrollTop + diff);
+                    if (itemTop < scrollTop) {
+                        const diff = (itemTop) - (scrollTop);
+                        this.viewport.scrollToOffset(scrollTop + diff);
+                    }
                 }
             }
             this.selectedChange.emit(this.selected.slice(0));
