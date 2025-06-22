@@ -33,10 +33,6 @@
     --background-row-hover: #333333;
 }
 
-.cdk-virtual-scroll-viewport {
-    height: 100%;
-}
-
 %header-background {
     background: var(--background-header);
     border-bottom: 1px solid var(--border-header);
@@ -96,20 +92,15 @@
 }
 
 .body {
-    height: 100%;
-
-    &.with-header {
-        height: calc(100% - 23px);
-    }
-}
-
-.cdk-virtual-scroll-viewport {
-    overflow: auto !important;
+    flex: 1;
 }
 
 .table-row {
     border-bottom: 1px solid rgba(192, 192, 192, 0.05);
     background-color: var(--background-row);
+    display: flex;
+    align-items: start;
+    flex-wrap: nowrap;
 
     > div {
         position: relative;
@@ -123,6 +114,8 @@
         white-space: nowrap;
         text-overflow: ellipsis;
         left: 0;
+        flex-shrink: 0;
+        flex-grow: 0;
 
         &.freeze {
             position: sticky;
@@ -159,8 +152,10 @@
 }
 
 :host.auto-height {
-    .table-cell {
-        white-space: unset;
+    .table-row {
+        > div {
+            white-space: unset;
+        }
     }
 }
 

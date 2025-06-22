@@ -9,7 +9,7 @@
  */
 
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { DuiApp, observe } from '@deepkit/desktop-ui';
+import { DuiApp } from '@deepkit/desktop-ui';
 import { Database, DebugRequest, Filesystem } from '@deepkit/framework-debug-api';
 import { Collection } from '@deepkit/rpc';
 import { ControllerClient } from './client';
@@ -113,7 +113,6 @@ export class AppComponent implements OnInit, OnDestroy {
 
     sidebarVisible: boolean = true;
 
-    @observe()
     requests?: Collection<DebugRequest>;
 
     constructor(

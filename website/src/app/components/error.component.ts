@@ -1,17 +1,15 @@
-import { Component, Input } from "@angular/core";
-import { NgIf } from "@angular/common";
+import { Component, Input } from '@angular/core';
+
 
 @Component({
     selector: 'app-error',
-    imports: [
-        NgIf
-    ],
+    imports: [],
     template: `
-        <ng-container *ngIf="error">
-            <h4>Error</h4>
-            <p style="color: red">{{error}}</p>
-        </ng-container>
-    `
+        @if (error) {
+          <h4>Error</h4>
+          <p style="color: red">{{error}}</p>
+        }
+        `
 })
 export class ErrorComponent {
     @Input() error?: any;

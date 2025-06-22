@@ -21,12 +21,14 @@ interface WinHeader {
 interface Win {
     id: number;
     electronWindow?: any;
+
     getClosestNonDialogWindow(): Win | undefined;
+
     header?: WinHeader;
     viewContainerRef: ViewContainerRef;
 }
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class WindowRegistry {
     id = 0;
 

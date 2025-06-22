@@ -1,24 +1,28 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Output, input, output } from '@angular/core';
+
+import { IconComponent } from '../icon/icon.component';
 
 @Component({
     selector: 'dui-tab',
-    standalone: false,
     template: `
         <div class="content">
-            <ng-content></ng-content>
+          <ng-content></ng-content>
         </div>
-        <dui-icon *ngIf="removable" class="closer" (click)="onClose()" clickable name="times"></dui-icon>
-    `,
+        @if (removable()) {
+          <dui-icon class="closer" (click)="onClose()" clickable name="times"></dui-icon>
+        }
+        `,
     host: {
-        '[class.active]': 'active',
+        '[class.active]': 'active()',
     },
-    styleUrls: ['./tab.component.scss']
+    styleUrls: ['./tab.component.scss'],
+    imports: [IconComponent]
 })
 export class TabComponent {
-    @Input() active: boolean = false;
-    @Input() removable: boolean = true;
+    active = input<boolean>(false);
+    removable = input<boolean>(true);
 
-    @Output() close = new EventEmitter();
+    close = output();
 
     constructor() {
     }

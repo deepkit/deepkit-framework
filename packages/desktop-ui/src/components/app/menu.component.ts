@@ -10,11 +10,12 @@
 
 import {
     AfterViewInit,
+    booleanAttribute,
     ContentChildren,
     Directive,
     EventEmitter,
     forwardRef,
-    Input,
+    input,
     OnDestroy,
     Output,
     QueryList,
@@ -26,23 +27,23 @@ import { Electron } from '../../core/utils';
 
 @Directive()
 export class MenuBase implements AfterViewInit {
-    @Input() label?: string;
-    @Input() sublabel?: string;
-    @Input() icon?: string;
-    @Input() enabled: boolean = true;
-    @Input() accelerator?: string;
-    @Input() role?: string;
+    label = input<string>();
+    sublabel = input<string>();
+    icon = input<string>();
+    enabled = input<boolean>(true);
+    accelerator = input<string>();
+    role = input<string>();
 
-    @Input() visible: boolean = true;
+    visible = input<boolean>(true);
 
-    @Input() onlyMacOs: boolean | '' = false;
-    @Input() noMacOs: boolean | '' = false;
+    onlyMacOs = input(false, { transform: booleanAttribute });
+    noMacOs = input(false, { transform: booleanAttribute });
 
-    @Input() id?: string;
-    @Input() before?: string;
-    @Input() after?: string;
-    @Input() beforeGroupContaining?: string;
-    @Input() afterGroupContaining?: string;
+    id = input<string>();
+    before = input<string>();
+    after = input<string>();
+    beforeGroupContaining = input<string>();
+    afterGroupContaining = input<string>();
 
     @Output() click = new EventEmitter();
 
@@ -77,16 +78,20 @@ export class MenuBase implements AfterViewInit {
             },
         };
 
-        if (this.label) result['label'] = this.label;
-        if (this.sublabel) result['sublabel'] = this.sublabel;
+        const label = this.label();
+        if (label) result['label'] = label;
+        const sublabel = this.sublabel();
+        if (sublabel) result['sublabel'] = sublabel;
 
-        if (!this.enabled) result['enabled'] = false;
+        if (!this.enabled()) result['enabled'] = false;
         if (this.type) result['type'] = this.type;
 
-        if (this.accelerator) result['accelerator'] = this.accelerator;
-        if (this.role) result['role'] = this.role;
+        const accelerator = this.accelerator();
+        if (accelerator) result['accelerator'] = accelerator;
+        const role = this.role();
+        if (role) result['role'] = role;
         if (this.type) result['type'] = this.type;
-        if (this.accelerator) result['accelerator'] = this.accelerator;
+        if (accelerator) result['accelerator'] = accelerator;
         if (submenu.length) result['submenu'] = submenu;
 
         return result;
@@ -94,11 +99,11 @@ export class MenuBase implements AfterViewInit {
 
     public validOs(): boolean {
         if (Electron.isAvailable()) {
-            if (this.onlyMacOs !== false && Electron.getProcess().platform !== 'darwin') {
+            if (this.onlyMacOs() !== false && Electron.getProcess().platform !== 'darwin') {
                 return false;
             }
 
-            if (this.noMacOs !== false && Electron.getProcess().platform === 'darwin') {
+            if (this.noMacOs() !== false && Electron.getProcess().platform === 'darwin') {
                 return false;
             }
         }
@@ -135,7 +140,6 @@ export class MenuBase implements AfterViewInit {
 
 @Directive({
     selector: 'dui-menu-item',
-    standalone: false,
     providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuItemDirective) }]
 })
 export class MenuItemDirective extends MenuBase {
@@ -143,49 +147,43 @@ export class MenuItemDirective extends MenuBase {
 
 @Directive({
     selector: 'dui-menu-checkbox',
-    standalone: false,
     providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuCheckboxDirective) }]
 })
 export class MenuCheckboxDirective extends MenuBase {
-    @Input() checked: boolean = false;
+    checked = input<boolean>(false);
 
     type = 'checkbox';
 
     buildTemplate() {
-        return { ...super.buildTemplate(), checked: this.checked };
+        return { ...super.buildTemplate(), checked: this.checked() };
     }
 }
 
 @Directive({
     selector: 'dui-menu-radio',
-    standalone: false,
     providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuRadioDirective) }]
 })
 export class MenuRadioDirective extends MenuBase {
-    @Input() checked: boolean = false;
+    checked = input<boolean>(false);
 
     type = 'radio';
 
     buildTemplate() {
-        return { ...super.buildTemplate(), checked: this.checked };
+        return { ...super.buildTemplate(), checked: this.checked() };
     }
 }
 
 @Directive({
     selector: 'dui-menu-separator',
-    standalone: false,
     providers: [{ provide: MenuBase, useExisting: forwardRef(() => MenuSeparatorDirective) }]
 })
 export class MenuSeparatorDirective extends MenuBase {
     type = 'separator';
 }
 
-@Directive({
-    selector: 'dui-menu',
-    standalone: false,
-})
+@Directive({ selector: 'dui-menu', })
 export class MenuDirective extends MenuBase implements OnDestroy, AfterViewInit {
-    @Input() position: number = 0;
+    position = input<number>(0);
 
     constructor(protected windowMenuState: WindowMenuState) {
         super();

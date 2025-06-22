@@ -12,10 +12,11 @@
  * @reflection never
  */
 import { Subscription } from 'rxjs';
-import { ChangeDetectorRef, EventEmitter } from '@angular/core';
+import { ChangeDetectorRef, EventEmitter, inject, input, Signal } from '@angular/core';
 import { ActivatedRoute, Router, UrlTree } from '@angular/router';
 import { nextTick } from '@deepkit/core';
 import type Hammer from 'hammerjs';
+import { RouterLink } from '@angular/router/router_module.d-dBTUdUNJ.js';
 
 const electron = 'undefined' === typeof window ? undefined : (window as any).electron || ((window as any).require ? (window as any).require('electron') : undefined);
 
@@ -222,29 +223,6 @@ export function focusWatcher(
     }
 
     return unsubscribe;
-}
-
-interface RouteLike {
-    routerLink?: string | UrlTree | any[];
-    routerLinkExact?: boolean;
-    router?: Router,
-    activatedRoute?: ActivatedRoute;
-    queryParams?: { [name: string]: any };
-}
-
-export function isRouteActive(route: RouteLike): boolean {
-    if (!route.router) return false;
-
-    if ('string' === typeof route.routerLink) {
-        return route.router.isActive(route.routerLink, route.routerLinkExact === true);
-    } else if (Array.isArray(route.routerLink)) {
-        return route.router.isActive(route.router.createUrlTree(route.routerLink, {
-            queryParams: route.queryParams,
-            relativeTo: route.activatedRoute,
-        }), route.routerLinkExact === true);
-    } else {
-        return route.router.isActive(route.routerLink!, route.routerLinkExact === true);
-    }
 }
 
 export function redirectScrollableParentsToWindowResize(node: Element, passive = true) {

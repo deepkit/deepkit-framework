@@ -11,28 +11,34 @@
 import {
     AfterViewInit,
     ApplicationRef,
+    booleanAttribute,
     ChangeDetectorRef,
     Component,
     Directive,
     ElementRef,
-    EventEmitter,
+    forwardRef,
     HostBinding,
     HostListener,
-    Injector,
-    Input,
+    inject,
+    input,
+    model,
     OnChanges,
     OnDestroy,
     OnInit,
     Optional,
-    Output,
+    output,
+    signal,
     SkipSelf,
 } from '@angular/core';
 import { WindowComponent } from '../window/window.component';
 import { WindowState } from '../window/window-state';
 import { FormComponent } from '../form/form.component';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
-import { ActivatedRoute, Router, UrlTree } from '@angular/router';
-import { isMacOs, isRouteActive } from '../../core/utils';
+import { isMacOs } from '../../core/utils';
+
+import { IconComponent } from '../icon/icon.component';
+import { RouterLinkActive } from '@angular/router';
+import { injectElementRef } from '../app/index.js';
 
 /**
  * hotkey has format of "ctrl+shift+alt+key", e.g "ctrl+s" or "shift+o"
@@ -96,7 +102,6 @@ function isHotKeyActive(hotkey: HotKey, event: KeyboardEvent) {
 
 @Component({
     selector: 'dui-button-hotkey',
-    standalone: false,
     styles: [`
         :host {
             display: inline-flex;
@@ -111,15 +116,26 @@ function isHotKeyActive(hotkey: HotKey, event: KeyboardEvent) {
         }
     `],
     template: `
-        <span *ngIf="metaKey">{{isMac ? '⌘' : 'WIN'}}</span>
-        <span *ngIf="ctrlKey">{{isMac ? '⌃' : 'CTRL'}}</span>
-        <span *ngIf="altKey">{{isMac ? '⌥' : 'ALT'}}</span>
-        <span *ngIf="shiftKey">⇧</span>
-        <span *ngIf="key">{{key}}</span>
-    `
+      @if (metaKey) {
+        <span>{{ isMac ? '⌘' : 'WIN' }}</span>
+      }
+      @if (ctrlKey) {
+        <span>{{ isMac ? '⌃' : 'CTRL' }}</span>
+      }
+      @if (altKey) {
+        <span>{{ isMac ? '⌥' : 'ALT' }}</span>
+      }
+      @if (shiftKey) {
+        <span>⇧</span>
+      }
+      @if (key) {
+        <span>{{ key }}</span>
+      }
+      `,
+    imports: [],
 })
 export class ButtonHotkeyComponent implements OnChanges, OnInit {
-    @Input() hotkey?: HotKey;
+    hotkey = input<HotKey>('');
 
     isMac = isMacOs();
 
@@ -145,9 +161,10 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
         this.altKey = false;
         this.key = '';
 
-        if (!this.hotkey) return;
+        const hotkeyValue = this.hotkey();
+        if (!hotkeyValue) return;
 
-        const hotkeys = this.hotkey.split(',');
+        const hotkeys = hotkeyValue.split(',');
         for (const hotkey of hotkeys) {
             const keys = hotkey.split('+');
             for (const key of keys) {
@@ -163,27 +180,44 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
 
 @Component({
     selector: 'dui-button',
-    standalone: false,
     template: `
-        <dui-icon *ngIf="icon && iconRight === false" [color]="iconColor" [name]="icon" [size]="iconSize"></dui-icon>
-        <ng-content></ng-content>
-        <dui-icon *ngIf="icon && iconRight !== false" [color]="iconColor" [name]="icon" [size]="iconSize"></dui-icon>
-        <div *ngIf="showHotkey" class="show-hotkey" [style.width.px]="hotKeySize(showHotkey) * 6"></div>
-        <dui-button-hotkey *ngIf="showHotkey" style="position: absolute; right: 6px; top: 0;" [hotkey]="showHotkey"></dui-button-hotkey>
-    `,
+      @if (icon() && !iconRight()) {
+        <dui-icon [color]="iconColor()" [name]="icon()" [size]="iconSize()"></dui-icon>
+      }
+      <ng-content></ng-content>
+      @if (icon() && iconRight()) {
+        <dui-icon [color]="iconColor()" [name]="icon()" [size]="iconSize()"></dui-icon>
+      }
+      @if (showHotkey()) {
+        <div class="show-hotkey" [style.width.px]="hotKeySize(showHotkey()) * 6"></div>
+      }
+      @if (showHotkey()) {
+        <dui-button-hotkey style="position: absolute; right: 6px; top: 0;" [hotkey]="showHotkey()"></dui-button-hotkey>
+      }
+      `,
     host: {
         '[attr.tabindex]': '1',
-        '[class.icon]': '!!icon',
-        '[class.small]': 'small !== false',
-        '[class.tight]': 'tight !== false',
-        '[class.active]': 'isActive()',
-        '[class.highlighted]': 'highlighted !== false',
-        '[class.primary]': 'primary !== false',
-        '[class.icon-left]': 'iconRight === false',
-        '[class.icon-right]': 'iconRight !== false',
+        '[class.icon]': '!!icon()',
+        '[class.small]': 'small()',
+        '[class.tight]': 'tight()',
+        '[class.highlighted]': 'highlighted()',
+        '[class.primary]': 'primary()',
+        '[class.icon-left]': '!iconRight()',
+        '[class.icon-right]': 'iconRight()',
         '[class.with-text]': 'hasText()',
+        '[class.square]': 'square()',
+        '[class.textured]': 'textured()',
+        '[class.active]': 'isActive()',
     },
     styleUrls: ['./button.component.scss'],
+    hostDirectives: [
+        { directive: RouterLinkActive, inputs: ['routerLinkActiveOptions'] },
+    ],
+    imports: [
+    IconComponent,
+    ButtonHotkeyComponent,
+    forwardRef(() => HotkeyDirective)
+],
 })
 export class ButtonComponent implements OnInit, AfterViewInit {
     hotKeySize = hotKeySize;
@@ -191,55 +225,57 @@ export class ButtonComponent implements OnInit, AfterViewInit {
     /**
      * The icon for this button. Either a icon name same as for dui-icon, or an image path.
      */
-    @Input() icon?: string;
+    icon = input<string>();
 
     /**
      * Change in the icon size. Should not be necessary usually.
      */
-    @Input() iconSize?: number;
+    iconSize = input<number>();
 
-    @Input() iconRight?: boolean | '' = false;
+    iconRight = input(false, { transform: booleanAttribute });
 
-    @Input() iconColor?: string;
+    iconColor = input<string>();
 
-    @Input() showHotkey?: HotKey;
+    showHotkey = model<HotKey>('');
 
     /**
      * Whether the button is active (pressed)
      */
-    @Input() active: boolean | '' = false;
-    @Input() routerLink?: string | UrlTree | any[];
-    @Input() routerLinkExact?: boolean;
+    active = model<boolean>(false);
 
     /**
      * Whether the button has no padding and smaller font size
      */
-    @Input() small: boolean | '' = false;
+    small = input(false, { transform: booleanAttribute });
 
     /**
      * Whether the button has smaller padding. Better for button with icons.
      */
-    @Input() tight: boolean | '' = false;
+    tight = input(false, { transform: booleanAttribute });
 
     /**
      * Whether the button is highlighted.
      */
-    @Input() highlighted: boolean | '' = false;
+    highlighted = input(false, { transform: booleanAttribute });
 
     /**
      * Whether the button is primary.
      */
-    @Input() primary: boolean | '' = false;
+    primary = input(false, { transform: booleanAttribute });
 
     /**
      * Whether the button is focused on initial loading.
      */
-    @Input() focused: boolean | '' = false;
+    focused = input(false, { transform: booleanAttribute });
 
     /**
      * Whether the button is focused on initial loading.
      */
-    @Input() submitForm?: FormComponent;
+    submitForm = input<FormComponent>();
+
+    disabled = input(false, { transform: booleanAttribute });
+    square = input(false, { transform: booleanAttribute });
+    textured = input(false, { transform: booleanAttribute });
 
     /**
      * Auto-detected but could be set manually as well.
@@ -248,13 +284,11 @@ export class ButtonComponent implements OnInit, AfterViewInit {
     withText?: boolean;
     protected detectedText: boolean = false;
 
-    constructor(
-        public element: ElementRef,
-        @SkipSelf() public cdParent: ChangeDetectorRef,
-        @Optional() public formComponent: FormComponent,
-        @Optional() public router?: Router,
-        @Optional() public activatedRoute?: ActivatedRoute,
-    ) {
+    element = injectElementRef();
+    formComponent = inject(FormComponent, { optional: true });
+    routerLinkActive = inject(RouterLinkActive);
+
+    constructor() {
         this.element.nativeElement.removeAttribute('tabindex');
     }
 
@@ -262,52 +296,36 @@ export class ButtonComponent implements OnInit, AfterViewInit {
         return this.withText === undefined ? this.detectedText : this.withText;
     }
 
-    @Input() disabled: boolean | '' = false;
+    isActive() {
+        return this.routerLinkActive.isActive || this.active();
+    }
 
     @HostBinding('class.disabled')
     get isDisabled() {
-        if (this.formComponent && this.formComponent.disabled) return true;
-        if (this.submitForm && (this.submitForm.invalid || this.submitForm.disabled || this.submitForm.submitting)) {
+        if (this.formComponent && this.formComponent.disabled()) return true;
+        const submitForm = this.submitForm();
+        if (submitForm && (submitForm.invalid || submitForm.disabled() || submitForm.submitting)) {
             return true;
         }
 
-        return false !== this.disabled;
-    }
-
-    @Input() square: boolean | '' = false;
-
-    @HostBinding('class.square')
-    get isRound() {
-        return false !== this.square;
-    }
-
-    @Input() textured: boolean | '' = false;
-
-    @HostBinding('class.textured')
-    get isTextured() {
-        return false !== this.textured;
+        return this.disabled();
     }
 
     ngOnInit() {
-        if (this.focused !== false) {
+        if (this.focused()) {
             setTimeout(() => {
                 this.element.nativeElement.focus();
             }, 10);
         }
     }
 
-    isActive() {
-        if (this.routerLink && this.router) return isRouteActive(this);
-        return false !== this.active;
-    }
-
     ngAfterViewInit() {
-        if (this.icon) {
+        const icon = this.icon();
+        if (icon) {
             const content = this.element.nativeElement.innerText.trim();
-            const hasText = content !== this.icon && content.length > 0;
+            const hasText = content !== icon && content.length > 0;
             if (hasText) {
                 this.detectedText = true;
-                this.cdParent.detectChanges();
             }
         }
     }
@@ -316,19 +334,17 @@ export class ButtonComponent implements OnInit, AfterViewInit {
     async onClick() {
         if (this.isDisabled) return;
 
-        if (this.submitForm) {
-            this.submitForm.submitForm();
+        const submitForm = this.submitForm();
+        if (submitForm) {
+            void submitForm.submitForm();
         }
     }
 }
 
-@Directive({
-    selector: '[hotkey]',
-    standalone: false,
-})
+@Directive({ selector: '[hotkey]' })
 export class HotkeyDirective {
-    @Input() hotkey!: HotKey;
-    protected oldButtonActive?: boolean | '';
+    hotkey = input.required<HotKey>();
+    protected oldButtonActive?: boolean;
 
     protected active = false;
 
@@ -344,12 +360,12 @@ export class HotkeyDirective {
         //if only alt is pressed (not other keys, we display the hotkey)
         if (event.key.toLowerCase() === 'alt') {
             if (this.button) {
-                this.button.showHotkey = this.hotkey;
+                this.button.showHotkey.set(this.hotkey());
                 return;
             }
         }
 
-        const active = isHotKeyActive(this.hotkey, event);
+        const active = isHotKeyActive(this.hotkey(), event);
         // console.log('keydown', event.key, this.hotkey, isHotKeyActive(this.hotkey, event));
         if (!active) return;
         event.preventDefault();
@@ -359,14 +375,13 @@ export class HotkeyDirective {
         this.elementRef.nativeElement.click();
 
         if (this.button) {
-            this.oldButtonActive = this.button.active;
-            this.button.active = true;
+            this.oldButtonActive = this.button.active();
+            this.button.active.set(true);
 
             setTimeout(() => {
                 if (this.button && this.oldButtonActive !== undefined) {
-                    this.button.active = this.oldButtonActive;
+                    this.button.active.set(this.oldButtonActive);
                     this.oldButtonActive = undefined;
-                    this.button.cdParent.detectChanges();
                     this.active = false;
                     this.app.tick();
                 }
@@ -379,7 +394,7 @@ export class HotkeyDirective {
         //if only alt is pressed (not other keys, we display the hotkey)
         if (event.key.toLowerCase() === 'alt') {
             if (this.button) {
-                this.button.showHotkey = undefined;
+                this.button.showHotkey.set('');
                 return;
             }
         }
@@ -399,13 +414,12 @@ export class HotkeyDirective {
  */
 @Component({
     selector: 'dui-button-group',
-    standalone: false,
     template: '<ng-content></ng-content>',
     host: {
-        '[class.float-right]': 'float===\'right\'',
-        '(transitionend)': 'transitionEnded()'
+        '[class.float-right]': 'float()===\'right\'',
+        '(transitionend)': 'transitionEnded()',
     },
-    styleUrls: ['./button-group.component.scss']
+    styleUrls: ['./button-group.component.scss'],
 })
 export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
     /**
@@ -413,13 +427,13 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
      * `sidebar` means it aligns with the sidebar. Is the sidebar open, this button-group has a left margin.
      * Is it closed, the margin is gone.
      */
-    @Input() float: 'static' | 'sidebar' | 'float' | 'right' = 'static';
+    float = input<'static' | 'sidebar' | 'float' | 'right'>('static');
 
-    @Input() padding: 'normal' | 'none' = 'normal';
+    padding = input<'normal' | 'none'>('normal');
 
     @HostBinding('class.padding-none')
     get isPaddingNone() {
-        return this.padding === 'none';
+        return this.padding() === 'none';
     }
 
     // @HostBinding('class.ready')
@@ -449,14 +463,14 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
     }
 
     ngAfterViewInit(): void {
-        if (this.float === 'sidebar' && this.windowState) {
+        if (this.float() === 'sidebar' && this.windowState) {
             this.windowState.buttonGroupAlignedToSidebar = this;
         }
         this.updatePaddingLeft();
     }
 
     updatePaddingLeft() {
-        if (this.float === 'sidebar' && this.windowComponent) {
+        if (this.float() === 'sidebar' && this.windowComponent) {
             if (this.windowComponent.content) {
                 if (this.windowComponent.content!.isSidebarVisible()) {
                     const newLeft = Math.max(0, this.windowComponent.content!.getSidebarWidth() - this.element.nativeElement.offsetLeft) + 'px';
@@ -477,61 +491,52 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
 
 @Component({
     selector: 'dui-button-groups',
-    standalone: false,
     template: `
-        <ng-content></ng-content>
+      <ng-content></ng-content>
     `,
     host: {
-        '[class.align-left]': `align === 'left'`,
-        '[class.align-center]': `align === 'center'`,
-        '[class.align-right]': `align === 'right'`,
+        '[class.align-left]': `align() === 'left'`,
+        '[class.align-center]': `align() === 'center'`,
+        '[class.align-right]': `align() === 'right'`,
     },
     styleUrls: ['./button-groups.component.scss'],
 })
 export class ButtonGroupsComponent {
-    @Input() align: 'left' | 'center' | 'right' = 'left';
+    align = input<'left' | 'center' | 'right'>('left');
 }
 
 @Directive({
     selector: '[duiFileChooser]',
-    standalone: false,
-    providers: [ngValueAccessor(FileChooserDirective)]
+    providers: [ngValueAccessor(FileChooserDirective)],
 })
-export class FileChooserDirective extends ValueAccessorBase<any> implements OnDestroy, OnChanges {
-    @Input() duiFileMultiple?: boolean | '' = false;
-    @Input() duiFileDirectory?: boolean | '' = false;
+export class FileChooserDirective extends ValueAccessorBase<string[]> implements OnDestroy, OnChanges {
+    duiFileMultiple = input(false, { transform: booleanAttribute });
+    duiFileDirectory = input(false, { transform: booleanAttribute });
 
-    // @Input() duiFileChooser?: string | string[];
-    @Output() duiFileChooserChange = new EventEmitter<string | string[]>();
+    duiFileChooserChange = output<string[]>();
 
     protected input: HTMLInputElement;
 
-    constructor(
-        protected injector: Injector,
-        public readonly cd: ChangeDetectorRef,
-        @SkipSelf() public readonly cdParent: ChangeDetectorRef,
-        private app: ApplicationRef,
-    ) {
-        super(injector, cd, cdParent);
-        const input = document.createElement('input');
-        input.setAttribute('type', 'file');
-        this.input = input;
+    constructor() {
+        super();
+        const inputElement = document.createElement('input');
+        inputElement.setAttribute('type', 'file');
+        this.input = inputElement;
         this.input.addEventListener('change', (event: any) => {
             const files = event.target.files as FileList;
             if (files.length) {
-                if (this.duiFileMultiple !== false) {
+                if (this.duiFileMultiple()) {
                     const paths: string[] = [];
                     for (let i = 0; i < files.length; i++) {
                         const file = files.item(i) as any as { path: string, name: string };
                         paths.push(file.path);
                     }
-                    this.innerValue = paths;
+                    this.writeValue(paths);
                 } else {
                     const file = files.item(0) as any as { path: string, name: string };
-                    this.innerValue = file.path;
+                    this.writeValue([file.path]);
                 }
-                this.duiFileChooserChange.emit(this.innerValue);
-                this.app.tick();
+                this.duiFileChooserChange.emit(this.value() || []);
             }
         });
     }
@@ -540,8 +545,8 @@ export class FileChooserDirective extends ValueAccessorBase<any> implements OnDe
     }
 
     ngOnChanges(): void {
-        (this.input as any).webkitdirectory = this.duiFileDirectory !== false;
-        this.input.multiple = this.duiFileMultiple !== false;
+        (this.input as any).webkitdirectory = this.duiFileDirectory();
+        this.input.multiple = this.duiFileMultiple();
     }
 
     @HostListener('click')
@@ -578,32 +583,26 @@ function readFile(file: File): Promise<Uint8Array | undefined> {
 
 @Directive({
     selector: '[duiFilePicker]',
-    standalone: false,
-    providers: [ngValueAccessor(FileChooserDirective)]
+    providers: [ngValueAccessor(FileChooserDirective)],
 })
-export class FilePickerDirective extends ValueAccessorBase<any> implements OnDestroy, AfterViewInit {
-    @Input() duiFileMultiple?: boolean | '' = false;
-    @Input() duiFileAutoOpen: boolean = false;
+export class FilePickerDirective extends ValueAccessorBase<FilePickerItem[]> implements OnDestroy, AfterViewInit {
+    duiFileMultiple = input(false, { transform: booleanAttribute });
+    duiFileAutoOpen = input<boolean>(false);
 
-    @Output() duiFilePickerChange = new EventEmitter<FilePickerItem | FilePickerItem[]>();
+    duiFilePickerChange = output<FilePickerItem[]>();
 
     protected input: HTMLInputElement;
 
-    constructor(
-        protected injector: Injector,
-        public readonly cd: ChangeDetectorRef,
-        @SkipSelf() public readonly cdParent: ChangeDetectorRef,
-        private app: ApplicationRef,
-    ) {
-        super(injector, cd, cdParent);
-        const input = document.createElement('input');
-        input.setAttribute('type', 'file');
-        this.input = input;
+    constructor() {
+        super();
+        const inputElement = document.createElement('input');
+        inputElement.setAttribute('type', 'file');
+        this.input = inputElement;
 
         this.input.addEventListener('change', async (event: any) => {
             const files = event.target.files as FileList;
             if (files.length) {
-                if (this.duiFileMultiple !== false) {
+                if (this.duiFileMultiple() !== false) {
                     const res: FilePickerItem[] = [];
                     for (let i = 0; i < files.length; i++) {
                         const file = files.item(i);
@@ -614,15 +613,17 @@ export class FilePickerDirective extends ValueAccessorBase<any> implements OnDes
                             }
                         }
                     }
-                    this.innerValue = res;
+                    this.writeValue(res);
                 } else {
                     const file = files.item(0);
                     if (file) {
-                        this.innerValue = { data: await readFile(file), name: file.name };
+                        const data = await readFile(file);
+                        if (data) {
+                            this.writeValue([{ data, name: file.name }]);
+                        }
                     }
                 }
-                this.duiFilePickerChange.emit(this.innerValue);
-                this.app.tick();
+                this.duiFilePickerChange.emit(this.value() || []);
             }
         });
     }
@@ -631,47 +632,34 @@ export class FilePickerDirective extends ValueAccessorBase<any> implements OnDes
     }
 
     ngAfterViewInit() {
-        if (this.duiFileAutoOpen) this.onClick();
+        if (this.duiFileAutoOpen()) this.onClick();
     }
 
     @HostListener('click')
     onClick() {
-        this.input.multiple = this.duiFileMultiple !== false;
+        this.input.multiple = this.duiFileMultiple();
         this.input.click();
     }
 }
 
 @Directive({
     selector: '[duiFileDrop]',
-    standalone: false,
     host: {
-        '[class.file-drop-hover]': 'i > 0',
+        '[class.file-drop-hover]': 'i() > 0',
     },
-    providers: [ngValueAccessor(FileChooserDirective)]
+    providers: [ngValueAccessor(FileChooserDirective)],
 })
-export class FileDropDirective extends ValueAccessorBase<any> implements OnDestroy {
-    @Input() duiFileDropMultiple?: boolean | '' = false;
+export class FileDropDirective extends ValueAccessorBase<FilePickerItem[]> implements OnDestroy {
+    duiFileDropMultiple = input(false, { transform: booleanAttribute });
+    duiFileDropChange = output<FilePickerItem[]>();
 
-    @Output() duiFileDropChange = new EventEmitter<FilePickerItem | FilePickerItem[]>();
-
-    // hover = false;
-    i: number = 0;
-
-    constructor(
-        protected injector: Injector,
-        public readonly cd: ChangeDetectorRef,
-        @SkipSelf() public readonly cdParent: ChangeDetectorRef,
-        private app: ApplicationRef,
-    ) {
-        super(injector, cd, cdParent);
-    }
+    i = signal(0);
 
     @HostListener('dragenter', ['$event'])
     onDragEnter(ev: any) {
         // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
-        this.i++;
-        this.cdParent.detectChanges();
+        this.i.update(v => v + 1);
     }
 
     @HostListener('dragover', ['$event'])
@@ -684,8 +672,7 @@ export class FileDropDirective extends ValueAccessorBase<any> implements OnDestr
     onDragLeave(ev: any) {
         // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
-        this.i--;
-        this.cdParent.detectChanges();
+        this.i.update(v => v - 1);
     }
 
     @HostListener('drop', ['$event'])
@@ -720,18 +707,17 @@ export class FileDropDirective extends ValueAccessorBase<any> implements OnDestr
                 }
             }
         }
-        if (this.duiFileDropMultiple !== false) {
-            this.innerValue = res;
+        if (this.duiFileDropMultiple()) {
+            this.writeValue(res);
         } else {
             if (res.length) {
-                this.innerValue = res[0];
+                this.writeValue([res[0]]);
             } else {
-                this.innerValue = undefined;
+                this.writeValue([]);
             }
         }
-        this.duiFileDropChange.emit(this.innerValue);
-        this.i = 0;
-        this.cdParent.detectChanges();
+        this.duiFileDropChange.emit(this.value() || []);
+        this.i.set(0);
     }
 
     ngOnDestroy() {

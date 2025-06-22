@@ -1,4 +1,4 @@
-import { Component } from "@angular/core";
+import { Component } from '@angular/core';
 
 //see https://loading.io/css/
 @Component({
@@ -6,7 +6,6 @@ import { Component } from "@angular/core";
     standalone: false,
     styles: [`
         :host {
-            //color: white;
             display: inline-block;
             position: relative;
             width: 80px;

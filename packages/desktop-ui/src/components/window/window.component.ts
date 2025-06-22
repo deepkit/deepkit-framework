@@ -9,22 +9,22 @@
  */
 
 import {
-    ChangeDetectionStrategy,
-    ChangeDetectorRef,
-    Component,
-    ContentChild,
-    Inject,
-    Input,
-    OnChanges,
-    OnDestroy,
-    Optional,
-    SimpleChanges,
-    SkipSelf,
-    ViewContainerRef,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  ContentChild,
+  Inject,
+  OnChanges,
+  OnDestroy,
+  Optional,
+  SimpleChanges,
+  SkipSelf,
+  ViewContainerRef,
+  input
 } from '@angular/core';
 import { WindowContentComponent } from './window-content.component';
 import { WindowRegistry, WindowState } from './window-state';
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT, AsyncPipe } from '@angular/common';
 import { WindowMenuState } from './window-menu';
 import { WindowHeaderComponent } from './window-header.component';
 import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token';
@@ -35,21 +35,19 @@ import { DuiApp } from '../app';
  */
 @Component({
     selector: 'dui-window-frame',
-    standalone: false,
     template: '<ng-content></ng-content>',
     styleUrls: ['./window-frame.component.scss'],
     host: {
-        '[style.height]': `height ? height + 'px' : 'auto'`
+        '[style.height]': `height() ? height() + 'px' : 'auto'`
     }
 })
 export class WindowFrameComponent {
-    @Input() height: number = 350;
+    height = input<number>(350);
 }
 
 @Component({
     selector: 'dui-window',
-    standalone: false,
-    template: '<ng-content></ng-content><div *ngIf="windowState.disableInputs|async" (mousedown)="$event.preventDefault();" class="disable-inputs"></div>',
+    template: '<ng-content></ng-content>@if (windowState.disableInputs|async) {<div (mousedown)="$event.preventDefault();" class="disable-inputs"></div>}',
     styleUrls: ['./window.component.scss'],
     host: {
         '[class.in-dialog]': 'isInDialog()',
@@ -60,7 +58,8 @@ export class WindowFrameComponent {
     providers: [
         WindowState,
         WindowMenuState,
-    ]
+    ],
+    imports: [AsyncPipe]
 })
 export class WindowComponent implements OnChanges, OnDestroy {
     public id = 0;
@@ -68,9 +67,9 @@ export class WindowComponent implements OnChanges, OnDestroy {
     @ContentChild(WindowContentComponent, { static: false }) public content?: WindowContentComponent;
     @ContentChild(WindowHeaderComponent, { static: false }) public header?: WindowHeaderComponent;
 
-    @Input() closable = true;
-    @Input() maximizable = true;
-    @Input() minimizable = true;
+    closable = input(true);
+    maximizable = input(true);
+    minimizable = input(true);
 
     protected onBlur = () => {
         this.registry.blur(this);
@@ -129,8 +128,8 @@ export class WindowComponent implements OnChanges, OnDestroy {
     }
 
     ngOnChanges(changes: SimpleChanges) {
-        this.windowState.closable = this.closable;
-        this.windowState.minimizable = this.minimizable;
-        this.windowState.maximizable = this.maximizable;
+        this.windowState.closable = this.closable();
+        this.windowState.minimizable = this.minimizable();
+        this.windowState.maximizable = this.maximizable();
     }
 }

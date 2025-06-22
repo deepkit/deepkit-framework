@@ -16,9 +16,7 @@ import { Electron } from '../../core/utils';
 
 @Injectable()
 export class WindowMenuState {
-    menus: MenuDirective[] = [];
-    focused = true;
-
+    menus: MenuDirective[] = []
     subscriptions = new Map<MenuDirective, Subscription>();
 
     addMenu(menu: MenuDirective) {

@@ -19,8 +19,8 @@ import {
 } from './window-header.component';
 import { CommonModule } from '@angular/common';
 import { WindowSidebarComponent } from './window-sidebar.component';
-import { DuiSplitterModule } from '../splitter';
-import { DuiIconModule } from '../icon';
+
+
 import { WindowRegistry } from './window-state';
 
 import {
@@ -29,7 +29,7 @@ import {
     ExternalWindowComponent
 } from './external-window.component';
 import { DuiExternalWindow } from './external-window';
-import { DuiCoreModule } from '../core';
+
 
 export * from "./window.component";
 export * from "./external-window";
@@ -41,19 +41,6 @@ export * from "./window-menu";
 export * from "./window-sidebar.component";
 
 @NgModule({
-    declarations: [
-        WindowContentComponent,
-        WindowComponent,
-        WindowFrameComponent,
-        WindowFooterComponent,
-        WindowHeaderComponent,
-        WindowToolbarComponent,
-        WindowToolbarContainerComponent,
-        WindowSidebarComponent,
-        ExternalWindowComponent,
-        ExternalDialogWrapperComponent,
-        ExternalDialogDirective,
-    ],
     exports: [
         WindowContentComponent,
         WindowComponent,
@@ -71,11 +58,19 @@ export * from "./window-sidebar.component";
         DuiExternalWindow,
     ],
     imports: [
-        CommonModule,
-        DuiSplitterModule,
-        DuiIconModule,
-        DuiCoreModule,
-    ]
+    CommonModule,
+    WindowContentComponent,
+    WindowComponent,
+    WindowFrameComponent,
+    WindowFooterComponent,
+    WindowHeaderComponent,
+    WindowToolbarComponent,
+    WindowToolbarContainerComponent,
+    WindowSidebarComponent,
+    ExternalWindowComponent,
+    ExternalDialogWrapperComponent,
+    ExternalDialogDirective,
+]
 })
 export class DuiWindowModule {
     static forRoot(): ModuleWithProviders<DuiWindowModule> {

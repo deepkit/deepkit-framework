@@ -1,14 +1,5 @@
-import {
-    AfterViewInit,
-    ChangeDetectorRef,
-    Component,
-    ContentChildren,
-    Directive,
-    Input,
-    OnChanges,
-    QueryList,
-} from '@angular/core';
-import { DecimalPipe, NgForOf, NgIf } from '@angular/common';
+import { AfterViewInit, ChangeDetectorRef, Component, ContentChildren, Directive, Input, OnChanges, QueryList } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 
 @Directive({
     standalone: true,
@@ -26,25 +17,27 @@ export class PerformanceEntryDirective implements OnChanges {
 @Component({
     selector: 'performance-chart',
     imports: [
-        DecimalPipe,
-        NgIf,
-        NgForOf
-    ],
+    DecimalPipe
+],
     template: `
         <div class="boards">
-            <div class="bar" [style.height.px]="item.height" *ngFor="let item of items">
-                <div class="label" [style.bottom.px]="item.labelPos">{{item.title}}</div>
-                <div class="value">{{item.value|number:format}}</div>
-                <div class="line" *ngIf="item.labelPos > item.height"
-                     [style.bottom.px]="item.height"
-                     [style.height.px]="item.labelPos-item.height"
+          @for (item of items; track item) {
+            <div class="bar" [style.height.px]="item.height">
+              <div class="label" [style.bottom.px]="item.labelPos">{{item.title}}</div>
+              <div class="value">{{item.value|number:format}}</div>
+              @if (item.labelPos > item.height) {
+                <div class="line"
+                  [style.bottom.px]="item.height"
+                  [style.height.px]="item.labelPos-item.height"
                 ></div>
+              }
             </div>
+          }
         </div>
         <div class="y">
-            <div>{{yAxis}}</div>
+          <div>{{yAxis}}</div>
         </div>
-    `,
+        `,
     styles: [`
         :host {
             display: flex;

@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@deepkit/type-compiler": "^1.0.1",
-    "typescript": "~5.7.3",
+    "typescript": "~5.8.3",
     "ts-node": "^10.9.1"
   }
 }

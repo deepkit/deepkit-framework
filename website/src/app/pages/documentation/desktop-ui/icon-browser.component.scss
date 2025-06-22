@@ -1,0 +1,24 @@
+.icons {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px , auto));
+  grid-column-gap: 10px;
+  grid-row-gap: 10px;
+}
+
+.icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 50px;
+  border: 1px solid #d3d3d3;
+  border-radius: 4px;
+  text-align: center;
+  padding: 5px;
+
+  .name {
+    white-space: nowrap;
+    font-size: 11px;
+    user-select: text;
+  }
+}

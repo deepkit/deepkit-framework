@@ -15,7 +15,7 @@ import {
     HostBinding,
     Inject,
     Injectable,
-    Input,
+    input,
     ModuleWithProviders,
     NgModule,
     Optional,
@@ -25,20 +25,16 @@ import {
 import { MenuCheckboxDirective, MenuDirective, MenuItemDirective, MenuRadioDirective, MenuSeparatorDirective } from './menu.component';
 import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from './utils';
 import { ViewDirective } from './dui-view.directive';
-import { CdCounterComponent } from './cd-counter.component';
-import { DuiResponsiveDirective } from './dui-responsive.directive';
 import { CommonModule, DOCUMENT } from '@angular/common';
 import { Electron } from '../../core/utils';
 import { ActivationEnd, NavigationEnd, Router } from '@angular/router';
 import { WindowRegistry } from '../window/window-state';
 import { ELECTRON_WINDOW, IN_DIALOG } from './token';
 import { AsyncRenderPipe, HumanFileSizePipe, ObjectURLPipe } from './pipes';
-import { ReactiveChangeDetectionModule } from './reactivate-change-detection';
 import { arrayRemoveItem } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
 
 export * from './reactivate-change-detection';
-export * from './cd-counter.component';
 export * from './dui-view.directive';
 export * from './dui-responsive.directive';
 export * from './utils';
@@ -52,19 +48,18 @@ if ('undefined' !== typeof window && 'undefined' === typeof (window as any)['glo
 
 @Directive()
 export class BaseComponent {
-    @Input() disabled?: boolean;
+    disabled = input<boolean>();
 
     @HostBinding('class.disabled')
     get isDisabled() {
-        return this.disabled === true;
+        return this.disabled() === true;
     }
 }
 
 @Component({
     selector: 'ui-component',
-    standalone: false,
     template: `
-        {{name}} disabled={{isDisabled}}
+        {{name()}} disabled={{isDisabled}}
     `,
     styles: [`
         :host {
@@ -76,11 +71,11 @@ export class BaseComponent {
         }
     `],
     host: {
-        '[class.is-textarea]': 'name === "textarea"',
+        '[class.is-textarea]': 'name() === "textarea"',
     }
 })
 export class UiComponentComponent extends BaseComponent {
-    @Input() name: string = '';
+    name = input<string>('');
 }
 
 export class OverlayStackItem {
@@ -132,7 +127,7 @@ export class OverlayStack {
     }
 }
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class Storage {
     getItem(key: string): any {
         return 'undefined' === typeof localStorage ? undefined : localStorage.getItem(key);
@@ -149,7 +144,7 @@ export class Storage {
     }
 }
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class DuiApp {
     protected darkMode?: boolean = false;
     protected platform: 'web' | 'darwin' | 'linux' | 'win32' = 'darwin';
@@ -334,21 +329,6 @@ export class DuiApp {
 }
 
 @NgModule({
-    declarations: [
-        UiComponentComponent,
-        MenuDirective,
-        MenuSeparatorDirective,
-        MenuRadioDirective,
-        MenuCheckboxDirective,
-        MenuItemDirective,
-        OpenExternalDirective,
-        ViewDirective,
-        CdCounterComponent,
-        DuiResponsiveDirective,
-        AsyncRenderPipe,
-        ObjectURLPipe,
-        HumanFileSizePipe,
-    ],
     exports: [
         UiComponentComponent,
         MenuDirective,
@@ -358,8 +338,6 @@ export class DuiApp {
         MenuItemDirective,
         OpenExternalDirective,
         ViewDirective,
-        CdCounterComponent,
-        DuiResponsiveDirective,
         AsyncRenderPipe,
         ObjectURLPipe,
         HumanFileSizePipe,
@@ -369,7 +347,17 @@ export class DuiApp {
     ],
     imports: [
         CommonModule,
-        ReactiveChangeDetectionModule,
+        UiComponentComponent,
+        MenuDirective,
+        MenuSeparatorDirective,
+        MenuRadioDirective,
+        MenuCheckboxDirective,
+        MenuItemDirective,
+        OpenExternalDirective,
+        ViewDirective,
+        AsyncRenderPipe,
+        ObjectURLPipe,
+        HumanFileSizePipe,
     ]
 })
 export class DuiAppModule {

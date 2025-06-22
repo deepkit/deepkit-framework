@@ -8,26 +8,27 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ApplicationRef,
-    ChangeDetectorRef,
-    Directive,
-    ElementRef,
-    HostListener,
-    Input,
-    OnChanges,
-} from '@angular/core';
+import { ApplicationRef, ChangeDetectorRef, Directive, ElementRef, HostListener, inject, input, OnChanges } from '@angular/core';
 import { nextTick } from '@deepkit/core';
 import { Electron } from '../../core/utils';
+import { DOCUMENT } from '@angular/common';
 
+export function injectDocument(): Document | undefined {
+    return inject(DOCUMENT, { optional: true }) || undefined;
+}
 
-@Directive({
-    selector: '[openExternal], a[href]',
-    standalone: false,
-})
+export function injectElementRef(): ElementRef<HTMLElement> {
+    return inject(ElementRef);
+}
+
+export function clamp(value: number, min: number, max: number): number {
+    return Math.max(min, Math.min(max, value));
+}
+
+@Directive({ selector: '[openExternal], a[href]' })
 export class OpenExternalDirective implements OnChanges {
-    @Input('openExternal') openExternal: string = '';
-    @Input('href') href: string = '';
+    openExternal = input<string>('');
+    href = input<string>('');
 
     constructor(private element: ElementRef) {
         // this.element.nativeElement.href = '#';
@@ -41,7 +42,7 @@ export class OpenExternalDirective implements OnChanges {
     }
 
     getLink() {
-        return this.openExternal || this.href;
+        return this.openExternal() || this.href();
     }
 
     @HostListener('click', ['$event'])

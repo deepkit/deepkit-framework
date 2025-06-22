@@ -70,7 +70,7 @@
     "prismjs": "^1.24.1",
     "rxjs": "*",
     "tslib": "^2.3.0",
-    "typescript": "~5.7.3",
+    "typescript": "~5.8.3",
     "zone.js": "~0.15.0"
   }
 }

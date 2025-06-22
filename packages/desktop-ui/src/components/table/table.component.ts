@@ -9,31 +9,32 @@
  */
 
 import {
-    AfterViewInit,
-    ApplicationRef,
-    ChangeDetectionStrategy,
-    ChangeDetectorRef,
-    Component,
-    ContentChild,
-    ContentChildren,
-    Directive,
-    ElementRef,
-    EventEmitter,
-    HostBinding,
-    HostListener,
-    inject,
-    Input,
-    NgZone,
-    OnChanges,
-    OnDestroy,
-    OnInit,
-    Output,
-    QueryList,
-    SimpleChanges,
-    SkipSelf,
-    TemplateRef,
-    ViewChild,
-    ViewChildren,
+  AfterViewInit,
+  ApplicationRef,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  ContentChild,
+  ContentChildren,
+  Directive,
+  ElementRef,
+  EventEmitter,
+  HostBinding,
+  HostListener,
+  inject,
+  NgZone,
+  OnChanges,
+  OnDestroy,
+  OnInit,
+  Output,
+  QueryList,
+  SimpleChanges,
+  SkipSelf,
+  TemplateRef,
+  ViewChild,
+  ViewChildren,
+  input,
+  booleanAttribute
 } from '@angular/core';
 import {
     arrayClear,
@@ -53,6 +54,11 @@ import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { DropdownComponent } from '../button';
 import { detectChangesNextFrame } from '../app/utils';
 import { findParentWithClass, getHammer } from '../../core/utils';
+import { DropdownComponent as DropdownComponent_1, DropdownContainerDirective, DropdownItemComponent, DropdownSplitterComponent, ContextDropdownDirective } from '../button/dropdown.component';
+import { NgTemplateOutlet } from '@angular/common';
+import { IconComponent } from '../icon/icon.component';
+import { SplitterComponent } from '../splitter/splitter.component';
+import { ɵɵCdkVirtualScrollViewport, ɵɵCdkFixedSizeVirtualScroll, ɵɵCdkVirtualForOf } from '@angular/cdk/overlay';
 
 /**
  * Directive to allow dynamic content in a cell.
@@ -65,10 +71,7 @@ import { findParentWithClass, getHammer } from '../../core/utils';
  * </dui-table-column>
  * ```
  */
-@Directive({
-    selector: '[duiTableCell]',
-    standalone: false,
-})
+@Directive({ selector: '[duiTableCell]', })
 export class TableCellDirective {
     constructor(public template: TemplateRef<any>) {
     }
@@ -77,12 +80,9 @@ export class TableCellDirective {
 /**
  * Can be used to define own dropdown items once the user opens the header context menu.
  */
-@Directive({
-    selector: 'dui-dropdown[duiTableCustomHeaderContextMenu]',
-    standalone: false,
-})
+@Directive({ selector: 'dui-dropdown[duiTableCustomHeaderContextMenu]', })
 export class TableCustomHeaderContextMenuDirective {
-    constructor(public readonly dropdown: DropdownComponent) {
+    constructor(public dropdown: DropdownComponent) {
     }
 }
 
@@ -90,12 +90,9 @@ export class TableCustomHeaderContextMenuDirective {
 /**
  * Can be used to define own dropdown items once the user opens the row context menu.
  */
-@Directive({
-    selector: 'dui-dropdown[duiTableCustomRowContextMenu]',
-    standalone: false,
-})
+@Directive({ selector: 'dui-dropdown[duiTableCustomRowContextMenu]', })
 export class TableCustomRowContextMenuDirective {
-    constructor(public readonly dropdown: DropdownComponent) {
+    constructor(public dropdown: DropdownComponent) {
     }
 }
 
@@ -110,10 +107,7 @@ export class TableCustomRowContextMenuDirective {
  * </dui-table-column>
  * ```
  */
-@Directive({
-    selector: '[duiTableHeader]',
-    standalone: false,
-})
+@Directive({ selector: '[duiTableHeader]', })
 export class TableHeaderDirective {
     constructor(public template: TemplateRef<any>) {
     }
@@ -122,45 +116,42 @@ export class TableHeaderDirective {
 /**
  * Defines a new column.
  */
-@Directive({
-    selector: 'dui-table-column',
-    standalone: false,
-})
+@Directive({ selector: 'dui-table-column', })
 export class TableColumnDirective {
     /**
      * The name of the column. Needs to be unique. If no renderer (*duiTableCell) is specified, this
      * name is used to render the content T[name].
      */
-    @Input('name') name: string = '';
+    name = input<string>('');
 
     /**
      * A different header name. Use dui-table-header to render HTML there.
      */
-    @Input('header') header?: string;
+    header = input<string>();
 
     /**
      * Default width.
      */
-    @Input('width') width?: number | string = 100;
+    width = input<number | string>(100);
 
     /**
      * Adds additional class to the columns cells.
      */
-    @Input('class') class: string = '';
+    class = input<string>('');
 
     /**
      * Whether this column is start hidden. User can unhide it using the context menu on the header.
      */
-    @Input('hidden') hidden: boolean | '' = false;
+    hidden = input(false, { transform: booleanAttribute });
 
-    @Input('sortable') sortable: boolean = true;
+    sortable = input<boolean>(true);
 
-    @Input('hideable') hideable: boolean = true;
+    hideable = input<boolean>(true);
 
     /**
      * At which position this column will be placed.
      */
-    @Input('position') position?: number;
+    position = input<number>();
 
     /**
      * This is the new position when the user moved it manually.
@@ -172,7 +163,7 @@ export class TableColumnDirective {
     @ContentChild(TableHeaderDirective, { static: false }) headerDirective?: TableHeaderDirective;
 
     isHidden() {
-        return this.hidden !== false;
+        return this.hidden() !== false;
     }
 
     toggleHidden() {
@@ -183,13 +174,14 @@ export class TableColumnDirective {
      * @hidden
      */
     getWidth(): string | undefined {
-        if (!this.width) return undefined;
+        const width = this.width();
+        if (!width) return undefined;
 
-        if (isNumber(this.width)) {
-            return this.width + 'px';
+        if (isNumber(width)) {
+            return width + 'px';
         }
 
-        return this.width;
+        return width;
     }
 
     /**
@@ -200,144 +192,168 @@ export class TableColumnDirective {
             return this.overwrittenPosition;
         }
 
-        return this.position;
+        return this.position();
     }
 }
 
 @Component({
     selector: 'dui-table',
-    standalone: false,
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
       <dui-dropdown #headerDropdown>
-        <dui-dropdown-item
-          *ngFor="let column of sortedColumnDefs; trackBy: trackByColumn"
-          [selected]="!column.isHidden()"
-          (mousedown)="column.toggleHidden(); storePreference(); sortColumnDefs(); headerDropdown.close()"
-        >
-          <div *ngIf="column.hideable">
-            <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
-              {{ column.header || column.name }}
-            </ng-container>
-            <ng-container
-              *ngIf="column.name !== undefined && column.headerDirective"
-              [ngTemplateOutlet]="column.headerDirective.template"
-              [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
-          </div>
-        </dui-dropdown-item>
-        <dui-dropdown-separator></dui-dropdown-separator>
-        <dui-dropdown-item (click)="resetAll()">Reset all</dui-dropdown-item>
-      </dui-dropdown>
-
-      <div class="frame" [style.minHeight.px]="itemHeight">
-        <div class="header" *ngIf="showHeader" #header
-             [contextDropdown]="customHeaderDropdown ? customHeaderDropdown.dropdown : headerDropdown">
-          <div class="th"
-               *ngFor="let column of visibleColumns; trackBy: trackByColumn; let columnIndex = index;"
-               [style.width]="column.getWidth()"
-               (mouseup)="sortBy(column.name || '', $event)"
-               [class.freeze]="columnIndex < freezeColumns"
-               [style.left.px]="columnIndex < freezeColumns ? freezeLeft(visibleColumns, columnIndex) : undefined"
-               [attr.name]="column.name"
-               [style.top]="scrollTop + 'px'"
-               #th>
-            <ng-container
-              *ngIf="column.headerDirective"
-              [ngTemplateOutlet]="column.headerDirective.template"
-              [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
-
-            <ng-container *ngIf="column.name !== undefined && !column.headerDirective">
-              {{ column.header || column.name }}
-            </ng-container>
-
-            <ng-container *ngIf="sort[column.name]">
-              <dui-icon *ngIf="sort[column.name] === 'desc'" [size]="12" name="arrow_down"></dui-icon>
-              <dui-icon *ngIf="sort[column.name] === 'asc'" [size]="12" name="arrow_up"></dui-icon>
-            </ng-container>
-
-            <dui-splitter (modelChange)="setColumnWidth(column, $event)"
-                          indicator position="right"></dui-splitter>
-          </div>
-        </div>
-
-        <div class="body" [class.with-header]="showHeader" (click)="clickCell($event)" (dblclick)="dblClickCell($event)">
-          <ng-container *ngIf="autoHeight">
-            <div class="table-row {{rowClass ? rowClass(row) : ''}}"
-                 *ngFor="let row of filterSorted(sorted); trackBy: trackByFn; let i = index; odd as isOdd"
-                 [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
-                 [class.selected]="selectedMap.has(row)"
-                 [class.odd]="isOdd"
-                 (mousedown)="select(row, $event)"
-                 (contextmenu)="select(row, $event)"
-                 (dblclick)="dbclick.emit(row)"
-            >
-              <div class="table-cell"
-                   *ngFor="let column of visibleColumns; trackBy: trackByColumn; let columnIndex = index"
-                   [class]="column.class + (cellClass ?  ' ' + cellClass(row, column.name) : '')"
-                   [attr.row-column]="column.name"
-                   [class.freeze]="columnIndex < freezeColumns"
-                   [style.left.px]="columnIndex < freezeColumns ? freezeLeft(visibleColumns, columnIndex) : undefined"
-                   [class.freeze-last]="columnIndex === freezeColumns - 1"
-                   [attr.row-i]="i"
-                   [style.width]="column.getWidth()"
+        <ng-container *dropdownContainer>
+          @for (column of sortedColumnDefs; track trackByColumn($index, column)) {
+            <dui-dropdown-item
+              [selected]="!column.isHidden()"
+              (mousedown)="column.toggleHidden(); storePreference(); sortColumnDefs(); headerDropdown.close()"
               >
-                <ng-container *ngIf="column.cell">
-                  <ng-container [ngTemplateOutlet]="column.cell!.template"
-                                [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
-                </ng-container>
-                <ng-container *ngIf="!column.cell">
-                  {{ column.name ? valueFetcher(row, column.name) : '' }}
-                </ng-container>
-              </div>
+              @if (column.hideable) {
+                <div>
+                  @if (column.name !== undefined && !column.headerDirective) {
+                    {{ column.header || column.name }}
+                  }
+                  @if (column.name !== undefined && column.headerDirective) {
+                    <ng-container
+                      [ngTemplateOutlet]="column.headerDirective.template"
+                    [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+                  }
+                </div>
+              }
+            </dui-dropdown-item>
+          }
+          <dui-dropdown-separator></dui-dropdown-separator>
+          <dui-dropdown-item (click)="resetAll()">Reset all</dui-dropdown-item>
+        </ng-container>
+      </dui-dropdown>
+      
+      @if (showHeader()) {
+        <div class="header" #header
+          [contextDropdown]="customHeaderDropdown ? customHeaderDropdown.dropdown : headerDropdown">
+          @for (column of visibleColumns; track trackByColumn(columnIndex, column); let columnIndex = $index) {
+            <div class="th"
+              [style.width]="column.getWidth()"
+              (mouseup)="sortBy(column.name || '', $event)"
+              [class.freeze]="columnIndex < freezeColumns()"
+              [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(visibleColumns, columnIndex) : undefined"
+              [attr.name]="column.name"
+              [style.top]="scrollTop + 'px'"
+              #th>
+              @if (column.headerDirective) {
+                <ng-container
+                  [ngTemplateOutlet]="column.headerDirective.template"
+                [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+              }
+              @if (column.name !== undefined && !column.headerDirective) {
+                {{ column.header || column.name }}
+              }
+              @if (sort()[column.name]) {
+                @if (sort()[column.name] === 'desc') {
+                  <dui-icon [size]="12" name="arrow_down"></dui-icon>
+                }
+                @if (sort()[column.name] === 'asc') {
+                  <dui-icon [size]="12" name="arrow_up"></dui-icon>
+                }
+              }
+              <dui-splitter (modelChange)="setColumnWidth(column, $event)"
+              indicator position="right"></dui-splitter>
             </div>
-          </ng-container>
-
+          }
+        </div>
+      }
+      
+      <div class="body overlay-scrollbar-small" (click)="clickCell($event)" (dblclick)="dblClickCell($event)">
+        @if (autoHeight()) {
+          @for (row of filterSorted(sorted); track trackByFn(i, row); let i = $index; let isOdd = $odd) {
+            <div class="table-row {{rowClass()(row)}}"
+              [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
+              [class.selected]="selectedMap.has(row)"
+              [class.odd]="isOdd"
+              (mousedown)="select(row, $event)"
+              (contextmenu)="select(row, $event)"
+              (dblclick)="dbclick.emit(row)"
+              >
+              @for (column of visibleColumns; track trackByColumn(columnIndex, column); let columnIndex = $index) {
+                <div class="table-cell"
+                  [class]="column.class + ' ' + cellClass()(row, column.name)"
+                  [attr.row-column]="column.name"
+                  [class.freeze]="columnIndex < freezeColumns()"
+                  [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(visibleColumns, columnIndex) : undefined"
+                  [class.freeze-last]="columnIndex === freezeColumns() - 1"
+                  [attr.row-i]="i"
+                  [style.flex-basis]="column.getWidth()"
+                  >
+                  @if (column.cell) {
+                    <ng-container [ngTemplateOutlet]="column.cell!.template"
+                    [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
+                  }
+                  @if (!column.cell) {
+                    {{ column.name ? valueFetcher()(row, column.name) : '' }}
+                  }
+                </div>
+              }
+            </div>
+          }
+        }
+      
+        @if (!autoHeight()) {
           <cdk-virtual-scroll-viewport #viewportElement
-                                       class="overlay-scrollbar-small"
-                                       [itemSize]="itemHeight" *ngIf="!autoHeight">
+            [itemSize]="itemHeight()">
             <ng-container
               *cdkVirtualFor="let row of filterSorted(sorted); trackBy: trackByFn; let i = index; odd as isOdd">
-              <div class="table-row {{rowClass ? rowClass(row) : ''}}"
-                   [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
-                   [class.selected]="selectedMap.has(row)"
-                   [class.odd]="isOdd"
-                   [style.height.px]="itemHeight"
-                   (mousedown)="select(row, $event)"
-                   (contextmenu)="select(row, $event)"
-                   (dblclick)="dbclick.emit(row)"
-              >
-                <div class="table-cell"
-                     *ngFor="let column of visibleColumns; trackBy: trackByColumn; let columnIndex = index"
-                     [class]="column.class + (cellClass ?  ' ' + cellClass(row, column.name) : '')"
-                     [attr.row-column]="column.name"
-                     [class.freeze]="columnIndex < freezeColumns"
-                     [style.left.px]="columnIndex < freezeColumns ? freezeLeft(visibleColumns, columnIndex) : undefined"
-                     [class.freeze-last]="columnIndex === freezeColumns - 1"
-                     [attr.row-i]="i"
-                     [style.width]="column.getWidth()"
+              <div class="table-row {{rowClass()(row)}}"
+                [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
+                [class.selected]="selectedMap.has(row)"
+                [class.odd]="isOdd"
+                [style.height.px]="itemHeight()"
+                (mousedown)="select(row, $event)"
+                (contextmenu)="select(row, $event)"
+                (dblclick)="dbclick.emit(row)"
                 >
-                  <ng-container *ngIf="column.cell">
-                    <ng-container [ngTemplateOutlet]="column.cell!.template"
-                                  [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
-                  </ng-container>
-                  <ng-container *ngIf="!column.cell">
-                    {{ column.name ? valueFetcher(row, column.name) : '' }}
-                  </ng-container>
-                </div>
+                @for (column of visibleColumns; track trackByColumn(columnIndex, column); let columnIndex = $index) {
+                  <div class="table-cell"
+                    [class]="column.class + ' ' + cellClass()(row, column.name)"
+                    [attr.row-column]="column.name"
+                    [class.freeze]="columnIndex < freezeColumns()"
+                    [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(visibleColumns, columnIndex) : undefined"
+                    [class.freeze-last]="columnIndex === freezeColumns() - 1"
+                    [attr.row-i]="i"
+                    [style.flex-basis]="column.getWidth()"
+                    >
+                    @if (column.cell) {
+                      <ng-container [ngTemplateOutlet]="column.cell!.template"
+                      [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
+                    }
+                    @if (!column.cell) {
+                      {{ column.name ? valueFetcher()(row, column.name) : '' }}
+                    }
+                  </div>
+                }
               </div>
             </ng-container>
           </cdk-virtual-scroll-viewport>
-        </div>
+        }
       </div>
-    `,
+      `,
     styleUrls: ['./table.component.scss'],
     host: {
-        '[class.no-focus-outline]': 'noFocusOutline !== false',
-        '[class.borderless]': 'borderless !== false',
-        '[class.overlay-scrollbar]': 'true',
-        '[class.with-hover]': 'hover !== false',
-        '[class.auto-height]': 'autoHeight !== false',
+        '[class.no-focus-outline]': 'noFocusOutline() !== false',
+        '[class.borderless]': 'borderless() !== false',
+        '[class.with-hover]': 'hover() !== false',
+        '[class.auto-height]': 'autoHeight() !== false',
     },
+    imports: [
+    DropdownComponent_1,
+    DropdownContainerDirective,
+    DropdownItemComponent,
+    NgTemplateOutlet,
+    DropdownSplitterComponent,
+    ContextDropdownDirective,
+    IconComponent,
+    SplitterComponent,
+    ɵɵCdkVirtualScrollViewport,
+    ɵɵCdkFixedSizeVirtualScroll,
+    ɵɵCdkVirtualForOf
+],
 })
 export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDestroy {
     protected app = inject(ApplicationRef);
@@ -347,29 +363,29 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
      */
     @HostBinding() tabindex = 0;
 
-    @Input() borderless: boolean | '' = false;
+    borderless = input(false, { transform: booleanAttribute });
 
     /**
      * Array of items that should be used for each row.
      */
-    @Input() public items!: T[] | Observable<T[]>;
+    public items = input.required<T[] | Observable<T[]>>();
 
     /**
      * Since dui-table has virtual-scroll active per default, it's required to define the itemHeight to
      * make scrolling actually workable correctly.
      */
-    @Input() public itemHeight: number = 25;
+    public itemHeight = input<number>(25);
 
     /**
      * Whether the table height just prints all rows, or if virtual scrolling is enabled.
      * If true, the row height depends on the content.
      */
-    @Input() public autoHeight: boolean = false;
+    public autoHeight = input<boolean>(false);
 
     /**
      * Whether the table row should have a hover effect.
      */
-    @Input() public hover: boolean | '' = false;
+    public hover = input(false, { transform: booleanAttribute });
 
     /**
      * Current calculated height, used only when autoHeight is given.
@@ -379,95 +395,103 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     /**
      * Whether the header should be shown.
      */
-    @Input() public showHeader: boolean = true;
+    public showHeader = input<boolean>(true);
 
     /**
      * How many columns (from the left) are frozen (stay visible even if user scrolls horizontally).
      */
-    @Input() public freezeColumns: number = 0;
+    public freezeColumns = input<number>(0);
 
     /**
      * Default field of T for sorting.
      */
-    @Input() public defaultSort: string = '';
+    public defaultSort = input<string>('');
 
     /**
      * Default sorting order.
      */
-    @Input() public defaultSortDirection: 'asc' | 'desc' = 'asc';
+    public defaultSortDirection = input<'asc' | 'desc'>('asc');
 
     /**
      * Whether rows are selectable.
      */
-    @Input() public selectable: boolean | '' = false;
+    public selectable = input(false, { transform: booleanAttribute });
 
     /**
      * Whether multiple rows are selectable at the same time.
      */
-    @Input() public multiSelect: boolean | '' = false;
+    public multiSelect = input(false, { transform: booleanAttribute });
 
     /**
      * TrackFn for ngFor to improve performance. Default is order by index.
      */
-    @Input() public trackFn?: (index: number, item: T) => any;
+    public trackFn = input<(index: number, item: T) => any>();
 
     /**
      * Not used yet.
      */
-    @Input() public displayInitial: number = 20;
+    public displayInitial = input<number>(20);
 
     /**
      * Not used yet.
      */
-    @Input() public increaseBy: number = 10;
+    public increaseBy = input<number>(10);
 
     /**
      * Filter function.
      */
-    @Input() public filter?: (item: T) => boolean;
+    public filter = input<(item: T) => boolean>();
 
-    @Input() public rowClass?: (item: T) => string | undefined;
+    public rowClass = input<(item: T) => string | undefined>(() => undefined);
 
-    @Input() public cellClass?: (item: T, column: string) => string | undefined;
+    public cellClass = input<(item: T, column: string) => string | undefined>(() => undefined);
 
     /**
      * When the user changes the order or width of the columns, the information is stored
      * in localStorage using this key, prefixed with `@dui/table/`.
      */
-    @Input() public preferenceKey: string = 'root';
+    public preferenceKey = input<string>('root');
 
     /**
      * Filter query.
      */
-    @Input() public filterQuery?: string;
+    public filterQuery = input<string>();
 
-    @Input() public columnState: { name: string, position: number, visible: boolean }[] = [];
+    public columnState = input<{
+    name: string;
+    position: number;
+    visible: boolean;
+}[]>([]);
 
     /**
      * Against which fields filterQuery should run.
      */
-    @Input() public filterFields?: string[];
+    public filterFields = input<string[]>();
 
     /**
      * Alternate object value fetcher, important for sorting and filtering.
      */
-    @Input() public valueFetcher = (object: any, path: string): any => {
-        return getPathValue(object, path);
-    };
+    public valueFetcher = input((object: any, path: string): any => {
+    return getPathValue(object, path);
+});
 
     /**
      * A hook to provide custom sorting behavior for certain columns.
      */
-    @Input() public sortFunction?: (sort: { [name: string]: 'asc' | 'desc' }) => (((a: T, b: T) => number) | undefined);
+    public sortFunction = input<(sort: {
+    [name: string]: 'asc' | 'desc';
+}) => (((a: T, b: T) => number) | undefined)>();
 
     /**
      * Whether sorting is enabled (clicking headers trigger sort).
      */
-    @Input() public sorting: boolean = true;
+    public sorting = input<boolean>(true);
 
-    @Input() noFocusOutline: boolean | '' = false;
+    noFocusOutline = input(false, { transform: booleanAttribute });
 
-    @Input() public sort: { [column: string]: 'asc' | 'desc' } = {};
+    public sort = input<{
+    [column: string]: 'asc' | 'desc';
+}>({});
 
     public rawItems: T[] = [];
     public sorted: T[] = [];
@@ -477,7 +501,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     /**
      * Elements that are selected, by reference.
      */
-    @Input() public selected: T[] = [];
+    public selected = input<T[]>([]);
 
     protected selectedHistory: T[] = [];
 
@@ -538,8 +562,9 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     }
 
     ngOnInit() {
-        if (this.defaultSort) {
-            this.sort[this.defaultSort] = this.defaultSortDirection;
+        const defaultSort = this.defaultSort();
+        if (defaultSort) {
+            this.sort()[defaultSort] = this.defaultSortDirection();
         }
     }
 
@@ -565,7 +590,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     }
 
     resetAll() {
-        localStorage.removeItem('@dui/table/preferences-' + this.preferenceKey);
+        localStorage.removeItem('@dui/table/preferences-' + this.preferenceKey());
         if (!this.columnDefs) return;
         for (const column of this.columnDefs.toArray()) {
             column.width = 100;
@@ -588,13 +613,13 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
             };
         }
         this.visibleColumns = this.getVisibleColumns(this.sortedColumnDefs);
-        localStorage.setItem('@dui/table/preferences-' + this.preferenceKey, JSON.stringify(preferences));
+        localStorage.setItem('@dui/table/preferences-' + this.preferenceKey(), JSON.stringify(preferences));
     }
 
     loadPreference() {
         if ('undefined' === typeof localStorage) return;
 
-        const preferencesJSON = localStorage.getItem('@dui/table/preferences-' + this.preferenceKey);
+        const preferencesJSON = localStorage.getItem('@dui/table/preferences-' + this.preferenceKey());
         if (!preferencesJSON) return;
         const preferences = JSON.parse(preferencesJSON);
         for (const i in preferences) {
@@ -633,7 +658,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
      * Toggles the sort by the given column name.
      */
     public sortBy(name: string, $event?: MouseEvent) {
-        if (!this.sorting) return;
+        if (!this.sorting()) return;
 
         if (this.ignoreThisSort) {
             this.ignoreThisSort = false;
@@ -644,25 +669,26 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
         //only when shift is pressed do we activate multi-column sort
         if (!$event || !$event.shiftKey) {
-            for (const member in this.sort) if (member !== name) delete this.sort[member];
+            for (const member in this.sort()) if (member !== name) delete this.sort()[member];
         }
 
         if (this.columnMap[name]) {
             const headerDef = this.columnMap[name];
-            if (!headerDef.sortable) {
+            if (!headerDef.sortable()) {
                 return;
             }
         }
 
-        if (!this.sort[name]) {
-            this.sort[name] = 'asc';
+        const sort = this.sort();
+        if (!sort[name]) {
+            sort[name] = 'asc';
         } else {
-            if (this.sort[name] === 'asc') this.sort[name] = 'desc';
-            else if (this.sort[name] === 'desc') delete this.sort[name];
+            if (sort[name] === 'asc') sort[name] = 'desc';
+            else if (sort[name] === 'desc') delete sort[name];
         }
 
         if (this.customSort.observers.length) {
-            this.customSort.emit(this.sort);
+            this.customSort.emit(sort);
         } else {
             this.doSort();
         }
@@ -672,14 +698,15 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
      * @hidden
      */
     trackByFn = (index: number, item: any) => {
-        return this.trackFn ? this.trackFn(index, item) : index;
+        const trackFn = this.trackFn();
+        return trackFn ? trackFn(index, item) : index;
     };
 
     /**
      * @hidden
      */
     trackByColumn(index: number, column: TableColumnDirective) {
-        return column.name;
+        return column.name();
     }
 
     /**
@@ -687,7 +714,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
      */
     filterSorted(items: T[]): T[] {
         //apply filter
-        if (this.filter || (this.filterQuery && this.filterFields)) {
+        if (this.filter() || (this.filterQuery() && this.filterFields())) {
             return items.filter((v) => this.filterFn(v));
         }
 
@@ -739,7 +766,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
                     for (const th of this.ths.toArray()) {
                         const directive: TableColumnDirective = this.sortedColumnDefs.find((v) => v.name === th.nativeElement.getAttribute('name')!)!;
-                        const cells = [...this.element.nativeElement.querySelectorAll('div[row-column="' + directive.name + '"]')] as any as HTMLElement[];
+                        const cells = [...this.element.nativeElement.querySelectorAll('div[row-column="' + directive.name() + '"]')] as any as HTMLElement[];
 
                         if (th.nativeElement === element) {
                             originalPosition = this.sortedColumnDefs.indexOf(directive);
@@ -922,13 +949,16 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     }
 
     filterFn(item: T) {
-        if (this.filter) {
-            return this.filter(item);
+        const filter = this.filter();
+        if (filter) {
+            return filter(item);
         }
 
-        if (this.filterQuery && this.filterFields) {
-            const q = this.filterQuery!.toLowerCase();
-            for (const field of this.filterFields) {
+        const filterQuery = this.filterQuery();
+        const filterFields = this.filterFields();
+        if (filterQuery && filterFields) {
+            const q = filterQuery!.toLowerCase();
+            for (const field of filterFields) {
                 if (-1 !== String((item as any)[field]).toLowerCase().indexOf(q)) {
                     return true;
                 }
@@ -947,16 +977,17 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
         if (changes.items) {
 
-            if (isObservable(this.items)) {
-                this.items.subscribe((items: T[]) => {
+            const itemsValue = this.items();
+            if (isObservable(itemsValue)) {
+                itemsValue.subscribe((items: T[]) => {
                     this.rawItems = items;
                     this.sorted = items;
                     this.doSort();
                     this.viewport?.checkViewportSize();
                 });
-            } else if (isArray(this.items)) {
-                this.rawItems = this.items;
-                this.sorted = this.items;
+            } else if (isArray(itemsValue)) {
+                this.rawItems = itemsValue;
+                this.sorted = itemsValue;
                 this.doSort();
                 this.viewport?.checkViewportSize();
             } else {
@@ -969,8 +1000,9 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
         if (changes.selected) {
             this.selectedMap.clear();
-            if (this.selected) {
-                for (const v of this.selected) {
+            const selected = this.selected();
+            if (selected) {
+                for (const v of selected) {
                     this.selectedMap.set(v, true);
                 }
             }
@@ -1004,10 +1036,11 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
             this.sorted = this.rawItems;
         }
 
-        if (this.sortFunction) {
-            this.sorted.sort(this.sortFunction(this.sort));
+        const sortFunction = this.sortFunction();
+        if (sortFunction) {
+            this.sorted.sort(sortFunction(this.sort()));
         } else {
-            const sort = Object.entries(this.sort);
+            const sort = Object.entries(this.sort());
             sort.reverse(); //we start from bottom
             let sortRoot = (a: any, b: any) => 0;
             for (const [name, dir] of sort) {
@@ -1017,7 +1050,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         }
 
         this.sortedChange.emit(this.sorted);
-        this.height = (this.sorted.length * this.itemHeight) + (this.showHeader ? 23 : 0) + 10; //10 is scrollbar padding
+        this.height = (this.sorted.length * this.itemHeight()) + (this.showHeader() ? 23 : 0) + 10; //10 is scrollbar padding
 
         this.sorted = this.sorted.slice(0);
         detectChangesNextFrame(this.parentCd);
@@ -1025,8 +1058,8 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
     protected createSortFunction(sortField: string, dir: 'asc' | 'desc', next?: (a: any, b: any) => number) {
         return (a: T, b: T) => {
-            const aV = this.valueFetcher(a, sortField);
-            const bV = this.valueFetcher(b, sortField);
+            const aV = this.valueFetcher()(a, sortField);
+            const bV = this.valueFetcher()(b, sortField);
 
             if (aV === undefined && bV === undefined) return next ? next(a, b) : 0;
             if (aV === undefined && bV !== undefined) return +1;
@@ -1050,7 +1083,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     @HostListener('keydown', ['$event'])
     onFocus(event: KeyboardEvent) {
         if (event.key === 'Enter') {
-            const firstSelected = first(this.selected);
+            const firstSelected = first(this.selected());
             if (firstSelected) {
                 this.dbclick.emit(firstSelected);
             }
@@ -1058,7 +1091,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
         if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
             event.preventDefault();
-            const firstSelected = first(this.selected);
+            const firstSelected = first(this.selected());
 
             if (!firstSelected) {
                 this.select(this.sorted[0]);
@@ -1098,10 +1131,10 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
                 if (this.viewport) {
                     const scrollTop = this.viewport.measureScrollOffset();
                     const viewportSize = this.viewport.getViewportSize();
-                    const itemTop = this.itemHeight * index;
+                    const itemTop = this.itemHeight() * index;
 
-                    if (itemTop + this.itemHeight > viewportSize + scrollTop) {
-                        const diff = (itemTop + this.itemHeight) - (viewportSize + scrollTop);
+                    if (itemTop + this.itemHeight() > viewportSize + scrollTop) {
+                        const diff = (itemTop + this.itemHeight()) - (viewportSize + scrollTop);
                         this.viewport.scrollToOffset(scrollTop + diff);
                     }
 
@@ -1111,19 +1144,19 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
                     }
                 }
             }
-            this.selectedChange.emit(this.selected.slice(0));
+            this.selectedChange.emit(this.selected().slice(0));
             this.cd.markForCheck();
         }
     }
 
     public deselect(item: T) {
-        arrayRemoveItem(this.selected, item);
+        arrayRemoveItem(this.selected(), item);
         this.selectedMap.delete(item);
         detectChangesNextFrame(this.parentCd);
     }
 
     public select(item: T, $event?: MouseEvent) {
-        if (this.selectable === false) {
+        if (this.selectable() === false) {
             return;
         }
 
@@ -1143,7 +1176,8 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
             this.cellSelect.emit();
         }
 
-        if (this.multiSelect === false) {
+        const selected = this.selected();
+        if (this.multiSelect() === false) {
             this.selected = [item];
             this.selectedMap.clear();
             this.selectedMap.set(item, true);
@@ -1151,42 +1185,42 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
             if ($event && $event.shiftKey) {
                 const indexSelected = this.sorted.indexOf(item);
 
-                if (this.selected[0]) {
-                    const firstSelected = this.sorted.indexOf(this.selected[0]);
+                if (selected[0]) {
+                    const firstSelected = this.sorted.indexOf(selected[0]);
                     this.selectedMap.clear();
                     this.selected = [];
 
                     if (firstSelected < indexSelected) {
                         //we select all from index -> indexSelected, downwards
                         for (let i = firstSelected; i <= indexSelected; i++) {
-                            this.selected.push(this.sorted[i]);
+                            selected.push(this.sorted[i]);
                             this.selectedMap.set(this.sorted[i], true);
                         }
                     } else {
                         //we select all from indexSelected -> index, upwards
                         for (let i = firstSelected; i >= indexSelected; i--) {
-                            this.selected.push(this.sorted[i]);
+                            selected.push(this.sorted[i]);
                             this.selectedMap.set(this.sorted[i], true);
                         }
                     }
                 } else {
                     //we start at 0 and select all until index
                     for (let i = 0; i <= indexSelected; i++) {
-                        this.selected.push(this.sorted[i]);
+                        selected.push(this.sorted[i]);
                         this.selectedMap.set(this.sorted[i], true);
                     }
                 }
             } else if ($event && $event.metaKey) {
-                if (arrayHasItem(this.selected, item)) {
-                    arrayRemoveItem(this.selected, item);
+                if (arrayHasItem(selected, item)) {
+                    arrayRemoveItem(selected, item);
                     this.selectedMap.delete(item);
                 } else {
                     this.selectedMap.set(item, true);
-                    this.selected.push(item);
+                    selected.push(item);
                 }
             } else {
                 const isRightButton = $event && $event.button == 2;
-                const isItemSelected = arrayHasItem(this.selected, item);
+                const isItemSelected = arrayHasItem(selected, item);
                 const resetSelection = !isItemSelected || !isRightButton;
                 if (resetSelection) {
                     this.selected = [item];
@@ -1196,7 +1230,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
             }
         }
 
-        this.selectedChange.emit(this.selected);
+        this.selectedChange.emit(selected);
         detectChangesNextFrame(this.parentCd);
     }
 }

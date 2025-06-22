@@ -9,23 +9,22 @@
  */
 
 import {
-    AfterViewInit,
-    ApplicationRef,
-    ComponentFactoryResolver,
-    ComponentRef,
-    Directive,
-    Input,
-    OnDestroy,
-    ViewContainerRef,
+  AfterViewInit,
+  ApplicationRef,
+  ComponentFactoryResolver,
+  ComponentRef,
+  Directive,
+  OnDestroy,
+  ViewContainerRef,
+  input
 } from '@angular/core';
 
-@Directive({
-    selector: '[renderComponent]',
-    standalone: false,
-})
+@Directive({ selector: '[renderComponent]', })
 export class RenderComponentDirective implements AfterViewInit, OnDestroy {
-    @Input() renderComponent: any;
-    @Input() renderComponentInputs: { [name: string]: any } = {};
+    renderComponent = input<any>();
+    renderComponentInputs = input<{
+    [name: string]: any;
+}>({});
 
     public component?: ComponentRef<any>;
 
@@ -37,12 +36,12 @@ export class RenderComponentDirective implements AfterViewInit, OnDestroy {
     }
 
     ngAfterViewInit(): void {
-        const factoryMain = this.resolver.resolveComponentFactory(this.renderComponent);
+        const factoryMain = this.resolver.resolveComponentFactory(this.renderComponent());
         const original = (factoryMain.create as any).bind(factoryMain);
         factoryMain.create = (...args: any[]) => {
             const comp = original(...args);
 
-            for (const [i, v] of Object.entries(this.renderComponentInputs)) {
+            for (const [i, v] of Object.entries(this.renderComponentInputs())) {
                 comp.instance[i] = v;
             }
 

@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { AppDescription, AppTitle } from '@app/app/components/title';
-import { NgIf } from '@angular/common';
+
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ControllerClient } from '@app/app/client';
 import { projectMap, UiCodeExample } from '@app/common/models';
@@ -12,38 +12,41 @@ import { waitForInit } from '@app/app/utils';
 
 @Component({
     imports: [
-        AppDescription,
-        AppTitle,
-        NgIf,
-        LoadingComponent,
-        RouterLink,
-        ContentRenderComponent,
-    ],
+    AppDescription,
+    AppTitle,
+    LoadingComponent,
+    RouterLink,
+    ContentRenderComponent
+],
     template: `
         <div class="app-content-full normalize-text">
-            @if (loading()) {
-                <app-loading></app-loading>
+          @if (loading()) {
+            <app-loading></app-loading>
+          }
+        
+          @if (example(); as example) {
+            <app-title value="{{example.title}} // Example for Deepkit {{project()}}"></app-title>
+        
+            <app-description value="Example for Deepkit {{project()}}"></app-description>
+        
+            @if (project()) {
+              <div class="app-pre-headline">{{ project() }} // Examples</div>
             }
-
-            @if (example(); as example) {
-                <app-title value="{{example.title}} // Example for Deepkit {{project()}}"></app-title>
-
-                <app-description value="Example for Deepkit {{project()}}"></app-description>
-
-                @if (project()) {
-                    <div class="app-pre-headline">{{ project() }} // Examples</div>
-                }
-                <h1>{{ example.title }}</h1>
-
-                <a class="button" routerLink="/documentation/{{id()}}/examples">Back to all {{ project() }} examples</a>
-
-                <a *ngIf="example.url" style="margin-left: 15px;" class="button" target="_blank" href="{{example.url}}">Full
-                    Example</a>
-
-                <app-render-content *ngIf="example.content" [content]="example.content"></app-render-content>
+            <h1>{{ example.title }}</h1>
+        
+            <a class="button" routerLink="/documentation/{{id()}}/examples">Back to all {{ project() }} examples</a>
+        
+            @if (example.url) {
+              <a style="margin-left: 15px;" class="button" target="_blank" href="{{example.url}}">Full
+              Example</a>
             }
+        
+            @if (example.content) {
+              <app-render-content [content]="example.content"></app-render-content>
+            }
+          }
         </div>
-    `
+        `
 })
 export class ExampleComponent implements OnInit {
     id = signal('');

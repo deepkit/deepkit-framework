@@ -1,5 +1,5 @@
-import { DeepkitBoxComponent } from './components/box/box.component';
 import { ModuleWithProviders, NgModule } from '@angular/core';
+import { DeepkitBoxComponent } from './components/box/box.component';
 import { CodeHighlightComponent } from './components/code-highlight.component';
 import { DuiAppModule, DuiButtonModule, DuiIconModule, DuiSplitterModule } from '@deepkit/desktop-ui';
 import { HeaderStatusBarComponent } from './components/header-status-bar.component';

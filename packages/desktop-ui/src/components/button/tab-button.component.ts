@@ -8,12 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Component, HostListener, Input } from '@angular/core';
+import { Component, HostListener, input } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 
 @Component({
     selector: 'dui-tab-button',
-    standalone: false,
     template: `
         <ng-content></ng-content>
     `,
@@ -30,18 +29,20 @@ export class TabButtonComponent extends ValueAccessorBase<any> {
      *
      * Use alternatively form API, e.g. <dui-tab-button [(ngModel)]="chosen" value="overview"></dui-tab-button>
      */
-    @Input() active: boolean | '' = false;
+    active = input(false, { transform: booleanAttribute });
 
-    @Input() value?: any;
+    value = input<any>();
 
     @HostListener('click')
     onClick() {
-        if (this.value === undefined) return;
-        this.innerValue = this.value;
+        const value = this.value();
+        if (value === undefined) return;
+        this.innerValue = value;
     }
 
     isActive(): boolean {
-        if (this.value !== undefined) return this.value === this.innerValue;
-        return this.active !== false
+        const value = this.value();
+        if (value !== undefined) return value === this.innerValue;
+        return this.active() !== false
     }
 }

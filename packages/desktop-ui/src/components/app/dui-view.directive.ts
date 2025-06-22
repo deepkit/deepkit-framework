@@ -15,7 +15,7 @@ let i = 0;
 
 let currentViewDirective: ViewDirective | undefined;
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class ViewState {
     public id = i++;
 
@@ -28,15 +28,14 @@ export class ViewState {
 
 @Directive({
     selector: '[duiView]',
-    standalone: false,
-    providers: [{ provide: ViewState, useClass: ViewState }]
+    providers: [{ provide: ViewState, useClass: ViewState }],
 })
 export class ViewDirective implements OnDestroy {
     protected view?: EmbeddedViewRef<any>;
 
     protected visible = false;
 
-    public readonly parentViewDirective: ViewDirective | undefined;
+    public parentViewDirective: ViewDirective | undefined;
 
     constructor(
         protected template: TemplateRef<any>,

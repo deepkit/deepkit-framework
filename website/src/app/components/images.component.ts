@@ -1,27 +1,28 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ContentChildren, QueryList } from '@angular/core';
 import { ImageComponent } from './image.component';
-import { NgForOf, NgIf } from "@angular/common";
+
 
 @Component({
     selector: 'app-images',
     template: `
-        <ng-container *ngIf="images">
-            <div class="image" *ngIf="selected">
-                <app-image style="height: 100%" [alt]="selected.alt" [src]="selected.src"></app-image>
+        @if (images) {
+          @if (selected) {
+            <div class="image">
+              <app-image style="height: 100%" [alt]="selected.alt" [src]="selected.src"></app-image>
             </div>
-
-            <div class="thumbnails">
-                <div [class.selected]="image === selected" *ngFor="let image of images.toArray()">
-                    <img src="{{image.src}}" alt="{{image.alt}}" (click)="select(image)">
-                </div>
-            </div>
-        </ng-container>
-    `,
+          }
+          <div class="thumbnails">
+            @for (image of images.toArray(); track image) {
+              <div [class.selected]="image === selected">
+                <img src="{{image.src}}" alt="{{image.alt}}" (click)="select(image)">
+              </div>
+            }
+          </div>
+        }
+        `,
     imports: [
-        NgIf,
-        ImageComponent,
-        NgForOf
-    ],
+    ImageComponent
+],
     styles: [`
         :host {
             display: block;

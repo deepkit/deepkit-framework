@@ -4,21 +4,19 @@ import { ControllerClient } from '@app/app/client';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 import { LoadingComponent } from '@app/app/components/loading';
-import { NgForOf, NgIf } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { ContentRenderComponent } from '@app/app/components/content-render.component';
 import { SearchResultQuestion } from '@app/app/components/search.component';
 
 @Component({
     imports: [
-        LoadingComponent,
-        NgIf,
-        FormsModule,
-        ContentRenderComponent,
-        NgForOf,
-        SearchResultQuestion,
-        RouterLink
-    ],
+    LoadingComponent,
+    FormsModule,
+    ContentRenderComponent,
+    SearchResultQuestion,
+    RouterLink
+],
     styles: [`
         .app-search-field {
             width: 100%;
@@ -27,31 +25,38 @@ import { SearchResultQuestion } from '@app/app/components/search.component';
     `],
     template: `
         <div class="app-content-full normalize-text">
-            <app-loading *ngIf="loading"></app-loading>
-
-            <h1>Search</h1>
-
-            <div class="app-search-field">
-                <input placeholder="Search the docs" [(ngModel)]="query" (ngModelChange)="find()"/>
-                <img alt="search icon" src="/assets/images/icons-search.svg" style="width: 18px; height: 18px;"/>
-            </div>
-
-            <div class="search-results" *ngIf="results">
-                <div [routerLink]="link(r)" class="app-search-result-item" *ngFor="let r of results.community">
-                    <app-search-result-page [q]="r"></app-search-result-page>
+          @if (loading) {
+            <app-loading></app-loading>
+          }
+        
+          <h1>Search</h1>
+        
+          <div class="app-search-field">
+            <input placeholder="Search the docs" [(ngModel)]="query" (ngModelChange)="find()"/>
+            <img alt="search icon" src="/assets/images/icons-search.svg" style="width: 18px; height: 18px;"/>
+          </div>
+        
+          @if (results) {
+            <div class="search-results">
+              @for (r of results.community; track r) {
+                <div [routerLink]="link(r)" class="app-search-result-item">
+                  <app-search-result-page [q]="r"></app-search-result-page>
                 </div>
-
-                <div [routerLink]="'/' + r.url" class="app-search-result-item" *ngFor="let r of results.pages">
-                    <div class="path">{{r.path}}</div>
-                    <h3 class="title">{{r.title}}</h3>
-                    <div class="content">
-                        <app-render-content [content]="r.content"></app-render-content>
-                    </div>
+              }
+              @for (r of results.pages; track r) {
+                <div [routerLink]="'/' + r.url" class="app-search-result-item">
+                  <div class="path">{{r.path}}</div>
+                  <h3 class="title">{{r.title}}</h3>
+                  <div class="content">
+                    <app-render-content [content]="r.content"></app-render-content>
+                  </div>
                 </div>
+              }
             </div>
-
+          }
+        
         </div>
-    `
+        `
 })
 export class DocuSearchComponent implements OnInit {
     query: string = '';

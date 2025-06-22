@@ -9,8 +9,9 @@
  */
 
 import { BehaviorSubject } from 'rxjs';
-import { Component, Input, OnInit } from '@angular/core';
-import { DialogComponent } from './dialog.component';
+import { Component, OnInit, input } from '@angular/core';
+import { DialogComponent, DialogActionsComponent } from './dialog.component';
+import { AsyncPipe } from '@angular/common';
 
 class State {
     title: string = '';
@@ -19,9 +20,9 @@ class State {
 }
 
 export class ProgressDialogState extends BehaviorSubject<State | undefined> {
-    protected readonly state = new State;
+    protected state = new State;
 
-    public readonly closer = new BehaviorSubject<boolean>(false);
+    public closer = new BehaviorSubject<boolean>(false);
 
     constructor() {
         super(undefined);
@@ -75,31 +76,33 @@ export class ProgressDialogState extends BehaviorSubject<State | undefined> {
 }
 
 @Component({
-    standalone: false,
     template: `
-        <div *ngIf="state$|async as state">
+        @if (state$()|async; as state) {
+          <div>
             <h3>{{state.title}}</h3>
             <div>
-                <div style="text-align: right; padding: 2px 0;">
-                    {{state.step}} / {{state.steps}}
-                </div>
-                <!--                <mat-progress-bar mode="determinate" [value]="state.step/state.steps * 100"></mat-progress-bar>-->
+              <div style="text-align: right; padding: 2px 0;">
+                {{state.step}} / {{state.steps}}
+              </div>
+              <!--                <mat-progress-bar mode="determinate" [value]="state.step/state.steps * 100"></mat-progress-bar>-->
             </div>
-        </div>
-
+          </div>
+        }
+        
         <dui-dialog-actions>
-            <button mat-button (click)="onCancelClick()">Cancel</button>
+          <button mat-button (click)="onCancelClick()">Cancel</button>
         </dui-dialog-actions>
-    `
+        `,
+    imports: [DialogActionsComponent, AsyncPipe]
 })
 export class DuiDialogProgress implements OnInit {
-    @Input() public state$!: ProgressDialogState;
+    public state$ = input.required<ProgressDialogState>();
 
     constructor(protected dialog: DialogComponent) {
     }
 
     ngOnInit(): void {
-        this.state$.closer.subscribe((v) => {
+        this.state$().closer.subscribe((v) => {
             if (v) {
                 this.dialog.close(v);
             }
@@ -107,7 +110,7 @@ export class DuiDialogProgress implements OnInit {
     }
 
     onCancelClick() {
-        this.state$.closer.next(true);
+        this.state$().closer.next(true);
         this.dialog.close(false);
     }
 }

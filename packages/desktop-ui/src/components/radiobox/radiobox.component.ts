@@ -8,21 +8,30 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ChangeDetectorRef, Component, HostBinding, HostListener, Injector, Input, SkipSelf } from '@angular/core';
+import { Component, HostBinding, HostListener, inject, input } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 
 @Component({
-    selector: 'dui-radiobox',
-    standalone: false,
+    selector: 'dui-radio-group',
+    providers: [ngValueAccessor(RadioGroupComponent)],
     template: `
-        <span class="box"><div class="circle"></div></span>
-        <ng-content></ng-content>
+      <ng-content></ng-content>`,
+})
+export class RadioGroupComponent extends ValueAccessorBase<any> {
+}
+
+@Component({
+    selector: 'dui-radio-button',
+    template: `
+      <span class="box"><div class="circle"></div></span>
+      <ng-content></ng-content>
     `,
     styleUrls: ['./radiobox.component.scss'],
-    providers: [ngValueAccessor(RadioboxComponent)]
 })
-export class RadioboxComponent<T> extends ValueAccessorBase<T> {
-    @Input() value?: T;
+export class RadioButtonComponent {
+    value = input<any>();
+
+    group = inject(RadioGroupComponent);
 
     @HostBinding('tabindex')
     get tabIndex() {
@@ -31,22 +40,14 @@ export class RadioboxComponent<T> extends ValueAccessorBase<T> {
 
     @HostBinding('class.checked')
     get isChecked() {
-        return this.value === this.innerValue;
-    }
-
-    constructor(
-        protected injector: Injector,
-        public readonly cd: ChangeDetectorRef,
-        @SkipSelf() public readonly cdParent: ChangeDetectorRef,
-    ) {
-        super(injector, cd, cdParent);
+        return this.value() === this.group.value();
     }
 
     @HostListener('click')
     public onClick() {
-        if (this.isDisabled) return;
+        if (this.group.isDisabled) return;
 
-        this.innerValue = this.value;
-        this.touch();
+        this.group.writeValue(this.value());
+        this.group.touch();
     }
 }

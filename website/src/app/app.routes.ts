@@ -58,6 +58,7 @@ export const routes: Routes = [
             },
             { path: 'search', component: DocuSearchComponent },
             { path: 'examples', component: ExamplesComponent },
+            { path: 'desktop-ui', loadChildren: () => import('./pages/documentation/desktop-ui/desktop-ui.module').then(v => v.DocDesktopUIModule) },
             { path: ':category/examples/:slug', component: ExampleComponent },
             { path: ':category/examples', component: ExamplesComponent },
             { path: '**', component: DocumentationPageComponent },

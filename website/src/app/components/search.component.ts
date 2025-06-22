@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, ElementRef, HostListener, Input, OnChanges, ViewChild } from '@angular/core';
-import { NgForOf, NgIf } from '@angular/common';
+
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { bodyToString, CommunityQuestion, DocPageResult, link, parseBody } from '@app/common/models';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
@@ -50,15 +50,13 @@ export class SearchResultQuestion implements OnChanges {
 @Component({
     selector: 'app-search',
     imports: [
-        NgForOf,
-        NgIf,
-        ReactiveFormsModule,
-        FormsModule,
-        LoadingComponent,
-        RouterLink,
-        SearchResultQuestion,
-        ContentRenderComponent
-    ],
+    ReactiveFormsModule,
+    FormsModule,
+    LoadingComponent,
+    RouterLink,
+    SearchResultQuestion,
+    ContentRenderComponent
+],
     styles: [`
         :host {
             max-width: 50%;
@@ -129,39 +127,47 @@ export class SearchResultQuestion implements OnChanges {
     `],
     template: `
         <div class="search" [class.active]="visible">
-            <div class="app-search-field">
-                <input (focus)="visible = true" #input (keyup)="onKeyUp($event)" (click)="visible=true"
-                       placeholder="Search the docs" [(ngModel)]="query" (ngModelChange)="find()"/>
-                <img alt="search icon" src="/assets/images/icons-search.svg" style="width: 18px; height: 18px;"/>
-            </div>
-            <a class="button" (click)="visible=false">Close</a>
+          <div class="app-search-field">
+            <input (focus)="visible = true" #input (keyup)="onKeyUp($event)" (click)="visible=true"
+              placeholder="Search the docs" [(ngModel)]="query" (ngModelChange)="find()"/>
+            <img alt="search icon" src="/assets/images/icons-search.svg" style="width: 18px; height: 18px;"/>
+          </div>
+          <a class="button" (click)="visible=false">Close</a>
         </div>
-
-        <div class="overlay" *ngIf="visible" (click)="onOverlayClick($event)">
-            <app-loading *ngIf="loading"></app-loading>
+        
+        @if (visible) {
+          <div class="overlay" (click)="onOverlayClick($event)">
+            @if (loading) {
+              <app-loading></app-loading>
+            }
             <div class="wrapper">
-                <div class="box">
-                    <div class="box-container scroll-small">
-
-                        <div class="search-results" *ngIf="results">
-                            <div [routerLink]="link(r)"
-                                 (click)="visible=false" class="app-search-result-item" *ngFor="let r of results.community">
-                                <app-search-result-page [q]="r"></app-search-result-page>
-                            </div>
-
-                            <div [routerLink]="'/' + r.url" (click)="visible=false" class="app-search-result-item" *ngFor="let r of results.pages">
-                                <div class="path">{{r.path}}</div>
-                                <h3 class="title">{{r.title}}</h3>
-                                <div class="content">
-                                    <app-render-content [content]="r.content"></app-render-content>
-                                </div>
-                            </div>
+              <div class="box">
+                <div class="box-container scroll-small">
+                  @if (results) {
+                    <div class="search-results">
+                      @for (r of results.community; track r) {
+                        <div [routerLink]="link(r)"
+                          (click)="visible=false" class="app-search-result-item">
+                          <app-search-result-page [q]="r"></app-search-result-page>
                         </div>
+                      }
+                      @for (r of results.pages; track r) {
+                        <div [routerLink]="'/' + r.url" (click)="visible=false" class="app-search-result-item">
+                          <div class="path">{{r.path}}</div>
+                          <h3 class="title">{{r.title}}</h3>
+                          <div class="content">
+                            <app-render-content [content]="r.content"></app-render-content>
+                          </div>
+                        </div>
+                      }
                     </div>
+                  }
                 </div>
+              </div>
             </div>
-        </div>
-    `
+          </div>
+        }
+        `
 })
 export class SearchComponent {
     query: string = '';

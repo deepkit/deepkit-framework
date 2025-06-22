@@ -10,97 +10,111 @@
 
 import {
     AfterViewInit,
-    ChangeDetectorRef,
+    booleanAttribute,
     Component,
+    computed,
     ElementRef,
     EventEmitter,
     HostBinding,
-    Injector,
-    Input,
+    input,
     Output,
-    SkipSelf,
     ViewChild,
 } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
-import { detectChangesNextFrame } from '../app';
-import { DatePipe } from '@angular/common';
+import { formatDate } from '@angular/common';
+import { IconComponent } from '../icon/icon.component';
+import { FormsModule } from '@angular/forms';
 
 const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
 
 @Component({
     selector: 'dui-input',
-    standalone: false,
     template: `
-        <dui-icon *ngIf="icon" class="icon" [size]="iconSize" [name]="icon"></dui-icon>
-        <input
-                *ngIf="type !== 'textarea'"
-                #input
-                [step]="step"
-                [readOnly]="readonly !== false"
-                [attr.min]="min"
-                [attr.max]="max"
-                [attr.minLength]="minLength"
-                [attr.maxLength]="maxLength"
-                [type]="type" (focus)="onFocus()" (blur)="onBlur()"
-                (change)="handleFileInput($event)"
-                [placeholder]="placeholder" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
-                [disabled]="isDisabled"
-                [ngModel]="type === 'file' ? undefined : innerValue"
-                (ngModelChange)="setInnerValue($event)"
-        />
+      @if (icon(); as icon) {
+        <dui-icon class="icon" [size]="iconSize()" [name]="icon"></dui-icon>
+      } @if (type() === 'textarea') {
         <textarea
-                #input
-                [readOnly]="readonly !== false"
-                *ngIf="type === 'textarea'" (focus)="onFocus()" (blur)="onBlur()"
-                [placeholder]="placeholder" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
-                [disabled]="isDisabled"
-                [(ngModel)]="innerValue"></textarea>
-        <dui-icon *ngIf="hasClearer" class="clearer" name="clear" (click)="clear()"></dui-icon>
+          #input
+          [readOnly]="readonly() !== false"
+          (focus)="onFocus()"
+          (blur)="onBlur()"
+          [placeholder]="placeholder()" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
+          [disabled]="isDisabled"
+          [ngModel]="normalizeValue()" (ngModelChange)="writeValue($event)"></textarea>
+      } @else {
+        @if (type() !== 'textarea') {
+          <input
+            #input
+            [step]="step()"
+            [readOnly]="readonly() !== false"
+            [attr.min]="min()"
+            [attr.max]="max()"
+            [attr.minLength]="minLength()"
+            [attr.maxLength]="maxLength()"
+            [type]="type()" (focus)="onFocus()" (blur)="onBlur()"
+            (change)="handleFileInput($event)"
+            [placeholder]="placeholder()" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
+            [disabled]="isDisabled"
+            [ngModel]="type() === 'file' ? undefined : normalizeValue"
+            (ngModelChange)="writeValue($event)"
+          />
+        }
+      } @if (clearer()) {
+        @if (hasClearer) {
+          <dui-icon class="clearer" name="clear" (click)="clear()"></dui-icon>
+        }
+      }
     `,
     styleUrls: ['./input.component.scss'],
     host: {
-        '[class.is-textarea]': 'type === "textarea"',
-        '[class.light-focus]': 'lightFocus !== false',
-        '[class.semi-transparent]': 'semiTransparent !== false',
-        '[class.no-controls]': 'noControls !== false',
+        '[class.is-textarea]': 'type() === "textarea"',
+        '[class.light-focus]': 'lightFocus()',
+        '[class.semi-transparent]': 'semiTransparent()',
+        '[class.no-controls]': 'noControls()',
+        '[class.has-clearer]': 'clearer()',
+        '[class.filled]': 'value()',
+        '[class.round]': 'round()',
+        '[class.textured]': 'textured()',
+        '[class.has-icon]': 'icon()',
     },
-    providers: [ngValueAccessor(InputComponent)]
+    providers: [ngValueAccessor(InputComponent)],
+    imports: [IconComponent, FormsModule],
 })
 export class InputComponent extends ValueAccessorBase<any> implements AfterViewInit {
-    @Input() type: string = 'text';
+    type = input<string>('text');
 
-    @Input() step: number = 1;
+    step = input<number>(1);
 
-    @Input() placeholder: string = '';
+    placeholder = input<string>('');
 
-    @Input() icon: string = '';
+    icon = input<string>('');
 
-    @Input() min?: number;
-    @Input() max?: number;
-    @Input() maxLength?: number;
-    @Input() minLength?: number;
+    min = input<number>();
+    max = input<number>();
+    maxLength = input<number>();
+    minLength = input<number>();
 
-    @Input() iconSize: number = 17;
+    iconSize = input<number>(17);
 
     /**
      * Focuses this element once created (AfterViewInit).
      */
-    @Input() focus: boolean | '' = false;
+    focus = input(false, { transform: booleanAttribute });
 
     /**
      * Uses a more decent focus border.
      */
-    @Input() lightFocus: boolean | '' = false;
+    lightFocus = input(false, { transform: booleanAttribute });
 
     /**
      * Disables input controls (like for type=number the arrow buttons)
      */
-    @Input() noControls: boolean | '' = false;
+    noControls = input(false, { transform: booleanAttribute });
 
     /**
      * Appears a little bit transparent. Perfect for blurry background.
      */
-    @Input() semiTransparent: boolean | '' = false;
+    semiTransparent = input(false, { transform: booleanAttribute });
 
     @Output() esc = new EventEmitter<KeyboardEvent>();
     @Output() enter = new EventEmitter<KeyboardEvent>();
@@ -109,16 +123,11 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
     @ViewChild('input', { static: false }) input?: ElementRef<HTMLInputElement | HTMLTextAreaElement>;
 
-    @Input() textured: boolean | '' = false;
+    textured = input(false, { transform: booleanAttribute });
 
-    @Input() readonly: boolean | '' = false;
+    = input(false, { transform: booleanAttribute });
 
     @Output() focusChange = new EventEmitter<boolean>();
-
-    @HostBinding('class.textured')
-    get isTextured() {
-        return false !== this.textured;
-    }
 
     @HostBinding('class.focused')
     get isFocused() {
@@ -126,99 +135,60 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         return this.input ? document.activeElement === this.input!.nativeElement : false;
     }
 
-    @HostBinding('class.filled')
-    get isFilled() {
-        return !!this.innerValue;
-    }
+    round = input(false, { transform: booleanAttribute });
 
-    @Input() round: boolean | '' = false;
+    clearer = input(false, { transform: booleanAttribute });
 
-    @HostBinding('class.round')
-    get isRound() {
-        return false !== this.round;
-    }
+    normalizeValue = computed(() => {
+        if (dateTimeTypes.includes(this.type())) {
+            if (this.value() instanceof Date) {
+                if (this.type() === 'date') return formatDate(this.value(), `yyyy-MM-dd`, navigator.language);
+                return formatDate(this.value(), 'yyyy-MM-ddThh:mm:ss.SSS', navigator.language);
+            } else if ('string' === typeof this.value()) {
+                return formatDate(new Date(this.value()), 'yyyy-MM-ddThh:mm:ss.SSS', navigator.language);
+            }
+        }
+        return this.value();
+    });
 
-    @Input() clearer: boolean | '' = false;
 
-    @HostBinding('class.has-clearer')
-    get hasClearer() {
-        return false !== this.clearer;
-    }
-
-    @HostBinding('class.has-icon')
-    get hasIcon() {
-        return !!this.icon;
-    }
-
-    constructor(
-        protected injector: Injector,
-        public readonly cd: ChangeDetectorRef,
-        @SkipSelf() public readonly cdParent: ChangeDetectorRef,
-        private datePipe : DatePipe,
-    ) {
-        super(injector, cd, cdParent);
+    constructor() {
+        super();
+        this.value.set('');
     }
 
     onBlur() {
-        this.cdParent.detectChanges();
         this.focusChange.next(false);
     }
 
     onFocus() {
-        this.cdParent.detectChanges();
         this.focusChange.next(true);
     }
 
-    public async clear() {
-        this.innerValue = '';
+    public clear() {
+        this.writeValue('');
     }
 
-    /**
-     * From <input>
-     */
-    setInnerValue(value: any) {
-        if (this.type === 'file') return;
-
-        this.innerValue = value;
-    }
-
-    get innerValue(): any {
-        if (this.type === 'text') {
-
-        } else if (this.type === 'number') {
-        } else if (dateTimeTypes.includes(this.type)) {
-            if (super.innerValue instanceof Date) {
-                if (this.type === 'date') return this.datePipe.transform(super.innerValue, `yyyy-MM-dd`);
-                return this.datePipe.transform(super.innerValue, 'yyyy-MM-ddThh:mm:ss.SSS');
-            } else if ('string' === typeof super.innerValue) {
-                return this.datePipe.transform(new Date(super.innerValue), 'yyyy-MM-ddThh:mm:ss.SSS');
-            }
+    writeValue(value: any | undefined) {
+        if (this.type() === 'file' && !value && this.input) {
+            //we need to manually reset the field, since writing to it via ngModel is not supported.
+            this.input.nativeElement.value = '';
         }
 
-        return super.innerValue;
-    }
+        value = value === undefined || value === null ? '' : value;
 
-    set innerValue(value: any | undefined) {
-        if (this.type === 'text') {
+        if (this.type() === 'file') return;
+        if (this.type() === 'text') {
 
-        } else if (this.type === 'number') {
+        } else if (this.type() === 'number') {
             if (value && 'number' !== typeof value) {
                 value = parseFloat(value);
             }
-        } else if (dateTimeTypes.includes(this.type)) {
+        } else if (dateTimeTypes.includes(this.type())) {
             if ('string' === typeof value) {
                 value = new Date(value);
             }
         }
-        super.innerValue = value;
-    }
-
-    writeValue(value?: any) {
-        if (this.type === 'file' && !value && this.input) {
-            //we need to manually reset the field, since writing to it via ngModel is not supported.
-            this.input!.nativeElement.value = '';
-        }
-
         super.writeValue(value);
     }
 
@@ -228,7 +198,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
     }
 
     onKeyUp(event: KeyboardEvent) {
-        if (event.key.toLowerCase() === 'enter' && this.type !== 'textarea') {
+        if (event.key.toLowerCase() === 'enter' && this.type() !== 'textarea') {
             this.enter.emit(event);
         }
 
@@ -246,10 +216,9 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
     }
 
     ngAfterViewInit() {
-        if (this.focus !== false && this.input) {
+        if (this.focus() && this.input) {
             setTimeout(() => {
                 this.input!.nativeElement.focus();
-                detectChangesNextFrame(this.cd);
             });
         }
     }
@@ -288,9 +257,9 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
                         value.push(await readFile(file));
                     }
                 }
-                this.innerValue = value;
+                this.writeValue(value);
             } else if (files.length === 1) {
-                this.innerValue = await readFile(files.item(0));
+                this.writeValue(await readFile(files.item(0)));
             }
         }
     }

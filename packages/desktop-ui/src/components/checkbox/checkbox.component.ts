@@ -8,31 +8,24 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ChangeDetectionStrategy,
-    ChangeDetectorRef,
-    Component,
-    HostBinding,
-    HostListener,
-    Injector,
-    SkipSelf,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostBinding, HostListener } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { IconComponent } from '../icon/icon.component';
 
 @Component({
     selector: 'dui-checkbox',
-    standalone: false,
     template: `
-        <span class="box">
+      <span class="box">
             <dui-icon [size]="12" name="check"></dui-icon>
         </span>
-        <ng-content></ng-content>
+      <ng-content></ng-content>
     `,
     styleUrls: ['./checkbox.component.scss'],
     providers: [ngValueAccessor(CheckboxComponent)],
     changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [IconComponent],
 })
-export class CheckboxComponent extends ValueAccessorBase<any>  {
+export class CheckboxComponent extends ValueAccessorBase<boolean> {
     @HostBinding('tabindex')
     get tabIndex() {
         return 1;
@@ -40,7 +33,7 @@ export class CheckboxComponent extends ValueAccessorBase<any>  {
 
     @HostBinding('class.checked')
     get isChecked() {
-        return true === this.innerValue;
+        return true === this.value();
     }
 
     @HostListener('click')
@@ -48,15 +41,11 @@ export class CheckboxComponent extends ValueAccessorBase<any>  {
         if (this.isDisabled) return;
 
         this.touch();
-        this.innerValue = !this.innerValue;
+        this.value.update(v => !v);
     }
 
-    constructor(
-        protected injector: Injector,
-        public readonly cd: ChangeDetectorRef,
-        @SkipSelf() public readonly cdParent: ChangeDetectorRef,
-    ) {
-        super(injector, cd, cdParent);
+    constructor() {
+        super();
+        this.value.set(false);
     }
-
 }
