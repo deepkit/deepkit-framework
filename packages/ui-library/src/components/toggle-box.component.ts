@@ -1,51 +1,50 @@
-import { ChangeDetectorRef, Component, EventEmitter, Input, Output, SkipSelf } from '@angular/core';
+import { Component, input, model } from '@angular/core';
+import { IconComponent, SplitterComponent } from '@deepkit/desktop-ui';
 
 @Component({
     selector: 'deepkit-toggle-box',
-    standalone: false,
     template: `
-        <dui-splitter *ngIf="visible" (modelChange)="changeHeight($event)" position="top"></dui-splitter>
+      @if (visible()) {
+        <dui-splitter (sizeChange)="changeHeight($event)" position="top"></dui-splitter>
+      }
 
-        <div class="actions">
-            <dui-icon clickable (click)="toggleVisibility()"
-                      [name]="this.visible ? 'arrow_down' : 'arrow_right'"></dui-icon>
-            <div class="actions-title" (click)="toggleVisibility()">
-                {{title}}
-            </div>
-
-            <ng-content select="[header]"></ng-content>
+      <div class="actions">
+        <dui-icon clickable (click)="toggleVisibility()"
+                  [name]="visible() ? 'arrow_down' : 'arrow_right'"></dui-icon>
+        <div class="actions-title" (click)="toggleVisibility()">
+          {{ title() }}
         </div>
 
-        <div *ngIf="visible" class="output overlay-scrollbar-small">
-            <ng-content></ng-content>
+        <ng-content select="[header]"></ng-content>
+      </div>
+
+      @if (visible()) {
+        <div class="output overlay-scrollbar-small">
+          <ng-content></ng-content>
         </div>
+      }
     `,
     host: {
         '[class.visible]': 'visible',
-        '[style.flexBasis.px]': 'height'
+        '[style.flex-basis.px]': 'height',
     },
-    styleUrls: ['./toggle-box.component.scss']
+    imports: [
+        SplitterComponent,
+        IconComponent,
+    ],
+    styleUrls: ['./toggle-box.component.scss'],
 })
 export class ToggleBoxComponent {
-    @Input() visible: boolean = false;
-    @Output() visibleChange = new EventEmitter<boolean>();
+    visible = model(false);
+    height = model(170);
 
-    @Input() height: number = 170;
-    @Output() heightChange = new EventEmitter<number>();
-
-    @Input() title: string = '';
-
-    constructor(@SkipSelf() private parentCd: ChangeDetectorRef) {
-    }
+    title = input('');
 
     changeHeight(height: number) {
-        this.height = height;
-        this.heightChange.emit(this.height);
-        this.parentCd.detectChanges();
+        this.height.set(height);
     }
 
     toggleVisibility() {
-        this.visible = !this.visible;
-        this.visibleChange.emit(this.visible);
+        this.visible.update(v => !v);
     }
 }

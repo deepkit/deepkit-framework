@@ -30,7 +30,7 @@
 
   path {
     fill: none;
-    stroke: var(--line-color-prominent);
+    stroke: var(--dui-line-color-prominent);
     opacity: 0.6;
     stroke-width: 1px;
 
@@ -39,7 +39,7 @@
     }
 
     &.embedded {
-      stroke: var(--color-orange);
+      stroke: var(--dui-color-orange);
     }
   }
 
@@ -79,7 +79,7 @@
 .node {
   position: absolute;
   background-color: rgba(72, 72, 72, 0.9);
-  border: 1px solid var(--line-color-light);
+  border: 1px solid var(--dui-line-color-light);
   font-size: 12px;
   line-height: 16px;
   padding: 5px;
@@ -103,6 +103,6 @@
 :host-context(.dui-theme-light) {
     .node {
         background-color: rgba(189, 189, 189, 0.75);
-        border: 1px solid var(--line-color);
+        border: 1px solid var(--dui-line-color);
     }
 }

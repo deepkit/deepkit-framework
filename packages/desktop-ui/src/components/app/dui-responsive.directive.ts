@@ -10,7 +10,7 @@
 
 import { Directive, HostListener, input, OnInit } from '@angular/core';
 import { nextTick } from '@deepkit/core';
-import { injectElementRef } from './utils.js';
+import { injectElementRef } from './utils';
 
 @Directive({
     selector: '[duiClassMin]',

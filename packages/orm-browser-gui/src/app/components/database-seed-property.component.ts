@@ -8,134 +8,134 @@ import { isAutoIncrementType, isReferenceType, ReflectionKind, resolveClassType,
 @Component({
     selector: 'orm-browser-seed-property',
     template: `
-        <ng-container *ngIf="isAutoIncrementType(type)" style="color: var(--text-grey)">
-            Auto-Increment
-        </ng-container>
+      <ng-container *ngIf="isAutoIncrementType(type)" style="color: var(--dui-text-grey)">
+        Auto-Increment
+      </ng-container>
 
-        <ng-container *ngIf="!isAutoIncrementType(type)">
-            <dui-checkbox [(ngModel)]="model.fake" (ngModelChange)="changed()">Fake</dui-checkbox>
+      <ng-container *ngIf="!isAutoIncrementType(type)">
+        <dui-checkbox [(ngModel)]="model.fake" (ngModelChange)="changed()">Fake</dui-checkbox>
 
-            <div class="property-seed-value" *ngIf="model.fake" [class.select]="isReferenceType(type)">
-                <ng-container [ngSwitch]="true">
-                    <div *ngSwitchCase="isClassOrObjectLiteralType(type) && isReferenceType(type)">
-                        <dui-select textured small [(ngModel)]="model.reference">
-                            <dui-option value="random">Random from database</dui-option>
-                            <dui-option value="random-seed">Random from seed</dui-option>
-                            <dui-option value="create">Create new</dui-option>
-                        </dui-select>
-                        <ng-container *ngIf="model.reference === 'create'">
-                            <dui-dialog #classConfig [backDropCloses]="true">
-                                <orm-browser-seed-properties [fakerTypes]="fakerTypes" [entity]="resolveClassType(type)" [properties]="getSubProperties()"
-                                                             (changed)="changed()"></orm-browser-seed-properties>
+        <div class="property-seed-value" *ngIf="model.fake" [class.select]="isReferenceType(type)">
+          <ng-container [ngSwitch]="true">
+            <div *ngSwitchCase="isClassOrObjectLiteralType(type) && isReferenceType(type)">
+              <dui-select textured small [(ngModel)]="model.reference">
+                <dui-option value="random">Random from database</dui-option>
+                <dui-option value="random-seed">Random from seed</dui-option>
+                <dui-option value="create">Create new</dui-option>
+              </dui-select>
+              <ng-container *ngIf="model.reference === 'create'">
+                <dui-dialog #classConfig [backDropCloses]="true">
+                  <orm-browser-seed-properties [fakerTypes]="fakerTypes" [entity]="resolveClassType(type)" [properties]="getSubProperties()"
+                                               (changed)="changed()"></orm-browser-seed-properties>
 
-                                <dui-dialog-actions>
-                                    <dui-button closeDialog>OK</dui-button>
-                                </dui-dialog-actions>
-                            </dui-dialog>
-                            <dui-button style="width: 80px; margin-left: 6px;" [openDialog]="classConfig" small>Configure</dui-button>
-                        </ng-container>
-                    </div>
+                  <dui-dialog-actions>
+                    <dui-button closeDialog>OK</dui-button>
+                  </dui-dialog-actions>
+                </dui-dialog>
+                <dui-button style="width: 80px; margin-left: 6px;" [openDialog]="classConfig" small>Configure</dui-button>
+              </ng-container>
+            </div>
 
-                    <div class="choose-type" *ngSwitchCase="isEnumType(type)">
-                        Random enum
-                    </div>
-                    <div class="choose-type" *ngSwitchCase="isBooleanType(type)">
-                        Random boolean
-                    </div>
+            <div class="choose-type" *ngSwitchCase="isEnumType(type)">
+              Random enum
+            </div>
+            <div class="choose-type" *ngSwitchCase="isBooleanType(type)">
+              Random boolean
+            </div>
 
-                    <div class="choose-type" *ngSwitchCase="isClassOrObjectLiteralType(type) && !isReferenceType(type)">
-                        <dui-dialog #classConfig [backDropCloses]="true">
-                            <orm-browser-seed-properties [fakerTypes]="fakerTypes" [entity]="resolveClassType(type)" [properties]="getSubProperties()"
-                                                         (changed)="changed()"></orm-browser-seed-properties>
+            <div class="choose-type" *ngSwitchCase="isClassOrObjectLiteralType(type) && !isReferenceType(type)">
+              <dui-dialog #classConfig [backDropCloses]="true">
+                <orm-browser-seed-properties [fakerTypes]="fakerTypes" [entity]="resolveClassType(type)" [properties]="getSubProperties()"
+                                             (changed)="changed()"></orm-browser-seed-properties>
 
-                            <dui-dialog-actions>
-                                <dui-button closeDialog>OK</dui-button>
-                            </dui-dialog-actions>
-                        </dui-dialog>
+                <dui-dialog-actions>
+                  <dui-button closeDialog>OK</dui-button>
+                </dui-dialog-actions>
+              </dui-dialog>
 
-                        <dui-button [openDialog]="classConfig" small>Configure</dui-button>
-                    </div>
+              <dui-button [openDialog]="classConfig" small>Configure</dui-button>
+            </div>
 
-                    <div class="choose-type" *ngSwitchCase="isArrayType(type)">
-                        <dui-dialog #arrayConfig [backDropCloses]="true">
-                            <h3>Array configuration</h3>
+            <div class="choose-type" *ngSwitchCase="isArrayType(type)">
+              <dui-dialog #arrayConfig [backDropCloses]="true">
+                <h3>Array configuration</h3>
 
-                            <ng-container *ngIf="model.getArray() as array">
-                                <div class="array-config">
-                                    <div>Min</div>
-                                    <dui-input type="number" [(ngModel)]="array.min"></dui-input>
-                                    <div>Max</div>
-                                    <dui-input type="number" [(ngModel)]="array.max"></dui-input>
-                                </div>
+                <ng-container *ngIf="model.getArray() as array">
+                  <div class="array-config">
+                    <div>Min</div>
+                    <dui-input type="number" [(ngModel)]="array.min"></dui-input>
+                    <div>Max</div>
+                    <dui-input type="number" [(ngModel)]="array.max"></dui-input>
+                  </div>
 
-                                <div>
-                                    <orm-browser-seed-property *ngIf="isArrayType(type)"
-                                        [model]="array.seed" [type]="type.type"
-                                        [fakerTypes]="fakerTypes" (modelChange)="changed()"></orm-browser-seed-property>
-                                </div>
-                            </ng-container>
-
-                            <dui-dialog-actions>
-                                <dui-button closeDialog>OK</dui-button>
-                            </dui-dialog-actions>
-                        </dui-dialog>
-                        <div>
-                            Array config
-                        </div>
-                        <dui-button small [openDialog]="arrayConfig">Configure</dui-button>
-                    </div>
-
-                    <!--                <div class="choose-type" *ngIf="property.isMap">-->
-                    <!--                    <dui-dialog #arrayConfig [backDropCloses]="true">-->
-                    <!--                        <h3>Map configuration</h3>-->
-
-                    <!--                        <ng-container *ngIf="model.getMap() as map">-->
-                    <!--                            <div class="array-config">-->
-                    <!--                                <div>Min</div>-->
-                    <!--                                <dui-input type="number" [(ngModel)]="map.min"></dui-input>-->
-                    <!--                                <div>Max</div>-->
-                    <!--                                <dui-input type="number" [(ngModel)]="map.max"></dui-input>-->
-                    <!--                            </div>-->
-
-                    <!--                            <div>-->
-                    <!--                                <orm-browser-seed-property-->
-                    <!--                                    [model]="map.seed" [property]="property.getSubType()"-->
-                    <!--                                    [fakerTypes]="fakerTypes" (modelChange)="changed()"></orm-browser-seed-property>-->
-                    <!--                            </div>-->
-                    <!--                        </ng-container>-->
-
-                    <!--                        <dui-dialog-actions>-->
-                    <!--                            <dui-button closeDialog>OK</dui-button>-->
-                    <!--                        </dui-dialog-actions>-->
-                    <!--                    </dui-dialog>-->
-                    <!--                    <div>-->
-                    <!--                        Map config-->
-                    <!--                    </div>-->
-                    <!--                    <dui-button small [openDialog]="arrayConfig">Configure</dui-button>-->
-                    <!--                </div>-->
-
-                    <ng-container *ngSwitchDefault>
-                        <ng-container *ngIf="!model.faker">
-                            <dui-button small (click)="chooseType()">Choose</dui-button>
-                        </ng-container>
-
-                        <div class="choose-type" *ngIf="model.faker">
-                            <div>
-                                {{model.faker}}
-                                <span style="color: var(--text-grey)">
-                                    {{fakerTypes[model.faker]?.type}}
-                                </span>
-                            </div>
-                            <dui-button (click)="chooseType()" small>Change</dui-button>
-                        </div>
-                    </ng-container>
+                  <div>
+                    <orm-browser-seed-property *ngIf="isArrayType(type)"
+                                               [model]="array.seed" [type]="type.type"
+                                               [fakerTypes]="fakerTypes" (modelChange)="changed()"></orm-browser-seed-property>
+                  </div>
                 </ng-container>
+
+                <dui-dialog-actions>
+                  <dui-button closeDialog>OK</dui-button>
+                </dui-dialog-actions>
+              </dui-dialog>
+              <div>
+                Array config
+              </div>
+              <dui-button small [openDialog]="arrayConfig">Configure</dui-button>
             </div>
 
-            <div class="property-seed-value" *ngIf="!model.fake">
-                <orm-browser-property [(model)]="model.value" [type]="type"></orm-browser-property>
-            </div>
-        </ng-container>
+            <!--                <div class="choose-type" *ngIf="property.isMap">-->
+            <!--                    <dui-dialog #arrayConfig [backDropCloses]="true">-->
+            <!--                        <h3>Map configuration</h3>-->
+
+            <!--                        <ng-container *ngIf="model.getMap() as map">-->
+            <!--                            <div class="array-config">-->
+            <!--                                <div>Min</div>-->
+            <!--                                <dui-input type="number" [(ngModel)]="map.min"></dui-input>-->
+            <!--                                <div>Max</div>-->
+            <!--                                <dui-input type="number" [(ngModel)]="map.max"></dui-input>-->
+            <!--                            </div>-->
+
+            <!--                            <div>-->
+            <!--                                <orm-browser-seed-property-->
+            <!--                                    [model]="map.seed" [property]="property.getSubType()"-->
+            <!--                                    [fakerTypes]="fakerTypes" (modelChange)="changed()"></orm-browser-seed-property>-->
+            <!--                            </div>-->
+            <!--                        </ng-container>-->
+
+            <!--                        <dui-dialog-actions>-->
+            <!--                            <dui-button closeDialog>OK</dui-button>-->
+            <!--                        </dui-dialog-actions>-->
+            <!--                    </dui-dialog>-->
+            <!--                    <div>-->
+            <!--                        Map config-->
+            <!--                    </div>-->
+            <!--                    <dui-button small [openDialog]="arrayConfig">Configure</dui-button>-->
+            <!--                </div>-->
+
+            <ng-container *ngSwitchDefault>
+              <ng-container *ngIf="!model.faker">
+                <dui-button small (click)="chooseType()">Choose</dui-button>
+              </ng-container>
+
+              <div class="choose-type" *ngIf="model.faker">
+                <div>
+                  {{ model.faker }}
+                  <span style="color: var(--dui-text-grey)">
+                                    {{ fakerTypes[model.faker]?.type }}
+                                </span>
+                </div>
+                <dui-button (click)="chooseType()" small>Change</dui-button>
+              </div>
+            </ng-container>
+          </ng-container>
+        </div>
+
+        <div class="property-seed-value" *ngIf="!model.fake">
+          <orm-browser-property [(model)]="model.value" [type]="type"></orm-browser-property>
+        </div>
+      </ng-container>
     `,
     styleUrls: ['./database-seed-property.component.scss'],
     standalone: false

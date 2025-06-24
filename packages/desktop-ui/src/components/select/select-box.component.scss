@@ -88,6 +88,10 @@ select {
     white-space: pre;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-direction: row;
 
     dui-icon {
         overflow: visible;
@@ -95,8 +99,7 @@ select {
 }
 
 .placeholder {
-    display: block;
-    color: var(--text-grey);
+    color: var(--dui-text-grey);
 }
 
 .value {

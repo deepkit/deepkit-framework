@@ -36,10 +36,11 @@ import { Subscription } from 'rxjs';
 import { WindowRegistry } from '../window/window-state';
 import { focusWatcher } from '../../core/utils';
 import { isArray } from '@deepkit/core';
-import { OverlayStack, OverlayStackItem, unsubscribe } from '../app';
 import { ButtonComponent } from './button.component';
 import { NgTemplateOutlet } from '@angular/common';
 import { IconComponent } from '../icon/icon.component';
+import { OverlayStack, OverlayStackItem } from '../app/app';
+import { unsubscribe } from '../app/reactivate-change-detection';
 
 
 @Component({
@@ -51,14 +52,14 @@ import { IconComponent } from '../icon/icon.component';
             @if (container(); as container) {
               <ng-container [ngTemplateOutlet]="container"></ng-container>
             } @else {
-            <ng-content></ng-content>
-          }
+              <ng-content></ng-content>
+            }
           </div>
         </div>
       </ng-template>
     `,
     host: {
-        '[class.overlay]': 'overlay() !== false',
+        '[class.overlay]': 'overlay()',
     },
     changeDetection: ChangeDetectionStrategy.OnPush,
     styleUrls: ['./dropdown.component.scss'],
@@ -70,9 +71,9 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     public portalViewRef?: EmbeddedViewRef<any>;
     protected lastFocusWatcher?: ReturnType<typeof focusWatcher>;
 
-    host = input<HTMLElement | ElementRef>();
+    host = input<Element | ElementRef>();
 
-    allowedFocus = input<(HTMLElement | ElementRef)[] | (HTMLElement | ElementRef)>([]);
+    allowedFocus = input<(Element | ElementRef)[] | (Element | ElementRef)>([]);
 
     /**
      * For debugging purposes.
@@ -175,7 +176,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         this.container.set(container);
     }
 
-    public open(target?: HTMLElement | ElementRef | MouseEvent | 'center', initiator?: HTMLElement | ElementRef | {
+    public open(target?: Element | ElementRef | MouseEvent | 'center', initiator?: HTMLElement | ElementRef | {
         x: number,
         y: number,
         width: number,
@@ -347,14 +348,17 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
         const allowedFocusValue = this.allowedFocus();
         const normalizedAllowedFocus = isArray(allowedFocusValue) ? allowedFocusValue : (allowedFocusValue ? [allowedFocusValue] : []);
-        const allowedFocus = normalizedAllowedFocus.map(v => v instanceof ElementRef ? v.nativeElement : v) as HTMLElement[];
+        const allowedFocus = normalizedAllowedFocus.map(v => v instanceof ElementRef ? v.nativeElement : v) as Element[];
         allowedFocus.push(this.overlayRef.hostElement);
+        if (target instanceof ElementRef) allowedFocus.push(this.overlayRef.hostElement);
+        if (target instanceof Element) allowedFocus.push(this.overlayRef.hostElement);
+        if (target instanceof MouseEvent && target.target instanceof Element) allowedFocus.push(target.target);
 
         if (this.show() === undefined) {
             this.overlayRef.hostElement.focus();
             this.lastFocusWatcher = focusWatcher(
                 this.overlayRef.overlayElement,
-                [...allowedFocus, target as HTMLElement],
+                allowedFocus,
                 () => {
                     if (!this.keepOpen()) {
                         this.close();
@@ -576,6 +580,9 @@ export class ContextDropdownDirective {
     template: `
       <div></div>
     `,
+    host: {
+        '[class.dui-normalized]': 'true',
+    },
     styles: [`
         :host {
             display: block;
@@ -583,7 +590,7 @@ export class ContextDropdownDirective {
         }
 
         div {
-            border-top: 1px solid var(--line-color-light);
+            border-top: 1px solid var(--dui-line-color-light);
         }
     `],
 })
@@ -620,6 +627,7 @@ export class DropdownContainerDirective {
       <ng-content></ng-content>
     `,
     host: {
+        '[class.dui-normalized]': 'true',
         '[class.selected]': 'selected()',
         '[class.disabled]': 'disabled()',
     },

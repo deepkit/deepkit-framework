@@ -24,7 +24,7 @@
     align-items: center;
     padding-left: 25px;
     height: 35px;
-    border-top: 1px solid var(--line-sidebar-light);
+    border-top: 1px solid var(--dui-line-sidebar-light);
     background: var(--dui-window-header-bg);
 
     > span {
@@ -38,7 +38,7 @@
 }
 
 .exported {
-    color: var(--color-orange);
+    color: var(--dui-color-orange);
 }
 
 .for-root {

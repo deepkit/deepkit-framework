@@ -11,6 +11,7 @@
     "useDefineForClassFields": false,
     "noImplicitAny": true,
     "esModuleInterop": true,
+    "preserveSymlinks": true,
     "types": [
       "fs-extra",
       "node"

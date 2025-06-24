@@ -1,108 +1,93 @@
-import { AfterViewInit, Directive, DoCheck, ElementRef, Inject, Input, OnChanges, OnInit, PLATFORM_ID, Renderer2 } from '@angular/core';
-//@ts-ignore
-import { highlight, languages } from 'prismjs';
+import { Component, computed, input } from '@angular/core';
+// @ts-ignore
+import * as prism from 'prismjs';
 import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-jsx';
+import 'prismjs/components/prism-tsx';
 import 'prismjs/components/prism-sql';
 import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-json';
-import { isPlatformBrowser } from '@angular/common';
-import { removeIndent } from '../utils';
 
-@Directive({
-    selector: '[codeHighlight]',
-    standalone: false,
-})
-export class CodeHighlightComponent implements OnInit, OnChanges, AfterViewInit, DoCheck {
-    @Input() codeHighlight: string = 'typescript';
-    @Input() code: string = '';
-    @Input() title?: string;
-
-    protected pre?: HTMLPreElement;
-
-    isBrowser: boolean;
-
-    constructor(
-        protected elementRef: ElementRef<HTMLTextAreaElement | HTMLDivElement>,
-        protected renderer: Renderer2,
-        @Inject(PLATFORM_ID) protected platformId: any,
-    ) {
-        this.isBrowser = isPlatformBrowser(platformId);
-    }
-
-    ngOnChanges(): void {
-        this.render();
-    }
-
-    ngOnInit(): void {
-        this.render();
-    }
-
-    ngAfterViewInit() {
-        if (!this.elementRef.nativeElement.parentNode) {
-            //try again next tick
-            setTimeout(() => {
-                return this.render();
-            });
-            return;
-        }
-        this.render();
-    }
-
-    ngDoCheck() {
-        // queueMicrotask(() => {
-        //     if (!this.pre) return;
-        //     this.elementRef.nativeElement.after(this.pre);
-        // });
-    }
-
-    render() {
-        if (this.elementRef.nativeElement instanceof HTMLTextAreaElement) {
-            this.code = removeIndent(this.elementRef.nativeElement.value).trim();
+@Component({
+    selector: 'code-highlight',
+    host: {
+        '[class.overlay-scrollbar-small]': 'true',
+    },
+    styles: [`
+        :host {
+            display: block;
+            margin: 12px 0;
+            max-width: 100%;
         }
 
-        if (!this.isBrowser) {
-            if (this.pre) return;
+        pre {
+            overflow: auto;
+            overflow: overlay;
+            @supports not (-webkit-hyphens: none) {
+                /* in safari this breaks scrolling styling, so we need to exclude it*/
+                scrollbar-width: thin;
+            }
+            max-width: 100%;
+            margin: 0;
 
-            this.pre = this.renderer.createElement('pre');
-            this.renderer.addClass(this.pre, 'code');
-            this.renderer.addClass(this.pre, 'codeHighlight');
-            this.renderer.addClass(this.pre, 'language-' + this.codeHighlight);
-            this.renderer.setAttribute(this.pre, 'title', this.title || '');
+            scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
 
-            this.renderer.insertBefore(this.elementRef.nativeElement.parentNode, this.pre, this.elementRef.nativeElement);
-            const text = this.renderer.createText(this.code);
-            this.renderer.appendChild(this.pre, text);
-            this.renderer.removeChild(this.elementRef.nativeElement.parentNode, this.elementRef.nativeElement);
-            return;
-        }
+            &::-webkit-scrollbar {
+                height: 10px;
+                width: 10px;
+                background: transparent;
+            }
 
-        if (!this.pre) {
-            if (!this.elementRef.nativeElement.parentNode) return;
-            this.pre = this.renderer.createElement('pre');
+            &::-webkit-scrollbar-thumb {
+                background: rgba(169, 173, 175, 0.77);
+                border-radius: 8px;
+                border: 2px solid rgba(0, 0, 0, 0.01);
+                background-clip: padding-box;
 
-            this.renderer.addClass(this.pre, 'code');
-            this.renderer.addClass(this.pre, 'codeHighlight');
-            this.renderer.addClass(this.pre, 'text-selection');
-            this.renderer.addClass(this.pre, 'language-' + this.codeHighlight);
-            this.renderer.addClass(this.pre, 'overlay-scrollbar-small');
-            this.renderer.setAttribute(this.pre, 'title', this.title || '');
-            if (this.elementRef.nativeElement instanceof HTMLTextAreaElement) {
-                //the textarea is replaced with the pre element
-                this.renderer.insertBefore(this.elementRef.nativeElement.parentNode, this.pre, this.elementRef.nativeElement);
-                this.renderer.removeChild(this.elementRef.nativeElement.parentNode, this.elementRef.nativeElement);
-            } else {
-                this.renderer.appendChild(this.elementRef.nativeElement, this.pre);
+                &:hover {
+                    cursor: default;
+                    background: #727475;
+                    border: 2px solid rgba(0, 0, 0, 0.01);
+                    background-clip: padding-box;
+                }
             }
         }
 
-        if (!this.code) return;
-
-        const lang = this.codeHighlight || 'typescript';
-        try {
-            const highlighted = highlight(this.code, languages[lang], lang);
-            this.pre!.innerHTML = highlighted;
-        } catch (error: any) {
-            this.pre!.innerHTML = error.message + ': ' + this.code;
+        pre.codeHighlight[title] {
+            padding-top: 8px;
         }
-    }
+
+        pre.codeHighlight[title]:before {
+            display: block;
+            text-align: center;
+            content: attr(title);
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #b0b0b0;
+            font-style: italic;
+        }
+    `],
+    template: `
+      <ng-content></ng-content>
+      <pre class="code codeHighlight text-selection language-{{lang()}}" [attr.title]="title()" [innerHTML]="html()"></pre>
+    `,
+})
+export class CodeHighlightComponent {
+    code = input('');
+    file = input('');
+    lang = input('typescript');
+    title = input<string>('');
+
+    html = computed(() => {
+        const code = this.code();
+        if (!code) return '';
+
+        const firstLineIndentLength = code.match(/^\s+/)?.[0].length || 1;
+        // Remove leading whitespace from each line
+        const trimmedCode = code.split('\n').map(line => line.slice(firstLineIndentLength - 1)).join('\n').trim();
+
+        let lang = this.lang() || 'typescript';
+        if (!prism.languages[lang]) lang = 'text';
+        return prism.highlight(trimmedCode, prism.languages[lang], lang);
+    });
 }

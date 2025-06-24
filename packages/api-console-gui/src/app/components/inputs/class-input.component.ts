@@ -38,7 +38,7 @@ import { DataStructure } from '../../store';
     styles: [`
         .children {
             position: relative;
-            border: 1px solid var(--line-color-light);
+            border: 1px solid var(--dui-line-color-light);
             border-radius: 3px;
             background-color: var(--dui-window-header-bg);
             margin-left: 20px;

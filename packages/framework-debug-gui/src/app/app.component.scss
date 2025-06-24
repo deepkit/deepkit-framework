@@ -34,7 +34,7 @@
 .request-subline {
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--text-light);
+  color: var(--dui-text-light);
 }
 
 .top-right {
@@ -50,11 +50,11 @@
         text-transform: uppercase;
 
         .connected {
-            color: var(--color-green);
+            color: var(--dui-color-green);
         }
 
         .disconnected {
-            color: var(--color-red);
+            color: var(--dui-color-red);
         }
     }
 }

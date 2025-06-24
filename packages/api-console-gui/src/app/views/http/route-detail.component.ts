@@ -45,7 +45,7 @@ import { getTypeJitContainer } from '@deepkit/type';
                                                (modelChange)="updateRouteState(route)"></api-console-input>
                         </ng-container>
                         <div class="ts text-selection">
-                            <div codeHighlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></div>
+                            <code-highlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></code-highlight>
                         </div>
                     </ng-container>
                 </deepkit-box>
@@ -75,7 +75,7 @@ import { getTypeJitContainer } from '@deepkit/type';
                                                (modelChange)="updateRouteState(route)"></api-console-input>
                         </ng-container>
                         <div class="ts text-selection">
-                            <div codeHighlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></div>
+                            <code-highlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></code-highlight>
                         </div>
                     </ng-container>
                 </deepkit-box>
@@ -100,7 +100,7 @@ import { getTypeJitContainer } from '@deepkit/type';
                 <ng-container *ngIf="!route.responses.length">
                     <deepkit-box title="Default response" *ngIf="route.getResultType() as schema">
                         <div class="ts text-selection">
-                            <div codeHighlight [code]="typeToTSJSONInterface(schema)"></div>
+                            <code-highlight [code]="typeToTSJSONInterface(schema)"></code-highlight>
                         </div>
                     </deepkit-box>
                 </ng-container>
@@ -112,7 +112,7 @@ import { getTypeJitContainer } from '@deepkit/type';
                     </div>
                     <ng-container *ngIf="response.getType() as s">
                         <div class="ts text-selection">
-                            <div codeHighlight [code]="typeToTSJSONInterface(s)"></div>
+                            <code-highlight [code]="typeToTSJSONInterface(s)"></code-highlight>
                         </div>
                     </ng-container>
                 </deepkit-box>
@@ -128,7 +128,7 @@ import { getTypeJitContainer } from '@deepkit/type';
             </ng-container>
 
             <ng-container *ngIf="store.state.viewHttp.codeGenerationVisible">
-                <div class="code-generation-code overlay-scrollbar-small" codeHighlight="bash" [code]="codeGenerated"></div>
+                <code-highlight class="code-generation-code" lang="bash" [code]="codeGenerated"></code-highlight>
             </ng-container>
         </deepkit-toggle-box>
     `,

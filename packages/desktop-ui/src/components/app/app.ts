@@ -1,13 +1,3 @@
-/*
- * Deepkit Framework
- * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the MIT License.
- *
- * You should have received a copy of the MIT License along with this program.
- */
-
 import {
     ApplicationRef,
     Component,
@@ -16,31 +6,16 @@ import {
     Inject,
     Injectable,
     input,
-    ModuleWithProviders,
-    NgModule,
     Optional,
     Renderer2,
     RendererFactory2,
+    signal,
 } from '@angular/core';
-import { MenuCheckboxDirective, MenuDirective, MenuItemDirective, MenuRadioDirective, MenuSeparatorDirective } from './menu.component';
-import { detectChangesNextFrame, OpenExternalDirective, ZonelessChangeDetector } from './utils';
-import { ViewDirective } from './dui-view.directive';
-import { CommonModule, DOCUMENT } from '@angular/common';
-import { Electron } from '../../core/utils';
-import { ActivationEnd, NavigationEnd, Router } from '@angular/router';
-import { WindowRegistry } from '../window/window-state';
-import { ELECTRON_WINDOW, IN_DIALOG } from './token';
-import { AsyncRenderPipe, HumanFileSizePipe, ObjectURLPipe } from './pipes';
 import { arrayRemoveItem } from '@deepkit/core';
-import { EventDispatcher } from '@deepkit/event';
-
-export * from './reactivate-change-detection';
-export * from './dui-view.directive';
-export * from './dui-responsive.directive';
-export * from './utils';
-export * from './menu.component';
-export * from './pipes';
-export * from './state';
+import { DOCUMENT } from '@angular/common';
+import { WindowRegistry } from '../window/window-state';
+import { Router } from '@angular/router';
+import { Electron } from '../../core/utils';
 
 if ('undefined' !== typeof window && 'undefined' === typeof (window as any)['global']) {
     (window as any).global = window;
@@ -59,7 +34,7 @@ export class BaseComponent {
 @Component({
     selector: 'ui-component',
     template: `
-        {{name()}} disabled={{isDisabled}}
+      {{ name() }} disabled={{ isDisabled }}
     `,
     styles: [`
         :host {
@@ -72,7 +47,7 @@ export class BaseComponent {
     `],
     host: {
         '[class.is-textarea]': 'name() === "textarea"',
-    }
+    },
 })
 export class UiComponentComponent extends BaseComponent {
     name = input<string>('');
@@ -113,6 +88,7 @@ export class OverlayStackItem {
     }
 }
 
+@Injectable({ providedIn: 'root' })
 export class OverlayStack {
     public stack: OverlayStackItem[] = [];
 
@@ -146,8 +122,8 @@ export class Storage {
 
 @Injectable({ providedIn: 'root' })
 export class DuiApp {
-    protected darkMode?: boolean = false;
-    protected platform: 'web' | 'darwin' | 'linux' | 'win32' = 'darwin';
+    darkMode = signal<boolean | undefined>(undefined);
+    platform = signal<'web' | 'darwin' | 'linux' | 'win32'>('darwin');
     public themeDetection: boolean = true;
 
     render: Renderer2;
@@ -158,12 +134,24 @@ export class DuiApp {
         rendererFactory: RendererFactory2,
         protected storage: Storage,
         @Optional() protected windowRegistry?: WindowRegistry,
-        @Optional() protected router?: Router
+        @Optional() protected router?: Router,
     ) {
         this.render = rendererFactory.createRenderer(null, null);
-        ZonelessChangeDetector.app = app;
         if ('undefined' !== typeof window) {
             (window as any)['DuiApp'] = this;
+        }
+        this.start();
+        if (document && Electron.isAvailable()) {
+            document.addEventListener('click', (event: MouseEvent) => {
+                if (event.target) {
+                    const target = event.target as HTMLElement;
+                    if (target.tagName.toLowerCase() === 'a') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        Electron.getRemote().shell.openExternal((target as any).href);
+                    }
+                }
+            });
         }
     }
 
@@ -192,7 +180,6 @@ export class DuiApp {
                     if (!this.themeDetection) return;
                     if (this.storage.getItem('duiApp/darkMode') === null) {
                         this.setAutoDarkMode();
-                        this.app.tick();
                     }
                 };
                 if (mm.addEventListener) {
@@ -203,29 +190,10 @@ export class DuiApp {
                 }
             }
         }
-
-        if ('undefined' !== typeof document) {
-            document.addEventListener('click', () => detectChangesNextFrame());
-            document.addEventListener('focus', () => detectChangesNextFrame());
-            document.addEventListener('blur', () => detectChangesNextFrame());
-            document.addEventListener('keydown', () => detectChangesNextFrame());
-            document.addEventListener('keyup', () => detectChangesNextFrame());
-            document.addEventListener('keypress', () => detectChangesNextFrame());
-            document.addEventListener('mousedown', () => detectChangesNextFrame());
-        }
-
-        //necessary to render all router-outlet once the router changes
-        if (this.router) {
-            this.router.events.subscribe((event) => {
-                if (event instanceof NavigationEnd || event instanceof ActivationEnd) {
-                    detectChangesNextFrame();
-                }
-            }, () => undefined);
-        }
     }
 
     setPlatform(platform: 'web' | 'darwin' | 'linux' | 'win32') {
-        this.platform = platform;
+        this.platform.set(platform);
         //deprecate these
         this.render.removeClass(this.document.body, 'platform-linux');
         this.render.removeClass(this.document.body, 'platform-darwin');
@@ -239,7 +207,7 @@ export class DuiApp {
         this.render.removeClass(this.document.body, 'dui-platform-native');
         this.render.removeClass(this.document.body, 'dui-platform-web');
 
-        if (this.platform !== 'web') {
+        if (this.platform() !== 'web') {
             this.render.addClass(this.document.body, 'platform-native'); //todo: deprecate
             this.render.addClass(this.document.body, 'dui-platform-native');
 
@@ -249,11 +217,11 @@ export class DuiApp {
     }
 
     getPlatform(): string {
-        return this.platform;
+        return this.platform();
     }
 
     isDarkMode(): boolean {
-        return this.darkMode === true;
+        return this.darkMode() === true;
     }
 
     setAutoDarkMode(): void {
@@ -291,7 +259,7 @@ export class DuiApp {
     }
 
     getVibrancy(): 'ultra-dark' | 'light' {
-        return this.darkMode ? 'ultra-dark' : 'light';
+        return this.darkMode() ? 'ultra-dark' : 'light';
     }
 
     disableThemeDetection() {
@@ -302,11 +270,11 @@ export class DuiApp {
 
     setDarkMode(darkMode?: boolean) {
         if (darkMode === undefined) {
-            this.darkMode = this.isPreferDarkColorSchema();
+            this.darkMode.set(this.isPreferDarkColorSchema());
             this.storage.removeItem('duiApp/darkMode');
         } else {
             this.storage.setItem('duiApp/darkMode', JSON.stringify(darkMode));
-            this.darkMode = darkMode;
+            this.darkMode.set(darkMode);
         }
 
         if (this.windowRegistry) {
@@ -317,7 +285,7 @@ export class DuiApp {
 
         this.render.removeClass(this.document.body, 'dui-theme-dark');
         this.render.removeClass(this.document.body, 'dui-theme-light');
-        this.render.addClass(this.document.body, this.darkMode ? 'dui-theme-dark' : 'dui-theme-light');
+        this.render.addClass(this.document.body, this.darkMode() ? 'dui-theme-dark' : 'dui-theme-light');
 
         if ('undefined' !== typeof window) window.dispatchEvent(new Event('theme-changed'));
     }
@@ -325,71 +293,5 @@ export class DuiApp {
     protected isPreferDarkColorSchema() {
         if ('undefined' === typeof window) return true;
         return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-}
-
-@NgModule({
-    exports: [
-        UiComponentComponent,
-        MenuDirective,
-        MenuSeparatorDirective,
-        MenuRadioDirective,
-        MenuCheckboxDirective,
-        MenuItemDirective,
-        OpenExternalDirective,
-        ViewDirective,
-        AsyncRenderPipe,
-        ObjectURLPipe,
-        HumanFileSizePipe,
-    ],
-    providers: [
-        OverlayStack,
-    ],
-    imports: [
-        CommonModule,
-        UiComponentComponent,
-        MenuDirective,
-        MenuSeparatorDirective,
-        MenuRadioDirective,
-        MenuCheckboxDirective,
-        MenuItemDirective,
-        OpenExternalDirective,
-        ViewDirective,
-        AsyncRenderPipe,
-        ObjectURLPipe,
-        HumanFileSizePipe,
-    ]
-})
-export class DuiAppModule {
-    constructor(app: DuiApp, @Inject(DOCUMENT) @Optional() document: Document) {
-        app.start();
-        if (document && Electron.isAvailable()) {
-            document.addEventListener('click', (event: MouseEvent) => {
-                if (event.target) {
-                    const target = event.target as HTMLElement;
-                    if (target.tagName.toLowerCase() === 'a') {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        Electron.getRemote().shell.openExternal((target as any).href);
-                    }
-                }
-            });
-        }
-    }
-
-    static forRoot(): ModuleWithProviders<DuiAppModule> {
-        return {
-            ngModule: DuiAppModule,
-            providers: [
-                DuiApp,
-                Storage,
-                { provide: EventDispatcher, useValue: new EventDispatcher },
-                { provide: IN_DIALOG, useValue: false },
-                {
-                    provide: ELECTRON_WINDOW,
-                    useValue: Electron.isAvailable() ? Electron.getRemote().BrowserWindow.getAllWindows()[0] : undefined
-                },
-            ]
-        };
     }
 }

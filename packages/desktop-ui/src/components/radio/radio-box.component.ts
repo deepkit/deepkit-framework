@@ -26,7 +26,7 @@ export class RadioGroupComponent extends ValueAccessorBase<any> {
       <span class="box"><div class="circle"></div></span>
       <ng-content></ng-content>
     `,
-    styleUrls: ['./radiobox.component.scss'],
+    styleUrls: ['./radio-box.component.scss'],
 })
 export class RadioButtonComponent {
     value = input<any>();

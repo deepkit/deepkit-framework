@@ -8,27 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  ContentChild,
-  Inject,
-  OnChanges,
-  OnDestroy,
-  Optional,
-  SimpleChanges,
-  SkipSelf,
-  ViewContainerRef,
-  input
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, contentChild, inject, input, OnDestroy, OnInit, ViewContainerRef } from '@angular/core';
 import { WindowContentComponent } from './window-content.component';
-import { WindowRegistry, WindowState } from './window-state';
-import { DOCUMENT, AsyncPipe } from '@angular/common';
+import { Win, WindowRegistry, WindowState } from './window-state';
 import { WindowMenuState } from './window-menu';
 import { WindowHeaderComponent } from './window-header.component';
-import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token';
-import { DuiApp } from '../app';
+import { DuiApp } from '../app/app';
+import { BrowserWindow } from '../../core/utils';
 
 /**
  * This is only for documentation purposes.
@@ -38,8 +24,8 @@ import { DuiApp } from '../app';
     template: '<ng-content></ng-content>',
     styleUrls: ['./window-frame.component.scss'],
     host: {
-        '[style.height]': `height() ? height() + 'px' : 'auto'`
-    }
+        '[style.height]': `height() ? height() + 'px' : 'auto'`,
+    },
 })
 export class WindowFrameComponent {
     height = input<number>(350);
@@ -47,10 +33,10 @@ export class WindowFrameComponent {
 
 @Component({
     selector: 'dui-window',
-    template: '<ng-content></ng-content>@if (windowState.disableInputs|async) {<div (mousedown)="$event.preventDefault();" class="disable-inputs"></div>}',
-    styleUrls: ['./window.component.scss'],
+    template: '<ng-content></ng-content>@if (windowState.disableInputs()) {<div (mousedown)="$event.preventDefault();" class="disable-inputs"></div>}',
+    styleUrl: './window.component.scss',
     host: {
-        '[class.in-dialog]': 'isInDialog()',
+        '[class.in-dialog]': 'dialog()',
         '[class.dui-theme-light]': '!app.themeDetection',
         '[class.dui-body]': 'true',
     },
@@ -59,17 +45,17 @@ export class WindowFrameComponent {
         WindowState,
         WindowMenuState,
     ],
-    imports: [AsyncPipe]
 })
-export class WindowComponent implements OnChanges, OnDestroy {
+export class WindowComponent implements OnInit, OnDestroy, Win {
     public id = 0;
 
-    @ContentChild(WindowContentComponent, { static: false }) public content?: WindowContentComponent;
-    @ContentChild(WindowHeaderComponent, { static: false }) public header?: WindowHeaderComponent;
+    content = contentChild(WindowContentComponent);
+    header = contentChild(WindowHeaderComponent);
 
     closable = input(true);
     maximizable = input(true);
     minimizable = input(true);
+    dialog = input(false);
 
     protected onBlur = () => {
         this.registry.blur(this);
@@ -79,57 +65,45 @@ export class WindowComponent implements OnChanges, OnDestroy {
         this.registry.focus(this);
     };
 
-    constructor(
-        @Inject(DOCUMENT) document: Document,
-        protected registry: WindowRegistry,
-        public windowState: WindowState,
-        cd: ChangeDetectorRef,
-        public app: DuiApp,
-        windowMenuState: WindowMenuState,
-        public viewContainerRef: ViewContainerRef,
-        @Inject(IN_DIALOG) protected inDialog: boolean,
-        @SkipSelf() @Optional() protected parentWindow?: WindowComponent,
-        @Inject(ELECTRON_WINDOW) public electronWindow?: any
-    ) {
-        registry.register(this, cd, windowState, windowMenuState, viewContainerRef);
+    registry = inject(WindowRegistry);
+    windowState = inject(WindowState);
+    app = inject(DuiApp);
+    viewContainerRef = inject(ViewContainerRef);
+    windowMenuState = inject(WindowMenuState);
+    parentWindow = inject(WindowComponent, { optional: true, skipSelf: true });
+    browserWindow = inject(BrowserWindow);
 
-        if (this.electronWindow && !this.isInDialog()) {
-            this.electronWindow.addListener('blur', this.onBlur);
-            this.electronWindow.addListener('focus', this.onFocus);
-            this.electronWindow.setVibrancy(app.getVibrancy());
-        }
-
+    constructor() {
+        this.registry.register(this, this.windowState, this.windowMenuState, this.viewContainerRef);
         this.registry.focus(this);
     }
 
+    ngOnInit() {
+        if (this.browserWindow && !this.dialog()) {
+            this.browserWindow.addListener('blur', this.onBlur);
+            this.browserWindow.addListener('focus', this.onFocus);
+            this.browserWindow.setVibrancy(this.app.getVibrancy());
+        }
+    }
+
     ngOnDestroy() {
-        if (this.electronWindow && !this.isInDialog()) {
-            this.electronWindow.removeListener('blur', this.onBlur);
-            this.electronWindow.removeListener('focus', this.onFocus);
+        if (this.browserWindow && !this.dialog()) {
+            this.browserWindow.removeListener('blur', this.onBlur);
+            this.browserWindow.removeListener('focus', this.onFocus);
         }
         this.registry.unregister(this);
     }
 
-    public isInDialog(): boolean {
-        return this.inDialog;
-    }
-
     public getClosestNonDialogWindow(): WindowComponent | undefined {
-        if (!this.isInDialog()) {
+        if (!this.dialog()) {
             return this;
         }
 
         if (this.parentWindow) {
-            if (this.parentWindow.isInDialog()) {
+            if (this.parentWindow.dialog()) {
                 return this.parentWindow.getClosestNonDialogWindow();
             }
             return this.parentWindow;
         }
-    }
-
-    ngOnChanges(changes: SimpleChanges) {
-        this.windowState.closable = this.closable();
-        this.windowState.minimizable = this.minimizable();
-        this.windowState.maximizable = this.maximizable();
     }
 }

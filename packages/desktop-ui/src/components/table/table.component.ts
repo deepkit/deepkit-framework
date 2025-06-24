@@ -9,56 +9,45 @@
  */
 
 import {
-  AfterViewInit,
-  ApplicationRef,
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  ContentChild,
-  ContentChildren,
-  Directive,
-  ElementRef,
-  EventEmitter,
-  HostBinding,
-  HostListener,
-  inject,
-  NgZone,
-  OnChanges,
-  OnDestroy,
-  OnInit,
-  Output,
-  QueryList,
-  SimpleChanges,
-  SkipSelf,
-  TemplateRef,
-  ViewChild,
-  ViewChildren,
-  input,
-  booleanAttribute
+    AfterViewInit,
+    ApplicationRef,
+    booleanAttribute,
+    ChangeDetectionStrategy,
+    Component,
+    computed,
+    contentChild,
+    contentChildren,
+    Directive,
+    effect,
+    ElementRef,
+    HostBinding,
+    HostListener,
+    inject,
+    input,
+    model,
+    OnDestroy,
+    OnInit,
+    output,
+    signal,
+    TemplateRef,
+    viewChild,
+    viewChildren,
 } from '@angular/core';
+import { arrayHasItem, arrayRemoveItem, empty, first, getPathValue, indexOf, isNumber, nextTick } from '@deepkit/core';
+import { CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import {
-    arrayClear,
-    arrayHasItem,
-    arrayRemoveItem,
-    eachPair,
-    empty,
-    first,
-    getPathValue,
-    indexOf,
-    isArray,
-    isNumber,
-    nextTick,
-} from '@deepkit/core';
-import { isObservable, Observable } from 'rxjs';
-import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
-import { DropdownComponent } from '../button';
-import { detectChangesNextFrame } from '../app/utils';
-import { findParentWithClass, getHammer } from '../../core/utils';
-import { DropdownComponent as DropdownComponent_1, DropdownContainerDirective, DropdownItemComponent, DropdownSplitterComponent, ContextDropdownDirective } from '../button/dropdown.component';
+    ContextDropdownDirective,
+    DropdownComponent,
+    DropdownComponent as DropdownComponent_1,
+    DropdownContainerDirective,
+    DropdownItemComponent,
+    DropdownSplitterComponent,
+} from '../button/dropdown.component';
+import { injectElementRef } from '../app/utils';
+import { findParentWithClass } from '../../core/utils';
 import { NgTemplateOutlet } from '@angular/common';
 import { IconComponent } from '../icon/icon.component';
 import { SplitterComponent } from '../splitter/splitter.component';
-import { ɵɵCdkVirtualScrollViewport, ɵɵCdkFixedSizeVirtualScroll, ɵɵCdkVirtualForOf } from '@angular/cdk/overlay';
 
 /**
  * Directive to allow dynamic content in a cell.
@@ -71,7 +60,7 @@ import { ɵɵCdkVirtualScrollViewport, ɵɵCdkFixedSizeVirtualScroll, ɵɵCdkVir
  * </dui-table-column>
  * ```
  */
-@Directive({ selector: '[duiTableCell]', })
+@Directive({ selector: '[duiTableCell]' })
 export class TableCellDirective {
     constructor(public template: TemplateRef<any>) {
     }
@@ -80,7 +69,7 @@ export class TableCellDirective {
 /**
  * Can be used to define own dropdown items once the user opens the header context menu.
  */
-@Directive({ selector: 'dui-dropdown[duiTableCustomHeaderContextMenu]', })
+@Directive({ selector: 'dui-dropdown[duiTableCustomHeaderContextMenu]' })
 export class TableCustomHeaderContextMenuDirective {
     constructor(public dropdown: DropdownComponent) {
     }
@@ -90,7 +79,7 @@ export class TableCustomHeaderContextMenuDirective {
 /**
  * Can be used to define own dropdown items once the user opens the row context menu.
  */
-@Directive({ selector: 'dui-dropdown[duiTableCustomRowContextMenu]', })
+@Directive({ selector: 'dui-dropdown[duiTableCustomRowContextMenu]' })
 export class TableCustomRowContextMenuDirective {
     constructor(public dropdown: DropdownComponent) {
     }
@@ -107,7 +96,7 @@ export class TableCustomRowContextMenuDirective {
  * </dui-table-column>
  * ```
  */
-@Directive({ selector: '[duiTableHeader]', })
+@Directive({ selector: '[duiTableHeader]' })
 export class TableHeaderDirective {
     constructor(public template: TemplateRef<any>) {
     }
@@ -116,8 +105,8 @@ export class TableHeaderDirective {
 /**
  * Defines a new column.
  */
-@Directive({ selector: 'dui-table-column', })
-export class TableColumnDirective {
+@Directive({ selector: 'dui-table-column' })
+export class TableColumnDirective implements OnInit {
     /**
      * The name of the column. Needs to be unique. If no renderer (*duiTableCell) is specified, this
      * name is used to render the content T[name].
@@ -132,7 +121,7 @@ export class TableColumnDirective {
     /**
      * Default width.
      */
-    width = input<number | string>(100);
+    width = model<number | string>(100);
 
     /**
      * Adds additional class to the columns cells.
@@ -142,7 +131,7 @@ export class TableColumnDirective {
     /**
      * Whether this column is start hidden. User can unhide it using the context menu on the header.
      */
-    hidden = input(false, { transform: booleanAttribute });
+    hidden = model(false);
 
     sortable = input<boolean>(true);
 
@@ -157,17 +146,19 @@ export class TableColumnDirective {
      * This is the new position when the user moved it manually.
      * @hidden
      */
-    overwrittenPosition?: number;
+    overwrittenPosition = signal<number | undefined>(undefined);
 
-    @ContentChild(TableCellDirective, { static: false }) cell?: TableCellDirective;
-    @ContentChild(TableHeaderDirective, { static: false }) headerDirective?: TableHeaderDirective;
+    defaultWidth: number | string = 100;
 
-    isHidden() {
-        return this.hidden() !== false;
+    cell = contentChild(TableCellDirective, {});
+    headerDirective = contentChild(TableHeaderDirective, {});
+
+    ngOnInit() {
+        this.defaultWidth = this.width();
     }
 
     toggleHidden() {
-        this.hidden = !this.isHidden();
+        this.hidden.update(v => !v);
     }
 
     /**
@@ -187,11 +178,9 @@ export class TableColumnDirective {
     /**
      * @hidden
      */
-    public getPosition() {
-        if (this.overwrittenPosition !== undefined) {
-            return this.overwrittenPosition;
-        }
-
+    getPosition() {
+        const overwritten = this.overwrittenPosition();
+        if (overwritten !== undefined) return overwritten;
         return this.position();
     }
 }
@@ -202,129 +191,123 @@ export class TableColumnDirective {
     template: `
       <dui-dropdown #headerDropdown>
         <ng-container *dropdownContainer>
-          @for (column of sortedColumnDefs; track trackByColumn($index, column)) {
-            <dui-dropdown-item
-              [selected]="!column.isHidden()"
-              (mousedown)="column.toggleHidden(); storePreference(); sortColumnDefs(); headerDropdown.close()"
+          @for (column of sortedColumns(); track column.name()) {
+            @if (column.hideable() && column.name()) {
+              <dui-dropdown-item
+                [selected]="!column.hidden()"
+                (mousedown)="column.toggleHidden();headerDropdown.close()"
               >
-              @if (column.hideable) {
-                <div>
-                  @if (column.name !== undefined && !column.headerDirective) {
-                    {{ column.header || column.name }}
-                  }
-                  @if (column.name !== undefined && column.headerDirective) {
-                    <ng-container
-                      [ngTemplateOutlet]="column.headerDirective.template"
+                @if (column.headerDirective(); as header) {
+                  <ng-container
+                    [ngTemplateOutlet]="header.template"
                     [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
-                  }
-                </div>
-              }
-            </dui-dropdown-item>
+                } @else {
+                  {{ column.header() || column.name() }}
+                }
+              </dui-dropdown-item>
+            }
           }
           <dui-dropdown-separator></dui-dropdown-separator>
           <dui-dropdown-item (click)="resetAll()">Reset all</dui-dropdown-item>
         </ng-container>
       </dui-dropdown>
-      
+
       @if (showHeader()) {
         <div class="header" #header
-          [contextDropdown]="customHeaderDropdown ? customHeaderDropdown.dropdown : headerDropdown">
-          @for (column of visibleColumns; track trackByColumn(columnIndex, column); let columnIndex = $index) {
+             [contextDropdown]="customHeaderDropdown()?.dropdown || headerDropdown">
+          @for (column of sortedFilteredColumns(); track $index; let columnIndex = $index) {
             <div class="th"
-              [style.width]="column.getWidth()"
-              (mouseup)="sortBy(column.name || '', $event)"
-              [class.freeze]="columnIndex < freezeColumns()"
-              [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(visibleColumns, columnIndex) : undefined"
-              [attr.name]="column.name"
-              [style.top]="scrollTop + 'px'"
-              #th>
-              @if (column.headerDirective) {
+                 [style.width]="column.getWidth()"
+                 (mouseup)="sortBy(column.name() || '', $event)"
+                 [class.freeze]="columnIndex < freezeColumns()"
+                 [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(columnIndex) : undefined"
+                 [attr.name]="column.name()"
+                 [style.top]="scrollTop + 'px'"
+                 #th>
+              @if (column.headerDirective(); as header) {
                 <ng-container
-                  [ngTemplateOutlet]="column.headerDirective.template"
-                [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+                  [ngTemplateOutlet]="header.template"
+                  [ngTemplateOutletContext]="{$implicit: column}"></ng-container>
+              } @else {
+                {{ column.header() || column.name() }}
               }
-              @if (column.name !== undefined && !column.headerDirective) {
-                {{ column.header || column.name }}
-              }
-              @if (sort()[column.name]) {
-                @if (sort()[column.name] === 'desc') {
+              @if (sort()[column.name()]; as direction) {
+                @if (direction === 'desc') {
                   <dui-icon [size]="12" name="arrow_down"></dui-icon>
-                }
-                @if (sort()[column.name] === 'asc') {
+                } @else {
                   <dui-icon [size]="12" name="arrow_up"></dui-icon>
                 }
               }
-              <dui-splitter (modelChange)="setColumnWidth(column, $event)"
-              indicator position="right"></dui-splitter>
+              <dui-splitter (sizeChange)="setColumnWidth(column, $event)" indicator position="right"></dui-splitter>
             </div>
           }
         </div>
       }
-      
+      @let valueFetch = valueFetcher();
+
       <div class="body overlay-scrollbar-small" (click)="clickCell($event)" (dblclick)="dblClickCell($event)">
         @if (autoHeight()) {
-          @for (row of filterSorted(sorted); track trackByFn(i, row); let i = $index; let isOdd = $odd) {
+          @for (row of filterSorted(); track trackByFn(i, row); let i = $index; let isOdd = $odd) {
             <div class="table-row {{rowClass()(row)}}"
-              [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
-              [class.selected]="selectedMap.has(row)"
-              [class.odd]="isOdd"
-              (mousedown)="select(row, $event)"
-              (contextmenu)="select(row, $event)"
-              (dblclick)="dbclick.emit(row)"
-              >
-              @for (column of visibleColumns; track trackByColumn(columnIndex, column); let columnIndex = $index) {
+                 [contextDropdown]="customRowDropdown()?.dropdown"
+                 [class.selected]="selectedMap.has(row)"
+                 [class.odd]="isOdd"
+                 (mousedown)="select(row, $event)"
+                 (contextmenu)="select(row, $event)"
+                 (dblclick)="dblclick.emit(row)"
+            >
+              @for (column of sortedFilteredColumns(); track $index; let columnIndex = $index) {
                 <div class="table-cell"
-                  [class]="column.class + ' ' + cellClass()(row, column.name)"
-                  [attr.row-column]="column.name"
-                  [class.freeze]="columnIndex < freezeColumns()"
-                  [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(visibleColumns, columnIndex) : undefined"
-                  [class.freeze-last]="columnIndex === freezeColumns() - 1"
-                  [attr.row-i]="i"
-                  [style.flex-basis]="column.getWidth()"
-                  >
-                  @if (column.cell) {
-                    <ng-container [ngTemplateOutlet]="column.cell!.template"
-                    [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
-                  }
-                  @if (!column.cell) {
-                    {{ column.name ? valueFetcher()(row, column.name) : '' }}
+                     [class]="column.class() + ' ' + cellClass()(row, column.name())"
+                     [attr.row-column]="column.name()"
+                     [class.freeze]="columnIndex < freezeColumns()"
+                     [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(columnIndex) : undefined"
+                     [class.freeze-last]="columnIndex === freezeColumns() - 1"
+                     [attr.row-i]="i"
+                     [style.flex-basis]="column.getWidth()"
+                >
+                  @if (column.cell(); as cell) {
+                    <ng-container [ngTemplateOutlet]="cell.template"
+                                  [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
+                  } @else {
+                    {{ valueFetch(row, column.name()) }}
                   }
                 </div>
               }
             </div>
           }
         }
-      
+
         @if (!autoHeight()) {
           <cdk-virtual-scroll-viewport #viewportElement
-            [itemSize]="itemHeight()">
+                                       class="overlay-scrollbar-small"
+                                       [itemSize]="itemHeight()">
             <ng-container
-              *cdkVirtualFor="let row of filterSorted(sorted); trackBy: trackByFn; let i = index; odd as isOdd">
+              *cdkVirtualFor="let row of filterSorted(); trackBy: trackByFn; let i = index; odd as isOdd">
               <div class="table-row {{rowClass()(row)}}"
-                [contextDropdown]="customRowDropdown ? customRowDropdown.dropdown : undefined"
-                [class.selected]="selectedMap.has(row)"
-                [class.odd]="isOdd"
-                [style.height.px]="itemHeight()"
-                (mousedown)="select(row, $event)"
-                (contextmenu)="select(row, $event)"
-                (dblclick)="dbclick.emit(row)"
-                >
-                @for (column of visibleColumns; track trackByColumn(columnIndex, column); let columnIndex = $index) {
+                   [contextDropdown]="customRowDropdown()?.dropdown"
+                   [class.selected]="selectedMap.has(row)"
+                   [class.odd]="isOdd"
+                   [style.height.px]="itemHeight()"
+                   (mousedown)="select(row, $event)"
+                   (contextmenu)="select(row, $event)"
+                   (dblclick)="dblclick.emit(row)"
+              >
+                @for (column of sortedFilteredColumns(); track $index; let columnIndex = $index) {
                   <div class="table-cell"
-                    [class]="column.class + ' ' + cellClass()(row, column.name)"
-                    [attr.row-column]="column.name"
-                    [class.freeze]="columnIndex < freezeColumns()"
-                    [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(visibleColumns, columnIndex) : undefined"
-                    [class.freeze-last]="columnIndex === freezeColumns() - 1"
-                    [attr.row-i]="i"
-                    [style.flex-basis]="column.getWidth()"
-                    >
-                    @if (column.cell) {
-                      <ng-container [ngTemplateOutlet]="column.cell!.template"
-                      [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
-                    }
-                    @if (!column.cell) {
-                      {{ column.name ? valueFetcher()(row, column.name) : '' }}
+                       [class]="column.class() + ' ' + cellClass()(row, column.name())"
+                       [attr.row-column]="column.name()"
+                       [class.freeze]="columnIndex < freezeColumns()"
+                       [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(columnIndex) : undefined"
+                       [class.freeze-last]="columnIndex === freezeColumns() - 1"
+                       [attr.row-i]="i"
+                       [style.flex-basis]="column.getWidth()"
+                  >
+                    @if (column.cell(); as cell) {
+                      <ng-container [ngTemplateOutlet]="cell.template"
+                                    [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
+                    } @else {
+                      {{ valueFetch(row, column.name()) }}
                     }
                   </div>
                 }
@@ -333,29 +316,30 @@ export class TableColumnDirective {
           </cdk-virtual-scroll-viewport>
         }
       </div>
-      `,
+    `,
     styleUrls: ['./table.component.scss'],
     host: {
-        '[class.no-focus-outline]': 'noFocusOutline() !== false',
-        '[class.borderless]': 'borderless() !== false',
-        '[class.with-hover]': 'hover() !== false',
-        '[class.auto-height]': 'autoHeight() !== false',
+        '[class.focus-outline]': '!noFocusOutline()',
+        '[class.borderless]': 'borderless()',
+        '[class.with-hover]': 'hover()',
+        '[class.auto-height]': 'autoHeight()',
+        '[class.dui-normalized]': 'true',
     },
     imports: [
-    DropdownComponent_1,
-    DropdownContainerDirective,
-    DropdownItemComponent,
-    NgTemplateOutlet,
-    DropdownSplitterComponent,
-    ContextDropdownDirective,
-    IconComponent,
-    SplitterComponent,
-    ɵɵCdkVirtualScrollViewport,
-    ɵɵCdkFixedSizeVirtualScroll,
-    ɵɵCdkVirtualForOf
-],
+        DropdownComponent_1,
+        DropdownContainerDirective,
+        DropdownItemComponent,
+        NgTemplateOutlet,
+        DropdownSplitterComponent,
+        ContextDropdownDirective,
+        IconComponent,
+        SplitterComponent,
+        CdkVirtualScrollViewport,
+        CdkFixedSizeVirtualScroll,
+        CdkVirtualForOf,
+    ],
 })
-export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDestroy {
+export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     protected app = inject(ApplicationRef);
 
     /**
@@ -368,197 +352,219 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     /**
      * Array of items that should be used for each row.
      */
-    public items = input.required<T[] | Observable<T[]>>();
+    items = input.required<T[]>();
 
     /**
      * Since dui-table has virtual-scroll active per default, it's required to define the itemHeight to
      * make scrolling actually workable correctly.
      */
-    public itemHeight = input<number>(25);
+    itemHeight = input<number>(25);
 
     /**
      * Whether the table height just prints all rows, or if virtual scrolling is enabled.
      * If true, the row height depends on the content.
      */
-    public autoHeight = input<boolean>(false);
+    autoHeight = input<boolean>(false);
 
     /**
      * Whether the table row should have a hover effect.
      */
-    public hover = input(false, { transform: booleanAttribute });
-
-    /**
-     * Current calculated height, used only when autoHeight is given.
-     */
-    public height: number = 23;
+    hover = input(false, { transform: booleanAttribute });
 
     /**
      * Whether the header should be shown.
      */
-    public showHeader = input<boolean>(true);
+    showHeader = input<boolean>(true);
 
     /**
      * How many columns (from the left) are frozen (stay visible even if user scrolls horizontally).
      */
-    public freezeColumns = input<number>(0);
+    freezeColumns = input<number>(0);
 
     /**
      * Default field of T for sorting.
      */
-    public defaultSort = input<string>('');
+    defaultSort = input<string>('');
 
     /**
      * Default sorting order.
      */
-    public defaultSortDirection = input<'asc' | 'desc'>('asc');
+    defaultSortDirection = input<'asc' | 'desc'>('asc');
 
     /**
      * Whether rows are selectable.
      */
-    public selectable = input(false, { transform: booleanAttribute });
+    selectable = input(false, { transform: booleanAttribute });
 
     /**
      * Whether multiple rows are selectable at the same time.
      */
-    public multiSelect = input(false, { transform: booleanAttribute });
+    multiSelect = input(false, { transform: booleanAttribute });
 
     /**
      * TrackFn for ngFor to improve performance. Default is order by index.
      */
-    public trackFn = input<(index: number, item: T) => any>();
+    trackFn = input<(index: number, item: T) => any>();
 
     /**
      * Not used yet.
      */
-    public displayInitial = input<number>(20);
+    displayInitial = input<number>(20);
 
     /**
      * Not used yet.
      */
-    public increaseBy = input<number>(10);
+    increaseBy = input<number>(10);
 
     /**
      * Filter function.
      */
-    public filter = input<(item: T) => boolean>();
+    filter = input<(item: T) => boolean>();
 
-    public rowClass = input<(item: T) => string | undefined>(() => undefined);
+    rowClass = input<(item: T) => string>(() => '');
 
-    public cellClass = input<(item: T, column: string) => string | undefined>(() => undefined);
+    cellClass = input<(item: T, column: string) => string>(() => '');
 
     /**
      * When the user changes the order or width of the columns, the information is stored
      * in localStorage using this key, prefixed with `@dui/table/`.
      */
-    public preferenceKey = input<string>('root');
+    preferenceKey = input<string>('root');
 
     /**
      * Filter query.
      */
-    public filterQuery = input<string>();
+    filterQuery = input<string>();
 
-    public columnState = input<{
-    name: string;
-    position: number;
-    visible: boolean;
-}[]>([]);
+    columnState = input<{
+        name: string;
+        position: number;
+        visible: boolean;
+    }[]>([]);
 
     /**
      * Against which fields filterQuery should run.
      */
-    public filterFields = input<string[]>();
+    filterFields = input<string[]>();
 
     /**
      * Alternate object value fetcher, important for sorting and filtering.
      */
-    public valueFetcher = input((object: any, path: string): any => {
-    return getPathValue(object, path);
-});
+    valueFetcher = input((object: any, path: string): any => {
+        if (!path) return '';
+        const value = getPathValue(object, path);
+        if (value instanceof Date) {
+
+        }
+        return value;
+    });
 
     /**
      * A hook to provide custom sorting behavior for certain columns.
      */
-    public sortFunction = input<(sort: {
-    [name: string]: 'asc' | 'desc';
-}) => (((a: T, b: T) => number) | undefined)>();
+    sortFunction = input<(sort: {
+        [name: string]: 'asc' | 'desc';
+    }) => (((a: T, b: T) => number) | undefined)>();
 
     /**
      * Whether sorting is enabled (clicking headers trigger sort).
      */
-    public sorting = input<boolean>(true);
+    sorting = input<boolean>(true);
 
     noFocusOutline = input(false, { transform: booleanAttribute });
 
-    public sort = input<{
-    [column: string]: 'asc' | 'desc';
-}>({});
+    sort = model<{ [column: string]: 'asc' | 'desc'; }>({});
 
-    public rawItems: T[] = [];
-    public sorted: T[] = [];
+    sorted = computed(() => {
+        const sortFunction = this.sortFunction();
+        if (sortFunction) {
+            const sorted = this.items().sort(sortFunction(this.sort()));
+            return sorted.slice();
+        }
 
-    public selectedMap = new Map<T, boolean>();
+        const sort = Object.entries(this.sort());
+        sort.reverse(); //we start from bottom
+        let sortRoot = (a: any, b: any) => 0;
+        for (const [name, dir] of sort) {
+            sortRoot = this.createSortFunction(name, dir, sortRoot);
+        }
+        const sorted = this.items().sort(sortRoot);
+        return sorted.slice();
+    });
+
+    // TODO rework that to be reactive
+    selectedMap = new Map<T, boolean>();
 
     /**
      * Elements that are selected, by reference.
      */
-    public selected = input<T[]>([]);
+    selected = model<T[]>([]);
 
-    protected selectedHistory: T[] = [];
-
-    /**
-     * Elements that are selected, by reference.
-     */
-    @Output() public selectedChange: EventEmitter<T[]> = new EventEmitter();
-
-    @Output() public sortedChange: EventEmitter<T[]> = new EventEmitter();
-
-    @Output() public cellSelect: EventEmitter<{ item: T, cell: string } | undefined> = new EventEmitter();
+    cellSelect = output<{ item: T, cell: string } | undefined>();
 
     /**
      * When a row gets double clicked.
      */
-    @Output() public dbclick: EventEmitter<T> = new EventEmitter();
+    dblclick = output<T>();
 
-    @Output() public customSort: EventEmitter<{ [column: string]: 'asc' | 'desc' }> = new EventEmitter();
+    cellClick = output<{ item: T, column: string }>();
+    cellDblClick = output<{ item: T, column: string }>();
 
-    @Output() public cellDblClick: EventEmitter<{ item: T, column: string }> = new EventEmitter();
-    @Output() public cellClick: EventEmitter<{ item: T, column: string }> = new EventEmitter();
+    header = viewChild('header', { read: ElementRef });
+    ths = viewChildren('th', { read: ElementRef });
 
-    @ViewChild('header', { static: false }) header?: ElementRef;
-    @ViewChildren('th') ths?: QueryList<ElementRef<HTMLElement>>;
+    columnDefs = contentChildren(TableColumnDirective, { descendants: true });
 
-    @ContentChildren(TableColumnDirective, { descendants: true }) columnDefs?: QueryList<TableColumnDirective>;
+    customHeaderDropdown = contentChild(TableCustomHeaderContextMenuDirective);
+    customRowDropdown = contentChild(TableCustomRowContextMenuDirective);
 
-    @ContentChild(TableCustomHeaderContextMenuDirective, { static: false }) customHeaderDropdown?: TableCustomHeaderContextMenuDirective;
-    @ContentChild(TableCustomRowContextMenuDirective, { static: false }) customRowDropdown?: TableCustomRowContextMenuDirective;
+    viewport = viewChild(CdkVirtualScrollViewport);
+    viewportElement = viewChild('viewportElement', { read: ElementRef });
 
-    @ViewChild(CdkVirtualScrollViewport, { static: true }) viewport?: CdkVirtualScrollViewport;
-    @ViewChild('viewportElement', { static: true, read: ElementRef }) viewportElement?: ElementRef;
+    sortedColumns = computed(() => {
+        const originalDefs = this.columnDefs();
+        const columns = originalDefs.slice();
 
-    public sortedColumnDefs: TableColumnDirective[] = [];
+        columns.sort((a, b) => {
+            const aPosition = a.getPosition() === undefined ? originalDefs.indexOf(a) : a.getPosition()!;
+            const bPosition = b.getPosition() === undefined ? originalDefs.indexOf(b) : b.getPosition()!;
 
-    visibleColumns: TableColumnDirective[] = [];
+            if (aPosition > bPosition) return 1;
+            if (aPosition < bPosition) return -1;
 
-    columnMap: { [name: string]: TableColumnDirective } = {};
+            return 0;
+        });
+        return columns;
+    });
 
-    public displayedColumns?: string[] = [];
+    sortedFilteredColumns = computed(() => {
+        const originalDefs = this.sortedColumns();
+        return originalDefs.filter(v => !v.hidden());
+    });
+
+    columnMap = computed(() => {
+        const map: { [name: string]: TableColumnDirective } = {};
+        for (const column of this.sortedColumns()) {
+            map[column.name()] = column;
+        }
+        return map;
+    });
 
     protected ignoreThisSort = false;
-    public scrollTop = 0;
+    scrollTop = 0;
 
-    constructor(
-        protected element: ElementRef,
-        protected cd: ChangeDetectorRef,
-        @SkipSelf() protected parentCd: ChangeDetectorRef,
-        protected zone: NgZone,
-    ) {
+    element = injectElementRef();
+
+    constructor() {
+        effect(() => this.storePreference());
+        effect(() => {
+            const items = this.filterSorted();
+            this.viewport()?.checkViewportSize();
+        });
     }
 
-    public setColumnWidth(column: TableColumnDirective, width: number) {
-        column.width = width;
-        detectChangesNextFrame(this.cd, () => {
-            this.storePreference();
-        });
+    setColumnWidth(column: TableColumnDirective, width: number) {
+        column.width.set(width);
     }
 
     ngOnInit() {
@@ -572,10 +578,11 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
     }
 
-    freezeLeft(columns: TableColumnDirective[], untilIndex: number): number {
+    freezeLeft(untilIndex: number): number {
+        const columns = this.sortedColumns();
         let left = 0;
         for (let i = 0; i < untilIndex; i++) {
-            const width = columns[i].width;
+            const width = columns[i].width();
             if (width === undefined) continue;
             left += 'number' === typeof width ? width : parseInt(width);
         }
@@ -585,34 +592,30 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
     @HostListener('window:resize')
     onResize() {
         nextTick(() => {
-            this.viewport?.checkViewportSize();
+            this.viewport()?.checkViewportSize();
         });
     }
 
     resetAll() {
         localStorage.removeItem('@dui/table/preferences-' + this.preferenceKey());
-        if (!this.columnDefs) return;
-        for (const column of this.columnDefs.toArray()) {
-            column.width = 100;
-            column.hidden = false;
-            column.overwrittenPosition = undefined;
+        for (const column of this.columnDefs()) {
+            column.width.set(column.defaultWidth);
+            column.hidden.set(false);
+            column.overwrittenPosition.set(undefined);
         }
-        this.visibleColumns = this.getVisibleColumns(this.sortedColumnDefs);
     }
 
     storePreference() {
         if ('undefined' === typeof localStorage) return;
         const preferences: { [name: string]: { hidden: boolean | '', width?: number | string, order?: number } } = {};
-        if (!this.columnDefs) return;
 
-        for (const column of this.columnDefs.toArray()) {
-            preferences[column.name] = {
-                width: column.width,
-                order: column.overwrittenPosition,
-                hidden: column.hidden,
+        for (const column of this.columnDefs()) {
+            preferences[column.name()] = {
+                width: column.width(),
+                order: column.overwrittenPosition(),
+                hidden: column.hidden(),
             };
         }
-        this.visibleColumns = this.getVisibleColumns(this.sortedColumnDefs);
         localStorage.setItem('@dui/table/preferences-' + this.preferenceKey(), JSON.stringify(preferences));
     }
 
@@ -622,42 +625,40 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         const preferencesJSON = localStorage.getItem('@dui/table/preferences-' + this.preferenceKey());
         if (!preferencesJSON) return;
         const preferences = JSON.parse(preferencesJSON);
+        const columnMap = this.columnMap();
         for (const i in preferences) {
             if (!preferences.hasOwnProperty(i)) continue;
-            if (!this.columnMap[i]) continue;
-            if (preferences[i].width !== undefined) this.columnMap[i].width = preferences[i].width;
-            if (preferences[i].order !== undefined) this.columnMap[i].overwrittenPosition = preferences[i].order;
-            if (preferences[i].hidden !== undefined) this.columnMap[i].hidden = preferences[i].hidden;
+            if (!columnMap[i]) continue;
+            if (preferences[i].width !== undefined) columnMap[i].width.set(preferences[i].width);
+            if (preferences[i].order !== undefined) columnMap[i].overwrittenPosition.set(preferences[i].order);
+            if (preferences[i].hidden !== undefined) columnMap[i].hidden.set(preferences[i].hidden);
         }
     }
 
     dblClickCell(event: MouseEvent) {
-        if (!this.cellDblClick.observers.length) return;
-
         if (!event.target) return;
         const cell = findParentWithClass(event.target as HTMLElement, 'table-cell');
         if (!cell) return;
         const i = parseInt(cell.getAttribute('row-i') || '', 10);
         const column = cell.getAttribute('row-column') || '';
 
-        this.cellDblClick.emit({ item: this.sorted[i], column });
+        this.cellDblClick.emit({ item: this.sorted()[i], column });
     }
 
     clickCell(event: MouseEvent) {
-        if (!this.cellClick.observers.length) return;
         if (!event.target) return;
         const cell = findParentWithClass(event.target as HTMLElement, 'table-cell');
         if (!cell) return;
         const i = parseInt(cell.getAttribute('row-i') || '', 10);
         const column = cell.getAttribute('row-column') || '';
 
-        this.cellClick.emit({ item: this.sorted[i], column });
+        this.cellClick.emit({ item: this.sorted()[i], column });
     }
 
     /**
      * Toggles the sort by the given column name.
      */
-    public sortBy(name: string, $event?: MouseEvent) {
+    sortBy(name: string, $event?: MouseEvent) {
         if (!this.sorting()) return;
 
         if (this.ignoreThisSort) {
@@ -667,19 +668,18 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
 
         if ($event && $event.button === 2) return;
 
-        //only when shift is pressed do we activate multi-column sort
-        if (!$event || !$event.shiftKey) {
-            for (const member in this.sort()) if (member !== name) delete this.sort()[member];
-        }
-
-        if (this.columnMap[name]) {
-            const headerDef = this.columnMap[name];
-            if (!headerDef.sortable()) {
-                return;
-            }
+        const column = this.columnMap()[name];
+        if (!column?.sortable()) {
+            return;
         }
 
         const sort = this.sort();
+
+        //only when shift is pressed do we activate multi-column sort
+        if (!$event || !$event.shiftKey) {
+            for (const member in this.sort()) if (member !== name) delete sort[member];
+        }
+
         if (!sort[name]) {
             sort[name] = 'asc';
         } else {
@@ -687,12 +687,16 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
             else if (sort[name] === 'desc') delete sort[name];
         }
 
-        if (this.customSort.observers.length) {
-            this.customSort.emit(sort);
-        } else {
-            this.doSort();
-        }
+        this.sort.set({ ...sort });
     }
+
+    filterSorted = computed(() => {
+        if (this.filter() || (this.filterQuery() && this.filterFields())) {
+            return this.sorted().filter((v) => this.filterFn(v));
+        }
+
+        return this.sorted();
+    });
 
     /**
      * @hidden
@@ -702,250 +706,187 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         return trackFn ? trackFn(index, item) : index;
     };
 
-    /**
-     * @hidden
-     */
-    trackByColumn(index: number, column: TableColumnDirective) {
-        return column.name();
-    }
-
-    /**
-     * @hidden
-     */
-    filterSorted(items: T[]): T[] {
-        //apply filter
-        if (this.filter() || (this.filterQuery() && this.filterFields())) {
-            return items.filter((v) => this.filterFn(v));
-        }
-
-        return items;
-    }
-
-    async initHeaderMovement() {
-        if ('undefined' !== typeof window && this.header && this.ths) {
-            const Hammer = await getHammer();
-            if (!Hammer) return;
-
-            const mc = new Hammer(this.header!.nativeElement);
-            mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 1 }));
-
-            interface Box {
-                left: number;
-                width: number;
-                element: HTMLElement;
-                directive: TableColumnDirective;
-            }
-
-            const THsBoxes: Box[] = [];
-
-            let element: HTMLElement | undefined;
-            let elementCells: HTMLElement[] = [];
-            let originalPosition = -1;
-            let foundBox: Box | undefined;
-            let rowCells: { cells: HTMLElement[] }[] = [];
-
-            let startOffsetLeft = 0;
-            let offsetLeft = 0;
-            let startOffsetWidth = 0;
-
-            let animationFrame: any;
-            mc.on('panstart', (event: HammerInput) => {
-                foundBox = undefined;
-
-                if (this.ths && event.target.classList.contains('th')) {
-                    element = event.target as HTMLElement;
-                    element.style.zIndex = '1000000';
-                    element.style.opacity = '0.8';
-
-                    startOffsetLeft = element.offsetLeft;
-                    offsetLeft = element.offsetLeft;
-                    startOffsetWidth = element.offsetWidth;
-
-                    arrayClear(THsBoxes);
-                    rowCells = [];
-
-                    for (const th of this.ths.toArray()) {
-                        const directive: TableColumnDirective = this.sortedColumnDefs.find((v) => v.name === th.nativeElement.getAttribute('name')!)!;
-                        const cells = [...this.element.nativeElement.querySelectorAll('div[row-column="' + directive.name() + '"]')] as any as HTMLElement[];
-
-                        if (th.nativeElement === element) {
-                            originalPosition = this.sortedColumnDefs.indexOf(directive);
-                            elementCells = cells;
-                            for (const cell of elementCells) {
-                                cell.classList.add('active-drop');
-                            }
-                        } else {
-                            for (const cell of cells) {
-                                cell.classList.add('other-cell');
-                            }
-                            th.nativeElement.classList.add('other-cell');
-                        }
-
-                        THsBoxes.push({
-                            left: th.nativeElement.offsetLeft,
-                            width: th.nativeElement.offsetWidth,
-                            element: th.nativeElement,
-                            directive: directive,
-                        });
-
-                        rowCells.push({ cells: cells });
-                    }
-                }
-            });
-
-            mc.on('panend', (event: HammerInput) => {
-                if (animationFrame) {
-                    cancelAnimationFrame(animationFrame);
-                }
-
-                if (element) {
-                    element.style.left = '';
-                    element.style.zIndex = '';
-                    element.style.opacity = '';
-
-                    for (const t of rowCells) {
-                        for (const cell of t.cells) {
-                            cell.classList.remove('active-drop');
-                            cell.classList.remove('other-cell');
-                            cell.style.left = '0px';
-                        }
-                    }
-
-                    this.ignoreThisSort = true;
-
-                    for (const box of THsBoxes) {
-                        box.element.style.left = '0px';
-                        box.element.classList.remove('other-cell');
-                    }
-
-                    if (foundBox) {
-                        const newPosition = this.sortedColumnDefs.indexOf(foundBox.directive);
-
-                        if (originalPosition !== newPosition) {
-                            const directive = this.sortedColumnDefs[originalPosition];
-                            this.sortedColumnDefs.splice(originalPosition, 1);
-                            this.sortedColumnDefs.splice(newPosition, 0, directive);
-
-                            for (let [i, v] of eachPair(this.sortedColumnDefs)) {
-                                v.overwrittenPosition = i;
-                            }
-
-                            this.sortColumnDefs();
-                        }
-                    }
-
-                    this.storePreference();
-                    element = undefined;
-                }
-            });
-
-            mc.on('pan', (event: HammerInput) => {
-                if (animationFrame) {
-                    cancelAnimationFrame(animationFrame);
-                }
-
-                animationFrame = nextTick(() => {
-                    if (element) {
-                        element!.style.left = (event.deltaX) + 'px';
-                        const offsetLeft = startOffsetLeft + event.deltaX;
-
-                        for (const cell of elementCells) {
-                            cell.style.left = (event.deltaX) + 'px';
-                        }
-                        let afterElement = false;
-
-                        foundBox = undefined;
-                        for (const [i, box] of eachPair(THsBoxes)) {
-                            if (box.element === element) {
-                                afterElement = true;
-                                continue;
-                            }
-
-                            box.element.style.left = '0px';
-                            for (const cell of rowCells[i].cells) {
-                                cell.style.left = '0px';
-                            }
-
-                            if (!afterElement && box.left + (box.width / 2) > offsetLeft) {
-                                //the dragged element is before the current
-                                box.element.style.left = startOffsetWidth + 'px';
-
-                                for (const cell of rowCells[i].cells) {
-                                    cell.style.left = startOffsetWidth + 'px';
-                                }
-
-                                if (foundBox && box.left > foundBox.left) {
-                                    //we found already a box that fits and that is more left
-                                    continue;
-                                }
-
-                                foundBox = box;
-                            } else if (afterElement && box.left + (box.width / 2) < offsetLeft + startOffsetWidth) {
-                                //the dragged element is after the current
-                                box.element.style.left = -startOffsetWidth + 'px';
-                                for (const cell of rowCells[i].cells) {
-                                    cell.style.left = -startOffsetWidth + 'px';
-                                }
-                                foundBox = box;
-                            }
-                        }
-                    }
-                });
-            });
-        }
-    }
+    // async initHeaderMovement() {
+    //     if ('undefined' !== typeof window && this.header && this.ths) {
+    //         const Hammer = await getHammer();
+    //         if (!Hammer) return;
+    //
+    //         const mc = new Hammer(this.header!.nativeElement);
+    //         mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 1 }));
+    //
+    //         interface Box {
+    //             left: number;
+    //             width: number;
+    //             element: HTMLElement;
+    //             directive: TableColumnDirective;
+    //         }
+    //
+    //         const THsBoxes: Box[] = [];
+    //
+    //         let element: HTMLElement | undefined;
+    //         let elementCells: HTMLElement[] = [];
+    //         let originalPosition = -1;
+    //         let foundBox: Box | undefined;
+    //         let rowCells: { cells: HTMLElement[] }[] = [];
+    //
+    //         let startOffsetLeft = 0;
+    //         let offsetLeft = 0;
+    //         let startOffsetWidth = 0;
+    //
+    //         let animationFrame: any;
+    //         mc.on('panstart', (event: HammerInput) => {
+    //             foundBox = undefined;
+    //
+    //             if (this.ths && event.target.classList.contains('th')) {
+    //                 element = event.target as HTMLElement;
+    //                 element.style.zIndex = '1000000';
+    //                 element.style.opacity = '0.8';
+    //
+    //                 startOffsetLeft = element.offsetLeft;
+    //                 offsetLeft = element.offsetLeft;
+    //                 startOffsetWidth = element.offsetWidth;
+    //
+    //                 arrayClear(THsBoxes);
+    //                 rowCells = [];
+    //
+    //                 for (const th of this.ths.toArray()) {
+    //                     const directive: TableColumnDirective = this.sortedColumns.find((v) => v.name === th.nativeElement.getAttribute('name')!)!;
+    //                     const cells = [...this.element.nativeElement.querySelectorAll('div[row-column="' + directive.name() + '"]')] as any as HTMLElement[];
+    //
+    //                     if (th.nativeElement === element) {
+    //                         originalPosition = this.sortedColumns.indexOf(directive);
+    //                         elementCells = cells;
+    //                         for (const cell of elementCells) {
+    //                             cell.classList.add('active-drop');
+    //                         }
+    //                     } else {
+    //                         for (const cell of cells) {
+    //                             cell.classList.add('other-cell');
+    //                         }
+    //                         th.nativeElement.classList.add('other-cell');
+    //                     }
+    //
+    //                     THsBoxes.push({
+    //                         left: th.nativeElement.offsetLeft,
+    //                         width: th.nativeElement.offsetWidth,
+    //                         element: th.nativeElement,
+    //                         directive: directive,
+    //                     });
+    //
+    //                     rowCells.push({ cells: cells });
+    //                 }
+    //             }
+    //         });
+    //
+    //         mc.on('panend', (event: HammerInput) => {
+    //             if (animationFrame) {
+    //                 cancelAnimationFrame(animationFrame);
+    //             }
+    //
+    //             if (element) {
+    //                 element.style.left = '';
+    //                 element.style.zIndex = '';
+    //                 element.style.opacity = '';
+    //
+    //                 for (const t of rowCells) {
+    //                     for (const cell of t.cells) {
+    //                         cell.classList.remove('active-drop');
+    //                         cell.classList.remove('other-cell');
+    //                         cell.style.left = '0px';
+    //                     }
+    //                 }
+    //
+    //                 this.ignoreThisSort = true;
+    //
+    //                 for (const box of THsBoxes) {
+    //                     box.element.style.left = '0px';
+    //                     box.element.classList.remove('other-cell');
+    //                 }
+    //
+    //                 if (foundBox) {
+    //                     const newPosition = this.sortedColumns.indexOf(foundBox.directive);
+    //
+    //                     if (originalPosition !== newPosition) {
+    //                         const directive = this.sortedColumns[originalPosition];
+    //                         this.sortedColumns.splice(originalPosition, 1);
+    //                         this.sortedColumns.splice(newPosition, 0, directive);
+    //
+    //                         for (let [i, v] of eachPair(this.sortedColumns)) {
+    //                             v.overwrittenPosition = i;
+    //                         }
+    //
+    //                         this.sortColumnDefs();
+    //                     }
+    //                 }
+    //
+    //                 this.storePreference();
+    //                 element = undefined;
+    //             }
+    //         });
+    //
+    //         mc.on('pan', (event: HammerInput) => {
+    //             if (animationFrame) {
+    //                 cancelAnimationFrame(animationFrame);
+    //             }
+    //
+    //             animationFrame = nextTick(() => {
+    //                 if (element) {
+    //                     element!.style.left = (event.deltaX) + 'px';
+    //                     const offsetLeft = startOffsetLeft + event.deltaX;
+    //
+    //                     for (const cell of elementCells) {
+    //                         cell.style.left = (event.deltaX) + 'px';
+    //                     }
+    //                     let afterElement = false;
+    //
+    //                     foundBox = undefined;
+    //                     for (const [i, box] of eachPair(THsBoxes)) {
+    //                         if (box.element === element) {
+    //                             afterElement = true;
+    //                             continue;
+    //                         }
+    //
+    //                         box.element.style.left = '0px';
+    //                         for (const cell of rowCells[i].cells) {
+    //                             cell.style.left = '0px';
+    //                         }
+    //
+    //                         if (!afterElement && box.left + (box.width / 2) > offsetLeft) {
+    //                             //the dragged element is before the current
+    //                             box.element.style.left = startOffsetWidth + 'px';
+    //
+    //                             for (const cell of rowCells[i].cells) {
+    //                                 cell.style.left = startOffsetWidth + 'px';
+    //                             }
+    //
+    //                             if (foundBox && box.left > foundBox.left) {
+    //                                 //we found already a box that fits and that is more left
+    //                                 continue;
+    //                             }
+    //
+    //                             foundBox = box;
+    //                         } else if (afterElement && box.left + (box.width / 2) < offsetLeft + startOffsetWidth) {
+    //                             //the dragged element is after the current
+    //                             box.element.style.left = -startOffsetWidth + 'px';
+    //                             for (const cell of rowCells[i].cells) {
+    //                                 cell.style.left = -startOffsetWidth + 'px';
+    //                             }
+    //                             foundBox = box;
+    //                         }
+    //                     }
+    //                 }
+    //             });
+    //         });
+    //     }
+    // }
 
     ngAfterViewInit(): void {
-        this.viewport?.renderedRangeStream.subscribe(() => {
-            this.cd.detectChanges();
+        this.viewportElement()?.nativeElement.addEventListener('scroll', () => {
+            const scrollLeft = this.viewportElement()?.nativeElement.scrollLeft;
+            const header = this.header();
+            if (!header) return;
+            header.nativeElement.scrollLeft = scrollLeft;
         });
-
-        this.zone.runOutsideAngular(() => {
-            if (!this.viewportElement) return;
-            this.viewportElement.nativeElement.addEventListener('scroll', () => {
-                const scrollLeft = this.viewportElement!.nativeElement.scrollLeft;
-                this.header!.nativeElement.scrollLeft = scrollLeft;
-            });
-        });
-
-        this.initHeaderMovement();
-
-        if (this.columnDefs) {
-            setTimeout(() => {
-                this.columnDefs!.changes.subscribe(() => {
-                    this.updateDisplayColumns();
-                    this.loadPreference();
-                    this.sortColumnDefs();
-                });
-                this.updateDisplayColumns();
-                this.loadPreference();
-                this.sortColumnDefs();
-            });
-        }
-    }
-
-    public sortColumnDefs() {
-        if (this.columnDefs) {
-            const originalDefs = this.columnDefs.toArray();
-
-            this.sortedColumnDefs = this.columnDefs.toArray().slice(0);
-
-            this.sortedColumnDefs = this.sortedColumnDefs.sort((a: TableColumnDirective, b: TableColumnDirective) => {
-                const aPosition = a.getPosition() === undefined ? originalDefs.indexOf(a) : a.getPosition()!;
-                const bPosition = b.getPosition() === undefined ? originalDefs.indexOf(b) : b.getPosition()!;
-
-                if (aPosition > bPosition) return 1;
-                if (aPosition < bPosition) return -1;
-
-                return 0;
-            });
-
-            detectChangesNextFrame(this.cd);
-        }
-    }
-
-    getVisibleColumns(t: TableColumnDirective[]): TableColumnDirective[] {
-        return t.filter(v => !v.isHidden());
     }
 
     filterFn(item: T) {
@@ -968,92 +909,6 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         }
 
         return true;
-    }
-
-    ngOnChanges(changes: SimpleChanges): void {
-        if (changes.preferenceKey) {
-            this.loadPreference();
-        }
-
-        if (changes.items) {
-
-            const itemsValue = this.items();
-            if (isObservable(itemsValue)) {
-                itemsValue.subscribe((items: T[]) => {
-                    this.rawItems = items;
-                    this.sorted = items;
-                    this.doSort();
-                    this.viewport?.checkViewportSize();
-                });
-            } else if (isArray(itemsValue)) {
-                this.rawItems = itemsValue;
-                this.sorted = itemsValue;
-                this.doSort();
-                this.viewport?.checkViewportSize();
-            } else {
-                this.rawItems = [];
-                this.sorted = [];
-                this.doSort();
-                this.viewport?.checkViewportSize();
-            }
-        }
-
-        if (changes.selected) {
-            this.selectedMap.clear();
-            const selected = this.selected();
-            if (selected) {
-                for (const v of selected) {
-                    this.selectedMap.set(v, true);
-                }
-            }
-        }
-
-        this.visibleColumns = this.getVisibleColumns(this.sortedColumnDefs);
-        setTimeout(() => {
-            this.viewport?.checkViewportSize();
-        });
-    }
-
-    private updateDisplayColumns() {
-        this.displayedColumns = [];
-        this.columnMap = {};
-
-        this.sortColumnDefs();
-        if (this.columnDefs) {
-            for (const column of this.columnDefs.toArray()) {
-                this.displayedColumns.push(column.name!);
-                this.columnMap[column.name!] = column;
-            }
-
-            this.doSort();
-        }
-        this.visibleColumns = this.getVisibleColumns(this.sortedColumnDefs);
-    }
-
-    private doSort() {
-        if (this.customSort.observers.length) return;
-        if (empty(this.sorted)) {
-            this.sorted = this.rawItems;
-        }
-
-        const sortFunction = this.sortFunction();
-        if (sortFunction) {
-            this.sorted.sort(sortFunction(this.sort()));
-        } else {
-            const sort = Object.entries(this.sort());
-            sort.reverse(); //we start from bottom
-            let sortRoot = (a: any, b: any) => 0;
-            for (const [name, dir] of sort) {
-                sortRoot = this.createSortFunction(name, dir, sortRoot);
-            }
-            this.sorted.sort(sortRoot);
-        }
-
-        this.sortedChange.emit(this.sorted);
-        this.height = (this.sorted.length * this.itemHeight()) + (this.showHeader() ? 23 : 0) + 10; //10 is scrollbar padding
-
-        this.sorted = this.sorted.slice(0);
-        detectChangesNextFrame(this.parentCd);
     }
 
     protected createSortFunction(sortField: string, dir: 'asc' | 'desc', next?: (a: any, b: any) => number) {
@@ -1085,20 +940,21 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         if (event.key === 'Enter') {
             const firstSelected = first(this.selected());
             if (firstSelected) {
-                this.dbclick.emit(firstSelected);
+                this.dblclick.emit(firstSelected);
             }
         }
 
         if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
             event.preventDefault();
             const firstSelected = first(this.selected());
+            const items = this.filterSorted();
 
             if (!firstSelected) {
-                this.select(this.sorted[0]);
+                this.select(items[0]);
                 return;
             }
 
-            let index = indexOf(this.sorted, firstSelected);
+            let index = indexOf(items, firstSelected);
 
             // if (-1 === index) {
             //     this.select(this.sorted[0]);
@@ -1120,45 +976,36 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
                 index++;
             }
 
-            if (this.sorted[index]) {
-                const item = this.sorted[index];
+            if (items[index]) {
+                const item = items[index];
                 // if (event.shiftKey) {
                 //     this.selectedMap[item.id] = true;
                 //     this.selected.push(item);
                 // } else {
                 this.select(item);
 
-                if (this.viewport) {
-                    const scrollTop = this.viewport.measureScrollOffset();
-                    const viewportSize = this.viewport.getViewportSize();
+                const viewport = this.viewport();
+                if (viewport) {
+                    const scrollTop = viewport.measureScrollOffset();
+                    const viewportSize = viewport.getViewportSize();
                     const itemTop = this.itemHeight() * index;
 
                     if (itemTop + this.itemHeight() > viewportSize + scrollTop) {
                         const diff = (itemTop + this.itemHeight()) - (viewportSize + scrollTop);
-                        this.viewport.scrollToOffset(scrollTop + diff);
+                        viewport.scrollToOffset(scrollTop + diff);
                     }
 
                     if (itemTop < scrollTop) {
                         const diff = (itemTop) - (scrollTop);
-                        this.viewport.scrollToOffset(scrollTop + diff);
+                        viewport.scrollToOffset(scrollTop + diff);
                     }
                 }
             }
-            this.selectedChange.emit(this.selected().slice(0));
-            this.cd.markForCheck();
         }
     }
 
-    public deselect(item: T) {
-        arrayRemoveItem(this.selected(), item);
-        this.selectedMap.delete(item);
-        detectChangesNextFrame(this.parentCd);
-    }
-
-    public select(item: T, $event?: MouseEvent) {
-        if (this.selectable() === false) {
-            return;
-        }
+    select(item: T, $event?: MouseEvent) {
+        if (!this.selectable()) return;
 
         let cellSelectFired = false;
         if ($event && $event.target) {
@@ -1173,43 +1020,44 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
         }
 
         if (!cellSelectFired) {
-            this.cellSelect.emit();
+            this.cellSelect.emit(undefined);
         }
+        const items = this.filterSorted();
 
         const selected = this.selected();
-        if (this.multiSelect() === false) {
-            this.selected = [item];
+        if (!this.multiSelect()) {
+            this.selected.set([item]);
             this.selectedMap.clear();
             this.selectedMap.set(item, true);
         } else {
             if ($event && $event.shiftKey) {
-                const indexSelected = this.sorted.indexOf(item);
+                const indexSelected = items.indexOf(item);
 
                 if (selected[0]) {
-                    const firstSelected = this.sorted.indexOf(selected[0]);
+                    const firstSelected = items.indexOf(selected[0]);
                     this.selectedMap.clear();
-                    this.selected = [];
 
                     if (firstSelected < indexSelected) {
                         //we select all from index -> indexSelected, downwards
                         for (let i = firstSelected; i <= indexSelected; i++) {
-                            selected.push(this.sorted[i]);
-                            this.selectedMap.set(this.sorted[i], true);
+                            selected.push(items[i]);
+                            this.selectedMap.set(items[i], true);
                         }
                     } else {
                         //we select all from indexSelected -> index, upwards
                         for (let i = firstSelected; i >= indexSelected; i--) {
-                            selected.push(this.sorted[i]);
-                            this.selectedMap.set(this.sorted[i], true);
+                            selected.push(items[i]);
+                            this.selectedMap.set(items[i], true);
                         }
                     }
                 } else {
                     //we start at 0 and select all until index
                     for (let i = 0; i <= indexSelected; i++) {
-                        selected.push(this.sorted[i]);
-                        this.selectedMap.set(this.sorted[i], true);
+                        selected.push(items[i]);
+                        this.selectedMap.set(items[i], true);
                     }
                 }
+                this.selected.set([item]);
             } else if ($event && $event.metaKey) {
                 if (arrayHasItem(selected, item)) {
                     arrayRemoveItem(selected, item);
@@ -1218,19 +1066,17 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnChanges, OnDe
                     this.selectedMap.set(item, true);
                     selected.push(item);
                 }
+                this.selected.set(selected.slice());
             } else {
                 const isRightButton = $event && $event.button == 2;
                 const isItemSelected = arrayHasItem(selected, item);
                 const resetSelection = !isItemSelected || !isRightButton;
                 if (resetSelection) {
-                    this.selected = [item];
+                    this.selected.set([item]);
                     this.selectedMap.clear();
                     this.selectedMap.set(item, true);
                 }
             }
         }
-
-        this.selectedChange.emit(selected);
-        detectChangesNextFrame(this.parentCd);
     }
 }

@@ -24,6 +24,9 @@ import { IconComponent } from '../icon/icon.component';
     providers: [ngValueAccessor(CheckboxComponent)],
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [IconComponent],
+    host: {
+        '[class.dui-normalized]': 'true',
+    },
 })
 export class CheckboxComponent extends ValueAccessorBase<boolean> {
     @HostBinding('tabindex')

@@ -70,7 +70,7 @@ import { ApiRoute } from '@deepkit/api-console-api';
                         <div *ngIf="r.error">{{r.error}}</div>
                         <ng-container *ngIf="r.json !== undefined">
                             <div class="ts text-selection">
-                                <div codeHighlight="json" [code]="r.json"></div>
+                                <code-highlight lang="json" [code]="r.json"></code-highlight>
                             </div>
                         </ng-container>
                         <ng-container *ngIf="r.json === undefined">

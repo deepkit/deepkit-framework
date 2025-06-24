@@ -47,7 +47,7 @@ import { isRequired } from '../utils';
 
         .undefined,
         .null {
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
 
         .cell {
@@ -68,7 +68,7 @@ import { isRequired } from '../utils';
         }
 
         .cell.inactive {
-            border: 1px solid var(--line-color-light);
+            border: 1px solid var(--dui-line-color-light);
             border-radius: 2px;
         }
     `],

@@ -14,7 +14,9 @@ import {
     booleanAttribute,
     ChangeDetectorRef,
     Component,
+    computed,
     Directive,
+    effect,
     ElementRef,
     forwardRef,
     HostBinding,
@@ -31,14 +33,14 @@ import {
     SkipSelf,
 } from '@angular/core';
 import { WindowComponent } from '../window/window.component';
-import { WindowState } from '../window/window-state';
+import { AlignedButtonGroup, WindowState } from '../window/window-state';
 import { FormComponent } from '../form/form.component';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { isMacOs } from '../../core/utils';
 
 import { IconComponent } from '../icon/icon.component';
 import { RouterLinkActive } from '@angular/router';
-import { injectElementRef } from '../app/index.js';
+import { injectElementRef } from '../app/utils';
 
 /**
  * hotkey has format of "ctrl+shift+alt+key", e.g "ctrl+s" or "shift+o"
@@ -110,7 +112,7 @@ function isHotKeyActive(hotkey: HotKey, event: KeyboardEvent) {
 
         span {
             text-transform: uppercase;
-            color: var(--text-grey);
+            color: var(--dui-text-grey);
             margin-left: 3px;
             font-size: 11px;
         }
@@ -131,7 +133,7 @@ function isHotKeyActive(hotkey: HotKey, event: KeyboardEvent) {
       @if (key) {
         <span>{{ key }}</span>
       }
-      `,
+    `,
     imports: [],
 })
 export class ButtonHotkeyComponent implements OnChanges, OnInit {
@@ -194,8 +196,9 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
       @if (showHotkey()) {
         <dui-button-hotkey style="position: absolute; right: 6px; top: 0;" [hotkey]="showHotkey()"></dui-button-hotkey>
       }
-      `,
+    `,
     host: {
+        '[class.dui-normalized]': 'true',
         '[attr.tabindex]': '1',
         '[class.icon]': '!!icon()',
         '[class.small]': 'small()',
@@ -208,16 +211,17 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
         '[class.square]': 'square()',
         '[class.textured]': 'textured()',
         '[class.active]': 'isActive()',
+        '[class.disabled]': 'isDisabled()',
     },
     styleUrls: ['./button.component.scss'],
     hostDirectives: [
         { directive: RouterLinkActive, inputs: ['routerLinkActiveOptions'] },
     ],
     imports: [
-    IconComponent,
-    ButtonHotkeyComponent,
-    forwardRef(() => HotkeyDirective)
-],
+        IconComponent,
+        ButtonHotkeyComponent,
+        forwardRef(() => HotkeyDirective),
+    ],
 })
 export class ButtonComponent implements OnInit, AfterViewInit {
     hotKeySize = hotKeySize;
@@ -288,6 +292,16 @@ export class ButtonComponent implements OnInit, AfterViewInit {
     formComponent = inject(FormComponent, { optional: true });
     routerLinkActive = inject(RouterLinkActive);
 
+    isDisabled = computed(() => {
+        if (this.formComponent && this.formComponent.disabled()) return true;
+        const submitForm = this.submitForm();
+        if (submitForm && (submitForm.invalid || submitForm.disabled() || submitForm.submitting())) {
+            return true;
+        }
+
+        return this.disabled();
+    });
+
     constructor() {
         this.element.nativeElement.removeAttribute('tabindex');
     }
@@ -298,17 +312,6 @@ export class ButtonComponent implements OnInit, AfterViewInit {
 
     isActive() {
         return this.routerLinkActive.isActive || this.active();
-    }
-
-    @HostBinding('class.disabled')
-    get isDisabled() {
-        if (this.formComponent && this.formComponent.disabled()) return true;
-        const submitForm = this.submitForm();
-        if (submitForm && (submitForm.invalid || submitForm.disabled() || submitForm.submitting)) {
-            return true;
-        }
-
-        return this.disabled();
     }
 
     ngOnInit() {
@@ -332,7 +335,7 @@ export class ButtonComponent implements OnInit, AfterViewInit {
 
     @HostListener('click')
     async onClick() {
-        if (this.isDisabled) return;
+        if (this.isDisabled()) return;
 
         const submitForm = this.submitForm();
         if (submitForm) {
@@ -366,7 +369,6 @@ export class HotkeyDirective {
         }
 
         const active = isHotKeyActive(this.hotkey(), event);
-        // console.log('keydown', event.key, this.hotkey, isHotKeyActive(this.hotkey, event));
         if (!active) return;
         event.preventDefault();
 
@@ -398,14 +400,6 @@ export class HotkeyDirective {
                 return;
             }
         }
-
-        // console.log('keyup', event.key, this.hotkey, isHotKeyActive(this.hotkey, event));
-        // if (!isHotKeyActive(this.hotkey, event)) return;
-        // event.preventDefault();
-        // this.elementRef.nativeElement.click();
-        // if (this.button && this.oldButtonActive !== undefined) {
-        //     this.button.active = this.oldButtonActive;
-        // }
     }
 }
 
@@ -421,7 +415,7 @@ export class HotkeyDirective {
     },
     styleUrls: ['./button-group.component.scss'],
 })
-export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
+export class ButtonGroupComponent implements AfterViewInit, OnDestroy, AlignedButtonGroup {
     /**
      * How the button should behave.
      * `sidebar` means it aligns with the sidebar. Is the sidebar open, this button-group has a left margin.
@@ -436,26 +430,23 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
         return this.padding() === 'none';
     }
 
-    // @HostBinding('class.ready')
-    // protected init = false;
-
     constructor(
         private element: ElementRef<HTMLElement>,
         @SkipSelf() protected cd: ChangeDetectorRef,
         @Optional() private windowState?: WindowState,
         @Optional() private windowComponent?: WindowComponent,
     ) {
+        effect(() => this.updatePaddingLeft());
     }
 
     public activateOneTimeAnimation() {
         (this.element.nativeElement as HTMLElement).classList.add('with-animation');
     }
 
-    public sidebarMoved() {
-        this.updatePaddingLeft();
-    }
-
     ngOnDestroy(): void {
+        if (this.windowState && this.windowState.buttonGroupAlignedToSidebar() === this) {
+            this.windowState.buttonGroupAlignedToSidebar.set(undefined);
+        }
     }
 
     transitionEnded() {
@@ -464,30 +455,27 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy {
 
     ngAfterViewInit(): void {
         if (this.float() === 'sidebar' && this.windowState) {
-            this.windowState.buttonGroupAlignedToSidebar = this;
+            this.windowState.buttonGroupAlignedToSidebar.set(this);
         }
-        this.updatePaddingLeft();
     }
 
     updatePaddingLeft() {
         if (this.float() === 'sidebar' && this.windowComponent) {
-            if (this.windowComponent.content) {
-                if (this.windowComponent.content!.isSidebarVisible()) {
-                    const newLeft = Math.max(0, this.windowComponent.content!.getSidebarWidth() - this.element.nativeElement.offsetLeft) + 'px';
-                    if (this.element.nativeElement.style.paddingLeft == newLeft) {
-                        //no transition change, doesn't trigger transitionEnd
-                        (this.element.nativeElement as HTMLElement).classList.remove('with-animation');
-                        return;
-                    }
-                    this.element.nativeElement.style.paddingLeft = newLeft;
+            const content = this.windowComponent.content();
+            if (content && content.isSidebarVisible()) {
+                const newLeft = Math.max(0, content.sidebarWidth() - this.element.nativeElement.offsetLeft) + 'px';
+                if (this.element.nativeElement.style.paddingLeft == newLeft) {
+                    //no transition change, doesn't trigger transitionEnd
+                    (this.element.nativeElement as HTMLElement).classList.remove('with-animation');
                     return;
                 }
+                this.element.nativeElement.style.paddingLeft = newLeft;
+                return;
             }
         }
         this.element.nativeElement.style.paddingLeft = '0px';
     }
 }
-
 
 @Component({
     selector: 'dui-button-groups',

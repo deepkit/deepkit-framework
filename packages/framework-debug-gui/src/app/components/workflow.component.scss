@@ -16,7 +16,7 @@
 
     path {
       fill: none;
-      stroke: var(--line-color-prominent);
+      stroke: var(--dui-line-color-prominent);
       stroke-width: 1px;
     }
   }
@@ -25,7 +25,7 @@
 .node {
   position: absolute;
   background-color: rgba(238, 238, 238, 0.1);
-  border: 1px solid var(--line-color-light);
+  border: 1px solid var(--dui-line-color-light);
   font-size: 12px;
   line-height: 16px;
   display: flex;

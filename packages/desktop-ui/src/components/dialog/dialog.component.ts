@@ -38,16 +38,16 @@ import { ComponentPortal } from '@angular/cdk/portal';
 import { WindowRegistry } from '../window/window-state';
 import { WindowComponent } from '../window/window.component';
 import { RenderComponentDirective } from '../core/render-component.directive';
-import { IN_DIALOG } from '../app/token';
-import { OverlayStack, OverlayStackItem, unsubscribe } from '../app';
+import { OverlayStack, OverlayStackItem } from '../app/app';
 import { Subscription } from 'rxjs';
-import { ButtonComponent } from '../button';
+import { ButtonComponent } from '../button/button.component';
 import { WindowContentComponent } from '../window/window-content.component';
 import { NgTemplateOutlet } from '@angular/common';
+import { unsubscribe } from '../app/reactivate-change-detection';
 
 @Component({
     template: `
-      <dui-window>
+      <dui-window [dialog]="true">
         <dui-window-content class="{{class}}">
           @if (component()) {
             <ng-container
@@ -55,25 +55,25 @@ import { NgTemplateOutlet } from '@angular/common';
               [renderComponent]="component()" [renderComponentInputs]="componentInputs()">
             </ng-container>
           }
-      
+
           @if (content) {
             <ng-container [ngTemplateOutlet]="content"></ng-container>
           }
-      
+
           @if (container) {
             <ng-container [ngTemplateOutlet]="container"></ng-container>
-          } @else { 
+          } @else {
             <ng-content></ng-content>
           }
         </dui-window-content>
-      
+
         @if (actions) {
           <div class="dialog-actions">
             <ng-container [ngTemplateOutlet]="actions"></ng-container>
           </div>
         }
       </dui-window>
-      `,
+    `,
     host: {
         '[attr.tabindex]': '1',
     },
@@ -208,7 +208,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         }
 
         const window = this.window ? this.window.getClosestNonDialogWindow() : this.registry.getOuterActiveWindow();
-        const offsetTop = window && window.header ? window.header.getBottomPosition() : 0;
+        const offsetTop = window && window.header()?.getBottomPosition() || 0;
 
         // const document = this.registry.getCurrentViewContainerRef().element.nativeElement.ownerDocument;
 
@@ -253,7 +253,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         });
 
         if (this.backDropCloses()) {
-            this.overlayRef!.backdropClick().subscribe(() => {
+            this.overlayRef.backdropClick().subscribe(() => {
                 this.close(undefined);
             });
         }
@@ -263,14 +263,13 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
             providers: [
                 { provide: DialogComponent, useValue: this },
                 { provide: WindowComponent, useValue: window },
-                { provide: IN_DIALOG, useValue: true },
             ],
         });
 
         this.open.emit();
         const portal = new ComponentPortal(DialogWrapperComponent, this.viewContainerRef, injector);
 
-        this.wrapperComponentRef = this.overlayRef!.attach(portal);
+        this.wrapperComponentRef = this.overlayRef.attach(portal);
         this.wrapperComponentRef.setInput('component', this.component());
         this.wrapperComponentRef.setInput('componentInputs', this.componentInputs());
         this.wrapperComponentRef.setInput('content', this.template);
@@ -280,19 +279,19 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         this.lastOverlayStackItem = this.overlayStack.register(this.overlayRef.hostElement);
 
         if (this.actions) {
-            this.wrapperComponentRef!.instance.setActions(this.actions);
+            this.wrapperComponentRef.instance.setActions(this.actions);
         }
 
         if (this.container) {
-            this.wrapperComponentRef!.instance.setDialogContainer(this.container);
+            this.wrapperComponentRef.instance.setDialogContainer(this.container);
         }
 
-        this.overlayRef!.updatePosition();
+        this.overlayRef.updatePosition();
 
         this.visible.set(true);
 
-        this.wrapperComponentRef!.location.nativeElement.focus();
-        this.wrapperComponentRef!.changeDetectorRef.detectChanges();
+        this.wrapperComponentRef.location.nativeElement.focus();
+        this.wrapperComponentRef.changeDetectorRef.detectChanges();
 
         this.cd.detectChanges();
         if (this.cdParent) this.cdParent.detectChanges();

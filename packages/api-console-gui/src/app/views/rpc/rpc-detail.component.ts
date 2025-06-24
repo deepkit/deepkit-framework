@@ -51,7 +51,7 @@ import { isSubject } from '@deepkit/core-rxjs';
 
                     <deepkit-box title="Return type" style="padding: 12px" *ngIf="action.getResultsType() as s">
                         <div class="ts text-selection">
-                            <div codeHighlight [code]="typeToTSJSONInterface(s)"></div>
+                            <code-highlight [code]="typeToTSJSONInterface(s)"></code-highlight>
                         </div>
                     </deepkit-box>
                 </div>
@@ -85,7 +85,7 @@ import { isSubject } from '@deepkit/core-rxjs';
 
                             <div class="content">
                                 <div class="ts text-selection" *ngIf="e.error">
-                                    <div codeHighlight [code]="e.error"></div>
+                                    <code-highlight [code]="e.error"></code-highlight>
                                 </div>
                                 <div class="ts text-selection" *ngIf="e.isObservable()">
                                     <div *ngIf="e.observable">
@@ -105,13 +105,13 @@ import { isSubject } from '@deepkit/core-rxjs';
                                         <div class="emitted" *ngFor="let emitted of sub.emitted; trackBy: trackByIndex; let i = index">
                                             <div class="ts text-selection">
                                                 #{{sub.emitted.length - i}}
-                                                <div codeHighlight [code]="emitted"></div>
+                                                <code-highlight [code]="emitted"></code-highlight>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="ts text-selection" *ngIf="e.type === 'static'">
-                                    <div codeHighlight [code]="e.result"></div>
+                                    <code-highlight [code]="e.result"></code-highlight>
                                 </div>
                             </div>
                         </div>

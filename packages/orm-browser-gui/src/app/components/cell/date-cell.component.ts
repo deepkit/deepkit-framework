@@ -9,7 +9,7 @@ import { Type } from '@deepkit/type';
     `,
     styles: [`
         span {
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
     `],
     standalone: false

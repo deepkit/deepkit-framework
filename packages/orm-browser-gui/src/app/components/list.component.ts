@@ -29,12 +29,12 @@ import { detectChangesNextFrame } from '@deepkit/desktop-ui';
 
         .item .add {
             margin-left: 5px;
-            color: var(--color-orange);
+            color: var(--dui-color-orange);
         }
 
         .item .count {
             margin-left: auto;
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
     `],
     standalone: false

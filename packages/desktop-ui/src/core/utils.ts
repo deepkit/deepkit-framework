@@ -12,21 +12,63 @@
  * @reflection never
  */
 import { Subscription } from 'rxjs';
-import { ChangeDetectorRef, EventEmitter, inject, input, Signal } from '@angular/core';
-import { ActivatedRoute, Router, UrlTree } from '@angular/router';
+import { ChangeDetectorRef, EventEmitter, Inject, Injectable } from '@angular/core';
 import { nextTick } from '@deepkit/core';
-import type Hammer from 'hammerjs';
-import { RouterLink } from '@angular/router/router_module.d-dBTUdUNJ.js';
+import { DOCUMENT } from '@angular/common';
 
 const electron = 'undefined' === typeof window ? undefined : (window as any).electron || ((window as any).require ? (window as any).require('electron') : undefined);
 
-export async function getHammer(): Promise<typeof Hammer | undefined> {
-    if ('undefined' === typeof window) return;
-    //@ts-ignore
-    const hammer = await import('hammerjs');
-    return hammer.default;
+export type ElectronOrBrowserWindow = Window & {
+    setVibrancy?: (vibrancy: string) => void;
+    addListener?: (event: string, listener: (...args: any[]) => void) => void;
+    removeListener?: (event: string, listener: (...args: any[]) => void) => void;
+};
+
+@Injectable({ providedIn: 'root' })
+export class BrowserWindow {
+    constructor(@Inject(DOCUMENT) private window?: ElectronOrBrowserWindow) {
+    }
+
+    isElectron() {
+        return !!this.window?.setVibrancy;
+    }
+
+    getWindow(): ElectronOrBrowserWindow | undefined {
+        return this.window;
+    }
+
+    setVibrancy(vibrancy: string): void {
+        if (!this.window) return;
+
+        if (this.window.setVibrancy) {
+            this.window.setVibrancy(vibrancy);
+        } else {
+            console.warn('setVibrancy is not supported by this window.');
+        }
+    }
+
+    addListener(event: string, listener: (...args: any[]) => void): void {
+        if (!this.window) return;
+
+        if (this.window.addEventListener) {
+            this.window.addEventListener(event, listener);
+        } else if (this.window.addListener) {
+            this.window.addListener(event, listener);
+        }
+    }
+
+    removeListener(event: string, listener: (...args: any[]) => void): void {
+        if (!this.window) return;
+
+        if (this.window.removeEventListener) {
+            this.window.removeEventListener(event, listener);
+        } else if (this.window.removeListener) {
+            this.window.removeListener(event, listener);
+        }
+    }
 }
 
+@Injectable({ providedIn: 'root' })
 export class Electron {
     public static getRemote(): any {
         if (!electron) {
@@ -149,14 +191,14 @@ type FocusWatcherUnsubscribe = () => void;
  * This is used to track multi-element focus changes, such as when a user clicks from a dropdown toggle into the dropdown menu.
  */
 export function focusWatcher(
-    target: HTMLElement, allowedFocuses: HTMLElement[] = [],
+    target: Element, allowedFocuses: Element[] = [],
     onBlur: () => void,
-    customChecker?: (currentlyFocused: HTMLElement | null) => boolean,
+    customChecker?: (currentlyFocused: Element | null) => boolean,
 ): FocusWatcherUnsubscribe {
     const doc = target.ownerDocument;
     if (doc.body.tabIndex === -1) doc.body.tabIndex = 1;
 
-    let currentlyFocused: HTMLElement | null = target;
+    let currentlyFocused: Element | null = target;
 
     let subscribed = true;
 

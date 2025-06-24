@@ -3,9 +3,16 @@ import { BrowserModule } from '@angular/platform-browser';
 import { AppComponent } from './app.component';
 import { RouterModule } from '@angular/router';
 import { ApiConsoleModule } from './api-console.module';
-import { DuiAppModule, DuiButtonModule, DuiIconModule, DuiWindowModule } from '@deepkit/desktop-ui';
-import { DeepkitUIModule } from '@deepkit/ui-library';
 import { CommonModule } from '@angular/common';
+import {
+    WindowComponent,
+    WindowContentComponent,
+    WindowHeaderComponent,
+    WindowToolbarComponent,
+    WindowToolbarContainerComponent,
+} from '@deepkit/desktop-ui';
+import { HeaderLogoComponent, HeaderStatusBarComponent } from '@deepkit/ui-library';
+import { CodeHighlightComponent } from '@deepkit/ui-library';
 
 @NgModule({
     declarations: [
@@ -16,12 +23,14 @@ import { CommonModule } from '@angular/common';
         CommonModule,
         RouterModule.forRoot([], { useHash: true }),
         ApiConsoleModule,
-
-        DeepkitUIModule,
-        DuiAppModule.forRoot(),
-        DuiWindowModule.forRoot(),
-        DuiButtonModule,
-        DuiIconModule
+        WindowComponent,
+        WindowHeaderComponent,
+        WindowToolbarComponent,
+        HeaderLogoComponent,
+        WindowToolbarContainerComponent,
+        HeaderStatusBarComponent,
+        WindowContentComponent,
+        CodeHighlightComponent
     ],
     bootstrap: [AppComponent]
 })

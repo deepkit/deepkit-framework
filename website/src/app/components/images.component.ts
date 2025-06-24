@@ -50,7 +50,7 @@ import { ImageComponent } from './image.component';
         }
 
         .actions span.selected {
-            color: var(--color-orange);
+            color: var(--dui-color-orange);
         }
 
         .thumbnails {
@@ -71,7 +71,7 @@ import { ImageComponent } from './image.component';
                 height: 200px;
 
                 &.selected {
-                    border: 1px solid var(--color-orange);
+                    border: 1px solid var(--dui-color-orange);
                 }
 
                 img {

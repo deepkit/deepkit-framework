@@ -22,33 +22,34 @@ import { inputRegistry } from './registry';
 @Component({
     selector: 'api-console-input',
     template: `
-        <div class="decoration" *ngIf="decoration">
-            <div class="title">
-                <dui-checkbox [ngModel]="enabled"
-                              (ngModelChange)="setEnabled($event)"
-                              *ngIf="!isValueRequired"
-                >{{decoration.name}}</dui-checkbox>
-                <div *ngIf="isValueRequired">{{decoration.name}}</div>
-                <dui-icon class="help-icon" clickable [openDropdown]="helpDropdown" name="help"></dui-icon>
-            </div>
-            <div class="description" *ngIf="decoration.description">{{decoration.description}}</div>
-            <ng-container #container></ng-container>
+      <div class="decoration" *ngIf="decoration">
+        <div class="title">
+          <dui-checkbox [ngModel]="enabled"
+                        (ngModelChange)="setEnabled($event)"
+                        *ngIf="!isValueRequired"
+          >{{ decoration.name }}
+          </dui-checkbox>
+          <div *ngIf="isValueRequired">{{ decoration.name }}</div>
+          <dui-icon class="help-icon" clickable [openDropdown]="helpDropdown" name="help"></dui-icon>
         </div>
-        <div *ngIf="!decoration" class="non-decoration">
-            <dui-checkbox *ngIf="!isValueRequired"
-                          [ngModel]="enabled"
-                          (ngModelChange)="setEnabled($event)"></dui-checkbox>
-            <ng-container #container></ng-container>
+        <div class="description" *ngIf="decoration.description">{{ decoration.description }}</div>
+        <ng-container #container></ng-container>
+      </div>
+      <div *ngIf="!decoration" class="non-decoration">
+        <dui-checkbox *ngIf="!isValueRequired"
+                      [ngModel]="enabled"
+                      (ngModelChange)="setEnabled($event)"></dui-checkbox>
+        <ng-container #container></ng-container>
 
-            <dui-icon class="help-icon" style="flex: 0;" clickable [openDropdown]="helpDropdown" name="help"></dui-icon>
-        </div>
-        <dui-dropdown #helpDropdown>
-            <ng-container *dropdownContainer>
-                <div class="help-code">
-                    <div codeHighlight [code]="typeToTSJSONInterface(type)"></div>
-                </div>
-            </ng-container>
-        </dui-dropdown>
+        <dui-icon class="help-icon" style="flex: 0;" clickable [openDropdown]="helpDropdown" name="help"></dui-icon>
+      </div>
+      <dui-dropdown #helpDropdown>
+        <ng-container *dropdownContainer>
+          <div class="help-code">
+            <code-highlight [code]="typeToTSJSONInterface(type)"></code-highlight>
+          </div>
+        </ng-container>
+      </dui-dropdown>
     `,
     styleUrls: ['./input.component.scss'],
     standalone: false

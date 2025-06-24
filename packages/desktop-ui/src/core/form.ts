@@ -1,6 +1,6 @@
 import { Directive, forwardRef, HostBinding, Injector, Input, OnDestroy, Type, input, model, inject, effect } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, NgControl } from '@angular/forms';
-import { FormComponent } from '../components/form/form.component.js';
+import { FormComponent } from '../components/form/form.component';
 
 export function ngValueAccessor<T>(clazz: Type<T>) {
     return {

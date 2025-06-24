@@ -1,0 +1,318 @@
+@import '@angular/cdk/overlay-prebuilt.css';
+@import './icon.css';
+
+body {
+    --dui-selection: #016dea;
+    --dui-selection-hover: #016dea80;
+    --dui-selection-light: #5182f8;
+    --dui-selection-unfocused: #999ca352;
+
+    --dui-button-text: #575757;
+
+    --dui-input-text: #252525;
+
+    --dui-checkbox-size: 14px;
+
+    --dui-text-grey: #6c6970;
+    --dui-text-light: #737880;
+
+    --dui-color-black: black;
+    --dui-color-green: green;
+    --dui-color-red: red;
+    --dui-color-orange: orange;
+    --dui-line-color-light: #d3d3d3;
+    --dui-line-color: #979797;
+    --dui-line-color-prominent: #9fa4a9;
+    --dui-line-sidebar: #d9d9d9;
+    --dui-line-sidebar-light: #c7c7c7;
+
+    --dui-window-content-bg: white;
+
+    --dui-background-vibrancy: none;
+
+    --dui-window-header-bg: #f6f6f6;
+
+    --dui-window-content-bg-trans: #f6f6f6;
+    --dui-toolbar-bg-trans: #f6f6f6;
+
+    --dui-focus-outline-color: #4686de;
+}
+
+.dui-body {
+    h1, h2, h3, h4, h5, h6 {
+        color: unset;
+    }
+
+    a, a:link {
+        color: #255273;
+    }
+
+    p {
+        margin: 15px 0;
+    }
+
+    ol, ul {
+        padding-left: 15px;
+    }
+
+    h1 {
+        font-weight: 600;
+
+        &:first-child {
+            margin-top: 0;
+        }
+    }
+
+    h2 {
+        font-size: 18px;
+        font-weight: 600;
+
+        &:first-child {
+            margin-top: 0;
+        }
+    }
+
+    h3 {
+        font-size: 14px;
+        font-weight: 600;
+
+        &:first-child {
+            margin-top: 0;
+        }
+    }
+
+    h4 {
+        font-weight: 600;
+
+        &:first-child {
+            margin-top: 0;
+        }
+    }
+
+    code {
+        background: #ffffff21;
+        border-radius: 3px;
+        padding: 1px 3px;
+        user-select: text;
+    }
+}
+
+.dui-normalized {
+    font: normal 13px -apple-system, system-ui, sans-serif;
+    text-align: left;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 18px;
+    color: var(--dui-color-black);
+    cursor: default;
+
+    *:not(input,textarea) {
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    *:focus {
+        outline: 0;
+    }
+
+    .visible-for-white-mode {
+        display: unset;
+    }
+
+    .visible-for-dark-mode {
+        display: none;
+    }
+
+    .monospace {
+        font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;
+        font-size: 12px;
+    }
+
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+
+    * {
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+    }
+
+    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+        background-color: transparent;
+    }
+
+    ::-webkit-scrollbar-corner {
+        background-color: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: rgba(169, 173, 175, 0.77);
+        border-radius: 8px;
+        border: 2px solid rgba(0, 0, 0, 0.01);
+        background-clip: padding-box;
+    }
+}
+
+.text-selection {
+    cursor: auto;
+}
+
+.text-selection,
+.text-selection * {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.text-tabular {
+    font-variant-numeric: tabular-nums;
+}
+
+.text-light {
+    color: var(--dui-text-light);
+}
+
+.focus-outline.focused,
+.focus-outline:focus {
+    outline: 0;
+    border: 1px solid var(--dui-focus-outline-color);
+    box-shadow: 3px 3px 0 var(--dui-focus-outline-color), -3px -3px 0 var(--dui-focus-outline-color), -3px 3px 0 var(--dui-focus-outline-color), 3px -3px 0 var(--dui-focus-outline-color);
+}
+
+.overlay-scrollbar,
+.overlay-scrollbar-small {
+    overflow: auto;
+    overflow: overlay;
+    @supports not (-webkit-hyphens: none) {
+        /* in safari this breaks scrolling styling, so we need to exclude it*/
+        scrollbar-width: thin;
+    }
+    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+}
+
+/* WebKit-based browsers (Safari, Chrome, Edge) */
+.overlay-scrollbar::-webkit-scrollbar,
+.overlay-scrollbar-small::-webkit-scrollbar {
+    height: 12px;
+    width: 12px;
+    background-color: transparent;
+}
+
+.overlay-scrollbar::-webkit-scrollbar-thumb,
+.overlay-scrollbar-small::-webkit-scrollbar-thumb {
+    background: rgba(169, 173, 175, 0.77);
+    border-radius: 8px;
+    border: 2px solid rgba(0, 0, 0, 0.01);
+    background-clip: padding-box;
+}
+
+.overlay-scrollbar::-webkit-scrollbar-thumb:hover,
+.overlay-scrollbar-small::-webkit-scrollbar-thumb:hover {
+    background: #727475;
+    border: 2px solid rgba(0, 0, 0, 0.01);
+    background-clip: padding-box;
+}
+
+.overlay-scrollbar-small {
+    &::-webkit-scrollbar {
+        height: 10px;
+        width: 10px;
+    }
+}
+
+.dui-panel {
+    background-color: white;
+    border: 1px solid #c5c5c5;
+}
+
+.dui-panel {
+    border-radius: 4px;
+}
+
+.dui-reset-transform {
+    transform: none;
+}
+
+body.dui-theme-dark {
+    --dui-text-grey: #aaadb7;
+    --dui-text-light: #7a7f88;
+
+    --dui-color-black: #ffffff;
+    --dui-color-green: #0bd40b;
+    --dui-color-red: #ff5c5c;
+    --dui-color-orange: orange;
+
+    --dui-selection-light: #3662e1;
+    --dui-selection-unfocused: #acaeb936;
+
+    --dui-line-color-light: rgba(232, 232, 232, 0.16);
+    --dui-line-color: rgba(232, 232, 232, 0.32);
+    --dui-line-color-prominent: rgba(220, 225, 230, 0.8);
+    --dui-line-sidebar-light: #111;
+    --dui-line-sidebar: black;
+
+    --dui-window-content-bg: #323232;
+    --dui-window-header-bg: #2d2d2d;
+
+    --dui-focus-outline-color: #2a729c;
+
+    .dui-panel {
+        background-color: #383636;
+        border: 1px solid #514e4e;
+    }
+
+    .dui-body {
+        a, a:link {
+            color: #78a1bf;
+        }
+
+        .visible-for-dark-mode {
+            display: unset;
+        }
+
+        .visible-for-white-mode {
+            display: none;
+        }
+    }
+
+    &.platform-darwin {
+        --dui-window-content-bg-trans: #323232f2;
+        --dui-background-vibrancy: blur(2px);
+        --dui-toolbar-bg-trans: #323232e3;
+    }
+
+    &:not(.platform-darwin) {
+        --dui-window-content-bg-trans: #323232;
+        --dui-toolbar-bg-trans: #323232;
+
+        .dui-body {
+            background: var(--dui-window-content-bg-trans);
+        }
+    }
+}
+
+body.dui-theme-light {
+    .dui-panel {
+        background-color: #e3e3e3;
+        border: 1px solid #dfdfdf;
+        border-top: 1px solid #d4d4d4;
+    }
+
+    .dui-body {
+        code {
+            background: #33333321;
+        }
+    }
+
+    &.platform-darwin .dui-body {
+        --dui-background-vibrancy: blur(10px);
+        --dui-window-content-bg-trans: #f6f6f6ee;
+        --dui-toolbar-bg-trans: #f6f6f6de;
+        background: transparent;
+    }
+}

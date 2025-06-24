@@ -126,19 +126,19 @@ export class FilterItemComponent implements OnChanges, OnInit {
 @Component({
     selector: 'orm-browser-filter',
     template: `
-        <div class="item" *ngFor="let item of items; let i = index; trackBy: trackByIndex">
-            <orm-browser-filter-item [entity]="entity" [(model)]="items[i]" (modelChange)="itemsChange.emit(items)"
-                                     [properties]="properties"></orm-browser-filter-item>
-            <dui-button-group padding="none">
-                <dui-button textured tight icon="garbage" (click)="remove(item); itemsChange.emit(items)"></dui-button>
-            </dui-button-group>
-        </div>
-        <div *ngIf="!items.length" style="color: var(--text-light)">
-            No filter added yet.
-        </div>
-        <div style="padding-top: 8px;">
-            <dui-button textured icon="add" (click)="add()">Filter</dui-button>
-        </div>
+      <div class="item" *ngFor="let item of items; let i = index; trackBy: trackByIndex">
+        <orm-browser-filter-item [entity]="entity" [(model)]="items[i]" (modelChange)="itemsChange.emit(items)"
+                                 [properties]="properties"></orm-browser-filter-item>
+        <dui-button-group padding="none">
+          <dui-button textured tight icon="garbage" (click)="remove(item); itemsChange.emit(items)"></dui-button>
+        </dui-button-group>
+      </div>
+      <div *ngIf="!items.length" style="color: var(--dui-text-light)">
+        No filter added yet.
+      </div>
+      <div style="padding-top: 8px;">
+        <dui-button textured icon="add" (click)="add()">Filter</dui-button>
+      </div>
     `,
     styleUrls: ['./filter.component.scss'],
     standalone: false

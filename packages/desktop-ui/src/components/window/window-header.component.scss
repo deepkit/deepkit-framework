@@ -171,14 +171,6 @@
         height: 22px !important;
         line-height: 22px;
     }
-
-    dui-input,
-    dui-button {
-        dui-icon {
-            position: relative;
-            top: -1px;
-        }
-    }
 }
 
 :host-context(.dui-theme-dark) .toolbar {

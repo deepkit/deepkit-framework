@@ -1,22 +1,28 @@
 {
-  "compileOnSave": false,
   "compilerOptions": {
-    "outDir": "./dist/esm",
-    "forceConsistentCasingInFileNames": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "noFallthroughCasesInSwitch": true,
-    "sourceMap": true,
-    "declaration": false,
-    "downlevelIteration": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
+    "baseUrl": "./",
+    "outDir": "./dist",
     "moduleResolution": "node",
-    "importHelpers": true,
+    "experimentalDecorators": true,
+    "downlevelIteration": true,
+    "sourceMap": true,
+    "strict": true,
     "target": "es2020",
-    "module": "es2020",
-    "types": []
+    "useDefineForClassFields": false,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "preserveSymlinks": true,
+    "types": [
+      "fs-extra",
+      "node"
+    ],
+    "paths": {
+      "angular-ui-library": [
+        "dist/"
+      ]
+    }
   },
+  "reflection": true,
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
@@ -28,7 +34,10 @@
       "path": "../core/tsconfig.json"
     },
     {
-      "path": "../rpc/tsconfig.json"
+      "path": "../core-rxjs/tsconfig.json"
+    },
+    {
+      "path": "../event/tsconfig.json"
     },
     {
       "path": "../type/tsconfig.json"

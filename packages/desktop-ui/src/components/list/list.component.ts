@@ -8,13 +8,11 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { booleanAttribute, Component, EventEmitter, HostBinding, HostListener, inject, Injectable, input, OnDestroy, Output } from '@angular/core';
-import { Router, RouterLinkActive } from '@angular/router';
+import { booleanAttribute, Component, EventEmitter, HostBinding, HostListener, inject, input, OnDestroy, Output } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
-import { Subscription } from 'rxjs';
 import { arrayRemoveItem } from '@deepkit/core';
-import { injectElementRef } from '../app/index.js';
-import { RouterLink } from '@angular/router/router_module.d-dBTUdUNJ.js';
+import { injectElementRef } from '../app/utils';
 
 @Component({
     selector: 'dui-list-title',

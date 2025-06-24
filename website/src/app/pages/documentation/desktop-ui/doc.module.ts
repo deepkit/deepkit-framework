@@ -1,71 +1,80 @@
-import {
-    AfterViewInit,
-    ChangeDetectorRef,
-    Component,
-    ContentChildren,
-    Injectable,
-    Input,
-    ModuleWithProviders,
-    NgModule,
-    OnChanges,
-    QueryList,
-    SimpleChanges,
-} from '@angular/core';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { CommonModule, NgClass } from '@angular/common';
-import { DuiButtonModule, DuiInputModule, DuiTableModule, DuiWindowModule } from '@deepkit/desktop-ui';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { AfterViewInit, ChangeDetectorRef, Component, ContentChildren, Injectable, Input, OnChanges, QueryList, SimpleChanges } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import '@angular/compiler';
 import { stack } from '@deepkit/core';
-import { CodeHighlightComponent } from '@deepkit/ui-library';
+import { CodeHighlightComponent, ThemeSwitcherComponent } from '@deepkit/ui-library';
+import {
+    ButtonGroupComponent,
+    InputComponent,
+    TabButtonComponent,
+    TableCellDirective,
+    TableColumnDirective,
+    TableComponent,
+} from '@deepkit/desktop-ui';
 
 @Component({
-    standalone: false,
     selector: 'doc-code-frame',
     template: `
-        <div class="dui-body dui-theme-light">
-          <div style="margin-bottom: 10px;">
-            <dui-button-group>
-              <dui-tab-button (click)="showPage('')" [active]="show === ''">Preview</dui-tab-button>
-              @if (hasType('html')) {
-                <dui-tab-button (click)="showPage('html')" [active]="show === 'html'">HTML
-                </dui-tab-button>
-              }
-              @if (hasType('typescript')) {
-                <dui-tab-button (click)="showPage('typescript')"
-                  [active]="show === 'typescript'">TS
-                </dui-tab-button>
-              }
-              @if (hasType('scss')) {
-                <dui-tab-button (click)="showPage('scss')" [active]="show === 'scss'">SCSS
-                </dui-tab-button>
-              }
-            </dui-button-group>
-          </div>
-          @if (show === 'html') {
-            <div>
-              <ng-content select="[codeHighlight=html]"></ng-content>
-            </div>
-          }
-          @if (show === 'typescript') {
-            <div>
-              <ng-content select="[codeHighlight=typescript]"></ng-content>
-            </div>
-          }
-          @if (show === 'scss') {
-            <div>
-              <ng-content select="[codeHighlight=scss]"></ng-content>
-            </div>
-          }
-          @if (show === '') {
-            <div class="dui-body dui-theme-light" style="background: var(--dui-window-content-bg-trans); padding: 5px; border-radius: 3px;">
-              <ng-content></ng-content>
-            </div>
-          }
+      <div>
+        <dui-theme-switcher />
+        <div style="margin-bottom: 10px;">
+          <dui-button-group>
+            <dui-tab-button (click)="showPage('')" [active]="show === ''">Preview</dui-tab-button>
+            @if (hasType('html')) {
+              <dui-tab-button (click)="showPage('html')" [active]="show === 'html'">HTML
+              </dui-tab-button>
+            }
+            @if (hasType('typescript')) {
+              <dui-tab-button (click)="showPage('typescript')"
+                              [active]="show === 'typescript'">TS
+              </dui-tab-button>
+            }
+            @if (hasType('scss')) {
+              <dui-tab-button (click)="showPage('scss')" [active]="show === 'scss'">SCSS
+              </dui-tab-button>
+            }
+          </dui-button-group>
         </div>
-        `,
+        @if (show === 'html') {
+          <div>
+            <ng-content select="code-highlight[lang=html]"></ng-content>
+          </div>
+        }
+        @if (show === 'typescript') {
+          <div>
+            <ng-content select="code-highlight[lang=typescript]"></ng-content>
+          </div>
+        }
+        @if (show === 'scss') {
+          <div>
+            <ng-content select="code-highlight[lang=scss]"></ng-content>
+          </div>
+        }
+        @if (show === '') {
+          <div class="dui-body dui-normalized" style="background: var(--dui-window-content-bg-trans); padding: 5px; border-radius: 3px;">
+            <ng-content></ng-content>
+          </div>
+        }
+      </div>
+    `,
     styles: [`
-    `]
+        :host {
+            display: block;
+            position: relative;
+        }
+
+        dui-theme-switcher {
+            position: absolute;
+            right: 5px;
+            top: 0px;
+        }
+    `],
+    imports: [
+        ButtonGroupComponent,
+        TabButtonComponent,
+        ThemeSwitcherComponent,
+    ],
 })
 export class CodeFrameComponent implements AfterViewInit {
     @ContentChildren(CodeHighlightComponent) highlighter!: QueryList<CodeHighlightComponent>;
@@ -87,7 +96,7 @@ export class CodeFrameComponent implements AfterViewInit {
 
     public getHighlightForType(name: string): CodeHighlightComponent | undefined {
         for (const h of this.highlighter.toArray()) {
-            if (h.codeHighlight === name || (name === 'typescript' && !h.codeHighlight)) {
+            if (h.lang() === name || (name === 'typescript' && !h.lang())) {
                 return h;
             }
         }
@@ -261,7 +270,7 @@ interface ApiDocPackage {
     kind: number;
     flags: ApiDocFlags;
 
-    children: (ApiDocModule)[];
+    children: (ApiDocItemChildClass)[];
     groups: ApiDocGroups;
 }
 
@@ -323,7 +332,7 @@ export function typeToString(type?: ApiDocType, d: number = 0): string {
             const vars: string[] = [];
             for (const c of type.declaration.children) {
                 vars.push(
-                    c.name + (isOptional(c.type) ? '?' : '') + ': ' + typeToString(c.type)
+                    c.name + (isOptional(c.type) ? '?' : '') + ': ' + typeToString(c.type),
                 );
             }
             return `{${vars.join(', ')}}`;
@@ -337,7 +346,7 @@ export function typeToString(type?: ApiDocType, d: number = 0): string {
                     if (sig.parameters) {
                         for (const p of sig.parameters) {
                             params.push(
-                                p.name + (isOptional(p.type) ? '?' : '') + ': ' + typeToString(p.type)
+                                p.name + (isOptional(p.type) ? '?' : '') + ': ' + typeToString(p.type),
                             );
                         }
                     }
@@ -351,7 +360,7 @@ export function typeToString(type?: ApiDocType, d: number = 0): string {
     return '';
 }
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class ApiDocProvider {
     protected docs?: any;
 
@@ -371,17 +380,18 @@ export class ApiDocProvider {
         const docs = await this.getDocs();
 
         for (const child of docs.children) {
-            if (JSON.parse(child.name) === module) {
-
-                for (const compChild of child.children) {
-                    if (compChild.name === component && compChild.kind === 128) {
-                        return compChild;
-                    }
-                }
-
-                console.debug('available components', child.children.map(v => v.name));
-                throw new Error(`No component ${component} found in ${module}.`);
-            }
+            if (child.name === component) return child;
+            // if (child.name === module) {
+            //
+            //     // for (const compChild of child.children) {
+            //     //     if (compChild.name === component && compChild.kind === 128) {
+            //     //         return compChild;
+            //     //     }
+            //     // }
+            //
+            //     console.debug('available components', child.children.map(v => v.name));
+            //     throw new Error(`No component ${component} found in ${module}.`);
+            // }
         }
 
         console.debug('available modules', docs.children.map(v => v.name));
@@ -390,53 +400,58 @@ export class ApiDocProvider {
 }
 
 @Component({
-    standalone: false,
     selector: 'api-doc',
     template: `
-        <div class="dui-body dui-theme-light">
-          <div class="title">
-            <h2>API <code>{{selector}}</code></h2>
-            @if (tableData.length) {
-              <dui-input icon="search" placeholder="Search" [(ngModel)]="filterQuery"
-              clearer></dui-input>
-            }
-          </div>
-          @if (!tableData.length) {
-            <div>
-              No API docs.
-            </div>
-          }
-          @if (comment) {
-            <p [innerHTML]="comment">
-            </p>
-          }
+      <div class="dui-body">
+        <div class="title">
+          <h2>API <code>{{ selector }}</code></h2>
           @if (tableData.length) {
-            <dui-table
-              [autoHeight]="true"
-              [items]="tableData"
-              [selectable]="true"
-              [filterQuery]="filterQuery"
-              [filterFields]="['name', 'type', 'dataType', 'comment']"
-              noFocusOutline
-              >
-              <dui-table-column name="name" header="Name" [width]="240">
-                <ng-container *duiTableCell="let row">
-                  @if (row.type === 'input') {
-                    &#64;Input()
-                  }
-                  @if (row.type === 'output') {
-                    &#64;Output()
-                  }
-                  {{row.name}}
-                </ng-container>
-              </dui-table-column>
-              <dui-table-column name="dataType" header="Type" [width]="150"></dui-table-column>
-              <dui-table-column name="comment" header="Description" [width]="350"></dui-table-column>
-            </dui-table>
+            <dui-input icon="search" placeholder="Search" [(ngModel)]="filterQuery" clearer></dui-input>
           }
         </div>
-        `,
-    styleUrls: ['./api-doc.component.scss']
+        @if (!tableData.length) {
+          <div>
+            No API docs.
+          </div>
+        }
+        @if (comment) {
+          <p [innerHTML]="comment">
+          </p>
+        }
+        @if (tableData.length) {
+          <dui-table
+            [autoHeight]="true"
+            [items]="tableData"
+            [selectable]="true"
+            [filterQuery]="filterQuery"
+            [filterFields]="['name', 'type', 'dataType', 'comment']"
+            noFocusOutline
+          >
+            <dui-table-column name="name" header="Name" [width]="240">
+              <ng-container *duiTableCell="let row">
+                @if (row.type === 'input') {
+                  &#64;Input()
+                }
+                @if (row.type === 'output') {
+                  &#64;Output()
+                }
+                {{ row.name }}
+              </ng-container>
+            </dui-table-column>
+            <dui-table-column name="dataType" header="Type" [width]="150"></dui-table-column>
+            <dui-table-column name="comment" header="Description" [width]="350"></dui-table-column>
+          </dui-table>
+        }
+      </div>
+    `,
+    styleUrls: ['./api-doc.component.scss'],
+    imports: [
+        TableComponent,
+        TableColumnDirective,
+        InputComponent,
+        FormsModule,
+        TableCellDirective,
+    ],
 })
 export class ApiDocComponent implements OnChanges {
     @Input() module!: string;
@@ -450,7 +465,6 @@ export class ApiDocComponent implements OnChanges {
 
     constructor(
         private apiDocProvider: ApiDocProvider,
-        private cd: ChangeDetectorRef,
     ) {
 
     }
@@ -459,6 +473,7 @@ export class ApiDocComponent implements OnChanges {
         const docs = await this.apiDocProvider.findDocForComponent(this.module, this.component);
         this.tableData = [];
         if (!docs) return;
+        console.log('docs', this.module, this.component, docs);
 
         for (const decorator of docs.decorators) {
             if (decorator.name === 'Component' || decorator.name === 'Directive') {
@@ -488,7 +503,7 @@ export class ApiDocComponent implements OnChanges {
                                 name: prop.name + (isOptional(prop.type) ? '?' : ''),
                                 type: 'input',
                                 dataType: typeToString(prop.type),
-                                comment: prop.comment ? prop.comment.shortText : ''
+                                comment: prop.comment ? prop.comment.shortText : '',
                             });
                         }
 
@@ -497,7 +512,7 @@ export class ApiDocComponent implements OnChanges {
                                 name: prop.name + (isOptional(prop.type) ? '?' : ''),
                                 type: 'output',
                                 dataType: typeToString(prop.type),
-                                comment: prop.comment ? prop.comment.shortText : ''
+                                comment: prop.comment ? prop.comment.shortText : '',
                             });
                         }
                     }
@@ -516,45 +531,10 @@ export class ApiDocComponent implements OnChanges {
                         name: prop.name + '(' + params.join(', ') + ')',
                         type: 'method',
                         dataType: typeToString(prop.signatures[0].type, 1),
-                        comment: prop.comment ? prop.comment.shortText : ''
+                        comment: prop.comment ? prop.comment.shortText : '',
                     });
                 }
             }
         }
-        this.cd.detectChanges();
-    }
-}
-
-@NgModule({
-    declarations: [
-        ApiDocComponent,
-        CodeFrameComponent,
-    ],
-    imports: [
-        CommonModule,
-        FormsModule,
-        ReactiveFormsModule,
-        HttpClientModule,
-        DuiButtonModule,
-        DuiWindowModule,
-        DuiTableModule,
-        DuiInputModule,
-        NgClass,
-    ],
-    exports: [
-        ApiDocComponent,
-        CodeFrameComponent,
-    ]
-})
-export class DocModule {
-    public static parent: any;
-
-    static forRoot(): ModuleWithProviders<DocModule> {
-        return {
-            ngModule: DocModule,
-            providers: [
-                ApiDocProvider
-            ]
-        };
     }
 }

@@ -27,7 +27,7 @@ export function typeToTSJSONInterface(type: Type, options: { defaultIsOptional?:
 }
 
 export interface TypeDecoration {
-    name: number | string | symbol;
+    name: number | string;
     description?: string;
 }
 

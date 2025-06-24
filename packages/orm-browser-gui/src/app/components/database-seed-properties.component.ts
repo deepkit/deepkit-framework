@@ -7,42 +7,43 @@ import { showTypeString } from '../utils';
 @Component({
     selector: 'orm-browser-seed-properties',
     template: `
-        <dui-button-group padding="none" style="margin: 5px 0;">
-            <dui-button textured (click)="resetTypes()">Reset</dui-button>
-            <dui-button textured (click)="autoTypes()">Auto</dui-button>
-        </dui-button-group>
+      <dui-button-group padding="none" style="margin: 5px 0;">
+        <dui-button textured (click)="resetTypes()">Reset</dui-button>
+        <dui-button textured (click)="autoTypes()">Auto</dui-button>
+      </dui-button-group>
 
-        <dui-table [autoHeight]="true" [preferenceKey]="'orm-browser/seed/' + entity.getName()" [sorting]="false" noFocusOutline [items]="getProperties(properties)">
-            <dui-table-column name="name" [width]="200"></dui-table-column>
-            <dui-table-column name="type" [width]="100">
-                <ng-container *duiTableCell="let row">
-                    <ng-container *ngIf="entity.getProperty(row.name) as property">
-                        <span style="color: var(--text-grey)">{{showTypeString(property.type)}}</span>
-                    </ng-container>
-                </ng-container>
-            </dui-table-column>
+      <dui-table [autoHeight]="true" [preferenceKey]="'orm-browser/seed/' + entity.getName()" [sorting]="false" noFocusOutline
+                 [items]="getProperties(properties)">
+        <dui-table-column name="name" [width]="200"></dui-table-column>
+        <dui-table-column name="type" [width]="100">
+          <ng-container *duiTableCell="let row">
+            <ng-container *ngIf="entity.getProperty(row.name) as property">
+              <span style="color: var(--dui-text-grey)">{{ showTypeString(property.type) }}</span>
+            </ng-container>
+          </ng-container>
+        </dui-table-column>
 
-            <dui-table-column name="value" [width]="320" class="cell-value">
-                <ng-container *duiTableCell="let row">
-                    <ng-container *ngIf="entity.getProperty(row.name) as property">
-                        <orm-browser-seed-property [fakerTypes]="fakerTypes"
-                                                   [model]="row"
-                                                   (modelChange)="changed.emit()"
-                                                   [type]="property.type"></orm-browser-seed-property>
-                    </ng-container>
-                </ng-container>
-            </dui-table-column>
+        <dui-table-column name="value" [width]="320" class="cell-value">
+          <ng-container *duiTableCell="let row">
+            <ng-container *ngIf="entity.getProperty(row.name) as property">
+              <orm-browser-seed-property [fakerTypes]="fakerTypes"
+                                         [model]="row"
+                                         (modelChange)="changed.emit()"
+                                         [type]="property.type"></orm-browser-seed-property>
+            </ng-container>
+          </ng-container>
+        </dui-table-column>
 
-            <dui-table-column name="example" [width]="350">
-                <ng-container *duiTableCell="let row">
-                    <ng-container *ngIf="entity.getProperty(row.name) as property">
-                        <ng-container *ngIf="row.fake && !property.isAutoIncrement() && !property.isReference()">
-                            {{fakerTypes[row.faker]?.example}}
-                        </ng-container>
-                    </ng-container>
-                </ng-container>
-            </dui-table-column>
-        </dui-table>
+        <dui-table-column name="example" [width]="350">
+          <ng-container *duiTableCell="let row">
+            <ng-container *ngIf="entity.getProperty(row.name) as property">
+              <ng-container *ngIf="row.fake && !property.isAutoIncrement() && !property.isReference()">
+                {{ fakerTypes[row.faker]?.example }}
+              </ng-container>
+            </ng-container>
+          </ng-container>
+        </dui-table-column>
+      </dui-table>
     `,
     standalone: false
 })

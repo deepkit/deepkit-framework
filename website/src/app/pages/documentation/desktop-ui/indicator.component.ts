@@ -1,26 +1,36 @@
 import { Component } from '@angular/core';
+import { IndicatorComponent, SliderComponent } from '@deepkit/desktop-ui';
+import { ApiDocComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { FormsModule } from '@angular/forms';
 
 @Component({
-    standalone: false,
+    imports: [
+        IndicatorComponent,
+        ApiDocComponent,
+        SliderComponent,
+        FormsModule,
+    ],
     template: `
-        <div class="subline">Desktop UI</div>
-        <h2>Indicator</h2>
+      <div class="app-content normalize-text">
+        <div class="app-pre-headline">Desktop UI</div>
+        <h1>Indicator</h1>
 
-        <textarea codeHighlight>
-        import {DuiIndicatorModule} from '@deepkit/desktop-ui';
-        </textarea>
-
-        <dui-indicator [step]="progress"></dui-indicator> {{progress}}<br/>
-        <dui-indicator [step]="0.2"></dui-indicator><br/>
-        <dui-indicator [step]="1"></dui-indicator><br/>
-        <dui-indicator [step]="0"></dui-indicator><br/>
+        <dui-indicator [step]="progress"></dui-indicator>
+        {{ progress }}<br />
+        <dui-indicator [step]="0.2"></dui-indicator>
+        <br />
+        <dui-indicator [step]="1"></dui-indicator>
+        <br />
+        <dui-indicator [step]="0"></dui-indicator>
+        <br />
 
         <p>
-            <dui-slider [(ngModel)]="progress"></dui-slider>
+          <dui-slider [(ngModel)]="progress"></dui-slider>
         </p>
 
         <api-doc module="components/indicator/indicator.component" component="IndicatorComponent"></api-doc>
-    `
+      </div>
+    `,
 })
 export class DocDesktopUIIndicatorComponent {
     progress = 0.5;

@@ -9,24 +9,23 @@
  */
 
 import {
-  ApplicationRef,
-  ChangeDetectorRef,
-  Component,
-  ComponentFactoryResolver,
-  ComponentRef,
-  Directive,
-  ElementRef,
-  Inject,
-  Injectable,
-  Injector,
-  OnDestroy,
-  Type,
-  ViewContainerRef,
-  input
+    ApplicationRef,
+    ChangeDetectorRef,
+    Component,
+    ComponentFactoryResolver,
+    ComponentRef,
+    Directive,
+    ElementRef,
+    Inject,
+    Injectable,
+    Injector,
+    input,
+    OnDestroy,
+    Type,
+    ViewContainerRef,
 } from '@angular/core';
-import { DialogComponent, DialogActionsComponent, CloseDialogDirective } from './dialog.component';
+import { CloseDialogDirective, DialogActionsComponent, DialogComponent } from './dialog.component';
 import { isTargetChildOf } from '../../core/utils';
-import { DuiDialogProgress, ProgressDialogState } from './progress-dialog.component';
 import { DOCUMENT } from '@angular/common';
 import { WindowRegistry } from '../window/window-state';
 import { Overlay } from '@angular/cdk/overlay';
@@ -88,7 +87,7 @@ export class DuiDialogAlert {
         <div class="text-selection" style="white-space: pre-line;">{{ content }}</div>
       }
       <div style="padding-top: 5px;">
-        <dui-input style="width: 100%" (enter)="dialog.close(value())" focus [(ngModel)]="value()"></dui-input>
+        <dui-input style="width: 100%" (enter)="dialog.close(value())" focus [(ngModel)]="value"></dui-input>
       </div>
 
       <dui-dialog-actions>
@@ -197,12 +196,6 @@ export class DuiDialog {
     public async prompt(title: string, value: string, content?: string, dialodInputs: { [name: string]: any } = {}): Promise<false | string> {
         const { dialog } = this.open(DuiDialogPrompt, { title, value, content }, dialodInputs);
         return dialog.toPromise();
-    }
-
-    public progress(): ProgressDialogState {
-        const state$ = new ProgressDialogState;
-        this.open(DuiDialogProgress, { state$ });
-        return state$;
     }
 }
 

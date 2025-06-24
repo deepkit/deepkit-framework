@@ -166,7 +166,7 @@
                                         (itemsChange)="loadEntity(true)"></orm-browser-filter>
                 </div>
             </dui-dropdown>
-            <span style="color: var(--text-light); line-height: 19px; font-size: 12px;">
+            <span style="color: var(--dui-text-light); line-height: 19px; font-size: 12px;">
                         <span>
                             of {{entityState.totalPages}} page{{entityState.totalPages === 1 ? '' : 's'}}
                             ({{entityState.count}} records).
@@ -206,7 +206,7 @@
                                       [width]="150">
                         <ng-container *duiTableHeader>
                             {{property.name}} <span
-                            style="color: var(--text-light)">{{showTypeString(property.type)}}</span>
+                            style="color: var(--dui-text-light)">{{showTypeString(property.type)}}</span>
                         </ng-container>
 
                         <ng-container *duiTableCell="let row">

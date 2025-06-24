@@ -8,20 +8,24 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Component, HostListener, input } from '@angular/core';
+import { booleanAttribute, Component, HostListener, inject, input } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { RouterLinkActive } from '@angular/router';
 
 @Component({
     selector: 'dui-tab-button',
     template: `
-        <ng-content></ng-content>
+      <ng-content></ng-content>
     `,
     host: {
         '[attr.tabindex]': '1',
         '[class.active]': 'isActive()',
     },
     styleUrls: ['./tab-button.component.scss'],
-    providers: [ngValueAccessor(TabButtonComponent)]
+    hostDirectives: [
+        { directive: RouterLinkActive, inputs: ['routerLinkActiveOptions'] },
+    ],
+    providers: [ngValueAccessor(TabButtonComponent)],
 })
 export class TabButtonComponent extends ValueAccessorBase<any> {
     /**
@@ -31,18 +35,16 @@ export class TabButtonComponent extends ValueAccessorBase<any> {
      */
     active = input(false, { transform: booleanAttribute });
 
-    value = input<any>();
+    routerLinkActive = inject(RouterLinkActive);
 
     @HostListener('click')
     onClick() {
         const value = this.value();
         if (value === undefined) return;
-        this.innerValue = value;
+        this.writeValue(value);
     }
 
-    isActive(): boolean {
-        const value = this.value();
-        if (value !== undefined) return value === this.innerValue;
-        return this.active() !== false
+    isActive() {
+        return this.routerLinkActive.isActive || this.active();
     }
 }

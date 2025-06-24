@@ -55,17 +55,17 @@ export class IndicatorComponent {
         }
     `],
     template: `
-        @if (progressTracker()) {
-          <div class="indicator" [class.vertical]="display() === 'vertical'" [class.hide]="progressTracker().ended">
-            <dui-indicator [step]="step"></dui-indicator>
-            @if (progressTracker().current; as group) {
-              <div class="label">
-                <span class="percentage text-light text-tabular">{{progressTracker().progress*100|number:'0.2-2'}}%</span> - {{group.message}}
-              </div>
-            }
-          </div>
-        }
-        `,
+      @if (progressTracker(); as progressTracker) {
+        <div class="indicator" [class.vertical]="display() === 'vertical'" [class.hide]="progressTracker.ended">
+          <dui-indicator [step]="step"></dui-indicator>
+          @if (progressTracker.current; as group) {
+            <div class="label">
+              <span class="percentage text-light text-tabular">{{ progressTracker.progress * 100|number:'0.2-2' }}%</span> - {{ group.message }}
+            </div>
+          }
+        </div>
+      }
+    `,
     imports: [IndicatorComponent, DecimalPipe]
 })
 export class ProgressIndicatorComponent implements OnChanges, OnDestroy {

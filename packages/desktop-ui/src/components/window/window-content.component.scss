@@ -11,7 +11,7 @@
         width: 250px;
         flex-shrink: 0;
         overflow: visible;
-        border-right: 1px solid var(--line-sidebar);
+        border-right: 1px solid var(--dui-line-sidebar);
 
         .hider {
             width: 100%;
@@ -70,7 +70,7 @@
     left: 0;
     right: 0;
     height: 1px;
-    background-color: var(--line-sidebar);
+    background-color: var(--dui-line-sidebar);
 }
 
 :host.no-vibrancy {

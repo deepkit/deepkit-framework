@@ -1,18 +1,28 @@
 import { Component } from '@angular/core';
+import { CodeHighlightComponent } from '@deepkit/ui-library';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ButtonComponent, DynamicOptionDirective, OptionDirective, SelectBoxComponent } from '@deepkit/desktop-ui';
+import { FormsModule } from '@angular/forms';
 
 @Component({
-    standalone: false,
+    imports: [
+        CodeHighlightComponent,
+        CodeFrameComponent,
+        SelectBoxComponent,
+        OptionDirective,
+        FormsModule,
+        DynamicOptionDirective,
+        ButtonComponent,
+        ApiDocComponent,
+    ],
     template: `
-        <div class="subline">Desktop UI</div>
-        <h2>Selectbox</h2>
-        
-        <textarea codeHighlight>
-          import {DuiSelectModule} from '@deepkit/desktop-ui';
-        </textarea>
-        
+      <div class="app-content normalize-text">
+        <div class="app-pre-headline">Desktop UI</div>
+        <h1>Selectbox2</h1>
+
         <doc-code-frame>
-          <div>
-            <p>
+          <div class="examples">
+            <div>
               <dui-select [(ngModel)]="radioValue" placeholder="Please choose">
                 <dui-option value="a">Option A</dui-option>
                 <dui-option value="b">Option B</dui-option>
@@ -23,7 +33,7 @@ import { Component } from '@angular/core';
                 <dui-option value="b">Option B</dui-option>
                 <dui-option value="c">Option C</dui-option>
               </dui-select>
-            </p>
+            </div>
             <dui-select [(ngModel)]="radioValue" textured placeholder="Please choose">
               <dui-option value="a">Option A</dui-option>
               <dui-option value="b">Option B</dui-option>
@@ -40,111 +50,122 @@ import { Component } from '@angular/core';
               <dui-option value="c">Option C</dui-option>
             </dui-select>
             <p>
-              Chosen: {{radioValue}}
+              Chosen: {{ radioValue }}
             </p>
-            <dui-select [(ngModel)]="radioValue" placeholder="Please choose">
-              <dui-option value="a">
-                <ng-container *dynamicOption>
-                  Option A
-                </ng-container>
-              </dui-option>
-              <dui-option value="b">
-                <ng-container *dynamicOption>
-                  Option B
-                </ng-container>
-              </dui-option>
-              <dui-option value="c">
-                <ng-container *dynamicOption>
-                  Option CCCCCCCCCC
-                </ng-container>
-              </dui-option>
-            </dui-select>
-            <p>
+            <div>
+              <dui-select [(ngModel)]="radioValue" placeholder="Please choose">
+                <dui-option value="a">
+                  <ng-container *dynamicOption>
+                    Option A
+                  </ng-container>
+                </dui-option>
+                <dui-option value="b">
+                  <ng-container *dynamicOption>
+                    Option B
+                  </ng-container>
+                </dui-option>
+                <dui-option value="c">
+                  <ng-container *dynamicOption>
+                    Option CCCCCCCCCC
+                  </ng-container>
+                </dui-option>
+              </dui-select>
+            </div>
+            <div>
               <dui-select [(ngModel)]="radioValue">
                 <dui-button textured (click)="radioValue = ''">Reset</dui-button>
                 <dui-option value="a">Option A</dui-option>
                 <dui-option value="b">Option B</dui-option>
                 <dui-option value="c">Option C</dui-option>
               </dui-select>
-            </p>
-            <p>
+            </div>
+            <div>
               <dui-select placeholder="Many items">
                 @for (item of manyItems; track item) {
-                  <dui-option [value]="item">Option #{{item}}</dui-option>
+                  <dui-option [value]="item">Option #{{ item }}</dui-option>
                 }
               </dui-select>
-            </p>
+            </div>
           </div>
-          <textarea codeHighlight="html">
-            <p>
-              <dui-select [(ngModel)]="radioValue" placeholder="Please choose">
-                <dui-option value="a">Option A</dui-option>
-                <dui-option value="b">Option B</dui-option>
-                <dui-option value="c">Option C</dui-option>
-              </dui-select>
-              <dui-select small [(ngModel)]="radioValue" placeholder="Please choose">
-                <dui-option value="a">Option A</dui-option>
-                <dui-option value="b">Option B</dui-option>
-                <dui-option value="c">Option C</dui-option>
-              </dui-select>
-            </p>
-            <dui-select [(ngModel)]="radioValue" textured placeholder="Please choose">
-              <dui-option value="a">Option A</dui-option>
-              <dui-option value="b">Option B</dui-option>
-              <dui-option value="c">Option C</dui-option>
-            </dui-select>
-            <dui-select disabled [(ngModel)]="radioValue" textured placeholder="Please choose">
-              <dui-option value="a">Option A</dui-option>
-              <dui-option value="b">Option B</dui-option>
-              <dui-option value="c">Option C</dui-option>
-            </dui-select>
-            <dui-select small [(ngModel)]="radioValue" textured placeholder="Please choose">
-              <dui-option value="a">Option A</dui-option>
-              <dui-option value="b">Option B</dui-option>
-              <dui-option value="c">Option C</dui-option>
-            </dui-select>
-            <p>
-              Chosen: {{"{{"}}radioValue{{"}}"}}
-            </p>
-            <dui-select [(ngModel)]="radioValue" placeholder="Please choose">
-              <dui-option value="a">
-                <ng-container *dynamicOption>
-                  <dui-emoji name="slightly_smiling_face"></dui-emoji>
-                  Option A
-                </ng-container>
-              </dui-option>
-              <dui-option value="b">
-                <ng-container *dynamicOption>
-                  <dui-emoji name="sunglasses"></dui-emoji>
-                  Option B
-                </ng-container>
-              </dui-option>
-              <dui-option value="c">
-                <ng-container *dynamicOption>
-                  Option CCCCCCCCCC
-                </ng-container>
-              </dui-option>
-            </dui-select>
-            <p>
-              <dui-select [(ngModel)]="radioValue">
-                <dui-button textured (click)="radioValue = ''">Reset</dui-button>
-                <dui-option value="a">Option A</dui-option>
-                <dui-option value="b">Option B</dui-option>
-                <dui-option value="c">Option C</dui-option>
-              </dui-select>
-            </p>
-            <p>
-              <dui-select placeholder="Many items">
-                <dui-option *ngFor="let item of manyItems" [value]="item">Option #{{"{{"}}item{{"}}"}}</dui-option>
-              </dui-select>
-            </p>
-          </textarea>
+          <code-highlight lang="html" [code]="code" />
         </doc-code-frame>
-        
+
         <api-doc module="components/select/selectbox.component" component="SelectboxComponent"></api-doc>
-        `
+      </div>
+    `,
+    styles: `
+        .examples > div {
+            margin-bottom: 14px;
+        }
+    `,
 })
 export class DocDesktopUISelectboxComponent {
     manyItems = [...Array(255).keys()].map(x => x + 1);
     radioValue = 'a';
+
+    code = `
+<p>
+  <dui-select [(ngModel)]="radioValue" placeholder="Please choose">
+    <dui-option value="a">Option A</dui-option>
+    <dui-option value="b">Option B</dui-option>
+    <dui-option value="c">Option C</dui-option>
+  </dui-select>
+  <dui-select small [(ngModel)]="radioValue" placeholder="Please choose">
+    <dui-option value="a">Option A</dui-option>
+    <dui-option value="b">Option B</dui-option>
+    <dui-option value="c">Option C</dui-option>
+  </dui-select>
+</p>
+<dui-select [(ngModel)]="radioValue" textured placeholder="Please choose">
+  <dui-option value="a">Option A</dui-option>
+  <dui-option value="b">Option B</dui-option>
+  <dui-option value="c">Option C</dui-option>
+</dui-select>
+<dui-select disabled [(ngModel)]="radioValue" textured placeholder="Please choose">
+  <dui-option value="a">Option A</dui-option>
+  <dui-option value="b">Option B</dui-option>
+  <dui-option value="c">Option C</dui-option>
+</dui-select>
+<dui-select small [(ngModel)]="radioValue" textured placeholder="Please choose">
+  <dui-option value="a">Option A</dui-option>
+  <dui-option value="b">Option B</dui-option>
+  <dui-option value="c">Option C</dui-option>
+</dui-select>
+<p>
+  Chosen: {{"{{"}}radioValue{{"}}"}}
+</p>
+<dui-select [(ngModel)]="radioValue" placeholder="Please choose">
+  <dui-option value="a">
+    <ng-container *dynamicOption>
+      <dui-emoji name="slightly_smiling_face"></dui-emoji>
+      Option A
+    </ng-container>
+  </dui-option>
+  <dui-option value="b">
+    <ng-container *dynamicOption>
+      <dui-emoji name="sunglasses"></dui-emoji>
+      Option B
+    </ng-container>
+  </dui-option>
+  <dui-option value="c">
+    <ng-container *dynamicOption>
+      Option CCCCCCCCCC
+    </ng-container>
+  </dui-option>
+</dui-select>
+<p>
+  <dui-select [(ngModel)]="radioValue">
+    <dui-button textured (click)="radioValue = ''">Reset</dui-button>
+    <dui-option value="a">Option A</dui-option>
+    <dui-option value="b">Option B</dui-option>
+    <dui-option value="c">Option C</dui-option>
+  </dui-select>
+</p>
+<p>
+  <dui-select placeholder="Many items">
+    <dui-option *ngFor="let item of manyItems" [value]="item">Option #{{"{{"}}item{{"}}"}}</dui-option>
+  </dui-select>
+</p>
+</code-highlight>
+`;
 }

@@ -18,7 +18,7 @@
 :host:focus.focusable ::ng-deep dui-list-item.selected {
     background-color: var(--dui-selection);
     color: white;
-    --text-light: #d1d1d1;
+    --dui-text-light: #d1d1d1;
 }
 
 :host-context(.dui-theme-light).white {
@@ -37,7 +37,7 @@
 
 :host.delimiter-line {
     ::ng-deep dui-list-item {
-        border-bottom: 1px solid var(--line-color-light);
+        border-bottom: 1px solid var(--dui-line-color-light);
 
         &.selected {
             border-bottom: 1px solid transparent;

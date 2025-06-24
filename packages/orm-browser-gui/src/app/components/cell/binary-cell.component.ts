@@ -31,7 +31,7 @@ import { TypeDecoration } from './utils';
 
         dui-icon, .bytes {
             margin-left: 6px;
-            color: var(--text-light);
+            color: var(--dui-text-light);
             font-size: 12px;
         }
 

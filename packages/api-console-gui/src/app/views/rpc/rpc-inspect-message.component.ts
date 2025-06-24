@@ -24,11 +24,11 @@ import { inspect } from '../../utils';
             <div class="composite" *ngIf="message.composite">
                 <div class="message" *ngFor="let m of messages; trackBy: trackByIndex">
                     <div>{{RpcTypes[m.type] || m.type}}</div>
-                    <div class="code overlay-scrollbar-small" codeHighlight [code]="m.body"></div>
+                    <code-highlight [code]="m.body"></code-highlight>
                 </div>
             </div>
             <ng-container *ngIf="!message.composite">
-                <div class="code overlay-scrollbar-small" codeHighlight [code]="body"></div>
+                <code-highlight [code]="body"></code-highlight>
             </ng-container>
         </div>
     `,

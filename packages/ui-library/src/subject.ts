@@ -37,7 +37,7 @@ export class LiveSubject<T> extends Subject<T> {
         //Subject does not expose protected _subscribe anymore, so we have to use prototype directly
         const subscription = (Subject as any).prototype._subscribe.apply(this, [subscriber]);
         if (this.hasValue() && subscription && !(<SubscriptionLike>subscription).closed) {
-            subscriber.next(this.value);
+            if (undefined !== this.value) subscriber.next(this.value);
         }
         if (!this.loaderCalled && !this.hasValue()) {
             this.loaderCalled = true;

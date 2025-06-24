@@ -1,7 +1,6 @@
-@import "../../scss/mixins";
-
 :host {
-    display: block;
+    display: flex;
+    flex-direction: column;
     border: 1px solid #c5c5c5;
     background-color: white;
     height: 100px;
@@ -33,17 +32,13 @@
     --background-row-hover: #333333;
 }
 
-%header-background {
-    background: var(--background-header);
-    border-bottom: 1px solid var(--border-header);
-}
-
 .header {
     white-space: nowrap;
     height: 23px;
     overflow: hidden;
     padding-right: 13px;
-    @extend %header-background;
+    background: var(--background-header);
+    border-bottom: 1px solid var(--border-header);
 
     > div {
         position: relative;
@@ -65,7 +60,8 @@
         &.freeze {
             position: sticky;
             z-index: 2;
-            @extend %header-background;
+            background: var(--background-header);
+            border-bottom: 1px solid var(--border-header);
         }
 
         dui-icon {
@@ -93,6 +89,11 @@
 
 .body {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    cdk-virtual-scroll-viewport {
+        flex: 1;
+    }
 }
 
 .table-row {
@@ -124,8 +125,8 @@
 
         &.active-drop {
             opacity: 0.8;
-            border-left: 1px solid var(--line-color-light);
-            border-right: 1px solid var(--line-color-light);
+            border-left: 1px solid var(--dui-line-color-light);
+            border-right: 1px solid var(--dui-line-color-light);
         }
 
         &.other-cell {
@@ -163,10 +164,6 @@
     outline: 0;
 }
 
-:host:focus:not(.no-focus-outline) {
-    @include focus-border;
-}
-
 :host-context(.dui-theme-dark) {
     background-color: #1e1e1e;
     border: 1px solid #565656;
@@ -177,10 +174,6 @@
         &:active {
             background-color: #474747;
         }
-    }
-
-    &:focus:not(.no-focus-outline) {
-        @include focus-border-dark;
     }
 }
 

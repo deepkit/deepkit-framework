@@ -1,22 +1,28 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { IconComponent, InputComponent } from '@deepkit/desktop-ui';
 
 @Component({
-    standalone: false,
     selector: 'icon-browser',
     template: `
-        <dui-input [(ngModel)]="query" clearer lightFocus icon="filter"
-        (ngModelChange)="cd.detectChanges()" placeholder="Filter ..."></dui-input>
-        <div class="icons">
-          @for (icon of filter(icons); track icon) {
-            <div class="icon" >
-              <dui-icon [name]="icon"></dui-icon>
-              <div class="name">{{icon}}</div>
-            </div>
-          }
-        </div>
-        `,
-    styleUrls: ['./icon-browser.component.scss']
+      <dui-input [(ngModel)]="query" clearer lightFocus icon="filter"
+                 (ngModelChange)="cd.detectChanges()" placeholder="Filter ..."></dui-input>
+      <div class="icons">
+        @for (icon of filter(icons); track icon) {
+          <div class="icon">
+            <dui-icon [name]="icon"></dui-icon>
+            <div class="name">{{ icon }}</div>
+          </div>
+        }
+      </div>
+    `,
+    imports: [
+        FormsModule,
+        InputComponent,
+        IconComponent,
+    ],
+    styleUrls: ['./icon-browser.component.scss'],
 })
 export class IconBrowserComponent implements OnInit {
     public icons?: any;

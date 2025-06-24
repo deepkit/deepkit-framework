@@ -9,31 +9,27 @@
  */
 
 import {
-    AfterViewInit,
     booleanAttribute,
     Component,
+    computed,
+    contentChild,
     ContentChild,
-    ContentChildren,
+    contentChildren,
     Directive,
     ElementRef,
     HostBinding,
     HostListener,
     input,
-    OnChanges,
     OnDestroy,
-    QueryList,
-    signal,
-    SimpleChanges,
     TemplateRef,
-    ViewChild,
+    viewChild,
 } from '@angular/core';
-import { Subscription } from 'rxjs';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { DropdownComponent, DropdownItemComponent, DropdownSplitterComponent, OpenDropdownDirective } from '../button/dropdown.component';
 import { ButtonComponent, ButtonGroupComponent } from '../button/button.component';
 import { NgTemplateOutlet } from '@angular/common';
 import { IconComponent } from '../icon/icon.component';
-import { injectElementRef } from '../app/index.js';
+import { injectElementRef } from '../app/utils';
 
 /**
  * Necessary directive to get a dynamic rendered option.
@@ -85,22 +81,22 @@ class NotSelected {
 @Component({
     selector: 'dui-select',
     template: `
-      @if (button) {
+      @if (button()) {
         <dui-button-group padding="none">
           <ng-content select="dui-button"></ng-content>
           <dui-button class="split-knob"
                       style="padding: 0 2px;"
                       [openDropdown]="dropdown" tight textured icon="arrow_down"></dui-button>
         </dui-button-group>
-      } @if (!button) {
+      } @else {
         @if (!isSelected) {
           <div class="placeholder">{{ placeholder() }}</div>
         }
         <div class="value">
-          @if (innerValue !== undefined && optionsValueMap().get(innerValue); as option) {
+          @if (optionsValueMap().get(value()); as option) {
             @if (option.dynamic) {
               <ng-container [ngTemplateOutlet]="option.dynamic.template"></ng-container>
-            } @if (!option.dynamic) {
+            } @else {
               <div>
                 <div [innerHTML]="option.element.nativeElement.innerHTML"></div>
               </div>
@@ -113,24 +109,23 @@ class NotSelected {
       }
 
       <dui-dropdown #dropdown [host]="element.nativeElement">
-        @if (options) {
-          @for (option of options.toArray(); track option) {
-            @if (isSeparator(option)) {
-              <dui-dropdown-separator></dui-dropdown-separator>
-            } @if (!isSeparator(option)) {
-              <dui-dropdown-item
-                (click)="select(option.value)"
-                [selected]="innerValue === option.value"
-              >
-                @if (option.dynamic) {
-                  <ng-container [ngTemplateOutlet]="option.dynamic.template"></ng-container>
-                } @if (!option.dynamic) {
+        @for (option of options(); track option) {
+          @if (isSeparator(option)) {
+            <dui-dropdown-separator></dui-dropdown-separator>
+          } @else {
+            <dui-dropdown-item
+              (click)="select(option.value())"
+              [selected]="value() === option.value()"
+            >
+              @if (option.dynamic) {
+                <ng-container [ngTemplateOutlet]="option.dynamic.template"></ng-container>
+              }
+              @if (!option.dynamic) {
                 <div>
                   <div [innerHTML]="option.element.nativeElement.innerHTML"></div>
                 </div>
               }
-              </dui-dropdown-item>
-            }
+            </dui-dropdown-item>
           }
         }
       </dui-dropdown>
@@ -138,14 +133,23 @@ class NotSelected {
     styleUrls: ['./select-box.component.scss'],
     host: {
         '[attr.tabIndex]': '1',
-        '[class.split]': '!!button',
+        '[class.split]': '!!button()',
         '[class.textured]': 'textured()',
         '[class.small]': 'small()',
     },
     providers: [ngValueAccessor(SelectBoxComponent)],
-    imports: [ButtonGroupComponent, ButtonComponent, OpenDropdownDirective, NgTemplateOutlet, IconComponent, DropdownComponent, DropdownSplitterComponent, DropdownItemComponent],
+    imports: [
+        ButtonGroupComponent,
+        ButtonComponent,
+        OpenDropdownDirective,
+        NgTemplateOutlet,
+        IconComponent,
+        DropdownComponent,
+        DropdownSplitterComponent,
+        DropdownItemComponent,
+    ],
 })
-export class SelectBoxComponent<T> extends ValueAccessorBase<T | NotSelected> implements AfterViewInit, OnDestroy, OnChanges {
+export class SelectBoxComponent<T> extends ValueAccessorBase<T | NotSelected> implements OnDestroy {
     placeholder = input<string>('');
 
     /**
@@ -158,15 +162,19 @@ export class SelectBoxComponent<T> extends ValueAccessorBase<T | NotSelected> im
      */
     small = input(false, { transform: booleanAttribute });
 
-    @ContentChild(ButtonComponent, { static: false }) button?: ButtonComponent;
-
-    @ContentChildren(OptionDirective, { descendants: true }) options?: QueryList<OptionDirective>;
-    @ViewChild('dropdown', { static: false }) dropdown!: DropdownComponent;
+    button = contentChild(ButtonComponent);
+    options = contentChildren(OptionDirective, { descendants: true });
+    dropdown = viewChild.required('dropdown', { read: DropdownComponent });
 
     public label: string = '';
-    protected optionsValueMap = signal(new Map<T | NotSelected, OptionDirective>());
 
-    protected changeSubscription?: Subscription;
+    optionsValueMap = computed(() => {
+        const map = new Map<T | NotSelected | undefined, OptionDirective>();
+        for (const option of this.options()) {
+            map.set(option.value(), option);
+        }
+        return map;
+    });
 
     element = injectElementRef();
 
@@ -179,35 +187,22 @@ export class SelectBoxComponent<T> extends ValueAccessorBase<T | NotSelected> im
         return item instanceof OptionSeparatorDirective;
     }
 
-    ngAfterViewInit(): void {
-        if (this.options) {
-            this.changeSubscription = this.options.changes.subscribe(() => this.updateMap());
-
-            setTimeout(() => {
-                this.updateMap();
-            });
-        }
-    }
-
     public select(value: T) {
         this.writeValue(value);
         this.touch();
-        this.dropdown.close();
+        this.dropdown().close();
     }
 
     @HostListener('mousedown')
     public onClick() {
         if (this.disabled()) return;
-        if (this.button) return;
+        if (this.button()) return;
 
-        this.dropdown.toggle();
-    }
-
-    ngOnChanges(changes: SimpleChanges) {
+        this.dropdown().toggle();
     }
 
     open() {
-        if (this.dropdown) this.dropdown.open();
+        this.dropdown()?.open();
     }
 
     writeValue(value?: T | NotSelected): void {
@@ -217,22 +212,5 @@ export class SelectBoxComponent<T> extends ValueAccessorBase<T | NotSelected> im
     @HostBinding('class.selected')
     get isSelected(): boolean {
         return !(this.value() instanceof NotSelected);
-    }
-
-    protected updateMap() {
-        this.optionsValueMap().clear();
-        if (!this.options) return;
-
-        const map = new Map<T | NotSelected, OptionDirective>();
-        for (const option of this.options.toArray()) {
-            map.set(option.value, option);
-        }
-        this.optionsValueMap.set(map);
-    }
-
-    ngOnDestroy(): void {
-        if (this.changeSubscription) {
-            this.changeSubscription.unsubscribe();
-        }
     }
 }

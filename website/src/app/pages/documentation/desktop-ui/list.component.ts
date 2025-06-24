@@ -1,56 +1,46 @@
 import { Component } from '@angular/core';
+import { CodeHighlightComponent } from '@deepkit/ui-library';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ListComponent, ListItemComponent, ListTitleComponent } from '@deepkit/desktop-ui';
+import { FormsModule } from '@angular/forms';
 
 @Component({
-    standalone: false,
+    imports: [
+        CodeHighlightComponent,
+        CodeFrameComponent,
+        ListComponent,
+        FormsModule,
+        ListTitleComponent,
+        ListItemComponent,
+        ApiDocComponent,
+    ],
     template: `
-        <div class="subline">Desktop UI</div>
-        <h2>List</h2>
-
-        <textarea codeHighlight>
-        import {DuiListModule} from '@deepkit/desktop-ui';
-        </textarea>
+      <div class="app-content normalize-text">
+        <div class="app-pre-headline">Desktop UI</div>
+        <h1>List</h1>
 
         <doc-code-frame>
-            <div style="max-width: 350px;">
-                <dui-list [(ngModel)]="selected">
-                    <dui-list-title>Form controls</dui-list-title>
-                    <dui-list-item value="button">Button</dui-list-item>
-                    <dui-list-item value="button-group">Button Group</dui-list-item>
+          <div style="max-width: 350px;">
+            <dui-list [(ngModel)]="selected">
+              <dui-list-title>Form controls</dui-list-title>
+              <dui-list-item value="button">Button</dui-list-item>
+              <dui-list-item value="button-group">Button Group</dui-list-item>
 
-                    <dui-list-title>Window</dui-list-title>
-                    <dui-list-item value="window">Window</dui-list-item>
-                    <dui-list-item value="toolbar">Toolbar</dui-list-item>
-                    <dui-list-item value="sidebar">Sidebar</dui-list-item>
+              <dui-list-title>Window</dui-list-title>
+              <dui-list-item value="window">Window</dui-list-item>
+              <dui-list-item value="toolbar">Toolbar</dui-list-item>
+              <dui-list-item value="sidebar">Sidebar</dui-list-item>
 
-                    <dui-list-title>Buttons & Indicators</dui-list-title>
-                    <dui-list-item value="checkbox">Checkbox</dui-list-item>
-                    <dui-list-item value="radiobox">Radiobox</dui-list-item>
-                    <dui-list-item value="select">Select</dui-list-item>
-                </dui-list>
-                <p>
-                    Selected dui-list-item: {{selected}}
-                </p>
-            </div>
-            <textarea codeHighlight="html">
-                <dui-list [(ngModel)]="selected">
-                    <dui-list-title>Form controls</dui-list-title>
-                    <dui-list-item value="button">Button</dui-list-item>
-                    <dui-list-item value="button-group">Button Group</dui-list-item>
-
-                    <dui-list-title>Window</dui-list-title>
-                    <dui-list-item value="window">Window</dui-list-item>
-                    <dui-list-item value="toolbar">Toolbar</dui-list-item>
-                    <dui-list-item value="sidebar">Sidebar</dui-list-item>
-
-                    <dui-list-title>Buttons & Indicators</dui-list-title>
-                    <dui-list-item value="checkbox">Checkbox</dui-list-item>
-                    <dui-list-item value="radiobox">Radiobox</dui-list-item>
-                    <dui-list-item value="select">Select</dui-list-item>
-                </dui-list>
-                <p>
-                    Selected dui-list-item: {{selected}}
-                </p>
-            </textarea>
+              <dui-list-title>Buttons & Indicators</dui-list-title>
+              <dui-list-item value="checkbox">Checkbox</dui-list-item>
+              <dui-list-item value="radiobox">Radiobox</dui-list-item>
+              <dui-list-item value="select">Select</dui-list-item>
+            </dui-list>
+            <p>
+              Selected dui-list-item: {{ selected }}
+            </p>
+          </div>
+          <code-highlight lang="html" [code]="code" />
         </doc-code-frame>
 
         <api-doc module="components/list/list.component" component="ListComponent"></api-doc>
@@ -58,9 +48,31 @@ import { Component } from '@angular/core';
         <api-doc module="components/list/list.component" component="ListItemComponent"></api-doc>
 
         <api-doc module="components/list/list.component" component="ListTitleComponent"></api-doc>
-    `
+      </div>
+    `,
 })
 export class DocDesktopUIListComponent {
     sidebarVisible = true;
     selected = 'button';
+
+    code = `
+<dui-list [(ngModel)]="selected">
+    <dui-list-title>Form controls</dui-list-title>
+    <dui-list-item value="button">Button</dui-list-item>
+    <dui-list-item value="button-group">Button Group</dui-list-item>
+
+    <dui-list-title>Window</dui-list-title>
+    <dui-list-item value="window">Window</dui-list-item>
+    <dui-list-item value="toolbar">Toolbar</dui-list-item>
+    <dui-list-item value="sidebar">Sidebar</dui-list-item>
+
+    <dui-list-title>Buttons & Indicators</dui-list-title>
+    <dui-list-item value="checkbox">Checkbox</dui-list-item>
+    <dui-list-item value="radiobox">Radiobox</dui-list-item>
+    <dui-list-item value="select">Select</dui-list-item>
+</dui-list>
+<p>
+    Selected dui-list-item: {{selected}}
+</p>
+`;
 }

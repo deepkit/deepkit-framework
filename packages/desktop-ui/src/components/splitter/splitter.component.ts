@@ -25,7 +25,7 @@ import { booleanAttribute, Component, computed, HostListener, input, model } fro
 export class SplitterComponent {
     indicator = input(false, { transform: booleanAttribute });
     size = model(0);
-    inverted = input(false);
+    inverted = input(false, { transform: booleanAttribute });
     position = model<'left' | 'right' | 'top' | 'bottom'>('left');
     orientation = computed(() => this.position() === 'left' || this.position() === 'right' ? 'horizontal' : 'vertical');
 

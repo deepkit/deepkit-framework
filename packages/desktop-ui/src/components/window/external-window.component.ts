@@ -16,7 +16,6 @@ import {
     ComponentFactoryResolver,
     ComponentRef,
     Directive,
-    Inject,
     Injector,
     input,
     model,
@@ -33,12 +32,10 @@ import { ComponentPortal, DomPortalOutlet } from '@angular/cdk/portal';
 import { WindowComponent } from '../window/window.component';
 import { WindowRegistry } from '../window/window-state';
 import { RenderComponentDirective } from '../core/render-component.directive';
-import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token';
 import { Subscription } from 'rxjs';
 import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
 import { DuiDialog } from '../dialog/dialog';
-import { Electron } from '../../core/utils';
-import { detectChangesNextFrame } from '../app';
+import { BrowserWindow, Electron } from '../../core/utils';
 import { nextTick } from '@deepkit/core';
 
 function PopupCenter(url: string, title: string, w: number, h: number): Window {
@@ -48,9 +45,7 @@ function PopupCenter(url: string, title: string, w: number, h: number): Window {
     let left = window.screenLeft + (window.outerWidth / 2) - w / 2;
     left = left > 0 ? left : 0;
 
-    const newWindow: Window = window.open(url, title, 'width=' + w + ', height=' + h + ', top=' + top + ', left=' + left)!;
-
-    return newWindow;
+    return window.open(url, title, 'width=' + w + ', height=' + h + ', top=' + top + ', left=' + left)!;
 }
 
 @Component({
@@ -98,7 +93,6 @@ export class ExternalDialogWrapperComponent {
     constructor(
         protected cd: ChangeDetectorRef,
         public injector: Injector,
-        @Inject(ELECTRON_WINDOW) electron: any,
     ) {
     }
 
@@ -195,8 +189,10 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
             if (!style.ownerNode) continue;
             const clone: Node = style.ownerNode.cloneNode(true);
             cloned.set(style.ownerNode, clone);
-            this.externalWindow!.document.head!.appendChild(clone);
+            this.externalWindow.document.head.appendChild(clone);
         }
+
+        const externalWindow = this.externalWindow;
 
         this.observerStyles = new MutationObserver((mutations: MutationRecord[]) => {
             for (const mutation of mutations) {
@@ -205,7 +201,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
                     if (!cloned.has(node)) {
                         const clone: Node = node.cloneNode(true);
                         cloned.set(node, clone);
-                        this.externalWindow!.document.head!.appendChild(clone);
+                        externalWindow.document.head.appendChild(clone);
                     }
                 }
 
@@ -213,7 +209,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
                     const node = mutation.removedNodes[i];
                     if (cloned.has(node)) {
                         const clone = cloned.get(node)!;
-                        clone.parentNode!.removeChild(clone);
+                        clone.parentNode?.removeChild(clone);
                         cloned.delete(node);
                     }
                 }
@@ -238,7 +234,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
         this.observerClass.observe(window.document.body, {
             attributeFilter: ['class'],
         });
-        const document = this.externalWindow!.document;
+        const document = this.externalWindow.document;
 
         copyBodyClass();
 
@@ -246,9 +242,9 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
         this.parentWindow = this.registry.getOuterActiveWindow() as WindowComponent;
 
         if (this.parentWindow && this.alwaysRaised()) {
-            this.parentWindow.windowState.disableInputs.next(true);
-            if (this.parentWindow.electronWindow) {
-                this.electronWindow.setParentWindow(this.parentWindow.electronWindow);
+            this.parentWindow.windowState.disableInputs.set(true);
+            if (this.parentWindow.browserWindow) {
+                this.electronWindow.setParentWindow(this.parentWindow.browserWindow);
             }
         }
 
@@ -258,23 +254,14 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
 
         this.portalHost = new DomPortalOutlet(document.body);
 
-        document.addEventListener('click', () => detectChangesNextFrame());
-        document.addEventListener('focus', () => detectChangesNextFrame());
-        document.addEventListener('blur', () => detectChangesNextFrame());
-        document.addEventListener('keydown', () => detectChangesNextFrame());
-        document.addEventListener('keyup', () => detectChangesNextFrame());
-        document.addEventListener('keypress', () => detectChangesNextFrame());
-        document.addEventListener('mousedown', () => detectChangesNextFrame());
-
         //todo, add beforeclose event and call beforeUnload() to make sure all dialogs are closed when page is reloaded
 
         const injector = Injector.create({
             parent: this.injector,
             providers: [
                 { provide: ExternalWindowComponent, useValue: this },
-                { provide: ELECTRON_WINDOW, useValue: this.electronWindow },
-                { provide: IN_DIALOG, useValue: false },
-                { provide: DOCUMENT, useValue: this.externalWindow!.document },
+                { provide: BrowserWindow, useValue: new BrowserWindow(this.electronWindow) },
+                { provide: DOCUMENT, useValue: this.externalWindow.document },
             ],
         });
 
@@ -286,13 +273,13 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
         this.wrapperComponentRef.setInput('content', this.template);
 
         if (this.container) {
-            this.wrapperComponentRef!.instance.setDialogContainer(this.container);
+            this.wrapperComponentRef.instance.setDialogContainer(this.container);
         }
 
         this.visible.set(true);
 
-        this.wrapperComponentRef!.changeDetectorRef.detectChanges();
-        this.wrapperComponentRef!.location.nativeElement.focus();
+        this.wrapperComponentRef.changeDetectorRef.detectChanges();
+        this.wrapperComponentRef.location.nativeElement.focus();
 
         this.cd.detectChanges();
     }
@@ -308,15 +295,15 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
             if (this.parentFocusSub) this.parentFocusSub.unsubscribe();
 
             if (this.parentWindow && this.alwaysRaised()) {
-                this.parentWindow.windowState.disableInputs.next(false);
+                this.parentWindow.windowState.disableInputs.set(false);
             }
             if (this.externalWindow) {
-                this.externalWindow!.close();
+                this.externalWindow.close();
             }
 
             delete this.externalWindow;
-            this.observerStyles!.disconnect();
-            this.observerClass!.disconnect();
+            this.observerStyles?.disconnect();
+            this.observerClass?.disconnect();
         }
     }
 

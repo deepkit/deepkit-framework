@@ -1,5 +1,3 @@
-@import "../../scss/mixins";
-
 :host {
     display: none;
 }
@@ -7,7 +5,8 @@
 .dui-dropdown {
     flex: 1;
 
-    @include background-vibrancy;
+    backdrop-filter: var(--dui-background-vibrancy);
+    background-color: var(--dui-toolbar-bg-trans);
 
     border-top: 1px solid #d0d0d0;
     border-left: 1px solid #c5c5c5;

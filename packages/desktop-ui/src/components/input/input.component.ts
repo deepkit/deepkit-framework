@@ -8,22 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    AfterViewInit,
-    booleanAttribute,
-    Component,
-    computed,
-    ElementRef,
-    EventEmitter,
-    HostBinding,
-    input,
-    Output,
-    ViewChild,
-} from '@angular/core';
+import { AfterViewInit, booleanAttribute, Component, computed, ElementRef, inject, input, output, viewChild } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { formatDate } from '@angular/common';
 import { IconComponent } from '../icon/icon.component';
 import { FormsModule } from '@angular/forms';
+import { DuiDocument } from '../document';
 
 const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
 
@@ -32,12 +22,11 @@ const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
     template: `
       @if (icon(); as icon) {
         <dui-icon class="icon" [size]="iconSize()" [name]="icon"></dui-icon>
-      } @if (type() === 'textarea') {
+      }
+      @if (type() === 'textarea') {
         <textarea
           #input
-          [readOnly]="readonly() !== false"
-          (focus)="onFocus()"
-          (blur)="onBlur()"
+          [readOnly]="readonly()"
           [placeholder]="placeholder()" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
           [disabled]="isDisabled"
           [ngModel]="normalizeValue()" (ngModelChange)="writeValue($event)"></textarea>
@@ -46,29 +35,29 @@ const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
           <input
             #input
             [step]="step()"
-            [readOnly]="readonly() !== false"
+            [readOnly]="readonly()"
             [attr.min]="min()"
             [attr.max]="max()"
             [attr.minLength]="minLength()"
             [attr.maxLength]="maxLength()"
-            [type]="type()" (focus)="onFocus()" (blur)="onBlur()"
+            [type]="type()"
             (change)="handleFileInput($event)"
             [placeholder]="placeholder()" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
             [disabled]="isDisabled"
-            [ngModel]="type() === 'file' ? undefined : normalizeValue"
+            [ngModel]="type() === 'file' ? undefined : normalizeValue()"
             (ngModelChange)="writeValue($event)"
           />
         }
-      } @if (clearer()) {
-        @if (hasClearer) {
-          <dui-icon class="clearer" name="clear" (click)="clear()"></dui-icon>
-        }
+      }
+      @if (clearer()) {
+        <dui-icon class="clearer" name="clear" (click)="clear()"></dui-icon>
       }
     `,
     styleUrls: ['./input.component.scss'],
     host: {
         '[class.is-textarea]': 'type() === "textarea"',
         '[class.light-focus]': 'lightFocus()',
+        '[class.focus-outline]': '!lightFocus()',
         '[class.semi-transparent]': 'semiTransparent()',
         '[class.no-controls]': 'noControls()',
         '[class.has-clearer]': 'clearer()',
@@ -76,6 +65,7 @@ const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
         '[class.round]': 'round()',
         '[class.textured]': 'textured()',
         '[class.has-icon]': 'icon()',
+        '[class.focused]': 'isFocused()',
     },
     providers: [ngValueAccessor(InputComponent)],
     imports: [IconComponent, FormsModule],
@@ -116,24 +106,20 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
      */
     semiTransparent = input(false, { transform: booleanAttribute });
 
-    @Output() esc = new EventEmitter<KeyboardEvent>();
-    @Output() enter = new EventEmitter<KeyboardEvent>();
-    @Output() keyDown = new EventEmitter<KeyboardEvent>();
-    @Output() keyUp = new EventEmitter<KeyboardEvent>();
+    esc = output<KeyboardEvent>();
+    enter = output<KeyboardEvent>();
+    keyDown = output<KeyboardEvent>();
+    keyUp = output<KeyboardEvent>();
 
-    @ViewChild('input', { static: false }) input?: ElementRef<HTMLInputElement | HTMLTextAreaElement>;
+    input = viewChild('input', { read: ElementRef });
 
     textured = input(false, { transform: booleanAttribute });
 
-    = input(false, { transform: booleanAttribute });
+    readonly = input(false, { transform: booleanAttribute });
 
-    @Output() focusChange = new EventEmitter<boolean>();
+    protected duiDocument = inject(DuiDocument);
 
-    @HostBinding('class.focused')
-    get isFocused() {
-        if ('undefined' === typeof document) return false;
-        return this.input ? document.activeElement === this.input!.nativeElement : false;
-    }
+    isFocused = computed(() => this.duiDocument.activeElement() === this.input()?.nativeElement);
 
     round = input(false, { transform: booleanAttribute });
 
@@ -157,22 +143,15 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         this.value.set('');
     }
 
-    onBlur() {
-        this.focusChange.next(false);
-    }
-
-    onFocus() {
-        this.focusChange.next(true);
-    }
-
-    public clear() {
+    clear() {
         this.writeValue('');
     }
 
     writeValue(value: any | undefined) {
         if (this.type() === 'file' && !value && this.input) {
             //we need to manually reset the field, since writing to it via ngModel is not supported.
-            this.input.nativeElement.value = '';
+            const input = this.input();
+            if (input) input.nativeElement.value = '';
         }
 
         value = value === undefined || value === null ? '' : value;
@@ -211,15 +190,14 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
     focusInput() {
         setTimeout(() => {
-            this.input!.nativeElement.focus();
+            const input = this.input();
+            if (input) input.nativeElement.focus();
         });
     }
 
     ngAfterViewInit() {
-        if (this.focus() && this.input) {
-            setTimeout(() => {
-                this.input!.nativeElement.focus();
-            });
+        if (this.focus() && this.input()) {
+            this.focusInput();
         }
     }
 

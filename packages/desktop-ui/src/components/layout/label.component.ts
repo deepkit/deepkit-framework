@@ -18,7 +18,7 @@ import { Component, input } from '@angular/core';
 
         label {
             display: block;
-            color: var(--text-light);
+            color: var(--dui-text-light);
             margin-bottom: 6px;
             user-select: none;
         }

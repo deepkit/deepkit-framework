@@ -33,7 +33,7 @@ import { ModuleImportedService } from '../../../../../framework-debug-api/src/ap
         }
 
         .exported {
-            color: var(--color-orange);
+            color: var(--dui-color-orange);
         }
 
         .for-root {
@@ -41,12 +41,12 @@ import { ModuleImportedService } from '../../../../../framework-debug-api/src/ap
         }
 
         .instantiated {
-            color: var(--color-green);
+            color: var(--dui-color-green);
             opacity: 0.6;
         }
 
         .scope {
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
     `],
     standalone: false
@@ -65,7 +65,7 @@ export class ModuleDetailServiceComponent {
             </div>
             <div class="config" *ngIf="m.getConfigSchema() as schema">
                 <div class="ts">
-                    <div codeHighlight [code]="schemaCode"></div>
+                    <code-highlight [code]="schemaCode"></code-highlight>
                 </div>
             </div>
 

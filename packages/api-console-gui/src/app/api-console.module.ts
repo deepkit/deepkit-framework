@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { OverlayModule } from '@angular/cdk/overlay';
 import {
+    ButtonComponent, ButtonGroupComponent, CheckboxComponent, DropdownComponent, DropdownContainerDirective,
     DuiAppModule,
     DuiButtonModule,
     DuiCheckboxModule,
@@ -15,7 +16,7 @@ import {
     DuiSplitterModule,
     DuiTableModule,
     DuiTabsModule,
-    DuiWindowModule,
+    DuiWindowModule, IconComponent, TabButtonComponent,
 } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
 import { ConsoleComponent } from './views/console.component';
@@ -37,11 +38,12 @@ import { EnvironmentDialogComponent } from './components/environment-dialog.comp
 import { RouterModule } from '@angular/router';
 import { OverviewComponent } from './views/overview.component';
 import { MarkdownModule } from 'ngx-markdown';
-import { DeepkitUIModule } from '@deepkit/ui-library';
+import { DeepkitBoxComponent, DeepkitUIModule } from '@deepkit/ui-library';
 import { HttpRouteDetailComponent } from './views/http/route-detail.component';
 import { HttpRequestsComponent } from './views/http/results.component';
 import { RpcDetailComponent } from './views/rpc/rpc-detail.component';
 import { RpcInspectMessageComponent } from './views/rpc/rpc-inspect-message.component';
+import { CodeHighlightComponent } from '@deepkit/ui-library/dist/index.js';
 
 @NgModule({
     declarations: [
@@ -89,6 +91,17 @@ import { RpcInspectMessageComponent } from './views/rpc/rpc-inspect-message.comp
         DuiListModule,
         DuiTableModule,
         MarkdownModule.forRoot(),
+        CodeHighlightComponent,
+        ButtonComponent,
+        CodeHighlightComponent,
+        CodeHighlightComponent,
+        DropdownComponent,
+        IconComponent,
+        CheckboxComponent,
+        DropdownContainerDirective,
+        ButtonGroupComponent,
+        TabButtonComponent,
+        DeepkitBoxComponent,
     ],
     providers: [
         {

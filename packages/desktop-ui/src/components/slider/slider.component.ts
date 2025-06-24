@@ -10,7 +10,7 @@
 
 import { booleanAttribute, Component, computed, ElementRef, HostListener, input, viewChild, ViewChild } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
-import { clamp, injectElementRef } from '../app/index.js';
+import { clamp, injectElementRef } from '../app/utils';
 
 @Component({
     selector: 'dui-slider',
@@ -28,8 +28,6 @@ import { clamp, injectElementRef } from '../app/index.js';
     providers: [ngValueAccessor(SliderComponent)],
 })
 export class SliderComponent extends ValueAccessorBase<number> {
-    @ViewChild('knob', { static: true }) knob?: ElementRef;
-
     min = input(0);
     steps = input(0.01);
     max = input(1);
@@ -49,7 +47,7 @@ export class SliderComponent extends ValueAccessorBase<number> {
     });
 
     knobLeft = computed(() => {
-        return this.normalizedValue() / this.max() * 100;
+        return (this.normalizedValue() - this.min()) / (this.max() - this.min()) * 100;
     });
 
     private down = false;

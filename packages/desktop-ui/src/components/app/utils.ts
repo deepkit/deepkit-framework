@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ApplicationRef, ChangeDetectorRef, Directive, ElementRef, HostListener, inject, input, OnChanges } from '@angular/core';
+import { Directive, ElementRef, HostListener, inject, input, OnChanges } from '@angular/core';
 import { nextTick } from '@deepkit/core';
 import { Electron } from '../../core/utils';
 import { DOCUMENT } from '@angular/common';
@@ -66,52 +66,5 @@ export function scheduleWindowResizeEvent() {
     lastScheduleResize = nextTick(() => {
         window.dispatchEvent(new Event('resize'));
         lastScheduleResize = undefined;
-    });
-}
-
-
-let lastFrameRequest: any;
-let lastFrameRequestStack = new Set<ChangeDetectorRef>();
-let lastFrameRequestStackDoneCb: (() => void)[] = [];
-
-export class ZonelessChangeDetector {
-    static app: ApplicationRef | undefined = undefined;
-
-    static getApp() {
-        if (!ZonelessChangeDetector.app) {
-            throw new Error('ZonelessChangeDetector.app not set yet');
-        }
-
-        return ZonelessChangeDetector.app;
-    }
-}
-
-/**
- * This handy function makes sure that in the next animation frame the given ChangeDetectorRef is called.
- * It makes automatically sure that it is only called once per frame.
- */
-export function detectChangesNextFrame(cd?: ChangeDetectorRef, done?: () => any) {
-    if (cd) {
-        if (lastFrameRequestStack.has(cd)) return;
-        lastFrameRequestStack.add(cd);
-        if (done) lastFrameRequestStackDoneCb.push(done);
-    }
-
-    if (lastFrameRequest) {
-        return;
-    }
-
-    lastFrameRequest = nextTick(() => {
-        lastFrameRequest = undefined;
-        for (const i of lastFrameRequestStack) {
-            i.detectChanges();
-        }
-        for (const i of lastFrameRequestStackDoneCb) {
-            i();
-        }
-        //since ivy we have to use tick() and can not use i.detectChanges().
-        lastFrameRequestStackDoneCb = [];
-        lastFrameRequestStack.clear();
-        ZonelessChangeDetector.getApp().tick();
     });
 }

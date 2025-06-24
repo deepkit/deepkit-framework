@@ -14,10 +14,8 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "sideEffects": false,
-  "main": "dist/fesm2022/deepkit-desktop-ui.mjs",
-  "module": "dist/fesm2022/deepkit-desktop-ui.mjs",
-  "es2020": "dist/fesm2022/deepkit-desktop-ui.mjs",
-  "typings": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "exports": {
     "./package.json": {
       "default": "./package.json"
@@ -33,37 +31,26 @@
     },
     ".": {
       "types": "./dist/index.d.ts",
-      "esm2020": "./dist/fesm2022/deepkit-desktop-ui.mjs",
-      "esm": "./dist/fesm2022/deepkit-desktop-ui.mjs",
       "default": "./dist/fesm2022/deepkit-desktop-ui.mjs"
     }
   },
   "scripts": {
     "font": "node bin/create-font.js",
-    "build": "rm -rf .angular && ng-packagr --config tsconfig.prod.json && rm dist/.npmignore",
+    "build": "npm run font && rm -rf .angular && ng-packagr --config tsconfig.prod.json && rm dist/.npmignore",
     "watch": "ng-packagr --config tsconfig.prod.json --watch",
+    "docjson": "rm -f docs.json && typedoc --json docs.json --options ../../typedoc.js src/index.ts && cp docs.json src/assets/docs.json",
     "prepublishOnly": "webpack && node bin/create-font.js"
   },
   "browserslist": [
     "last 2 Chrome versions"
   ],
   "dependencies": {
-    "@types/hammerjs": "^2.0.36",
-    "hammerjs": "^2.0.8",
-    "on-change": "^4.0.2",
-    "path": "^0.12.7",
-    "tslib": "^2.0.0"
+    "on-change": "^4.0.2"
   },
   "publishConfig": {
     "access": "public"
   },
   "peerDependencies": {
-    "@deepkit/core": "^1.0.1",
-    "@deepkit/core-rxjs": "^1.0.1",
-    "@deepkit/event": "^1.0.1",
-    "@deepkit/type": "^1.0.1"
-  },
-  "devDependencies": {
     "@angular-devkit/build-angular": "^20.0.3",
     "@angular/animations": "^20.0.4",
     "@angular/cdk": "^20.0.3",
@@ -76,6 +63,12 @@
     "@angular/platform-browser": "^20.0.4",
     "@angular/platform-browser-dynamic": "^20.0.4",
     "@angular/router": "^20.0.4",
+    "@deepkit/core": "^1.0.1",
+    "@deepkit/core-rxjs": "^1.0.1",
+    "@deepkit/event": "^1.0.1",
+    "@deepkit/type": "^1.0.1"
+  },
+  "devDependencies": {
     "@deepkit/core": "^1.0.5",
     "@deepkit/core-rxjs": "^1.0.9",
     "@deepkit/event": "^1.0.12",

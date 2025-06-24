@@ -23,11 +23,11 @@ import { BrowserState } from '../../browser-state';
     styles: [`
         .undefined,
         .null {
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
 
         .date-ms {
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
     `],
     standalone: false

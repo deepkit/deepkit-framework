@@ -18,12 +18,12 @@ dui-icon.help-icon {
 
 :host .decoration {
     padding: 5px 8px;
-    border-bottom: 1px solid var(--line-color-light);
+    border-bottom: 1px solid var(--dui-line-color-light);
 }
 
 .description {
     font-size: 12px;
-    color: var(--text-light);
+    color: var(--dui-text-light);
 }
 
 .help-code {
