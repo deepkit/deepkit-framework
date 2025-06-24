@@ -49,10 +49,9 @@
     }
 }
 
-.code-generation-code {
+.code-generation-code ::ng-deep {
     height: 100%;
-    > pre {
-        padding: 5px 12px;
-        overflow: unset;
+    pre {
+        padding: 5px 12px !important;
     }
 }

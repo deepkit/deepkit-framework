@@ -1,4 +1,4 @@
-import { booleanAttribute, Component, computed, input } from '@angular/core';
+import { booleanAttribute, Component, computed, input, ViewEncapsulation } from '@angular/core';
 // @ts-ignore
 import * as prism from 'prismjs';
 import 'prismjs/components/prism-typescript';
@@ -14,76 +14,15 @@ import 'prismjs/components/prism-json';
         '[class.overlay-scrollbar-small]': 'true',
         '[class.inline]': 'inline()',
     },
-    styles: [`
-        :host:not(.inline) {
-            display: block;
-            margin: 12px 0;
-            max-width: 100%;
-        }
-
-        pre {
-            overflow: auto;
-            overflow: overlay;
-            @supports not (-webkit-hyphens: none) {
-                /* in safari this breaks scrolling styling, so we need to exclude it*/
-                scrollbar-width: thin;
-            }
-            max-width: 100%;
-            margin: 0;
-
-            scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
-
-            &::-webkit-scrollbar {
-                height: 10px;
-                width: 10px;
-                background: transparent;
-            }
-
-            &::-webkit-scrollbar-thumb {
-                background: rgba(169, 173, 175, 0.77);
-                border-radius: 8px;
-                border: 2px solid rgba(0, 0, 0, 0.01);
-                background-clip: padding-box;
-
-                &:hover {
-                    cursor: default;
-                    background: #727475;
-                    border: 2px solid rgba(0, 0, 0, 0.01);
-                    background-clip: padding-box;
-                }
-            }
-        }
-        
-        :host.inline pre {
-            border: unset;
-            background: unset;
-            padding: unset;
-            font-size: unset;
-            overflow: unset;
-            white-space: unset;
-        }
-
-        pre.codeHighlight[title] {
-            padding-top: 8px;
-        }
-
-        pre.codeHighlight[title]:before {
-            display: block;
-            text-align: center;
-            content: attr(title);
-            margin-bottom: 10px;
-            font-size: 14px;
-            color: #b0b0b0;
-            font-style: italic;
-        }
-    `],
+    styleUrl: './code-highlight.component.scss',
     template: `
       <ng-content></ng-content>
       <pre class="code codeHighlight text-selection language-{{lang()}}" [attr.title]="title() || undefined" [innerHTML]="html()"></pre>
     `,
+    encapsulation: ViewEncapsulation.None,
 })
 export class CodeHighlightComponent {
-    code = input('');
+    code = input<any>('');
     file = input('');
     lang = input('typescript');
     title = input<string>('');
@@ -91,8 +30,8 @@ export class CodeHighlightComponent {
     inline = input(false, { transform: booleanAttribute });
 
     html = computed(() => {
-        const code = this.code();
-        if (!code) return '';
+        const raw = this.code();
+        const code = 'string' === typeof raw ? raw : JSON.stringify(raw) || '';
 
         const firstLineIndentLength = code.match(/^\s+/)?.[0].length || 1;
         // Remove leading whitespace from each line

@@ -8,22 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    booleanAttribute,
-    Component,
-    computed,
-    contentChild,
-    ContentChild,
-    contentChildren,
-    Directive,
-    ElementRef,
-    HostBinding,
-    HostListener,
-    input,
-    OnDestroy,
-    TemplateRef,
-    viewChild,
-} from '@angular/core';
+import { booleanAttribute, Component, computed, contentChild, ContentChild, contentChildren, Directive, ElementRef, HostBinding, HostListener, input, OnDestroy, TemplateRef, viewChild } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { DropdownComponent, DropdownItemComponent, DropdownSplitterComponent, OpenDropdownDirective } from '../button/dropdown.component';
 import { ButtonComponent, ButtonGroupComponent } from '../button/button.component';
@@ -91,9 +76,6 @@ export class OptionDirective {
 export class OptionSeparatorDirective {
     constructor() {
     }
-}
-
-class NotSelected {
 }
 
 @Component({
@@ -167,7 +149,7 @@ class NotSelected {
         DropdownItemComponent,
     ],
 })
-export class SelectBoxComponent<T> extends ValueAccessorBase<T | NotSelected> implements OnDestroy {
+export class SelectBoxComponent<T> extends ValueAccessorBase<T> implements OnDestroy {
     placeholder = input<string>('');
 
     /**
@@ -187,7 +169,7 @@ export class SelectBoxComponent<T> extends ValueAccessorBase<T | NotSelected> im
     public label: string = '';
 
     optionsValueMap = computed(() => {
-        const map = new Map<T | NotSelected | undefined, OptionDirective>();
+        const map = new Map<T | undefined, OptionDirective>();
         for (const option of this.options()) {
             map.set(option.value(), option);
         }
@@ -198,7 +180,6 @@ export class SelectBoxComponent<T> extends ValueAccessorBase<T | NotSelected> im
 
     constructor() {
         super();
-        this.writeValue(new NotSelected);
     }
 
     protected isSeparator(item: any): boolean {
@@ -223,12 +204,12 @@ export class SelectBoxComponent<T> extends ValueAccessorBase<T | NotSelected> im
         this.dropdown()?.open();
     }
 
-    writeValue(value?: T | NotSelected): void {
+    writeValue(value?: T): void {
         super.writeValue(value);
     }
 
     @HostBinding('class.selected')
     protected get isSelected(): boolean {
-        return !(this.value() instanceof NotSelected);
+        return this.value() !== undefined;
     }
 }

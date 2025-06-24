@@ -1,4 +1,4 @@
-import { ApplicationConfig, importProvidersFrom, provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { ApplicationConfig, importProvidersFrom, provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter, withHashLocation } from '@angular/router';
 import { DuiAppModule, DuiWindowModule } from '@deepkit/desktop-ui';
 import { RpcViewComponent } from './views/rpc.component';
@@ -10,7 +10,7 @@ export const appConfig: ApplicationConfig = {
         provideRouter([
             { path: '', component: RpcViewComponent },
         ], withHashLocation()),
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         importProvidersFrom(DuiAppModule.forRoot()),
         importProvidersFrom(DuiWindowModule.forRoot()),
     ],

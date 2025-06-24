@@ -1,147 +1,170 @@
-<div class="routes" [style.flexBasis.px]="routesWidth">
-    <dui-button-group style="margin: 6px 12px;">
-        <dui-tab-button [active]="view === 'http'" routerLink="/api/console" [queryParams]="{view: 'http'}">HTTP</dui-tab-button>
-        <dui-tab-button [active]="view === 'rpc'" routerLink="/api/console" [queryParams]="{view: 'rpc'}">RPC</dui-tab-button>
+<div class="routes" [style.flex-basis.px]="routesWidth">
+  <dui-button-group style="margin: 6px 12px;">
+    <dui-tab-button [active]="view === 'http'" routerLink="/api/console" [queryParams]="{view: 'http'}">HTTP</dui-tab-button>
+    <dui-tab-button [active]="view === 'rpc'" routerLink="/api/console" [queryParams]="{view: 'rpc'}">RPC</dui-tab-button>
 
-        <dui-button textured style="margin-left: auto" [openDropdown]="env">{{store.state.activeEnvironment?.name}}</dui-button>
-        <dui-dropdown #env>
-            <dui-dropdown-item *ngFor="let e of store.state.environments; let i = index; trackBy: trackByIndex"
-                               [selected]="store.state.activeEnvironment === e"
-                               (click)="store.state.activeEnvironment = e; updateRouteState()"
-            >{{e.name}}</dui-dropdown-item>
-            <dui-dropdown-separator></dui-dropdown-separator>
-            <dui-dropdown-item (click)="newEnvironment()">New Environment</dui-dropdown-item>
-        </dui-dropdown>
+    <dui-button textured style="margin-left: auto" [openDropdown]="env">{{store.state.activeEnvironment?.name}}</dui-button>
+    <dui-dropdown #env>
+      @for (e of store.state.environments; track $index; let i = $index) {
+        <dui-dropdown-item
+          [selected]="store.state.activeEnvironment === e"
+          (click)="store.state.activeEnvironment = e; updateRouteState()"
+        >{{e.name}}</dui-dropdown-item>
+      }
+      <dui-dropdown-separator></dui-dropdown-separator>
+      <dui-dropdown-item (click)="newEnvironment()">New Environment</dui-dropdown-item>
+    </dui-dropdown>
 
-        <dui-icon name="settings" clickable (click)="openEnvironment()"></dui-icon>
-    </dui-button-group>
+    <dui-icon name="settings" clickable (click)="openEnvironment()"></dui-icon>
+  </dui-button-group>
 
-    <div class="filter">
-        <ng-container *ngIf="view === 'http'">
-            <dui-input round lightFocus placeholder="Filter ..." [(ngModel)]="store.state.viewHttp.filterPath" (ngModelChange)="updateFilter()"></dui-input>
-            <dui-button-group padding="none">
-                <dui-select small style="width: 85px;" textured [(ngModel)]="store.state.viewHttp.filterMethod" (ngModelChange)="updateFilter()">
-                    <dui-option [value]="''">All methods</dui-option>
-                    <dui-option *ngFor="let label of methods; trackBy: trackByIndex" [value]="label">{{label}}</dui-option>
-                </dui-select>
-                <dui-select small style="width: 65px;" textured [(ngModel)]="store.state.viewHttp.filterCategory" (ngModelChange)="updateFilter()">
-                    <dui-option [value]="''">All categories</dui-option>
-                    <dui-option *ngFor="let label of httpCategories; trackBy: trackByIndex" [value]="label">{{label}}</dui-option>
-                </dui-select>
-                <dui-select small style="width: 65px;" textured [(ngModel)]="store.state.viewHttp.filterGroup" (ngModelChange)="updateFilter()">
-                    <dui-option [value]="''">All groups</dui-option>
-                    <dui-option *ngFor="let label of httpGroups; trackBy: trackByIndex" [value]="label">{{label}}</dui-option>
-                </dui-select>
-            </dui-button-group>
-        </ng-container>
-        <ng-container *ngIf="view === 'rpc'">
-            <dui-input round lightFocus placeholder="Filter ..." [(ngModel)]="store.state.viewRpc.filterPath" (ngModelChange)="updateFilter()"></dui-input>
-            <dui-button-group padding="none">
-                <dui-select small style="width: 65px;" textured [(ngModel)]="store.state.viewRpc.filterCategory" (ngModelChange)="updateFilter()">
-                    <dui-option [value]="''">All categories</dui-option>
-                    <dui-option *ngFor="let label of rpcCategories; trackBy: trackByIndex" [value]="label">{{label}}</dui-option>
-                </dui-select>
-                <dui-select small style="width: 65px;" textured [(ngModel)]="store.state.viewRpc.filterGroup" (ngModelChange)="updateFilter()">
-                    <dui-option [value]="''">All groups</dui-option>
-                    <dui-option *ngFor="let label of rpcGroups; trackBy: trackByIndex" [value]="label">{{label}}</dui-option>
-                </dui-select>
-            </dui-button-group>
-        </ng-container>
-    </div>
+  <div class="filter">
+    @if (view === 'http') {
+      <dui-input round lightFocus placeholder="Filter ..." [(ngModel)]="store.state.viewHttp.filterPath" (ngModelChange)="updateFilter()"></dui-input>
+      <dui-button-group padding="none">
+        <dui-select small style="width: 85px;" textured [(ngModel)]="store.state.viewHttp.filterMethod" (ngModelChange)="updateFilter()">
+          <dui-option [value]="''">All methods</dui-option>
+          @for (label of methods; track $index) {
+            <dui-option [value]="label">{{label}}</dui-option>
+          }
+        </dui-select>
+        <dui-select small style="width: 65px;" textured [(ngModel)]="store.state.viewHttp.filterCategory" (ngModelChange)="updateFilter()">
+          <dui-option [value]="''">All categories</dui-option>
+          @for (label of httpCategories; track $index) {
+            <dui-option [value]="label">{{label}}</dui-option>
+          }
+        </dui-select>
+        <dui-select small style="width: 65px;" textured [(ngModel)]="store.state.viewHttp.filterGroup" (ngModelChange)="updateFilter()">
+          <dui-option [value]="''">All groups</dui-option>
+          @for (label of httpGroups; track $index) {
+            <dui-option [value]="label">{{label}}</dui-option>
+          }
+        </dui-select>
+      </dui-button-group>
+    }
+    @if (view === 'rpc') {
+      <dui-input round lightFocus placeholder="Filter ..." [(ngModel)]="store.state.viewRpc.filterPath" (ngModelChange)="updateFilter()"></dui-input>
+      <dui-button-group padding="none">
+        <dui-select small style="width: 65px;" textured [(ngModel)]="store.state.viewRpc.filterCategory" (ngModelChange)="updateFilter()">
+          <dui-option [value]="''">All categories</dui-option>
+          @for (label of rpcCategories; track $index) {
+            <dui-option [value]="label">{{label}}</dui-option>
+          }
+        </dui-select>
+        <dui-select small style="width: 65px;" textured [(ngModel)]="store.state.viewRpc.filterGroup" (ngModelChange)="updateFilter()">
+          <dui-option [value]="''">All groups</dui-option>
+          @for (label of rpcGroups; track $index) {
+            <dui-option [value]="label">{{label}}</dui-option>
+          }
+        </dui-select>
+      </dui-button-group>
+    }
+  </div>
 
+  @if (view === 'rpc') {
     <dui-list [class.group-by-controller]="store.state.viewRpc.groupBy === 'controller'"
-              [ngModel]="store.state.action" (ngModelChange)="navigateToAction($event)" *ngIf="view === 'rpc'">
-        <ng-container *ngFor="let action of filteredActions; let i = index; trackBy: trackByIndex">
-            <ng-container *ngIf="store.state.viewRpc.groupBy === 'controller'">
-                <ng-container *ngIf="!filteredActions[i - 1] || filteredActions[i - 1].controllerClassName !== action.controllerClassName">
-                    <dui-list-title class="action" (click)="toggleRpcSection(action.controllerPath)">
-                        <dui-icon clickable [name]="!store.state.viewRpc.closed[action.controllerPath] ? 'arrow_down' : 'arrow_right'"></dui-icon>
-                        {{action.controllerClassName}} <span class="path">{{action.controllerPath}}</span>
-                    </dui-list-title>
-                </ng-container>
-            </ng-container>
-
-            <dui-list-item [value]="action" class="action" *ngIf="store.state.viewRpc.groupBy !== 'controller' || !store.state.viewRpc.closed[action.controllerPath]">
-                <span class="signature" *ngIf="store.state.viewRpc.groupBy !== 'controller'">{{action.controllerClassName}}.</span>{{action.methodName}}(<span class="signature">{{action.parameterSignature}}</span>): <span class="signature">{{action.returnSignature}}</span>
-
-                <div *ngIf="store.state.viewRpc.showDescription && action.description" class="list-description">
-                    {{action.description}}
+      [ngModel]="store.state.action" (ngModelChange)="navigateToAction($event)">
+      @for (action of filteredActions; track $index; let i = $index) {
+        @if (store.state.viewRpc.groupBy === 'controller') {
+          @if (!filteredActions[i - 1] || filteredActions[i - 1].controllerClassName !== action.controllerClassName) {
+            <dui-list-title class="action" (click)="toggleRpcSection(action.controllerPath)">
+              <dui-icon clickable [name]="!store.state.viewRpc.closed[action.controllerPath] ? 'arrow_down' : 'arrow_right'"></dui-icon>
+              {{action.controllerClassName}} <span class="path">{{action.controllerPath}}</span>
+            </dui-list-title>
+          }
+        }
+        @if (store.state.viewRpc.groupBy !== 'controller' || !store.state.viewRpc.closed[action.controllerPath]) {
+          <dui-list-item [value]="action" class="action">
+            @if (store.state.viewRpc.groupBy !== 'controller') {
+              <span class="signature">{{action.controllerClassName}}.</span>
+              }{{action.methodName}}(<span class="signature">{{action.parameterSignature}}</span>): <span class="signature">{{action.returnSignature}}</span>
+              @if (store.state.viewRpc.showDescription && action.description) {
+                <div class="list-description">
+                  {{action.description}}
                 </div>
+              }
             </dui-list-item>
-        </ng-container>
-    </dui-list>
+          }
+        }
+      </dui-list>
+    }
 
-    <dui-list [class.group-by-controller]="store.state.viewHttp.groupBy === 'controller'"
-              [ngModel]="store.state.route" (ngModelChange)="navigateToRoute($event)" *ngIf="view === 'http'">
-        <ng-container *ngFor="let route of filteredRoutes; let i = index; trackBy: trackByIndex">
-
-            <ng-container *ngIf="store.state.viewHttp.groupBy === 'controller'">
-                <ng-container *ngIf="!filteredRoutes[i - 1] || filteredRoutes[i - 1].controller !== route.controller">
-                    <dui-list-title class="action" (click)="toggleHttpSection(route.controller)">
-                        <dui-icon clickable [name]="!store.state.viewHttp.closed[route.controller] ? 'arrow_down' : 'arrow_right'"></dui-icon>
-                        {{route.controller}}
-                    </dui-list-title>
-                </ng-container>
-            </ng-container>
-
-            <ng-container *ngIf="store.state.viewHttp.groupBy === 'method'">
-                <ng-container *ngIf="!filteredRoutes[i - 1] || filteredRoutes[i - 1].httpMethods[0] !== route.httpMethods[0]">
-                    <dui-list-title>
-                        {{route.httpMethods[0]}}
-                    </dui-list-title>
-                </ng-container>
-
-            </ng-container>
-
-            <dui-list-item [value]="route" *ngIf="store.state.viewHttp.groupBy !== 'controller' || !store.state.viewHttp.closed[route.controller]">
-                <div class="list-item">
-                    <div class="path">
-                        {{route.path}}
-                    </div>
-                    <div class="method text-light">{{route.httpMethods.join(', ')}}</div>
+    @if (view === 'http') {
+      <dui-list [class.group-by-controller]="store.state.viewHttp.groupBy === 'controller'"
+        [ngModel]="store.state.route" (ngModelChange)="navigateToRoute($event)">
+        @for (route of filteredRoutes; track $index; let i = $index) {
+          @if (store.state.viewHttp.groupBy === 'controller') {
+            @if (!filteredRoutes[i - 1] || filteredRoutes[i - 1].controller !== route.controller) {
+              <dui-list-title class="action" (click)="toggleHttpSection(route.controller)">
+                <dui-icon clickable [name]="!store.state.viewHttp.closed[route.controller] ? 'arrow_down' : 'arrow_right'"></dui-icon>
+                {{route.controller}}
+              </dui-list-title>
+            }
+          }
+          @if (store.state.viewHttp.groupBy === 'method') {
+            @if (!filteredRoutes[i - 1] || filteredRoutes[i - 1].httpMethods[0] !== route.httpMethods[0]) {
+              <dui-list-title>
+                {{route.httpMethods[0]}}
+              </dui-list-title>
+            }
+          }
+          @if (store.state.viewHttp.groupBy !== 'controller' || !store.state.viewHttp.closed[route.controller]) {
+            <dui-list-item [value]="route">
+              <div class="list-item">
+                <div class="path">
+                  {{route.path}}
                 </div>
-                <div *ngIf="store.state.viewHttp.showDescription && route.description" class="list-description">
-                    {{route.description}}
+                <div class="method text-light">{{route.httpMethods.join(', ')}}</div>
+              </div>
+              @if (store.state.viewHttp.showDescription && route.description) {
+                <div class="list-description">
+                  {{route.description}}
                 </div>
+              }
             </dui-list-item>
-        </ng-container>
-    </dui-list>
+          }
+        }
+      </dui-list>
+    }
 
     <div class="actions-bottom">
-        <dui-checkbox class="center" [(ngModel)]="store.state.viewHttp.showDescription" (ngModelChange)="store.store()">Description</dui-checkbox>
-        <div class="group-by">
-            <span style="margin-right: 5px;">Group by:</span>
-            <dui-select textured small *ngIf="view === 'http'" [(ngModel)]="store.state.viewHttp.groupBy" (ngModelChange)="updateFilter()">
-                <dui-option value="none">Nothing</dui-option>
-                <dui-option value="controller">Controller</dui-option>
-                <dui-option value="method">Method</dui-option>
-            </dui-select>
-            <dui-select textured small *ngIf="view === 'rpc'" [(ngModel)]="store.state.viewRpc.groupBy" (ngModelChange)="updateFilter()">
-                <dui-option value="none">Nothing</dui-option>
-                <dui-option value="controller">Controller</dui-option>
-            </dui-select>
-        </div>
+      <dui-checkbox class="center" [(ngModel)]="store.state.viewHttp.showDescription" (ngModelChange)="store.store()">Description</dui-checkbox>
+      <div class="group-by">
+        <span style="margin-right: 5px;">Group by:</span>
+        @if (view === 'http') {
+          <dui-select textured small [(ngModel)]="store.state.viewHttp.groupBy" (ngModelChange)="updateFilter()">
+            <dui-option value="none">Nothing</dui-option>
+            <dui-option value="controller">Controller</dui-option>
+            <dui-option value="method">Method</dui-option>
+          </dui-select>
+        }
+        @if (view === 'rpc') {
+          <dui-select textured small [(ngModel)]="store.state.viewRpc.groupBy" (ngModelChange)="updateFilter()">
+            <dui-option value="none">Nothing</dui-option>
+            <dui-option value="controller">Controller</dui-option>
+          </dui-select>
+        }
+      </div>
     </div>
 
-    <dui-splitter (modelChange)="routesWidth = $event; cd.detectChanges()" position="right"></dui-splitter>
-</div>
+    <dui-splitter [size]="routesWidth" inverted (sizeChange)="routesWidth = $event; cd.detectChanges()" position="right"></dui-splitter>
+  </div>
 
-<ng-container *ngIf="view === 'rpc'">
+  @if (view === 'rpc') {
     <div class="rpc-form overlay-scrollbar-small">
-        <ng-container *ngIf="store.state.action as action">
-            <api-console-action-detail [action]="action"></api-console-action-detail>
-        </ng-container>
+      @if (store.state.action; as action) {
+        <api-console-action-detail [action]="action"></api-console-action-detail>
+      }
     </div>
-</ng-container>
+  }
 
-<ng-container *ngIf="view === 'http'">
+  @if (view === 'http') {
     <div class="http-form overlay-scrollbar-small">
-        <ng-container *ngIf="store.state.route as route">
-            <ng-container *ngIf="store.state.routeStates[route.id] as routeState">
-                <api-console-route-detail #httpRouteDetail [route]="route" [routeState]="routeState" (executed)="updateRequests()"></api-console-route-detail>
-            </ng-container>
-        </ng-container>
+      @if (store.state.route; as route) {
+        @if (store.state.routeStates[route.id]; as routeState) {
+          <api-console-route-detail #httpRouteDetail [route]="route" [routeState]="routeState" (executed)="updateRequests()"></api-console-route-detail>
+        }
+      }
     </div>
-
     <api-console-http-routes #httpRequests (executeSelectedRoute)="executeSelectedRoute()"></api-console-http-routes>
-</ng-container>
+  }

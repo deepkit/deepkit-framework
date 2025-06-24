@@ -2,17 +2,27 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ControllerClient } from '../client';
 import { ApiDocument, ApiRoute } from '@deepkit/api-console-api';
 import { filterAndSortRoutes } from './view-helper';
-import { headerStatusCodes, trackByIndex, typeToTSJSONInterface } from '../utils';
+import { headerStatusCodes, typeToTSJSONInterface } from '../utils';
 import { Subscriptions } from '@deepkit/core-rxjs';
 import { typeSettings } from '@deepkit/type';
+import { AsyncPipe } from '@angular/common';
+import { MarkdownComponent } from 'ngx-markdown';
+import { ButtonComponent } from '@deepkit/desktop-ui';
+import { RouterLink } from '@angular/router';
+import { CodeHighlightComponent } from '@deepkit/ui-library';
 
 @Component({
     templateUrl: './overview.component.html',
+    imports: [
+        AsyncPipe,
+        MarkdownComponent,
+        ButtonComponent,
+        RouterLink,
+        CodeHighlightComponent,
+    ],
     styleUrls: ['./overview.component.scss'],
-    standalone: false
 })
 export class OverviewComponent implements OnDestroy, OnInit {
-    trackByIndex = trackByIndex;
     typeToTSJSONInterface = typeToTSJSONInterface;
     headerStatusCodes = headerStatusCodes;
     public filteredRoutes: ApiRoute[] = [];

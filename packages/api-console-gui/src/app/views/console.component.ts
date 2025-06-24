@@ -1,25 +1,66 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ControllerClient } from '../client';
 import { ApiAction, ApiEntryPoints, ApiRoute } from '@deepkit/api-console-api';
-import { methods, trackByIndex } from '../utils';
+import { methods } from '../utils';
 import { Environment, RouteState, Store } from '../store';
 import { copy } from '@deepkit/core';
 import { Subscription } from 'rxjs';
-import { DuiDialog } from '@deepkit/desktop-ui';
+import {
+    ButtonComponent,
+    ButtonGroupComponent,
+    CheckboxComponent,
+    DropdownComponent,
+    DropdownItemComponent,
+    DropdownSplitterComponent,
+    DuiDialog,
+    IconComponent,
+    InputComponent,
+    ListComponent,
+    ListItemComponent,
+    ListTitleComponent,
+    OpenDropdownDirective,
+    OptionDirective,
+    SelectBoxComponent,
+    SplitterComponent,
+    TabButtonComponent,
+} from '@deepkit/desktop-ui';
 import { EnvironmentDialogComponent } from '../components/environment-dialog.component';
 import { filterAndSortActions, filterAndSortRoutes } from './view-helper';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpRouteDetailComponent } from './http/route-detail.component';
 import { HttpRequestsComponent } from './http/results.component';
 import { ReflectionKind, stringifyType } from '@deepkit/type';
+import { FormsModule } from '@angular/forms';
+import { RpcDetailComponent } from './rpc/rpc-detail.component';
 
 @Component({
     templateUrl: './console.component.html',
+    imports: [
+        ButtonGroupComponent,
+        TabButtonComponent,
+        RouterLink,
+        ButtonComponent,
+        OpenDropdownDirective,
+        DropdownComponent,
+        DropdownItemComponent,
+        DropdownSplitterComponent,
+        IconComponent,
+        InputComponent,
+        SelectBoxComponent,
+        FormsModule,
+        OptionDirective,
+        ListComponent,
+        ListTitleComponent,
+        ListItemComponent,
+        CheckboxComponent,
+        SplitterComponent,
+        RpcDetailComponent,
+        HttpRouteDetailComponent,
+        HttpRequestsComponent,
+    ],
     styleUrls: ['./console.component.scss'],
-    standalone: false
 })
 export class ConsoleComponent implements OnInit, OnDestroy {
-    trackByIndex = trackByIndex;
     methods = methods;
 
     public entryPoints = new ApiEntryPoints;
@@ -116,11 +157,13 @@ export class ConsoleComponent implements OnInit, OnDestroy {
     }
 
     navigateToAction(action?: ApiAction) {
-        this.router.navigate(['api/console'], { queryParams: { view: 'rpc', action: action?.id } });
+        if (!action) return;
+        void this.router.navigate(['api/console'], { queryParams: { view: 'rpc', action: action.id } });
     }
 
-    navigateToRoute(route?: ApiRoute) {
-        this.router.navigate(['api/console'], { queryParams: { view: 'http', route: route?.id } });
+    navigateToRoute(route: ApiRoute) {
+        if (!route) return;
+        void this.router.navigate(['api/console'], { queryParams: { view: 'http', route: route.id } });
     }
 
     setRoute(route?: ApiRoute) {
@@ -176,7 +219,7 @@ export class ConsoleComponent implements OnInit, OnDestroy {
         for (const action of this.entryPoints.rpcActions) {
             const args: string[] = [];
             for (const property of action.getParametersType()) {
-                args.push(property.name + (property.optional || property.default !== undefined ? '?' : '') + ': ' + stringifyType(property.type, {showNames: true, showFullDefinition: false}));
+                args.push(property.name + (property.optional || property.default !== undefined ? '?' : '') + ': ' + stringifyType(property.type, { showNames: true, showFullDefinition: false }));
             }
 
             action.parameterSignature = args.join(', ');
@@ -184,7 +227,7 @@ export class ConsoleComponent implements OnInit, OnDestroy {
             let resultsType = action.getResultsType();
             if (resultsType) {
                 if (resultsType.kind === ReflectionKind.promise) resultsType = resultsType.type;
-                action.returnSignature = stringifyType(resultsType, {showNames: true, showFullDefinition: false});
+                action.returnSignature = stringifyType(resultsType, { showNames: true, showFullDefinition: false });
             }
         }
 
@@ -221,6 +264,7 @@ export class ConsoleComponent implements OnInit, OnDestroy {
 
     protected selectRouteFromRoute(force: boolean = false) {
         const selectedRoute = this.activatedRoute.snapshot.queryParams.route;
+        console.log('this.activatedRoute.snapshot.queryParams', this.activatedRoute.snapshot.queryParams);
         if (force || selectedRoute && (!this.store.state.route || this.store.state.route.id !== selectedRoute)) {
             const route = this.entryPoints.httpRoutes.find(v => v.id === selectedRoute);
             if (!route) return;

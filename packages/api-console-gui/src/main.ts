@@ -1,8 +1,15 @@
-import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
+import { bootstrapApplication } from '@angular/platform-browser';
+import { provideRouter, withHashLocation } from '@angular/router';
+import { provideMarkdown } from 'ngx-markdown';
+import { AppComponent } from './app/app.component';
+import { routes } from './app/routes';
+import { provideZonelessChangeDetection } from '@angular/core';
 
-import { AppModule } from './app/app.module';
-
-platformBrowserDynamic().bootstrapModule(AppModule, {
-  ngZone: 'noop'
+bootstrapApplication(AppComponent, {
+    providers: [
+        provideZonelessChangeDetection(),
+        provideRouter(routes, withHashLocation()),
+        provideMarkdown(),
+    ],
 })
-  .catch(err => console.error(err));
+    .catch(err => console.error(err));

@@ -5,7 +5,7 @@ import { IconComponent, SplitterComponent } from '@deepkit/desktop-ui';
     selector: 'deepkit-toggle-box',
     template: `
       @if (visible()) {
-        <dui-splitter (sizeChange)="changeHeight($event)" position="top"></dui-splitter>
+        <dui-splitter [(size)]="height" position="top"></dui-splitter>
       }
 
       <div class="actions">
@@ -25,8 +25,8 @@ import { IconComponent, SplitterComponent } from '@deepkit/desktop-ui';
       }
     `,
     host: {
-        '[class.visible]': 'visible',
-        '[style.flex-basis.px]': 'height',
+        '[class.visible]': 'visible()',
+        '[style.flex-basis.px]': 'height()',
     },
     imports: [
         SplitterComponent,
@@ -39,10 +39,6 @@ export class ToggleBoxComponent {
     height = model(170);
 
     title = input('');
-
-    changeHeight(height: number) {
-        this.height.set(height);
-    }
 
     toggleVisibility() {
         this.visible.update(v => !v);

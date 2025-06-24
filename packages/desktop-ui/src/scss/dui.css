@@ -140,6 +140,12 @@ body {
     user-select: none;
     -webkit-user-select: none;
 
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+
+    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+
     /**:not(input,textarea) {*/
     /*}*/
 
@@ -160,17 +166,11 @@ body {
         font-size: 12px;
     }
 
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
-    box-sizing: border-box;
-
     * {
         -webkit-box-sizing: border-box;
         -moz-box-sizing: border-box;
         box-sizing: border-box;
     }
-
-    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
 
     ::-webkit-scrollbar {
         width: 10px;

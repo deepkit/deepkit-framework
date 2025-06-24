@@ -23,37 +23,37 @@ import { FormsModule } from '@angular/forms';
         <doc-code-frame>
           <div class="examples">
             <div>
-              <dui-select [(ngModel)]="radioValue" placeholder="Please choose">
+              <dui-select [(ngModel)]="value" placeholder="Please choose">
                 <dui-option value="a">Option A</dui-option>
                 <dui-option value="b">Option B</dui-option>
                 <dui-option value="c">Option C</dui-option>
               </dui-select>
-              <dui-select small [(ngModel)]="radioValue" placeholder="Please choose">
+              <dui-select small [(ngModel)]="value" placeholder="Please choose">
                 <dui-option value="a">Option A</dui-option>
                 <dui-option value="b">Option B</dui-option>
                 <dui-option value="c">Option C</dui-option>
               </dui-select>
             </div>
-            <dui-select [(ngModel)]="radioValue" textured placeholder="Please choose">
+            <dui-select [(ngModel)]="value" textured placeholder="Please choose">
               <dui-option value="a">Option A</dui-option>
               <dui-option value="b">Option B</dui-option>
               <dui-option value="c">Option C</dui-option>
             </dui-select>
-            <dui-select disabled [(ngModel)]="radioValue" textured placeholder="Please choose">
+            <dui-select disabled [(ngModel)]="value" textured placeholder="Please choose">
               <dui-option value="a">Option A</dui-option>
               <dui-option value="b">Option B</dui-option>
               <dui-option value="c">Option C</dui-option>
             </dui-select>
-            <dui-select small [(ngModel)]="radioValue" textured placeholder="Please choose">
+            <dui-select small [(ngModel)]="value" textured placeholder="Please choose">
               <dui-option value="a">Option A</dui-option>
               <dui-option value="b">Option B</dui-option>
               <dui-option value="c">Option C</dui-option>
             </dui-select>
             <p>
-              Chosen: {{ radioValue() }}
+              Chosen: {{ value() }}
             </p>
             <div>
-              <dui-select [(ngModel)]="radioValue" placeholder="Please choose">
+              <dui-select [(ngModel)]="value" placeholder="Please choose">
                 <dui-option value="a">
                   <ng-container *dynamicOption>
                     Option A
@@ -72,8 +72,8 @@ import { FormsModule } from '@angular/forms';
               </dui-select>
             </div>
             <div>
-              <dui-select [(ngModel)]="radioValue">
-                <dui-button textured (click)="radioValue.set('')">Reset</dui-button>
+              <dui-select [(ngModel)]="value">
+                <dui-button textured (click)="value.set('')">Reset</dui-button>
                 <dui-option value="a">Option A</dui-option>
                 <dui-option value="b">Option B</dui-option>
                 <dui-option value="c">Option C</dui-option>
@@ -103,40 +103,40 @@ import { FormsModule } from '@angular/forms';
 })
 export class DocDesktopUISelectboxComponent {
     manyItems = [...Array(255).keys()].map(x => x + 1);
-    radioValue = signal('a');
+    value = signal('a');
 
     code = `
 <p>
-  <dui-select [(ngModel)]="radioValue" placeholder="Please choose">
+  <dui-select [(ngModel)]="value" placeholder="Please choose">
     <dui-option value="a">Option A</dui-option>
     <dui-option value="b">Option B</dui-option>
     <dui-option value="c">Option C</dui-option>
   </dui-select>
-  <dui-select small [(ngModel)]="radioValue" placeholder="Please choose">
+  <dui-select small [(ngModel)]="value" placeholder="Please choose">
     <dui-option value="a">Option A</dui-option>
     <dui-option value="b">Option B</dui-option>
     <dui-option value="c">Option C</dui-option>
   </dui-select>
 </p>
-<dui-select [(ngModel)]="radioValue" textured placeholder="Please choose">
+<dui-select [(ngModel)]="value" textured placeholder="Please choose">
   <dui-option value="a">Option A</dui-option>
   <dui-option value="b">Option B</dui-option>
   <dui-option value="c">Option C</dui-option>
 </dui-select>
-<dui-select disabled [(ngModel)]="radioValue" textured placeholder="Please choose">
+<dui-select disabled [(ngModel)]="value" textured placeholder="Please choose">
   <dui-option value="a">Option A</dui-option>
   <dui-option value="b">Option B</dui-option>
   <dui-option value="c">Option C</dui-option>
 </dui-select>
-<dui-select small [(ngModel)]="radioValue" textured placeholder="Please choose">
+<dui-select small [(ngModel)]="value" textured placeholder="Please choose">
   <dui-option value="a">Option A</dui-option>
   <dui-option value="b">Option B</dui-option>
   <dui-option value="c">Option C</dui-option>
 </dui-select>
 <p>
-  Chosen: {{"{{"}}radioValue{{"}}"}}
+  Chosen: {{"{{"}}value{{"}}"}}
 </p>
-<dui-select [(ngModel)]="radioValue" placeholder="Please choose">
+<dui-select [(ngModel)]="value" placeholder="Please choose">
   <dui-option value="a">
     <ng-container *dynamicOption>
       <dui-emoji name="slightly_smiling_face"></dui-emoji>
@@ -156,8 +156,8 @@ export class DocDesktopUISelectboxComponent {
   </dui-option>
 </dui-select>
 <p>
-  <dui-select [(ngModel)]="radioValue">
-    <dui-button textured (click)="radioValue = ''">Reset</dui-button>
+  <dui-select [(ngModel)]="value">
+    <dui-button textured (click)="value = ''">Reset</dui-button>
     <dui-option value="a">Option A</dui-option>
     <dui-option value="b">Option B</dui-option>
     <dui-option value="c">Option C</dui-option>

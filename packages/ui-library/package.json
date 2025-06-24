@@ -12,9 +12,6 @@
     "./package.json": {
       "default": "./package.json"
     },
-    "./src/styles/style-code.scss": {
-      "default": "./src/styles/style-code.scss"
-    },
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/fesm2022/deepkit-ui-library.mjs"

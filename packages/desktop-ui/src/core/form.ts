@@ -1,4 +1,4 @@
-import { Directive, forwardRef, HostBinding, Injector, Input, OnDestroy, Type, input, model, inject, effect } from '@angular/core';
+import { Directive, effect, forwardRef, HostBinding, inject, Injector, Input, input, model, OnDestroy, Type } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, NgControl } from '@angular/forms';
 import { FormComponent } from '../components/form/form.component';
 
@@ -6,7 +6,7 @@ export function ngValueAccessor<T>(clazz: Type<T>) {
     return {
         provide: NG_VALUE_ACCESSOR,
         useExisting: forwardRef(() => clazz),
-        multi: true
+        multi: true,
     };
 }
 
@@ -15,7 +15,7 @@ export class ValueAccessorBase<T> implements ControlValueAccessor, OnDestroy {
     private _ngControl?: NgControl;
     private _ngControlFetched = false;
 
-    value = model<T | undefined>();
+    value = model<T | undefined>(undefined);
 
     disabled = model<boolean | '' | undefined>(undefined);
 
@@ -55,10 +55,12 @@ export class ValueAccessorBase<T> implements ControlValueAccessor, OnDestroy {
     required = input(false);
 
     protected injector = inject(Injector);
+    protected writes = 0;
 
     constructor() {
         effect(() => {
             const value = this.value();
+            if (this.writes++ === 0) return; // We ignore the first trigger
             for (const callback of this._changedCallback) {
                 callback(value);
             }

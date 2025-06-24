@@ -23,8 +23,8 @@ import { IconComponent } from '../icon/icon.component';
     selector: 'dui-checkbox',
     template: `
       <span class="box">
-            <dui-icon [size]="12" name="check"></dui-icon>
-        </span>
+        <dui-icon [size]="12" name="check"></dui-icon>
+      </span>
       <ng-content></ng-content>
     `,
     styleUrls: ['./checkbox.component.scss'],

@@ -3,10 +3,6 @@ import objectInspect from 'object-inspect';
 import { getClassName } from '@deepkit/core';
 import { getTypeJitContainer, isBackReferenceType, isReferenceType, ReflectionKind, stringifyType, Type } from '@deepkit/type';
 
-export function trackByIndex(index: number) {
-    return index;
-}
-
 export function isReferenceLike(type: Type): boolean {
     return isReferenceType(type) || isBackReferenceType(type);
 }
@@ -27,7 +23,7 @@ export function typeToTSJSONInterface(type: Type, options: { defaultIsOptional?:
 }
 
 export interface TypeDecoration {
-    name: number | string;
+    name: number | string | symbol;
     description?: string;
 }
 

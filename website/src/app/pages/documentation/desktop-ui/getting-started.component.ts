@@ -1,15 +1,6 @@
 import { Component } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
-import {
-    ButtonComponent,
-    ButtonGroupComponent,
-    InputComponent,
-    WindowComponent,
-    WindowContentComponent,
-    WindowFrameComponent,
-    WindowHeaderComponent,
-    WindowToolbarComponent,
-} from '@deepkit/desktop-ui';
+import { ButtonComponent, ButtonGroupComponent, InputComponent, WindowComponent, WindowContentComponent, WindowFrameComponent, WindowHeaderComponent, WindowToolbarComponent } from '@deepkit/desktop-ui';
 
 @Component({
     template: `
@@ -22,7 +13,7 @@ import {
           with many useful components to create web applications. It is based on standalone components and signals, and thus perfect for
           a zoneless Angular application.
         </p>
-        
+
         <p>
           It is available in NPM. Install it with its dependencies in an already existing
           angular project.
@@ -59,13 +50,12 @@ import {
           </dui-window>
         </dui-window-frame>
 
-
         <p>
           Please note that you need at least one and max one <code>dui-window</code> element in your hierarchy.
           You usually put a <code>router-outlet</code> inside the
           <code>dui-window-content</code> element, so that you can navigate to different pages of your application.
         </p>
-        
+
         <code-highlight lang="html" title="app.component.html" [code]="appComponentRouterHtml"></code-highlight>
 
         <p>
@@ -73,6 +63,12 @@ import {
           application again).
           This is currently a limitation with Angular itself not supporting multiple HTML documents.
         </p>
+        
+        <p>
+          If you start from a blank Angular application, you should reset html/body paddings:
+        </p>
+        
+        <code-highlight lang="css" title="styles.css" [code]="cssClean"></code-highlight>
       </div>
     `,
     imports: [
@@ -90,9 +86,7 @@ import {
 export class DocDesktopUIGettingStartedComponent {
     appComponentRouterHtml = `
     <dui-window-content>
-        <div>
-            This is the window content
-        </div>
+        <router-outlet/>
     </dui-window-content>
     `;
 
@@ -116,6 +110,14 @@ export class DocDesktopUIGettingStartedComponent {
         </div>
     </dui-window-content>
 </dui-window>
+`;
+
+    cssClean = `
+html, body {
+    padding: 0;
+    margin: 0;
+    height: 100%;
+}
 `;
 
 }

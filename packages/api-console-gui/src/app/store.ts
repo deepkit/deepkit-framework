@@ -1,85 +1,84 @@
 import { ApiAction, ApiRoute } from '@deepkit/api-console-api';
 import { RemoteController, RpcClient, RpcClientEventIncomingMessage, RpcClientEventOutgoingMessage } from '@deepkit/rpc';
 import { Observable, Subject, Subscription } from 'rxjs';
-import {
-    deserialize,
-    Excluded,
-    isBackReferenceType,
-    isMapType,
-    isOptional,
-    isReferenceType,
-    isSetType,
-    ReflectionClass,
-    ReflectionKind,
-    serialize,
-    Type,
-    TypeParameter,
-} from '@deepkit/type';
+import { deserialize, Excluded, isBackReferenceType, isMapType, isOptional, isReferenceType, isSetType, ReflectionClass, ReflectionKind, serialize, Type, TypeParameter } from '@deepkit/type';
+import { Injectable, signal, WritableSignal } from '@angular/core';
 
 export class DataStructure {
-    active: boolean = false;
-    asReference: boolean = false;
+    active = signal(false);
+    asReference = signal(false);
 
     typeIndex: number = -1; //for unions
 
-    constructor(
-        public value: any,
-    ) {
+    value: WritableSignal<any>;
+
+    constructor(value: any) {
+        this.value = signal(value);
     }
 
-    children: DataStructure[] = [];
+    children = signal<DataStructure[]>([]);
 
-    properties: { [propertyName: string]: DataStructure } = {};
+    properties = signal<{ [propertyName: string]: DataStructure }>({});
 
     getProperty(name: string | number): DataStructure {
-        if (!this.properties[name]) this.properties[name] = new DataStructure(undefined);
-        return this.properties[name];
+        if (!this.properties()[name]) {
+            const ds = new DataStructure(undefined);
+            this.properties()[name] = ds;
+            queueMicrotask(() => {
+                this.properties.update(v => ({ ...v, [name]: ds }));
+            });
+            return ds;
+        }
+        return this.properties()[name];
     }
 }
 
 export function extractDataStructure(ds: DataStructure, type: Type): any {
     if (type.kind === ReflectionKind.class && type.classType === Date) {
-        return ds.value;
+        return ds.value();
     } else if (isMapType(type)) {
         const v: any = {};
         if (!type.typeArguments) return;
         const keyProperty = type.typeArguments[0];
         const valueProperty = type.typeArguments[1];
 
-        for (const childDs of ds.children) {
-            v[extractDataStructure(childDs.properties['key'], keyProperty)] = extractDataStructure(childDs.properties['value'], valueProperty);
+        for (const childDs of ds.children()) {
+            const key = childDs.properties()['key'];
+            const value = childDs.properties()['value'];
+            if (!key || !value) continue;
+            v[extractDataStructure(key, keyProperty)] = extractDataStructure(childDs.properties()['key'], valueProperty);
         }
 
         return v;
     } else if (type.kind === ReflectionKind.union) {
         if (ds.typeIndex >= 0) {
-            if (!ds.properties[ds.typeIndex]) return undefined;
+            if (!ds.properties()[ds.typeIndex]) return undefined;
             if (!type.types[ds.typeIndex]) return undefined;
-            return extractDataStructure(ds.properties[ds.typeIndex], type.types[ds.typeIndex]);
+            return extractDataStructure(ds.properties()[ds.typeIndex], type.types[ds.typeIndex]);
         }
-        return ds.value;
+        return ds.value();
     } else if (type.kind === ReflectionKind.array || isSetType(type)) {
         const list: any = [];
         const valueProperty = isSetType(type) ? type.typeArguments![0] : type.kind === ReflectionKind.array ? type.type : undefined;
         if (!valueProperty) return list;
 
-        for (const childDs of ds.children) {
-            if (!childDs.properties['value']) continue;
-            const v = extractDataStructure(childDs.properties['value'], valueProperty);
+        for (const childDs of ds.children()) {
+            if (!childDs.properties()['value']) continue;
+            const v = extractDataStructure(childDs.properties()['value'], valueProperty);
             if (v === undefined && !isOptional(valueProperty)) continue;
             list.push(v);
         }
 
         return list;
     } else if (type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral) {
-        if ((isReferenceType(type) || isBackReferenceType(type)) && ds.asReference) {
+        if ((isReferenceType(type) || isBackReferenceType(type)) && ds.asReference()) {
             const primary = ReflectionClass.from(type).getPrimary();
-            return extractDataStructure(ds.properties[primary.name], primary.type);
+            return extractDataStructure(ds.properties()[primary.name], primary.type);
         }
 
         return extractDataStructureFromSchema(ds, ReflectionClass.from(type));
     } else {
-        return ds.value;
+        return ds.value();
     }
 }
 
@@ -87,7 +86,7 @@ export function extractDataStructureFromSchema(ds: DataStructure, schema: Reflec
     const data: any = {};
 
     for (const property of schema.getProperties()) {
-        const pds = ds.properties[property.name];
+        const pds = ds.properties()[property.name];
         if (!pds) continue;
         if (!property.isValueRequired() && !pds.active) continue;
         const v = extractDataStructure(pds, property.type);
@@ -102,7 +101,7 @@ export function extractDataStructureFromParameters(ds: DataStructure, parameters
     const data: any = {};
 
     for (const property of parameters) {
-        const pds = ds.properties[property.name];
+        const pds = ds.properties()[property.name];
         if (!pds) continue;
         if (property.optional && !pds.active) continue;
         const v = extractDataStructure(pds, property.type);
@@ -130,7 +129,6 @@ export class RouteState {
     body: DataStructure = new DataStructure(undefined);
 
     resolvedBody?: any & Excluded;
-
 }
 
 export class Request {
@@ -231,7 +229,15 @@ export class Environment {
     }
 }
 
-export type RpcExecutionSubscription = { id: number, emitted: any[], unsubscribed: boolean, unsubscribe: () => void, completed: boolean, error?: any, sub: Subscription };
+export type RpcExecutionSubscription = {
+    id: number,
+    emitted: any[],
+    unsubscribed: boolean,
+    unsubscribe: () => void,
+    completed: boolean,
+    error?: any,
+    sub: Subscription
+};
 
 export class RpcExecution {
     created: Date = new Date();
@@ -322,8 +328,6 @@ export class StoreValue {
     requests: Request[] = [];
     rpcExecutions: RpcExecution[] = [];
 
-    selectedRoute?: string;
-
     viewRpc: ViewRpc = new ViewRpc;
     viewHttp: ViewHttp = new ViewHttp;
 
@@ -335,12 +339,14 @@ export class StoreValue {
 
     activeDebugRpcClientIndex: number = 0;
 
-    get rpcClient(): RpcClientConfiguration | undefined {
+    get rpcClient(): (RpcClientConfiguration | undefined) & Excluded {
         return this.rpcClients[this.activeRpcClientIndex];
     }
 
     set rpcClient(v: RpcClientConfiguration | undefined) {
+        console.log('rpcClient', v)
         this.activeRpcClientIndex = v ? this.rpcClients.indexOf(v) : -1;
+        this.onChange();
     }
 
     get activeEnvironment(): Environment | undefined {
@@ -349,6 +355,7 @@ export class StoreValue {
 
     set activeEnvironment(e: Environment | undefined) {
         this.activeEnvironmentIndex = e ? this.environments.indexOf(e) : -1;
+        this.onChange();
     }
 
     getRpcActionState(action: ApiAction): RpcActionState {
@@ -356,19 +363,25 @@ export class StoreValue {
         if (!rpcState) {
             rpcState = new RpcActionState(action.id);
             this.rpcActionStates[action.id] = rpcState!;
+            this.onChange();
         }
         return rpcState;
     }
 
     route?: ApiRoute & Excluded;
     action?: ApiAction & Excluded;
+
+    onChange() {
+    }
 }
 
+@Injectable({ providedIn: 'root' })
 export class Store {
-    public state = new StoreValue;
+    state = new StoreValue;
 
     constructor() {
         this.restore();
+        this.state.onChange = () => this.store();
     }
 
     restore() {
@@ -379,7 +392,9 @@ export class Store {
             console.log('this.state', this.state);
         } catch {
         }
-
+        if (this.state.activeRpcClientIndex === -1 && this.state.rpcClients.length > 0) {
+            this.state.activeRpcClientIndex = 0;
+        }
     }
 
     store() {

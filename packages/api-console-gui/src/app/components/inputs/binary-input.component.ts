@@ -1,31 +1,32 @@
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, input, model, OnChanges, OnInit, Output } from '@angular/core';
 import { TypeClass } from '@deepkit/type';
-import { FilePickerItem } from '@deepkit/desktop-ui';
-import { isArray } from '@deepkit/core';
+import { ButtonComponent, FilePickerDirective, FilePickerItem } from '@deepkit/desktop-ui';
+import { DataStructure } from '../../store';
+import { TypeDecoration } from '../../utils.js';
 
 @Component({
     template: `
-        <dui-button duiFilePicker (duiFilePickerChange)="chosen($event)">
-            Choose file
-        </dui-button>
+      <dui-button duiFilePicker (duiFilePickerChange)="chosen($event)">
+        Choose file
+      </dui-button>
     `,
-    standalone: false
+    imports: [
+        ButtonComponent,
+        FilePickerDirective,
+    ],
 })
 export class BinaryInputComponent implements OnInit, OnChanges {
-    @Input() model: any;
-    @Output() modelChange = new EventEmitter();
-
-    @Input() type!: TypeClass;
+    model = model.required<DataStructure>();
+    decoration = input<TypeDecoration>();
+    type = input.required<TypeClass>();
 
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
 
-    chosen(event: FilePickerItem | FilePickerItem[]) {
-        event = isArray(event) ? event : [event];
+    chosen(event: FilePickerItem[]) {
         const file = event[0];
         if (!file) return;
 
-        this.model = this.type.classType === ArrayBuffer ? file.data.buffer : file.data;
-        this.modelChange.emit(this.model);
+        this.model().value.set(this.type().classType === ArrayBuffer ? file.data.buffer : file.data);
     }
 
     ngOnChanges(): void {

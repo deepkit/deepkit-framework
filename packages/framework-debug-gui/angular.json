@@ -30,11 +30,7 @@
               "src/assets"
             ],
             "styles": [
-              "src/styles.scss",
-              "@deepkit/desktop-ui/src/scss/reset.scss",
-              "@deepkit/desktop-ui/src/scss/all.scss",
-              "@deepkit/desktop-ui/src/scss/icon.scss",
-              "@deepkit/ui-library/src/styles/style-code.scss"
+              "src/styles.scss"
             ],
             "scripts": []
           },

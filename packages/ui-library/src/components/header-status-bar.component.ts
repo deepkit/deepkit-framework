@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { DropdownComponent, DropdownItemComponent, DuiApp, IconComponent, OpenDropdownDirective } from '@deepkit/desktop-ui';
 import { RpcWebSocketClient } from '@deepkit/rpc';
 import { AsyncPipe } from '@angular/common';
@@ -7,7 +7,7 @@ import { AsyncPipe } from '@angular/common';
     selector: 'deepkit-header-status-bar',
     template: `
       <div class="connection-info">
-        @if (client.transporter.connection|async) {
+        @if (client().transporter.connection|async) {
           <div class="connected">Connected</div>
         } @else {
           <div class="disconnected">Disconnected</div>
@@ -52,6 +52,8 @@ import { AsyncPipe } from '@angular/common';
     `],
 })
 export class HeaderStatusBarComponent {
-    constructor(public client: RpcWebSocketClient, public duiApp: DuiApp) {
+    client = input.required<RpcWebSocketClient>();
+
+    constructor(public duiApp: DuiApp) {
     }
 }

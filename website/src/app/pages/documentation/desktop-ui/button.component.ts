@@ -1,16 +1,7 @@
 import { Component } from '@angular/core';
 import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
-import {
-    ButtonComponent,
-    ButtonGroupComponent,
-    CheckboxComponent,
-    DropdownComponent,
-    DropdownItemComponent,
-    DropdownSplitterComponent,
-    OpenDropdownDirective,
-    TabButtonComponent,
-} from '@deepkit/desktop-ui';
+import { ButtonComponent, ButtonGroupComponent, CheckboxComponent, DropdownComponent, DropdownItemComponent, DropdownSplitterComponent, OpenDropdownDirective, TabButtonComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
 
 @Component({
@@ -38,7 +29,7 @@ import { FormsModule } from '@angular/forms';
         <doc-code-frame>
           <div>
             <dui-button-group>
-              <dui-tab-button>Overview</dui-tab-button>
+              <dui-tab-button [active]="true">Overview</dui-tab-button>
               <dui-tab-button>List</dui-tab-button>
             </dui-button-group>
             <p>
@@ -105,7 +96,7 @@ export class DocDesktopUIButtonComponent {
 
     code = `
     <dui-button-group>
-      <dui-tab-button>Overview</dui-tab-button>
+      <dui-tab-button [active]="true">Overview</dui-tab-button>
       <dui-tab-button>List</dui-tab-button>
     </dui-button-group>
     <p>

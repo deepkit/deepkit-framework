@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { routes } from './app.routes';
 import { RpcClient, RpcHttpClientAdapter, RpcHttpHeaderNames } from '@deepkit/rpc';
@@ -11,7 +11,7 @@ import { HTTP_INTERCEPTORS, provideHttpClient, withFetch } from '@angular/common
 
 export const appConfig: ApplicationConfig = {
     providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         AppMetaStack,
         PageResponse,
         PlatformHelper,
