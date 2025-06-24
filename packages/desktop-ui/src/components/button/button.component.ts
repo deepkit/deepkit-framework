@@ -183,12 +183,12 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
 @Component({
     selector: 'dui-button',
     template: `
-      @if (icon() && !iconRight()) {
-        <dui-icon [color]="iconColor()" [name]="icon()" [size]="iconSize()"></dui-icon>
+      @if (!iconRight() && icon(); as icon) {
+        <dui-icon [color]="iconColor()" [name]="icon" [size]="iconSize()"></dui-icon>
       }
       <ng-content></ng-content>
-      @if (icon() && iconRight()) {
-        <dui-icon [color]="iconColor()" [name]="icon()" [size]="iconSize()"></dui-icon>
+      @if (iconRight() && icon(); as icon) {
+        <dui-icon [color]="iconColor()" [name]="icon" [size]="iconSize()"></dui-icon>
       }
       @if (showHotkey()) {
         <div class="show-hotkey" [style.width.px]="hotKeySize(showHotkey()) * 6"></div>
@@ -477,7 +477,6 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy, AlignedBu
         if (this.float() === 'sidebar' && this.windowComponent) {
             const content = this.windowComponent.content();
             if (content && content.isSidebarVisible()) {
-                console.log('this.element.nativeElement.offsetLeft', this.element.nativeElement.offsetLeft, content.sidebarWidth());
                 const newLeft = Math.max(0, content.sidebarWidth() - this.element.nativeElement.offsetLeft) + 'px';
                 if (this.element.nativeElement.style.paddingLeft == newLeft) {
                     //no transition change, doesn't trigger transitionEnd

@@ -245,6 +245,10 @@ interface ApiDocItemClassChildProperty {
     name: string;
     kind: 1024;
     kindString: 'Property';
+    input?: {
+        required: boolean;
+        alias?: string;
+    };
 
     comment?: ApiDocComment;
 
@@ -425,6 +429,8 @@ export class ApiDocProvider {
 interface TableRow {
     name: string;
     type: 'input' | 'output' | 'method';
+    alias?: string;
+    required?: boolean;
     dataType: string;
     comment: string;
 }
@@ -499,11 +505,12 @@ export class ApiDocComponent {
     });
 
     code(row: TableRow) {
-        let prefix = row.name;
+        let prefix = row.alias || row.name;
         if (row.type === 'input') {
-            prefix = '@Input() ' + row.name;
+            prefix = '@Input() ' + prefix;
+            if (!row.required) prefix += '?';
         } else if (row.type === 'output') {
-            prefix = '@Output() ' + row.name;
+            prefix = '@Output() ' + prefix + '?';
         }
 
         return prefix + ': ' + row.dataType;
@@ -536,15 +543,17 @@ export class ApiDocComponent {
                 if (prop.kindString === 'Property' && prop.type?.type === 'reference' && (prop.type?.name === 'InputSignal' || prop.type?.name === 'InputSignalWithTransform')) {
                     const type = prop.type.typeArguments?.[0];
                     tableData.push({
-                        name: prop.name + (prop.defaultValue || isOptional(type) ? '?' : ''),
+                        name: prop.name,
                         type: 'input',
+                        alias: prop.input?.alias,
+                        required: prop.input?.required,
                         dataType: typeToString(type),
                         comment: getComment(prop.comment),
                     });
                 } else if (prop.kindString === 'Property' && prop.type?.type === 'reference' && prop.type?.name === 'OutputEmitterRef') {
                     const type = prop.type.typeArguments?.[0];
                     tableData.push({
-                        name: prop.name + (prop.defaultValue || isOptional(type) ? '?' : ''),
+                        name: prop.name,
                         type: 'output',
                         dataType: typeToString(type),
                         comment: getComment(prop.comment),
@@ -553,8 +562,10 @@ export class ApiDocComponent {
                     for (const decorator of prop.decorators) {
                         if (decorator.name === 'Input') {
                             tableData.push({
-                                name: prop.name + (prop.defaultValue || isOptional(prop.type) ? '?' : ''),
+                                name: prop.name,
                                 type: 'input',
+                                alias: prop.input?.alias,
+                                required: prop.input?.required,
                                 dataType: typeToString(prop.type),
                                 comment: getComment(prop.comment),
                             });
@@ -562,7 +573,7 @@ export class ApiDocComponent {
 
                         if (decorator.name === 'Output') {
                             tableData.push({
-                                name: prop.name + (isOptional(prop.type) ? '?' : ''),
+                                name: prop.name,
                                 type: 'output',
                                 dataType: typeToString(prop.type),
                                 comment: getComment(prop.comment),
@@ -589,12 +600,19 @@ export class ApiDocComponent {
         }
 
         tableData.sort((a, b) => {
-            //first order by type: input, output, method. then by name
-            if (a.type === b.type) {
-                return a.name.localeCompare(b.name);
+            //first order by type: input required, input, output, method. then by name
+            const typeOrder: { [key: string]: number } = {
+                'input required': 1,
+                'input': 2,
+                'output': 3,
+                'method': 4,
+            };
+            const typeA = a.type + (a.required ? ' required' : '');
+            const typeB = b.type + (b.required ? ' required' : '');
+            if (typeOrder[typeA] !== typeOrder[typeB]) {
+                return typeOrder[typeA] - typeOrder[typeB];
             }
-            const typeOrder = { input: 0, output: 1, method: 2 };
-            return typeOrder[a.type] - typeOrder[b.type];
+            return a.name.localeCompare(b.name);
         });
         return tableData;
     }, { behavior: 'concat', initialValue: [] });

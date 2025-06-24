@@ -26,7 +26,7 @@ export class IconComponent implements OnInit, OnChanges {
     /**
      * The icon for this button.
      */
-    name = input<string>();
+    name = input.required<string>();
 
     /**
      * The icon size (default 17). Should not be necessary usually.

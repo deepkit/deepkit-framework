@@ -167,7 +167,6 @@ export class DuiDialog {
 
         const close = new Promise((resolve) => {
             comp.instance.closed.subscribe((v) => {
-                console.log('close dialog', v);
                 comp.destroy();
                 resolve(v);
             });
