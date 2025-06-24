@@ -1,5 +1,36 @@
 @import '@angular/cdk/overlay-prebuilt.css';
-@import './icon.css';
+
+@font-face {
+    font-family: 'Desktop UI icon Mono';
+    src: url("../assets/fonts/ui-icons.woff") format('woff'), url("../assets/fonts/ui-icons.ttf") format('ttf');
+    font-weight: normal;
+    font-style: normal;
+}
+
+.ui-icon {
+    font-family: 'Desktop UI icon Mono' !important;
+    font-weight: normal !important;
+    font-style: normal !important;
+    font-size: 17px;
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+
+    /* Support for all WebKit browsers. */
+    -webkit-font-smoothing: antialiased;
+    /* Support for Safari and Chrome. */
+    text-rendering: optimizeLegibility;
+
+    /* Support for Firefox. */
+    -moz-osx-font-smoothing: grayscale;
+
+    /* Support for IE. */
+    font-feature-settings: 'liga';
+}
 
 body {
     --dui-selection: #016dea;
@@ -106,11 +137,11 @@ body {
     line-height: 18px;
     color: var(--dui-color-black);
     cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
 
-    *:not(input,textarea) {
-        user-select: none;
-        -webkit-user-select: none;
-    }
+    /**:not(input,textarea) {*/
+    /*}*/
 
     *:focus {
         outline: 0;

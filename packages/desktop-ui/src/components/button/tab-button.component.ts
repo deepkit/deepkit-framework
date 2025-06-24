@@ -38,13 +38,13 @@ export class TabButtonComponent extends ValueAccessorBase<any> {
     routerLinkActive = inject(RouterLinkActive);
 
     @HostListener('click')
-    onClick() {
+    protected onClick() {
         const value = this.value();
         if (value === undefined) return;
         this.writeValue(value);
     }
 
-    isActive() {
+    protected isActive() {
         return this.routerLinkActive.isActive || this.active();
     }
 }

@@ -25,6 +25,7 @@ import { BrowserWindow } from '../../core/utils';
     styleUrls: ['./window-frame.component.scss'],
     host: {
         '[style.height]': `height() ? height() + 'px' : 'auto'`,
+        '[class.dui-normalized]': 'true',
     },
 })
 export class WindowFrameComponent {

@@ -38,7 +38,7 @@
     "font": "node bin/create-font.js",
     "build": "npm run font && rm -rf .angular && ng-packagr --config tsconfig.prod.json && rm dist/.npmignore",
     "watch": "ng-packagr --config tsconfig.prod.json --watch",
-    "docjson": "rm -f docs.json && typedoc --json docs.json --options ../../typedoc.js src/index.ts && cp docs.json src/assets/docs.json",
+    "docjson": "rm -f docs.json && typedoc --json docs.json --options ../../typedoc.js --plugin ../../typedoc.decorators.js src/index.ts && cp docs.json src/assets/docs.json",
     "prepublishOnly": "webpack && node bin/create-font.js"
   },
   "browserslist": [
@@ -82,7 +82,6 @@
     "svgicons2svgfont": "^9.0.4",
     "ts-loader": "^9.4.2",
     "ttf2woff": "^2.0.1",
-    "typedoc": "^0.27.7",
     "webpack": "^5.75.0",
     "webpack-cli": "^5.0.0"
   },

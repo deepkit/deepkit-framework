@@ -27,7 +27,6 @@ import {
     Optional,
     Output,
     SimpleChanges,
-    SkipSelf,
     TemplateRef,
     Type,
     ViewChild,
@@ -48,7 +47,7 @@ import { unsubscribe } from '../app/reactivate-change-detection';
 @Component({
     template: `
       <dui-window [dialog]="true">
-        <dui-window-content class="{{class}}">
+        <dui-window-content class="{{class()}}" [class.dui-normalized]="normalized()">
           @if (component()) {
             <ng-container
               #renderComponentDirective
@@ -56,18 +55,18 @@ import { unsubscribe } from '../app/reactivate-change-detection';
             </ng-container>
           }
 
-          @if (content) {
+          @if (content(); as content) {
             <ng-container [ngTemplateOutlet]="content"></ng-container>
           }
 
-          @if (container) {
+          @if (container(); as container) {
             <ng-container [ngTemplateOutlet]="container"></ng-container>
           } @else {
             <ng-content></ng-content>
           }
         </dui-window-content>
 
-        @if (actions) {
+        @if (actions(); as actions) {
           <div class="dialog-actions">
             <ng-container [ngTemplateOutlet]="actions"></ng-container>
           </div>
@@ -82,14 +81,13 @@ import { unsubscribe } from '../app/reactivate-change-detection';
 })
 export class DialogWrapperComponent {
     component = input<Type<any>>();
-    componentInputs = input<{
-        [name: string]: any;
-    }>({});
+    componentInputs = input<{ [name: string]: any; }>({});
 
-    actions?: TemplateRef<any> | undefined;
-    container?: TemplateRef<any> | undefined;
-    content?: TemplateRef<any> | undefined;
-    class: string = '';
+    actions = model<TemplateRef<any> | undefined>(undefined);
+    container = model<TemplateRef<any> | undefined>(undefined);
+    content = model<TemplateRef<any> | undefined>(undefined);
+    class = input<string>('');
+    normalized = input(true, { transform: booleanAttribute });
 
     @ViewChild(RenderComponentDirective, { static: false }) renderComponentDirective?: RenderComponentDirective;
 
@@ -99,16 +97,28 @@ export class DialogWrapperComponent {
     }
 
     public setActions(actions: TemplateRef<any> | undefined) {
-        this.actions = actions;
+        this.actions.set(actions);
         this.cd.detectChanges();
     }
 
     public setDialogContainer(container: TemplateRef<any> | undefined) {
-        this.container = container;
+        this.container.set(container);
         this.cd.detectChanges();
     }
 }
 
+/**
+ * A dialog component that can be used to display content in a modal dialog.
+ *
+ * ```html
+ * <dui-dialog #dialog [maxWidth]="500">
+ *     Hello World!
+ *     <dui-button closeDialog>Abort</dui-button>
+ *     <dui-button>OK</dui-button>
+ * </dui-dialog>
+ * <dui-button openDialog="dialog">Open Dialog</dui-button>
+ * ```
+ */
 @Component({
     selector: 'dui-dialog',
     template: `
@@ -163,11 +173,9 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         protected applicationRef: ApplicationRef,
         protected overlayStack: OverlayStack,
         protected viewContainerRef: ViewContainerRef,
-        protected cd: ChangeDetectorRef,
         protected overlay: Overlay,
         protected injector: Injector,
         protected registry: WindowRegistry,
-        @Optional() @SkipSelf() protected cdParent?: ChangeDetectorRef,
         @Optional() protected window?: WindowComponent,
     ) {
     }
@@ -291,10 +299,6 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         this.visible.set(true);
 
         this.wrapperComponentRef.location.nativeElement.focus();
-        this.wrapperComponentRef.changeDetectorRef.detectChanges();
-
-        this.cd.detectChanges();
-        if (this.cdParent) this.cdParent.detectChanges();
     }
 
     protected beforeUnload() {
@@ -312,11 +316,13 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     ngAfterViewInit() {
     }
 
-    public close(v?: any) {
+    close(v?: any) {
+        const open = !!this.overlayRef;
         this.beforeUnload();
         this.visible.set(false);
-
-        this.closed.emit(v);
+        if (open) {
+            this.closed.emit(v);
+        }
     }
 
     ngOnDestroy(): void {
@@ -325,11 +331,16 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
 }
 
 /**
- * This directive is necessary if you want to load and render the dialog content
- * only when opening the dialog. Without it, it is immediately rendered, which can cause
- * performance and injection issues.
+ * Directive to lazy load a dialog container.
+ *
+ * ```html
+ * <dui-dialog #dialog>
+ *   <ng-container *dialogContainer>
+ *     Lazy loaded dialog content.
+ *   </ng-container>
+ * </dui-dialog>
  */
-@Directive({ 'selector': '[dialogContainer]' })
+@Directive({ selector: '[dialogContainer]' })
 export class DialogDirective {
     constructor(protected dialog: DialogComponent, public template: TemplateRef<any>) {
         this.dialog.setDialogContainer(this.template);
@@ -365,7 +376,14 @@ export class DialogActionsComponent implements AfterViewInit, OnDestroy {
 export class DialogErrorComponent {
 }
 
-
+/**
+ * A directive to close the dialog on regular left click.
+ * Can be used inside a dialog to close it.
+ *
+ * ```html
+ * <dui-button closeDialog>Close</dui-button>
+ * ```
+ */
 @Directive({ selector: '[closeDialog]' })
 export class CloseDialogDirective {
     closeDialog = input<any>();
@@ -374,15 +392,22 @@ export class CloseDialogDirective {
     }
 
     @HostListener('click')
-    onClick() {
+    protected onClick() {
         this.dialog.close(this.closeDialog());
     }
 }
 
 /**
  * A directive to open the given dialog on regular left click.
+ *
+ * ```html
+ * <dui-dialog #myDialog>
+ *     Hi there!
+ * </dui-dialog>
+ * <dui-button openDialog="myDialog">Open Dialog</dui-button>
+ * ```
  */
-@Directive({ 'selector': '[openDialog]' })
+@Directive({ selector: '[openDialog]' })
 export class OpenDialogDirective implements AfterViewInit, OnChanges, OnDestroy {
     openDialog = input<DialogComponent>();
 
@@ -422,7 +447,7 @@ export class OpenDialogDirective implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     @HostListener('click')
-    onClick() {
+    protected onClick() {
         const openDialog = this.openDialog();
         if (openDialog) openDialog.show();
     }

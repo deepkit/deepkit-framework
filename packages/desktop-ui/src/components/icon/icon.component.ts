@@ -8,14 +8,14 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Component, HostBinding, OnChanges, OnInit, input, booleanAttribute } from '@angular/core';
+import { booleanAttribute, Component, HostBinding, input, OnChanges, OnInit } from '@angular/core';
 
 @Component({
     selector: 'dui-icon',
     template: `{{name()}}`,
     host: {
         '[class.ui-icon]': 'true',
-        '[style.fontSize.px]': 'usedSize',
+        '[style.font-size.px]': 'usedSize',
         '[style.height.px]': 'usedSize',
         '[style.width.px]': 'usedSize',
         '[style.color]': 'color()',
@@ -24,18 +24,29 @@ import { Component, HostBinding, OnChanges, OnInit, input, booleanAttribute } fr
 })
 export class IconComponent implements OnInit, OnChanges {
     /**
-     * The icon for this button. Either a icon name same as for dui-icon, or an image path.
+     * The icon for this button.
      */
     name = input<string>();
 
     /**
-     * Change in the icon size. Should not be necessary usually.
+     * The icon size (default 17). Should not be necessary usually.
      */
     size = input<number>();
 
+    /**
+     * Enables interactive style for this icon.
+     */
     clickable = input(false, { transform: booleanAttribute });
 
+    /**
+     * The color of the icon. If not set, it will use `currentColor` by default.
+     */
     color = input<string>();
+
+    /**
+     * If true, the icon will be disabled and not clickable.
+     */
+    disabled = input<boolean>(false);
 
     public usedSize = 17;
 
@@ -44,7 +55,6 @@ export class IconComponent implements OnInit, OnChanges {
         return false !== this.clickable();
     }
 
-    disabled = input<boolean>(false);
     @HostBinding('class.disabled')
     get isDisabled() {
         return false !== this.disabled();

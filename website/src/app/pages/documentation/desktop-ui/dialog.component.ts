@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
-import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import {
     ButtonComponent,
-    ButtonGroupComponent, CloseDialogDirective,
+    ButtonGroupComponent,
+    CloseDialogDirective,
     DialogActionsComponent,
     DialogComponent,
     DialogDirective,
@@ -11,6 +12,7 @@ import {
 } from '@deepkit/desktop-ui';
 
 @Component({
+    host: { ngSkipHydration: 'true' },
     imports: [
         CodeHighlightComponent,
         CodeFrameComponent,
@@ -109,7 +111,11 @@ import {
           <code-highlight lang="html" [code]="code" />
         </doc-code-frame>
 
-        <api-doc module="components/dialog/dialog.component" component="DialogComponent"></api-doc>
+        <api-doc component="DialogComponent"></api-doc>
+        <api-doc component="DialogDirective"></api-doc>
+        <api-doc component="CloseDialogDirective"></api-doc>
+        <api-doc component="OpenDialogDirective"></api-doc>
+        <api-doc component="DuiDialogConfirmDirective"></api-doc>
       </div>
     `,
 })

@@ -10,7 +10,7 @@ interface Entry {
     selector: 'api-console-headers',
     template: `
         <ng-container *ngIf="model">
-            <dui-table noFocusOutline [items]="model" borderless [autoHeight]="true" style="min-height: 100px;">
+            <dui-table no-focus-outline [items]="model" borderless [autoHeight]="true" style="min-height: 100px;">
                 <dui-table-column class="input-cell" [width]="170" name="name">
                     <ng-container *duiTableCell="let item">
                         <dui-input  style="width: 100%" lightFocus [(ngModel)]="item.name" (ngModelChange)="modelChange.emit(model)" placeholder="Name"></dui-input>

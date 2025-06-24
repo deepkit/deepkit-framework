@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
-import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import {
     ButtonComponent,
     ButtonGroupComponent,
@@ -9,7 +9,8 @@ import {
     InputComponent,
     TableCellDirective,
     TableColumnDirective,
-    TableComponent, TableCustomRowContextMenuDirective,
+    TableComponent,
+    TableCustomRowContextMenuDirective,
 } from '@deepkit/desktop-ui';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -73,13 +74,12 @@ import { FormsModule } from '@angular/forms';
           <code-highlight lang="html" [code]="code"></code-highlight>
         </doc-code-frame>
 
-        <api-doc module="components/table/table.component" component="TableComponent"></api-doc>
-
-        <api-doc module="components/table/table.component" component="TableHeaderDirective"></api-doc>
-
-        <api-doc module="components/table/table.component" component="TableColumnDirective"></api-doc>
-
-        <api-doc module="components/table/table.component" component="TableCellDirective"></api-doc>
+        <api-doc component="TableComponent"></api-doc>
+        <api-doc component="TableColumnDirective"></api-doc>
+        <api-doc component="TableHeaderDirective"></api-doc>
+        <api-doc component="TableCellDirective"></api-doc>
+        <api-doc component="TableCustomHeaderContextMenuDirective"></api-doc>
+        <api-doc component="TableCustomRowContextMenuDirective"></api-doc>
       </div>
     `,
 })

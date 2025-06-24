@@ -8,49 +8,28 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-  AfterViewInit,
-  ApplicationRef,
-  ComponentFactoryResolver,
-  ComponentRef,
-  Directive,
-  OnDestroy,
-  ViewContainerRef,
-  input
-} from '@angular/core';
+import { AfterViewInit, ComponentRef, Directive, input, OnDestroy, ViewContainerRef } from '@angular/core';
 
-@Directive({ selector: '[renderComponent]', })
+@Directive({ selector: '[renderComponent]' })
 export class RenderComponentDirective implements AfterViewInit, OnDestroy {
     renderComponent = input<any>();
     renderComponentInputs = input<{
-    [name: string]: any;
-}>({});
+        [name: string]: any;
+    }>({});
 
     public component?: ComponentRef<any>;
 
     constructor(
-        protected app: ApplicationRef,
-        protected resolver: ComponentFactoryResolver,
         protected viewContainerRef: ViewContainerRef,
     ) {
     }
 
     ngAfterViewInit(): void {
-        const factoryMain = this.resolver.resolveComponentFactory(this.renderComponent());
-        const original = (factoryMain.create as any).bind(factoryMain);
-        factoryMain.create = (...args: any[]) => {
-            const comp = original(...args);
+        this.component = this.viewContainerRef.createComponent(this.renderComponent());
 
-            for (const [i, v] of Object.entries(this.renderComponentInputs())) {
-                comp.instance[i] = v;
-            }
-
-            return comp;
-        };
-
-        this.component = this.viewContainerRef.createComponent(factoryMain, 0, this.viewContainerRef.injector);
-
-        this.app.tick();
+        for (const [i, v] of Object.entries(this.renderComponentInputs())) {
+            this.component.setInput(i, v);
+        }
     }
 
     ngOnDestroy(): void {

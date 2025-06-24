@@ -121,6 +121,8 @@ export class WindowToolbarComponent implements OnDestroy, OnInit {
     styles: [`
         :host {
             display: flex;
+            flex-direction: row;
+            gap: 6px;
         }
     `],
     imports: [

@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
-import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { ButtonComponent, ButtonGroupComponent, ButtonGroupsComponent, DropdownComponent, OpenDropdownDirective } from '@deepkit/desktop-ui';
 
 @Component({
@@ -71,7 +71,8 @@ import { ButtonComponent, ButtonGroupComponent, ButtonGroupsComponent, DropdownC
           <code-highlight lang="html" [code]="code"></code-highlight>
         </doc-code-frame>
 
-        <api-doc module="components/button/button.component" component="ButtonGroupComponent"></api-doc>
+        <api-doc component="ButtonGroupComponent"></api-doc>
+        <api-doc component="ButtonGroupsComponent"></api-doc>
       </div>
     `,
 })

@@ -7,13 +7,20 @@ import { RpcTypes } from '@deepkit/rpc';
 import { CodeHighlightComponent, DeepkitBoxComponent } from '@deepkit/ui-library';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 import {
-    ButtonGroupComponent, CheckboxComponent,
+    ButtonGroupComponent,
+    CheckboxComponent,
     DropdownComponent,
-    IconComponent, InputComponent,
+    IconComponent,
+    InputComponent,
     LabelComponent,
-    LabelGridComponent, OpenDropdownDirective,
+    LabelGridComponent,
+    OpenDropdownDirective,
     OptionDirective,
-    SelectBoxComponent, TabButtonComponent, TableCellDirective, TableColumnDirective, TableComponent,
+    SelectBoxComponent,
+    TabButtonComponent,
+    TableCellDirective,
+    TableColumnDirective,
+    TableComponent,
 } from '@deepkit/desktop-ui';
 
 @Component({
@@ -242,7 +249,7 @@ import {
             }
 
             @if (tableView() === 'messages' || client.type !== 'deepkit') {
-              <dui-table hover preferenceKey="rpc/message" [items]="messages()" style="height: 100%;" noFocusOutline
+              <dui-table hover preferenceKey="rpc/message" [items]="messages()" style="height: 100%;" no-focus-outline
                          defaultSort="idx" defaultSortDirection="desc">
                 <dui-table-column name="idx" [width]="50"></dui-table-column>
                 <dui-table-column name="id" [width]="50"></dui-table-column>
@@ -269,7 +276,7 @@ import {
                 </dui-table-column>
               </dui-table>
             } @else {
-              <dui-table hover preferenceKey="rpc/actions" [items]="actions()" style="height: 100%;" noFocusOutline
+              <dui-table hover preferenceKey="rpc/actions" [items]="actions()" style="height: 100%;" no-focus-outline
                          [selected]="action() ? [action()] : []"
                          defaultSort="id" defaultSortDirection="desc">
                 <dui-table-column name="idx" [width]="50"></dui-table-column>

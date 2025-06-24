@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
-import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { ButtonComponent, DynamicOptionDirective, OptionDirective, SelectBoxComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
 
@@ -18,7 +18,7 @@ import { FormsModule } from '@angular/forms';
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
-        <h1>Selectbox2</h1>
+        <h1>Selectbox</h1>
 
         <doc-code-frame>
           <div class="examples">
@@ -50,7 +50,7 @@ import { FormsModule } from '@angular/forms';
               <dui-option value="c">Option C</dui-option>
             </dui-select>
             <p>
-              Chosen: {{ radioValue }}
+              Chosen: {{ radioValue() }}
             </p>
             <div>
               <dui-select [(ngModel)]="radioValue" placeholder="Please choose">
@@ -73,7 +73,7 @@ import { FormsModule } from '@angular/forms';
             </div>
             <div>
               <dui-select [(ngModel)]="radioValue">
-                <dui-button textured (click)="radioValue = ''">Reset</dui-button>
+                <dui-button textured (click)="radioValue.set('')">Reset</dui-button>
                 <dui-option value="a">Option A</dui-option>
                 <dui-option value="b">Option B</dui-option>
                 <dui-option value="c">Option C</dui-option>
@@ -90,7 +90,9 @@ import { FormsModule } from '@angular/forms';
           <code-highlight lang="html" [code]="code" />
         </doc-code-frame>
 
-        <api-doc module="components/select/selectbox.component" component="SelectboxComponent"></api-doc>
+        <api-doc component="SelectBoxComponent"></api-doc>
+        <api-doc component="OptionDirective"></api-doc>
+        <api-doc component="OptionSeparatorDirective"></api-doc>
       </div>
     `,
     styles: `
@@ -101,7 +103,7 @@ import { FormsModule } from '@angular/forms';
 })
 export class DocDesktopUISelectboxComponent {
     manyItems = [...Array(255).keys()].map(x => x + 1);
-    radioValue = 'a';
+    radioValue = signal('a');
 
     code = `
 <p>

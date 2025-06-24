@@ -23,7 +23,7 @@ import { Lifecycle } from '../../utils';
             <p>
                 Application config values from your root application module.
             </p>
-            <dui-table [items]="filter(applicationConfig, applicationConfigFilter)" defaultSort="name" noFocusOutline>
+            <dui-table [items]="filter(applicationConfig, applicationConfigFilter)" defaultSort="name" no-focus-outline>
                 <dui-table-column class="text-selection" name="name"></dui-table-column>
                 <dui-table-column class="text-selection" name="value"></dui-table-column>
                 <dui-table-column class="text-selection" name="defaultValue"></dui-table-column>
@@ -40,7 +40,7 @@ import { Lifecycle } from '../../utils';
             <p>
                 Config values from core modules and your imported modules.
             </p>
-            <dui-table [items]="filter(config, configFilter)" defaultSort="name" noFocusOutline>
+            <dui-table [items]="filter(config, configFilter)" defaultSort="name" no-focus-outline>
                 <dui-table-column class="text-selection" [width]="220" name="name"></dui-table-column>
                 <dui-table-column class="text-selection" name="value"></dui-table-column>
                 <dui-table-column class="text-selection" name="defaultValue"></dui-table-column>

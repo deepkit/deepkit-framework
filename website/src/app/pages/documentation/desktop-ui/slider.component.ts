@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { SliderComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
@@ -40,7 +40,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
           <code-highlight lang="html" [code]="code"></code-highlight>
         </doc-code-frame>
 
-        <api-doc module="components/slider/slider.component" component="SliderComponent"></api-doc>
+        <api-doc component="SliderComponent"></api-doc>
       </div>
     `,
     styles: `

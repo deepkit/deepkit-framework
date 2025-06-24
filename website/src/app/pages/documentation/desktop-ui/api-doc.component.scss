@@ -7,13 +7,24 @@
 .title {
   display: flex;
   margin-bottom: 10px;
+  align-items: center;
+
   dui-input {
     margin-left: auto;
+  }
+
+  h2 {
+    margin: 0;
   }
 }
 
 p {
   color: gray;
+}
+
+.forms-compatible {
+  color: gray;
+  margin-bottom: 8px;
 }
 
 table {

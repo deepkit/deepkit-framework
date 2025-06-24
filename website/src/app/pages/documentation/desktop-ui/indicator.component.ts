@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { IndicatorComponent, SliderComponent } from '@deepkit/desktop-ui';
-import { ApiDocComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ApiDocComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { FormsModule } from '@angular/forms';
 
 @Component({
@@ -28,7 +28,7 @@ import { FormsModule } from '@angular/forms';
           <dui-slider [(ngModel)]="progress"></dui-slider>
         </p>
 
-        <api-doc module="components/indicator/indicator.component" component="IndicatorComponent"></api-doc>
+        <api-doc component="IndicatorComponent"></api-doc>
       </div>
     `,
 })

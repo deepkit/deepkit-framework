@@ -1,7 +1,15 @@
 import { Component } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
-import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
-import { ButtonComponent, ButtonGroupComponent, DropdownComponent, OpenDropdownDirective, OpenDropdownHoverDirective } from '@deepkit/desktop-ui';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
+import {
+    ButtonComponent,
+    ButtonGroupComponent,
+    DropdownComponent,
+    DropdownItemComponent,
+    DropdownSplitterComponent,
+    OpenDropdownDirective,
+    OpenDropdownHoverDirective,
+} from '@deepkit/desktop-ui';
 
 @Component({
     imports: [
@@ -13,6 +21,8 @@ import { ButtonComponent, ButtonGroupComponent, DropdownComponent, OpenDropdownD
         DropdownComponent,
         ApiDocComponent,
         OpenDropdownHoverDirective,
+        DropdownItemComponent,
+        DropdownSplitterComponent,
     ],
     template: `
       <div class="app-content normalize-text">
@@ -42,14 +52,33 @@ import { ButtonComponent, ButtonGroupComponent, DropdownComponent, OpenDropdownD
             <dui-dropdown #dropdown3>
               <div style="padding: 5px 25px;">
                 Hi there!
-                <a (click)="dropdown3.close()">Close</a>
+                <dui-button (click)="dropdown3.close()">Close</dui-button>
               </div>
             </dui-dropdown>
           </p>
+
+          <p>
+            <dui-dropdown #dropdown4>
+              <dui-dropdown-item>Option 1</dui-dropdown-item>
+              <dui-dropdown-item>Option 2</dui-dropdown-item>
+              <dui-dropdown-separator />
+              <dui-dropdown-item>Abort</dui-dropdown-item>
+            </dui-dropdown>
+            <dui-button icon="arrow_down" icon-right [openDropdown]="dropdown4">Menu</dui-button>
+          </p>
+
           <code-highlight lang="html" [code]="code" />
         </doc-code-frame>
 
-        <api-doc module="components/button/dropdown.component" component="DropdownComponent"></api-doc>
+        <api-doc component="DropdownComponent"></api-doc>
+        <api-doc component="DropdownItemComponent"></api-doc>
+
+        <api-doc component="OpenDropdownDirective"></api-doc>
+        <api-doc component="OpenDropdownHoverDirective"></api-doc>
+        <api-doc component="ContextDropdownDirective"></api-doc>
+
+        <api-doc component="DropdownContainerDirective"></api-doc>
+        <api-doc component="DropdownSplitterComponent"></api-doc>
       </div>
     `,
 })
@@ -77,9 +106,19 @@ export class DocDesktopUIButtonDropdownComponent {
     <dui-dropdown #dropdown3>
       <div style="padding: 5px 25px;">
         Hi there!
-        <a (click)="dropdown3.close()">Close</a>
+        <dui-button (click)="dropdown3.close()">Close</dui-button>
       </div>
     </dui-dropdown>
+  </p>
+  
+  <p>
+    <dui-dropdown #dropdown4>
+      <dui-dropdown-item>Option 1</dui-dropdown-item>
+      <dui-dropdown-item>Option 2</dui-dropdown-item>
+      <dui-dropdown-separator />
+      <dui-dropdown-item>Abort</dui-dropdown-item>
+    </dui-dropdown>
+    <dui-button icon="arrow_down" icon-right [openDropdown]="dropdown4">Menu</dui-button>
   </p>
 `;
 }

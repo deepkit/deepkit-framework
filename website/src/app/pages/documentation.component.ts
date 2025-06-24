@@ -168,6 +168,7 @@ import { DuiStyleComponent } from '@deepkit/desktop-ui';
               started</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/button">Button</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/button-group">Button group</a>
+            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/dialog">Dialog</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/dropdown">Dropdown</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/icons">Icons</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/input">Input</a>
@@ -180,7 +181,6 @@ import { DuiStyleComponent } from '@deepkit/desktop-ui';
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/window">Window</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/window-menu">Window menu</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/window-toolbar">Window toolbar</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/dialog">Dialog</a>
           </div>
         </nav>
       </div>

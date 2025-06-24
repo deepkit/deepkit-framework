@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import {
     ButtonComponent,
     ButtonGroupComponent,
@@ -28,35 +28,39 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
         IconBrowserComponent,
         CodeHighlightComponent,
     ],
-    host: {ngSkipHydration: 'true'},
+    host: { ngSkipHydration: 'true' },
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Icon</h1>
 
         <p>
-          This library comes with own set of icons you can use in dui-button, dui-input and dui-icon. All icons are
-          available as SVGs and are compiled to
-          a font file you should import in your angular config. See the getting started page to know how to install
-          the font correctly.
+          This library comes with own set of icons you can use in <code>dui-button</code>, <code>dui-input</code> and <code>dui-icon</code>. 
+          All icons are available as SVGs and are compiled to a font file you should import in your angular config.
+        </p>
+        
+        <p>
+          See Generate section for more information on how to add your own icons.
         </p>
 
         <doc-code-frame>
-          <div>
-            <dui-icon name="flag" [size]="8"></dui-icon>
-            <dui-icon name="flag"></dui-icon>
-            <dui-icon name="flag" [size]="24"></dui-icon>
-            <p>
+          <div class="examples">
+            <div>
+                <dui-icon name="flag" [size]="8"></dui-icon>
+                <dui-icon name="flag"></dui-icon>
+                <dui-icon name="flag" [size]="24"></dui-icon>
+            </div>
+            <div>
               <dui-button icon="flag">My button</dui-button>
-              <dui-button icon="flag" iconRight>My Button</dui-button>
+              <dui-button icon="flag" icon-right>My Button</dui-button>
               <dui-button icon="check">Check</dui-button>
               <dui-button icon="star">Star</dui-button>
-            </p>
-            <p>
-              <dui-button icon="arrow_down">Dropdown</dui-button>
-              <dui-button icon="arrow_down" iconRight>Dropdown</dui-button>
-            </p>
-            <p>
+            </div>
+            <div>
+              <dui-button icon="flag" small>My button</dui-button>
+              <dui-button icon="flag" small icon-right>My Button</dui-button>
+            </div>
+            <dui-button-groups>
               <dui-button-group padding="none">
                 <dui-button icon="garbage"></dui-button>
                 <dui-button icon="flag"></dui-button>
@@ -65,15 +69,15 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
                 <dui-button small [iconSize]="15" icon="garbage"></dui-button>
                 <dui-button small icon="flag"></dui-button>
               </dui-button-group>
-            </p>
-            <p>
+            </dui-button-groups>
+            <div>
               <dui-input round placeholder="My input with icon" icon="flag"></dui-input>
-            </p>
+            </div>
 
-            <p>
+            <dui-button-group>
               <dui-icon name="zoom-to-fit" clickable></dui-icon>
               Clickable icon
-            </p>
+            </dui-button-group>
 
             <dui-button-groups>
               <dui-button-group padding="none">
@@ -100,7 +104,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
           <code-highlight lang="html" [code]="code"></code-highlight>
         </doc-code-frame>
 
-        <api-doc module="components/icon/icon.component" component="IconComponent"></api-doc>
+        <api-doc component="IconComponent"></api-doc>
 
         <h3>Icons available</h3>
 
@@ -162,23 +166,33 @@ src/assets/icons
         <code-highlight lang="css" [code]="css"></code-highlight>
       </div>
     `,
+    styles: `
+        .examples {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+    `
 })
 export class DocDesktopUIIconComponent {
     code = `
-<dui-icon name="flag" [size]="8"></dui-icon>
-<dui-icon name="flag"></dui-icon>
-<dui-icon name="flag" [size]="24"></dui-icon>
-<p>
+<div>
+    <dui-icon name="flag" [size]="8"></dui-icon>
+    <dui-icon name="flag"></dui-icon>
+    <dui-icon name="flag" [size]="24"></dui-icon>
+</div>
+<div>
     <dui-button icon="flag">My button</dui-button>
-    <dui-button icon="flag" iconRight>My Button</dui-button>
+    <dui-button icon="flag" icon-right>My Button</dui-button>
     <dui-button icon="check">Check</dui-button>
     <dui-button icon="star">Star</dui-button>
-</p>
-<p>
-    <dui-button icon="arrow_down">Dropdown</dui-button>
-    <dui-button icon="arrow_down" iconRight>Dropdown</dui-button>
-</p>
-<p>
+</div>
+<div>
+    <dui-button icon="flag" small>My button</dui-button>
+    <dui-button icon="flag" small icon-right>My Button</dui-button>
+</div>
+
+<dui-button-groups>
     <dui-button-group padding="none">
         <dui-button icon="garbage"></dui-button>
         <dui-button icon="flag"></dui-button>
@@ -187,14 +201,16 @@ export class DocDesktopUIIconComponent {
         <dui-button small [iconSize]="15" icon="garbage"></dui-button>
         <dui-button small icon="flag"></dui-button>
     </dui-button-group>
-</p>
-<p>
+</dui-button-groups>
+<div>
     <dui-input round placeholder="My input with icon" icon="flag"></dui-input>
-</p>
+</div>
 
-<p>
-    <dui-icon name="zoom-to-fit" clickable></dui-icon> Clickable icon
-</p>
+
+<dui-button-group>
+    <dui-icon name="zoom-to-fit" clickable></dui-icon>
+    Clickable icon
+</dui-button-group>
 
 <dui-button-groups>
     <dui-button-group padding="none">

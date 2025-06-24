@@ -329,7 +329,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
  * only when opening the dialog. Without it it is immediately render, which can cause
  * performance and injection issues.
  */
-@Directive({ 'selector': '[externalDialogContainer]' })
+@Directive({ selector: '[externalDialogContainer]' })
 export class ExternalDialogDirective {
     constructor(protected dialog: ExternalWindowComponent, public template: TemplateRef<any>) {
         this.dialog.setDialogContainer(this.template);

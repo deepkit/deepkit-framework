@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
-import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { ListComponent, ListItemComponent, ListTitleComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
 
@@ -43,11 +43,11 @@ import { FormsModule } from '@angular/forms';
           <code-highlight lang="html" [code]="code" />
         </doc-code-frame>
 
-        <api-doc module="components/list/list.component" component="ListComponent"></api-doc>
+        <api-doc component="ListComponent"></api-doc>
 
-        <api-doc module="components/list/list.component" component="ListItemComponent"></api-doc>
+        <api-doc component="ListItemComponent"></api-doc>
 
-        <api-doc module="components/list/list.component" component="ListTitleComponent"></api-doc>
+        <api-doc component="ListTitleComponent"></api-doc>
       </div>
     `,
 })

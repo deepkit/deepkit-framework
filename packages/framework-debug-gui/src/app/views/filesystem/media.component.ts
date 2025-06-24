@@ -626,7 +626,7 @@ function sortByType(a: MediaFile, b: MediaFile) {
             <ng-container *ngIf="media">
                 <app-media-detail *ngIf="media.type === 'file'" [file]="media"></app-media-detail>
                 <ng-container *ngIf="media.type === 'directory'">
-                    <dui-table *ngIf="state.media.view === 'list'" selectable (selectedChange)="tableSelect($event)" [items]="files" noFocusOutline>
+                    <dui-table *ngIf="state.media.view === 'list'" selectable (selectedChange)="tableSelect($event)" [items]="files" no-focus-outline>
                         <dui-table-column name="name">
                             <ng-container *duiTableCell="let item">
                                 <app-media-file-thumbnail [file]="item"

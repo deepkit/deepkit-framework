@@ -91,6 +91,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+
     cdk-virtual-scroll-viewport {
         flex: 1;
     }
@@ -153,6 +154,8 @@
 }
 
 :host.auto-height {
+    height: unset;
+
     .table-row {
         > div {
             white-space: unset;

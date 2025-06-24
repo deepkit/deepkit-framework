@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
-import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { FormsModule } from '@angular/forms';
 import { RadioButtonComponent, RadioGroupComponent } from '@deepkit/desktop-ui';
 
@@ -16,7 +16,7 @@ import { RadioButtonComponent, RadioGroupComponent } from '@deepkit/desktop-ui';
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
-        <h1>Radiobox</h1>
+        <h1>Radio Button</h1>
 
         <doc-code-frame>
           <div>
@@ -28,44 +28,48 @@ import { RadioButtonComponent, RadioGroupComponent } from '@deepkit/desktop-ui';
               <dui-radio-button value="c">Radio C</dui-radio-button>
             </dui-radio-group>
             <p>
-              Chosen: {{ radioValue }}
+              Chosen: {{ radioValue() }}
             </p>
 
             <dui-radio-group [(ngModel)]="radioValue">
-              <dui-radio-button [(ngModel)]="radioValue" disabled value="a">Radio A</dui-radio-button>
+              <dui-radio-button disabled value="a">Radio A</dui-radio-button>
               <br />
-              <dui-radio-button [(ngModel)]="radioValue" disabled value="b">Radio B</dui-radio-button>
+              <dui-radio-button disabled value="b">Radio B</dui-radio-button>
               <br />
-              <dui-radio-button [(ngModel)]="radioValue" disabled value="c">Radio C</dui-radio-button>
+              <dui-radio-button disabled value="c">Radio C</dui-radio-button>
             </dui-radio-group>
           </div>
           <code-highlight lang="html" [code]="code" />
         </doc-code-frame>
 
-        <api-doc module="components/radiobox/radiobox.component" component="RadioboxComponent"></api-doc>
+        <api-doc component="RadioGroupComponent"></api-doc>
+        <api-doc component="RadioButtonComponent"></api-doc>
       </div>
     `,
 })
-export class DocDesktopUIRadioboxComponent {
-    radioValue = 'a';
-    code = `
-<dui-radio-group [(ngModel)]="radioValue">
-  <dui-radio-button value="a">Radio A</dui-radio-button>
-  <br />
-  <dui-radio-button value="b">Radio B</dui-radio-button>
-  <br />
-  <dui-radio-button value="c">Radio C</dui-radio-button>
-</dui-radio-group>
-<p>
-  Chosen: {{ radioValue }}
-</p>
+export class DocDesktopUIRadioButtonComponent {
+    radioValue = signal('a');
 
-<dui-radio-group [(ngModel)]="radioValue">
-  <dui-radio-button [(ngModel)]="radioValue" disabled value="a">Radio A</dui-radio-button>
-  <br />
-  <dui-radio-button [(ngModel)]="radioValue" disabled value="b">Radio B</dui-radio-button>
-  <br />
-  <dui-radio-button [(ngModel)]="radioValue" disabled value="c">Radio C</dui-radio-button>
-</dui-radio-group>
+    code = `
+  <div>
+    <dui-radio-group [(ngModel)]="radioValue">
+      <dui-radio-button value="a">Radio A</dui-radio-button>
+      <br />
+      <dui-radio-button value="b">Radio B</dui-radio-button>
+      <br />
+      <dui-radio-button value="c">Radio C</dui-radio-button>
+    </dui-radio-group>
+    <p>
+      Chosen: {{ radioValue() }}
+    </p>
+
+    <dui-radio-group [(ngModel)]="radioValue">
+      <dui-radio-button disabled value="a">Radio A</dui-radio-button>
+      <br />
+      <dui-radio-button disabled value="b">Radio B</dui-radio-button>
+      <br />
+      <dui-radio-button disabled value="c">Radio C</dui-radio-button>
+    </dui-radio-group>
+  </div>
 `;
 }

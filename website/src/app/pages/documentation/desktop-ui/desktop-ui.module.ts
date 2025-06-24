@@ -12,7 +12,7 @@ import { DocDesktopUIFormComponent } from './form.component.js';
 import { DocDesktopUIInputComponent } from './input.component.js';
 import { DocDesktopUIListComponent } from './list.component.js';
 import { DocDesktopUIWindowMenuComponent } from './window-menu.component.js';
-import { DocDesktopUIRadioboxComponent } from './radiobox.component.js';
+import { DocDesktopUIRadioButtonComponent } from './radiobox.component.js';
 import { DocDesktopUISelectboxComponent } from './selectbox.component.js';
 import { DocDesktopUISliderComponent } from './slider.component.js';
 import { DocDesktopUITableComponent } from './table.component.js';
@@ -33,7 +33,7 @@ const routes: Routes = [
     { path: 'input', component: DocDesktopUIInputComponent },
     { path: 'list', component: DocDesktopUIListComponent },
     { path: 'checkbox', component: DocDesktopUICheckboxComponent },
-    { path: 'radiobox', component: DocDesktopUIRadioboxComponent },
+    { path: 'radiobox', component: DocDesktopUIRadioButtonComponent },
     { path: 'selectbox', component: DocDesktopUISelectboxComponent },
     { path: 'slider', component: DocDesktopUISliderComponent },
     { path: 'table', component: DocDesktopUITableComponent },

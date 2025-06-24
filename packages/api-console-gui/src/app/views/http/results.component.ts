@@ -60,7 +60,7 @@ import { ApiRoute } from '@deepkit/api-console-api';
                     </dui-button-group>
 
                     <ng-container *ngIf="r.tab === 'header'">
-                        <dui-table [items]="r.headers" borderless noFocusOutline [autoHeight]="true">
+                        <dui-table [items]="r.headers" borderless no-focus-outline [autoHeight]="true">
                             <dui-table-column name="name" [width]="180" class="text-selection"></dui-table-column>
                             <dui-table-column name="value" [width]="280" class="text-selection"></dui-table-column>
                         </dui-table>

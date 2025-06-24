@@ -7,7 +7,7 @@ import { DialogComponent } from '@deepkit/desktop-ui';
         <div class="header">
             <dui-input round clearer [(ngModel)]="filterQuery" icon="filter" placeholder="Filter"></dui-input>
         </div>
-        <dui-table borderless noFocusOutline [items]="items" [filterQuery]="filterQuery" [filterFields]="filterFields">
+        <dui-table borderless no-focus-outline [items]="items" [filterQuery]="filterQuery" [filterFields]="filterFields">
             <dui-table-column name="chosen" [width]="50" header="✓">
                 <ng-container *duiTableCell="let item">
                     <dui-checkbox [ngModel]="item.chosen"

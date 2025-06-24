@@ -60,6 +60,9 @@ export class MenuBase implements AfterViewInit {
 
     }
 
+    /**
+     * @hidden
+     */
     buildTemplate() {
         const submenu: any[] = [];
         if (this.child) {

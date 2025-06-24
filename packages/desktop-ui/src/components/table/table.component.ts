@@ -68,6 +68,13 @@ export class TableCellDirective {
 
 /**
  * Can be used to define own dropdown items once the user opens the header context menu.
+ *
+ * ```html
+ * <dui-table>
+ *   <dui-dropdown duiTableCustomHeaderContextMenu>
+ *       <dui-dropdown-item>Custom Item</dui-dropdown-item>
+ *   </dui-dropdown>
+ * </dui-table>
  */
 @Directive({ selector: 'dui-dropdown[duiTableCustomHeaderContextMenu]' })
 export class TableCustomHeaderContextMenuDirective {
@@ -78,6 +85,14 @@ export class TableCustomHeaderContextMenuDirective {
 
 /**
  * Can be used to define own dropdown items once the user opens the row context menu.
+ *
+ * ```html
+ * <dui-table>
+ *    <dui-dropdown duiTableCustomRowContextMenu>
+ *       <dui-dropdown-item>Custom Item</dui-dropdown-item>
+ *    </dui-dropdown>
+ * </dui-table>
+ * ```
  */
 @Directive({ selector: 'dui-dropdown[duiTableCustomRowContextMenu]' })
 export class TableCustomRowContextMenuDirective {
@@ -104,12 +119,17 @@ export class TableHeaderDirective {
 
 /**
  * Defines a new column.
+ *
+ * ```html
+ * <dui-table-column name="fieldName" header="Field Name" [width]="100" />
  */
 @Directive({ selector: 'dui-table-column' })
 export class TableColumnDirective implements OnInit {
     /**
      * The name of the column. Needs to be unique. If no renderer (*duiTableCell) is specified, this
      * name is used to render the content T[name].
+     *
+     * This supports dot notation, so you can use `user.name` to access the `name` property of the `user` object.
      */
     name = input<string>('');
 
@@ -217,7 +237,7 @@ export class TableColumnDirective implements OnInit {
              [contextDropdown]="customHeaderDropdown()?.dropdown || headerDropdown">
           @for (column of sortedFilteredColumns(); track $index; let columnIndex = $index) {
             <div class="th"
-                 [style.width]="column.getWidth()"
+                 [style.width]="column.getWidth() || 100 + 'px'"
                  (mouseup)="sortBy(column.name() || '', $event)"
                  [class.freeze]="columnIndex < freezeColumns()"
                  [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(columnIndex) : undefined"
@@ -264,7 +284,7 @@ export class TableColumnDirective implements OnInit {
                      [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(columnIndex) : undefined"
                      [class.freeze-last]="columnIndex === freezeColumns() - 1"
                      [attr.row-i]="i"
-                     [style.flex-basis]="column.getWidth()"
+                     [style.flex-basis]="column.getWidth() || 100 + 'px'"
                 >
                   @if (column.cell(); as cell) {
                     <ng-container [ngTemplateOutlet]="cell.template"
@@ -301,7 +321,7 @@ export class TableColumnDirective implements OnInit {
                        [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(columnIndex) : undefined"
                        [class.freeze-last]="columnIndex === freezeColumns() - 1"
                        [attr.row-i]="i"
-                       [style.flex-basis]="column.getWidth()"
+                       [style.flex-basis]="column.getWidth() || 100 + 'px'"
                   >
                     @if (column.cell(); as cell) {
                       <ng-container [ngTemplateOutlet]="cell.template"
@@ -324,6 +344,7 @@ export class TableColumnDirective implements OnInit {
         '[class.with-hover]': 'hover()',
         '[class.auto-height]': 'autoHeight()',
         '[class.dui-normalized]': 'true',
+        '[class.text-selection]': 'textSelection()',
     },
     imports: [
         DropdownComponent_1,
@@ -471,7 +492,12 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
      */
     sorting = input<boolean>(true);
 
-    noFocusOutline = input(false, { transform: booleanAttribute });
+    noFocusOutline = input(false, { alias: 'no-focus-outline', transform: booleanAttribute });
+
+    /**
+     * Allow text selection in the table.
+     */
+    textSelection = input(false, { alias: 'text-selection', transform: booleanAttribute });
 
     sort = model<{ [column: string]: 'asc' | 'desc'; }>({});
 

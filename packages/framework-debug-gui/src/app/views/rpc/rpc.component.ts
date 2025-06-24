@@ -26,7 +26,7 @@ import { RpcAction, Workflow } from '@deepkit/framework-debug-api';
     </div>
     <dui-table
       style="flex: 1 1"
-      [items]="filter(actions, filterQuery)" [(selected)]="selected" selectable defaultSort="path" noFocusOutline>
+      [items]="filter(actions, filterQuery)" [(selected)]="selected" selectable defaultSort="path" no-focus-outline>
       <dui-table-column [width]="220" name="controller"></dui-table-column>
       <dui-table-column [width]="220" name="path"></dui-table-column>
       <dui-table-column [width]="220" name="methodName"></dui-table-column>

@@ -171,12 +171,12 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         super.writeValue(value);
     }
 
-    onKeyDown(event: KeyboardEvent) {
+    protected onKeyDown(event: KeyboardEvent) {
         this.touch();
         this.keyDown.emit(event);
     }
 
-    onKeyUp(event: KeyboardEvent) {
+    protected onKeyUp(event: KeyboardEvent) {
         if (event.key.toLowerCase() === 'enter' && this.type() !== 'textarea') {
             this.enter.emit(event);
         }
@@ -201,7 +201,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
         }
     }
 
-    public async handleFileInput(event: any) {
+    protected async handleFileInput(event: any) {
         const files = event.target.files;
         this.touch();
 

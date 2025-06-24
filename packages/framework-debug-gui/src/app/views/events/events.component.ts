@@ -21,7 +21,7 @@ import { Lifecycle } from '../../utils';
         </div>
         <dui-table
             style="flex: 1 1"
-            [items]="filter(events, filterQuery)" selectable defaultSort="path" noFocusOutline>
+            [items]="filter(events, filterQuery)" selectable defaultSort="path" no-focus-outline>
             <dui-table-column [width]="220" name="event"></dui-table-column>
             <dui-table-column [width]="250" name="controller"></dui-table-column>
             <dui-table-column [width]="220" name="methodName"></dui-table-column>

@@ -16,14 +16,14 @@ import {
     Directive,
     ElementRef,
     EmbeddedViewRef,
-    EventEmitter,
     HostListener,
     Injector,
     input,
     OnChanges,
     OnDestroy,
     Optional,
-    Output,
+    output,
+    OutputRefSubscription,
     signal,
     SimpleChanges,
     TemplateRef,
@@ -32,7 +32,6 @@ import {
 } from '@angular/core';
 import { TemplatePortal } from '@angular/cdk/portal';
 import { ConnectedPosition, Overlay, OverlayConfig, OverlayRef, PositionStrategy } from '@angular/cdk/overlay';
-import { Subscription } from 'rxjs';
 import { WindowRegistry } from '../window/window-state';
 import { focusWatcher } from '../../core/utils';
 import { isArray } from '@deepkit/core';
@@ -42,7 +41,13 @@ import { IconComponent } from '../icon/icon.component';
 import { OverlayStack, OverlayStackItem } from '../app/app';
 import { unsubscribe } from '../app/reactivate-change-detection';
 
-
+/**
+ * A dropdown component that can be used to display a list of items or content in a popup.
+ *
+ * It can be opened and closed programmatically or via user interaction.
+ *
+ * By monitoring the focused elements, it is possible to add interactive elements inside the dropdown.
+ */
 @Component({
     selector: 'dui-dropdown',
     template: `
@@ -71,12 +76,19 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     public portalViewRef?: EmbeddedViewRef<any>;
     protected lastFocusWatcher?: ReturnType<typeof focusWatcher>;
 
+    /**
+     * If open() is called without a target, the host element is used as the target.
+     * THe target elements is allowed to have focus without closing the dropdown.
+     */
     host = input<Element | ElementRef>();
 
+    /**
+     * Additional elements that are allowed to have focus without closing the dropdown.
+     */
     allowedFocus = input<(Element | ElementRef)[] | (Element | ElementRef)>([]);
 
     /**
-     * For debugging purposes.
+     * Keeps the dropdown open when it should be closed, ideal for debugging purposes.
      */
     keepOpen = input<boolean>();
 
@@ -92,6 +104,9 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
     maxHeight = input<number | string>();
 
+    /**
+     * Whether the dropdown should allow scrollbars.
+     */
     scrollbars = input<boolean>(true);
 
     /**
@@ -105,13 +120,26 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     overlay = input(false, { transform: booleanAttribute });
 
     show = input<boolean>();
+
+    /**
+     * Additional positions to connect the dropdown to the target element.
+     */
     connectedPositions = input<ConnectedPosition[]>([]);
 
-    @Output() showChange = new EventEmitter<boolean>();
+    /**
+     * Triggered when the dropdown is opened or closed.
+     */
+    showChange = output<boolean>();
 
-    @Output() shown = new EventEmitter();
+    /**
+     * Triggered when the dropdown is opened.
+     */
+    shown = output();
 
-    @Output() hidden = new EventEmitter();
+    /**
+     * Triggered when the dropdown is closed.
+     */
+    hidden = output();
 
     @ViewChild('dropdownTemplate', {
         static: false,
@@ -158,13 +186,16 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     }
 
     @HostListener('window:keyup', ['$event'])
-    public key(event: KeyboardEvent) {
+    protected key(event: KeyboardEvent) {
         if (!this.keepOpen() && this.isOpen && event.key.toLowerCase() === 'escape' && this.lastOverlayStackItem && this.lastOverlayStackItem.isLast()) {
             this.close();
         }
     }
 
-    public toggle(target?: HTMLElement | ElementRef | MouseEvent) {
+    /**
+     * Toggles the dropdown open or closed.
+     */
+    toggle(target?: HTMLElement | ElementRef | MouseEvent) {
         if (this.isOpen) {
             this.close();
         } else {
@@ -172,11 +203,17 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         }
     }
 
-    public setContainer(container: TemplateRef<any> | undefined) {
+    /**
+     * Sets the container template for the dropdown.
+     */
+    setContainer(container: TemplateRef<any> | undefined) {
         this.container.set(container);
     }
 
-    public open(target?: Element | ElementRef | MouseEvent | 'center', initiator?: HTMLElement | ElementRef | {
+    /**
+     * Opens the dropdown at the given target element or mouse position.
+     */
+    open(target?: Element | ElementRef | MouseEvent | 'center', initiator?: HTMLElement | ElementRef | {
         x: number,
         y: number,
         width: number,
@@ -350,8 +387,9 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         const normalizedAllowedFocus = isArray(allowedFocusValue) ? allowedFocusValue : (allowedFocusValue ? [allowedFocusValue] : []);
         const allowedFocus = normalizedAllowedFocus.map(v => v instanceof ElementRef ? v.nativeElement : v) as Element[];
         allowedFocus.push(this.overlayRef.hostElement);
+
         if (target instanceof ElementRef) allowedFocus.push(this.overlayRef.hostElement);
-        if (target instanceof Element) allowedFocus.push(this.overlayRef.hostElement);
+        if (target instanceof Element) allowedFocus.push(target);
         if (target instanceof MouseEvent && target.target instanceof Element) allowedFocus.push(target.target);
 
         if (this.show() === undefined) {
@@ -378,7 +416,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         }
     }
 
-    public setInitiator(initiator?: HTMLElement | ElementRef | { x: number, y: number, width: number, height: number }) {
+    setInitiator(initiator?: HTMLElement | ElementRef | { x: number, y: number, width: number, height: number }) {
         if (!this.overlayRef) return;
 
         initiator = initiator instanceof ElementRef ? initiator.nativeElement : initiator;
@@ -399,12 +437,18 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         };
     }
 
-    public focus() {
+    /**
+     * Focuses the dropdown element.
+     */
+    focus() {
         if (!this.dropdown) return;
         this.dropdown.nativeElement.focus();
     }
 
-    public close() {
+    /**
+     * Closes the dropdown if it is open.
+     */
+    close() {
         this.lastFocusWatcher?.();
         if (!this.isOpen) return;
         if (this.lastOverlayStackItem) {
@@ -452,16 +496,22 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
 /**
  * A directive to open the given dropdown on regular left click.
+ *
+ * ```html
+ * <dui-dropdown #dropdown>
+ * </dui-dropdown>
+ * <dui-button [openDropdown]="dropdown">Open dropdown</dui-button>
+ * ```
  */
-@Directive({ 'selector': '[openDropdown]' })
+@Directive({ selector: '[openDropdown]' })
 export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
     openDropdown = input<DropdownComponent>();
 
     @unsubscribe()
-    openSub?: Subscription;
+    openSub?: OutputRefSubscription;
 
     @unsubscribe()
-    hiddenSub?: Subscription;
+    hiddenSub?: OutputRefSubscription;
 
     constructor(
         protected elementRef: ElementRef,
@@ -485,7 +535,7 @@ export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
     }
 
     @HostListener('click')
-    onClick() {
+    protected onClick() {
         const openDropdown = this.openDropdown();
         if (openDropdown) {
             openDropdown.toggle(this.elementRef);
@@ -495,9 +545,15 @@ export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
 
 /**
  * A directive to open the given dropdown on mouseenter, and closes automatically on mouseleave.
- * Dropdown keeps open when mouse enters the dropdown
+ * Dropdown keeps open when mouse enters the dropdown.
+ *
+ * ```html
+ * <dui-dropdown #dropdown>
+ * </dui-dropdown>
+ * <dui-button [openDropdownHover]="dropdown">Open on hover</dui-button>
+ * ```
  */
-@Directive({ 'selector': '[openDropdownHover]' })
+@Directive({ selector: '[openDropdownHover]' })
 export class OpenDropdownHoverDirective implements OnDestroy {
     openDropdownHover = input<DropdownComponent>();
 
@@ -506,8 +562,11 @@ export class OpenDropdownHoverDirective implements OnDestroy {
      */
     openDropdownHoverCloseTimeout = input<number>(80);
 
-    protected hiddenSub?: Subscription;
+    @unsubscribe()
+    protected hiddenSub?: OutputRefSubscription;
+
     protected lastHide?: ReturnType<typeof setTimeout>;
+
     protected enter = () => this.onHover();
     protected leave = () => this.onLeave();
 
@@ -527,7 +586,7 @@ export class OpenDropdownHoverDirective implements OnDestroy {
     }
 
     @HostListener('mouseenter')
-    onHover() {
+    protected onHover() {
         this.cleanup();
 
         const openDropdownHover = this.openDropdownHover();
@@ -546,7 +605,7 @@ export class OpenDropdownHoverDirective implements OnDestroy {
     }
 
     @HostListener('mouseleave')
-    onLeave() {
+    protected onLeave() {
         this.cleanup();
         this.lastHide = setTimeout(() => {
             const openDropdownHover = this.openDropdownHover();
@@ -558,13 +617,20 @@ export class OpenDropdownHoverDirective implements OnDestroy {
 
 /**
  * A directive to open the given dropdown upon right click / context menu.
+ *
+ * ```html
+ * <dui-dropdown #dropdown>
+ * </dui-dropdown>
+ *
+ * <dui-button [contextDropdown]="dropdown">Open context menu</dui-button>
+ * ```
  */
-@Directive({ 'selector': '[contextDropdown]' })
+@Directive({ selector: '[contextDropdown]' })
 export class ContextDropdownDirective {
     contextDropdown = input<DropdownComponent>();
 
     @HostListener('contextmenu', ['$event'])
-    onClick($event: MouseEvent) {
+    protected onClick($event: MouseEvent) {
         const contextDropdown = this.contextDropdown();
         if (contextDropdown && $event.button === 2) {
             contextDropdown.close();
@@ -575,6 +641,16 @@ export class ContextDropdownDirective {
     }
 }
 
+/**
+ * A component that acts as a visual separator or splitter inside a dropdown.
+ *
+ * ```html
+ * <dui-dropdown>
+ *     <dui-dropdown-item>Item 1</dui-dropdown-item>
+ *     <dui-dropdown-separator />
+ *     <dui-dropdown-item>Item 2</dui-dropdown-item>
+ * </dui-dropdown>
+ */
 @Component({
     selector: 'dui-dropdown-splitter,dui-dropdown-separator',
     template: `
@@ -611,13 +687,24 @@ export class DropdownSplitterComponent {
  *
  * ```
  */
-@Directive({ 'selector': '[dropdownContainer]' })
+@Directive({ selector: '[dropdownContainer]' })
 export class DropdownContainerDirective {
     constructor(protected dropdown: DropdownComponent, public template: TemplateRef<any>) {
         this.dropdown.setContainer(this.template);
     }
 }
 
+/**
+ * Interactive item inside a dropdown.
+ *
+ * ```html
+ * <dui-dropdown>
+ *     <dui-dropdown-item (click)="doSomething()">Click me</dui-dropdown-item>
+ *     <dui-dropdown-item [selected]="true">Selected item</dui-dropdown-item>
+ *     <dui-dropdown-item [disabled]="true">Disabled item</dui-dropdown-item>
+ * </dui-dropdown>
+ * ```
+ */
 @Component({
     selector: 'dui-dropdown-item',
     template: `
@@ -645,7 +732,7 @@ export class DropdownItemComponent {
     }
 
     @HostListener('click')
-    onClick() {
+    protected onClick() {
         if (this.closeOnClick()) {
             this.dropdown.close();
         }

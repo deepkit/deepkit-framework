@@ -8,9 +8,12 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Component, HostBinding, HostListener, inject, input } from '@angular/core';
+import { booleanAttribute, Component, HostBinding, HostListener, inject, input } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 
+/**
+ * Radio group component to group multiple radio buttons together.
+ */
 @Component({
     selector: 'dui-radio-group',
     providers: [ngValueAccessor(RadioGroupComponent)],
@@ -20,26 +23,42 @@ import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 export class RadioGroupComponent extends ValueAccessorBase<any> {
 }
 
+/**
+ * Radio button component to toggle between multiple options.
+ *
+ * ```html
+ * <dui-radio-group [(ngModel)]="myValue">
+ *     <dui-radio-button value="a">Option A</dui-radio-button>
+ *     <dui-radio-button value="b">Option B</dui-radio-button>
+ * </dui-radio-group>
+ */
 @Component({
     selector: 'dui-radio-button',
     template: `
       <span class="box"><div class="circle"></div></span>
       <ng-content></ng-content>
     `,
+    host: {
+        '[class.dui-normalized]': 'true',
+        '[class.disabled]': 'disabled()',
+        '[class.checked]': 'isChecked',
+    },
     styleUrls: ['./radio-box.component.scss'],
 })
 export class RadioButtonComponent {
     value = input<any>();
 
+    disabled = input(false, { transform: booleanAttribute });
+
     group = inject(RadioGroupComponent);
 
     @HostBinding('tabindex')
-    get tabIndex() {
+    protected get tabIndex() {
         return 1;
     }
 
     @HostBinding('class.checked')
-    get isChecked() {
+    protected get isChecked() {
         return this.value() === this.group.value();
     }
 

@@ -14,6 +14,16 @@ import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { arrayRemoveItem } from '@deepkit/core';
 import { injectElementRef } from '../app/utils';
 
+/**
+ * Non-interactive title item for a list.
+ *
+ * ```html
+ * <dui-list>
+ *  <dui-list-title>Title</dui-list-title>
+ *  <dui-list-item value="1">Item 1</dui-list-item>
+ * </list>
+ * ```
+ */
 @Component({
     selector: 'dui-list-title',
     template: `
@@ -55,12 +65,18 @@ export class ListComponent extends ValueAccessorBase<any> {
 
     element = injectElementRef();
 
-    public deregister(item: ListItemComponent) {
+    /**
+     * @hidden
+     */
+    deregister(item: ListItemComponent) {
         arrayRemoveItem(this.items, item);
         this.itemMap.delete(item.id + '');
     }
 
-    public register(item: ListItemComponent) {
+    /**
+     * @hidden
+     */
+    register(item: ListItemComponent) {
         this.items.push(item);
         this.itemMap.set(item.id + '', item);
     }
@@ -71,7 +87,7 @@ export class ListComponent extends ValueAccessorBase<any> {
     }
 
     @HostListener('keydown', ['$event'])
-    public async onKeyDown(event: KeyboardEvent) {
+    protected async onKeyDown(event: KeyboardEvent) {
         if (event.key === 'ArrowDown') {
             event.preventDefault();
             const selectedItem = this.getSelectedItem();
@@ -110,6 +126,16 @@ export class ListComponent extends ValueAccessorBase<any> {
     }
 }
 
+/**
+ * Interactive item for a list.
+ * Supports router links, selection and more.
+ *
+ * ```html
+ * <dui-list>
+ *  <dui-list-item value="1">Item 1</dui-list-item>
+ * </list>
+ * ```
+ */
 @Component({
     selector: 'dui-list-item',
     template: `

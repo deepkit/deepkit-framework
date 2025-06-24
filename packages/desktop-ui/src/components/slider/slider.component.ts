@@ -8,10 +8,17 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { booleanAttribute, Component, computed, ElementRef, HostListener, input, viewChild, ViewChild } from '@angular/core';
+import { booleanAttribute, Component, computed, ElementRef, HostListener, input, viewChild } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { clamp, injectElementRef } from '../app/utils';
 
+/**
+ * Slider component allows users to select a value from a range by dragging a knob along a track.
+ *
+ * ```html
+ * <dui-slider [(ngModel)]="value" [min]="0" [max]="100" [steps]="1"></dui-slider>
+ * ```
+ */
 @Component({
     selector: 'dui-slider',
     template: `
@@ -28,11 +35,29 @@ import { clamp, injectElementRef } from '../app/utils';
     providers: [ngValueAccessor(SliderComponent)],
 })
 export class SliderComponent extends ValueAccessorBase<number> {
+    /**
+     * The minimum value of the slider.
+     */
     min = input(0);
-    steps = input(0.01);
+
+    /**
+     * The maximum value of the slider.
+     */
     max = input(1);
+
+    /**
+     * The step size for the slider. The value will be rounded to the nearest step.
+     */
+    steps = input(0.01);
+
+    /**
+     * How many fractional digits to display.
+     */
     fractionalDigits = input(2);
 
+    /**
+     * If true, the slider will be displayed in a compact form.
+     */
     mini = input(false, { transform: booleanAttribute });
 
     dragKnob = viewChild<ElementRef<HTMLElement>>('dragKnob');
@@ -58,14 +83,14 @@ export class SliderComponent extends ValueAccessorBase<number> {
     }
 
     @HostListener('window:mouseup', ['$event'])
-    containerMouseUp(event: MouseEvent) {
+    protected containerMouseUp(event: MouseEvent) {
         if (!this.down) return;
         this.valueFromMouse(event);
         this.down = false;
     }
 
     @HostListener('window:mousedown', ['$event'])
-    containerMouseDown(event: MouseEvent) {
+    protected containerMouseDown(event: MouseEvent) {
         const container = this.dragContainer;
         const knob = this.dragKnob()?.nativeElement;
         if (!knob || !container || !event.target) return;
@@ -79,17 +104,17 @@ export class SliderComponent extends ValueAccessorBase<number> {
     }
 
     @HostListener('window:mousemove', ['$event'])
-    containerMouseMove(event: MouseEvent) {
+    protected containerMouseMove(event: MouseEvent) {
         if (!this.down) return;
         this.valueFromMouse(event);
     }
 
-    override writeValue(value?: number) {
+    writeValue(value?: number) {
         value = clamp(value || 0, this.min(), this.max());
         super.writeValue(value);
     }
 
-    updateValueFromX(x: number) {
+    protected updateValueFromX(x: number) {
         const container = this.dragContainer;
         if (!container) return 0;
         // Shift x by knobWidth/2, so handle is centered

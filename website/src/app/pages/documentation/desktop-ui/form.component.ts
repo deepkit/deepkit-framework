@@ -10,7 +10,7 @@ import {
     SelectBoxComponent,
 } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
-import { ApiDocComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ApiDocComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 
 @Component({
     imports: [
@@ -112,9 +112,9 @@ import { ApiDocComponent } from '@app/app/pages/documentation/desktop-ui/doc.mod
           <dui-checkbox [(ngModel)]="disabledAll">Disable all</dui-checkbox>
         </dui-form-row>
 
-        <api-doc module="components/form/form.component" component="FormComponent"></api-doc>
+        <api-doc component="FormComponent"></api-doc>
 
-        <api-doc module="components/form/form.component" component="FormRowComponent"></api-doc>
+        <api-doc component="FormRowComponent"></api-doc>
       </div>
     `,
 })

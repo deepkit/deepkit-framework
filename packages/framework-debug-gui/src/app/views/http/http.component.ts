@@ -26,7 +26,7 @@ import { Route, Workflow } from '@deepkit/framework-debug-api';
     </div>
     <dui-table
       style="flex: 1 1"
-      [items]="filter(routes, filterQuery)" [(selected)]="selected" selectable defaultSort="path" noFocusOutline>
+      [items]="filter(routes, filterQuery)" [(selected)]="selected" selectable defaultSort="path" no-focus-outline>
       <dui-table-column [width]="90" name="HTTP">
         <ng-container *duiTableCell="let row">
           {{row.httpMethods.join(',')}}

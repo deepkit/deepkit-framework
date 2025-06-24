@@ -16,7 +16,7 @@ import { Router } from '@angular/router';
 
         <dui-table style="flex: 1 1" [trackFn]="trackFn" [items]="requests"
                    (dbclick)="open($event)"
-                   selectable defaultSort="started" defaultSortDirection="desc" noFocusOutline>
+                   selectable defaultSort="started" defaultSortDirection="desc" no-focus-outline>
             <dui-table-column [width]="90" name="method" header="Method"> </dui-table-column>
             <dui-table-column class="text-tabular" [width]="130" name="statusCode" header="Status"></dui-table-column>
             <dui-table-column [width]="220" name="url" header="URL"></dui-table-column>

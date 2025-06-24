@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ContentChildren, Injectable, Input, OnChanges, QueryList, SimpleChanges } from '@angular/core';
+import { AfterViewInit, Component, computed, ContentChildren, inject, Injectable, input, Input, QueryList, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import '@angular/compiler';
@@ -12,6 +12,9 @@ import {
     TableColumnDirective,
     TableComponent,
 } from '@deepkit/desktop-ui';
+import { derivedAsync } from 'ngxtension/derived-async';
+import { MarkdownParser } from '@app/common/markdown.js';
+import { ContentRenderComponent } from '@app/app/components/content-render.component.js';
 
 @Component({
     selector: 'doc-code-frame',
@@ -157,7 +160,7 @@ type ApiDocTypeDeclaration = ApiDocTypeDeclarationType | ApiDocTypeDeclarationCa
 // };
 type ApiDocType =
     { type: 'array', elementType: ApiDocType }
-    | { type: 'stringLiteral', value: any }
+    | { type: 'literal', value: any }
     | { type: 'intrinsic', name: string }
     | { type: 'union', types: ApiDocType[], }
     | { type: 'reference', name: string, typeArguments?: ApiDocType[] }
@@ -169,12 +172,30 @@ type ApiDocType =
 
 interface ApiDocItemDecorator {
     name: string;
-    arguments: { [name: string]: any };
-    type: { type: string, name: string };
+    arguments?: { [name: string]: any };
+    type?: { type: string, name: string };
+    selector?: string;
 }
+
+type ApiDocComment = { shortText?: string; summary?: { text: string }[] };
 
 type ApiDocDecorators = ApiDocItemDecorator[];
 
+function getComment(comment?: ApiDocComment): string {
+    if (!comment) return '';
+    let text = comment.shortText || '';
+    if (comment.summary) {
+        for (const s of comment.summary) {
+            text += '\n' + s.text;
+        }
+    }
+    return text;
+}
+
+function isFormsCompatible(doc?: ApiDocItemChildClass): boolean {
+    if (!doc || !doc.extendedTypes) return false;
+    return doc.extendedTypes.some(v => v.type === 'reference' && v.name === 'ValueAccessorBase');
+}
 
 interface ApiDocItemClassChildConstructor {
     id: number;
@@ -194,7 +215,7 @@ interface ApiDocItemClassChildMethod {
     kindString: 'Method';
 
     // todo really?
-    comment?: { shortText: string };
+    comment?: ApiDocComment;
 
     inheritedFrom?: {
         type: string;
@@ -225,7 +246,7 @@ interface ApiDocItemClassChildProperty {
     kind: 1024;
     kindString: 'Property';
 
-    comment?: { shortText: string };
+    comment?: ApiDocComment;
 
     flags: ApiDocFlags;
     decorators?: ApiDocDecorators;
@@ -240,8 +261,9 @@ interface ApiDocItemChildClass {
     name: string;
     kind: 128;
     kindString: 'Class';
+    extendedTypes?: ApiDocType[];
 
-    comment?: { shortText: string, text?: string };
+    comment?: ApiDocComment;
 
     flags: ApiDocFlags;
     decorators: ApiDocDecorators;
@@ -294,7 +316,7 @@ export function typeToString(type?: ApiDocType, d: number = 0): string {
         console.log(type);
     }
 
-    if (type.type === 'stringLiteral') {
+    if (type.type === 'literal') {
         return `'${type.value}'`;
     }
 
@@ -363,6 +385,7 @@ export function typeToString(type?: ApiDocType, d: number = 0): string {
 @Injectable({ providedIn: 'root' })
 export class ApiDocProvider {
     protected docs?: any;
+    parser = new MarkdownParser;
 
     constructor(private httpClient: HttpClient) {
     }
@@ -376,7 +399,7 @@ export class ApiDocProvider {
         return this.docs;
     }
 
-    async findDocForComponent(module: string, component: string): Promise<ApiDocItemChildClass> {
+    async findDocForComponent(component: string): Promise<ApiDocItemChildClass> {
         const docs = await this.getDocs();
 
         for (const child of docs.children) {
@@ -395,50 +418,51 @@ export class ApiDocProvider {
         }
 
         console.debug('available modules', docs.children.map(v => v.name));
-        throw new Error(`No module ${module} found.`);
+        throw new Error(`No component ${component} found.`);
     }
+}
+
+interface TableRow {
+    name: string;
+    type: 'input' | 'output' | 'method';
+    dataType: string;
+    comment: string;
 }
 
 @Component({
     selector: 'api-doc',
     template: `
-      <div class="dui-body">
+      <div>
         <div class="title">
-          <h2>API <code>{{ selector }}</code></h2>
-          @if (tableData.length) {
+          <h2>API <code>{{ selector() }}</code></h2>
+          @if (tableData().length) {
             <dui-input icon="search" placeholder="Search" [(ngModel)]="filterQuery" clearer></dui-input>
           }
         </div>
-        @if (!tableData.length) {
-          <div>
-            No API docs.
+        @if (formsCompatible()) {
+          <div class="forms-compatible">This component is compatible with Angular Forms. You can use <code>[(ngModel)]</code> or
+            <code>formControlName</code> with it.
           </div>
         }
-        @if (comment) {
-          <p [innerHTML]="comment">
-          </p>
+        @if (comment(); as content) {
+          <!--          <p [innerHTML]="comment()"></p>-->
+          <app-render-content [content]="content.body"></app-render-content>
         }
-        @if (tableData.length) {
+        @if (tableData().length) {
           <dui-table
             [autoHeight]="true"
-            [items]="tableData"
-            [selectable]="true"
-            [filterQuery]="filterQuery"
+            [items]="tableData()"
+            [filterQuery]="filterQuery()"
             [filterFields]="['name', 'type', 'dataType', 'comment']"
-            noFocusOutline
+            no-focus-outline
+            text-selection
           >
-            <dui-table-column name="name" header="Name" [width]="240">
+            <dui-table-column name="name" header="Name" [width]="450">
               <ng-container *duiTableCell="let row">
-                @if (row.type === 'input') {
-                  &#64;Input()
-                }
-                @if (row.type === 'output') {
-                  &#64;Output()
-                }
-                {{ row.name }}
+                <code-highlight lang="typescript" inline [code]="code(row)" />
               </ng-container>
             </dui-table-column>
-            <dui-table-column name="dataType" header="Type" [width]="150"></dui-table-column>
+            <!--            <dui-table-column name="dataType" header="Type" [width]="150"></dui-table-column>-->
             <dui-table-column name="comment" header="Description" [width]="350"></dui-table-column>
           </dui-table>
         }
@@ -451,74 +475,101 @@ export class ApiDocProvider {
         InputComponent,
         FormsModule,
         TableCellDirective,
+        ContentRenderComponent,
+        CodeHighlightComponent,
     ],
 })
-export class ApiDocComponent implements OnChanges {
-    @Input() module!: string;
-    @Input() component!: string;
+export class ApiDocComponent {
+    component = input.required<string>();
 
-    comment = '';
+    selector = signal('');
+    filterQuery = signal('');
+    apiDocProvider = inject(ApiDocProvider);
 
-    selector = '';
-    filterQuery = '';
-    tableData: { name: string, type: 'input' | 'output' | 'method', dataType: string, comment: string }[] = [];
+    formsCompatible = computed(() => isFormsCompatible(this.apiDoc()));
 
-    constructor(
-        private apiDocProvider: ApiDocProvider,
-    ) {
+    apiDoc = derivedAsync(() => this.apiDocProvider.findDocForComponent(this.component()));
 
+    comment = derivedAsync(async () => {
+        const docs = this.apiDoc();
+        if (!docs) return undefined;
+        const comment = getComment(docs.comment);
+        if (!comment) return undefined;
+        return this.apiDocProvider.parser.loadAndParse(comment);
+    });
+
+    code(row: TableRow) {
+        let prefix = row.name;
+        if (row.type === 'input') {
+            prefix = '@Input() ' + row.name;
+        } else if (row.type === 'output') {
+            prefix = '@Output() ' + row.name;
+        }
+
+        return prefix + ': ' + row.dataType;
     }
 
-    async ngOnChanges(changes: SimpleChanges) {
-        const docs = await this.apiDocProvider.findDocForComponent(this.module, this.component);
-        this.tableData = [];
-        if (!docs) return;
-        console.log('docs', this.module, this.component, docs);
+    tableData = derivedAsync(async () => {
+        const tableData: TableRow[] = [];
+        const docs = this.apiDoc();
+        if (!docs) return [];
 
+        console.log('docs', docs);
         for (const decorator of docs.decorators) {
             if (decorator.name === 'Component' || decorator.name === 'Directive') {
-                const match = decorator.arguments.obj.match(/['"]?selector['"]?\s?:\s?['"]+([^'"]+)['"]+/i);
-                this.selector = match[1];
-                if (!this.selector.startsWith('[')) {
-                    this.selector = '<' + this.selector + '>';
+                // const match = decorator.arguments.obj.match(/['"]?selector['"]?\s?:\s?['"]+([^'"]+)['"]+/i);
+                const selector = decorator.selector || '';
+                if (!selector.startsWith('[')) {
+                    this.selector.set('<' + selector.replace(/,/g, '>, <') + '>');
+                } else {
+                    this.selector.set(selector);
                 }
             }
         }
 
-        if (docs.comment) {
-            this.comment = docs.comment.shortText;
-            if (docs.comment.text) {
-                this.comment += '\n\n' + docs.comment.text;
-            }
-            // const converter = new Converter();
-            // this.comment = converter.makeHtml(this.comment);
-        }
+        const ignoreProperties = ['registerOnChange', 'registerOnTouched', 'setDisabledState', 'writeValue', 'touch'];
 
         if (docs.children) {
             for (const prop of docs.children) {
-                if (prop.kindString === 'Property' && prop.decorators) {
+                if ((prop.kindString === 'Property' || prop.kindString === 'Method') && ignoreProperties.includes(prop.name)) continue;
+
+                if (prop.kindString === 'Property' && prop.type?.type === 'reference' && (prop.type?.name === 'InputSignal' || prop.type?.name === 'InputSignalWithTransform')) {
+                    const type = prop.type.typeArguments?.[0];
+                    tableData.push({
+                        name: prop.name + (prop.defaultValue || isOptional(type) ? '?' : ''),
+                        type: 'input',
+                        dataType: typeToString(type),
+                        comment: getComment(prop.comment),
+                    });
+                } else if (prop.kindString === 'Property' && prop.type?.type === 'reference' && prop.type?.name === 'OutputEmitterRef') {
+                    const type = prop.type.typeArguments?.[0];
+                    tableData.push({
+                        name: prop.name + (prop.defaultValue || isOptional(type) ? '?' : ''),
+                        type: 'output',
+                        dataType: typeToString(type),
+                        comment: getComment(prop.comment),
+                    });
+                } else if (prop.kindString === 'Property' && prop.decorators) {
                     for (const decorator of prop.decorators) {
                         if (decorator.name === 'Input') {
-                            this.tableData.push({
-                                name: prop.name + (isOptional(prop.type) ? '?' : ''),
+                            tableData.push({
+                                name: prop.name + (prop.defaultValue || isOptional(prop.type) ? '?' : ''),
                                 type: 'input',
                                 dataType: typeToString(prop.type),
-                                comment: prop.comment ? prop.comment.shortText : '',
+                                comment: getComment(prop.comment),
                             });
                         }
 
                         if (decorator.name === 'Output') {
-                            this.tableData.push({
+                            tableData.push({
                                 name: prop.name + (isOptional(prop.type) ? '?' : ''),
                                 type: 'output',
                                 dataType: typeToString(prop.type),
-                                comment: prop.comment ? prop.comment.shortText : '',
+                                comment: getComment(prop.comment),
                             });
                         }
                     }
-                }
-
-                if (prop.kindString === 'Method' && !prop.flags.isProtected && !prop.flags.isPrivate) {
+                } else if (prop.kindString === 'Method' && !prop.flags.isProtected && !prop.flags.isPrivate) {
                     if (prop.name.startsWith('ng')) {
                         continue;
                     }
@@ -527,14 +578,24 @@ export class ApiDocComponent implements OnChanges {
                         [] :
                         prop.signatures[0].parameters.map(v => v.name + (isOptional(v.type) ? '?' : '') + ': ' + typeToString(v.type));
 
-                    this.tableData.push({
+                    tableData.push({
                         name: prop.name + '(' + params.join(', ') + ')',
                         type: 'method',
                         dataType: typeToString(prop.signatures[0].type, 1),
-                        comment: prop.comment ? prop.comment.shortText : '',
+                        comment: getComment(prop.comment),
                     });
                 }
             }
         }
-    }
+
+        tableData.sort((a, b) => {
+            //first order by type: input, output, method. then by name
+            if (a.type === b.type) {
+                return a.name.localeCompare(b.name);
+            }
+            const typeOrder = { input: 0, output: 1, method: 2 };
+            return typeOrder[a.type] - typeOrder[b.type];
+        });
+        return tableData;
+    }, { behavior: 'concat', initialValue: [] });
 }

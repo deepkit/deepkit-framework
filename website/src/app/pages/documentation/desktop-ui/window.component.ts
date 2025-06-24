@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import {
     ButtonComponent,
     ButtonGroupComponent,
@@ -10,6 +10,7 @@ import {
     WindowComponent,
     WindowContentComponent,
     WindowFooterComponent,
+    WindowFrameComponent,
     WindowHeaderComponent,
     WindowSidebarComponent,
     WindowToolbarComponent,
@@ -17,7 +18,7 @@ import {
 import { CodeHighlightComponent } from '@deepkit/ui-library';
 
 @Component({
-    host: {ngSkipHydration: 'true'},
+    host: { ngSkipHydration: 'true' },
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
@@ -38,7 +39,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
 
         <h3>Simple</h3>
         <doc-code-frame>
-          <div class="window-frame">
+          <dui-window-frame>
             <dui-window>
               <dui-window-header>
                 Angular Desktop UI
@@ -49,7 +50,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
                 </div>
               </dui-window-content>
             </dui-window>
-          </div>
+          </dui-window-frame>
           <code-highlight lang="html" [code]="\`
         <dui-window>
             <dui-window-header>
@@ -66,7 +67,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
 
         <h3>Toolbar</h3>
         <doc-code-frame>
-          <div class="window-frame">
+          <dui-window-frame>
             <dui-window>
               <dui-window-header>
                 Angular Desktop UI
@@ -85,7 +86,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
                 </div>
               </dui-window-content>
             </dui-window>
-          </div>
+          </dui-window-frame>
 
           <code-highlight lang="html" [code]='\`
         <dui-window>
@@ -111,7 +112,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
 
         <h3>Footer</h3>
         <doc-code-frame>
-          <div class="window-frame">
+          <dui-window-frame>
             <dui-window>
               <dui-window-header>
                 Angular Desktop UI
@@ -133,7 +134,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
                 This is the footer.
               </dui-window-footer>
             </dui-window>
-          </div>
+          </dui-window-frame>
           <code-highlight lang="html" [code]='\`
         <dui-window>
             <dui-window-header>
@@ -161,7 +162,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
 
         <h3>Sidebar</h3>
         <doc-code-frame>
-          <div class="window-frame">
+          <dui-window-frame>
             <dui-window>
               <dui-window-header>
                 Angular Desktop UI
@@ -185,20 +186,20 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
                 </div>
               </dui-window-content>
             </dui-window>
-          </div>
+          </dui-window-frame>
         </doc-code-frame>
 
-        <api-doc module="components/window/window.component" component="WindowComponent"></api-doc>
+        <api-doc component="WindowComponent"></api-doc>
 
-        <api-doc module="components/window/window-content.component" component="WindowContentComponent"></api-doc>
+        <api-doc component="WindowContentComponent"></api-doc>
 
-        <api-doc module="components/window/window-header.component" component="WindowHeaderComponent"></api-doc>
+        <api-doc component="WindowHeaderComponent"></api-doc>
 
-        <api-doc module="components/window/window-header.component" component="WindowToolbarComponent"></api-doc>
+        <api-doc component="WindowToolbarComponent"></api-doc>
 
-        <api-doc module="components/window/window-sidebar.component" component="WindowSidebarComponent"></api-doc>
+        <api-doc component="WindowSidebarComponent"></api-doc>
 
-        <api-doc module="components/window/window-footer.component" component="WindowFooterComponent"></api-doc>
+        <api-doc component="WindowFooterComponent"></api-doc>
       </div>
     `,
     styleUrls: ['./window.scss'],
@@ -220,6 +221,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
         WindowToolbarComponent,
         WindowFooterComponent,
         InputComponent,
+        WindowFrameComponent,
     ],
 })
 export class DocDesktopUIWindowComponent {

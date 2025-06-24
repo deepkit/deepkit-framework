@@ -93,7 +93,7 @@
                             []
                         </div>
                         <ng-container *ngIf="!query.error && isArray(query.result) && query.result.length > 0">
-                            <dui-table class="raw-table" noFocusOutline borderless [items]="query.result"
+                            <dui-table class="raw-table" no-focus-outline borderless [items]="query.result"
                                        [sort]="query.sort"
                                        style="height: 100%"
                                        [preferenceKey]="'query/' + entity.getName()"
@@ -185,7 +185,7 @@
         </div>
         <div class="table" [class.hidden]="entityState.activeQuery !== -1">
             <ng-container *ngIf="entity">
-                <dui-table noFocusOutline borderless [items]="entityState.items" [rowClass]="rowClass"
+                <dui-table no-focus-outline borderless [items]="entityState.items" [rowClass]="rowClass"
                            [preferenceKey]="'browser/' + entity.getName()"
                            (customSort)="onSort($event)" (cellClick)="cellClick($event)">
 

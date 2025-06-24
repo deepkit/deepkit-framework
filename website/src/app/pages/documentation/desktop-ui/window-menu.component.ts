@@ -1,11 +1,13 @@
 import { Component } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { OpenExternalDirective } from '@deepkit/desktop-ui';
+import { ApiDocComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 
 @Component({
     imports: [
         CodeHighlightComponent,
         OpenExternalDirective,
+        ApiDocComponent,
     ],
     template: `
       <div class="app-content normalize-text">
@@ -23,6 +25,12 @@ import { OpenExternalDirective } from '@deepkit/desktop-ui';
         </p>
 
         <code-highlight lang="html" [code]="code"></code-highlight>
+        
+        <api-doc component="MenuDirective"></api-doc>
+        <api-doc component="MenuItemDirective"></api-doc>
+        <api-doc component="MenuCheckboxDirective"></api-doc>
+        <api-doc component="MenuRadioDirective"></api-doc>
+        <api-doc component="MenuSeparatorDirective"></api-doc>
       </div>
     `,
 })

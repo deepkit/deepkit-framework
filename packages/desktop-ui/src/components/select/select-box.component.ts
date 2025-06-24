@@ -50,6 +50,14 @@ export class DynamicOptionDirective {
     }
 }
 
+/**
+ * Directive to create an option in the select dropdown.
+ *
+ * ```html
+ * <dui-select>
+ *     <dui-option value="1">Option 1</dui-option>
+ * </dui-select>
+ */
 @Component({
     selector: 'dui-option',
     template: `
@@ -66,6 +74,16 @@ export class OptionDirective {
     }
 }
 
+/**
+ * Directive to create a separator in the select dropdown.
+ *
+ * ```html
+ * <dui-select>
+ *     <dui-option value="1">Option 1</dui-option>
+ *     <dui-option-separator></dui-option-separator>
+ *     <dui-option value="2">Option 2</dui-option>
+ * </dui-select>
+ */
 @Directive({
     selector: 'dui-option-separator',
     providers: [{ provide: OptionDirective, useExisting: OptionSeparatorDirective }],
@@ -183,18 +201,18 @@ export class SelectBoxComponent<T> extends ValueAccessorBase<T | NotSelected> im
         this.writeValue(new NotSelected);
     }
 
-    isSeparator(item: any): boolean {
+    protected isSeparator(item: any): boolean {
         return item instanceof OptionSeparatorDirective;
     }
 
-    public select(value: T) {
+    select(value: T) {
         this.writeValue(value);
         this.touch();
         this.dropdown().close();
     }
 
     @HostListener('mousedown')
-    public onClick() {
+    protected onClick() {
         if (this.disabled()) return;
         if (this.button()) return;
 
@@ -210,7 +228,7 @@ export class SelectBoxComponent<T> extends ValueAccessorBase<T | NotSelected> im
     }
 
     @HostBinding('class.selected')
-    get isSelected(): boolean {
+    protected get isSelected(): boolean {
         return !(this.value() instanceof NotSelected);
     }
 }

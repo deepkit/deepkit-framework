@@ -236,7 +236,7 @@ export class ButtonComponent implements OnInit, AfterViewInit {
      */
     iconSize = input<number>();
 
-    iconRight = input(false, { transform: booleanAttribute });
+    iconRight = input(false, { alias: 'icon-right', transform: booleanAttribute });
 
     iconColor = input<string>();
 
@@ -270,10 +270,10 @@ export class ButtonComponent implements OnInit, AfterViewInit {
     /**
      * Whether the button is focused on initial loading.
      */
-    focused = input(false, { transform: booleanAttribute });
+    focus = input(false, { transform: booleanAttribute });
 
     /**
-     * Whether the button is focused on initial loading.
+     * The form to submit when this button is clicked.
      */
     submitForm = input<FormComponent>();
 
@@ -306,16 +306,16 @@ export class ButtonComponent implements OnInit, AfterViewInit {
         this.element.nativeElement.removeAttribute('tabindex');
     }
 
-    hasText() {
+    protected hasText() {
         return this.withText === undefined ? this.detectedText : this.withText;
     }
 
-    isActive() {
+    protected isActive() {
         return this.routerLinkActive.isActive || this.active();
     }
 
     ngOnInit() {
-        if (this.focused()) {
+        if (this.focus()) {
             setTimeout(() => {
                 this.element.nativeElement.focus();
             }, 10);
@@ -334,7 +334,7 @@ export class ButtonComponent implements OnInit, AfterViewInit {
     }
 
     @HostListener('click')
-    async onClick() {
+    protected async onClick() {
         if (this.isDisabled()) return;
 
         const submitForm = this.submitForm();
@@ -344,6 +344,14 @@ export class ButtonComponent implements OnInit, AfterViewInit {
     }
 }
 
+/**
+ * Adds a hotkey to a button.
+ *
+ * ```html
+ * <dui-button hotkey="escape">Cancel</dui-button>
+ * <dui-button hotkey="cmd+s">Save</dui-button>
+ * ```
+ */
 @Directive({ selector: '[hotkey]' })
 export class HotkeyDirective {
     hotkey = input.required<HotKey>();
@@ -359,7 +367,7 @@ export class HotkeyDirective {
     }
 
     @HostListener('document:keydown', ['$event'])
-    onKeyDown(event: KeyboardEvent) {
+    protected onKeyDown(event: KeyboardEvent) {
         //if only alt is pressed (not other keys, we display the hotkey)
         if (event.key.toLowerCase() === 'alt') {
             if (this.button) {
@@ -392,7 +400,7 @@ export class HotkeyDirective {
     }
 
     @HostListener('document:keyup', ['$event'])
-    onKeyUp(event: KeyboardEvent) {
+    protected onKeyUp(event: KeyboardEvent) {
         //if only alt is pressed (not other keys, we display the hotkey)
         if (event.key.toLowerCase() === 'alt') {
             if (this.button) {
@@ -410,7 +418,7 @@ export class HotkeyDirective {
     selector: 'dui-button-group',
     template: '<ng-content></ng-content>',
     host: {
-        '[class.float-right]': 'float()===\'right\'',
+        '[class.float-right]': `float() === 'right'`,
         '(transitionend)': 'transitionEnded()',
     },
     styleUrls: ['./button-group.component.scss'],
@@ -423,6 +431,9 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy, AlignedBu
      */
     float = input<'static' | 'sidebar' | 'float' | 'right'>('static');
 
+    /**
+     * If set to none, buttons inside this group will be tightly packed together without any padding.
+     */
     padding = input<'normal' | 'none'>('normal');
 
     @HostBinding('class.padding-none')
@@ -439,7 +450,10 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy, AlignedBu
         effect(() => this.updatePaddingLeft());
     }
 
-    public activateOneTimeAnimation() {
+    /**
+     * @hidden
+     */
+    activateOneTimeAnimation() {
         (this.element.nativeElement as HTMLElement).classList.add('with-animation');
     }
 
@@ -449,7 +463,7 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy, AlignedBu
         }
     }
 
-    transitionEnded() {
+    protected transitionEnded() {
         (this.element.nativeElement as HTMLElement).classList.remove('with-animation');
     }
 
@@ -459,10 +473,11 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy, AlignedBu
         }
     }
 
-    updatePaddingLeft() {
+    protected updatePaddingLeft() {
         if (this.float() === 'sidebar' && this.windowComponent) {
             const content = this.windowComponent.content();
             if (content && content.isSidebarVisible()) {
+                console.log('this.element.nativeElement.offsetLeft', this.element.nativeElement.offsetLeft, content.sidebarWidth());
                 const newLeft = Math.max(0, content.sidebarWidth() - this.element.nativeElement.offsetLeft) + 'px';
                 if (this.element.nativeElement.style.paddingLeft == newLeft) {
                     //no transition change, doesn't trigger transitionEnd
@@ -493,15 +508,23 @@ export class ButtonGroupsComponent {
     align = input<'left' | 'center' | 'right'>('left');
 }
 
+/**
+ * Directive to open the native file chooser dialog.
+ * Can be used wth FormsModule (ngModel).
+ *
+ * ```html
+ * <dui-button duiFileChooser duiFileChooserChange="open($event)">Open File</dui-button>
+ * ```
+ */
 @Directive({
     selector: '[duiFileChooser]',
     providers: [ngValueAccessor(FileChooserDirective)],
 })
-export class FileChooserDirective extends ValueAccessorBase<string[]> implements OnDestroy, OnChanges {
+export class FileChooserDirective extends ValueAccessorBase<File[]> implements OnDestroy, OnChanges {
     duiFileMultiple = input(false, { transform: booleanAttribute });
     duiFileDirectory = input(false, { transform: booleanAttribute });
 
-    duiFileChooserChange = output<string[]>();
+    duiFileChooserChange = output<File[]>();
 
     protected input: HTMLInputElement;
 
@@ -514,15 +537,15 @@ export class FileChooserDirective extends ValueAccessorBase<string[]> implements
             const files = event.target.files as FileList;
             if (files.length) {
                 if (this.duiFileMultiple()) {
-                    const paths: string[] = [];
+                    const result: File[] = [];
                     for (let i = 0; i < files.length; i++) {
-                        const file = files.item(i) as any as { path: string, name: string };
-                        paths.push(file.path);
+                        const file = files.item(i);
+                        if (!file) continue;
+                        result.push(file);
                     }
-                    this.writeValue(paths);
+                    this.writeValue(result);
                 } else {
-                    const file = files.item(0) as any as { path: string, name: string };
-                    this.writeValue([file.path]);
+                    this.writeValue([files.item(0)!]);
                 }
                 this.duiFileChooserChange.emit(this.value() || []);
             }
@@ -538,7 +561,7 @@ export class FileChooserDirective extends ValueAccessorBase<string[]> implements
     }
 
     @HostListener('click')
-    onClick() {
+    protected onClick() {
         this.input.click();
     }
 }
@@ -569,6 +592,14 @@ function readFile(file: File): Promise<Uint8Array | undefined> {
     });
 }
 
+/**
+ * Directive to open the native file picker dialog and return the selected files as Uint8Array.
+ * Can be used wth FormsModule (ngModel).
+ *
+ * ```html
+ * <dui-button duiFilePicker duiFilePickerChange="open($event)">Open File</dui-button>
+ * ```
+ */
 @Directive({
     selector: '[duiFilePicker]',
     providers: [ngValueAccessor(FileChooserDirective)],
@@ -624,12 +655,22 @@ export class FilePickerDirective extends ValueAccessorBase<FilePickerItem[]> imp
     }
 
     @HostListener('click')
-    onClick() {
+    protected onClick() {
         this.input.multiple = this.duiFileMultiple();
         this.input.click();
     }
 }
 
+/**
+ * Directive to allow dropping files into an area.
+ * Can be used wth FormsModule (ngModel).
+ *
+ * ```html
+ * <div duiFileDrop (duiFileDropChange)="onFilesDropped($event)">
+ *     Drop files here
+ * </div>
+ * ```
+ */
 @Directive({
     selector: '[duiFileDrop]',
     host: {
@@ -644,27 +685,27 @@ export class FileDropDirective extends ValueAccessorBase<FilePickerItem[]> imple
     i = signal(0);
 
     @HostListener('dragenter', ['$event'])
-    onDragEnter(ev: any) {
+    protected onDragEnter(ev: any) {
         // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
         this.i.update(v => v + 1);
     }
 
     @HostListener('dragover', ['$event'])
-    onDragOver(ev: any) {
+    protected onDragOver(ev: any) {
         // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
     }
 
     @HostListener('dragleave', ['$event'])
-    onDragLeave(ev: any) {
+    protected onDragLeave(ev: any) {
         // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
         this.i.update(v => v - 1);
     }
 
     @HostListener('drop', ['$event'])
-    async onDrop(ev: any) {
+    protected async onDrop(ev: any) {
         // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
 

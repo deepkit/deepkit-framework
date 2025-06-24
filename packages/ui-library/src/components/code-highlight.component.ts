@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { booleanAttribute, Component, computed, input } from '@angular/core';
 // @ts-ignore
 import * as prism from 'prismjs';
 import 'prismjs/components/prism-typescript';
@@ -12,9 +12,10 @@ import 'prismjs/components/prism-json';
     selector: 'code-highlight',
     host: {
         '[class.overlay-scrollbar-small]': 'true',
+        '[class.inline]': 'inline()',
     },
     styles: [`
-        :host {
+        :host:not(.inline) {
             display: block;
             margin: 12px 0;
             max-width: 100%;
@@ -52,6 +53,15 @@ import 'prismjs/components/prism-json';
                 }
             }
         }
+        
+        :host.inline pre {
+            border: unset;
+            background: unset;
+            padding: unset;
+            font-size: unset;
+            overflow: unset;
+            white-space: unset;
+        }
 
         pre.codeHighlight[title] {
             padding-top: 8px;
@@ -69,7 +79,7 @@ import 'prismjs/components/prism-json';
     `],
     template: `
       <ng-content></ng-content>
-      <pre class="code codeHighlight text-selection language-{{lang()}}" [attr.title]="title()" [innerHTML]="html()"></pre>
+      <pre class="code codeHighlight text-selection language-{{lang()}}" [attr.title]="title() || undefined" [innerHTML]="html()"></pre>
     `,
 })
 export class CodeHighlightComponent {
@@ -77,6 +87,8 @@ export class CodeHighlightComponent {
     file = input('');
     lang = input('typescript');
     title = input<string>('');
+
+    inline = input(false, { transform: booleanAttribute });
 
     html = computed(() => {
         const code = this.code();

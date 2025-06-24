@@ -103,6 +103,9 @@ export class WindowRegistry {
 
         this.registry.delete(win);
         arrayRemoveItem(this.windowHistory, win);
+        if (this.activeWindow === win) {
+            this.activeWindow = undefined;
+        }
 
         if (this.windowHistory.length) {
             this.focus(this.windowHistory[this.windowHistory.length - 1]);

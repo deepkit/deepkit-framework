@@ -1,13 +1,15 @@
 import { Component } from '@angular/core';
-import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
-import { CodeHighlightComponent, ThemeSwitcherComponent } from '@deepkit/ui-library';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
+import { CodeHighlightComponent } from '@deepkit/ui-library';
 import {
     ButtonComponent,
+    ButtonGroupComponent,
     CheckboxComponent,
     DropdownComponent,
     DropdownItemComponent,
     DropdownSplitterComponent,
     OpenDropdownDirective,
+    TabButtonComponent,
 } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
 
@@ -24,6 +26,8 @@ import { FormsModule } from '@angular/forms';
         ApiDocComponent,
         FormsModule,
         OpenDropdownDirective,
+        ButtonGroupComponent,
+        TabButtonComponent,
     ],
     host: {ngSkipHydration: 'true'},
     template: `
@@ -33,6 +37,10 @@ import { FormsModule } from '@angular/forms';
 
         <doc-code-frame>
           <div>
+            <dui-button-group>
+              <dui-tab-button>Overview</dui-tab-button>
+              <dui-tab-button>List</dui-tab-button>
+            </dui-button-group>
             <p>
               <dui-button [disabled]="disabled">Default Button</dui-button>
             </p>
@@ -55,7 +63,7 @@ import { FormsModule } from '@angular/forms';
             </p>
 
             <p>
-              <dui-button textured [disabled]="disabled" [openDropdown]="dropdown1" icon="arrow_down" iconRight>
+              <dui-button textured [disabled]="disabled" [openDropdown]="dropdown1" icon="arrow_down" icon-right>
                 Dropdown
               </dui-button>
               <dui-dropdown #dropdown1>
@@ -66,7 +74,7 @@ import { FormsModule } from '@angular/forms';
             </p>
 
             <p>
-              <dui-button textured [disabled]="disabled" [openDropdown]="dropdown2" icon="arrow_down" iconRight>
+              <dui-button textured [disabled]="disabled" [openDropdown]="dropdown2" icon="arrow_down" icon-right>
                 Dropdown items
               </dui-button>
               <dui-dropdown #dropdown2>
@@ -83,7 +91,12 @@ import { FormsModule } from '@angular/forms';
           <code-highlight lang="html" [code]="code"/>
         </doc-code-frame>
 
-        <api-doc module="components/button/button.component" component="ButtonComponent"></api-doc>
+        <api-doc component="ButtonComponent"></api-doc>
+        <api-doc component="TabButtonComponent"></api-doc>
+        <api-doc component="HotkeyDirective"></api-doc>
+        <api-doc component="FileChooserDirective"></api-doc>
+        <api-doc component="FilePickerDirective"></api-doc>
+        <api-doc component="FileDropDirective"></api-doc>
       </div>
     `,
 })
@@ -91,6 +104,10 @@ export class DocDesktopUIButtonComponent {
     disabled = false;
 
     code = `
+    <dui-button-group>
+      <dui-tab-button>Overview</dui-tab-button>
+      <dui-tab-button>List</dui-tab-button>
+    </dui-button-group>
     <p>
         <dui-button [disabled]="disabled">Default Button</dui-button>
     </p>
@@ -113,7 +130,7 @@ export class DocDesktopUIButtonComponent {
     </p>
     
     <p>
-        <dui-button textured [disabled]="disabled" [openDropdown]="dropdown1" icon="arrow_down" iconRight>
+        <dui-button textured [disabled]="disabled" [openDropdown]="dropdown1" icon="arrow_down" icon-right>
             Dropdown
         </dui-button>
         <dui-dropdown #dropdown1>
@@ -124,7 +141,7 @@ export class DocDesktopUIButtonComponent {
     </p>
     
     <p>
-        <dui-button textured [disabled]="disabled" [openDropdown]="dropdown2" icon="arrow_down" iconRight>
+        <dui-button textured [disabled]="disabled" [openDropdown]="dropdown2" icon="arrow_down" icon-right>
             Dropdown items
         </dui-button>
         <dui-dropdown #dropdown2>

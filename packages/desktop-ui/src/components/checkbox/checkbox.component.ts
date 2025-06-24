@@ -12,6 +12,13 @@ import { ChangeDetectionStrategy, Component, HostBinding, HostListener } from '@
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { IconComponent } from '../icon/icon.component';
 
+/**
+ * Checkbox component to toggle boolean values.
+ *
+ * ```html
+ * <dui-checkbox [(ngModel)]="myValue">Check me!</dui-checkbox>
+ * ```
+ */
 @Component({
     selector: 'dui-checkbox',
     template: `
@@ -30,17 +37,17 @@ import { IconComponent } from '../icon/icon.component';
 })
 export class CheckboxComponent extends ValueAccessorBase<boolean> {
     @HostBinding('tabindex')
-    get tabIndex() {
+    protected get tabIndex() {
         return 1;
     }
 
     @HostBinding('class.checked')
-    get isChecked() {
+    protected get isChecked() {
         return true === this.value();
     }
 
     @HostListener('click')
-    public onClick() {
+    protected onClick() {
         if (this.isDisabled) return;
 
         this.touch();

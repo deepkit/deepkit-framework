@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
-import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/doc.module.js';
+import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { CheckboxComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
 
@@ -32,7 +32,7 @@ import { FormsModule } from '@angular/forms';
           <code-highlight lang="html" [code]="code" />
         </doc-code-frame>
 
-        <api-doc module="components/checkbox/checkbox.component" component="CheckboxComponent"></api-doc>
+        <api-doc component="CheckboxComponent"></api-doc>
       </div>
     `,
 })
