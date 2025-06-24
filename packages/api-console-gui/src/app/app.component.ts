@@ -3,8 +3,6 @@ import { DuiApp, DuiStyleComponent, WindowComponent, WindowContentComponent, Win
 import { ControllerClient } from './client';
 import { HeaderLogoComponent, HeaderStatusBarComponent } from '@deepkit/ui-library';
 import { RouterLink, RouterOutlet } from '@angular/router';
-import { InputRegistry } from './components/inputs/registry';
-import { loadRegistry } from './components/inputs/registry-loader';
 
 @Component({
     selector: 'app-root',
@@ -50,9 +48,7 @@ export class AppComponent {
         public duiApp: DuiApp,
         public client: ControllerClient,
         public host: ElementRef<HTMLElement>,
-        public inputRegistry: InputRegistry,
     ) {
-        loadRegistry(inputRegistry.registry);
         const controller = host.nativeElement.getAttribute('controller');
         if (controller && controller !== 'APP_CONTROLLER_NAME') {
             this.client.setController(controller);

@@ -171,6 +171,7 @@ export class SelectBoxComponent<T> extends ValueAccessorBase<T> implements OnDes
     optionsValueMap = computed(() => {
         const map = new Map<T | undefined, OptionDirective>();
         for (const option of this.options()) {
+            if (!(option instanceof OptionDirective)) continue;
             map.set(option.value(), option);
         }
         return map;
@@ -187,7 +188,7 @@ export class SelectBoxComponent<T> extends ValueAccessorBase<T> implements OnDes
     }
 
     select(value: T) {
-        this.writeValue(value);
+        this.setValue(value);
         this.touch();
         this.dropdown().close();
     }
@@ -202,10 +203,6 @@ export class SelectBoxComponent<T> extends ValueAccessorBase<T> implements OnDes
 
     open() {
         this.dropdown()?.open();
-    }
-
-    writeValue(value?: T): void {
-        super.writeValue(value);
     }
 
     @HostBinding('class.selected')

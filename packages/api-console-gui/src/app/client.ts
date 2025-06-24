@@ -23,9 +23,7 @@ export class ControllerClient {
         this.api.getDocument().then(v => subject.next(v));
     });
 
-    client = new RpcWebSocketClient(ControllerClient.getServerHost());
-
-    constructor() {
+    constructor(public client: RpcWebSocketClient) {
         this.client.transporter.reconnected.subscribe(() => {
             this.entryPoints.reload();
             this.document.reload();

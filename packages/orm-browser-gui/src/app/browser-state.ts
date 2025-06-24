@@ -1,17 +1,7 @@
 import { EventEmitter, Injectable } from '@angular/core';
 import { arrayRemoveItem, empty, isObject } from '@deepkit/core';
 import { DatabaseCommit, DatabaseInfo, EntityPropertySeed, EntitySeed, FakerTypes, findFaker } from '@deepkit/orm-browser-api';
-import {
-    Changes,
-    changeSetSymbol,
-    getChangeDetector,
-    getConverterForSnapshot,
-    isBackReferenceType,
-    ReflectionClass,
-    TypeProperty,
-    TypePropertySignature,
-    ValidatorError
-} from '@deepkit/type';
+import { Changes, changeSetSymbol, getChangeDetector, getConverterForSnapshot, isBackReferenceType, ReflectionClass, TypeProperty, TypePropertySignature, ValidatorError } from '@deepkit/type';
 import { ControllerClient } from './client';
 import { Progress } from '@deepkit/rpc';
 import { getInstanceStateFromItem } from '@deepkit/orm';
@@ -125,7 +115,7 @@ export class BrowserEntityState {
     }
 }
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class BrowserState {
     databases: DatabaseInfo[] = [];
     seedSettings: { [storeKey: string]: EntitySeed } = {};

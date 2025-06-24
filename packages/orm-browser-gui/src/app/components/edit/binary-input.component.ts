@@ -1,15 +1,15 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
-import { FilePickerItem } from '@deepkit/desktop-ui';
+import { ButtonComponent, FilePickerDirective, FilePickerItem } from '@deepkit/desktop-ui';
 import { isArray } from '@deepkit/core';
 import { ReflectionKind, Type } from '@deepkit/type';
 
 @Component({
     template: `
-        <dui-button duiFilePicker [duiFileAutoOpen]="true" (duiFilePickerChange)="chosen($event)">
-            Choose file
-        </dui-button>
+      <dui-button duiFilePicker [duiFileAutoOpen]="true" (duiFilePickerChange)="chosen($event)">
+        Choose file
+      </dui-button>
     `,
-    standalone: false
+    imports: [ButtonComponent, FilePickerDirective],
 })
 export class BinaryInputComponent implements OnInit, OnChanges {
     @Input() model: any;
@@ -20,7 +20,7 @@ export class BinaryInputComponent implements OnInit, OnChanges {
     @Output() done = new EventEmitter<void>();
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
 
-    chosen(event: FilePickerItem | FilePickerItem[]) {
+    chosen(event: FilePickerItem[]) {
         event = isArray(event) ? event : [event];
         const file = event[0];
         if (!file) return;

@@ -1,1 +1,2 @@
-export * from './src/app/api-console.module';
+export * from './src/app/routes';
+export * from './src/app/provider';

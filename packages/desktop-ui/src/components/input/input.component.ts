@@ -28,8 +28,9 @@ const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
           #input
           [readOnly]="readonly()"
           [placeholder]="placeholder()" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
+          (focus)="focus.emit($event)" (blur)="blur.emit($event)"
           [disabled]="isDisabled"
-          [ngModel]="normalizeValue()" (ngModelChange)="writeValue($event)"></textarea>
+          [ngModel]="normalizeValue()" (ngModelChange)="setValue($event)"></textarea>
       } @else {
         @if (type() !== 'textarea') {
           <input
@@ -42,10 +43,12 @@ const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
             [attr.maxLength]="maxLength()"
             [type]="type()"
             (change)="handleFileInput($event)"
-            [placeholder]="placeholder()" (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
+            [placeholder]="placeholder()"
+            (keyup)="onKeyUp($event)" (keydown)="onKeyDown($event)"
+            (focus)="focus.emit($event)" (blur)="blur.emit($event)"
             [disabled]="isDisabled"
             [ngModel]="type() === 'file' ? undefined : normalizeValue()"
-            (ngModelChange)="writeValue($event)"
+            (ngModelChange)="setValue($event)"
           />
         }
       }
@@ -89,7 +92,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
     /**
      * Focuses this element once created (AfterViewInit).
      */
-    focus = input(false, { transform: booleanAttribute });
+    autoFocus = input(false, { alias: 'auto-focus', transform: booleanAttribute });
 
     /**
      * Uses a more decent focus border.
@@ -110,6 +113,8 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
     enter = output<KeyboardEvent>();
     keyDown = output<KeyboardEvent>();
     keyUp = output<KeyboardEvent>();
+    blur = output<FocusEvent>();
+    focus = output<FocusEvent>();
 
     input = viewChild('input', { read: ElementRef });
 
@@ -144,10 +149,10 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
     }
 
     clear() {
-        this.writeValue('');
+        this.setValue('');
     }
 
-    writeValue(value: any | undefined) {
+    setValue(value: any | undefined) {
         if (this.type() === 'file' && !value && this.input) {
             //we need to manually reset the field, since writing to it via ngModel is not supported.
             const input = this.input();
@@ -168,7 +173,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
                 value = new Date(value);
             }
         }
-        super.writeValue(value);
+        super.setValue(value);
     }
 
     protected onKeyDown(event: KeyboardEvent) {
@@ -196,7 +201,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
     }
 
     ngAfterViewInit() {
-        if (this.focus() && this.input()) {
+        if (this.autoFocus() && this.input()) {
             this.focusInput();
         }
     }
@@ -235,9 +240,9 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
                         value.push(await readFile(file));
                     }
                 }
-                this.writeValue(value);
+                this.setValue(value);
             } else if (files.length === 1) {
-                this.writeValue(await readFile(files.item(0)));
+                this.setValue(await readFile(files.item(0)));
             }
         }
     }

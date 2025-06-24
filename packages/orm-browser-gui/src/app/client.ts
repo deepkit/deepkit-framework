@@ -13,7 +13,7 @@ import { RpcWebSocketClient } from '@deepkit/rpc';
 import { BrowserControllerInterface, DatabaseInfo } from '@deepkit/orm-browser-api';
 import { asyncOperation } from '@deepkit/core';
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class ControllerClient {
     protected loadDatabases?: Promise<DatabaseInfo[]>;
 

@@ -111,7 +111,7 @@ export class SliderComponent extends ValueAccessorBase<number> {
 
     writeValue(value?: number) {
         value = clamp(value || 0, this.min(), this.max());
-        super.writeValue(value);
+        super.setValue(value);
     }
 
     protected updateValueFromX(x: number) {
@@ -130,6 +130,6 @@ export class SliderComponent extends ValueAccessorBase<number> {
         } else {
             value -= shift; // round down
         }
-        super.writeValue(parseFloat(value.toFixed(this.fractionalDigits())));
+        super.setValue(parseFloat(value.toFixed(this.fractionalDigits())));
     }
 }

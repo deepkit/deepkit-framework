@@ -1,4 +1,4 @@
-import { Directive, effect, forwardRef, HostBinding, inject, Injector, Input, input, model, OnDestroy, Type } from '@angular/core';
+import { Directive, forwardRef, HostBinding, inject, Injector, Input, input, model, OnDestroy, Type } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, NgControl } from '@angular/forms';
 import { FormComponent } from '../components/form/form.component';
 
@@ -55,17 +55,6 @@ export class ValueAccessorBase<T> implements ControlValueAccessor, OnDestroy {
     required = input(false);
 
     protected injector = inject(Injector);
-    protected writes = 0;
-
-    constructor() {
-        effect(() => {
-            const value = this.value();
-            if (this.writes++ === 0) return; // We ignore the first trigger
-            for (const callback of this._changedCallback) {
-                callback(value);
-            }
-        });
-    }
 
     get ngControl(): NgControl | undefined {
         if (!this._ngControlFetched) {
@@ -87,10 +76,20 @@ export class ValueAccessorBase<T> implements ControlValueAccessor, OnDestroy {
     }
 
     /**
-     * Internal note: This method is called from outside. Either from Angular's form or other users.
+     * Internal note: This method is called from Angular Forms. Do not use it in UI code.
      */
     writeValue(value?: T) {
         this.value.set(value);
+    }
+
+    /**
+     * Set the value from UI code
+     */
+    setValue(value: T | undefined) {
+        this.value.set(value);
+        for (const callback of this._changedCallback) {
+            callback(value);
+        }
     }
 
     /**

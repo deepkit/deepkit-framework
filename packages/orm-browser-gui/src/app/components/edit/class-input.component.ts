@@ -1,62 +1,60 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Optional, Output, SkipSelf } from '@angular/core';
 import { arrayRemoveItem } from '@deepkit/core';
-import { DuiDialog, ReactiveChangeDetectionModule } from '@deepkit/desktop-ui';
-import {
-    deserialize,
-    getPrimaryKeyHashGenerator,
-    isNullable,
-    isOptional,
-    isReferenceType,
-    ReflectionClass,
-    ReflectionKind,
-    resolveClassType,
-    serialize,
-    Type
-} from '@deepkit/type';
+import { ButtonComponent, CloseDialogDirective, DialogActionsComponent, DialogComponent, DuiDialog, InputComponent } from '@deepkit/desktop-ui';
+import { deserialize, getPrimaryKeyHashGenerator, isNullable, isOptional, isReferenceType, ReflectionClass, ReflectionKind, resolveClassType, serialize, Type } from '@deepkit/type';
 import { BrowserState } from '../../browser-state';
 import { getParentProperty } from '../../utils';
+import { FormsModule } from '@angular/forms';
+import { DatabaseBrowserComponent } from '../../views/database-browser.component';
 
 @Component({
     template: `
-        <ng-container *ngIf="!open">
-
-        </ng-container>
-        <dui-dialog *ngIf="jsonEditor" class="class-field-dialog" noPadding [visible]="true" (closed)="done.emit()"
+      @if (jsonEditor) {
+        <dui-dialog class="class-field-dialog" noPadding [visible]="true" (closed)="done.emit()"
                     [backDropCloses]="true"
                     [minWidth]="450" [minHeight]="350">
-            <div class="json-editor">
-                <h3>JSON</h3>
-                <dui-input type="textarea" [(ngModel)]="jsonContent"></dui-input>
-            </div>
-            <dui-dialog-actions>
-                <dui-button closeDialog>Cancel</dui-button>
-                <dui-button (click)="jsonDone()">Ok</dui-button>
-            </dui-dialog-actions>
+          <div class="json-editor">
+            <h3>JSON</h3>
+            <dui-input type="textarea" [(ngModel)]="jsonContent"></dui-input>
+          </div>
+          <dui-dialog-actions>
+            <dui-button closeDialog>Cancel</dui-button>
+            <dui-button (click)="jsonDone()">Ok</dui-button>
+          </dui-dialog-actions>
         </dui-dialog>
-        <dui-dialog *ngIf="!parent && open" class="class-field-dialog" noPadding [backDropCloses]="true"
-                    [visible]="browserStack.length > 0" (closed)="done.emit(); open = false" minWidth="80%"
+      }
+      @if (!parent && open) {
+        {{browserStack.length}}
+        <dui-dialog class="class-field-dialog" noPadding [backDropCloses]="true"
+                    [visible]="browserStack.length > 0" (closed)="dialogClosed()" minWidth="80%"
                     minHeight="75%">
-            <div class="layout">
-                <div class="header" *ngIf="schema">
-                    <span *ngFor="let browser of browserStack">
-                         &raquo; {{browser.schema?.getClassName()}}
+          <div class="layout">
+            @if (schema) {
+              <div class="header">
+                @for (browser of browserStack; track browser) {
+                  <span>
+                      &raquo; {{ browser.schema?.getClassName() }}
                     </span>
-                </div>
-
-                <ng-container *ngFor="let browser of browserStack">
-                    <orm-browser-database-browser *ngIf="state.database && browser.schema"
-                                                  [class.hidden]="browserStack.length > 0 && browser !== browserStack[browserStack.length - 1]"
-                                                  [dialog]="true"
-                                                  [withBack]="browser !== browserStack[0]"
-                                                  (back)="popBrowser()"
-                                                  [selectedPkHashes]="browser.selectedPkHashes"
-                                                  [multiSelect]="isArrayType(browser.type)"
-                                                  (select)="browser.onSelect($event)"
-                                                  [database]="state.database"
-                                                  [entity]="browser.schema"></orm-browser-database-browser>
-                </ng-container>
-            </div>
+                }
+              </div>
+            }
+            @for (browser of browserStack; track browser) {
+              @if (state.database && browser.schema) {
+                <orm-browser-database-browser
+                  [class.hidden]="browserStack.length > 0 && browser !== browserStack[browserStack.length - 1]"
+                  [dialog]="true"
+                  [withBack]="browser !== browserStack[0]"
+                  (back)="popBrowser()"
+                  [selectedPkHashes]="browser.selectedPkHashes"
+                  [multiSelect]="isArrayType(browser.type)"
+                  (select)="browser.onSelect($event)"
+                  [database]="state.database"
+                  [entity]="browser.schema"></orm-browser-database-browser>
+              }
+            }
+          </div>
         </dui-dialog>
+      }
     `,
     host: {
         '(click)': 'open = true',
@@ -101,7 +99,7 @@ import { getParentProperty } from '../../utils';
             display: none;
         }
     `],
-    standalone: false
+    imports: [DialogComponent, InputComponent, FormsModule, DialogActionsComponent, ButtonComponent, CloseDialogDirective, DatabaseBrowserComponent],
 })
 export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy {
     @Input() model: any;
@@ -126,6 +124,12 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
 
     isArrayType(type: Type): boolean {
         return type.kind === ReflectionKind.array;
+    }
+
+    dialogClosed() {
+        console.log('dialogClosed', this.browserStack.length);
+        this.done.emit();
+        this.open = false;
     }
 
     getLastBrowser(): ClassInputComponent | undefined {
@@ -240,7 +244,6 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
 
         setTimeout(() => {
             this.popBrowser();
-            ReactiveChangeDetectionModule.tick();
         }, 60);
     }
 
@@ -250,8 +253,6 @@ export class ClassInputComponent implements AfterViewInit, OnChanges, OnDestroy 
             this.loadSelection();
             if (this.parent) {
                 this.parent.registerBrowser(this);
-            } else {
-                this.cd.detectChanges();
             }
         }
     }

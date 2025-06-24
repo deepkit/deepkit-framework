@@ -1,4 +1,3 @@
-
 export class BrowserText {
     protected canvas = document.createElement('canvas');
 
@@ -18,7 +17,7 @@ export class BrowserText {
         const m = this.context.measureText(text);
         return {
             width: m.width,
-            height: m.actualBoundingBoxAscent + m.actualBoundingBoxDescent
+            height: m.actualBoundingBoxAscent + m.actualBoundingBoxDescent,
         };
     }
 }

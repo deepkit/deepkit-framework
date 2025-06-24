@@ -1,33 +1,36 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
-import { trackByIndex } from '../utils';
 import { arrayRemoveItem } from '@deepkit/core';
 import { FilterItem } from '../browser-state';
 import { isBackReferenceType, ReflectionClass, ReflectionKind, Type, TypeProperty, TypePropertySignature } from '@deepkit/type';
+import { ButtonComponent, ButtonGroupComponent, OptionDirective, OptionSeparatorDirective, SelectBoxComponent } from '@deepkit/desktop-ui';
+import { FormsModule } from '@angular/forms';
+import { PropertyComponent } from './property.component';
 
 @Component({
     selector: 'orm-browser-filter-item',
     template: `
-        <dui-select textured [(ngModel)]="property" (ngModelChange)="changed()">
-            <dui-option
-                *ngFor="let property of properties; trackBy: trackByIndex"
-                [value]="property"
-            >{{property.name}}</dui-option>
-        </dui-select>
-        <dui-select textured [(ngModel)]="comparator" style="width: 72px;" (ngModelChange)="changed()">
-            <dui-option value="$eq">=</dui-option>
-            <dui-option value="$neq">!=</dui-option>
-            <dui-option value="$gt">&gt;</dui-option>
-            <dui-option value="$lt">&lt;</dui-option>
-            <dui-option value="$gte">&gt;=</dui-option>
-            <dui-option value="$lte">&lt;=</dui-option>
-            <dui-option value="$regex">REGEX</dui-option>
-            <dui-option-separator></dui-option-separator>
-            <dui-option value="$in">IN</dui-option>
-            <dui-option value="$nin">NOT IN</dui-option>
-        </dui-select>
-        <div class="value" *ngIf="property && typeToShow">
-            <orm-browser-property [model]="value" (modelChange)="value = $event; changed()" [type]="typeToShow"></orm-browser-property>
+      <dui-select textured [(ngModel)]="property" (ngModelChange)="changed()">
+        @for (property of properties; track $index) {
+          <dui-option [value]="property">{{ String(property.name) }}</dui-option>
+        }
+      </dui-select>
+      <dui-select textured [(ngModel)]="comparator" style="width: 72px;" (ngModelChange)="changed()">
+        <dui-option value="$eq">=</dui-option>
+        <dui-option value="$neq">!=</dui-option>
+        <dui-option value="$gt">&gt;</dui-option>
+        <dui-option value="$lt">&lt;</dui-option>
+        <dui-option value="$gte">&gt;=</dui-option>
+        <dui-option value="$lte">&lt;=</dui-option>
+        <dui-option value="$regex">REGEX</dui-option>
+        <dui-option-separator></dui-option-separator>
+        <dui-option value="$in">IN</dui-option>
+        <dui-option value="$nin">NOT IN</dui-option>
+      </dui-select>
+      @if (property && typeToShow) {
+        <div class="value">
+          <orm-browser-property [model]="value" (modelChange)="value = $event; changed()" [type]="typeToShow"></orm-browser-property>
         </div>
+      }
     `,
     styles: [`
         :host {
@@ -43,15 +46,15 @@ import { isBackReferenceType, ReflectionClass, ReflectionKind, Type, TypePropert
             flex: 1;
         }
     `],
-    standalone: false
+    imports: [SelectBoxComponent, FormsModule, OptionDirective, OptionSeparatorDirective, PropertyComponent],
 })
 export class FilterItemComponent implements OnChanges, OnInit {
+    String = String;
     @Input() model!: FilterItem;
     @Output() modelChange = new EventEmitter<FilterItem>();
 
     @Input() entity!: ReflectionClass<any>;
     @Input() properties: (TypeProperty | TypePropertySignature)[] = [];
-    trackByIndex = trackByIndex;
 
     value: string = '';
     comparator: string = '$eq';
@@ -126,28 +129,31 @@ export class FilterItemComponent implements OnChanges, OnInit {
 @Component({
     selector: 'orm-browser-filter',
     template: `
-      <div class="item" *ngFor="let item of items; let i = index; trackBy: trackByIndex">
-        <orm-browser-filter-item [entity]="entity" [(model)]="items[i]" (modelChange)="itemsChange.emit(items)"
-                                 [properties]="properties"></orm-browser-filter-item>
-        <dui-button-group padding="none">
-          <dui-button textured tight icon="garbage" (click)="remove(item); itemsChange.emit(items)"></dui-button>
-        </dui-button-group>
-      </div>
-      <div *ngIf="!items.length" style="color: var(--dui-text-light)">
-        No filter added yet.
-      </div>
+      @for (item of items; track $index; let i = $index) {
+        <div class="item">
+          <orm-browser-filter-item [entity]="entity" [(model)]="items[i]" (modelChange)="itemsChange.emit(items)"
+                                   [properties]="properties"></orm-browser-filter-item>
+          <dui-button-group padding="none">
+            <dui-button textured tight icon="garbage" (click)="remove(item); itemsChange.emit(items)"></dui-button>
+          </dui-button-group>
+        </div>
+      }
+      @if (!items.length) {
+        <div style="color: var(--dui-text-light)">
+          No filter added yet.
+        </div>
+      }
       <div style="padding-top: 8px;">
         <dui-button textured icon="add" (click)="add()">Filter</dui-button>
       </div>
     `,
     styleUrls: ['./filter.component.scss'],
-    standalone: false
+    imports: [FilterItemComponent, ButtonGroupComponent, ButtonComponent],
 })
 export class FilterComponent implements OnChanges {
     @Input() entity!: ReflectionClass<any>;
 
     properties: (TypeProperty | TypePropertySignature)[] = [];
-    trackByIndex = trackByIndex;
 
     @Input() items: FilterItem[] = [];
     @Output() itemsChange = new EventEmitter<FilterItem[]>();

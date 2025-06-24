@@ -187,7 +187,7 @@ export class ListItemComponent implements OnDestroy {
         if (routerLink && this.router) {
             routerLink.onClick(1, false, false, false, false);
         } else {
-            this.list.writeValue(this.value());
+            this.list.setValue(this.value());
         }
         this.onSelect.emit(this.value());
     }
@@ -206,7 +206,7 @@ export class ListItemComponent implements OnDestroy {
 
     @HostListener('mousedown')
     public onClick() {
-        this.list.writeValue(this.value());
+        this.list.setValue(this.value());
         this.onSelect.emit(this.value());
     }
 }

@@ -1,34 +1,49 @@
 import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Optional, Output } from '@angular/core';
-import { DuiDialog, unsubscribe } from '@deepkit/desktop-ui';
 import {
-    deserialize,
-    getPrimaryKeyHashGenerator,
-    isBackReferenceType,
-    isNullable,
-    isPrimaryKeyType,
-    ReflectionClass,
-    TypeProperty,
-    TypePropertySignature,
-    validate
-} from '@deepkit/type';
+    ButtonComponent,
+    ButtonGroupComponent,
+    CheckboxComponent,
+    DropdownComponent,
+    DuiDialog,
+    FormRowComponent,
+    HumanFileSizePipe,
+    IndicatorComponent,
+    InputComponent,
+    OpenDropdownDirective,
+    SplitterComponent,
+    TabButtonComponent,
+    TabComponent,
+    TableCellDirective,
+    TableColumnDirective,
+    TableComponent,
+    TableHeaderDirective,
+    TabsComponent,
+    unsubscribe,
+    WindowToolbarComponent,
+} from '@deepkit/desktop-ui';
+import { deserialize, getPrimaryKeyHashGenerator, isBackReferenceType, isNullable, isPrimaryKeyType, ReflectionClass, TypeProperty, TypePropertySignature, validate } from '@deepkit/type';
 import { Subscription } from 'rxjs';
-import { BrowserEntityState, BrowserQuery, BrowserState, ValidationErrors, } from '../browser-state';
+import { BrowserEntityState, BrowserQuery, BrowserState, ValidationErrors } from '../browser-state';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { getInstanceStateFromItem } from '@deepkit/orm';
 import { ControllerClient } from '../client';
 import { arrayRemoveItem, isArray } from '@deepkit/core';
-import { showTypeString, trackByIndex } from '../utils';
+import { showTypeString } from '../utils';
 import { ClientProgress } from '@deepkit/rpc';
 import { ActivatedRoute } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { JsonCellComponent } from '../components/cell/json-cell.component';
+import { FilterComponent } from '../components/filter.compoment';
+import { BrowserCellComponent } from '../components/browser-cell.component';
+import { AsyncPipe, DecimalPipe, KeyValuePipe } from '@angular/common';
 
 @Component({
     selector: 'orm-browser-database-browser',
     templateUrl: './database-browser.component.html',
     styleUrls: ['./database-browser.component.scss'],
-    standalone: false
+    imports: [WindowToolbarComponent, ButtonGroupComponent, ButtonComponent, TabsComponent, TabComponent, InputComponent, FormsModule, SplitterComponent, IndicatorComponent, TabButtonComponent, JsonCellComponent, TableComponent, TableColumnDirective, TableCellDirective, OpenDropdownDirective, DropdownComponent, FormRowComponent, FilterComponent, CheckboxComponent, BrowserCellComponent, AsyncPipe, DecimalPipe, KeyValuePipe, HumanFileSizePipe, TableHeaderDirective],
 })
 export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
-    trackByIndex = trackByIndex;
     isArray = isArray;
     String = String;
     showTypeString = showTypeString;
@@ -136,32 +151,33 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
         await this.loadEntity();
     }
 
-    toggleAll() {
+    toggleAll(toggle: boolean) {
         if (!this.entityState) return;
+        this.selectedAll = toggle;
 
         if (this.selectedAll) {
-            this.selectedAll = false;
             this.entityState.selection = [];
         } else {
             this.entityState.selection = this.entityState.items.slice();
-            this.selectedAll = true;
         }
     }
 
-    changeSelection(row: any) {
+    changeSelection(row: any, select: boolean) {
         if (!this.entityState) return;
 
-        if (this.entityState.selection.includes(row)) {
-            arrayRemoveItem(this.entityState.selection, row);
-        } else {
+        if (select) {
+            if (this.entityState.selection.includes(row)) return; //already selected
             if (!this.multiSelect) this.entityState.selection = [];
             this.entityState.selection.push(row);
+        } else {
+            if (!this.entityState.selection.includes(row)) return;
+            arrayRemoveItem(this.entityState.selection, row);
         }
         this.selectedAll = this.entityState.selection.length === this.entityState.items.length && this.entityState.items.length > 0;
         this.entityState.selection = this.entityState.selection.slice();
         this.select.emit({
             items: this.entityState.selection,
-            pkHashes: this.entityState.selection.map(v => this.pkHasher(v))
+            pkHashes: this.entityState.selection.map(v => this.pkHasher(v)),
         });
     }
 
@@ -185,7 +201,7 @@ export class DatabaseBrowserComponent implements OnDestroy, OnChanges, OnInit {
 
     onSort(event: { [name: string]: 'asc' | 'desc' }) {
         this.sort = event;
-        this.loadEntity(true);
+        void this.loadEntity(true);
     }
 
     unset = (row: any, property: TypeProperty | TypePropertySignature) => {

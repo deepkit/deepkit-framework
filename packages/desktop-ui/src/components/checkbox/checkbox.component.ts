@@ -50,8 +50,8 @@ export class CheckboxComponent extends ValueAccessorBase<boolean> {
     protected onClick() {
         if (this.isDisabled) return;
 
+        this.setValue(!this.value());
         this.touch();
-        this.value.update(v => !v);
     }
 
     constructor() {

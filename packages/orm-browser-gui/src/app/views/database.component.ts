@@ -1,67 +1,77 @@
 import { ChangeDetectorRef, Component, Input, OnDestroy, Optional } from '@angular/core';
-import { DuiDialog, unsubscribe } from '@deepkit/desktop-ui';
+import { ButtonComponent, ButtonGroupComponent, DuiDialog, TabButtonComponent, unsubscribe } from '@deepkit/desktop-ui';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { empty } from '@deepkit/core';
 import { BrowserState } from '../browser-state';
 import { ControllerClient } from '../client';
-import { trackByIndex, trackByProperty } from '../utils';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { DatabaseSeedComponent } from '../components/database-seed.component';
+import { DatabaseGraphComponent } from '../components/database-graph.component';
+import { KeyValuePipe } from '@angular/common';
 
 @Component({
     selector: 'orm-browser-database',
     template: `
-        <div class="header">
-            <dui-button-group>
-                <dui-tab-button [active]="tab === 'model'" (click)="setTab('model')">Model</dui-tab-button>
-                <dui-tab-button [active]="tab === 'migration'" (click)="setTab('migration')">Migration
-                </dui-tab-button>
-                <dui-tab-button [active]="tab === 'seed'" (click)="setTab('seed')">Seed</dui-tab-button>
-            </dui-button-group>
-        </div>
+      <div class="header">
+        <dui-button-group>
+          <dui-tab-button [active]="tab === 'model'" (click)="setTab('model')">Model</dui-tab-button>
+          <dui-tab-button [active]="tab === 'migration'" (click)="setTab('migration')">Migration
+          </dui-tab-button>
+          <dui-tab-button [active]="tab === 'seed'" (click)="setTab('seed')">Seed</dui-tab-button>
+        </dui-button-group>
+      </div>
 
-        <div class="layout" [hidden]="tab !== 'seed'">
-            <orm-browser-seed [database]="database"></orm-browser-seed>
-        </div>
+      <div class="layout" [hidden]="tab !== 'seed'">
+        <orm-browser-seed [database]="database"></orm-browser-seed>
+      </div>
 
-        <div class="layout" [hidden]="tab !== 'model'">
-            <ng-container *ngIf="database">
-                <database-graph [database]=database></database-graph>
-            </ng-container>
-        </div>
+      <div class="layout" [hidden]="tab !== 'model'">
+        @if (database) {
+          <database-graph [database]=database></database-graph>
+        }
+      </div>
 
-        <div class="layout migration-container" [hidden]="tab !== 'migration'">
-            <ng-container *ngIf="database">
-                <div *ngIf="loadingMigrations">
-                    Load migration
+      <div class="layout migration-container" [hidden]="tab !== 'migration'">
+        @if (database) {
+          @if (loadingMigrations) {
+            <div>
+              Load migration
+            </div>
+          }
+          @if (!loadingMigrations) {
+            <div>
+              <dui-button (click)="resetAll()">Reset all</dui-button>
+              <dui-button (click)="migrate()">Migrate all</dui-button>
+              @if (empty(migrations)) {
+                <div class="migrations">
+                  No migrations available. Your models are in sync with the database schema.
                 </div>
-                <div *ngIf="!loadingMigrations">
-                    <dui-button (click)="resetAll()">Reset all</dui-button>
-                    <dui-button (click)="migrate()">Migrate all</dui-button>
-
-                    <div class="migrations" *ngIf="empty(migrations)">
-                        No migrations available. Your models are in sync with the database schema.
-                    </div>
-                    <div class="migrations" *ngIf="!empty(migrations)">
-                        <div *ngFor="let kv of migrations|keyvalue">
-                            <h3>{{kv.key}}</h3>
-                            <div class="diff text-selection">{{kv.value.diff}}</div>
-                            <div class="sql text-selection" *ngFor="let sql of kv.value.sql">
-                                {{sql}}
-                            </div>
+              }
+              @if (!empty(migrations)) {
+                <div class="migrations">
+                  @for (kv of migrations|keyvalue; track kv) {
+                    <div>
+                      <h3>{{ kv.key }}</h3>
+                      <div class="diff text-selection">{{ kv.value.diff }}</div>
+                      @for (sql of kv.value.sql; track sql) {
+                        <div class="sql text-selection">
+                          {{ sql }}
                         </div>
+                      }
                     </div>
+                  }
                 </div>
-            </ng-container>
-        </div>
+              }
+            </div>
+          }
+        }
+      </div>
     `,
     styleUrls: ['./database.component.scss'],
-    standalone: false
+    imports: [ButtonGroupComponent, TabButtonComponent, DatabaseSeedComponent, DatabaseGraphComponent, ButtonComponent, KeyValuePipe],
 })
 export class DatabaseComponent implements OnDestroy {
-    trackByIndex = trackByIndex;
-    trackByProperty = trackByProperty;
-
     tab: string = 'model';
     empty = empty;
 

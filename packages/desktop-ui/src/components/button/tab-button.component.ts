@@ -41,7 +41,7 @@ export class TabButtonComponent extends ValueAccessorBase<any> {
     protected onClick() {
         const value = this.value();
         if (value === undefined) return;
-        this.writeValue(value);
+        this.setValue(value);
     }
 
     protected isActive() {

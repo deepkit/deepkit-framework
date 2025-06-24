@@ -1,1 +1,1 @@
-export * from './src/app/orm-browser.module';
+export * from './src/app/routes';

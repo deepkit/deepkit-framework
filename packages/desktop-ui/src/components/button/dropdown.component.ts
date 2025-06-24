@@ -52,7 +52,7 @@ import { unsubscribe } from '../app/reactivate-change-detection';
     selector: 'dui-dropdown',
     template: `
       <ng-template #dropdownTemplate>
-        <div class="dui-body dui-dropdown" tabindex="1" #dropdown>
+        <div class="dui-body dui-normalized dui-dropdown" tabindex="1" #dropdown>
           <div class="content" [class.overlay-scrollbar-small]="scrollbars()">
             @if (container(); as container) {
               <ng-container [ngTemplateOutlet]="container"></ng-container>

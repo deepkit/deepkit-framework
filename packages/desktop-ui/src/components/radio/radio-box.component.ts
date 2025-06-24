@@ -66,7 +66,7 @@ export class RadioButtonComponent {
     public onClick() {
         if (this.group.isDisabled) return;
 
-        this.group.writeValue(this.value());
+        this.group.setValue(this.value());
         this.group.touch();
     }
 }

@@ -8,21 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ApplicationRef,
-    Component,
-    ComponentFactoryResolver,
-    ComponentRef,
-    Directive,
-    ElementRef,
-    Inject,
-    Injectable,
-    Injector,
-    input,
-    OnDestroy,
-    Type,
-    ViewContainerRef,
-} from '@angular/core';
+import { ApplicationRef, Component, ComponentFactoryResolver, ComponentRef, Directive, ElementRef, Inject, Injectable, Injector, input, OnDestroy, Type, ViewContainerRef } from '@angular/core';
 import { CloseDialogDirective, DialogActionsComponent, DialogComponent } from './dialog.component';
 import { isTargetChildOf } from '../../core/utils';
 import { DOCUMENT } from '@angular/common';
@@ -43,7 +29,7 @@ import { FormsModule } from '@angular/forms';
 
       <dui-dialog-actions>
         <dui-button hotkey="escape" [closeDialog]="false">Cancel</dui-button>
-        <dui-button focus [closeDialog]="true">OK</dui-button>
+        <dui-button auto-focus [closeDialog]="true">OK</dui-button>
       </dui-dialog-actions>
     `,
     imports: [DialogActionsComponent, ButtonComponent, HotkeyDirective, CloseDialogDirective],
@@ -65,7 +51,7 @@ export class DuiDialogConfirm {
       }
 
       <dui-dialog-actions>
-        <dui-button focus hotkey="escape" [closeDialog]="true">OK</dui-button>
+        <dui-button auto-focus hotkey="escape" [closeDialog]="true">OK</dui-button>
       </dui-dialog-actions>
     `,
     imports: [DialogActionsComponent, ButtonComponent, HotkeyDirective, CloseDialogDirective],
@@ -86,7 +72,7 @@ export class DuiDialogAlert {
         <div class="text-selection" style="white-space: pre-line;">{{ content }}</div>
       }
       <div style="padding-top: 5px;">
-        <dui-input style="width: 100%" (enter)="dialog.close(value())" focus [(ngModel)]="value"></dui-input>
+        <dui-input style="width: 100%" (enter)="dialog.close(value())" auto-focus [(ngModel)]="value"></dui-input>
       </div>
 
       <dui-dialog-actions>

@@ -270,7 +270,7 @@ export class ButtonComponent implements OnInit, AfterViewInit {
     /**
      * Whether the button is focused on initial loading.
      */
-    focus = input(false, { transform: booleanAttribute });
+    autoFocus = input(false, { alias: 'auto-focus', transform: booleanAttribute });
 
     /**
      * The form to submit when this button is clicked.
@@ -315,7 +315,7 @@ export class ButtonComponent implements OnInit, AfterViewInit {
     }
 
     ngOnInit() {
-        if (this.focus()) {
+        if (this.autoFocus()) {
             setTimeout(() => {
                 this.element.nativeElement.focus();
             }, 10);
@@ -542,9 +542,9 @@ export class FileChooserDirective extends ValueAccessorBase<File[]> implements O
                         if (!file) continue;
                         result.push(file);
                     }
-                    this.writeValue(result);
+                    this.setValue(result);
                 } else {
-                    this.writeValue([files.item(0)!]);
+                    this.setValue([files.item(0)!]);
                 }
                 this.duiFileChooserChange.emit(this.value() || []);
             }
@@ -631,13 +631,13 @@ export class FilePickerDirective extends ValueAccessorBase<FilePickerItem[]> imp
                             }
                         }
                     }
-                    this.writeValue(res);
+                    this.setValue(res);
                 } else {
                     const file = files.item(0);
                     if (file) {
                         const data = await readFile(file);
                         if (data) {
-                            this.writeValue([{ data, name: file.name }]);
+                            this.setValue([{ data, name: file.name }]);
                         }
                     }
                 }
@@ -736,12 +736,12 @@ export class FileDropDirective extends ValueAccessorBase<FilePickerItem[]> imple
             }
         }
         if (this.duiFileDropMultiple()) {
-            this.writeValue(res);
+            this.setValue(res);
         } else {
             if (res.length) {
-                this.writeValue([res[0]]);
+                this.setValue([res[0]]);
             } else {
-                this.writeValue([]);
+                this.setValue([]);
             }
         }
         this.duiFileDropChange.emit(this.value() || []);
