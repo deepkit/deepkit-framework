@@ -91,8 +91,11 @@ export class DocDesktopUIGettingStartedComponent {
     `;
 
     appComponentHtml = `
-<dui-style /> <!-- This loads global styles. Only needed once in your application. -->
-<dui-window class="dui-normalized"> <!-- This sets useful defaults to font, h1, h2, anchor, p, etc. -->
+<!-- This loads global styles. Only needed once in your application. -->
+<dui-style />
+
+<!-- 'normalize-style' sets useful defaults like font, h1, h2, anchor, p, etc. Remove if you want to have your own styles. -->
+<dui-window normalize-style> 
     <dui-window-header>
         Angular Desktop UI
         <dui-window-toolbar>

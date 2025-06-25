@@ -15,7 +15,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { SplitterComponent } from '../splitter/splitter.component';
 import { clamp } from '../app/utils';
 
-interface WinSidebar {
+export interface WinSidebar {
     template: TemplateRef<any>;
 }
 
@@ -32,18 +32,16 @@ interface WinSidebar {
         <div class="sidebar"
              (transitionend)="transitionEnded()"
              #sidebar [class.hidden]="!sidebarVisible() " [class.with-animation]="withAnimation()"
+             [style.min-width.px]="sidebarMinWidth()"
+             [style.max-width.px]="sidebarMaxWidth()"
              [style.width.px]="sidebarWidth()">
           <div class="hider">
-            <div class="sidebar-container overlay-scrollbar-small"
-                 [style.width.px]="sidebarWidth()"
-                 [style.max-width.px]="sidebarWidth()"
-                 #sidebarContainer>
-              <ng-container [ngTemplateOutlet]="toolbar.template"
-                            [ngTemplateOutletContext]="{}"></ng-container>
+            <div class="sidebar-container overlay-scrollbar-small" #sidebarContainer>
+              <ng-container [ngTemplateOutlet]="toolbar.template" [ngTemplateOutletContext]="{}"></ng-container>
             </div>
           </div>
           @if (sidebarVisible()) {
-            <dui-splitter position="right" inverted [size]="sidebarWidth()" (sizeChange)="sidebarWidth.set($event)"></dui-splitter>
+            <dui-splitter position="right" [element]="sidebar" property="width" [(size)]="sidebarWidth"></dui-splitter>
           }
         </div>
       }
@@ -94,7 +92,7 @@ export class WindowContentComponent {
         });
     }
 
-    transitionEnded() {
+    protected transitionEnded() {
         if (this.withAnimation()) {
             this.withAnimation.set(false);
             triggerResize();
@@ -116,7 +114,7 @@ export class WindowContentComponent {
         }
     }
 
-    public isSidebarVisible(): boolean {
+    isSidebarVisible(): boolean {
         return undefined !== this.sidebar() && this.sidebarVisible();
     }
 }

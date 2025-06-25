@@ -49,7 +49,7 @@ export class LabelGridComponent {
     labelWidth = input<string | number>('150px');
     labelMaxWidth = input<string | number>('1fr');
 
-    get templateColumns(){
+    protected get templateColumns(){
         return `repeat(auto-fit, minmax(${this.labelWidth()}, ${this.labelMaxWidth()}))`;
     }
 }

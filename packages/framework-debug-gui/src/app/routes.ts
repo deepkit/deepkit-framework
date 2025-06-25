@@ -8,8 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { NgModule } from '@angular/core';
-import { RouterModule, Routes } from '@angular/router';
+import { Routes } from '@angular/router';
 import { ConfigurationComponent } from './views/configuration/configuration.component';
 import { HttpComponent } from './views/http/http.component';
 import { RpcComponent } from './views/rpc/rpc.component';
@@ -20,21 +19,15 @@ import { ModulesComponent } from './views/modules/modules.component';
 import { FilesystemComponent } from './views/filesystem/filesystem.component';
 import { HttpRequestsComponent } from './views/http/http-requests.component';
 
-const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'configuration' },
-  { path: 'configuration', component: ConfigurationComponent },
-  { path: 'http', component: HttpComponent },
-  { path: 'rpc', component: RpcComponent },
-  { path: 'profiler', component: ProfileComponent },
-  { path: 'modules', component: ModulesComponent },
-  { path: 'events', component: EventsComponent },
-  { path: 'filesystem/:id', component: FilesystemComponent },
-  { path: 'http/request', component: HttpRequestsComponent },
-  { path: 'http/request/:id', component: HttpRequestComponent },
+export const routes: Routes = [
+    { path: '', pathMatch: 'full', redirectTo: 'configuration' },
+    { path: 'configuration', component: ConfigurationComponent },
+    { path: 'http', component: HttpComponent },
+    { path: 'rpc', component: RpcComponent },
+    { path: 'profiler', component: ProfileComponent },
+    { path: 'modules', component: ModulesComponent },
+    { path: 'events', component: EventsComponent },
+    { path: 'filesystem/:id', component: FilesystemComponent },
+    { path: 'http/request', component: HttpRequestsComponent },
+    { path: 'http/request/:id', component: HttpRequestComponent },
 ];
-
-@NgModule({
-  imports: [RouterModule.forRoot(routes, {useHash: true})],
-  exports: [RouterModule]
-})
-export class AppRoutingModule { }

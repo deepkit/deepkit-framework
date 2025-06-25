@@ -1,14 +1,5 @@
 import { Component } from '@angular/core';
-import {
-    ButtonComponent,
-    CheckboxComponent,
-    FormComponent,
-    FormRowComponent,
-    IconComponent,
-    InputComponent,
-    OptionDirective,
-    SelectBoxComponent,
-} from '@deepkit/desktop-ui';
+import { ButtonComponent, CheckboxComponent, FormComponent, FormRowComponent, IconComponent, InputComponent, OptionDirective, SelectBoxComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
 import { ApiDocComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 
@@ -40,7 +31,7 @@ import { ApiDocComponent } from '@app/app/pages/documentation/desktop-ui/api-doc
           </dui-form-row>
 
           <dui-form-row label="Nope">
-            <dui-input disabled placeholder="Disabled"></dui-input>
+            <dui-input [disabled]="true" placeholder="Disabled"></dui-input>
           </dui-form-row>
 
           <dui-form-row label="Textured">

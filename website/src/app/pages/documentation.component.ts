@@ -166,9 +166,11 @@ import { DuiStyleComponent } from '@deepkit/desktop-ui';
 
             <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/desktop-ui">Getting
               started</a>
+            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/app">App</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/button">Button</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/button-group">Button group</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/dialog">Dialog</a>
+            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/drag">Drag</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/dropdown">Dropdown</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/icons">Icons</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/input">Input</a>
@@ -178,6 +180,7 @@ import { DuiStyleComponent } from '@deepkit/desktop-ui';
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/checkbox">Checkbox</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/list">List</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/table">Table</a>
+            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/tabs">Tabs</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/window">Window</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/window-menu">Window menu</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/window-toolbar">Window toolbar</a>

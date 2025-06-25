@@ -11,9 +11,11 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { ControllerClient } from '../../client';
 import { RpcAction, Workflow } from '@deepkit/framework-debug-api';
+import { InputComponent, TableCellDirective, TableColumnDirective, TableComponent } from '@deepkit/desktop-ui';
+import { FormsModule } from '@angular/forms';
 
 @Component({
-    template: `
+  template: `
     <!--<div class="header">
       <h4>RPC Workflow</h4>
     </div>
@@ -32,12 +34,12 @@ import { RpcAction, Workflow } from '@deepkit/framework-debug-api';
       <dui-table-column [width]="220" name="methodName"></dui-table-column>
       <dui-table-column [width]="220" name="parameters">
         <ng-container *duiTableCell="let row">
-          {{getParameters(row)}}
+          {{ getParameters(row) }}
         </ng-container>
       </dui-table-column>
     </dui-table>
   `,
-    styles: [`
+  styles: [`
     :host {
       display: flex;
       flex-direction: column;
@@ -53,7 +55,13 @@ import { RpcAction, Workflow } from '@deepkit/framework-debug-api';
       margin-left: auto;
     }
   `],
-    standalone: false
+  imports: [
+    InputComponent,
+    TableComponent,
+    TableColumnDirective,
+    FormsModule,
+    TableCellDirective,
+  ],
 })
 export class RpcComponent implements OnInit {
   public actions: RpcAction[] = [];

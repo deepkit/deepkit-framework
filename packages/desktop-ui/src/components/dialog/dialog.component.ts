@@ -12,13 +12,13 @@ import {
     AfterViewInit,
     ApplicationRef,
     booleanAttribute,
-    ChangeDetectorRef,
     Component,
     ComponentRef,
     Directive,
     ElementRef,
     EventEmitter,
     HostListener,
+    inject,
     Injector,
     input,
     model,
@@ -46,7 +46,7 @@ import { unsubscribe } from '../app/reactivate-change-detection';
 
 @Component({
     template: `
-      <dui-window [dialog]="true">
+      <dui-window [dialog]="true" [normalize-style]="windowComponent?.normalizeStyle()">
         <dui-window-content class="{{class()}}" [class.dui-normalized]="normalized()">
           @if (component()) {
             <ng-container
@@ -91,19 +91,14 @@ export class DialogWrapperComponent {
 
     @ViewChild(RenderComponentDirective, { static: false }) renderComponentDirective?: RenderComponentDirective;
 
-    constructor(
-        protected cd: ChangeDetectorRef,
-    ) {
-    }
+    windowComponent = inject(WindowComponent, { optional: true });
 
-    public setActions(actions: TemplateRef<any> | undefined) {
+    setActions(actions: TemplateRef<any> | undefined) {
         this.actions.set(actions);
-        this.cd.detectChanges();
     }
 
-    public setDialogContainer(container: TemplateRef<any> | undefined) {
+    setDialogContainer(container: TemplateRef<any> | undefined) {
         this.container.set(container);
-        this.cd.detectChanges();
     }
 }
 
@@ -164,8 +159,8 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     actions?: TemplateRef<any> | undefined;
     container?: TemplateRef<any> | undefined;
 
-    public overlayRef?: OverlayRef;
-    public wrapperComponentRef?: ComponentRef<DialogWrapperComponent>;
+    overlayRef?: OverlayRef;
+    wrapperComponentRef?: ComponentRef<DialogWrapperComponent>;
 
     protected lastOverlayStackItem?: OverlayStackItem;
 
@@ -180,7 +175,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     ) {
     }
 
-    public toPromise(): Promise<any> {
+    toPromise(): Promise<any> {
         return new Promise((resolve) => {
             this.closed.subscribe((v: any) => {
                 resolve(v);
@@ -188,14 +183,14 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         });
     }
 
-    public setDialogContainer(container: TemplateRef<any> | undefined) {
+    setDialogContainer(container: TemplateRef<any> | undefined) {
         this.container = container;
         if (this.wrapperComponentRef) {
             this.wrapperComponentRef.instance.setDialogContainer(container);
         }
     }
 
-    public setActions(actions: TemplateRef<any> | undefined) {
+    setActions(actions: TemplateRef<any> | undefined) {
         this.actions = actions;
         if (this.wrapperComponentRef) {
             this.wrapperComponentRef.instance.setActions(actions);
@@ -210,7 +205,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         }
     }
 
-    public show() {
+    show() {
         if (this.overlayRef) {
             return;
         }

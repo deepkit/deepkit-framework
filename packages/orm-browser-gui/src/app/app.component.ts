@@ -33,7 +33,7 @@ import { HeaderStatusBarComponent } from '@deepkit/ui-library';
     selector: 'app-root',
     template: `
       <dui-style />
-      <dui-window class="dui-normalized">
+      <dui-window normalize-style>
         <dui-window-header size="small">
           <dui-window-toolbar>
             <dui-button-group>

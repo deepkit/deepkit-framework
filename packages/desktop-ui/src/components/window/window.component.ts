@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ChangeDetectionStrategy, Component, contentChild, inject, input, OnDestroy, OnInit, ViewContainerRef } from '@angular/core';
+import { booleanAttribute, ChangeDetectionStrategy, Component, contentChild, inject, input, OnDestroy, OnInit, ViewContainerRef } from '@angular/core';
 import { WindowContentComponent } from './window-content.component';
 import { Win, WindowRegistry, WindowState } from './window-state';
 import { WindowMenuState } from './window-menu';
@@ -40,6 +40,7 @@ export class WindowFrameComponent {
         '[class.in-dialog]': 'dialog()',
         '[class.dui-theme-light]': '!app.themeDetection',
         '[class.dui-body]': 'true',
+        '[class.dui-normalized]': 'normalizeStyle()',
     },
     changeDetection: ChangeDetectionStrategy.OnPush,
     providers: [
@@ -57,6 +58,7 @@ export class WindowComponent implements OnInit, OnDestroy, Win {
     maximizable = input(true);
     minimizable = input(true);
     dialog = input(false);
+    normalizeStyle = input(false, { alias: 'normalize-style', transform: booleanAttribute });
 
     protected onBlur = () => {
         this.registry.blur(this);
@@ -66,12 +68,13 @@ export class WindowComponent implements OnInit, OnDestroy, Win {
         this.registry.focus(this);
     };
 
-    registry = inject(WindowRegistry);
+    protected registry = inject(WindowRegistry);
+    protected app = inject(DuiApp);
+    protected parentWindow = inject(WindowComponent, { optional: true, skipSelf: true });
+    protected windowMenuState = inject(WindowMenuState);
+
     windowState = inject(WindowState);
-    app = inject(DuiApp);
     viewContainerRef = inject(ViewContainerRef);
-    windowMenuState = inject(WindowMenuState);
-    parentWindow = inject(WindowComponent, { optional: true, skipSelf: true });
     browserWindow = inject(BrowserWindow);
 
     constructor() {

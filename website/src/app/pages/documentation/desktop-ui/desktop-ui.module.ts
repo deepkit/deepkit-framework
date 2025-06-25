@@ -20,12 +20,17 @@ import { DocDesktopUIWindowToolbarComponent } from './window-toolbar.component.j
 import { DocDesktopUIWindowComponent } from './window.component.js';
 import { DocDesktopUICheckboxComponent } from './checkbox.component.js';
 import { DocDesktopUIButtonDropdownComponent } from './dropdown.component.js';
+import { DocDesktopUIAppComponent } from './app.component.js';
+import { DocDesktopUIDragComponent } from './drag.component.js';
+import { DocDesktopUITabsComponent } from './tabs.component.js';
 
 const routes: Routes = [
     { path: '', component: DocDesktopUIGettingStartedComponent },
     { path: 'icons', component: DocDesktopUIIconComponent },
     { path: 'button', component: DocDesktopUIButtonComponent },
     { path: 'button-group', component: DocDesktopUIButtonGroupComponent },
+    { path: 'app', component: DocDesktopUIAppComponent },
+    { path: 'drag', component: DocDesktopUIDragComponent },
     { path: 'dropdown', component: DocDesktopUIButtonDropdownComponent },
     { path: 'dialog', component: DocDesktopUIDialogComponent },
     { path: 'form', component: DocDesktopUIFormComponent },
@@ -40,6 +45,7 @@ const routes: Routes = [
     { path: 'window', component: DocDesktopUIWindowComponent },
     { path: 'window-menu', component: DocDesktopUIWindowMenuComponent },
     { path: 'window-toolbar', component: DocDesktopUIWindowToolbarComponent },
+    { path: 'tabs', component: DocDesktopUITabsComponent },
 ];
 
 @NgModule({

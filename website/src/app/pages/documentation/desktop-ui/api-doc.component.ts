@@ -4,14 +4,7 @@ import { FormsModule } from '@angular/forms';
 import '@angular/compiler';
 import { stack } from '@deepkit/core';
 import { CodeHighlightComponent, ThemeSwitcherComponent } from '@deepkit/ui-library';
-import {
-    ButtonGroupComponent,
-    InputComponent,
-    TabButtonComponent,
-    TableCellDirective,
-    TableColumnDirective,
-    TableComponent,
-} from '@deepkit/desktop-ui';
+import { ButtonGroupComponent, InputComponent, TabButtonComponent, TableCellDirective, TableColumnDirective, TableComponent } from '@deepkit/desktop-ui';
 import { derivedAsync } from 'ngxtension/derived-async';
 import { MarkdownParser } from '@app/common/markdown.js';
 import { ContentRenderComponent } from '@app/app/components/content-render.component.js';
@@ -428,7 +421,7 @@ export class ApiDocProvider {
 
 interface TableRow {
     name: string;
-    type: 'input' | 'output' | 'method';
+    type: 'input' | 'output' | 'method' | 'property';
     alias?: string;
     required?: boolean;
     dataType: string;
@@ -440,7 +433,7 @@ interface TableRow {
     template: `
       <div>
         <div class="title">
-          <h2>API <code>{{ selector() }}</code></h2>
+          <h2>API <code>{{ title() }}</code></h2>
           @if (tableData().length) {
             <dui-input icon="search" placeholder="Search" [(ngModel)]="filterQuery" clearer></dui-input>
           }
@@ -456,7 +449,7 @@ interface TableRow {
         }
         @if (tableData().length) {
           <dui-table
-            [autoHeight]="true"
+            [virtualScrolling]="false"
             [items]="tableData()"
             [filterQuery]="filterQuery()"
             [filterFields]="['name', 'type', 'dataType', 'comment']"
@@ -488,7 +481,7 @@ interface TableRow {
 export class ApiDocComponent {
     component = input.required<string>();
 
-    selector = signal('');
+    title = signal('');
     filterQuery = signal('');
     apiDocProvider = inject(ApiDocProvider);
 
@@ -521,17 +514,20 @@ export class ApiDocComponent {
         const docs = this.apiDoc();
         if (!docs) return [];
 
-        console.log('docs', docs);
         for (const decorator of docs.decorators) {
             if (decorator.name === 'Component' || decorator.name === 'Directive') {
                 // const match = decorator.arguments.obj.match(/['"]?selector['"]?\s?:\s?['"]+([^'"]+)['"]+/i);
                 const selector = decorator.selector || '';
                 if (!selector.startsWith('[')) {
-                    this.selector.set('<' + selector.replace(/,/g, '>, <') + '>');
+                    this.title.set('<' + selector.replace(/,/g, '>, <') + '>');
                 } else {
-                    this.selector.set(selector);
+                    this.title.set(selector);
                 }
             }
+        }
+
+        if (!this.title()) {
+            this.title.set(docs.name);
         }
 
         const ignoreProperties = ['registerOnChange', 'registerOnTouched', 'setDisabledState', 'writeValue', 'touch'];
@@ -540,7 +536,7 @@ export class ApiDocComponent {
             for (const prop of docs.children) {
                 if ((prop.kindString === 'Property' || prop.kindString === 'Method') && ignoreProperties.includes(prop.name)) continue;
 
-                if (prop.kindString === 'Property' && prop.type?.type === 'reference' && (prop.type?.name === 'InputSignal' || prop.type?.name === 'InputSignalWithTransform')) {
+                if (prop.kindString === 'Property' && prop.type?.type === 'reference' && (prop.type?.name === 'InputSignal' || prop.type?.name === 'InputSignalWithTransform' || prop.type?.name === 'ModelSignal')) {
                     const type = prop.type.typeArguments?.[0];
                     tableData.push({
                         name: prop.name,
@@ -550,6 +546,18 @@ export class ApiDocComponent {
                         dataType: typeToString(type),
                         comment: getComment(prop.comment),
                     });
+
+                    if (prop.type?.name === 'ModelSignal') {
+                        tableData.push({
+                            name: prop.name + 'Change',
+                            type: 'output',
+                            alias: prop.input?.alias,
+                            required: prop.input?.required,
+                            dataType: typeToString(type),
+                            comment: '',
+                        });
+                    }
+
                 } else if (prop.kindString === 'Property' && prop.type?.type === 'reference' && prop.type?.name === 'OutputEmitterRef') {
                     const type = prop.type.typeArguments?.[0];
                     tableData.push({
@@ -558,23 +566,35 @@ export class ApiDocComponent {
                         dataType: typeToString(type),
                         comment: getComment(prop.comment),
                     });
-                } else if (prop.kindString === 'Property' && prop.decorators) {
-                    for (const decorator of prop.decorators) {
-                        if (decorator.name === 'Input') {
-                            tableData.push({
-                                name: prop.name,
-                                type: 'input',
-                                alias: prop.input?.alias,
-                                required: prop.input?.required,
-                                dataType: typeToString(prop.type),
-                                comment: getComment(prop.comment),
-                            });
-                        }
+                } else if (prop.kindString === 'Property') {
+                    if (prop.decorators) {
+                        for (const decorator of prop.decorators) {
+                            if (decorator.name === 'Input') {
+                                tableData.push({
+                                    name: prop.name,
+                                    type: 'input',
+                                    alias: prop.input?.alias,
+                                    required: prop.input?.required,
+                                    dataType: typeToString(prop.type),
+                                    comment: getComment(prop.comment),
+                                });
+                            }
 
-                        if (decorator.name === 'Output') {
+                            if (decorator.name === 'Output') {
+                                tableData.push({
+                                    name: prop.name,
+                                    type: 'output',
+                                    dataType: typeToString(prop.type),
+                                    comment: getComment(prop.comment),
+                                });
+                            }
+                        }
+                    } else {
+                        const hidden = prop.name === 'constructor' || prop.flags.isPrivate || prop.flags.isProtected;
+                        if (!hidden) {
                             tableData.push({
                                 name: prop.name,
-                                type: 'output',
+                                type: 'property',
                                 dataType: typeToString(prop.type),
                                 comment: getComment(prop.comment),
                             });
@@ -605,7 +625,8 @@ export class ApiDocComponent {
                 'input required': 1,
                 'input': 2,
                 'output': 3,
-                'method': 4,
+                'property': 4,
+                'method': 5,
             };
             const typeA = a.type + (a.required ? ' required' : '');
             const typeB = b.type + (b.required ? ' required' : '');

@@ -12,7 +12,7 @@ import { booleanAttribute, Component, HostBinding, input, OnChanges, OnInit } fr
 
 @Component({
     selector: 'dui-icon',
-    template: `{{name()}}`,
+    template: `{{ name() }}`,
     host: {
         '[class.ui-icon]': 'true',
         '[style.font-size.px]': 'usedSize',
@@ -20,7 +20,7 @@ import { booleanAttribute, Component, HostBinding, input, OnChanges, OnInit } fr
         '[style.width.px]': 'usedSize',
         '[style.color]': 'color()',
     },
-    styleUrls: ['./icon.component.scss']
+    styleUrls: ['./icon.component.scss'],
 })
 export class IconComponent implements OnInit, OnChanges {
     /**
@@ -48,7 +48,7 @@ export class IconComponent implements OnInit, OnChanges {
      */
     disabled = input<boolean>(false);
 
-    public usedSize = 17;
+    protected usedSize = 17;
 
     @HostBinding('class.clickable')
     get isClickable() {

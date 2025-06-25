@@ -9,16 +9,35 @@
  */
 
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { DuiApp } from '@deepkit/desktop-ui';
+import {
+    ButtonComponent,
+    ButtonGroupComponent,
+    DuiApp,
+    DuiStyleComponent,
+    ListComponent,
+    ListItemComponent,
+    ListTitleComponent,
+    WindowComponent,
+    WindowContentComponent,
+    WindowHeaderComponent,
+    WindowSidebarComponent,
+    WindowToolbarComponent,
+    WindowToolbarContainerComponent,
+} from '@deepkit/desktop-ui';
 import { Database, DebugRequest, Filesystem } from '@deepkit/framework-debug-api';
 import { Collection } from '@deepkit/rpc';
 import { ControllerClient } from './client';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { FileUploaderComponent } from './components/file-uploader.component.js';
+import { AsyncPipe } from '@angular/common';
+import { HeaderStatusBarComponent } from '@deepkit/ui-library';
+import { DatabaseBrowserListComponent } from '@deepkit/orm-browser-gui';
 
 @Component({
     selector: 'app-root',
     template: `
-      <dui-window>
+      <dui-style />
+      <dui-window normalize-style>
         <dui-window-header size="small">
           <dui-window-toolbar>
             <dui-button-group>
@@ -39,24 +58,7 @@ import { Router } from '@angular/router';
 
             <div class="top-right">
               <app-file-uploader></app-file-uploader>
-
-              <div class="connection-info">
-                <div class="connected" *ngIf="client.client.transporter.connection|asyncRender as connected">
-                  Connected
-                </div>
-                <div class="disconnected" *ngIf="!(client.client.transporter.connection|asyncRender)">
-                  Disconnected
-                </div>
-              </div>
-
-              <dui-icon clickable name="color-theme" [openDropdown]="darkModeDropdown"></dui-icon>
-              <dui-dropdown #darkModeDropdown>
-                <dui-dropdown-item (click)="duiApp.setDarkMode(undefined)" [selected]="!duiApp.isDarkModeOverwritten()">Auto</dui-dropdown-item>
-                <dui-dropdown-item (click)="duiApp.setDarkMode(false)" [selected]="duiApp.isDarkModeOverwritten() && !duiApp.isDarkMode()">Light
-                </dui-dropdown-item>
-                <dui-dropdown-item (click)="duiApp.setDarkMode(true)" [selected]="duiApp.isDarkModeOverwritten() && duiApp.isDarkMode()">Dark
-                </dui-dropdown-item>
-              </dui-dropdown>
+              <deepkit-header-status-bar [client]="client.client" />
             </div>
           </dui-window-toolbar>
         </dui-window-header>
@@ -66,7 +68,7 @@ import { Router } from '@angular/router';
             <dui-list>
               <dui-list-title>Application</dui-list-title>
               <dui-list-item routerLink="/configuration">Configuration</dui-list-item>
-              <dui-list-item routerLink="/http" [routerLinkExact]="true">HTTP</dui-list-item>
+              <dui-list-item routerLink="/http" [routerLinkActiveOptions]="{exact: true}">HTTP</dui-list-item>
               <dui-list-item routerLink="/rpc">RPC</dui-list-item>
               <dui-list-item routerLink="/events">Events</dui-list-item>
               <dui-list-item routerLink="/modules">Modules</dui-list-item>
@@ -76,17 +78,17 @@ import { Router } from '@angular/router';
               <dui-list-item routerLink="/http/request">HTTP Requests</dui-list-item>
 
               <dui-list-title>Filesystem</dui-list-title>
-              <ng-container *ngFor="let filesystem of filesystems; let i = index">
+              @for (filesystem of filesystems; track filesystem; let i = $index) {
                 <dui-list-item routerLink="/filesystem/{{i}}">{{ filesystem.name }}</dui-list-item>
-              </ng-container>
+              }
 
               <dui-list-title>Database</dui-list-title>
               <orm-browser-list></orm-browser-list>
 
-              <ng-container *ngIf="requests|async as rs">
-                <ng-container *ngIf="rs.length > 0">
+              @if (requests|async; as rs) {
+                @if (rs.length > 0) {
                   <dui-list-title>HTTP Requests</dui-list-title>
-                  <ng-container *ngFor="let request of filterRequests(rs)">
+                  @for (request of filterRequests(rs); track request) {
                     <dui-list-item routerLink="/http/request/{{request.id}}">
                       <div class="request-line">
                         <div class="id">#{{ request.id }}</div>
@@ -98,9 +100,9 @@ import { Router } from '@angular/router';
                         {{ request.url }}
                       </div>
                     </dui-list-item>
-                  </ng-container>
-                </ng-container>
-              </ng-container>
+                  }
+                }
+              }
             </dui-list>
           </dui-window-sidebar>
           <router-outlet></router-outlet>
@@ -108,7 +110,25 @@ import { Router } from '@angular/router';
       </dui-window>
     `,
     styleUrls: ['./app.component.scss'],
-    standalone: false
+    imports: [
+        DuiStyleComponent,
+        WindowComponent,
+        WindowHeaderComponent,
+        WindowToolbarComponent,
+        ButtonGroupComponent,
+        ButtonComponent,
+        WindowToolbarContainerComponent,
+        FileUploaderComponent,
+        AsyncPipe,
+        HeaderStatusBarComponent,
+        WindowContentComponent,
+        WindowSidebarComponent,
+        ListComponent,
+        ListItemComponent,
+        ListTitleComponent,
+        RouterLink,
+        DatabaseBrowserListComponent,
+    ],
 })
 export class AppComponent implements OnInit, OnDestroy {
     databases: Database[] = [];

@@ -3483,7 +3483,6 @@ __metadata:
     "@deepkit/ui-library": "npm:^1.0.1"
     "@types/jasmine": "npm:~4.3.0"
     "@types/marked": "npm:^4.0.3"
-    hammerjs: "npm:^2.0.8"
     jasmine-core: "npm:~4.5.0"
     karma: "npm:~6.4.0"
     karma-chrome-launcher: "npm:~3.1.0"
@@ -3720,7 +3719,6 @@ __metadata:
     "@deepkit/ui-library": "npm:^1.0.1"
     "@types/jasmine": "npm:~4.3.0"
     "@types/marked": "npm:^4.0.3"
-    hammerjs: "npm:^2.0.8"
     jasmine-core: "npm:~4.5.0"
     karma: "npm:~6.4.0"
     karma-chrome-launcher: "npm:~3.1.0"
@@ -3903,7 +3901,6 @@ __metadata:
     dagre: "npm:^0.8.5"
     file-saver: "npm:^2.0.5"
     file-type: "npm:^16.2.0"
-    hammerjs: "npm:^2.0.8"
     jasmine-core: "npm:~4.5.0"
     karma: "npm:~6.4.0"
     karma-chrome-launcher: "npm:~3.1.0"
@@ -15968,13 +15965,6 @@ __metadata:
   version: 0.5.2
   resolution: "hachure-fill@npm:0.5.2"
   checksum: 10c0/307e3b6f9f2d3c11a82099c3f71eecbb9c440c00c1f896ac1732c23e6dbff16a92bb893d222b8b721b89cf11e58649ca60b4c24e5663f705f877cefd40153429
-  languageName: node
-  linkType: hard
-
-"hammerjs@npm:^2.0.8":
-  version: 2.0.8
-  resolution: "hammerjs@npm:2.0.8"
-  checksum: 10c0/5c95e5774b5ea49492cb3fa8f1949aea67048a0b84af33acb555e7139abfcf3c83aca2b83e0c5008755bc230166df7b5e469d1e3eb6746c48f215f3672609fed
   languageName: node
   linkType: hard
 

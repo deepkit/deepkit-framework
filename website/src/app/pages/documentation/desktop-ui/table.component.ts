@@ -1,17 +1,7 @@
 import { Component } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
-import {
-    ButtonComponent,
-    ButtonGroupComponent,
-    DropdownComponent,
-    DropdownItemComponent,
-    InputComponent,
-    TableCellDirective,
-    TableColumnDirective,
-    TableComponent,
-    TableCustomRowContextMenuDirective,
-} from '@deepkit/desktop-ui';
+import { ButtonComponent, ButtonGroupComponent, DropdownComponent, DropdownItemComponent, InputComponent, TableCellDirective, TableColumnDirective, TableComponent, TableCustomRowContextMenuDirective } from '@deepkit/desktop-ui';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -30,25 +20,32 @@ import { FormsModule } from '@angular/forms';
         InputComponent,
         ButtonComponent,
         FormsModule,
-        ApiDocComponent,
         TableCustomRowContextMenuDirective,
+        ApiDocComponent,
     ],
-    host: {ngSkipHydration: 'true'},
+    host: { ngSkipHydration: 'true' },
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Table</h1>
 
+        <p>
+          The table component is per default using virtual scrolling, which means it only renders the rows that are currently visible
+          and all have the same height (see <code>itemHeight</code> setting). This is very efficient for large datasets.
+        </p>
+
         <p>With right click on the header, you can display additional columns.</p>
+
+        <h2>Virtual Scrolling</h2>
 
         <doc-code-frame>
           <div>
-            <dui-table style="height: 180px;" multiSelect [items]="items" [selectable]="true" [(selected)]="selectedItems">
+            <dui-table style="height: 180px;" multiSelect [items]="items" [selectable]="true" [(selected)]="selectedItems" preferenceKey="demo">
               <dui-dropdown duiTableCustomRowContextMenu>
                 <dui-dropdown-item [disabled]="!selectedItems.length" (click)="remove()">Delete</dui-dropdown-item>
               </dui-dropdown>
-              <dui-table-column name="title" header="Title" [width]="150"></dui-table-column>
-              <dui-table-column name="i" [width]="30"></dui-table-column>
+              <dui-table-column name="title" header="Title" width="250"></dui-table-column>
+              <dui-table-column name="i" width="30"></dui-table-column>
               <dui-table-column name="created" header="Created">
                 <ng-container *duiTableCell="let row">
                   {{ row.created|date:'mediumTime' }}
@@ -74,6 +71,23 @@ import { FormsModule } from '@angular/forms';
           <code-highlight lang="html" [code]="code"></code-highlight>
         </doc-code-frame>
 
+        <h2>Disabling Virtual Scrolling</h2>
+        <p>
+          For small datasets, you can disable virtual scrolling by setting the <code>virtualScroll</code> property to <code>false</code>.
+          This enables rows to have different heights. This example has also <code>no-focus-outline</code> set.
+        </p>
+
+        <doc-code-frame>
+          <div>
+            <dui-table style="height: 180px;" [virtualScrolling]="false" multiSelect no-focus-outline [items]="items" [selectable]="true" [(selected)]="selectedItems" preferenceKey="demo2">
+              <dui-table-column name="title" header="Title" width="350" />
+              <dui-table-column name="i" width="200" />
+              <dui-table-column name="created" header="Created" width="450" />
+            </dui-table>
+          </div>
+          <code-highlight lang="html" [code]="code2"></code-highlight>
+        </doc-code-frame>
+
         <api-doc component="TableComponent"></api-doc>
         <api-doc component="TableColumnDirective"></api-doc>
         <api-doc component="TableHeaderDirective"></api-doc>
@@ -85,16 +99,16 @@ import { FormsModule } from '@angular/forms';
 })
 export class DocDesktopUITableComponent {
     items = [
-        { title: 'first', i: 1, created: new Date },
-        { title: 'second', i: 2, created: new Date },
-        { title: 'another', i: 3, created: new Date },
-        { title: 'yeah', i: 4, created: new Date },
-        { title: 'peter', i: 5, created: new Date },
-        { title: 'hello', i: 6, created: new Date },
-        { title: 'world', i: 7, created: new Date },
-        { title: 'foo', i: 8, created: new Date },
-        { title: 'bar', i: 9, created: new Date },
-        { title: 'baz', i: 10, created: new Date },
+        { id: 1, created: new Date, title: 'first lorem ipsum dolor sit amet consectetur adipiscing elit' },
+        { i: 2, created: new Date, title: 'second lorem ipsum dolor sit amet consectetur adipiscing elit' },
+        { i: 3, created: new Date, title: 'another lorem ipsum dolor sit amet consectetur adipiscing elit' },
+        { i: 4, created: new Date, title: 'yet another lorem ipsum dolor' },
+        { i: 5, created: new Date, title: 'fifth lorem ipsum dolor sit' },
+        { i: 6, created: new Date, title: 'sixth lorem ipsum dolor sit amet consectetur adipiscing elit' },
+        { i: 7, created: new Date, title: 'seventh lorem ipsum dolor sit amet consectetur adipiscing elit' },
+        { i: 8, created: new Date, title: 'eighth lorem ipsum dolor sit amet consectetur adipiscing elit' },
+        { i: 9, created: new Date, title: 'ninth lorem ipsum dolor sit ' },
+        { i: 10, created: new Date, title: 'tenth lorem ipsum dolor sit ' },
     ];
 
     selectedItems = [];
@@ -115,13 +129,21 @@ export class DocDesktopUITableComponent {
         }
     };
 
+    code2 = `
+    <dui-table style="height: 180px;" [virtualScrolling]="false" multiSelect no-focus-outline [items]="items" [selectable]="true" [(selected)]="selectedItems" preferenceKey="demo2">
+      <dui-table-column name="title" header="Title" width="350" />
+      <dui-table-column name="i" width="200" />
+      <dui-table-column name="created" header="Created" width="450" />
+    </dui-table>
+`;
+
     code = `
-    <dui-table style="height: 180px;" multiSelect [items]="items" [selectable]="true" [(selected)]="selectedItems">
+    <dui-table style="height: 180px;" multiSelect [items]="items" [selectable]="true" [(selected)]="selectedItems" preferenceKey="demo">
         <dui-dropdown duiTableCustomRowContextMenu>
             <dui-dropdown-item [disabled]="!selectedItems.length" (click)="remove()">Delete</dui-dropdown-item>
         </dui-dropdown>
-        <dui-table-column name="title" header="Title" [width]="150"></dui-table-column>
-        <dui-table-column name="i" [width]="30"></dui-table-column>
+        <dui-table-column name="title" header="Title" width="250"></dui-table-column>
+        <dui-table-column name="i" width="30"></dui-table-column>
         <dui-table-column name="created" header="Created">
             <ng-container *duiTableCell="let row">
                 {{"{{"}}row.created|date:'mediumTime'{{"}}"}}

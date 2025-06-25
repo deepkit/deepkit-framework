@@ -190,16 +190,13 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
         </doc-code-frame>
 
         <api-doc component="WindowComponent"></api-doc>
-
         <api-doc component="WindowContentComponent"></api-doc>
-
         <api-doc component="WindowHeaderComponent"></api-doc>
-
         <api-doc component="WindowToolbarComponent"></api-doc>
-
         <api-doc component="WindowSidebarComponent"></api-doc>
-
         <api-doc component="WindowFooterComponent"></api-doc>
+        <api-doc component="WindowState"></api-doc>
+        <api-doc component="WindowRegistry"></api-doc>
       </div>
     `,
     styleUrls: ['./window.scss'],

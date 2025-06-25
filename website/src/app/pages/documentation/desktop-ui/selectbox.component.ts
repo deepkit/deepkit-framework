@@ -39,7 +39,7 @@ import { FormsModule } from '@angular/forms';
               <dui-option value="b">Option B</dui-option>
               <dui-option value="c">Option C</dui-option>
             </dui-select>
-            <dui-select disabled [(ngModel)]="value" textured placeholder="Please choose">
+            <dui-select [disabled]="true" [(ngModel)]="value" textured placeholder="Please choose">
               <dui-option value="a">Option A</dui-option>
               <dui-option value="b">Option B</dui-option>
               <dui-option value="c">Option C</dui-option>
@@ -123,7 +123,7 @@ export class DocDesktopUISelectboxComponent {
   <dui-option value="b">Option B</dui-option>
   <dui-option value="c">Option C</dui-option>
 </dui-select>
-<dui-select disabled [(ngModel)]="value" textured placeholder="Please choose">
+<dui-select [disabled]="true" [(ngModel)]="value" textured placeholder="Please choose">
   <dui-option value="a">Option A</dui-option>
   <dui-option value="b">Option B</dui-option>
   <dui-option value="c">Option C</dui-option>

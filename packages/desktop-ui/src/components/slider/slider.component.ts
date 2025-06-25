@@ -8,9 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { booleanAttribute, Component, computed, ElementRef, HostListener, input, viewChild } from '@angular/core';
+import { booleanAttribute, Component, computed, ElementRef, input, viewChild } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
 import { clamp, injectElementRef } from '../app/utils';
+import { DragDirective, DuiDragEvent } from '../app/drag';
 
 /**
  * Slider component allows users to select a value from a range by dragging a knob along a track.
@@ -30,7 +31,15 @@ import { clamp, injectElementRef } from '../app/utils';
     `,
     host: {
         '[class.mini]': 'mini()',
+        '(duiDrag)': 'onDuiDrag($event)',
     },
+    hostDirectives: [
+        {
+            directive: DragDirective,
+            inputs: ['duiDragThreshold'],
+            outputs: ['duiDragStart', 'duiDrag', 'duiDragEnd', 'duiDragCancel'],
+        },
+    ],
     styleUrls: ['./slider.component.scss'],
     providers: [ngValueAccessor(SliderComponent)],
 })
@@ -60,58 +69,33 @@ export class SliderComponent extends ValueAccessorBase<number> {
      */
     mini = input(false, { transform: booleanAttribute });
 
-    dragKnob = viewChild<ElementRef<HTMLElement>>('dragKnob');
+    protected dragKnob = viewChild<ElementRef<HTMLElement>>('dragKnob');
 
-    normalizedValue = computed(() => this.value() || 0);
+    protected normalizedValue = computed(() => this.value() || 0);
 
-    element = injectElementRef();
-    dragContainer = this.element.nativeElement;
-    knobWidth = computed(() => {
+    protected element = injectElementRef();
+    protected dragContainer = this.element.nativeElement;
+    protected knobWidth = computed(() => {
         const knob = this.dragKnob()?.nativeElement;
         return knob ? knob.clientWidth : 0;
     });
 
-    knobLeft = computed(() => {
+    protected knobLeft = computed(() => {
         return (this.normalizedValue() - this.min()) / (this.max() - this.min()) * 100;
     });
 
-    private down = false;
-
-    private valueFromMouse(event: MouseEvent) {
+    private valueFromMouse(event: DuiDragEvent) {
         const x = event.clientX - this.dragContainer.getBoundingClientRect().x;
         this.updateValueFromX(x);
     }
 
-    @HostListener('window:mouseup', ['$event'])
-    protected containerMouseUp(event: MouseEvent) {
-        if (!this.down) return;
-        this.valueFromMouse(event);
-        this.down = false;
-    }
-
-    @HostListener('window:mousedown', ['$event'])
-    protected containerMouseDown(event: MouseEvent) {
-        const container = this.dragContainer;
-        const knob = this.dragKnob()?.nativeElement;
-        if (!knob || !container || !event.target) return;
-        // Check if event.target is either container or child of container
-        if (event.target !== container && !container.contains(event.target as Node)) {
-            return;
-        }
-
-        this.down = true;
-        this.valueFromMouse(event);
-    }
-
-    @HostListener('window:mousemove', ['$event'])
-    protected containerMouseMove(event: MouseEvent) {
-        if (!this.down) return;
+    protected onDuiDrag(event: DuiDragEvent) {
         this.valueFromMouse(event);
     }
 
     writeValue(value?: number) {
         value = clamp(value || 0, this.min(), this.max());
-        super.setValue(value);
+        super.writeValue(value);
     }
 
     protected updateValueFromX(x: number) {

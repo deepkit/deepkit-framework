@@ -1,21 +1,11 @@
-import {
-    AfterViewInit,
-    ChangeDetectorRef,
-    Component,
-    ElementRef,
-    EventEmitter,
-    HostListener,
-    Input,
-    OnChanges,
-    Output,
-    SimpleChanges,
-    ViewChild,
-} from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { ControllerClient } from '../../client';
 import { Application, Container, Rectangle, Text } from 'pixi.js';
 import { ChangeFeed, formatTime, FrameItem, FrameParser, ViewState } from './frame';
 import { FrameContainer } from './frame-container';
 import { FrameCategory } from '@deepkit/stopwatch';
+import { DragDirective, DuiDragEvent, InputComponent, OptionDirective, SelectBoxComponent } from '@deepkit/desktop-ui';
+import { FormsModule } from '@angular/forms';
 
 class TimelineFrameContainer extends FrameContainer {
     public subText: Text;
@@ -161,22 +151,28 @@ class TimelineContainer extends Container {
 @Component({
     selector: 'profile-timeline',
     template: `
-        <div class="canvas" #canvas></div>
-        <div class="controls">
-            <ng-container *ngIf="timeline">
-                <dui-select textured [(ngModel)]="timeline.filterCategory" (ngModelChange)="updateFilter()">
-                    <dui-option [value]="0">All</dui-option>
-                    <dui-option [value]="FrameCategory.rpc">RPC</dui-option>
-                    <dui-option [value]="FrameCategory.http">HTTP</dui-option>
-                    <dui-option [value]="FrameCategory.cli">CLI</dui-option>
-                </dui-select>
-                <dui-input textured round lightFocus placeholder="Filter ..." clearer [(ngModel)]="timeline.filterQuery" (ngModelChange)="updateFilter()">
-                </dui-input>
-            </ng-container>
-        </div>
+      <div class="canvas" (duiDrag)="onDrag($event)" (duiDragStart)="onDragStart($event)" #canvas></div>
+      <div class="controls">
+        @if (timeline) {
+          <dui-select textured [(ngModel)]="timeline.filterCategory" (ngModelChange)="updateFilter()">
+            <dui-option [value]="0">All</dui-option>
+            <dui-option [value]="FrameCategory.rpc">RPC</dui-option>
+            <dui-option [value]="FrameCategory.http">HTTP</dui-option>
+            <dui-option [value]="FrameCategory.cli">CLI</dui-option>
+          </dui-select>
+          <dui-input textured round lightFocus placeholder="Filter ..." clearer [(ngModel)]="timeline.filterQuery" (ngModelChange)="updateFilter()">
+          </dui-input>
+        }
+      </div>
     `,
     styleUrls: ['./timeline.component.scss'],
-    standalone: false
+    imports: [
+        SelectBoxComponent,
+        FormsModule,
+        OptionDirective,
+        InputComponent,
+        DragDirective,
+    ],
 })
 export class ProfileTimelineComponent implements AfterViewInit, OnChanges {
     FrameCategory = FrameCategory;
@@ -191,7 +187,7 @@ export class ProfileTimelineComponent implements AfterViewInit, OnChanges {
         antialias: true,
         autoDensity: true,
         transparent: true,
-        resolution: window.devicePixelRatio
+        resolution: window.devicePixelRatio,
     });
 
     viewState = new ViewState();
@@ -253,6 +249,17 @@ export class ProfileTimelineComponent implements AfterViewInit, OnChanges {
         console.log('timeline create', changes);
     }
 
+    protected offsetXStart = 0;
+
+    protected onDragStart(event: DuiDragEvent) {
+        this.offsetXStart = this.viewState.scrollX;
+    }
+
+    protected onDrag(event: DuiDragEvent) {
+        this.viewState.scrollX = this.offsetXStart - (event.deltaX * this.viewState.zoom);
+        this.update();
+    }
+
     protected createCanvas() {
         // The application will create a canvas element for you that you
         // can then insert into the DOM.
@@ -270,24 +277,6 @@ export class ProfileTimelineComponent implements AfterViewInit, OnChanges {
 
         this.timeline = new TimelineContainer(this.parser, this.viewState, this.onSelect.bind(this));
         this.app.stage.addChild(this.timeline);
-
-        const mc = new Hammer.Manager(this.app.renderer.view);
-        mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 0 }));
-
-        let offsetXStart = 0;
-        mc.on('panstart', () => {
-            offsetXStart = this.viewState.scrollX;
-            if (this.timeline) this.timeline.ignoreNextClick = true;
-        });
-        mc.on('panend', () => {
-            offsetXStart = this.viewState.scrollX;
-        });
-
-        mc.on('pan', (ev) => {
-            if (ev.deltaX === 0) return;
-            this.viewState.scrollX = offsetXStart - (ev.deltaX * this.viewState.zoom);
-            this.update();
-        });
 
         this.app.renderer.view.addEventListener('wheel', (event) => {
             const newZoom = Math.min(1000000, Math.max(0.1, this.viewState.zoom - (Math.min(event.deltaY * -1 / 500, 0.3) * this.viewState.zoom)));

@@ -17,24 +17,24 @@ export class ValueAccessorBase<T> implements ControlValueAccessor, OnDestroy {
 
     value = model<T | undefined>(undefined);
 
-    disabled = model<boolean | '' | undefined>(undefined);
+    disabled = model(false);
 
     @Input() valid?: boolean;
     @Input() error?: boolean;
 
     protected formComponent?: FormComponent;
-    readonly _changedCallback: ((value: T | undefined) => void)[] = [];
-    readonly _touchedCallback: (() => void)[] = [];
+    protected _changedCallback: ((value: T | undefined) => void)[] = [];
+    protected _touchedCallback: (() => void)[] = [];
 
     @HostBinding('class.disabled')
     get isDisabled(): boolean {
         if (this.formComponent && this.formComponent.disabled()) return true;
 
-        if (undefined === this.disabled && this.ngControl) {
+        if (this.ngControl) {
             return !!this.ngControl.disabled;
         }
 
-        return this.disabled() !== false && this.disabled() !== undefined;
+        return this.disabled();
     }
 
     @HostBinding('class.valid')
@@ -86,7 +86,7 @@ export class ValueAccessorBase<T> implements ControlValueAccessor, OnDestroy {
      * Set the value from UI code
      */
     setValue(value: T | undefined) {
-        this.value.set(value);
+        this.writeValue(value);
         for (const callback of this._changedCallback) {
             callback(value);
         }

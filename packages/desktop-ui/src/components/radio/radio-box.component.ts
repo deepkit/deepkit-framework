@@ -63,7 +63,7 @@ export class RadioButtonComponent {
     }
 
     @HostListener('click')
-    public onClick() {
+    protected onClick() {
         if (this.group.isDisabled) return;
 
         this.group.setValue(this.value());

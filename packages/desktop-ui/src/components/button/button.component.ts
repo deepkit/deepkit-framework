@@ -139,13 +139,13 @@ function isHotKeyActive(hotkey: HotKey, event: KeyboardEvent) {
 export class ButtonHotkeyComponent implements OnChanges, OnInit {
     hotkey = input<HotKey>('');
 
-    isMac = isMacOs();
+    protected isMac = isMacOs();
 
-    metaKey = false;
-    ctrlKey = false;
-    shiftKey = false;
-    altKey = false;
-    key = '';
+    protected metaKey = false;
+    protected ctrlKey = false;
+    protected shiftKey = false;
+    protected altKey = false;
+    protected key = '';
 
     ngOnInit() {
         this.parse();
@@ -155,7 +155,7 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
         this.parse();
     }
 
-    parse() {
+    protected parse() {
         //reset all
         this.metaKey = false;
         this.ctrlKey = false;
@@ -286,11 +286,12 @@ export class ButtonComponent implements OnInit, AfterViewInit {
      * Necessary for correct icon placement.
      */
     withText?: boolean;
+
     protected detectedText: boolean = false;
 
-    element = injectElementRef();
-    formComponent = inject(FormComponent, { optional: true });
-    routerLinkActive = inject(RouterLinkActive);
+    protected element = injectElementRef();
+    protected formComponent = inject(FormComponent, { optional: true });
+    protected routerLinkActive = inject(RouterLinkActive);
 
     isDisabled = computed(() => {
         if (this.formComponent && this.formComponent.disabled()) return true;

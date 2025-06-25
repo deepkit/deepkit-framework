@@ -71,7 +71,7 @@ import { CodeHighlightComponent, ToggleBoxComponent } from '@deepkit/ui-library'
                   <dui-tab-button (click)="r.tab = 'header'" [active]="r.tab === 'header'">Header</dui-tab-button>
                 </dui-button-group>
                 @if (r.tab === 'header') {
-                  <dui-table [items]="r.headers" borderless no-focus-outline [autoHeight]="true">
+                  <dui-table [items]="r.headers" borderless no-focus-outline [virtualScrolling]="false">
                     <dui-table-column name="name" [width]="180" class="text-selection"></dui-table-column>
                     <dui-table-column name="value" [width]="280" class="text-selection"></dui-table-column>
                   </dui-table>

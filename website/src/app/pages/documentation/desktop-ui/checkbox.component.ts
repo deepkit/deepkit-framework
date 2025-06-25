@@ -25,7 +25,7 @@ import { FormsModule } from '@angular/forms';
               Active: {{ active }}
             </p>
             <p>
-              <dui-checkbox [(ngModel)]="active" disabled>Disabled</dui-checkbox>
+              <dui-checkbox [(ngModel)]="active" [disabled]="true">Disabled</dui-checkbox>
               <br />
             </p>
           </div>
@@ -46,7 +46,7 @@ export class DocDesktopUICheckboxComponent {
         Active: {{active}}
     </p>
     <p>
-        <dui-checkbox [(ngModel)]="active" disabled>Disabled</dui-checkbox>
+        <dui-checkbox [(ngModel)]="active" [disabled]="true">Disabled</dui-checkbox>
         <br/>
     </p>
 `;

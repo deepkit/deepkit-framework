@@ -14,7 +14,7 @@ import { DatabaseSeedPropertyComponent } from './database-seed-property.componen
         <dui-button textured (click)="autoTypes()">Auto</dui-button>
       </dui-button-group>
 
-      <dui-table [autoHeight]="true" [preferenceKey]="'orm-browser/seed/' + entity.getName()" [sorting]="false" no-focus-outline
+      <dui-table [virtualScrolling]="false" [preferenceKey]="'orm-browser/seed/' + entity.getName()" [sorting]="false" no-focus-outline
                  [items]="getProperties(properties)">
         <dui-table-column name="name" [width]="200"></dui-table-column>
         <dui-table-column name="type" [width]="100">

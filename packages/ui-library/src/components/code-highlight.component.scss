@@ -45,6 +45,7 @@ code-highlight.inline pre {
     border: unset;
     background: unset;
     padding: unset;
+    margin: unset;
     font-size: unset;
     overflow: unset;
     white-space: unset;
@@ -66,7 +67,7 @@ pre.codeHighlight[title]:before {
 
 code[class*="language-"],
 pre[class*="language-"] {
-    padding: 5px 0;
+    padding: 5px;
 }
 
 .dui-theme-dark {
@@ -91,15 +92,15 @@ pre[class*="language-"] {
     }
 
     .token.attr-name {
-        color: #ffcb6b;
+        color: #79c0ff;
     }
 
     .token.attr-value {
-        color: #a5e844;
+        color: #a5d6ff;
     }
 
     .token.attribute {
-        color: #a5e844;
+        color: #79c0ff;
     }
 
     .token.boolean {
@@ -217,7 +218,7 @@ pre[class*="language-"] {
     }
 
     .token.tag {
-        color: #ff6666;
+        color: #7ee787;
     }
 
     .token.unit {

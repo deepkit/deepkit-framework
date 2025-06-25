@@ -183,7 +183,7 @@ export function triggerResize() {
     });
 }
 
-type FocusWatcherUnsubscribe = () => void;
+export type FocusWatcherUnsubscribe = () => void;
 
 /**
  * Observes focus changes on target elements and emits when focus is lost.

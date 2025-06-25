@@ -13,10 +13,13 @@ import { ActivatedRoute } from '@angular/router';
 import { ControllerClient } from '../../../client';
 import { EntitySubject } from '@deepkit/rpc';
 import { DebugRequest, Workflow } from '@deepkit/framework-debug-api';
+import { AsyncPipe, DatePipe } from '@angular/common';
+import { ButtonGroupComponent, TabButtonComponent } from '@deepkit/desktop-ui';
+import { WorkflowCardComponent, WorkflowComponent } from '../../../components/workflow.component.js';
 
 @Component({
     template: `
-      <ng-container *ngIf="request|async as request">
+      @if (request|async; as request) {
         <div class="header">
           <h3>#{{ request.id }}</h3>
           <div class="text-selection">{{ request.method }} {{ request.url }}</div>
@@ -24,7 +27,6 @@ import { DebugRequest, Workflow } from '@deepkit/framework-debug-api';
           <div class="text-selection">{{ request.started|date:'medium' }}</div>
           <div class="text-selection">Response time: {{ time(request.times['http']) }}</div>
         </div>
-
         <div>
           <dui-button-group>
             <dui-tab-button [active]="true">Overview</dui-tab-button>
@@ -35,39 +37,41 @@ import { DebugRequest, Workflow } from '@deepkit/framework-debug-api';
             <dui-tab-button>Logs</dui-tab-button>
           </dui-button-group>
         </div>
-
-        <div class="workflow" style="height: 250px; margin-bottom: 10px; overflow: auto" class="overlay-scrollbar-small" *ngIf="httpWorkflow">
-          <app-workflow [workflow]="httpWorkflow">
-            <ng-container *ngFor="let placeName of httpWorkflow.places">
-              <app-workflow-card [name]="placeName" class="valid" *ngIf="request.times['workflow/http/' + placeName]">
-                <div style="color: var(--dui-text-light)">{{ time(request.times['workflow/http/' + placeName]) }}</div>
-              </app-workflow-card>
-
-              <app-workflow-card [name]="placeName" class="invalid" *ngIf="undefined === request.times['workflow/http/' + placeName]">
-              </app-workflow-card>
-            </ng-container>
-          </app-workflow>
-        </div>
-
+        @if (httpWorkflow) {
+          <div class="workflow" style="height: 250px; margin-bottom: 10px; overflow: auto" class="overlay-scrollbar-small">
+            <app-workflow [workflow]="httpWorkflow">
+              @for (placeName of httpWorkflow.places; track placeName) {
+                @if (request.times['workflow/http/' + placeName]) {
+                  <app-workflow-card [name]="placeName" class="valid">
+                    <div style="color: var(--dui-text-light)">{{ time(request.times['workflow/http/' + placeName]) }}</div>
+                  </app-workflow-card>
+                }
+                @if (undefined === request.times['workflow/http/' + placeName]) {
+                  <app-workflow-card [name]="placeName" class="invalid">
+                  </app-workflow-card>
+                }
+              }
+            </app-workflow>
+          </div>
+        }
         //total db time: split in query time & serialization time
-        //total message bus time
-        //workflow times
-        //event times
-        //session user & storage
-        //resolved route
-        //request body & header
-        //response body & header
-        //triggered events
-        //created services in DI
-        //template render times for each render(), so we see bottlenecks easily
-        //logs by levels
-        //database queries: query time, serialization time
-        //message bus events
-
+          //total message bus time
+          //workflow times
+          //event times
+          //session user & storage
+          //resolved route
+          //request body & header
+          //response body & header
+          //triggered events
+          //created services in DI
+          //template render times for each render(), so we see bottlenecks easily
+          //logs by levels
+          //database queries: query time, serialization time
+          //message bus events
         <div class="logs">
           Logs
         </div>
-      </ng-container>
+      }
     `,
     styles: [`
         :host::ng-deep .node.invalid {
@@ -91,7 +95,14 @@ import { DebugRequest, Workflow } from '@deepkit/framework-debug-api';
         }
 
     `],
-    standalone: false
+    imports: [
+        AsyncPipe,
+        DatePipe,
+        ButtonGroupComponent,
+        TabButtonComponent,
+        WorkflowComponent,
+        WorkflowCardComponent,
+    ],
 })
 export class HttpRequestComponent {
     public request?: EntitySubject<DebugRequest>;

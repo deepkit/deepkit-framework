@@ -321,8 +321,10 @@ pre.code {
     max-width: 100%;
     overflow: auto;
     overflow: overlay;
-    scrollbar-width: thin;
-
+    @supports not (-webkit-hyphens: none) {
+        /* in safari this breaks scrolling styling, so we need to exclude it*/
+        scrollbar-width: thin;
+    }
     user-select: text !important;
     -webkit-user-select: text !important;
     cursor: text !important;

@@ -3,7 +3,6 @@
     flex-direction: column;
     border: 1px solid #c5c5c5;
     background-color: white;
-    height: 100px;
 
     --background-header: #f0f0f0;
     --border-header: #cecece;
@@ -15,10 +14,6 @@
 
     --border-right-row-freeze: rgba(197, 197, 197, 0.5);
     --background-row-hover: #e0e0e0;
-
-    .frame {
-        height: 100%;
-    }
 }
 
 :host-context(.dui-theme-dark) {
@@ -153,10 +148,12 @@
     }
 }
 
-:host.auto-height {
+:host.no-virtual-scrolling {
     height: unset;
 
     .table-row {
+        width: fit-content;
+
         > div {
             white-space: unset;
         }

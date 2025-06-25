@@ -25,6 +25,7 @@ import {
     inject,
     input,
     model,
+    numberAttribute,
     OnDestroy,
     OnInit,
     output,
@@ -33,21 +34,15 @@ import {
     viewChild,
     viewChildren,
 } from '@angular/core';
-import { arrayHasItem, arrayRemoveItem, empty, first, getPathValue, indexOf, isNumber, nextTick } from '@deepkit/core';
+import { arrayHasItem, arrayRemoveItem, eachPair, empty, first, getPathValue, indexOf, nextTick } from '@deepkit/core';
 import { CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
-import {
-    ContextDropdownDirective,
-    DropdownComponent,
-    DropdownComponent as DropdownComponent_1,
-    DropdownContainerDirective,
-    DropdownItemComponent,
-    DropdownSplitterComponent,
-} from '../button/dropdown.component';
+import { ContextDropdownDirective, DropdownComponent, DropdownComponent as DropdownComponent_1, DropdownContainerDirective, DropdownItemComponent, DropdownSplitterComponent } from '../button/dropdown.component';
 import { injectElementRef } from '../app/utils';
 import { findParentWithClass } from '../../core/utils';
-import { NgTemplateOutlet } from '@angular/common';
+import { formatDate, NgTemplateOutlet } from '@angular/common';
 import { IconComponent } from '../icon/icon.component';
 import { SplitterComponent } from '../splitter/splitter.component';
+import { DragDirective, DuiDragEvent, DuiDragStartEvent } from '../app/drag';
 
 /**
  * Directive to allow dynamic content in a cell.
@@ -141,7 +136,9 @@ export class TableColumnDirective implements OnInit {
     /**
      * Default width.
      */
-    width = model<number | string>(100);
+    width = input(100, { transform: numberAttribute });
+
+    effectiveWidth = model(0);
 
     /**
      * Adds additional class to the columns cells.
@@ -151,7 +148,9 @@ export class TableColumnDirective implements OnInit {
     /**
      * Whether this column is start hidden. User can unhide it using the context menu on the header.
      */
-    hidden = model(false);
+    hidden = input(false, { transform: booleanAttribute });
+
+    effectiveHidden = model<boolean | undefined>(false);
 
     sortable = input<boolean>(true);
 
@@ -166,43 +165,44 @@ export class TableColumnDirective implements OnInit {
      * This is the new position when the user moved it manually.
      * @hidden
      */
-    overwrittenPosition = signal<number | undefined>(undefined);
-
-    defaultWidth: number | string = 100;
+    effectivePosition = signal<number | undefined>(undefined);
 
     cell = contentChild(TableCellDirective, {});
     headerDirective = contentChild(TableHeaderDirective, {});
 
     ngOnInit() {
-        this.defaultWidth = this.width();
+    }
+
+    getHidden(): boolean {
+        return this.effectiveHidden() ?? this.hidden();
     }
 
     toggleHidden() {
-        this.hidden.update(v => !v);
+        this.effectiveHidden.update(v => !this.getHidden());
     }
 
     /**
      * @hidden
      */
-    getWidth(): string | undefined {
-        const width = this.width();
-        if (!width) return undefined;
-
-        if (isNumber(width)) {
-            return width + 'px';
-        }
-
-        return width;
+    getWidth(): number {
+        return this.effectiveWidth() || this.width() || 0;
     }
 
     /**
      * @hidden
      */
     getPosition() {
-        const overwritten = this.overwrittenPosition();
+        const overwritten = this.effectivePosition();
         if (overwritten !== undefined) return overwritten;
         return this.position();
     }
+}
+
+interface THBox {
+    left: number;
+    width: number;
+    element: HTMLElement;
+    directive: TableColumnDirective;
 }
 
 @Component({
@@ -214,8 +214,8 @@ export class TableColumnDirective implements OnInit {
           @for (column of sortedColumns(); track column.name()) {
             @if (column.hideable() && column.name()) {
               <dui-dropdown-item
-                [selected]="!column.hidden()"
-                (mousedown)="column.toggleHidden();headerDropdown.close()"
+                [selected]="!column.getHidden()"
+                (click)="column.toggleHidden();headerDropdown.close()"
               >
                 @if (column.headerDirective(); as header) {
                   <ng-container
@@ -237,12 +237,14 @@ export class TableColumnDirective implements OnInit {
              [contextDropdown]="customHeaderDropdown()?.dropdown || headerDropdown">
           @for (column of sortedFilteredColumns(); track $index; let columnIndex = $index) {
             <div class="th"
-                 [style.width]="column.getWidth() || 100 + 'px'"
+                 [style.width.px]="column.getWidth()"
                  (mouseup)="sortBy(column.name() || '', $event)"
                  [class.freeze]="columnIndex < freezeColumns()"
                  [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(columnIndex) : undefined"
                  [attr.name]="column.name()"
-                 [style.top]="scrollTop + 'px'"
+                 (duiDrag)="onHeadDrag($event)"
+                 (duiDragStart)="onHeadDragStart($event, $index)"
+                 (duiDragEnd)="onHeadDragEnd($event)"
                  #th>
               @if (column.headerDirective(); as header) {
                 <ng-container
@@ -258,15 +260,15 @@ export class TableColumnDirective implements OnInit {
                   <dui-icon [size]="12" name="arrow_up"></dui-icon>
                 }
               }
-              <dui-splitter (sizeChange)="setColumnWidth(column, $event)" indicator position="right"></dui-splitter>
+              <dui-splitter [size]="column.getWidth()" (sizeChange)="column.effectiveWidth.set($event)" indicator position="right"></dui-splitter>
             </div>
           }
         </div>
       }
       @let valueFetch = valueFetcher();
 
-      <div class="body overlay-scrollbar-small" (click)="clickCell($event)" (dblclick)="dblClickCell($event)">
-        @if (autoHeight()) {
+      <div class="body" [class.overlay-scrollbar-small]="!virtualScrolling()" #body (click)="clickCell($event)" (dblclick)="dblClickCell($event)">
+        @if (!virtualScrolling()) {
           @for (row of filterSorted(); track trackByFn(i, row); let i = $index; let isOdd = $odd) {
             <div class="table-row {{rowClass()(row)}}"
                  [contextDropdown]="customRowDropdown()?.dropdown"
@@ -284,7 +286,7 @@ export class TableColumnDirective implements OnInit {
                      [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(columnIndex) : undefined"
                      [class.freeze-last]="columnIndex === freezeColumns() - 1"
                      [attr.row-i]="i"
-                     [style.flex-basis]="column.getWidth() || 100 + 'px'"
+                     [style.flex-basis.px]="column.getWidth()"
                 >
                   @if (column.cell(); as cell) {
                     <ng-container [ngTemplateOutlet]="cell.template"
@@ -296,9 +298,7 @@ export class TableColumnDirective implements OnInit {
               }
             </div>
           }
-        }
-
-        @if (!autoHeight()) {
+        } @else {
           <cdk-virtual-scroll-viewport #viewportElement
                                        class="overlay-scrollbar-small"
                                        [itemSize]="itemHeight()">
@@ -321,7 +321,7 @@ export class TableColumnDirective implements OnInit {
                        [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(columnIndex) : undefined"
                        [class.freeze-last]="columnIndex === freezeColumns() - 1"
                        [attr.row-i]="i"
-                       [style.flex-basis]="column.getWidth() || 100 + 'px'"
+                       [style.flex-basis.px]="column.getWidth()"
                   >
                     @if (column.cell(); as cell) {
                       <ng-container [ngTemplateOutlet]="cell.template"
@@ -342,7 +342,7 @@ export class TableColumnDirective implements OnInit {
         '[class.focus-outline]': '!noFocusOutline()',
         '[class.borderless]': 'borderless()',
         '[class.with-hover]': 'hover()',
-        '[class.auto-height]': 'autoHeight()',
+        '[class.no-virtual-scrolling]': '!virtualScrolling()',
         '[class.dui-normalized]': 'true',
         '[class.text-selection]': 'textSelection()',
     },
@@ -358,6 +358,7 @@ export class TableColumnDirective implements OnInit {
         CdkVirtualScrollViewport,
         CdkFixedSizeVirtualScroll,
         CdkVirtualForOf,
+        DragDirective,
     ],
 })
 export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
@@ -385,7 +386,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
      * Whether the table height just prints all rows, or if virtual scrolling is enabled.
      * If true, the row height depends on the content.
      */
-    autoHeight = input<boolean>(false);
+    virtualScrolling = input<boolean>(true);
 
     /**
      * Whether the table row should have a hover effect.
@@ -428,16 +429,6 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     trackFn = input<(index: number, item: T) => any>();
 
     /**
-     * Not used yet.
-     */
-    displayInitial = input<number>(20);
-
-    /**
-     * Not used yet.
-     */
-    increaseBy = input<number>(10);
-
-    /**
      * Filter function.
      */
     filter = input<(item: T) => boolean>();
@@ -457,12 +448,6 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
      */
     filterQuery = input<string>();
 
-    columnState = input<{
-        name: string;
-        position: number;
-        visible: boolean;
-    }[]>([]);
-
     /**
      * Against which fields filterQuery should run.
      */
@@ -475,7 +460,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
         if (!path) return '';
         const value = getPathValue(object, path);
         if (value instanceof Date) {
-
+            return formatDate(value, 'yyyy-MM-dd hh:mm:ss', navigator.language);
         }
         return value;
     });
@@ -519,7 +504,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     });
 
     // TODO rework that to be reactive
-    selectedMap = new Map<T, boolean>();
+    protected selectedMap = new Map<T, boolean>();
 
     /**
      * Elements that are selected, by reference.
@@ -529,23 +514,24 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     cellSelect = output<{ item: T, cell: string } | undefined>();
 
     /**
-     * When a row gets double clicked.
+     * When a row gets double-clicked.
      */
     dblclick = output<T>();
 
     cellClick = output<{ item: T, column: string }>();
     cellDblClick = output<{ item: T, column: string }>();
 
-    header = viewChild('header', { read: ElementRef });
-    ths = viewChildren('th', { read: ElementRef });
+    protected header = viewChild('header', { read: ElementRef });
+    protected ths = viewChildren('th', { read: ElementRef });
 
     columnDefs = contentChildren(TableColumnDirective, { descendants: true });
 
-    customHeaderDropdown = contentChild(TableCustomHeaderContextMenuDirective);
-    customRowDropdown = contentChild(TableCustomRowContextMenuDirective);
+    protected customHeaderDropdown = contentChild(TableCustomHeaderContextMenuDirective);
+    protected customRowDropdown = contentChild(TableCustomRowContextMenuDirective);
 
-    viewport = viewChild(CdkVirtualScrollViewport);
-    viewportElement = viewChild('viewportElement', { read: ElementRef });
+    protected viewport = viewChild(CdkVirtualScrollViewport);
+    protected viewportElement = viewChild('viewportElement', { read: ElementRef<HTMLElement> });
+    protected body = viewChild('body', { read: ElementRef<HTMLElement> });
 
     sortedColumns = computed(() => {
         const originalDefs = this.columnDefs();
@@ -565,10 +551,22 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
 
     sortedFilteredColumns = computed(() => {
         const originalDefs = this.sortedColumns();
-        return originalDefs.filter(v => !v.hidden());
+        return originalDefs.filter(v => !v.getHidden());
     });
 
-    columnMap = computed(() => {
+    protected storedPreferences = computed(() => {
+        if ('undefined' === typeof localStorage) return {};
+        const preferencesJSON = localStorage.getItem('@dui/table/preferences-' + this.preferenceKey());
+        if (!preferencesJSON) return {};
+        try {
+            return JSON.parse(preferencesJSON);
+        } catch (error) {
+            console.error('Error parsing table preferences:', error);
+            return {};
+        }
+    });
+
+    protected columnMap = computed(() => {
         const map: { [name: string]: TableColumnDirective } = {};
         for (const column of this.sortedColumns()) {
             map[column.name()] = column;
@@ -577,20 +575,16 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     });
 
     protected ignoreThisSort = false;
-    scrollTop = 0;
 
-    element = injectElementRef();
+    protected element = injectElementRef();
 
     constructor() {
+        effect(() => this.loadPreference());
         effect(() => this.storePreference());
         effect(() => {
             const items = this.filterSorted();
             this.viewport()?.checkViewportSize();
         });
-    }
-
-    setColumnWidth(column: TableColumnDirective, width: number) {
-        column.width.set(width);
     }
 
     ngOnInit() {
@@ -604,64 +598,63 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
 
     }
 
-    freezeLeft(untilIndex: number): number {
+    protected freezeLeft(untilIndex: number): number {
         const columns = this.sortedColumns();
         let left = 0;
         for (let i = 0; i < untilIndex; i++) {
-            const width = columns[i].width();
-            if (width === undefined) continue;
-            left += 'number' === typeof width ? width : parseInt(width);
+            left += columns[i].getWidth();
         }
         return left;
     }
 
     @HostListener('window:resize')
-    onResize() {
+    protected onResize() {
         nextTick(() => {
             this.viewport()?.checkViewportSize();
         });
     }
 
-    resetAll() {
+    protected resetAll() {
         localStorage.removeItem('@dui/table/preferences-' + this.preferenceKey());
         for (const column of this.columnDefs()) {
-            column.width.set(column.defaultWidth);
-            column.hidden.set(false);
-            column.overwrittenPosition.set(undefined);
+            column.effectiveWidth.set(0);
+            column.effectiveHidden.set(undefined);
+            column.effectivePosition.set(undefined);
         }
     }
 
-    storePreference() {
+    protected preferenceLoaded = signal(false);
+
+    protected storePreference() {
+        if (!this.preferenceLoaded()) return;
         if ('undefined' === typeof localStorage) return;
         const preferences: { [name: string]: { hidden: boolean | '', width?: number | string, order?: number } } = {};
-
         for (const column of this.columnDefs()) {
             preferences[column.name()] = {
-                width: column.width(),
-                order: column.overwrittenPosition(),
-                hidden: column.hidden(),
+                width: column.getWidth(),
+                order: column.getPosition(),
+                hidden: column.getHidden(),
             };
         }
         localStorage.setItem('@dui/table/preferences-' + this.preferenceKey(), JSON.stringify(preferences));
     }
 
-    loadPreference() {
+    protected loadPreference() {
         if ('undefined' === typeof localStorage) return;
-
-        const preferencesJSON = localStorage.getItem('@dui/table/preferences-' + this.preferenceKey());
-        if (!preferencesJSON) return;
-        const preferences = JSON.parse(preferencesJSON);
+        if (this.preferenceLoaded()) return;
+        this.preferenceLoaded.set(true);
+        const preferences = this.storedPreferences();
+        if (!preferences) return;
         const columnMap = this.columnMap();
-        for (const i in preferences) {
-            if (!preferences.hasOwnProperty(i)) continue;
+        for (const [i, v] of Object.entries(columnMap)) {
             if (!columnMap[i]) continue;
-            if (preferences[i].width !== undefined) columnMap[i].width.set(preferences[i].width);
-            if (preferences[i].order !== undefined) columnMap[i].overwrittenPosition.set(preferences[i].order);
-            if (preferences[i].hidden !== undefined) columnMap[i].hidden.set(preferences[i].hidden);
+            if (preferences[i].width !== undefined) v.effectiveWidth.set(preferences[i].width);
+            if (preferences[i].order !== undefined) v.effectivePosition.set(preferences[i].order);
+            if (preferences[i].hidden !== undefined) v.effectiveHidden.set(preferences[i].hidden);
         }
     }
 
-    dblClickCell(event: MouseEvent) {
+    protected dblClickCell(event: MouseEvent) {
         if (!event.target) return;
         const cell = findParentWithClass(event.target as HTMLElement, 'table-cell');
         if (!cell) return;
@@ -671,7 +664,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
         this.cellDblClick.emit({ item: this.sorted()[i], column });
     }
 
-    clickCell(event: MouseEvent) {
+    protected clickCell(event: MouseEvent) {
         if (!event.target) return;
         const cell = findParentWithClass(event.target as HTMLElement, 'table-cell');
         if (!cell) return;
@@ -684,7 +677,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     /**
      * Toggles the sort by the given column name.
      */
-    sortBy(name: string, $event?: MouseEvent) {
+    protected sortBy(name: string, $event?: MouseEvent) {
         if (!this.sorting()) return;
 
         if (this.ignoreThisSort) {
@@ -727,195 +720,200 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     /**
      * @hidden
      */
-    trackByFn = (index: number, item: any) => {
+    protected trackByFn = (index: number, item: any) => {
         const trackFn = this.trackFn();
         return trackFn ? trackFn(index, item) : index;
     };
 
-    // async initHeaderMovement() {
-    //     if ('undefined' !== typeof window && this.header && this.ths) {
-    //         const Hammer = await getHammer();
-    //         if (!Hammer) return;
-    //
-    //         const mc = new Hammer(this.header!.nativeElement);
-    //         mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 1 }));
-    //
-    //         interface Box {
-    //             left: number;
-    //             width: number;
-    //             element: HTMLElement;
-    //             directive: TableColumnDirective;
-    //         }
-    //
-    //         const THsBoxes: Box[] = [];
-    //
-    //         let element: HTMLElement | undefined;
-    //         let elementCells: HTMLElement[] = [];
-    //         let originalPosition = -1;
-    //         let foundBox: Box | undefined;
-    //         let rowCells: { cells: HTMLElement[] }[] = [];
-    //
-    //         let startOffsetLeft = 0;
-    //         let offsetLeft = 0;
-    //         let startOffsetWidth = 0;
-    //
-    //         let animationFrame: any;
-    //         mc.on('panstart', (event: HammerInput) => {
-    //             foundBox = undefined;
-    //
-    //             if (this.ths && event.target.classList.contains('th')) {
-    //                 element = event.target as HTMLElement;
-    //                 element.style.zIndex = '1000000';
-    //                 element.style.opacity = '0.8';
-    //
-    //                 startOffsetLeft = element.offsetLeft;
-    //                 offsetLeft = element.offsetLeft;
-    //                 startOffsetWidth = element.offsetWidth;
-    //
-    //                 arrayClear(THsBoxes);
-    //                 rowCells = [];
-    //
-    //                 for (const th of this.ths.toArray()) {
-    //                     const directive: TableColumnDirective = this.sortedColumns.find((v) => v.name === th.nativeElement.getAttribute('name')!)!;
-    //                     const cells = [...this.element.nativeElement.querySelectorAll('div[row-column="' + directive.name() + '"]')] as any as HTMLElement[];
-    //
-    //                     if (th.nativeElement === element) {
-    //                         originalPosition = this.sortedColumns.indexOf(directive);
-    //                         elementCells = cells;
-    //                         for (const cell of elementCells) {
-    //                             cell.classList.add('active-drop');
-    //                         }
-    //                     } else {
-    //                         for (const cell of cells) {
-    //                             cell.classList.add('other-cell');
-    //                         }
-    //                         th.nativeElement.classList.add('other-cell');
-    //                     }
-    //
-    //                     THsBoxes.push({
-    //                         left: th.nativeElement.offsetLeft,
-    //                         width: th.nativeElement.offsetWidth,
-    //                         element: th.nativeElement,
-    //                         directive: directive,
-    //                     });
-    //
-    //                     rowCells.push({ cells: cells });
-    //                 }
-    //             }
-    //         });
-    //
-    //         mc.on('panend', (event: HammerInput) => {
-    //             if (animationFrame) {
-    //                 cancelAnimationFrame(animationFrame);
-    //             }
-    //
-    //             if (element) {
-    //                 element.style.left = '';
-    //                 element.style.zIndex = '';
-    //                 element.style.opacity = '';
-    //
-    //                 for (const t of rowCells) {
-    //                     for (const cell of t.cells) {
-    //                         cell.classList.remove('active-drop');
-    //                         cell.classList.remove('other-cell');
-    //                         cell.style.left = '0px';
-    //                     }
-    //                 }
-    //
-    //                 this.ignoreThisSort = true;
-    //
-    //                 for (const box of THsBoxes) {
-    //                     box.element.style.left = '0px';
-    //                     box.element.classList.remove('other-cell');
-    //                 }
-    //
-    //                 if (foundBox) {
-    //                     const newPosition = this.sortedColumns.indexOf(foundBox.directive);
-    //
-    //                     if (originalPosition !== newPosition) {
-    //                         const directive = this.sortedColumns[originalPosition];
-    //                         this.sortedColumns.splice(originalPosition, 1);
-    //                         this.sortedColumns.splice(newPosition, 0, directive);
-    //
-    //                         for (let [i, v] of eachPair(this.sortedColumns)) {
-    //                             v.overwrittenPosition = i;
-    //                         }
-    //
-    //                         this.sortColumnDefs();
-    //                     }
-    //                 }
-    //
-    //                 this.storePreference();
-    //                 element = undefined;
-    //             }
-    //         });
-    //
-    //         mc.on('pan', (event: HammerInput) => {
-    //             if (animationFrame) {
-    //                 cancelAnimationFrame(animationFrame);
-    //             }
-    //
-    //             animationFrame = nextTick(() => {
-    //                 if (element) {
-    //                     element!.style.left = (event.deltaX) + 'px';
-    //                     const offsetLeft = startOffsetLeft + event.deltaX;
-    //
-    //                     for (const cell of elementCells) {
-    //                         cell.style.left = (event.deltaX) + 'px';
-    //                     }
-    //                     let afterElement = false;
-    //
-    //                     foundBox = undefined;
-    //                     for (const [i, box] of eachPair(THsBoxes)) {
-    //                         if (box.element === element) {
-    //                             afterElement = true;
-    //                             continue;
-    //                         }
-    //
-    //                         box.element.style.left = '0px';
-    //                         for (const cell of rowCells[i].cells) {
-    //                             cell.style.left = '0px';
-    //                         }
-    //
-    //                         if (!afterElement && box.left + (box.width / 2) > offsetLeft) {
-    //                             //the dragged element is before the current
-    //                             box.element.style.left = startOffsetWidth + 'px';
-    //
-    //                             for (const cell of rowCells[i].cells) {
-    //                                 cell.style.left = startOffsetWidth + 'px';
-    //                             }
-    //
-    //                             if (foundBox && box.left > foundBox.left) {
-    //                                 //we found already a box that fits and that is more left
-    //                                 continue;
-    //                             }
-    //
-    //                             foundBox = box;
-    //                         } else if (afterElement && box.left + (box.width / 2) < offsetLeft + startOffsetWidth) {
-    //                             //the dragged element is after the current
-    //                             box.element.style.left = -startOffsetWidth + 'px';
-    //                             for (const cell of rowCells[i].cells) {
-    //                                 cell.style.left = -startOffsetWidth + 'px';
-    //                             }
-    //                             foundBox = box;
-    //                         }
-    //                     }
-    //                 }
-    //             });
-    //         });
-    //     }
-    // }
+    protected headMoveThBoxes: THBox[] = [];
+
+    protected headMove: {
+        element?: HTMLElement;
+        foundBox?: THBox;
+        originalPosition: number;
+        startOffsetLeft: number;
+        offsetLeft: number;
+        startOffsetWidth: number;
+        elementCells: HTMLElement[];
+        rowCells: HTMLElement[][];
+    } = {
+        foundBox: undefined,
+        element: undefined,
+        originalPosition: -1,
+        startOffsetLeft: 0,
+        offsetLeft: 0,
+        startOffsetWidth: 0,
+        elementCells: [],
+        rowCells: [],
+    };
+
+    onHeadDragStart(event: DuiDragStartEvent, index: number) {
+        const ths = this.ths();
+        const element = this.headMove.element = ths[index]?.nativeElement;
+        console.log('head drag start', element, ths, index);
+        if (!this.headMove.element) {
+            event.accept = false;
+            return;
+        }
+
+        // element = event.target as HTMLElement;
+        element.style.zIndex = '1000000';
+        element.style.opacity = '0.8';
+
+        this.headMove.startOffsetLeft = element.offsetLeft;
+        this.headMove.offsetLeft = element.offsetLeft;
+        this.headMove.startOffsetWidth = element.offsetWidth;
+
+        this.headMoveThBoxes.length = 0;
+        this.headMove.rowCells.length = 0;
+
+        const sortedColumns = this.sortedColumns();
+        for (const th of this.ths()) {
+            const attributeName = th.nativeElement.getAttribute('name') || '';
+            const directive = sortedColumns.find((v) => v.name() === attributeName);
+            if (!directive) continue;
+            const cells = [...this.element.nativeElement.querySelectorAll('div[row-column="' + directive.name() + '"]')] as any as HTMLElement[];
+
+            if (th.nativeElement === element) {
+                this.headMove.originalPosition = sortedColumns.indexOf(directive);
+                this.headMove.elementCells = cells;
+                for (const cell of cells) {
+                    cell.classList.add('active-drop');
+                }
+            } else {
+                for (const cell of cells) {
+                    cell.classList.add('other-cell');
+                }
+                th.nativeElement.classList.add('other-cell');
+            }
+
+            this.headMoveThBoxes.push({
+                left: th.nativeElement.offsetLeft,
+                width: th.nativeElement.offsetWidth,
+                element: th.nativeElement,
+                directive: directive,
+            });
+
+            this.headMove.rowCells.push(cells);
+        }
+    }
+
+    onHeadDrag(event: DuiDragEvent) {
+        const element = this.headMove.element;
+        if (!element) return;
+        const THsBoxes = this.headMoveThBoxes;
+        const rowCells = this.headMove.rowCells;
+        const startOffsetLeft = this.headMove.startOffsetLeft;
+        const startOffsetWidth = this.headMove.startOffsetWidth;
+        const elementCells = this.headMove.elementCells;
+
+        element.style.left = (event.deltaX) + 'px';
+        const offsetLeft = startOffsetLeft + event.deltaX;
+
+        for (const cell of elementCells) {
+            cell.style.left = (event.deltaX) + 'px';
+        }
+        let afterElement = false;
+
+        let foundBox = undefined;
+        for (let i = 0; i < THsBoxes.length; i++) {
+            const box = THsBoxes[i];
+            if (box.element === element) {
+                afterElement = true;
+                continue;
+            }
+
+            box.element.style.left = '0px';
+            for (const cell of rowCells[i]) {
+                cell.style.left = '0px';
+            }
+
+            if (!afterElement && box.left + (box.width / 2) > offsetLeft) {
+                //the dragged element is before the current
+                box.element.style.left = startOffsetWidth + 'px';
+
+                for (const cell of rowCells[i]) {
+                    cell.style.left = startOffsetWidth + 'px';
+                }
+
+                if (foundBox && box.left > foundBox.left) {
+                    //we found already a box that fits and that is more left
+                    continue;
+                }
+
+                foundBox = box;
+            } else if (afterElement && box.left + (box.width / 2) < offsetLeft + startOffsetWidth) {
+                //the dragged element is after the current
+                box.element.style.left = -startOffsetWidth + 'px';
+                for (const cell of rowCells[i]) {
+                    cell.style.left = -startOffsetWidth + 'px';
+                }
+                foundBox = box;
+            }
+        }
+        this.headMove.foundBox = foundBox;
+    }
+
+    onHeadDragEnd(event: DuiDragEvent) {
+        const element = this.headMove.element;
+        if (!element) return;
+        const THsBoxes = this.headMoveThBoxes;
+        const rowCells = this.headMove.rowCells;
+        const foundBox = this.headMove.foundBox;
+        const originalPosition = this.headMove.originalPosition;
+
+        element.style.left = '';
+        element.style.zIndex = '';
+        element.style.opacity = '';
+
+        for (const t of rowCells) {
+            for (const cell of t) {
+                cell.classList.remove('active-drop');
+                cell.classList.remove('other-cell');
+                cell.style.left = '0px';
+            }
+        }
+
+        this.ignoreThisSort = true;
+
+        for (const box of THsBoxes) {
+            box.element.style.left = '0px';
+            box.element.classList.remove('other-cell');
+        }
+
+        const sortedColumns = this.sortedColumns();
+
+        if (foundBox) {
+            const newPosition = sortedColumns.indexOf(foundBox.directive);
+
+            if (originalPosition !== newPosition) {
+                const directive = sortedColumns[originalPosition];
+                sortedColumns.splice(originalPosition, 1);
+                sortedColumns.splice(newPosition, 0, directive);
+
+                for (let [i, v] of eachPair(sortedColumns)) {
+                    console.log('i', i, v.name(), v.getPosition());
+                    v.effectivePosition.set(i);
+                }
+            }
+        }
+
+        this.storePreference();
+        this.headMove.element = undefined;
+    }
 
     ngAfterViewInit(): void {
-        this.viewportElement()?.nativeElement.addEventListener('scroll', () => {
-            const scrollLeft = this.viewportElement()?.nativeElement.scrollLeft;
+        const element = (this.viewportElement() || this.body())?.nativeElement;
+        if (!element) return;
+        element.addEventListener('scroll', () => {
+            const scrollLeft = element.scrollLeft;
             const header = this.header();
             if (!header) return;
             header.nativeElement.scrollLeft = scrollLeft;
         });
     }
 
-    filterFn(item: T) {
+    protected filterFn(item: T) {
         const filter = this.filter();
         if (filter) {
             return filter(item);
@@ -962,7 +960,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
      * @hidden
      */
     @HostListener('keydown', ['$event'])
-    onFocus(event: KeyboardEvent) {
+    protected onKeyDown(event: KeyboardEvent) {
         if (event.key === 'Enter') {
             const firstSelected = first(this.selected());
             if (firstSelected) {
@@ -1004,10 +1002,6 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
 
             if (items[index]) {
                 const item = items[index];
-                // if (event.shiftKey) {
-                //     this.selectedMap[item.id] = true;
-                //     this.selected.push(item);
-                // } else {
                 this.select(item);
 
                 const viewport = this.viewport();
@@ -1024,6 +1018,17 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
                     if (itemTop < scrollTop) {
                         const diff = (itemTop) - (scrollTop);
                         viewport.scrollToOffset(scrollTop + diff);
+                    }
+                } else {
+                    const body = this.body();
+                    if (body) {
+                        // const rows = this.ro
+                        const element = body.nativeElement.children.item(index);
+                        if (element) {
+                            element.scrollIntoView({
+                                block: 'nearest',
+                            });
+                        }
                     }
                 }
             }

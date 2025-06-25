@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
-import { SliderComponent } from '@deepkit/desktop-ui';
+import { InputComponent, SliderComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
 
@@ -11,6 +11,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
         FormsModule,
         CodeHighlightComponent,
         ApiDocComponent,
+        InputComponent,
     ],
     template: `
       <div class="app-content normalize-text">
@@ -25,7 +26,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
             </div>
             <div>
               <dui-slider [min]="50" [max]="200" [(ngModel)]="value2"></dui-slider>
-              <div>{{ value2 }}</div>
+              <dui-input [(ngModel)]="value2" lightFocus type="number" />
             </div>
 
             <div>
@@ -65,7 +66,7 @@ export class DocDesktopUISliderComponent {
       </div>
       <div>
         <dui-slider [min]="50" [max]="200" [(ngModel)]="value2"></dui-slider>
-        <div>{{ value2 }}</div>
+        <dui-input [(ngModel)]="value2" lightFocus type="number" />
       </div>
 
       <div>

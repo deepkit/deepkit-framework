@@ -12,21 +12,23 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ControllerClient } from '../../client';
 import { Event } from '@deepkit/framework-debug-api';
 import { Lifecycle } from '../../utils';
+import { InputComponent, TableColumnDirective, TableComponent } from '@deepkit/desktop-ui';
+import { FormsModule } from '@angular/forms';
 
 @Component({
     template: `
-        <div class="header">
-            <h4>Events</h4>
-            <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="filterQuery"></dui-input>
-        </div>
-        <dui-table
-            style="flex: 1 1"
-            [items]="filter(events, filterQuery)" selectable defaultSort="path" no-focus-outline>
-            <dui-table-column [width]="220" name="event"></dui-table-column>
-            <dui-table-column [width]="250" name="controller"></dui-table-column>
-            <dui-table-column [width]="220" name="methodName"></dui-table-column>
-            <dui-table-column [width]="100" name="priority"></dui-table-column>
-        </dui-table>
+      <div class="header">
+        <h4>Events</h4>
+        <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="filterQuery"></dui-input>
+      </div>
+      <dui-table
+        style="flex: 1 1"
+        [items]="filter(events, filterQuery)" selectable defaultSort="path" no-focus-outline>
+        <dui-table-column [width]="220" name="event"></dui-table-column>
+        <dui-table-column [width]="250" name="controller"></dui-table-column>
+        <dui-table-column [width]="220" name="methodName"></dui-table-column>
+        <dui-table-column [width]="100" name="priority"></dui-table-column>
+      </dui-table>
     `,
     styles: [`
         :host {
@@ -44,7 +46,12 @@ import { Lifecycle } from '../../utils';
             margin-left: auto;
         }
     `],
-    standalone: false
+    imports: [
+        InputComponent,
+        FormsModule,
+        TableComponent,
+        TableColumnDirective,
+    ],
 })
 export class EventsComponent implements OnInit, OnDestroy {
     public events: Event[] = [];

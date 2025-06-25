@@ -36,6 +36,11 @@ import { FormsModule } from '@angular/forms';
             </p>
 
             <p>
+              <dui-input clearer [disabled]="true" [(ngModel)]="name"></dui-input>
+              disabled
+            </p>
+
+            <p>
               <dui-input clearer [(ngModel)]="name"></dui-input>
               clearer
             </p>
@@ -94,6 +99,11 @@ export class DocDesktopUIInputComponent {
     <p>
         <dui-input [(ngModel)]="name"></dui-input>
         default
+    </p>
+
+    <p>
+      <dui-input clearer [disabled]="true" [(ngModel)]="name"></dui-input>
+      disabled
     </p>
 
     <p>

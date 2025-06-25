@@ -14,14 +14,14 @@ import { WindowContentComponent } from './window-content.component';
 @Component({
     selector: 'dui-window-sidebar',
     template: `
-        <ng-template #templateRef>
-            <ng-content></ng-content>
-        </ng-template>
+      <ng-template #templateRef>
+        <ng-content></ng-content>
+      </ng-template>
     `,
     styleUrls: ['./window-sidebar.component.scss'],
 })
 export class WindowSidebarComponent implements OnDestroy {
-    @ViewChild('templateRef', { static: true }) public template!: TemplateRef<any>;
+    @ViewChild('templateRef', { static: true }) template!: TemplateRef<any>;
 
     constructor(private content: WindowContentComponent) {
         content.registerSidebar(this);

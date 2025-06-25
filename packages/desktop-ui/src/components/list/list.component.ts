@@ -57,13 +57,13 @@ export class ListComponent extends ValueAccessorBase<any> {
     focusable = input<boolean>(true);
     delimiterLine = input(false, { transform: booleanAttribute });
 
-    @HostBinding('tabindex') tabIndex: number = 1;
+    @HostBinding('tabindex') protected tabIndex: number = 1;
 
-    items: ListItemComponent[] = [];
+    protected items: ListItemComponent[] = [];
 
     protected itemMap = new Map<string, ListItemComponent>();
 
-    element = injectElementRef();
+    protected element = injectElementRef();
 
     /**
      * @hidden
@@ -152,9 +152,9 @@ export class ListComponent extends ValueAccessorBase<any> {
     ],
 })
 export class ListItemComponent implements OnDestroy {
-    static ids: number = 0;
+    protected static ids: number = 0;
     id = ++ListItemComponent.ids;
-    activeClass = 'selected';
+    protected activeClass = 'selected';
 
     value = input<any>();
     active = input<boolean>();
@@ -167,11 +167,11 @@ export class ListItemComponent implements OnDestroy {
 
     @Output() onSelect = new EventEmitter<any>();
 
-    element = injectElementRef();
-    list = inject(ListComponent);
-    router = inject(Router, { optional: true });
-    routerLink = inject(RouterLink, { optional: true });
-    routerLinkActive = inject(RouterLinkActive);
+    protected element = injectElementRef();
+    protected list = inject(ListComponent);
+    protected router = inject(Router, { optional: true });
+    protected routerLink = inject(RouterLink, { optional: true });
+    protected routerLinkActive = inject(RouterLinkActive);
 
     constructor() {
         this.element.nativeElement.removeAttribute('tabindex');
@@ -205,7 +205,7 @@ export class ListItemComponent implements OnDestroy {
     }
 
     @HostListener('mousedown')
-    public onClick() {
+    protected onClick() {
         this.list.setValue(this.value());
         this.onSelect.emit(this.value());
     }

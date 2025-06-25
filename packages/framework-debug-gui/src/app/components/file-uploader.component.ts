@@ -3,6 +3,8 @@ import { fileQueuedEvent, FileToUpload, fileUploadedEvent, State } from '../stat
 import { ChangeDetectorRef, Component } from '@angular/core';
 import { ControllerClient } from '../client';
 import { ClientProgress } from '@deepkit/rpc';
+import { AsyncPipe } from '@angular/common';
+import { ButtonComponent, IndicatorComponent } from '@deepkit/desktop-ui';
 
 @Component({
     selector: 'app-file-uploader',
@@ -13,13 +15,19 @@ import { ClientProgress } from '@deepkit/rpc';
         }
     `],
     template: `
-        <ng-container *ngIf="filesToUpload.length">
-            Upload {{currentIndex}} of {{state.volatile.filesToUpload.length}}:
-            <dui-indicator *ngIf="upload && upload.progress && upload.progress.upload|asyncRender as upload" [step]="upload.progress"></dui-indicator>
-            <dui-button small (click)="cancel()">Cancel</dui-button>
-        </ng-container>
+      @if (filesToUpload.length) {
+        Upload {{ currentIndex }} of {{ state.volatile.filesToUpload.length }}:
+        @if (upload && upload.progress && upload.progress.upload|async; as upload) {
+          <dui-indicator [step]="upload.progress"></dui-indicator>
+        }
+        <dui-button small (click)="cancel()">Cancel</dui-button>
+      }
     `,
-    standalone: false
+    imports: [
+        AsyncPipe,
+        ButtonComponent,
+        IndicatorComponent,
+    ],
 })
 export class FileUploaderComponent {
     upload?: FileToUpload;

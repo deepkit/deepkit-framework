@@ -12,42 +12,44 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ControllerClient } from '../../client';
 import { ConfigOption } from '@deepkit/framework-debug-api';
 import { Lifecycle } from '../../utils';
+import { InputComponent, TableColumnDirective, TableComponent } from '@deepkit/desktop-ui';
+import { FormsModule } from '@angular/forms';
 
 @Component({
     template: `
-        <div class="section">
-            <div class="header">
-                <h4>Application configuration</h4>
-                <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="applicationConfigFilter"></dui-input>
-            </div>
-            <p>
-                Application config values from your root application module.
-            </p>
-            <dui-table [items]="filter(applicationConfig, applicationConfigFilter)" defaultSort="name" no-focus-outline>
-                <dui-table-column class="text-selection" name="name"></dui-table-column>
-                <dui-table-column class="text-selection" name="value"></dui-table-column>
-                <dui-table-column class="text-selection" name="defaultValue"></dui-table-column>
-                <dui-table-column class="text-selection" name="type"></dui-table-column>
-                <dui-table-column class="text-selection" name="description"></dui-table-column>
-            </dui-table>
+      <div class="section">
+        <div class="header">
+          <h4>Application configuration</h4>
+          <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="applicationConfigFilter"></dui-input>
         </div>
+        <p>
+          Application config values from your root application module.
+        </p>
+        <dui-table [items]="filter(applicationConfig, applicationConfigFilter)" defaultSort="name" no-focus-outline>
+          <dui-table-column class="text-selection" name="name"></dui-table-column>
+          <dui-table-column class="text-selection" name="value"></dui-table-column>
+          <dui-table-column class="text-selection" name="defaultValue"></dui-table-column>
+          <dui-table-column class="text-selection" name="type"></dui-table-column>
+          <dui-table-column class="text-selection" name="description"></dui-table-column>
+        </dui-table>
+      </div>
 
-        <div class="section">
-            <div class="header">
-                <h4>Module configuration</h4>
-                <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="configFilter"></dui-input>
-            </div>
-            <p>
-                Config values from core modules and your imported modules.
-            </p>
-            <dui-table [items]="filter(config, configFilter)" defaultSort="name" no-focus-outline>
-                <dui-table-column class="text-selection" [width]="220" name="name"></dui-table-column>
-                <dui-table-column class="text-selection" name="value"></dui-table-column>
-                <dui-table-column class="text-selection" name="defaultValue"></dui-table-column>
-                <dui-table-column class="text-selection" name="type"></dui-table-column>
-                <dui-table-column class="text-selection" name="description"></dui-table-column>
-            </dui-table>
+      <div class="section">
+        <div class="header">
+          <h4>Module configuration</h4>
+          <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="configFilter"></dui-input>
         </div>
+        <p>
+          Config values from core modules and your imported modules.
+        </p>
+        <dui-table [items]="filter(config, configFilter)" defaultSort="name" no-focus-outline>
+          <dui-table-column class="text-selection" [width]="220" name="name"></dui-table-column>
+          <dui-table-column class="text-selection" name="value"></dui-table-column>
+          <dui-table-column class="text-selection" name="defaultValue"></dui-table-column>
+          <dui-table-column class="text-selection" name="type"></dui-table-column>
+          <dui-table-column class="text-selection" name="description"></dui-table-column>
+        </dui-table>
+      </div>
     `,
     styles: [`
         :host {
@@ -81,7 +83,12 @@ import { Lifecycle } from '../../utils';
             flex: 1;
         }
     `],
-    standalone: false
+    imports: [
+        InputComponent,
+        FormsModule,
+        TableComponent,
+        TableColumnDirective,
+    ],
 })
 export class ConfigurationComponent implements OnInit, OnDestroy {
     public applicationConfigFilter: string = '';

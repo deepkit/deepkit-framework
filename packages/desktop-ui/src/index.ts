@@ -13,7 +13,10 @@ export * from './browser-text';
 export * from './core/form';
 export * from './core/utils';
 
+export * from './components/document';
+
 export * from './components/app/app';
+export * from './components/app/drag';
 export * from './components/app/dui-responsive.directive';
 export * from './components/app/menu.component';
 export * from './components/app/pipes';

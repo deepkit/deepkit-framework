@@ -49,7 +49,7 @@ export class WindowHeaderComponent implements WinHeader {
     public size = input<'small' | 'default'>('default');
 
     @HostBinding('class.with-toolbar')
-    get withToolbar() {
+    protected get withToolbar() {
         return this.windowState.toolbars()['default']?.length;
     }
 
@@ -60,7 +60,7 @@ export class WindowHeaderComponent implements WinHeader {
         this.windowState = windowState;
     }
 
-    public getBottomPosition(): number {
+    getBottomPosition(): number {
         const rect = this.element.nativeElement.getBoundingClientRect();
         return rect.y + rect.height;
     }

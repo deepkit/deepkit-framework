@@ -1,22 +1,22 @@
-import { Component, EventEmitter, Output, input, output } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 
 import { IconComponent } from '../icon/icon.component';
 
 @Component({
     selector: 'dui-tab',
     template: `
-        <div class="content">
-          <ng-content></ng-content>
-        </div>
-        @if (removable()) {
-          <dui-icon class="closer" (click)="onClose()" clickable name="times"></dui-icon>
-        }
-        `,
+      <div class="content">
+        <ng-content></ng-content>
+      </div>
+      @if (removable()) {
+        <dui-icon class="closer" (click)="onClose()" clickable name="times"></dui-icon>
+      }
+    `,
     host: {
         '[class.active]': 'active()',
     },
     styleUrls: ['./tab.component.scss'],
-    imports: [IconComponent]
+    imports: [IconComponent],
 })
 export class TabComponent {
     active = input<boolean>(false);
@@ -24,10 +24,7 @@ export class TabComponent {
 
     close = output();
 
-    constructor() {
-    }
-
-    onClose() {
+    protected onClose() {
         this.close.emit();
     }
 }

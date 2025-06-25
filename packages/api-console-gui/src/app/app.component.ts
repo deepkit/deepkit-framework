@@ -8,7 +8,7 @@ import { RouterLink, RouterOutlet } from '@angular/router';
     selector: 'app-root',
     template: `
       <dui-style />
-      <dui-window class="dui-normalized">
+      <dui-window normalize-style>
         <dui-window-header size="small">
           <dui-window-toolbar>
             <deepkit-header-logo title="API Console"></deepkit-header-logo>

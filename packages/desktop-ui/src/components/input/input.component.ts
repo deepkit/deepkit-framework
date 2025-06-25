@@ -52,7 +52,7 @@ const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
           />
         }
       }
-      @if (clearer()) {
+      @if (clearer() && !disabled()) {
         <dui-icon class="clearer" name="clear" (click)="clear()"></dui-icon>
       }
     `,
@@ -130,7 +130,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
     clearer = input(false, { transform: booleanAttribute });
 
-    normalizeValue = computed(() => {
+    protected normalizeValue = computed(() => {
         if (dateTimeTypes.includes(this.type())) {
             if (this.value() instanceof Date) {
                 if (this.type() === 'date') return formatDate(this.value(), `yyyy-MM-dd`, navigator.language);

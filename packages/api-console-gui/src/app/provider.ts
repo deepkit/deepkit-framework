@@ -1,5 +1,5 @@
-import { InputRegistry } from './components/inputs/registry.js';
-import { loadRegistry } from './components/inputs/registry-loader.js';
+import { InputRegistry } from './components/inputs/registry';
+import { loadRegistry } from './components/inputs/registry-loader';
 
 
 export function provideApiConsoleRegistry() {
@@ -7,7 +7,7 @@ export function provideApiConsoleRegistry() {
         provide: InputRegistry,
         useFactory: () => {
             const registry = new InputRegistry();
-            loadRegistry(registry);
+            loadRegistry(registry.registry);
             return registry;
         }
     }

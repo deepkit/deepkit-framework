@@ -1,16 +1,4 @@
-import {
-    ApplicationRef,
-    Component,
-    Directive,
-    HostBinding,
-    Inject,
-    Injectable,
-    input,
-    Optional,
-    Renderer2,
-    RendererFactory2,
-    signal,
-} from '@angular/core';
+import { ApplicationRef, Component, Directive, HostBinding, Inject, Injectable, input, Optional, Renderer2, RendererFactory2, signal } from '@angular/core';
 import { arrayRemoveItem } from '@deepkit/core';
 import { DOCUMENT } from '@angular/common';
 import { WindowRegistry } from '../window/window-state';
@@ -124,9 +112,9 @@ export class Storage {
 export class DuiApp {
     darkMode = signal<boolean | undefined>(undefined);
     platform = signal<'web' | 'darwin' | 'linux' | 'win32'>('darwin');
-    public themeDetection: boolean = true;
+    themeDetection: boolean = true;
 
-    render: Renderer2;
+    protected render: Renderer2;
 
     constructor(
         protected app: ApplicationRef,

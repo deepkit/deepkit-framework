@@ -90,7 +90,6 @@ function addDecoratorInfo(context, decl) {
                 required: isInputRequired,
                 alias: alias,
             };
-            console.log('decl.input', decl.input);
         }
     }
 }

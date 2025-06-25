@@ -26,7 +26,7 @@ import { IconComponent, SplitterComponent } from '@deepkit/desktop-ui';
     `,
     host: {
         '[class.visible]': 'visible()',
-        '[style.flex-basis.px]': 'height()',
+        '[style.flexBasis.px]': 'height()',
     },
     imports: [
         SplitterComponent,

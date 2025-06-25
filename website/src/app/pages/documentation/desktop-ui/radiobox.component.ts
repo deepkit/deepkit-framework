@@ -32,11 +32,11 @@ import { RadioButtonComponent, RadioGroupComponent } from '@deepkit/desktop-ui';
             </p>
 
             <dui-radio-group [(ngModel)]="radioValue">
-              <dui-radio-button disabled value="a">Radio A</dui-radio-button>
+              <dui-radio-button [disabled]="true" value="a">Radio A</dui-radio-button>
               <br />
-              <dui-radio-button disabled value="b">Radio B</dui-radio-button>
+              <dui-radio-button [disabled]="true" value="b">Radio B</dui-radio-button>
               <br />
-              <dui-radio-button disabled value="c">Radio C</dui-radio-button>
+              <dui-radio-button [disabled]="true" value="c">Radio C</dui-radio-button>
             </dui-radio-group>
           </div>
           <code-highlight lang="html" [code]="code" />
@@ -64,11 +64,11 @@ export class DocDesktopUIRadioButtonComponent {
     </p>
 
     <dui-radio-group [(ngModel)]="radioValue">
-      <dui-radio-button disabled value="a">Radio A</dui-radio-button>
+      <dui-radio-button [disabled]="true" value="a">Radio A</dui-radio-button>
       <br />
-      <dui-radio-button disabled value="b">Radio B</dui-radio-button>
+      <dui-radio-button [disabled]="true" value="b">Radio B</dui-radio-button>
       <br />
-      <dui-radio-button disabled value="c">Radio C</dui-radio-button>
+      <dui-radio-button [disabled]="true" value="c">Radio C</dui-radio-button>
     </dui-radio-group>
   </div>
 `;
