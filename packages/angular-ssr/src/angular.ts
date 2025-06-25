@@ -8,22 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    AngularNodeAppEngine,
-    createNodeRequestHandler,
-    isMainModule,
-    NodeRequestHandlerFunction,
-    writeResponseToNodeResponse,
-} from '@angular/ssr/node';
-import {
-    HttpKernel,
-    HttpNotFoundError,
-    HttpRequest,
-    HttpResponse,
-    httpWorkflow,
-    RouteConfig,
-    staticOnRoute,
-} from '@deepkit/http';
+import { AngularNodeAppEngine, createNodeRequestHandler, isMainModule, NodeRequestHandlerFunction, writeResponseToNodeResponse } from '@angular/ssr/node';
+import { HttpKernel, HttpNotFoundError, HttpRequest, HttpResponse, httpWorkflow, RouteConfig, staticOnRoute } from '@deepkit/http';
 import { eventDispatcher } from '@deepkit/event';
 import { createModuleClass } from '@deepkit/app';
 import { ApplicationServer } from '@deepkit/framework';
@@ -68,7 +54,7 @@ class AngularRequestContext {
 }
 
 class AngularState {
-    ngApp: AngularNodeAppEngine = new AngularNodeAppEngine()
+    ngApp: AngularNodeAppEngine = new AngularNodeAppEngine();
 }
 
 class AngularListener {
@@ -140,7 +126,6 @@ export class RequestHandler {
         protected requestContext: AngularRequestContext,
         protected http: HttpKernel,
         protected server: ApplicationServer,
-        protected staticListener: AngularStaticListener,
     ) {
     }
 
@@ -167,12 +152,12 @@ export class RequestHandler {
             }
             this.requestContext.serverBaseUrl = `http://${host}`;
 
-            if (!this.requestContext.serverBaseUrl) {
+            if (!this.requestContext.publicBaseUrl) {
                 if (mainModule) {
-                    this.requestContext.serverBaseUrl = 'http://localhost:8080';
+                    this.requestContext.publicBaseUrl = 'http://localhost:8080';
                 } else {
                     //angular dev server
-                    this.requestContext.serverBaseUrl = 'http://localhost:4200';
+                    this.requestContext.publicBaseUrl = 'http://localhost:4200';
                 }
             }
         });

@@ -4,6 +4,7 @@ import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentatio
 import { ButtonComponent, ButtonGroupComponent, DropdownComponent, DropdownItemComponent, InputComponent, TableCellDirective, TableColumnDirective, TableComponent, TableCustomRowContextMenuDirective } from '@deepkit/desktop-ui';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     selector: 'page-table',
@@ -22,12 +23,14 @@ import { FormsModule } from '@angular/forms';
         FormsModule,
         TableCustomRowContextMenuDirective,
         ApiDocComponent,
+        AppTitle,
     ],
     host: { ngSkipHydration: 'true' },
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Table</h1>
+        <app-title value="Table"></app-title>
 
         <p>
           The table component is per default using virtual scrolling, which means it only renders the rows that are currently visible

@@ -38,6 +38,7 @@
     "@deepkit/desktop-ui": "^1.0.1",
     "@deepkit/rpc": "^1.0.1",
     "@deepkit/type": "^1.0.1",
+    "@types/prismjs": "^1.26.0",
     "ng-packagr": "^20.0.1",
     "rxjs": "~7.8.0"
   },

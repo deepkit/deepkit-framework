@@ -1,10 +1,8 @@
 import { AfterViewInit, Component, computed, ContentChildren, inject, Injectable, input, Input, QueryList, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import '@angular/compiler';
-import { stack } from '@deepkit/core';
 import { CodeHighlightComponent, ThemeSwitcherComponent } from '@deepkit/ui-library';
-import { ButtonGroupComponent, InputComponent, TabButtonComponent, TableCellDirective, TableColumnDirective, TableComponent } from '@deepkit/desktop-ui';
+import { ButtonGroupComponent, InputComponent, pendingTask, TabButtonComponent, TableCellDirective, TableColumnDirective, TableComponent } from '@deepkit/desktop-ui';
 import { derivedAsync } from 'ngxtension/derived-async';
 import { MarkdownParser } from '@app/common/markdown.js';
 import { ContentRenderComponent } from '@app/app/components/content-render.component.js';
@@ -309,10 +307,6 @@ export function typeToString(type?: ApiDocType, d: number = 0): string {
         return '';
     }
 
-    if ((type as any).name === 'Observable') {
-        console.log(type);
-    }
-
     if (type.type === 'literal') {
         return `'${type.value}'`;
     }
@@ -379,21 +373,14 @@ export function typeToString(type?: ApiDocType, d: number = 0): string {
     return '';
 }
 
+const docs = import('@deepkit/desktop-ui/docs.json');
+
 @Injectable({ providedIn: 'root' })
 export class ApiDocProvider {
-    protected docs?: any;
     parser = new MarkdownParser;
 
-    constructor(private httpClient: HttpClient) {
-    }
-
-    @stack()
     async getDocs(): Promise<ApiDocPackage> {
-        if (this.docs === undefined) {
-            this.docs = await this.httpClient.get('assets/docs.json').toPromise();
-        }
-
-        return this.docs;
+        return docs as any;
     }
 
     async findDocForComponent(component: string): Promise<ApiDocItemChildClass> {
@@ -487,15 +474,15 @@ export class ApiDocComponent {
 
     formsCompatible = computed(() => isFormsCompatible(this.apiDoc()));
 
-    apiDoc = derivedAsync(() => this.apiDocProvider.findDocForComponent(this.component()));
+    apiDoc = derivedAsync(pendingTask(() => this.apiDocProvider.findDocForComponent(this.component())));
 
-    comment = derivedAsync(async () => {
+    comment = derivedAsync(pendingTask(async () => {
         const docs = this.apiDoc();
         if (!docs) return undefined;
         const comment = getComment(docs.comment);
         if (!comment) return undefined;
         return this.apiDocProvider.parser.loadAndParse(comment);
-    });
+    }));
 
     code(row: TableRow) {
         let prefix = row.alias || row.name;
@@ -509,7 +496,7 @@ export class ApiDocComponent {
         return prefix + ': ' + row.dataType;
     }
 
-    tableData = derivedAsync(async () => {
+    tableData = derivedAsync(pendingTask(async () => {
         const tableData: TableRow[] = [];
         const docs = this.apiDoc();
         if (!docs) return [];
@@ -636,5 +623,5 @@ export class ApiDocComponent {
             return a.name.localeCompare(b.name);
         });
         return tableData;
-    }, { behavior: 'concat', initialValue: [] });
+    }), { behavior: 'concat', initialValue: [] });
 }

@@ -3,6 +3,7 @@ import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentatio
 import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { ButtonComponent, ButtonGroupComponent, CheckboxComponent, DropdownComponent, DropdownItemComponent, DropdownSplitterComponent, OpenDropdownDirective, TabButtonComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     selector: 'app-desktop-ui-button',
@@ -19,12 +20,14 @@ import { FormsModule } from '@angular/forms';
         OpenDropdownDirective,
         ButtonGroupComponent,
         TabButtonComponent,
+        AppTitle,
     ],
     host: {ngSkipHydration: 'true'},
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Button</h1>
+        <app-title value="Button"></app-title>
 
         <doc-code-frame>
           <div>

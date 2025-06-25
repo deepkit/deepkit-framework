@@ -4,13 +4,7 @@ import { AppConfig } from './config';
 import { MainController } from '@app/server/controller/main.controller';
 import { Search } from '@app/server/search';
 import { OpenAI } from 'openai';
-import {
-    fineTuneTest1,
-    fineTuneTest1Check,
-    fineTuneTest1Model,
-    mlGenAnswerCommand,
-    mlGenQuestionCommand,
-} from '@app/server/commands/ml-fine-tuning';
+import { fineTuneTest1, fineTuneTest1Check, fineTuneTest1Model, mlGenAnswerCommand, mlGenQuestionCommand } from '@app/server/commands/ml-fine-tuning';
 import { WebController } from '@app/server/controller/web.controller';
 import { PageProcessor } from '@app/server/page-processor';
 import { Questions, testQuestions, testTestFunction } from '@app/server/questions';
@@ -73,11 +67,17 @@ export const app = new App({
             },
         }),
         new AngularModule({
-            moduleUrl: import.meta.url
-        })
+            moduleUrl: import.meta.url,
+            serverBaseUrl: 'http://localhost:8080',
+        }),
     ],
 });
 
+app.setup((module, config) => {
+    if (config.baseUrl) {
+        module.getImportedModuleByClass(AngularModule).configure({ publicBaseUrl: config.baseUrl });
+    }
+});
 
 app.command('search:index', async (search: Search) => await search.index());
 app.command('search:find', async (query: string, search: Search) => {

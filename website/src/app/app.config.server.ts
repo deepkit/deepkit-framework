@@ -6,16 +6,14 @@ import { NavigationEnd, Router } from '@angular/router';
 import { HTTP_TRANSFER_CACHE_ORIGIN_MAP } from '@angular/common/http';
 
 const serverConfig: ApplicationConfig = {
-    providers: [provideServerRendering(withRoutes([
-            {
-                path: 'documentation/desktop-ui',
-                renderMode: RenderMode.Client,
-            },
+    providers: [
+        provideServerRendering(withRoutes([
             {
                 path: '**',
                 renderMode: RenderMode.Server,
             },
-        ])), {
+        ])),
+        {
             provide: HTTP_TRANSFER_CACHE_ORIGIN_MAP,
             deps: [REQUEST_CONTEXT],
             useFactory(context: any) {
@@ -23,13 +21,15 @@ const serverConfig: ApplicationConfig = {
                 // so we need to map it to the real domain
                 return { [context?.serverBaseUrl]: context?.publicBaseUrl || '' };
             },
-        }, {
+        },
+        {
             provide: 'baseUrl',
             deps: [REQUEST_CONTEXT],
             useFactory: (context: any) => {
                 return context?.serverBaseUrl || '';
             },
-        }, {
+        },
+        {
             provide: APP_BOOTSTRAP_LISTENER,
             multi: true,
             deps: [Router, PageResponse],

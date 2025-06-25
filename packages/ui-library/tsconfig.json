@@ -8,6 +8,7 @@
     "sourceMap": true,
     "strict": true,
     "target": "es2020",
+    "module": "es2020",
     "useDefineForClassFields": false,
     "noImplicitAny": true,
     "esModuleInterop": true,

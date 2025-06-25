@@ -23,29 +23,34 @@ import { DocDesktopUIButtonDropdownComponent } from './dropdown.component.js';
 import { DocDesktopUIAppComponent } from './app.component.js';
 import { DocDesktopUIDragComponent } from './drag.component.js';
 import { DocDesktopUITabsComponent } from './tabs.component.js';
+import { DesktopUIIndexComponent } from './index.component.js';
 
 const routes: Routes = [
-    { path: 'getting-started', component: DocDesktopUIGettingStartedComponent },
-    { path: 'icons', component: DocDesktopUIIconComponent },
-    { path: 'button', component: DocDesktopUIButtonComponent },
-    { path: 'button-group', component: DocDesktopUIButtonGroupComponent },
-    { path: 'app', component: DocDesktopUIAppComponent },
-    { path: 'drag', component: DocDesktopUIDragComponent },
-    { path: 'dropdown', component: DocDesktopUIButtonDropdownComponent },
-    { path: 'dialog', component: DocDesktopUIDialogComponent },
-    { path: 'form', component: DocDesktopUIFormComponent },
-    { path: 'indicator', component: DocDesktopUIInputComponent },
-    { path: 'input', component: DocDesktopUIInputComponent },
-    { path: 'list', component: DocDesktopUIListComponent },
-    { path: 'checkbox', component: DocDesktopUICheckboxComponent },
-    { path: 'radiobox', component: DocDesktopUIRadioButtonComponent },
-    { path: 'selectbox', component: DocDesktopUISelectboxComponent },
-    { path: 'slider', component: DocDesktopUISliderComponent },
-    { path: 'table', component: DocDesktopUITableComponent },
-    { path: 'window', component: DocDesktopUIWindowComponent },
-    { path: 'window-menu', component: DocDesktopUIWindowMenuComponent },
-    { path: 'window-toolbar', component: DocDesktopUIWindowToolbarComponent },
-    { path: 'tabs', component: DocDesktopUITabsComponent },
+    {
+        path: '', component: DesktopUIIndexComponent, children: [
+            { path: 'getting-started', component: DocDesktopUIGettingStartedComponent },
+            { path: 'icons', component: DocDesktopUIIconComponent },
+            { path: 'button', component: DocDesktopUIButtonComponent },
+            { path: 'button-group', component: DocDesktopUIButtonGroupComponent },
+            { path: 'app', component: DocDesktopUIAppComponent },
+            { path: 'drag', component: DocDesktopUIDragComponent },
+            { path: 'dropdown', component: DocDesktopUIButtonDropdownComponent },
+            { path: 'dialog', component: DocDesktopUIDialogComponent },
+            { path: 'form', component: DocDesktopUIFormComponent },
+            { path: 'indicator', component: DocDesktopUIInputComponent },
+            { path: 'input', component: DocDesktopUIInputComponent },
+            { path: 'list', component: DocDesktopUIListComponent },
+            { path: 'checkbox', component: DocDesktopUICheckboxComponent },
+            { path: 'radiobox', component: DocDesktopUIRadioButtonComponent },
+            { path: 'selectbox', component: DocDesktopUISelectboxComponent },
+            { path: 'slider', component: DocDesktopUISliderComponent },
+            { path: 'table', component: DocDesktopUITableComponent },
+            { path: 'window', component: DocDesktopUIWindowComponent },
+            { path: 'window-menu', component: DocDesktopUIWindowMenuComponent },
+            { path: 'window-toolbar', component: DocDesktopUIWindowToolbarComponent },
+            { path: 'tabs', component: DocDesktopUITabsComponent },
+        ],
+    },
 ];
 
 @NgModule({

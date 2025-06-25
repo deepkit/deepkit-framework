@@ -69,8 +69,43 @@ body {
     --dui-focus-outline-color: #4686de;
 }
 
-// todo merge with dui-normalized
 .dui-body {
+    .visible-for-white-mode {
+        display: unset;
+    }
+
+    .visible-for-dark-mode {
+        display: none;
+    }
+}
+
+.dui-normalized {
+    font: normal 13px -apple-system, system-ui, sans-serif;
+    text-align: left;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 18px;
+    color: var(--dui-color-black);
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
+
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+
+    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+
+    *:focus {
+        outline: 0;
+    }
+
+    .monospace {
+        font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;
+        font-size: 12px;
+    }
+
     h1, h2, h3, h4, h5, h6 {
         color: unset;
     }
@@ -126,45 +161,6 @@ body {
         border-radius: 3px;
         padding: 1px 3px;
         user-select: text;
-    }
-}
-
-.dui-normalized {
-    font: normal 13px -apple-system, system-ui, sans-serif;
-    text-align: left;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: geometricPrecision;
-    -moz-osx-font-smoothing: grayscale;
-    line-height: 18px;
-    color: var(--dui-color-black);
-    cursor: default;
-    user-select: none;
-    -webkit-user-select: none;
-
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
-    box-sizing: border-box;
-
-    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
-
-    /**:not(input,textarea) {*/
-    /*}*/
-
-    *:focus {
-        outline: 0;
-    }
-
-    .visible-for-white-mode {
-        display: unset;
-    }
-
-    .visible-for-dark-mode {
-        display: none;
-    }
-
-    .monospace {
-        font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;
-        font-size: 12px;
     }
 
     * {
@@ -299,11 +295,6 @@ body.dui-theme-dark {
     }
 
     .dui-body {
-        // todo remove
-        a, a:link {
-            color: #78a1bf;
-        }
-
         .visible-for-dark-mode {
             display: unset;
         }

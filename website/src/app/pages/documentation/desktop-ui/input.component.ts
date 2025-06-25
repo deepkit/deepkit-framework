@@ -3,6 +3,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { ButtonComponent, ButtonGroupComponent, InputComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     imports: [
@@ -13,11 +14,13 @@ import { FormsModule } from '@angular/forms';
         InputComponent,
         FormsModule,
         ApiDocComponent,
+        AppTitle,
     ],
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Input</h1>
+        <app-title value="Input / Textarea"></app-title>
 
         <doc-code-frame>
           <div>
@@ -74,6 +77,10 @@ import { FormsModule } from '@angular/forms';
 
             <p>
               <dui-input icon="check" placeholder="Good job"></dui-input>
+            </p>
+
+            <p>
+              <dui-input type="textarea" placeholder="Hello There"/>
             </p>
           </div>
           <code-highlight lang="html" [code]="code" />
@@ -140,6 +147,10 @@ export class DocDesktopUIInputComponent {
 
     <p>
         <dui-input icon="check" placeholder="Good job"></dui-input>
+    </p>
+
+    <p>
+      <dui-input type="textarea" placeholder="Hello There"/>
     </p>
 `;
 }

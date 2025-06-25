@@ -1,12 +1,14 @@
 import { Component } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { ButtonComponent, ButtonGroupComponent, InputComponent, WindowComponent, WindowContentComponent, WindowFrameComponent, WindowHeaderComponent, WindowToolbarComponent } from '@deepkit/desktop-ui';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Getting started</h1>
+        <app-title value="Getting started"></app-title>
 
         <p>
           The library <code>&commat;deepkit/desktop-ui</code> is an Angular component library
@@ -81,6 +83,7 @@ import { ButtonComponent, ButtonGroupComponent, InputComponent, WindowComponent,
         ButtonComponent,
         WindowContentComponent,
         InputComponent,
+        AppTitle,
     ],
 })
 export class DocDesktopUIGettingStartedComponent {

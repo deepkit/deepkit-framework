@@ -29,6 +29,9 @@
     "./src/scss/reset.scss": {
       "default": "./src/scss/reset.scss"
     },
+    "./docs.json": {
+      "default": "./src/assets/docs.json"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/fesm2022/deepkit-desktop-ui.mjs"

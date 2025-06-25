@@ -4,7 +4,7 @@ import { LiveSubject } from '@deepkit/ui-library';
 import { ControllerClient } from '../../client';
 import { Subscription } from 'rxjs';
 import { AsyncPipe } from '@angular/common';
-import { ModuleDetailComponent } from './module-detail.component.js';
+import { ModuleDetailComponent } from './module-detail.component';
 
 @Component({
     template: `

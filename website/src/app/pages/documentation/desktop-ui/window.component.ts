@@ -16,6 +16,7 @@ import {
     WindowToolbarComponent,
 } from '@deepkit/desktop-ui';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     host: { ngSkipHydration: 'true' },
@@ -23,6 +24,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Window</h1>
+        <app-title value="Window"></app-title>
 
         <p>
           A window is built of multiple key components, you need for almost all of your desktop applications. The frame,
@@ -219,6 +221,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
         WindowFooterComponent,
         InputComponent,
         WindowFrameComponent,
+        AppTitle,
     ],
 })
 export class DocDesktopUIWindowComponent {

@@ -883,7 +883,7 @@ export class MediaComponent implements OnInit, OnDestroy {
             this.deleteSelected();
         } else if (event.key === ' ') {
             if (!this.quickLook) return;
-            if (this.quickLook.isOpen) {
+            if (this.quickLook.isOpen()) {
                 this.quickLook.close();
             } else {
                 this.openQuickLook();

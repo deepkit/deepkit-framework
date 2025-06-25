@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { DragDirective, DuiDragEvent, SplitterComponent } from '@deepkit/desktop-ui';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     host: { ngSkipHydration: 'true' },
@@ -11,12 +12,14 @@ import { DragDirective, DuiDragEvent, SplitterComponent } from '@deepkit/desktop
         ApiDocComponent,
         DragDirective,
         SplitterComponent,
+        AppTitle,
 
     ],
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Drag</h1>
+        <app-title value="Drag"></app-title>
 
         <p>
           The directive <code>DragDirective</code> allows to listen to drag gestures on an element.

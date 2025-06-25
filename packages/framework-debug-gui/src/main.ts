@@ -7,10 +7,14 @@ import { provideRouter, withHashLocation } from '@angular/router';
 import { routes } from './app/routes';
 import { provideApiConsoleRegistry, routes as apiConsoleRoutes } from '@deepkit/api-console-gui';
 import { provideOrmBrowserRegistry, routes as ormBrowserRoutes } from '@deepkit/orm-browser-gui';
+import { provideZonelessChangeDetection } from '@angular/core';
+import { EventDispatcher } from '@deepkit/event';
 
 bootstrapApplication(AppComponent, {
     providers: [
-        provideRpcWebSocketClient(undefined, { 4200: 8000 }),
+        EventDispatcher,
+        provideZonelessChangeDetection(),
+        provideRpcWebSocketClient(undefined, { 4200: 8080 }),
         provideState(State),
         provideRouter([
             ...routes,

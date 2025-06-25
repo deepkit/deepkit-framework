@@ -1,15 +1,8 @@
 import { Component } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
-import {
-    ButtonComponent,
-    ButtonGroupComponent,
-    CloseDialogDirective,
-    DialogActionsComponent,
-    DialogComponent,
-    DialogDirective,
-    DuiDialogConfirmDirective,
-} from '@deepkit/desktop-ui';
+import { ButtonComponent, ButtonGroupComponent, CloseDialogDirective, DialogActionsComponent, DialogComponent, DialogDirective, DuiDialogConfirmDirective } from '@deepkit/desktop-ui';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     host: { ngSkipHydration: 'true' },
@@ -24,11 +17,13 @@ import {
         ApiDocComponent,
         DuiDialogConfirmDirective,
         CloseDialogDirective,
+        AppTitle,
     ],
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
-        <h1>Checkbox</h1>
+        <h1>Dialog</h1>
+        <app-title value="Dialog"></app-title>
 
         <doc-code-frame>
           <div>

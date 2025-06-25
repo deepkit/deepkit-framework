@@ -7,7 +7,7 @@ import { provideClientHydration, withHttpTransferCacheOptions } from '@angular/p
 import { AppMetaStack } from '@app/app/components/title';
 import { PlatformHelper } from '@app/app/utils';
 import { PageResponse } from '@app/app/page-response';
-import { HTTP_INTERCEPTORS, provideHttpClient, withFetch } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withFetch, withInterceptorsFromDi } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -21,10 +21,9 @@ export const appConfig: ApplicationConfig = {
         })),
         provideClientHydration(withHttpTransferCacheOptions({
             includeHeaders: RpcHttpHeaderNames,
-            includePostRequests: true,
-            filter: () => true,
+            includePostRequests: true
         })),
-        provideHttpClient(withFetch()),
+        provideHttpClient(withFetch(), withInterceptorsFromDi()),
         {
             provide: HTTP_INTERCEPTORS,
             useClass: APIInterceptor,

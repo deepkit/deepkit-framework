@@ -1,17 +1,10 @@
 import { Component } from '@angular/core';
 import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
-import {
-    ButtonComponent,
-    ButtonGroupComponent,
-    ButtonGroupsComponent,
-    IconComponent,
-    InputComponent,
-    OptionDirective,
-    SelectBoxComponent,
-} from '@deepkit/desktop-ui';
+import { ButtonComponent, ButtonGroupComponent, ButtonGroupsComponent, IconComponent, InputComponent, OptionDirective, SelectBoxComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
 import { IconBrowserComponent } from '@app/app/pages/documentation/desktop-ui/icon-browser.component.js';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     imports: [
@@ -27,12 +20,14 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
         ApiDocComponent,
         IconBrowserComponent,
         CodeHighlightComponent,
+        AppTitle,
     ],
     host: { ngSkipHydration: 'true' },
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Icon</h1>
+        <app-title value="Icons"></app-title>
 
         <p>
           This library comes with own set of icons you can use in <code>dui-button</code>, <code>dui-input</code> and <code>dui-icon</code>. 

@@ -648,6 +648,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
         const columnMap = this.columnMap();
         for (const [i, v] of Object.entries(columnMap)) {
             if (!columnMap[i]) continue;
+            if (!preferences[i]) continue;
             if (preferences[i].width !== undefined) v.effectiveWidth.set(preferences[i].width);
             if (preferences[i].order !== undefined) v.effectivePosition.set(preferences[i].order);
             if (preferences[i].hidden !== undefined) v.effectiveHidden.set(preferences[i].hidden);

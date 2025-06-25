@@ -3,6 +3,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { CheckboxComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     imports: [
@@ -11,11 +12,13 @@ import { FormsModule } from '@angular/forms';
         CheckboxComponent,
         ApiDocComponent,
         FormsModule,
+        AppTitle,
     ],
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Checkbox</h1>
+        <app-title value="Checkbox"></app-title>
 
         <doc-code-frame>
           <div>

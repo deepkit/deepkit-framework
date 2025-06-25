@@ -27,8 +27,8 @@ import {
 import { Database, DebugRequest, Filesystem } from '@deepkit/framework-debug-api';
 import { Collection } from '@deepkit/rpc';
 import { ControllerClient } from './client';
-import { Router, RouterLink } from '@angular/router';
-import { FileUploaderComponent } from './components/file-uploader.component.js';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { FileUploaderComponent } from './components/file-uploader.component';
 import { AsyncPipe } from '@angular/common';
 import { HeaderStatusBarComponent } from '@deepkit/ui-library';
 import { DatabaseBrowserListComponent } from '@deepkit/orm-browser-gui';
@@ -128,6 +128,7 @@ import { DatabaseBrowserListComponent } from '@deepkit/orm-browser-gui';
         ListTitleComponent,
         RouterLink,
         DatabaseBrowserListComponent,
+        RouterOutlet,
     ],
 })
 export class AppComponent implements OnInit, OnDestroy {

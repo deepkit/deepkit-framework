@@ -15,6 +15,7 @@ export * from './core/utils';
 
 export * from './components/document';
 
+export * from './components/app/pending-tasks';
 export * from './components/app/app';
 export * from './components/app/drag';
 export * from './components/app/dui-responsive.directive';

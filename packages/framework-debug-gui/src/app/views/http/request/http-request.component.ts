@@ -15,7 +15,7 @@ import { EntitySubject } from '@deepkit/rpc';
 import { DebugRequest, Workflow } from '@deepkit/framework-debug-api';
 import { AsyncPipe, DatePipe } from '@angular/common';
 import { ButtonGroupComponent, TabButtonComponent } from '@deepkit/desktop-ui';
-import { WorkflowCardComponent, WorkflowComponent } from '../../../components/workflow.component.js';
+import { WorkflowCardComponent, WorkflowComponent } from '../../../components/workflow.component';
 
 @Component({
     template: `

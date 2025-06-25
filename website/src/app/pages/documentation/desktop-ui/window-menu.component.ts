@@ -2,17 +2,20 @@ import { Component } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { OpenExternalDirective } from '@deepkit/desktop-ui';
 import { ApiDocComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     imports: [
         CodeHighlightComponent,
         OpenExternalDirective,
         ApiDocComponent,
+        AppTitle,
     ],
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Window Menu</h1>
+        <app-title value="Window Menu"></app-title>
 
         <p>
           Directives to manipulate the application's and windows's OS menu bar.

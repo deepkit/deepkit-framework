@@ -15,13 +15,15 @@ import {
     WindowToolbarComponent,
 } from '@deepkit/desktop-ui';
 import { CodeFrameComponent } from './api-doc.component.js';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     host: { ngSkipHydration: 'true' },
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
-        <h1>Toolbar</h1>
+        <h1>Window Toolbar</h1>
+        <app-title value="Window Toolbar"></app-title>
 
         <doc-code-frame>
           <dui-window-frame>
@@ -87,6 +89,7 @@ import { CodeFrameComponent } from './api-doc.component.js';
         ListTitleComponent,
         ListItemComponent,
         WindowFrameComponent,
+        AppTitle,
     ],
 })
 export class DocDesktopUIWindowToolbarComponent {

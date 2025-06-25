@@ -3949,6 +3949,7 @@ __metadata:
     "@deepkit/desktop-ui": "npm:^1.0.1"
     "@deepkit/rpc": "npm:^1.0.1"
     "@deepkit/type": "npm:^1.0.1"
+    "@types/prismjs": "npm:^1.26.0"
     ng-packagr: "npm:^20.0.1"
     prismjs: "npm:^1.24.1"
     rxjs: "npm:~7.8.0"

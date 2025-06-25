@@ -596,7 +596,7 @@ export class OpenDropdownHoverDirective implements OnDestroy {
         this.cleanup();
 
         const openDropdownHover = this.openDropdownHover();
-        if (openDropdownHover && !openDropdownHover.isOpen) {
+        if (openDropdownHover && !openDropdownHover.isOpen()) {
             openDropdownHover.open(this.elementRef);
             const overlayRef = openDropdownHover.overlayRef;
             if (overlayRef) {

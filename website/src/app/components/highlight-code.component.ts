@@ -1,13 +1,8 @@
-import { Component, Input, OnChanges, OnInit, signal } from '@angular/core';
-import { highlight, languages } from 'prismjs';
-import { ControllerClient } from '@app/app/client';
-import { waitForInit } from '@app/app/utils';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-jsx';
-import 'prismjs/components/prism-tsx';
-import 'prismjs/components/prism-sql';
-import 'prismjs/components/prism-bash';
-import 'prismjs/components/prism-json';
+import { Component, inject, input } from '@angular/core';
+import { Prism } from '@deepkit/ui-library';
+import { derivedAsync } from 'ngxtension/derived-async';
+import { ControllerClient } from '@app/app/client.js';
+import { pendingTask } from '@deepkit/desktop-ui';
 
 @Component({
     selector: 'highlight-code',
@@ -63,40 +58,29 @@ import 'prismjs/components/prism-json';
     `],
     standalone: true,
     template: `
-        <pre class="code codeHighlight" [attr.title]="meta.title" [innerHTML]="html()"></pre>
+      <pre class="code codeHighlight" [attr.title]="title() || undefined" [innerHTML]="html()"></pre>
     `,
 })
-export class HighlightCodeComponent implements OnInit, OnChanges {
-    @Input() code: string = '';
-    @Input() file: string = '';
-    @Input() lang: string = 'typescript';
-    @Input() meta: {title?: string} = {};
+export class HighlightCodeComponent {
+    code = input('');
+    file = input('');
+    lang = input('typescript');
+    title = input('');
 
-    html = signal<string>('loading');
+    protected prism = inject(Prism);
+    protected client = inject(ControllerClient);
 
-    constructor(private client: ControllerClient) {
-        waitForInit(this, 'render');
-    }
+    html = derivedAsync(pendingTask(async () => {
+        await this.prism.ready;
 
-    async ngOnInit() {
-        await this.render();
-    }
-
-    async ngOnChanges() {
-        await this.render();
-    }
-
-    async render() {
-        this.code = this.code.trim();
-        if (!this.code) {
-            //load from file
-            if (!this.file) return;
-            this.code = await this.client.main.getAsset(this.file);
+        let code = this.code().trim();
+        if (!code) {
+            // load from file
+            if (!this.file()) return '';
+            code = await this.client.main.getAsset(this.file());
         }
-        if (!this.code) return;
+        if (!code) return;
 
-        let lang = this.lang || 'typescript';
-        if (!languages[lang]) lang = 'text';
-        this.html.set(highlight(this.code, languages[lang], lang));
-    }
+        return this.prism.highlight(code, this.lang());
+    }));
 }

@@ -3,6 +3,7 @@ import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentatio
 import { InputComponent, SliderComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     imports: [
@@ -12,11 +13,13 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
         CodeHighlightComponent,
         ApiDocComponent,
         InputComponent,
+        AppTitle,
     ],
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Slider</h1>
+        <app-title value="Slider"></app-title>
 
         <doc-code-frame>
           <div class="examples">

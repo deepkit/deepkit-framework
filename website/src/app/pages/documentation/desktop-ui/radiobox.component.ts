@@ -3,6 +3,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { FormsModule } from '@angular/forms';
 import { RadioButtonComponent, RadioGroupComponent } from '@deepkit/desktop-ui';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     imports: [
@@ -12,11 +13,13 @@ import { RadioButtonComponent, RadioGroupComponent } from '@deepkit/desktop-ui';
         ApiDocComponent,
         RadioGroupComponent,
         RadioButtonComponent,
+        AppTitle,
     ],
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
         <h1>Radio Button</h1>
+        <app-title value="Radio Button"></app-title>
 
         <doc-code-frame>
           <div>

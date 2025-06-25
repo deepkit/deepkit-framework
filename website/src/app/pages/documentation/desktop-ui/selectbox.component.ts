@@ -3,6 +3,7 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
 import { ButtonComponent, DynamicOptionDirective, OptionDirective, SelectBoxComponent } from '@deepkit/desktop-ui';
 import { FormsModule } from '@angular/forms';
+import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
     imports: [
@@ -14,11 +15,13 @@ import { FormsModule } from '@angular/forms';
         DynamicOptionDirective,
         ButtonComponent,
         ApiDocComponent,
+        AppTitle,
     ],
     template: `
       <div class="app-content normalize-text">
         <div class="app-pre-headline">Desktop UI</div>
-        <h1>Selectbox</h1>
+        <h1>Select</h1>
+        <app-title value="Select Box"></app-title>
 
         <doc-code-frame>
           <div class="examples">
