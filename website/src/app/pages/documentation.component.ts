@@ -17,7 +17,7 @@ import { DuiStyleComponent } from '@deepkit/desktop-ui';
     styleUrls: ['./documentation.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
-      <dui-style /> 
+      <dui-style />
       <div class="page">
         <div class="content-wrapper">
           <div class="menu-trigger"><a (click)="showMenu=!showMenu" class="button">Chapters</a></div>
@@ -163,9 +163,7 @@ import { DuiStyleComponent } from '@deepkit/desktop-ui';
 
           <div class="category">
             <div class="category-title">Desktop UI</div>
-
-            <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/desktop-ui">Getting
-              started</a>
+            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/getting-started">Getting started</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/app">App</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/button">Button</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/button-group">Button group</a>

@@ -25,7 +25,7 @@ import { DocDesktopUIDragComponent } from './drag.component.js';
 import { DocDesktopUITabsComponent } from './tabs.component.js';
 
 const routes: Routes = [
-    { path: '', component: DocDesktopUIGettingStartedComponent },
+    { path: 'getting-started', component: DocDesktopUIGettingStartedComponent },
     { path: 'icons', component: DocDesktopUIIconComponent },
     { path: 'button', component: DocDesktopUIButtonComponent },
     { path: 'button-group', component: DocDesktopUIButtonGroupComponent },
