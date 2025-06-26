@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.15](https://github.com/deepkit/deepkit-framework/compare/v1.0.14...v1.0.15) (2025-06-26)
+
+### Bug Fixes
+
+- **desktop-ui:** disable SSR hydration for dui-window-header ([a6f3e4c](https://github.com/deepkit/deepkit-framework/commit/a6f3e4cc2daf009accba0af3b89ceb416d18123d))
+- **desktop-ui:** fix window-sidebar visibility ([031281a](https://github.com/deepkit/deepkit-framework/commit/031281a6cf2467257824b963ea371ef13528de9b))
+- **desktop-ui:** put dynamic content to gitignore ([73e40c2](https://github.com/deepkit/deepkit-framework/commit/73e40c28605144e828e6d81962ab69379e406c8d))
+- **desktop-ui:** remove dynamic content from git ([ded304d](https://github.com/deepkit/deepkit-framework/commit/ded304d458fdb82231060ed58392e72bd8515144))
+- **example-server:** ensure typescript is a dep ([309819f](https://github.com/deepkit/deepkit-framework/commit/309819f162cc8dd533689498e8ca8b083c7232e1))
+- **website:** hook router into dynamic anchors, fix SSR code highlighting ([2b5e2cf](https://github.com/deepkit/deepkit-framework/commit/2b5e2cfc0038f9ba55f2b22509dedb46850dc617))
+- **website:** splitter example code ([4eb173b](https://github.com/deepkit/deepkit-framework/commit/4eb173b099ba102fc816e3d84dbe11ced49ee46b))
+
+### Features
+
+- **desktop-ui:** refactor to standalone/signal, update angular to v20, new website docs ([#657](https://github.com/deepkit/deepkit-framework/issues/657)) ([a39d26c](https://github.com/deepkit/deepkit-framework/commit/a39d26cd527947cb93c113434f1a29f4cc014d22))
+
 ## [1.0.14](https://github.com/deepkit/deepkit-framework/compare/v1.0.13...v1.0.14) (2025-06-22)
 
 ### Bug Fixes
