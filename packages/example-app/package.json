@@ -40,6 +40,9 @@
     "rxjs": "~7.8.0",
     "send": "^0.18.0"
   },
+  "devDependencies": {
+    "typescript": "~5.8.3"
+  },
   "overrides": {
     "deepkit-openapi": {
       "@deepkit/core": "$@deepkit/core"

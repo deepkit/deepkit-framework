@@ -3224,6 +3224,7 @@ __metadata:
     deepkit-openapi: "npm:^0.0.6"
     rxjs: "npm:~7.8.0"
     send: "npm:^0.18.0"
+    typescript: "npm:~5.8.3"
   languageName: unknown
   linkType: soft
 
