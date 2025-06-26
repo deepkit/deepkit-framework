@@ -38,6 +38,7 @@ import { NgTemplateOutlet } from '@angular/common';
       }
     `,
     host: {
+        ngSkipHydration: 'true',
         '[class.inactive]': '!windowState.focus()',
         '[class.size-default]': `size() === 'default'`,
         '[class.size-small]': `size() === 'small'`,
@@ -114,16 +115,18 @@ export class WindowToolbarComponent implements OnDestroy, OnInit {
     template: `
       @if (windowState.toolbars()[name()]; as toolbars) {
         @for (template of toolbars; track $index) {
-          <ng-container [ngTemplateOutlet]="template" [ngTemplateOutletContext]="{}"></ng-container>
+          @if (template) {
+            <ng-container [ngTemplateOutlet]="template" [ngTemplateOutletContext]="{}"></ng-container>
+          }
         }
       }
     `,
     styles: [`
-        :host {
-            display: flex;
-            flex-direction: row;
-            gap: 6px;
-        }
+      :host {
+        display: flex;
+        flex-direction: row;
+        gap: 6px;
+      }
     `],
     imports: [
         NgTemplateOutlet,
