@@ -32,14 +32,12 @@ export interface WinSidebar {
         <div class="sidebar"
              (transitionend)="transitionEnded()"
              #sidebar [class.hidden]="!sidebarVisible() " [class.with-animation]="withAnimation()"
-             [style.min-width.px]="sidebarMinWidth()"
+             [style.min-width.px]="sidebarVisible() && !withAnimation() ? sidebarMinWidth() : undefined"
              [style.max-width.px]="sidebarMaxWidth()"
              [style.width.px]="sidebarWidth()">
-          <div class="hider">
-            <div class="sidebar-container overlay-scrollbar-small" #sidebarContainer>
-              <ng-container [ngTemplateOutlet]="toolbar.template" [ngTemplateOutletContext]="{}"></ng-container>
-            </div>
-          </div>
+        <div class="sidebar-container overlay-scrollbar-small" [style.width.px]="sidebarWidth()" #sidebarContainer>
+          <ng-container [ngTemplateOutlet]="toolbar.template" [ngTemplateOutletContext]="{}"></ng-container>
+        </div>
           @if (sidebarVisible()) {
             <dui-splitter position="right" [element]="sidebar" property="width" [(size)]="sidebarWidth"></dui-splitter>
           }
