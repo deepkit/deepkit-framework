@@ -104,8 +104,14 @@ type ApiDocFlags = {
     isPrivate?: true,
     isExported?: true
 };
+
 type ApiDocGroups = { title: string, kind: number, children: number[] }[];
-type ApiDocSources = { fileName: string, line: number, character: number }[];
+type ApiDocSources = { fileName: string, line: number, character: number, url?: string; }[];
+
+function getGitUrl(sources?: ApiDocSources): string {
+    const entry = sources?.find(v => v.url);
+    return entry?.url || '';
+}
 
 type ApiDocTypeDeclarationType = {
     kind: 65536; // type literal
@@ -419,7 +425,13 @@ interface TableRow {
     template: `
       <div>
         <div class="title">
-          <h2>API <code>{{ title() }}</code></h2>
+          <h2>
+            API
+            <code>{{ title() }}</code>
+            @if (url(); as url) {
+              <small>(<a [href]="url" target="_blank">source</a>)</small>
+            }
+          </h2>
           @if (tableData().length) {
             <dui-input icon="search" placeholder="Search" [(ngModel)]="filterQuery" clearer></dui-input>
           }
@@ -482,6 +494,8 @@ export class ApiDocComponent {
         if (!comment) return undefined;
         return this.apiDocProvider.parser.loadAndParse(comment);
     }));
+
+    url = computed(() => getGitUrl(this.apiDoc()?.sources));
 
     code(row: TableRow) {
         let prefix = row.alias || row.name;
