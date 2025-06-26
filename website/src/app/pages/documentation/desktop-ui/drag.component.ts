@@ -126,8 +126,20 @@ export class DocDesktopUIDragComponent {
         this.leftStart = this.left();
     }
 
-    splitterCode = ``;
-    splitterCodeTS = ``;
+    splitterCode = `
+      <div class="splitter">
+        <div class="top" #top [style.flex-basis.px]="topSize()">
+          Top Area ({{ topSize() }}px)
+        </div>
+        <dui-splitter [(size)]="topSize" horizontal indicator [element]="top" />
+        <div class="bottom">
+          Bottom Area
+        </div>
+      </div>
+    `;
+    splitterCodeTS = `
+topSize = signal(100);
+`;
 
     dragCodeTS = `
     left = signal(0);
