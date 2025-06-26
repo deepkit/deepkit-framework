@@ -1,4 +1,4 @@
-import { Route, Routes } from '@angular/router';
+import { ActivatedRouteSnapshot, CanActivate, Route, Routes } from '@angular/router';
 import { StartpageComponent } from '@app/app/pages/startpage.component';
 import { DocumentationComponent } from '@app/app/pages/documentation.component';
 import { EmptyComponent } from '@app/app/pages/empty.component';
@@ -14,6 +14,7 @@ import { DocuSearchComponent } from '@app/app/pages/documentation/search.compone
 import { CommunityComponent } from '@app/app/pages/community.component';
 import { StaticPageComponent } from '@app/app/pages/static-page.component';
 import { NotFoundComponent } from '@app/app/pages/not-found.component';
+import { Injectable } from '@angular/core';
 
 function redirect(from: string, to: string): Route {
     return {
@@ -21,6 +22,13 @@ function redirect(from: string, to: string): Route {
         pathMatch: 'full',
         redirectTo: to
     };
+}
+
+@Injectable({ providedIn: 'root' })
+export class NotFoundGuard implements CanActivate {
+    canActivate(route: ActivatedRouteSnapshot): boolean {
+        return !('try' in route.queryParams);
+    }
 }
 
 export const routes: Routes = [
@@ -66,5 +74,5 @@ export const routes: Routes = [
     },
 
     // 404
-    { path: '**', component: NotFoundComponent },
+    { path: '**', component: NotFoundComponent, canActivate: [NotFoundGuard] },
 ];

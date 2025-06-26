@@ -29,12 +29,12 @@ export class ContentRenderBox {
     standalone: true,
     selector: 'codebox',
     styles: [`
-        iframe {
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 2px;
-            width: 100%;
-            height: 600px;
-        }
+      iframe {
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 2px;
+        width: 100%;
+        height: 600px;
+      }
     `],
     template: `
       <iframe [src]="srcAllowed" allowfullscreen></iframe>
@@ -61,70 +61,70 @@ export class ContentCodeBox implements OnInit {
         '[class.app-feature]': 'true',
     },
     styles: [`
-        :host {
-            display: flex;
-            align-items: center;
-            margin: 200px 0;
+      :host {
+        display: flex;
+        align-items: center;
+        margin: 200px 0;
+      }
+
+      .text {
+        flex: 1;
+        margin-right: 55px;
+        max-width: 480px;
+
+        ::ng-deep {
+          h2, h3 {
+            text-align: left;
+          }
         }
+      }
+
+      .code {
+        flex: 1;
+      }
+
+      :host.right {
+        flex-direction: row-reverse;
 
         .text {
-            flex: 1;
-            margin-right: 55px;
-            max-width: 480px;
+          margin: auto;
+          margin-left: 55px;
+        }
+      }
 
-            ::ng-deep {
-                h2, h3 {
-                    text-align: left;
-                }
-            }
+      :host.center {
+        display: block;
+        text-align: center;
+
+        .text {
+          margin: auto;
+          max-width: 680px;
+        }
+
+        ::ng-deep {
+          h2, h3 {
+            text-align: center;
+          }
         }
 
         .code {
-            flex: 1;
+          display: grid;
+          grid-gap: 45px;
+          grid-auto-columns: auto;
+          grid-auto-rows: 1fr;
+          grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
         }
+      }
 
-        :host.right {
-            flex-direction: row-reverse;
+      @media (max-width: 800px) {
+        :host {
+          display: block;
 
-            .text {
-                margin: auto;
-                margin-left: 55px;
-            }
+          .text {
+            margin: 0 !important;
+          }
         }
-
-        :host.center {
-            display: block;
-            text-align: center;
-
-            .text {
-                margin: auto;
-                max-width: 680px;
-            }
-
-            ::ng-deep {
-                h2, h3 {
-                    text-align: center;
-                }
-            }
-
-            .code {
-                display: grid;
-                grid-gap: 45px;
-                grid-auto-columns: auto;
-                grid-auto-rows: 1fr;
-                grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-            }
-        }
-
-        @media (max-width: 800px) {
-            :host {
-                display: block;
-
-                .text {
-                    margin: 0 !important;
-                }
-            }
-        }
+      }
 
     `],
     template: `
@@ -144,15 +144,16 @@ type ContentCreated = { hostView?: any, type?: any, node: Node };
 @Component({
     selector: 'app-render-content',
     styles: [`
-        :host {
-            display: inline;
-        }
+      :host {
+        display: inline;
+      }
     `],
     template: ``,
 })
 export class ContentRenderComponent implements OnInit, OnChanges {
     @Input() content!: (Content | string)[] | Content | string;
     @Input() linkRelativeTo: string = '';
+    private listeners: (() => void)[] = [];
 
     constructor(
         private viewRef: ViewContainerRef,
@@ -172,12 +173,20 @@ export class ContentRenderComponent implements OnInit, OnChanges {
         // this.render();
     }
 
-    render() {
+    private clear() {
+        for (const listener of this.listeners) {
+            listener();
+        }
         const childNodes = this.viewRef.element.nativeElement.childNodes;
         for (let i = childNodes.length; i > 0; i--) {
             this.renderer.removeChild(this.viewRef.element.nativeElement, childNodes[i - 1]);
         }
 
+        this.listeners = [];
+    }
+
+    render() {
+        this.clear();
         const children = this.renderContent(this.injector, this.content);
         for (const child of children) this.renderer.appendChild(this.viewRef.element.nativeElement, child.node);
     }
@@ -308,7 +317,6 @@ export class ContentRenderComponent implements OnInit, OnChanges {
                 component.setInput('title', meta.title || '');
 
                 this.app.attachView(component.hostView);
-                component.changeDetectorRef.detectChanges();
                 return [{ node: component.location.nativeElement }];
             }
 
@@ -342,12 +350,13 @@ export class ContentRenderComponent implements OnInit, OnChanges {
                     if (content.props.href.startsWith('http://') || content.props.href.startsWith('https://')) {
                         this.renderer.setAttribute(element, 'target', '_blank');
                     } else {
-                        const base = new URL('http://none/' + (this.linkRelativeTo || this.router.url));
+                        const base = new URL((this.linkRelativeTo || this.router.url, 'resolve://'));
                         const url = new URL(content.props.href, new URL(this.linkRelativeTo || this.router.url, base));
                         let href = url.pathname.replace('.md', '');
                         if (url.hash) href += url.hash;
                         this.renderer.setAttribute(element, 'href', href);
                     }
+                    this.hookRouter(element);
                 }
             }
             if (content.tag === 'p' || content.tag === 'div') {
@@ -393,6 +402,25 @@ export class ContentRenderComponent implements OnInit, OnChanges {
 
             return [{ node: element }];
         }
+    }
+
+    protected hookRouter(anchor: Node) {
+        if (!(anchor instanceof HTMLAnchorElement)) return;
+        this.listeners.push(this.renderer.listen(anchor, 'click', (event) => {
+            const url = anchor.href;
+            event.preventDefault();
+            if (url.startsWith(location.origin)) {
+                void this.router.navigateByUrl(new URL(url).pathname + '?try').then((success) => {
+                    // check if we landed on 404, and if so we need to route without Angular router
+                    // NotFoundGuard makes sure success=false when navigating to 404
+                    if (!success) {
+                        window.location.replace(url);
+                    }
+                });
+            } else {
+                window.open(url, '_blank');
+            }
+        }));
     }
 
 }

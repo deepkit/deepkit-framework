@@ -56,7 +56,6 @@ import { pendingTask } from '@deepkit/desktop-ui';
             font-style: italic;
         }
     `],
-    standalone: true,
     template: `
       <pre class="code codeHighlight" [attr.title]="title() || undefined" [innerHTML]="html()"></pre>
     `,
@@ -71,7 +70,7 @@ export class HighlightCodeComponent {
     protected client = inject(ControllerClient);
 
     html = derivedAsync(pendingTask(async () => {
-        await this.prism.ready;
+        await this.prism.wait();
 
         let code = this.code().trim();
         if (!code) {
@@ -79,8 +78,14 @@ export class HighlightCodeComponent {
             if (!this.file()) return '';
             code = await this.client.main.getAsset(this.file());
         }
-        if (!code) return;
+        if (!code) return '';
 
-        return this.prism.highlight(code, this.lang());
+        try {
+            return this.prism.highlight(code, this.lang());
+        } catch (error) {
+            console.error('Error highlighting code:', error);
+            // Fallback to plain text if highlighting fails
+            return `<code>${code}</code>`;
+        }
     }));
 }

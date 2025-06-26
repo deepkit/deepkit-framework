@@ -47,17 +47,25 @@ const prism = asyncOperation<typeof PrismT>(async (resolve) => {
     // @ts-ignore
     await import('prismjs/components/prism-json');
     resolve(Prism as typeof PrismT);
+}).catch(error => {
+    console.log('prismjs failed to load', error);
 });
 
 @Injectable({ providedIn: 'root' })
 export class Prism {
-    taskService = inject(PendingTasks);
+    pendingTasks = inject(PendingTasks);
 
     prism = derivedAsync(pendingTask(() => prism));
-    ready = prism;
+    ready = prism.catch();
 
     constructor() {
-        this.taskService.run(() => prism);
+        this.pendingTasks.run(() => prism);
+    }
+
+    wait() {
+        // This `.then()` is necessary for some mystical reason otherwise SSR doesn't wait for zone stability.
+        // note: just returning this.ready breaks it.
+        return this.ready.then();
     }
 
     highlight(raw: any, lang: string): string {
