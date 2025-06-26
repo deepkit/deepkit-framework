@@ -12,7 +12,7 @@
 .bg {
     margin-top: 7px;
     height: 3px;
-    background-color: var(--line-color);
+    background-color: var(--dui-line-color);
     border-radius: 1px;
 }
 
@@ -61,7 +61,7 @@
     }
 
     .active-line {
-        background-color: var(--line-color-prominent);
+        background-color: var(--dui-line-color-prominent);
     }
 }
 

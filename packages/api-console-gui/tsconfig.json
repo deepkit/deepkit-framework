@@ -64,9 +64,6 @@
     },
     {
       "path": "../type-compiler/tsconfig.json"
-    },
-    {
-      "path": "../ui-library/tsconfig.json"
     }
   ]
 }

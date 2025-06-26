@@ -1,23 +1,32 @@
 import { Component, Input } from '@angular/core';
+import { IconComponent } from '@deepkit/desktop-ui';
 
 @Component({
     selector: 'deepkit-box',
-    standalone: false,
     template: `
-        <div class="box">
-            <div class="box-title" *ngIf="title" (click)="toggleOpen()">
-                <div>
-                    <dui-icon *ngIf="toggleAble" clickable [name]="open ? 'arrow_down' : 'arrow_right'"></dui-icon>
-                    {{title}}
-                </div>
+      <div class="box">
+        @if (title) {
+          <div class="box-title" (click)="toggleOpen()">
+            <div>
+              @if (toggleAble) {
+                <dui-icon clickable [name]="open ? 'arrow_down' : 'arrow_right'"></dui-icon>
+              }
+              {{ title }}
             </div>
+          </div>
+        }
 
-            <ng-container *ngIf="open">
-                <ng-content></ng-content>
-            </ng-container>
-        </div>
+        @if (open) {
+          <ng-container>
+            <ng-content></ng-content>
+          </ng-container>
+        }
+      </div>
     `,
-    styleUrls: ['./box.component.scss']
+    imports: [
+        IconComponent,
+    ],
+    styleUrls: ['./box.component.scss'],
 })
 export class DeepkitBoxComponent {
     @Input() title: string = '';

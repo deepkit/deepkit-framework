@@ -46,9 +46,9 @@
             max-width: 100%;
             overflow: hidden;
             padding: 0 5px;
-            border-left: 1px solid var(--line-color-light);
-            border-top: 1px solid var(--line-color-light);
-            border-bottom: 1px solid var(--line-color-light);
+            border-left: 1px solid var(--dui-line-color-light);
+            border-top: 1px solid var(--dui-line-color-light);
+            border-bottom: 1px solid var(--dui-line-color-light);
 
             > div {
                 overflow: hidden;
@@ -61,7 +61,7 @@
 .executions {
     display: flex;
     flex-direction: column;
-    border-left: 1px solid var(--line-color-light);
+    border-left: 1px solid var(--dui-line-color-light);
     flex: 1;
     width: 100%;
     overflow: hidden;
@@ -80,7 +80,7 @@
         align-items: center;
         width: 100%;
         overflow: hidden;
-        border: 1px solid var(--line-color-light);
+        border: 1px solid var(--dui-line-color-light);
         border-radius: 3px;
 
         dui-icon {
@@ -106,19 +106,19 @@
         }
 
         .status-box {
-            border: 1px solid var(--color-green);
-            color: var(--color-green);
+            border: 1px solid var(--dui-color-green);
+            color: var(--dui-color-green);
             border-radius: 3px;
             padding: 0px 5px;
 
             &.red {
-                color: var(--color-red);
-                border: 1px solid var(--color-red);
+                color: var(--dui-color-red);
+                border: 1px solid var(--dui-color-red);
             }
 
             &.orange {
-                color: var(--color-orange);
-                border: 1px solid var(--color-orange);
+                color: var(--dui-color-orange);
+                border: 1px solid var(--dui-color-orange);
             }
         }
     }
@@ -133,20 +133,20 @@
         .info {
             font-size: 12px;
             margin-bottom: 5px;
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
     }
 }
 
 .subscription {
-    border: 1px solid var(--line-color-light);
+    border: 1px solid var(--dui-line-color-light);
     border-radius: 3px;
     margin: 5px 0;
     padding: 3px;
 
     .header {
         font-size: 12px;
-        color: var(--text-light);
+        color: var(--dui-text-light);
     }
 }
 
@@ -158,7 +158,7 @@
     position: relative;
     top: 1px;
     font-size: 11px;
-    color: var(--text-light);
+    color: var(--dui-text-light);
 }
 
 .signature {

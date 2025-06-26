@@ -60,7 +60,17 @@
             "inlineStyleLanguage": "css",
             "assets": [
               "src/favicon.ico",
-              "src/assets"
+              "src/assets",
+              {
+                "glob": "**/*",
+                "input": "../packages/desktop-ui/src/assets/fonts",
+                "output": "./assets/fonts"
+              },
+              {
+                "glob": "docs.json",
+                "input": "../packages/desktop-ui/src/assets",
+                "output": "./assets"
+              }
             ],
             "styles": [
               "src/styles.css"
@@ -117,13 +127,39 @@
             "development": {
               "optimization": false,
               "sourceMap": true,
-              "extractLicenses": false,
+              "extractLicenses": false
             }
           },
           "defaultConfiguration": "production"
         }
       }
-      }
+    }
+  },
+  "schematics": {
+    "@schematics/angular:component": {
+      "type": "component"
+    },
+    "@schematics/angular:directive": {
+      "type": "directive"
+    },
+    "@schematics/angular:service": {
+      "type": "service"
+    },
+    "@schematics/angular:guard": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:interceptor": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:module": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:pipe": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:resolver": {
+      "typeSeparator": "."
     }
   }
+}
 }

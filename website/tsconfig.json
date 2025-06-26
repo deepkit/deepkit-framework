@@ -1,26 +1,33 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "baseUrl": "./",
-    "outDir": "./dist/out-tsc",
-    "strict": true,
+    "outDir": "./dist/",
+    "baseUrl": ".",
+    "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
     "sourceMap": true,
+    "preserveSymlinks": true,
     "declaration": false,
     "downlevelIteration": true,
     "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "moduleResolution": "node",
-    "esModuleInterop": true,
-    "preserveSymlinks": true,
-    "skipLibCheck": true,
     "importHelpers": true,
     "target": "es2020",
-    "noPropertyAccessFromIndexSignature": false,
-    "module": "ES2022",
-    "useDefineForClassFields": false,
+    "module": "es2020",
+    "resolveJsonModule": true,
+    "types": [],
     "paths": {
       "@app/*": [
         "src/*"
+      ],
+      "@deepkit/ui-library": [
+        "../packages/ui-library/src/index.ts"
+      ],
+      "@deepkit/desktop-ui": [
+        "../packages/desktop-ui/src/index.ts"
       ]
     }
   },

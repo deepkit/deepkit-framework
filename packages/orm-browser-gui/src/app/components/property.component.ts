@@ -1,31 +1,40 @@
 import { ChangeDetectorRef, Component, EventEmitter, Input, Output } from '@angular/core';
 import { defaultValue, isAutoIncrementType, Type } from '@deepkit/type';
+import { IconComponent } from '@deepkit/desktop-ui';
 import { isRequired } from '../utils';
+import { CellComponent } from './cell/cell.component';
+import { InputEditingComponent } from './edit/input.component';
 
 @Component({
     selector: 'orm-browser-property',
     template: `
-        <div class="cell" tabindex="0" (focus)="editing=true" (click)="editing=true" [class.editing]="editing" [class.inactive]="!editing">
-            <ng-container *ngIf="!editing && model === undefined">
-                <div class="undefined">undefined</div>
-            </ng-container>
-            <ng-container *ngIf="!editing && model === null">
-                <div class="null">null</div>
-            </ng-container>
-            <ng-container *ngIf="editing || (model !== null && model !== undefined)">
-                <orm-browser-property-view *ngIf="!editing" [model]="model"
-                                           [type]="type"></orm-browser-property-view>
-                <orm-browser-property-editing *ngIf="editing" (modelChange)="model = $event; modelChange.emit(model)"
-                                              (done)="editing=false"
-                                              [type]="type" [model]="model"
-                ></orm-browser-property-editing>
-            </ng-container>
-        </div>
+      <div class="cell" tabindex="0" (focus)="editing=true" (click)="editing=true" [class.editing]="editing" [class.inactive]="!editing">
+        @if (!editing && model === undefined) {
+          <div class="undefined">undefined</div>
+        }
+        @if (!editing && model === null) {
+          <div class="null">null</div>
+        }
+        @if (editing || (model !== null && model !== undefined)) {
+          @if (!editing) {
+            <orm-browser-property-view [model]="model"
+                                       [type]="type"></orm-browser-property-view>
+          }
+          @if (editing) {
+            <orm-browser-property-editing (modelChange)="model = $event; modelChange.emit(model)"
+                                          (done)="editing=false"
+                                          [type]="type" [model]="model"
+            ></orm-browser-property-editing>
+          }
+        }
+      </div>
+      @if (!isAutoIncrementType(type) && !editing) {
         <div class="actions"
-             *ngIf="!isAutoIncrementType(type) && !editing">
-            <dui-icon name="clear" clickable title="Unset" (click)="unset(); $event.stopPropagation()"
-                      [class.active]="!isRequired(type)"></dui-icon>
+        >
+          <dui-icon name="clear" clickable title="Unset" (click)="unset(); $event.stopPropagation()"
+                    [class.active]="!isRequired(type)"></dui-icon>
         </div>
+      }
     `,
     styles: [`
         :host {
@@ -47,7 +56,7 @@ import { isRequired } from '../utils';
 
         .undefined,
         .null {
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
 
         .cell {
@@ -68,11 +77,11 @@ import { isRequired } from '../utils';
         }
 
         .cell.inactive {
-            border: 1px solid var(--line-color-light);
+            border: 1px solid var(--dui-line-color-light);
             border-radius: 2px;
         }
     `],
-    standalone: false
+    imports: [CellComponent, InputEditingComponent, IconComponent],
 })
 export class PropertyComponent {
     @Input() model!: any;

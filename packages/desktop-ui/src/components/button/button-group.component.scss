@@ -3,19 +3,8 @@
     display: inline-flex;
     line-height: 0;
     white-space: nowrap;
+    gap: 6px;
     align-items: center;
-}
-
-//:host ::ng-deep > * {
-//    margin-right: 6px;
-//}
-
-:host ::ng-deep > * {
-    margin-right: 6px;
-}
-
-:host:last-child ::ng-deep > *:last-child {
-    margin-right: 0;
 }
 
 :host ::ng-deep dui-button.active {
@@ -39,7 +28,7 @@
 }
 
 :host.padding-none {
-    margin-right: 7px;
+    gap: 0;
 }
 
 :host.padding-none ::ng-deep > * {

@@ -10,9 +10,9 @@
 
 import { ApplicationRef, ComponentFactoryResolver, Injectable, Injector, Type, ViewContainerRef } from '@angular/core';
 import { ExternalWindowComponent } from './external-window.component';
-import { ComponentPortal, DomPortalHost } from '@angular/cdk/portal';
+import { ComponentPortal, DomPortalOutlet } from '@angular/cdk/portal';
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class DuiExternalWindow {
     constructor(
         protected resolver: ComponentFactoryResolver,
@@ -30,23 +30,18 @@ export class DuiExternalWindow {
         } = {},
         viewContainerRef: ViewContainerRef | null = null,
     ): { window: ExternalWindowComponent, instance: T } {
-        const portalHost = new DomPortalHost(
-            document.body,
-            this.resolver,
-            this.app,
-            this.injector
-        );
+        const portalHost = new DomPortalOutlet(document.body);
 
         //todo, get viewContainerRef from WindowRegistry?
         const portal = new ComponentPortal(ExternalWindowComponent, viewContainerRef, viewContainerRef ? viewContainerRef.injector : null);
 
         const comp = portalHost.attach(portal);
+        comp.setInput('component', component);
+        comp.setInput('inputs', inputs);
 
         if (options && options.alwaysRaised) {
-            comp.instance.alwaysRaised = true;
+            comp.setInput('alwaysRaised', true);
         }
-        comp.instance.component = component;
-        comp.instance.componentInputs = inputs;
 
         comp.instance.show();
         comp.changeDetectorRef.detectChanges();

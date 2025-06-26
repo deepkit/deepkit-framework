@@ -1,150 +1,177 @@
-import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
+import { ChangeDetectorRef, Component, effect, EventEmitter, input, Output } from '@angular/core';
 import { ApiRoute } from '@deepkit/api-console-api';
 import { isArray, isObject } from '@deepkit/core';
 import { extractDataStructure, extractDataStructureFromSchema, Request, RouteState, Store } from '../../store';
 import { ControllerClient } from '../../client';
 import { Router } from '@angular/router';
-import { DuiDialog } from '@deepkit/desktop-ui';
-import { headerStatusCodes, methods, trackByIndex, typeToTSJSONInterface } from '../../utils';
+import { ButtonComponent, ButtonGroupComponent, DuiDialog, OptionDirective, SelectBoxComponent, TabButtonComponent } from '@deepkit/desktop-ui';
+import { headerStatusCodes, methods, typeToTSJSONInterface } from '../../utils';
 import { getTypeJitContainer } from '@deepkit/type';
+import { FormsModule } from '@angular/forms';
+import { CodeHighlightComponent, DeepkitBoxComponent, ToggleBoxComponent } from '@deepkit/ui-library';
+import { InputComponent } from '../../components/inputs/input.component';
+import { HeadersComponent } from '../../components/headers.component';
 
 @Component({
     selector: 'api-console-route-detail',
     template: `
-        <div class="route">
-            <div class="url-input-container">
-                <dui-button-group padding="none">
-                    <dui-select style="width: 85px;" [(ngModel)]="routeState.method" textured>
-                        <dui-option *ngFor="let m of methods; trackBy: trackByIndex"
-                                    [value]="m"
-                                    [disabled]="!route.httpMethods.includes(m)">{{m}}</dui-option>
-                    </dui-select>
-                    <div class="url text-selection">
-                        <div>{{route.path}}</div>
-                    </div>
-                    <dui-button icon="play" textured (click)="execute(route)"></dui-button>
-                </dui-button-group>
+      <div class="route">
+        <div class="url-input-container">
+          <dui-button-group padding="none">
+            <dui-select style="width: 85px;" [(ngModel)]="routeState().method" textured>
+              @for (m of methods; track $index) {
+                <dui-option
+                  [value]="m"
+                  [disabled]="!route().httpMethods.includes(m)">{{ m }}
+                </dui-option>
+              }
+            </dui-select>
+            <div class="url text-selection">
+              <div>{{ route().path }}</div>
             </div>
-
-            <div class="route-container overlay-scrollbar-small">
-                <dui-button-group style="margin: 6px 1px;">
-                    <dui-tab-button (click)="routeTab = 'query'" [active]="routeTab === 'query'">Query</dui-tab-button>
-                    <dui-tab-button (click)="routeTab = 'body'" [active]="routeTab === 'body'">Body</dui-tab-button>
-                    <dui-tab-button (click)="routeTab = 'header'" [active]="routeTab === 'header'">Header</dui-tab-button>
-                </dui-button-group>
-
-                <deepkit-box *ngIf="routeTab === 'body'">
-                    <ng-container *ngIf="!route.getBodyType()">
-                        <div class="box-info-text">This route has no body defined.</div>
-                    </ng-container>
-                    <ng-container *ngIf="route.getBodyType() as schema">
-                        <ng-container *ngFor="let p of schema.getProperties(); trackBy: trackByIndex">
-                            <api-console-input [decoration]="p" (keyDown)="consoleInputKeyDown($event, route)"
-                                               [model]="routeState.body.getProperty(p.name)"
-                                               [type]="p.property"
-                                               (modelChange)="updateRouteState(route)"></api-console-input>
-                        </ng-container>
-                        <div class="ts text-selection">
-                            <div codeHighlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></div>
-                        </div>
-                    </ng-container>
-                </deepkit-box>
-
-                <deepkit-box style="padding: 0" *ngIf="routeTab === 'header'">
-                    <api-console-headers [(model)]="routeState.headers" (modelChange)="updateRouteState(route)"></api-console-headers>
-                </deepkit-box>
-
-                <deepkit-box style="padding-top: 0;" *ngIf="routeTab === 'query'">
-                    <ng-container *ngIf="!route.getQueryType() && !route.getUrlType()">
-                        <div class="box-info-text">This route has no query parameters defined.</div>
-                    </ng-container>
-                    <ng-container *ngIf="route.getUrlType() as schema">
-                        <ng-container *ngFor="let p of schema.getProperties(); trackBy: trackByIndex">
-                            <api-console-input [decoration]="p" (keyDown)="consoleInputKeyDown($event, route)"
-                                               [model]="routeState.urls.getProperty(p.name)"
-                                               [type]="p.property"
-                                               (modelChange)="updateRouteState(route)"></api-console-input>
-                        </ng-container>
-                    </ng-container>
-
-                    <ng-container *ngIf="route.getQueryType() as schema">
-                        <ng-container *ngFor="let p of schema.getProperties(); trackBy: trackByIndex">
-                            <api-console-input [decoration]="p" (keyDown)="consoleInputKeyDown($event, route)"
-                                               [model]="routeState.params.getProperty(p.name)"
-                                               [type]="p.property"
-                                               (modelChange)="updateRouteState(route)"></api-console-input>
-                        </ng-container>
-                        <div class="ts text-selection">
-                            <div codeHighlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></div>
-                        </div>
-                    </ng-container>
-                </deepkit-box>
-
-                <deepkit-box style="padding: 12px">
-                    <div class="labeled-values">
-                        <div>
-                            <label>Category</label>
-                            {{route.category || 'none'}}
-                        </div>
-                        <div>
-                            <label>Groups</label>
-                            {{route.groups.join(',') || 'none'}}
-                        </div>
-                        <div style="margin-top: 10px; flex: 2 1 auto;">
-                            <label>Description</label>
-                            <div class="formatted-text">{{route.description || 'none'}}</div>
-                        </div>
-                    </div>
-                </deepkit-box>
-
-                <ng-container *ngIf="!route.responses.length">
-                    <deepkit-box title="Default response" *ngIf="route.getResultType() as schema">
-                        <div class="ts text-selection">
-                            <div codeHighlight [code]="typeToTSJSONInterface(schema)"></div>
-                        </div>
-                    </deepkit-box>
-                </ng-container>
-
-                <deepkit-box title="Response {{response.statusCode}} {{headerStatusCodes[response.statusCode + '']}}"
-                             *ngFor="let response of route.responses; trackBy: trackByIndex">
-                    <div class="response-description">
-                        {{response.description}}
-                    </div>
-                    <ng-container *ngIf="response.getType() as s">
-                        <div class="ts text-selection">
-                            <div codeHighlight [code]="typeToTSJSONInterface(s)"></div>
-                        </div>
-                    </ng-container>
-                </deepkit-box>
-            </div>
+            <dui-button icon="play" textured (click)="execute(route())"></dui-button>
+          </dui-button-group>
         </div>
 
-        <deepkit-toggle-box title="Code-generation" [(visible)]="store.state.viewHttp.codeGenerationVisible" (visibleChange)="store.store()">
-            <ng-container header>
-                <dui-select textured small [(ngModel)]="store.state.viewHttp.codeGenerationType" (ngModelChange)="updateRouteState(route)">
-                    <dui-option value="curl">cURL</dui-option>
-                    <dui-option value="http">HTTP</dui-option>
-                </dui-select>
-            </ng-container>
+        <div class="route-container overlay-scrollbar-small">
+          <dui-button-group style="margin: 6px 1px;">
+            <dui-tab-button (click)="routeTab = 'query'" [active]="routeTab === 'query'">Query</dui-tab-button>
+            <dui-tab-button (click)="routeTab = 'body'" [active]="routeTab === 'body'">Body</dui-tab-button>
+            <dui-tab-button (click)="routeTab = 'header'" [active]="routeTab === 'header'">Header</dui-tab-button>
+          </dui-button-group>
 
-            <ng-container *ngIf="store.state.viewHttp.codeGenerationVisible">
-                <div class="code-generation-code overlay-scrollbar-small" codeHighlight="bash" [code]="codeGenerated"></div>
-            </ng-container>
-        </deepkit-toggle-box>
+          @if (routeTab === 'body') {
+            <deepkit-box>
+              @if (!route().getBodyType()) {
+                <div class="box-info-text">This route has no body defined.</div>
+              }
+              @if (route().getBodyType(); as schema) {
+                @for (p of schema.getProperties(); track $index) {
+                  <api-console-input [decoration]="p" (keyDown)="consoleInputKeyDown($event, route())"
+                                     [model]="routeState().body.getProperty(p.name)"
+                                     [type]="p.property"
+                                     (modelChange)="updateRouteState(route())"></api-console-input>
+                }
+                <div class="ts text-selection">
+                  <code-highlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></code-highlight>
+                </div>
+              }
+            </deepkit-box>
+          }
+
+          @if (routeTab === 'header') {
+            <deepkit-box style="padding: 0">
+              <api-console-headers [(model)]="routeState().headers" (modelChange)="updateRouteState(route())"></api-console-headers>
+            </deepkit-box>
+          }
+
+          @if (routeTab === 'query') {
+            <deepkit-box style="padding-top: 0;">
+              @if (!route().getQueryType() && !route().getUrlType()) {
+                <div class="box-info-text">This route has no query parameters defined.</div>
+              }
+              @if (route().getUrlType(); as schema) {
+                @for (p of schema.getProperties(); track $index) {
+                  <api-console-input [decoration]="p" (keyDown)="consoleInputKeyDown($event, route())"
+                                     [model]="routeState().urls.getProperty(p.name)"
+                                     [type]="p.property"
+                                     (modelChange)="updateRouteState(route())"></api-console-input>
+                }
+              }
+              @if (route().getQueryType(); as schema) {
+                @for (p of schema.getProperties(); track $index) {
+                  <api-console-input [decoration]="p" (keyDown)="consoleInputKeyDown($event, route())"
+                                     [model]="routeState().params.getProperty(p.name)"
+                                     [type]="p.property"
+                                     (modelChange)="updateRouteState(route())"></api-console-input>
+                }
+                <div class="ts text-selection">
+                  <code-highlight [code]="typeToTSJSONInterface(schema.type, {defaultIsOptional: true})"></code-highlight>
+                </div>
+              }
+            </deepkit-box>
+          }
+
+          <deepkit-box style="padding: 12px">
+            <div class="labeled-values">
+              <div>
+                <label>Category</label>
+                {{ route().category || 'none' }}
+              </div>
+              <div>
+                <label>Groups</label>
+                {{ route().groups.join(',') || 'none' }}
+              </div>
+              <div style="margin-top: 10px; flex: 2 1 auto;">
+                <label>Description</label>
+                <div class="formatted-text">{{ route().description || 'none' }}</div>
+              </div>
+            </div>
+          </deepkit-box>
+
+          @if (!route().responses.length) {
+            @if (route().getResultType(); as schema) {
+              <deepkit-box title="Default response">
+                <div class="ts text-selection">
+                  <code-highlight [code]="typeToTSJSONInterface(schema)"></code-highlight>
+                </div>
+              </deepkit-box>
+            }
+          }
+
+          @for (response of route().responses; track $index) {
+            <deepkit-box title="Response {{response.statusCode}} {{headerStatusCodes[response.statusCode + '']}}"
+            >
+              <div class="response-description">
+                {{ response.description }}
+              </div>
+              @if (response.getType(); as s) {
+                <div class="ts text-selection">
+                  <code-highlight [code]="typeToTSJSONInterface(s)"></code-highlight>
+                </div>
+              }
+            </deepkit-box>
+          }
+        </div>
+      </div>
+
+      <deepkit-toggle-box title="Code-generation" [(visible)]="store.state.viewHttp.codeGenerationVisible" (visibleChange)="store.store()">
+        <ng-container header>
+          <dui-select textured small [(ngModel)]="store.state.viewHttp.codeGenerationType" (ngModelChange)="updateRouteState(route())">
+            <dui-option value="curl">cURL</dui-option>
+            <dui-option value="http">HTTP</dui-option>
+          </dui-select>
+        </ng-container>
+
+        @if (store.state.viewHttp.codeGenerationVisible) {
+          <code-highlight class="code-generation-code" inline lang="bash" [code]="codeGenerated"></code-highlight>
+        }
+      </deepkit-toggle-box>
     `,
     styleUrls: ['./route-detail.component.scss'],
-    standalone: false
+    imports: [
+        ButtonGroupComponent,
+        SelectBoxComponent,
+        OptionDirective,
+        FormsModule,
+        ButtonComponent,
+        TabButtonComponent,
+        DeepkitBoxComponent,
+        InputComponent,
+        CodeHighlightComponent,
+        HeadersComponent,
+        ToggleBoxComponent,
+    ],
 })
-export class HttpRouteDetailComponent implements OnChanges {
+export class HttpRouteDetailComponent {
     typeToTSJSONInterface = typeToTSJSONInterface;
-    trackByIndex = trackByIndex;
     headerStatusCodes = headerStatusCodes;
     methods = methods;
 
     routeTab: 'query' | 'body' | 'header' = 'query';
 
-    @Input() route!: ApiRoute;
-    @Input() routeState!: RouteState;
+    readonly route = input.required<ApiRoute>();
+    readonly routeState = input.required<RouteState>();
     @Output() executed = new EventEmitter<void>();
 
     codeGenerated: string = '';
@@ -179,7 +206,7 @@ export class HttpRouteDetailComponent implements OnChanges {
             }
 
             return `${s.method} ${s.fullUrl}${headers.length ? '\n' : ''}${headers.join('\n')}\n\n${body}`;
-        }
+        },
     };
 
     constructor(
@@ -189,16 +216,12 @@ export class HttpRouteDetailComponent implements OnChanges {
         protected dialog: DuiDialog,
         protected router: Router,
     ) {
-
-    }
-
-    ngOnChanges(): void {
-        this.updateRouteState();
+        effect(() => this.updateRouteState());
     }
 
     consoleInputKeyDown(event: KeyboardEvent, route: ApiRoute) {
         if (event.key.toLowerCase() === 'enter') {
-            this.execute(route);
+            void this.execute(route);
         }
     }
 
@@ -249,7 +272,7 @@ export class HttpRouteDetailComponent implements OnChanges {
             for (const property of urlSchema.getProperties()) {
                 const regexp = getTypeJitContainer(property.property)['.deepkit/api-console/url-regex'] ||= new RegExp(`(:${String(property.name)})([^\w]|$)`);
                 const v = extractDataStructure(routeState.urls.getProperty(property.name), property.type);
-                url = url.replace(regexp, function (a: any, b: any, c: any) {
+                url = url.replace(regexp, function(a: any, b: any, c: any) {
                     return String(v) + c;
                 });
             }
@@ -275,7 +298,7 @@ export class HttpRouteDetailComponent implements OnChanges {
         }
 
         routeState.fullUrl = HttpRouteDetailComponent.getUrl() + url;
-        this.codeGenerated = this.codeGenerators[this.store.state.viewHttp.codeGenerationType](route, routeState);
+        this.codeGenerated = this.codeGenerators[this.store.state.viewHttp.codeGenerationType]?.(route, routeState) || '';
 
         this.store.store();
     }

@@ -13,22 +13,22 @@ import { RpcWebSocketClient } from '@deepkit/rpc';
 import { ApiConsoleApi, ApiDocument, ApiEntryPoints } from '@deepkit/api-console-api';
 import { LiveSubject } from '@deepkit/ui-library';
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class ControllerClient {
-    public entryPoints = new LiveSubject<ApiEntryPoints>((subject) => {
+    entryPoints = new LiveSubject<ApiEntryPoints>((subject) => {
         this.api.getEntryPoints().then(v => subject.next(v));
     });
 
-    public document = new LiveSubject<ApiDocument>((subject) => {
+    document = new LiveSubject<ApiDocument>((subject) => {
         this.api.getDocument().then(v => subject.next(v));
     });
 
     constructor(public client: RpcWebSocketClient) {
-        client.transporter.reconnected.subscribe(() => {
+        this.client.transporter.reconnected.subscribe(() => {
             this.entryPoints.reload();
             this.document.reload();
         });
-        client.transporter.disconnected.subscribe(() => {
+        this.client.transporter.disconnected.subscribe(() => {
             this.tryToConnect();
         });
     }

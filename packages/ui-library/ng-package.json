@@ -5,7 +5,8 @@
     "entryFile": "src/index.ts"
   },
   "assets": [
-    { "input": "src/scss", "glob": "**/*.scss", "output": "scss" }
+    { "input": "src/styles", "glob": "**/*", "output": "styles" },
+    { "input": "src/assets", "glob": "**/*", "output": "assets" }
   ],
   "allowedNonPeerDependencies": [
     "."

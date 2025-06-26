@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { routes } from './app.routes';
 import { RpcClient, RpcHttpClientAdapter, RpcHttpHeaderNames } from '@deepkit/rpc';
@@ -7,11 +7,11 @@ import { provideClientHydration, withHttpTransferCacheOptions } from '@angular/p
 import { AppMetaStack } from '@app/app/components/title';
 import { PlatformHelper } from '@app/app/utils';
 import { PageResponse } from '@app/app/page-response';
-import { HTTP_INTERCEPTORS, provideHttpClient, withFetch } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withFetch, withInterceptorsFromDi } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
     providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         AppMetaStack,
         PageResponse,
         PlatformHelper,
@@ -21,10 +21,9 @@ export const appConfig: ApplicationConfig = {
         })),
         provideClientHydration(withHttpTransferCacheOptions({
             includeHeaders: RpcHttpHeaderNames,
-            includePostRequests: true,
-            filter: () => true,
+            includePostRequests: true
         })),
-        provideHttpClient(withFetch()),
+        provideHttpClient(withFetch(), withInterceptorsFromDi()),
         {
             provide: HTTP_INTERCEPTORS,
             useClass: APIInterceptor,

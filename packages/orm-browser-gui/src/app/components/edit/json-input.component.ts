@@ -1,20 +1,23 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DuiDialog } from '@deepkit/desktop-ui';
+import { ButtonComponent, CloseDialogDirective, DialogActionsComponent, DialogComponent, DuiDialog, InputComponent } from '@deepkit/desktop-ui';
 import { deserialize, ReflectionKind, Type } from '@deepkit/type';
+import { FormsModule } from '@angular/forms';
 
 @Component({
     template: `
-        <dui-dialog *ngIf="jsonEditor" class="class-field-dialog" noPadding [visible]="true" (closed)="done.emit()" [backDropCloses]="true"
+      @if (jsonEditor) {
+        <dui-dialog class="class-field-dialog" noPadding [visible]="true" (closed)="done.emit()" [backDropCloses]="true"
                     [minWidth]="450" [minHeight]="350">
-            <div class="json-editor">
-                <h3>JSON</h3>
-                <dui-input type="textarea" [(ngModel)]="jsonContent"></dui-input>
-            </div>
-            <dui-dialog-actions>
-                <dui-button closeDialog>Cancel</dui-button>
-                <dui-button (click)="jsonDone()">Ok</dui-button>
-            </dui-dialog-actions>
+          <div class="json-editor">
+            <h3>JSON</h3>
+            <dui-input type="textarea" [(ngModel)]="jsonContent"></dui-input>
+          </div>
+          <dui-dialog-actions>
+            <dui-button closeDialog>Cancel</dui-button>
+            <dui-button (click)="jsonDone()">Ok</dui-button>
+          </dui-dialog-actions>
         </dui-dialog>
+      }
     `,
     styles: [`
         .json-editor {
@@ -30,7 +33,7 @@ import { deserialize, ReflectionKind, Type } from '@deepkit/type';
             flex: 1;
         }
     `],
-    standalone: false
+    imports: [DialogComponent, InputComponent, FormsModule, DialogActionsComponent, ButtonComponent, CloseDialogDirective],
 })
 export class JsonInputComponent {
     @Input() model: any;

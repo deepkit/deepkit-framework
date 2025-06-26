@@ -8,69 +8,57 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ChangeDetectionStrategy,
-    ChangeDetectorRef,
-    Component,
-    ContentChild,
-    Inject,
-    Input,
-    OnChanges,
-    OnDestroy,
-    Optional,
-    SimpleChanges,
-    SkipSelf,
-    ViewContainerRef,
-} from '@angular/core';
+import { booleanAttribute, ChangeDetectionStrategy, Component, contentChild, inject, input, OnDestroy, OnInit, ViewContainerRef } from '@angular/core';
 import { WindowContentComponent } from './window-content.component';
-import { WindowRegistry, WindowState } from './window-state';
-import { DOCUMENT } from '@angular/common';
+import { Win, WindowRegistry, WindowState } from './window-state';
 import { WindowMenuState } from './window-menu';
 import { WindowHeaderComponent } from './window-header.component';
-import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token';
-import { DuiApp } from '../app';
+import { DuiApp } from '../app/app';
+import { BrowserWindow } from '../../core/utils';
 
 /**
  * This is only for documentation purposes.
  */
 @Component({
     selector: 'dui-window-frame',
-    standalone: false,
     template: '<ng-content></ng-content>',
     styleUrls: ['./window-frame.component.scss'],
     host: {
-        '[style.height]': `height ? height + 'px' : 'auto'`
-    }
+        '[style.height]': `height() ? height() + 'px' : 'auto'`,
+        '[class.dui-normalized]': 'true',
+    },
 })
 export class WindowFrameComponent {
-    @Input() height: number = 350;
+    height = input<number>(350);
 }
 
 @Component({
     selector: 'dui-window',
-    standalone: false,
-    template: '<ng-content></ng-content><div *ngIf="windowState.disableInputs|async" (mousedown)="$event.preventDefault();" class="disable-inputs"></div>',
-    styleUrls: ['./window.component.scss'],
+    template: '<ng-content></ng-content>@if (windowState.disableInputs()) {<div (mousedown)="$event.preventDefault();" class="disable-inputs"></div>}',
+    styleUrl: './window.component.scss',
     host: {
-        '[class.in-dialog]': 'isInDialog()',
+        '[class.in-dialog]': 'dialog()',
         '[class.dui-theme-light]': '!app.themeDetection',
         '[class.dui-body]': 'true',
+        '[class.dui-normalized]': 'normalizeStyle()',
     },
     changeDetection: ChangeDetectionStrategy.OnPush,
     providers: [
         WindowState,
         WindowMenuState,
-    ]
+    ],
 })
-export class WindowComponent implements OnChanges, OnDestroy {
+export class WindowComponent implements OnInit, OnDestroy, Win {
     public id = 0;
 
-    @ContentChild(WindowContentComponent, { static: false }) public content?: WindowContentComponent;
-    @ContentChild(WindowHeaderComponent, { static: false }) public header?: WindowHeaderComponent;
+    content = contentChild(WindowContentComponent);
+    header = contentChild(WindowHeaderComponent);
 
-    @Input() closable = true;
-    @Input() maximizable = true;
-    @Input() minimizable = true;
+    closable = input(true);
+    maximizable = input(true);
+    minimizable = input(true);
+    dialog = input(false);
+    normalizeStyle = input(false, { alias: 'normalize-style', transform: booleanAttribute });
 
     protected onBlur = () => {
         this.registry.blur(this);
@@ -80,57 +68,46 @@ export class WindowComponent implements OnChanges, OnDestroy {
         this.registry.focus(this);
     };
 
-    constructor(
-        @Inject(DOCUMENT) document: Document,
-        protected registry: WindowRegistry,
-        public windowState: WindowState,
-        cd: ChangeDetectorRef,
-        public app: DuiApp,
-        windowMenuState: WindowMenuState,
-        public viewContainerRef: ViewContainerRef,
-        @Inject(IN_DIALOG) protected inDialog: boolean,
-        @SkipSelf() @Optional() protected parentWindow?: WindowComponent,
-        @Inject(ELECTRON_WINDOW) public electronWindow?: any
-    ) {
-        registry.register(this, cd, windowState, windowMenuState, viewContainerRef);
+    protected registry = inject(WindowRegistry);
+    protected app = inject(DuiApp);
+    protected parentWindow = inject(WindowComponent, { optional: true, skipSelf: true });
+    protected windowMenuState = inject(WindowMenuState);
 
-        if (this.electronWindow && !this.isInDialog()) {
-            this.electronWindow.addListener('blur', this.onBlur);
-            this.electronWindow.addListener('focus', this.onFocus);
-            this.electronWindow.setVibrancy(app.getVibrancy());
-        }
+    windowState = inject(WindowState);
+    viewContainerRef = inject(ViewContainerRef);
+    browserWindow = inject(BrowserWindow);
 
+    constructor() {
+        this.registry.register(this, this.windowState, this.windowMenuState, this.viewContainerRef);
         this.registry.focus(this);
     }
 
+    ngOnInit() {
+        if (this.browserWindow && !this.dialog()) {
+            this.browserWindow.addListener('blur', this.onBlur);
+            this.browserWindow.addListener('focus', this.onFocus);
+            this.browserWindow.setVibrancy(this.app.getVibrancy());
+        }
+    }
+
     ngOnDestroy() {
-        if (this.electronWindow && !this.isInDialog()) {
-            this.electronWindow.removeListener('blur', this.onBlur);
-            this.electronWindow.removeListener('focus', this.onFocus);
+        if (this.browserWindow && !this.dialog()) {
+            this.browserWindow.removeListener('blur', this.onBlur);
+            this.browserWindow.removeListener('focus', this.onFocus);
         }
         this.registry.unregister(this);
     }
 
-    public isInDialog(): boolean {
-        return this.inDialog;
-    }
-
     public getClosestNonDialogWindow(): WindowComponent | undefined {
-        if (!this.isInDialog()) {
+        if (!this.dialog()) {
             return this;
         }
 
         if (this.parentWindow) {
-            if (this.parentWindow.isInDialog()) {
+            if (this.parentWindow.dialog()) {
                 return this.parentWindow.getClosestNonDialogWindow();
             }
             return this.parentWindow;
         }
-    }
-
-    ngOnChanges(changes: SimpleChanges) {
-        this.windowState.closable = this.closable;
-        this.windowState.minimizable = this.minimizable;
-        this.windowState.maximizable = this.maximizable;
     }
 }

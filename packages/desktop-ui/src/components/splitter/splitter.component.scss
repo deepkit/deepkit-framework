@@ -1,37 +1,55 @@
 :host {
-    position: absolute;
+    display: block;
+    position: relative;
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: 3px;
+}
+
+:host.horizontal {
+    height: 3px;
+    cursor: ns-resize;
+}
+
+:host.vertical {
+    width: 3px;
+    cursor: ew-resize;
 }
 
 :host.splitter-right {
+    position: absolute;
     width: 5px;
     right: -2px;
     top: 0;
     bottom: 0;
-    cursor: ew-resize;
+    height: unset;
 }
 
 :host.splitter-left {
+    position: absolute;
     width: 5px;
     left: -2px;
     top: 0;
     bottom: 0;
-    cursor: ew-resize;
+    height: unset;
 }
 
 :host.splitter-top {
+    position: absolute;
     top: -2px;
     left: 0;
     right: 0;
     height: 5px;
-    cursor: ns-resize;
+    width: unset;
 }
 
 :host.splitter-bottom {
+    position: absolute;
     bottom: -2px;
     left: 0;
     right: 0;
     height: 5px;
-    cursor: ns-resize;
+    width: unset;
 }
 
 :host.splitter-with-indicator.splitter-right:before {
@@ -40,9 +58,7 @@
     height: 100%;
     width: 1px;
     left: 2px;
-    background: #d6d6d6;
 }
-
 
 :host-context(.dui-theme-dark).splitter-with-indicator.splitter-right:before {
     background: #474747;

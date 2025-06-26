@@ -6,12 +6,12 @@
 }
 
 .error {
-    color: var(--color-red);
+    color: var(--dui-color-red);
 }
 
 .wrapper {
     border-radius: 4px;
-    border: 1px solid var(--line-color-light);
+    border: 1px solid var(--dui-line-color-light);
     margin: 30px auto;
     max-width: 800px;
     padding: 25px;
@@ -47,16 +47,16 @@
         padding: 8px;
         border-radius: 3px;
         background-color: var(--dui-window-header-bg);
-        border: 1px solid var(--line-color-light);
+        border: 1px solid var(--dui-line-color-light);
         cursor: pointer !important;
 
         &:hover {
-            border: 1px solid var(--line-color);
+            border: 1px solid var(--dui-line-color);
         }
 
         .description {
             font-size: 12px;
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
 
         .title {
@@ -75,23 +75,24 @@
                 text-align: right;
                 font-size: 11px;
                 font-weight: bold;
-                padding: 0px 5px;
+                padding: 0 5px;
+                margin-left: 4px;
 
-                border: 1px solid var(--line-color);
+                border: 1px solid var(--dui-line-color);
                 border-radius: 3px;
 
                 &.GET {
-                    border: 1px solid var(--color-green);
-                    color: var(--color-green);
+                    border: 1px solid var(--dui-color-green);
+                    color: var(--dui-color-green);
                 }
                 &.DELETE {
-                    border: 1px solid var(--color-red);
-                    color: var(--color-red);
+                    border: 1px solid var(--dui-color-red);
+                    color: var(--dui-color-red);
                 }
 
                 &.PATCH, &.PUT, &.POST {
-                    border: 1px solid var(--color-orange);
-                    color: var(--color-orange);
+                    border: 1px solid var(--dui-color-orange);
+                    color: var(--dui-color-orange);
                 }
             }
         }

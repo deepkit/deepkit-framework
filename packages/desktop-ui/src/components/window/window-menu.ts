@@ -17,8 +17,6 @@ import { Electron } from '../../core/utils';
 @Injectable()
 export class WindowMenuState {
     menus: MenuDirective[] = [];
-    focused = true;
-
     subscriptions = new Map<MenuDirective, Subscription>();
 
     addMenu(menu: MenuDirective) {
@@ -40,7 +38,7 @@ export class WindowMenuState {
     build() {
         nextTick(() => {
             this._build();
-        })
+        });
     }
 
     protected _build() {

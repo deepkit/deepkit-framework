@@ -11,9 +11,12 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { ControllerClient } from '../../client';
 import { Route, Workflow } from '@deepkit/framework-debug-api';
+import { WorkflowComponent } from '../../components/workflow.component';
+import { InputComponent, TableCellDirective, TableColumnDirective, TableComponent } from '@deepkit/desktop-ui';
+import { FormsModule } from '@angular/forms';
 
 @Component({
-    template: `
+  template: `
     <div class="header">
       <h4>HTTP Workflow</h4>
     </div>
@@ -25,23 +28,23 @@ import { Route, Workflow } from '@deepkit/framework-debug-api';
       <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="filterQuery"></dui-input>
     </div>
     <dui-table
-      style="flex: 1 1"
-      [items]="filter(routes, filterQuery)" [(selected)]="selected" selectable defaultSort="path" noFocusOutline>
+        style="flex: 1 1"
+        [items]="filter(routes, filterQuery)" [(selected)]="selected" selectable defaultSort="path" no-focus-outline>
       <dui-table-column [width]="90" name="HTTP">
         <ng-container *duiTableCell="let row">
-          {{row.httpMethods.join(',')}}
+          {{ row.httpMethods.join(',') }}
         </ng-container>
       </dui-table-column>
       <dui-table-column [width]="220" name="path"></dui-table-column>
       <dui-table-column [width]="220" name="controller"></dui-table-column>
       <dui-table-column [width]="220" name="body">
         <ng-container *duiTableCell="let row">
-          {{row.bodyType}}
+          {{ row.bodyType }}
         </ng-container>
       </dui-table-column>
       <dui-table-column [width]="220" name="groups">
         <ng-container *duiTableCell="let row">
-          {{row.groups.join(', ')}}
+          {{ row.groups.join(', ') }}
         </ng-container>
       </dui-table-column>
       <dui-table-column [width]="220" name="description"></dui-table-column>
@@ -54,7 +57,7 @@ import { Route, Workflow } from '@deepkit/framework-debug-api';
     <!--      </ng-container>-->
     <!--    </div>-->
   `,
-    styles: [`
+  styles: [`
     :host {
       display: flex;
       flex-direction: column;
@@ -70,7 +73,14 @@ import { Route, Workflow } from '@deepkit/framework-debug-api';
       margin-left: auto;
     }
   `],
-    standalone: false
+  imports: [
+    WorkflowComponent,
+    InputComponent,
+    FormsModule,
+    TableComponent,
+    TableColumnDirective,
+    TableCellDirective,
+  ],
 })
 export class HttpComponent implements OnInit {
   public routes: Route[] = [];

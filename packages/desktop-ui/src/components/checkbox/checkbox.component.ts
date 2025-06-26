@@ -8,55 +8,54 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ChangeDetectionStrategy,
-    ChangeDetectorRef,
-    Component,
-    HostBinding,
-    HostListener,
-    Injector,
-    SkipSelf,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostBinding, HostListener } from '@angular/core';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
+import { IconComponent } from '../icon/icon.component';
 
+/**
+ * Checkbox component to toggle boolean values.
+ *
+ * ```html
+ * <dui-checkbox [(ngModel)]="myValue">Check me!</dui-checkbox>
+ * ```
+ */
 @Component({
     selector: 'dui-checkbox',
-    standalone: false,
     template: `
-        <span class="box">
-            <dui-icon [size]="12" name="check"></dui-icon>
-        </span>
-        <ng-content></ng-content>
+      <span class="box">
+        <dui-icon [size]="12" name="check"></dui-icon>
+      </span>
+      <ng-content></ng-content>
     `,
     styleUrls: ['./checkbox.component.scss'],
     providers: [ngValueAccessor(CheckboxComponent)],
     changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [IconComponent],
+    host: {
+        '[class.dui-normalized]': 'true',
+    },
 })
-export class CheckboxComponent extends ValueAccessorBase<any>  {
+export class CheckboxComponent extends ValueAccessorBase<boolean> {
     @HostBinding('tabindex')
-    get tabIndex() {
+    protected get tabIndex() {
         return 1;
     }
 
     @HostBinding('class.checked')
-    get isChecked() {
-        return true === this.innerValue;
+    protected get isChecked() {
+        return true === this.value();
     }
 
     @HostListener('click')
-    public onClick() {
+    protected onClick() {
         if (this.isDisabled) return;
 
+        this.setValue(!this.value());
         this.touch();
-        this.innerValue = !this.innerValue;
     }
 
-    constructor(
-        protected injector: Injector,
-        public readonly cd: ChangeDetectorRef,
-        @SkipSelf() public readonly cdParent: ChangeDetectorRef,
-    ) {
-        super(injector, cd, cdParent);
+    constructor() {
+        super();
+        this.value.set(false);
     }
-
 }

@@ -11,7 +11,7 @@
 
     .no-requests {
         padding: 25px;
-        color: var(--text-light);
+        color: var(--dui-text-light);
         text-align: center;
 
         > div {
@@ -29,7 +29,7 @@
         align-items: center;
         width: 100%;
         overflow: hidden;
-        border: 1px solid var(--line-color-light);
+        border: 1px solid var(--dui-line-color-light);
         border-radius: 3px;
 
         dui-icon {
@@ -61,19 +61,19 @@
         }
 
         .status-box {
-            border: 1px solid var(--color-green);
-            color: var(--color-green);
+            border: 1px solid var(--dui-color-green);
+            color: var(--dui-color-green);
             border-radius: 3px;
             padding: 0px 5px;
 
             &.red {
-                color: var(--color-red);
-                border: 1px solid var(--color-red);
+                color: var(--dui-color-red);
+                border: 1px solid var(--dui-color-red);
             }
 
             &.orange {
-                color: var(--color-orange);
-                border: 1px solid var(--color-orange);
+                color: var(--dui-color-orange);
+                border: 1px solid var(--dui-color-orange);
             }
         }
     }
@@ -88,7 +88,7 @@
         .request-info {
             font-size: 12px;
             margin-bottom: 5px;
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
     }
 }

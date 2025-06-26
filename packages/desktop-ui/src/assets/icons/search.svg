@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="17px" height="17px" viewBox="0 0 17 17" version="1.1" xmlns="http://www.w3.org/2000/svg">
-    <!-- Generator: Sketch 59.1 (86144) - https://sketch.com -->
+<svg width="17px" height="17px" viewBox="0 0 17 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     <title>search</title>
-    <desc>Created with Sketch.</desc>
     <g id="search" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-        <path d="M8,3 C10.7614237,3 13,5.23857625 13,8 C13,10.7614237 10.7614237,13 8,13 C5.23857625,13 3,10.7614237 3,8 C3,5.23857625 5.23857625,3 8,3 Z M8,4 C5.790861,4 4,5.790861 4,8 C4,10.209139 5.790861,12 8,12 C10.209139,12 12,10.209139 12,8 C12,5.790861 10.209139,4 8,4 Z" id="Oval" fill="#979797" fill-rule="nonzero"></path>
-        <polygon id="Line-25" fill="#979797" fill-rule="nonzero" points="11.5 10.7928932 10.7928932 11.5 14.5 15.2071068 15.2071068 14.5"></polygon>
+        <path d="M8,2 C10.7614237,2 13,4.23857625 13,7 C13,9.76142375 10.7614237,12 8,12 C5.23857625,12 3,9.76142375 3,7 C3,4.23857625 5.23857625,2 8,2 Z M8,3 C5.790861,3 4,4.790861 4,7 C4,9.209139 5.790861,11 8,11 C10.209139,11 12,9.209139 12,7 C12,4.790861 10.209139,3 8,3 Z" id="Oval" fill="#979797" fill-rule="nonzero"></path>
+        <polygon id="Line-25" fill="#979797" fill-rule="nonzero" points="11.5 9.79289322 10.7928932 10.5 14.5 14.2071068 15.2071068 13.5"></polygon>
     </g>
 </svg>

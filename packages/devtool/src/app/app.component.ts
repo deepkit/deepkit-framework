@@ -1,5 +1,5 @@
 import { Component, ElementRef, OnInit, signal } from '@angular/core';
-import { DuiButtonModule, DuiWindowModule } from '@deepkit/desktop-ui';
+import { ButtonComponent, WindowComponent, WindowContentComponent } from '@deepkit/desktop-ui';
 import { RouterOutlet } from '@angular/router';
 import { RpcCollector } from './collector';
 
@@ -42,9 +42,10 @@ declare var chrome: any;
       </dui-window>
     `,
     imports: [
-        DuiWindowModule,
         RouterOutlet,
-        DuiButtonModule,
+        WindowComponent,
+        WindowContentComponent,
+        ButtonComponent,
     ],
     styleUrls: ['./app.component.scss'],
 })

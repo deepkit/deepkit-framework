@@ -1,108 +1,75 @@
-import { AfterViewInit, Directive, DoCheck, ElementRef, Inject, Input, OnChanges, OnInit, PLATFORM_ID, Renderer2 } from '@angular/core';
-//@ts-ignore
-import { highlight, languages } from 'prismjs';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-sql';
-import 'prismjs/components/prism-bash';
-import 'prismjs/components/prism-json';
-import { isPlatformBrowser } from '@angular/common';
-import { removeIndent } from '../utils';
+import { booleanAttribute, Component, computed, inject, Injectable, input, PendingTasks, ViewEncapsulation } from '@angular/core';
+import { type default as PrismT } from 'prismjs';
+import { derivedAsync } from 'ngxtension/derived-async';
+import { asyncOperation } from '@deepkit/core';
+import { pendingTask } from '@deepkit/desktop-ui';
 
-@Directive({
-    selector: '[codeHighlight]',
-    standalone: false,
+@Component({
+    selector: 'code-highlight',
+    host: {
+        '[class.overlay-scrollbar-small]': 'true',
+        '[class.inline]': 'inline()',
+    },
+    styleUrl: './code-highlight.component.scss',
+    template: `
+      <ng-content></ng-content>
+      <pre class="code codeHighlight text-selection language-{{lang()}}" [attr.title]="title() || undefined" [innerHTML]="html()"></pre>
+    `,
+    encapsulation: ViewEncapsulation.None,
 })
-export class CodeHighlightComponent implements OnInit, OnChanges, AfterViewInit, DoCheck {
-    @Input() codeHighlight: string = 'typescript';
-    @Input() code: string = '';
-    @Input() title?: string;
+export class CodeHighlightComponent {
+    code = input<any>('');
+    file = input('');
+    lang = input('typescript');
+    title = input<string>('');
 
-    protected pre?: HTMLPreElement;
+    inline = input(false, { transform: booleanAttribute });
+    protected prism = inject(Prism);
 
-    isBrowser: boolean;
+    html = computed(() => {
+        const raw = this.code();
+        return this.prism.highlight(raw, this.lang());
+    });
+}
 
-    constructor(
-        protected elementRef: ElementRef<HTMLTextAreaElement | HTMLDivElement>,
-        protected renderer: Renderer2,
-        @Inject(PLATFORM_ID) protected platformId: any,
-    ) {
-        this.isBrowser = isPlatformBrowser(platformId);
+const prism = asyncOperation<typeof PrismT>(async (resolve) => {
+    const Prism = globalThis.Prism = (await import('prismjs')).default;
+    // @ts-ignore
+    await import('prismjs/components/prism-typescript');
+    // @ts-ignore
+    await import('prismjs/components/prism-jsx');
+    // @ts-ignore
+    await import('prismjs/components/prism-tsx');
+    // @ts-ignore
+    await import('prismjs/components/prism-sql');
+    // @ts-ignore
+    await import('prismjs/components/prism-bash');
+    // @ts-ignore
+    await import('prismjs/components/prism-json');
+    resolve(Prism as typeof PrismT);
+});
+
+@Injectable({ providedIn: 'root' })
+export class Prism {
+    taskService = inject(PendingTasks);
+
+    prism = derivedAsync(pendingTask(() => prism));
+    ready = prism;
+
+    constructor() {
+        this.taskService.run(() => prism);
     }
 
-    ngOnChanges(): void {
-        this.render();
-    }
+    highlight(raw: any, lang: string): string {
+        const prism = this.prism();
+        if (!prism) return '';
+        const code = 'string' === typeof raw ? raw : JSON.stringify(raw) || '';
+        const firstLineIndentLength = code.match(/^\s+/)?.[0].length || 1;
+        // Remove leading whitespace from each line
+        const trimmedCode = code.split('\n').map(line => line.slice(firstLineIndentLength - 1)).join('\n').trim();
 
-    ngOnInit(): void {
-        this.render();
-    }
-
-    ngAfterViewInit() {
-        if (!this.elementRef.nativeElement.parentNode) {
-            //try again next tick
-            setTimeout(() => {
-                return this.render();
-            });
-            return;
-        }
-        this.render();
-    }
-
-    ngDoCheck() {
-        // queueMicrotask(() => {
-        //     if (!this.pre) return;
-        //     this.elementRef.nativeElement.after(this.pre);
-        // });
-    }
-
-    render() {
-        if (this.elementRef.nativeElement instanceof HTMLTextAreaElement) {
-            this.code = removeIndent(this.elementRef.nativeElement.value).trim();
-        }
-
-        if (!this.isBrowser) {
-            if (this.pre) return;
-
-            this.pre = this.renderer.createElement('pre');
-            this.renderer.addClass(this.pre, 'code');
-            this.renderer.addClass(this.pre, 'codeHighlight');
-            this.renderer.addClass(this.pre, 'language-' + this.codeHighlight);
-            this.renderer.setAttribute(this.pre, 'title', this.title || '');
-
-            this.renderer.insertBefore(this.elementRef.nativeElement.parentNode, this.pre, this.elementRef.nativeElement);
-            const text = this.renderer.createText(this.code);
-            this.renderer.appendChild(this.pre, text);
-            this.renderer.removeChild(this.elementRef.nativeElement.parentNode, this.elementRef.nativeElement);
-            return;
-        }
-
-        if (!this.pre) {
-            if (!this.elementRef.nativeElement.parentNode) return;
-            this.pre = this.renderer.createElement('pre');
-
-            this.renderer.addClass(this.pre, 'code');
-            this.renderer.addClass(this.pre, 'codeHighlight');
-            this.renderer.addClass(this.pre, 'text-selection');
-            this.renderer.addClass(this.pre, 'language-' + this.codeHighlight);
-            this.renderer.addClass(this.pre, 'overlay-scrollbar-small');
-            this.renderer.setAttribute(this.pre, 'title', this.title || '');
-            if (this.elementRef.nativeElement instanceof HTMLTextAreaElement) {
-                //the textarea is replaced with the pre element
-                this.renderer.insertBefore(this.elementRef.nativeElement.parentNode, this.pre, this.elementRef.nativeElement);
-                this.renderer.removeChild(this.elementRef.nativeElement.parentNode, this.elementRef.nativeElement);
-            } else {
-                this.renderer.appendChild(this.elementRef.nativeElement, this.pre);
-            }
-        }
-
-        if (!this.code) return;
-
-        const lang = this.codeHighlight || 'typescript';
-        try {
-            const highlighted = highlight(this.code, languages[lang], lang);
-            this.pre!.innerHTML = highlighted;
-        } catch (error: any) {
-            this.pre!.innerHTML = error.message + ': ' + this.code;
-        }
+        lang ||= 'typescript';
+        if (!prism.languages[lang]) lang = 'text';
+        return prism.highlight(trimmedCode, prism.languages[lang], lang);
     }
 }

@@ -8,34 +8,26 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ChangeDetectorRef,
-    Component,
-    ElementRef,
-    EventEmitter,
-    HostBinding,
-    HostListener,
-    Injectable,
-    Injector,
-    Input,
-    OnChanges,
-    OnDestroy,
-    Optional,
-    Output,
-    SimpleChanges,
-    SkipSelf,
-} from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, UrlTree } from '@angular/router';
+import { booleanAttribute, Component, EventEmitter, HostBinding, HostListener, inject, input, OnDestroy, Output } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { ngValueAccessor, ValueAccessorBase } from '../../core/form';
-import { Subscription } from 'rxjs';
 import { arrayRemoveItem } from '@deepkit/core';
-import { isRouteActive } from '../../core/utils';
+import { injectElementRef } from '../app/utils';
 
+/**
+ * Non-interactive title item for a list.
+ *
+ * ```html
+ * <dui-list>
+ *  <dui-list-title>Title</dui-list-title>
+ *  <dui-list-item value="1">Item 1</dui-list-item>
+ * </list>
+ * ```
+ */
 @Component({
     selector: 'dui-list-title',
-    standalone: false,
     template: `
-        <ng-content></ng-content>`,
+      <ng-content></ng-content>`,
     styleUrls: ['./list-title.component.scss'],
 })
 export class ListTitleComponent {
@@ -45,62 +37,57 @@ export class ListTitleComponent {
 
 @Component({
     selector: 'dui-list',
-    standalone: false,
     template: `
-        <ng-content></ng-content>
+      <ng-content></ng-content>
     `,
     styleUrls: ['./list.component.scss'],
     host: {
-        '[class.white]': 'white !== false',
+        '[class.white]': 'white()',
         '[class.overlay-scrollbar-small]': 'true',
-        '[class.focusable]': 'focusable',
-        '[class.delimiter-line]': 'delimiterLine !== false',
+        '[class.focusable]': 'focusable()',
+        '[class.delimiter-line]': 'delimiterLine()',
     },
     providers: [ngValueAccessor(ListComponent)],
 })
-@Injectable()
 export class ListComponent extends ValueAccessorBase<any> {
     static ids: number = 0;
-
-    @Input() white: boolean | '' = false;
-
     id = ++ListComponent.ids;
 
-    @Input() focusable: boolean = true;
-    @Input() delimiterLine: boolean | '' = false;
+    white = input(false, { transform: booleanAttribute });
+    focusable = input<boolean>(true);
+    delimiterLine = input(false, { transform: booleanAttribute });
 
-    @HostBinding('tabindex') tabIndex: number = 1;
+    @HostBinding('tabindex') protected tabIndex: number = 1;
 
-    items: ListItemComponent[] = [];
+    protected items: ListItemComponent[] = [];
 
     protected itemMap = new Map<string, ListItemComponent>();
 
-    constructor(
-        protected injector: Injector,
-        public readonly cd: ChangeDetectorRef,
-        public host: ElementRef<HTMLElement>,
-        @SkipSelf() public readonly cdParent: ChangeDetectorRef,
-    ) {
-        super(injector, cd, cdParent);
-    }
+    protected element = injectElementRef();
 
-    public deregister(item: ListItemComponent) {
+    /**
+     * @hidden
+     */
+    deregister(item: ListItemComponent) {
         arrayRemoveItem(this.items, item);
         this.itemMap.delete(item.id + '');
     }
 
-    public register(item: ListItemComponent) {
+    /**
+     * @hidden
+     */
+    register(item: ListItemComponent) {
         this.items.push(item);
         this.itemMap.set(item.id + '', item);
     }
 
     protected getSortedList(): ListItemComponent[] {
-        const list = Array.from(this.host.nativeElement.querySelectorAll(`dui-list-item[list-id="${this.id}"]`));
+        const list = Array.from(this.element.nativeElement.querySelectorAll(`dui-list-item[list-id="${this.id}"]`));
         return list.map(v => this.itemMap.get(v.getAttribute('list-item-id')!)!);
     }
 
     @HostListener('keydown', ['$event'])
-    public async onKeyDown(event: KeyboardEvent) {
+    protected async onKeyDown(event: KeyboardEvent) {
         if (event.key === 'ArrowDown') {
             event.preventDefault();
             const selectedItem = this.getSelectedItem();
@@ -139,11 +126,20 @@ export class ListComponent extends ValueAccessorBase<any> {
     }
 }
 
+/**
+ * Interactive item for a list.
+ * Supports router links, selection and more.
+ *
+ * ```html
+ * <dui-list>
+ *  <dui-list-item value="1">Item 1</dui-list-item>
+ * </list>
+ * ```
+ */
 @Component({
     selector: 'dui-list-item',
-    standalone: false,
     template: `
-        <ng-content></ng-content>
+      <ng-content></ng-content>
     `,
     host: {
         '[class.selected]': 'isSelected()',
@@ -151,91 +147,66 @@ export class ListComponent extends ValueAccessorBase<any> {
         '[attr.list-item-id]': 'id',
     },
     styleUrls: ['./list-item.component.scss'],
+    hostDirectives: [
+        { directive: RouterLinkActive, inputs: ['routerLinkActiveOptions'] },
+    ],
 })
-export class ListItemComponent implements OnChanges, OnDestroy {
-    static ids: number = 0;
+export class ListItemComponent implements OnDestroy {
+    protected static ids: number = 0;
     id = ++ListItemComponent.ids;
+    protected activeClass = 'selected';
 
-    @Input() value: any;
-    @Input() routerLink?: string | UrlTree | any[];
-    @Input() routerLinkExact?: boolean;
-    @Input() queryParams?: { [name: string]: any };
-    @Input() active?: boolean;
+    value = input<any>();
+    active = input<boolean>();
 
     /**
      * When position is dynamic, it might be handy to define the position
      * explicitly to make arrow-up/arrow-down navigation possible.
      */
-    @Input() position: number = 0;
+    position = input<number>(0);
 
     @Output() onSelect = new EventEmitter<any>();
 
-    protected routerSub?: Subscription;
+    protected element = injectElementRef();
+    protected list = inject(ListComponent);
+    protected router = inject(Router, { optional: true });
+    protected routerLink = inject(RouterLink, { optional: true });
+    protected routerLinkActive = inject(RouterLinkActive);
 
-    constructor(
-        public list: ListComponent,
-        public element: ElementRef,
-        @SkipSelf() public cd: ChangeDetectorRef,
-        @Optional() public router?: Router,
-        @Optional() activatedRoute?: ActivatedRoute,
-    ) {
+    constructor() {
         this.element.nativeElement.removeAttribute('tabindex');
-        list.register(this);
-        this.list.registerOnChange(() => {
-            this.cd.detectChanges();
-        });
-        if (this.router) {
-            this.routerSub = this.router.events.subscribe((event) => {
-                if (event instanceof NavigationEnd) {
-                    this.cd.detectChanges();
-                }
-            });
-        }
+        this.list.register(this);
     }
 
     ngOnDestroy(): void {
         this.list.deregister(this);
-        if (this.routerSub) {
-            this.routerSub.unsubscribe();
-        }
-    }
-
-    ngOnChanges(changes: SimpleChanges): void {
-        this.cd.detectChanges();
     }
 
     public async select() {
-        if (this.routerLink && this.router) {
-            if ('string' === typeof this.routerLink) {
-                await this.router.navigateByUrl(this.routerLink);
-            } else if (Array.isArray(this.routerLink)) {
-                await this.router.navigate(this.routerLink, { queryParams: this.queryParams });
-            } else {
-                await this.router.navigateByUrl(this.router.serializeUrl(this.routerLink!));
-            }
+        const routerLink = this.routerLink;
+        if (routerLink && this.router) {
+            routerLink.onClick(1, false, false, false, false);
         } else {
-            this.list.innerValue = this.value;
+            this.list.setValue(this.value());
         }
-        this.onSelect.emit(this.value);
+        this.onSelect.emit(this.value());
     }
 
     public isSelected(): boolean {
-        if (this.active !== undefined) return this.active;
+        const active = this.active();
+        if (active !== undefined) return active;
 
-        if (this.value !== undefined) {
-            return this.list.innerValue === this.value;
+        const value = this.value();
+        if (value !== undefined) {
+            return this.list.value() === value;
         }
 
-        if (this.routerLink && this.router) {
-            return isRouteActive(this);
-        }
-
-        return false;
+        return this.routerLinkActive.isActive;
     }
 
     @HostListener('mousedown')
-    public onClick() {
-        this.list.innerValue = this.value;
-        this.onSelect.emit(this.value);
+    protected onClick() {
+        this.list.setValue(this.value());
+        this.onSelect.emit(this.value());
     }
 }

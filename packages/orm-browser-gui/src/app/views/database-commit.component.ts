@@ -1,61 +1,66 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { empty, size } from '@deepkit/core';
-import { DialogComponent, DuiDialog } from '@deepkit/desktop-ui';
+import { ButtonComponent, CloseDialogDirective, DialogActionsComponent, DialogComponent, DuiDialog } from '@deepkit/desktop-ui';
 import { Changes } from '@deepkit/type';
 import { BrowserState } from '../browser-state';
 import { ControllerClient } from '../client';
+import { JsonPipe, KeyValuePipe } from '@angular/common';
 
 @Component({
     template: `
-        <div *ngFor="let kv of state.changes|keyvalue">
-            <ng-container *ngIf="!empty(kv.value)">
-            <h4>{{getEntityName(kv.key)}} changes</h4>
-
+      @for (kv of state.changes|keyvalue; track kv) {
+        <div>
+          @if (!empty(kv.value)) {
+            <h4>{{ getEntityName(kv.key) }} changes</h4>
             <table>
-                <tr *ngFor="let kv2 of kv.value|keyvalue">
-                    <td style="padding-right: 15px;">
-                        {{kv2.value.pk|json}}
-                    </td>
-
-                    <td>
-                        {{stringifyChanges(kv2.value.changes)}}
-                    </td>
+              @for (kv2 of kv.value|keyvalue; track kv2) {
+                <tr>
+                  <td style="padding-right: 15px;">
+                    {{ kv2.value.pk|json }}
+                  </td>
+                  <td>
+                    {{ stringifyChanges(kv2.value.changes) }}
+                  </td>
                 </tr>
+              }
             </table>
-            </ng-container>
+          }
         </div>
+      }
 
-        <table>
-            <tr *ngFor="let kv of state.addedItems|keyvalue">
-                <td>{{getEntityName(kv.key)}}</td>
+      <table>
+        @for (kv of state.addedItems|keyvalue; track kv) {
+          <tr>
+            <td>{{ getEntityName(kv.key) }}</td>
+            <td>
+              {{ kv.value.length }} new record/s
+            </td>
+          </tr>
+        }
+      </table>
 
-                <td>
-                    {{kv.value.length}} new record/s
-                </td>
-            </tr>
-        </table>
+      <table>
+        @for (kv of state.deletions|keyvalue; track kv) {
+          <tr>
+            <td>{{ getEntityName(kv.key) }}</td>
+            <td>
+              delete {{ size(kv.value) }} record/s
+            </td>
+          </tr>
+        }
+      </table>
 
-        <table>
-            <tr *ngFor="let kv of state.deletions|keyvalue">
-                <td>{{getEntityName(kv.key)}}</td>
-
-                <td>
-                    delete {{size(kv.value)}} record/s
-                </td>
-            </tr>
-        </table>
-
-        <dui-dialog-actions>
-            <dui-button closeDialog>Cancel</dui-button>
-            <dui-button (click)="commit()" primary>Commit</dui-button>
-        </dui-dialog-actions>
+      <dui-dialog-actions>
+        <dui-button closeDialog>Cancel</dui-button>
+        <dui-button (click)="commit()" primary>Commit</dui-button>
+      </dui-dialog-actions>
     `,
     styles: [`
         table td {
             padding: 2px 5px;
         }
     `],
-    standalone: false
+    imports: [DialogActionsComponent, ButtonComponent, CloseDialogDirective, JsonPipe, KeyValuePipe],
 })
 export class DatabaseCommitComponent {
     @Output() stateChange = new EventEmitter();

@@ -24,12 +24,12 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "peerDependencies": {
-    "@angular/ssr": "^19.1.6",
+    "@angular/ssr": "^20.0.3",
     "@deepkit/app": "^1.0.1",
     "@deepkit/http": "^1.0.1"
   },
   "devDependencies": {
-    "@angular/ssr": "^19.1.7",
+    "@angular/ssr": "^20.0.3",
     "@deepkit/app": "^1.0.12",
     "@deepkit/http": "^1.0.12"
   },

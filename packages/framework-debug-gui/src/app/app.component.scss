@@ -34,7 +34,7 @@
 .request-subline {
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--text-light);
+  color: var(--dui-text-light);
 }
 
 .top-right {
@@ -43,19 +43,5 @@
     position: absolute;
     right: 15px;
     top: 0;
-
-    .connection-info {
-        margin-right: 3px;
-        font-size: 10px;
-        text-transform: uppercase;
-
-        .connected {
-            color: var(--color-green);
-        }
-
-        .disconnected {
-            color: var(--color-red);
-        }
-    }
 }
 

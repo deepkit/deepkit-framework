@@ -1,28 +1,29 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FakerTypes } from '@deepkit/orm-browser-api';
-import { DialogComponent } from '@deepkit/desktop-ui';
+import { ButtonComponent, CheckboxComponent, CloseDialogDirective, DialogActionsComponent, DialogComponent, InputComponent, TableCellDirective, TableColumnDirective, TableComponent } from '@deepkit/desktop-ui';
+import { FormsModule } from '@angular/forms';
 
 @Component({
     template: `
-        <div class="header">
-            <dui-input round clearer [(ngModel)]="filterQuery" icon="filter" placeholder="Filter"></dui-input>
-        </div>
-        <dui-table borderless noFocusOutline [items]="items" [filterQuery]="filterQuery" [filterFields]="filterFields">
-            <dui-table-column name="chosen" [width]="50" header="✓">
-                <ng-container *duiTableCell="let item">
-                    <dui-checkbox [ngModel]="item.chosen"
-                                  (ngModelChange)="$event ? chose(item.name) : false"></dui-checkbox>
-                </ng-container>
-            </dui-table-column>
+      <div class="header">
+        <dui-input round clearer [(ngModel)]="filterQuery" icon="filter" placeholder="Filter"></dui-input>
+      </div>
+      <dui-table borderless no-focus-outline [items]="items" [filterQuery]="filterQuery" [filterFields]="filterFields">
+        <dui-table-column name="chosen" [width]="50" header="✓">
+          <ng-container *duiTableCell="let item">
+            <dui-checkbox [ngModel]="item.chosen"
+                          (ngModelChange)="$event ? chose(item.name) : false"></dui-checkbox>
+          </ng-container>
+        </dui-table-column>
 
-            <dui-table-column name="name" [width]="200"></dui-table-column>
-            <dui-table-column name="type" [width]="100"></dui-table-column>
-            <dui-table-column name="example" [width]="400"></dui-table-column>
-        </dui-table>
+        <dui-table-column name="name" [width]="200"></dui-table-column>
+        <dui-table-column name="type" [width]="100"></dui-table-column>
+        <dui-table-column name="example" [width]="400"></dui-table-column>
+      </dui-table>
 
-        <dui-dialog-actions>
-            <dui-button closeDialog>Cancel</dui-button>
-        </dui-dialog-actions>
+      <dui-dialog-actions>
+        <dui-button closeDialog>Cancel</dui-button>
+      </dui-dialog-actions>
     `,
     styles: [`
         dui-table {
@@ -39,7 +40,7 @@ import { DialogComponent } from '@deepkit/desktop-ui';
             height: 100%;
         }
     `],
-    standalone: false
+    imports: [InputComponent, FormsModule, TableComponent, TableColumnDirective, TableCellDirective, CheckboxComponent, DialogActionsComponent, ButtonComponent, CloseDialogDirective],
 })
 export class FakerTypeDialogComponent implements OnInit {
     static dialogDefaults = {

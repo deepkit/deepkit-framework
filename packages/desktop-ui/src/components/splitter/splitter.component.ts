@@ -1,112 +1,127 @@
-/*
- * Deepkit Framework
- * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
+import { booleanAttribute, Component, computed, inject, input, model, Renderer2 } from '@angular/core';
+import { DragDirective, DuiDragEvent } from '../app/drag';
+import { clamp } from '../app/utils.js';
+
+/**
+ * A splitter component that can be used for layout resizing. With an indicator that shows a handle.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the MIT License.
+ * This is typically used to resize layouts such as sidebars, panels, or other UI elements.
  *
- * You should have received a copy of the MIT License along with this program.
+ * Best used in combination with flex-basis CSS property to allow flexible resizing.
+ *
+ * ```html
+ * <div class="layout">
+ *   <div class="sidebar" [style.flex-basis.px]="sidebarSize()">
+ *       <dui-splitter position="right" [size]="sidebarSize" (sizeChange)="sidebarSize.set($event)" indicator></dui-splitter>
+ *   </div>
+ *   <div class="content"></div>
+ * </div>
+ * ```
  */
-
-import { AfterViewInit, Component, ElementRef, EventEmitter, Input, NgZone, Output } from '@angular/core';
-import { clearTick, nextTick } from '@deepkit/core';
-import { getHammer } from '../../core/utils';
-
 @Component({
     selector: 'dui-splitter',
-    standalone: false,
     template: '',
     styleUrls: ['./splitter.component.scss'],
     host: {
-        '[class.splitter-right]': 'position === "right"',
-        '[class.splitter-left]': 'position === "left"',
-        '[class.splitter-top]': 'position === "top"',
-        '[class.splitter-bottom]': 'position === "bottom"',
-        '[class.splitter-with-indicator]': 'indicator !== false',
-    }
+        '[class.splitter-right]': 'position() === "right"',
+        '[class.splitter-left]': 'position() === "left"',
+        '[class.splitter-top]': 'position() === "top"',
+        '[class.splitter-bottom]': 'position() === "bottom"',
+        '[class.splitter-with-indicator]': 'indicator()',
+        '[class.horizontal]': 'isHorizontal()',
+        '[class.vertical]': '!isHorizontal()',
+        '(duiDragStart)': 'onDuiDragStart()',
+        '(duiDrag)': 'onDuiDrag($event)',
+        '(duiDragEnd)': 'onDuiDragEnd($event)',
+        '(duiDragCancel)': 'onDuiDragCancel()',
+    },
+    hostDirectives: [
+        {
+            directive: DragDirective,
+            inputs: ['duiDragThreshold'],
+            outputs: ['duiDragStart', 'duiDrag', 'duiDragEnd', 'duiDragCancel'],
+        },
+    ],
 })
-export class SplitterComponent implements AfterViewInit {
-    @Output() modelChange = new EventEmitter<number>();
+export class SplitterComponent {
+    /**
+     * When set, the splitter will show an indicator (handle) to indicate that it can be dragged.
+     */
+    indicator = input(false, { transform: booleanAttribute });
 
-    @Input() indicator: boolean | '' = false;
+    size = model(0);
 
-    @Input() position: 'right' | 'left' | 'top' | 'bottom' = 'right';
+    inverted = input(false, { transform: booleanAttribute });
 
-    @Input() element?: HTMLElement;
+    /**
+     * If set one of these, the splitter will be positioned absolutely in the layout.
+     * Make sure to set a parent element with `position: relative;` to allow absolute positioning.
+     */
+    position = input<'left' | 'right' | 'top' | 'bottom'>();
 
-    constructor(
-        private host: ElementRef,
-        private zone: NgZone,
-    ) {
+    orientation = input<'horizontal' | 'vertical'>();
+
+    /**
+     * Per default splitter is vertical (movement left-to-right), meaning vertical line.
+     * If set to true, it will be horizontal (movement top-to-bottom).
+     */
+    horizontal = input(false, { transform: booleanAttribute });
+
+    min = input(0);
+    max = input(Infinity);
+
+    element = input<Element>();
+
+    /**
+     * When element is set, this CSS property will be used to set the size of the splitter.
+     * Default is 'flex-basis', which is typically used in flexbox layouts.
+     */
+    property = input<'flex-basis' | 'width' | string>('flex-basis');
+
+    isHorizontal = computed(() => (this.horizontal() || this.position() === 'top' || this.position() === 'bottom') || this.orientation() === 'horizontal');
+
+    protected startSize = 0;
+    protected renderer = inject(Renderer2);
+
+    protected onDuiDragStart() {
+        this.startSize = this.size();
+        const element = this.element();
+        if (!element) return;
+        const rect = element.getBoundingClientRect();
+        if (this.isHorizontal()) {
+            this.startSize = rect.height;
+        } else {
+            this.startSize = rect.width;
+        }
     }
 
-    onMousedown(event: MouseEvent) {
-        event.stopPropagation();
-        event.preventDefault();
+    protected onDuiDragEnd(event: DuiDragEvent) {
+        const element = this.element();
+        if (!element) return;
+        // it's important to reset this.size() to the final real size after the drag ends.
+        // If for example dragged way too far, the size might be negative or too large.
+        const rect = element.getBoundingClientRect();
+        if (this.isHorizontal()) {
+            this.size.set(rect.height);
+            this.renderer.setStyle(element, this.property(), `${rect.height}px`);
+        } else {
+            this.size.set(rect.width);
+            this.renderer.setStyle(element, this.property(), `${rect.width}px`);
+        }
     }
 
-    ngAfterViewInit() {
-        this.initHammer();
+    protected onDuiDrag(event: DuiDragEvent) {
+        const delta = this.isHorizontal() ? event.deltaY : event.deltaX;
+        const factor = this.inverted() ? -1 : 1;
+        const value = clamp(this.startSize + (delta * factor), this.min(), this.max());
+        this.size.set(value);
+        const element = this.element();
+        if (element) {
+            this.renderer.setStyle(element, this.property(), `${value}px`);
+        }
     }
 
-    protected async initHammer() {
-        const Hammer = await getHammer();
-        if (!Hammer) return;
-
-        this.zone.runOutsideAngular(() => {
-            const mc = new Hammer(this.host.nativeElement);
-            mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 0 }));
-
-            let start: number = 0;
-
-            this.host.nativeElement.addEventListener('pointerdown', (e: MouseEvent) => {
-                e.stopPropagation();
-                e.preventDefault();
-            });
-
-            this.host.nativeElement.addEventListener('pointermove', (e: MouseEvent) => {
-                e.stopPropagation();
-                e.preventDefault();
-            });
-
-            mc.on('panstart', (event: HammerInput) => {
-                if (this.position === 'right' || this.position === 'left') {
-                    start = (this.element ? this.element.clientWidth : this.host.nativeElement!.parentElement.clientWidth);
-                } else {
-                    start = (this.element ? this.element.clientHeight : this.host.nativeElement!.parentElement.clientHeight);
-                }
-            });
-
-            let lastAnimationFrame: any;
-            mc.on('pan', (event: HammerInput) => {
-                if (lastAnimationFrame) clearTick(lastAnimationFrame);
-
-                lastAnimationFrame = nextTick(() => {
-                    if (this.element) {
-                        this.element.style.width = (start + event.deltaX) + 'px';
-                    }
-
-                    if (this.position === 'right') {
-                        this.modelChange.emit(start + event.deltaX);
-                        this.triggerWindowResize();
-                    } else if (this.position === 'left') {
-                        this.modelChange.emit(start - event.deltaX);
-                        this.triggerWindowResize();
-                    } else if (this.position === 'top') {
-                        this.modelChange.emit(start - event.deltaY);
-                        this.triggerWindowResize();
-                    } else if (this.position === 'bottom') {
-                        this.modelChange.emit(start + event.deltaY);
-                        this.triggerWindowResize();
-                    }
-                });
-            });
-        });
-    }
-
-    protected triggerWindowResize() {
-        setTimeout(() => {
-            window.dispatchEvent(new Event('resize'));
-        });
+    protected onDuiDragCancel() {
+        this.size.set(this.startSize);
     }
 }

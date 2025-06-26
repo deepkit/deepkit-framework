@@ -32,8 +32,8 @@
             overflow: hidden;
             flex: 1;
             padding: 0 5px;
-            border-top: 1px solid var(--line-color-light);
-            border-bottom: 1px solid var(--line-color-light);
+            border-top: 1px solid var(--dui-line-color-light);
+            border-bottom: 1px solid var(--dui-line-color-light);
             > div {
                 overflow: hidden;
                 white-space: nowrap;
@@ -49,10 +49,9 @@
     }
 }
 
-.code-generation-code {
+.code-generation-code ::ng-deep {
     height: 100%;
-    > pre {
-        padding: 5px 12px;
-        overflow: unset;
+    pre {
+        padding: 5px 12px !important;
     }
 }

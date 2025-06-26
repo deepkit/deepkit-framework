@@ -16,29 +16,26 @@ import {
     ComponentFactoryResolver,
     ComponentRef,
     Directive,
-    EventEmitter,
-    Inject,
     Injector,
-    Input,
+    input,
+    model,
     OnChanges,
     OnDestroy,
-    Output,
+    output,
     SimpleChanges,
     TemplateRef,
     Type,
     ViewChild,
     ViewContainerRef,
 } from '@angular/core';
-import { ComponentPortal, DomPortalHost, PortalHost } from '@angular/cdk/portal';
+import { ComponentPortal, DomPortalOutlet } from '@angular/cdk/portal';
 import { WindowComponent } from '../window/window.component';
 import { WindowRegistry } from '../window/window-state';
 import { RenderComponentDirective } from '../core/render-component.directive';
-import { ELECTRON_WINDOW, IN_DIALOG } from '../app/token';
 import { Subscription } from 'rxjs';
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
 import { DuiDialog } from '../dialog/dialog';
-import { Electron } from '../../core/utils';
-import { detectChangesNextFrame } from '../app';
+import { BrowserWindow, Electron } from '../../core/utils';
 import { nextTick } from '@deepkit/core';
 
 function PopupCenter(url: string, title: string, w: number, h: number): Window {
@@ -48,37 +45,44 @@ function PopupCenter(url: string, title: string, w: number, h: number): Window {
     let left = window.screenLeft + (window.outerWidth / 2) - w / 2;
     left = left > 0 ? left : 0;
 
-    const newWindow: Window = window.open(url, title, 'width=' + w + ', height=' + h + ', top=' + top + ', left=' + left)!;
-
-    return newWindow;
+    return window.open(url, title, 'width=' + w + ', height=' + h + ', top=' + top + ', left=' + left)!;
 }
 
 @Component({
-    standalone: false,
     template: `
-        <ng-container *ngIf="component"
-                      #renderComponentDirective
-                      [renderComponent]="component" [renderComponentInputs]="componentInputs"
+      @if (component()) {
+        <ng-container
+          #renderComponentDirective
+          [renderComponent]="component()" [renderComponentInputs]="componentInputs()"
         >
         </ng-container>
+      }
 
-        <ng-container *ngIf="content" [ngTemplateOutlet]="content"></ng-container>
+      @if (content) {
+        <ng-container [ngTemplateOutlet]="content"></ng-container>
+      }
 
-        <ng-container *ngIf="container">
-            <ng-container [ngTemplateOutlet]="container"></ng-container>
-        </ng-container>
+      @if (container) {
+        <ng-container [ngTemplateOutlet]="container"></ng-container>
+      }
 
-        <ng-container *ngIf="!container">
-            <ng-content></ng-content>
-        </ng-container>
+      @if (!container) {
+        <ng-content></ng-content>
+      }
     `,
     host: {
         '[attr.tabindex]': '1',
     },
+    imports: [
+        RenderComponentDirective,
+        NgTemplateOutlet,
+    ],
 })
 export class ExternalDialogWrapperComponent {
-    @Input() component?: Type<any>;
-    @Input() componentInputs: { [name: string]: any } = {};
+    component = input<Type<any>>();
+    componentInputs = input<{
+        [name: string]: any;
+    }>({});
 
     actions?: TemplateRef<any> | undefined;
     container?: TemplateRef<any> | undefined;
@@ -89,7 +93,6 @@ export class ExternalDialogWrapperComponent {
     constructor(
         protected cd: ChangeDetectorRef,
         public injector: Injector,
-        @Inject(ELECTRON_WINDOW) electron: any,
     ) {
     }
 
@@ -101,25 +104,25 @@ export class ExternalDialogWrapperComponent {
 
 @Component({
     selector: 'dui-external-dialog',
-    standalone: false,
     template: `
-        <ng-template #template>
-            <ng-content></ng-content>
-        </ng-template>
+      <ng-template #template>
+        <ng-content></ng-content>
+      </ng-template>
     `,
 })
 export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChanges {
-    private portalHost?: PortalHost;
+    private portalHost?: DomPortalOutlet;
 
-    @Input() alwaysRaised: boolean = false;
+    alwaysRaised = input(false);
 
-    @Input() visible: boolean = true;
-    @Output() visibleChange = new EventEmitter<boolean>();
+    visible = model(true);
 
-    @Output() closed = new EventEmitter<void>();
+    closed = output();
 
-    @Input() component?: Type<any>;
-    @Input() componentInputs: { [name: string]: any } = {};
+    component = input<Type<any>>();
+    componentInputs = input<{
+        [name: string]: any;
+    }>({});
 
     public wrapperComponentRef?: ComponentRef<ExternalDialogWrapperComponent>;
 
@@ -148,7 +151,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
     }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (this.visible) {
+        if (this.visible()) {
             this.show();
         } else {
             this.close();
@@ -186,8 +189,10 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
             if (!style.ownerNode) continue;
             const clone: Node = style.ownerNode.cloneNode(true);
             cloned.set(style.ownerNode, clone);
-            this.externalWindow!.document.head!.appendChild(clone);
+            this.externalWindow.document.head.appendChild(clone);
         }
+
+        const externalWindow = this.externalWindow;
 
         this.observerStyles = new MutationObserver((mutations: MutationRecord[]) => {
             for (const mutation of mutations) {
@@ -196,7 +201,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
                     if (!cloned.has(node)) {
                         const clone: Node = node.cloneNode(true);
                         cloned.set(node, clone);
-                        this.externalWindow!.document.head!.appendChild(clone);
+                        externalWindow.document.head.appendChild(clone);
                     }
                 }
 
@@ -204,7 +209,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
                     const node = mutation.removedNodes[i];
                     if (cloned.has(node)) {
                         const clone = cloned.get(node)!;
-                        clone.parentNode!.removeChild(clone);
+                        clone.parentNode?.removeChild(clone);
                         cloned.delete(node);
                     }
                 }
@@ -229,17 +234,17 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
         this.observerClass.observe(window.document.body, {
             attributeFilter: ['class'],
         });
-        const document = this.externalWindow!.document;
+        const document = this.externalWindow.document;
 
         copyBodyClass();
 
         this.electronWindow = Electron.isAvailable() ? Electron.getRemote().BrowserWindow.getAllWindows()[0] : undefined;
         this.parentWindow = this.registry.getOuterActiveWindow() as WindowComponent;
 
-        if (this.parentWindow && this.alwaysRaised) {
-            this.parentWindow.windowState.disableInputs.next(true);
-            if (this.parentWindow.electronWindow) {
-                this.electronWindow.setParentWindow(this.parentWindow.electronWindow);
+        if (this.parentWindow && this.alwaysRaised()) {
+            this.parentWindow.windowState.disableInputs.set(true);
+            if (this.parentWindow.browserWindow) {
+                this.electronWindow.setParentWindow(this.parentWindow.browserWindow);
             }
         }
 
@@ -247,20 +252,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
             this.beforeUnload();
         });
 
-        this.portalHost = new DomPortalHost(
-            document.body,
-            this.componentFactoryResolver,
-            this.applicationRef,
-            this.injector,
-        );
-
-        document.addEventListener('click', () => detectChangesNextFrame());
-        document.addEventListener('focus', () => detectChangesNextFrame());
-        document.addEventListener('blur', () => detectChangesNextFrame());
-        document.addEventListener('keydown', () => detectChangesNextFrame());
-        document.addEventListener('keyup', () => detectChangesNextFrame());
-        document.addEventListener('keypress', () => detectChangesNextFrame());
-        document.addEventListener('mousedown', () => detectChangesNextFrame());
+        this.portalHost = new DomPortalOutlet(document.body);
 
         //todo, add beforeclose event and call beforeUnload() to make sure all dialogs are closed when page is reloaded
 
@@ -268,29 +260,26 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
             parent: this.injector,
             providers: [
                 { provide: ExternalWindowComponent, useValue: this },
-                { provide: ELECTRON_WINDOW, useValue: this.electronWindow },
-                { provide: IN_DIALOG, useValue: false },
-                { provide: DOCUMENT, useValue: this.externalWindow!.document },
+                { provide: BrowserWindow, useValue: new BrowserWindow(this.electronWindow) },
+                { provide: DOCUMENT, useValue: this.externalWindow.document },
             ],
         });
 
         const portal = new ComponentPortal(ExternalDialogWrapperComponent, this.viewContainerRef, injector);
 
         this.wrapperComponentRef = this.portalHost.attach(portal);
-
-        this.wrapperComponentRef!.instance.component = this.component!;
-        this.wrapperComponentRef!.instance.componentInputs = this.componentInputs;
-        this.wrapperComponentRef!.instance.content = this.template!;
+        this.wrapperComponentRef.setInput('component', this.component());
+        this.wrapperComponentRef.setInput('componentInputs', this.componentInputs());
+        this.wrapperComponentRef.setInput('content', this.template);
 
         if (this.container) {
-            this.wrapperComponentRef!.instance.setDialogContainer(this.container);
+            this.wrapperComponentRef.instance.setDialogContainer(this.container);
         }
 
-        this.visible = true;
-        this.visibleChange.emit(true);
+        this.visible.set(true);
 
-        this.wrapperComponentRef!.changeDetectorRef.detectChanges();
-        this.wrapperComponentRef!.location.nativeElement.focus();
+        this.wrapperComponentRef.changeDetectorRef.detectChanges();
+        this.wrapperComponentRef.location.nativeElement.focus();
 
         this.cd.detectChanges();
     }
@@ -305,16 +294,16 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
             this.closed.emit();
             if (this.parentFocusSub) this.parentFocusSub.unsubscribe();
 
-            if (this.parentWindow && this.alwaysRaised) {
-                this.parentWindow.windowState.disableInputs.next(false);
+            if (this.parentWindow && this.alwaysRaised()) {
+                this.parentWindow.windowState.disableInputs.set(false);
             }
             if (this.externalWindow) {
-                this.externalWindow!.close();
+                this.externalWindow.close();
             }
 
             delete this.externalWindow;
-            this.observerStyles!.disconnect();
-            this.observerClass!.disconnect();
+            this.observerStyles?.disconnect();
+            this.observerClass?.disconnect();
         }
     }
 
@@ -322,8 +311,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
     }
 
     public close() {
-        this.visible = false;
-        this.visibleChange.emit(false);
+        this.visible.set(false);
         this.beforeUnload();
         nextTick(() => {
             this.applicationRef.tick();
@@ -341,10 +329,7 @@ export class ExternalWindowComponent implements AfterViewInit, OnDestroy, OnChan
  * only when opening the dialog. Without it it is immediately render, which can cause
  * performance and injection issues.
  */
-@Directive({
-    'selector': '[externalDialogContainer]',
-    standalone: false,
-})
+@Directive({ selector: '[externalDialogContainer]' })
 export class ExternalDialogDirective {
     constructor(protected dialog: ExternalWindowComponent, public template: TemplateRef<any>) {
         this.dialog.setDialogContainer(this.template);

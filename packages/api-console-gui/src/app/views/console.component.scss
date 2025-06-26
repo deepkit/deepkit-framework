@@ -24,7 +24,7 @@
 
     .list-description {
         font-size: 12px;
-        color: var(--text-light);
+        color: var(--dui-text-light);
     }
 
     .filter {
@@ -50,7 +50,7 @@
     .actions-bottom {
         height: 27px;
         padding: 3px 12px;
-        border-top: 1px solid var(--line-color-light);
+        border-top: 1px solid var(--dui-line-color-light);
         display: flex;
         align-items: center;
         font-size: 12px;
@@ -73,20 +73,16 @@
     }
 }
 
-dui-button-group {
-    margin-right: 0 !important;
-}
-
 .rpc-form {
     flex: 1;
-    border-left: 1px solid var(--line-color-light);
-    border-right: 1px solid var(--line-color-light);
+    border-left: 1px solid var(--dui-line-color-light);
+    border-right: 1px solid var(--dui-line-color-light);
 }
 
 .http-form {
     flex: 1 1 50%;
-    border-left: 1px solid var(--line-color-light);
-    border-right: 1px solid var(--line-color-light);
+    border-left: 1px solid var(--dui-line-color-light);
+    border-right: 1px solid var(--dui-line-color-light);
 }
 
 .code-generation-code pre {
@@ -115,7 +111,7 @@ dui-list-title.action {
 
     .path {
         margin-left: 3px;
-        color: var(--text-light);
+        color: var(--dui-text-light);
         font-weight: 500;
         white-space: nowrap;
         word-break: keep-all;
@@ -161,7 +157,7 @@ dui-list-item.action {
         font-weight: bold;
         padding: 0px 5px;
 
-        border: 1px solid var(--line-color);
+        border: 1px solid var(--dui-line-color);
         border-radius: 3px;
     }
 }

@@ -15,8 +15,6 @@ In macOS we have 4 types of buttons:
     font-weight: 500;
     height: 21px;
     color: var(--dui-button-text);
-    font-size: 12px;
-    line-height: 21px;
     padding: 0 15px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -211,8 +209,8 @@ In macOS we have 4 types of buttons:
     &:not(.disabled):not(.primary):not(.square).active {
         color: var(--dui-button-text);
         background-image: linear-gradient(-180deg, #C6C9CC 0%, #C2C5C8 100%, #C1C4C7 100%);
-        border-top: 1px solid #1c1d1f;
-        border-bottom: 1px solid #1a1b1d;
+        border-top: 1px solid #868d99;
+        border-bottom: 1px solid #868d99;
         border-left: 1px solid #484c50;
         border-right: 1px solid #484c50;
 

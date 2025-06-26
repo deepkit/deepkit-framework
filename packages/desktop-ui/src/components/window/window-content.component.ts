@@ -8,149 +8,113 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    AfterViewInit,
-    ChangeDetectorRef,
-    Component,
-    ElementRef,
-    EventEmitter,
-    Input,
-    OnChanges,
-    Output,
-    SimpleChanges,
-    TemplateRef,
-    ViewChild,
-} from '@angular/core';
-import { Subject } from 'rxjs';
+import { booleanAttribute, Component, effect, ElementRef, input, model, signal, TemplateRef, viewChild } from '@angular/core';
 import { WindowState } from './window-state';
 import { triggerResize } from '../../core/utils';
+import { NgTemplateOutlet } from '@angular/common';
+import { SplitterComponent } from '../splitter/splitter.component';
+import { clamp } from '../app/utils';
 
-interface WinSidebar {
+export interface WinSidebar {
     template: TemplateRef<any>;
 }
 
 @Component({
     selector: 'dui-window-content',
-    standalone: false,
     template: `
-        <div class="top-line"></div>
+      <div class="top-line"></div>
 
-        <div class="content {{class}}" #content>
-            <ng-content></ng-content>
-        </div>
+      <div class="content {{class()}}" #content>
+        <ng-content></ng-content>
+      </div>
 
+      @if (toolbar(); as toolbar) {
         <div class="sidebar"
              (transitionend)="transitionEnded()"
-             #sidebar *ngIf="toolbar" [class.hidden]="!sidebarVisible " [class.with-animation]="withAnimation"
-             [style.width.px]="getSidebarWidth()">
-            <div class="hider">
-                <div class="sidebar-container overlay-scrollbar-small"
-                     [style.width.px]="getSidebarWidth()"
-                     [style.maxWidth.px]="getSidebarWidth()"
-                     #sidebarContainer>
-                    <ng-container [ngTemplateOutlet]="toolbar!.template"
-                                  [ngTemplateOutletContext]="{}"></ng-container>
-                </div>
+             #sidebar [class.hidden]="!sidebarVisible() " [class.with-animation]="withAnimation()"
+             [style.min-width.px]="sidebarMinWidth()"
+             [style.max-width.px]="sidebarMaxWidth()"
+             [style.width.px]="sidebarWidth()">
+          <div class="hider">
+            <div class="sidebar-container overlay-scrollbar-small" #sidebarContainer>
+              <ng-container [ngTemplateOutlet]="toolbar.template" [ngTemplateOutletContext]="{}"></ng-container>
             </div>
-            <dui-splitter position="right" (modelChange)="sidebarWidth = $event; sidebarMoved()"></dui-splitter>
+          </div>
+          @if (sidebarVisible()) {
+            <dui-splitter position="right" [element]="sidebar" property="width" [(size)]="sidebarWidth"></dui-splitter>
+          }
         </div>
+      }
     `,
     host: {
-        '[class.transparent]': 'transparent !== false',
+        '[class.transparent]': 'transparent()',
     },
     styleUrls: ['./window-content.component.scss'],
+    imports: [
+        NgTemplateOutlet,
+        SplitterComponent,
+    ],
 })
-export class WindowContentComponent implements OnChanges, AfterViewInit {
-    @Input() transparent: boolean | '' = false;
+export class WindowContentComponent {
+    transparent = input(false, { transform: booleanAttribute });
 
-    @Input() sidebarVisible: boolean = true;
+    sidebarVisible = input<boolean>(true);
 
-    @Input() class: string = '';
+    class = input<string>('');
 
-    @Input() sidebarWidth = 250;
-    @Input() sidebarMaxWidth = 550;
-    @Input() sidebarMinWidth = 100;
+    sidebarWidth = model(250);
+    sidebarMaxWidth = input(550);
+    sidebarMinWidth = input(100);
 
-    @Output() sidebarWidthChange = new EventEmitter<number>();
+    toolbar = signal<WinSidebar | undefined>(undefined);
 
-    toolbar?: WinSidebar;
+    sidebar = viewChild('sidebar', { read: ElementRef });
+    sidebarContainer = viewChild('sidebarContainer', { read: ElementRef });
+    content = viewChild('content', { read: ElementRef });
 
-    @ViewChild('sidebar', { static: false }) public sidebar?: ElementRef<HTMLElement>;
-    @ViewChild('sidebarContainer', { static: false }) public sidebarContainer?: ElementRef<HTMLElement>;
-    @ViewChild('content', { static: true }) public content?: ElementRef<HTMLElement>;
-
-    withAnimation: boolean = false;
-    public readonly sidebarVisibleChanged = new Subject();
+    withAnimation = signal(false);
 
     constructor(
         private windowState: WindowState,
-        public cd: ChangeDetectorRef,
     ) {
+        effect(() => {
+            const normalized = clamp(this.sidebarWidth(), this.sidebarMinWidth(), this.sidebarMaxWidth());
+            this.sidebarWidth.set(normalized);
+        });
+
+        let last = this.sidebarVisible();
+        effect(() => {
+            if (this.sidebar() && this.sidebarContainer()) {
+                if (last === this.sidebarVisible()) return;
+                last = this.sidebarVisible();
+                this.handleSidebarVisibility(true);
+            }
+        });
     }
 
-    getSidebarWidth(): number {
-        return Math.min(this.sidebarMaxWidth, Math.max(this.sidebarMinWidth, this.sidebarWidth));
-    }
-
-    transitionEnded() {
-        if (this.withAnimation) {
-            this.withAnimation = false;
+    protected transitionEnded() {
+        if (this.withAnimation()) {
+            this.withAnimation.set(false);
             triggerResize();
-            this.cd.detectChanges();
         }
     }
 
     unregisterSidebar(sidebar: WinSidebar) {
-        if (this.toolbar === sidebar) {
-            this.toolbar = undefined;
-            setTimeout(() => this.sidebarMoved(), 0);
-        }
+        if (this.toolbar() === sidebar) this.toolbar.set(undefined);
     }
 
     registerSidebar(sidebar: WinSidebar) {
-        this.toolbar = sidebar;
-        setTimeout(() => this.sidebarMoved(), 0);
-    }
-
-    sidebarMoved() {
-        if (this.windowState.buttonGroupAlignedToSidebar) {
-            this.windowState.buttonGroupAlignedToSidebar.sidebarMoved();
-        }
-        this.sidebarWidthChange.next(this.sidebarWidth);
-        triggerResize();
-        this.cd.detectChanges();
-    }
-
-    ngOnChanges(changes: SimpleChanges): void {
-        if (this.sidebar && this.sidebarContainer) {
-            if (changes.sidebarVisible) {
-                this.handleSidebarVisibility(true);
-                this.sidebarVisibleChanged.next(this.sidebarVisible);
-            }
-        }
-    }
-
-    ngAfterViewInit(): void {
-        this.handleSidebarVisibility();
+        this.toolbar.set(sidebar);
     }
 
     protected handleSidebarVisibility(withAnimation = false) {
-        if (withAnimation && this.windowState.buttonGroupAlignedToSidebar) {
-            this.withAnimation = true;
-            this.windowState.buttonGroupAlignedToSidebar.activateOneTimeAnimation();
-            this.windowState.buttonGroupAlignedToSidebar.sidebarMoved();
+        if (withAnimation && this.windowState.buttonGroupAlignedToSidebar()) {
+            this.withAnimation.set(true);
+            this.windowState.buttonGroupAlignedToSidebar()?.activateOneTimeAnimation();
         }
-
-        // if (this.content) {
-        //     if (this.sidebarVisible) {
-        //         this.content.nativeElement.style.marginLeft = '0px';
-        //     } else {
-        //         this.content.nativeElement.style.marginLeft = (-this.sidebarWidth) + 'px';
-        //     }
-        // }
     }
 
-    public isSidebarVisible(): boolean {
-        return undefined !== this.sidebar && this.sidebarVisible;
+    isSidebarVisible(): boolean {
+        return undefined !== this.sidebar() && this.sidebarVisible();
     }
 }

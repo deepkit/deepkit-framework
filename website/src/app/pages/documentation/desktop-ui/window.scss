@@ -1,0 +1,16 @@
+.window-frame {
+  background-color: #000;
+  background-image: url(/assets/desktop-ui/bg.png);
+  background-repeat: no-repeat;
+  background-position: center center;
+  padding: 50px;
+  height: 250px;
+}
+
+dui-window {
+  box-shadow: 0 15px 22px 0 rgb(0 0 0 / 21%);
+  border-radius: 4px;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+  background: var(--dui-window-content-bg-trans) !important;
+}

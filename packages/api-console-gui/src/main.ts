@@ -1,8 +1,19 @@
-import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
+import { bootstrapApplication } from '@angular/platform-browser';
+import { provideRouter, withHashLocation } from '@angular/router';
+import { provideMarkdown } from 'ngx-markdown';
+import { AppComponent } from './app/app.component';
+import { routes } from './app/routes';
+import { provideZonelessChangeDetection } from '@angular/core';
+import { provideRpcWebSocketClient } from '@deepkit/rpc';
+import { provideApiConsoleRegistry } from './app/provider';
 
-import { AppModule } from './app/app.module';
-
-platformBrowserDynamic().bootstrapModule(AppModule, {
-  ngZone: 'noop'
+bootstrapApplication(AppComponent, {
+    providers: [
+        provideApiConsoleRegistry(),
+        provideZonelessChangeDetection(),
+        provideRouter(routes, withHashLocation()),
+        provideMarkdown(),
+        provideRpcWebSocketClient(undefined, { 4200: 8080 }),
+    ],
 })
-  .catch(err => console.error(err));
+    .catch(err => console.error(err));

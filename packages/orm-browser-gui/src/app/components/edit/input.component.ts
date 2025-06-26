@@ -1,8 +1,8 @@
-import { Component, ComponentFactoryResolver, ComponentRef, EventEmitter, Input, OnChanges, OnDestroy, Optional, Output, SimpleChanges, ViewContainerRef } from '@angular/core';
+import { Component, ComponentRef, EventEmitter, inject, Input, OnChanges, OnDestroy, Optional, Output, SimpleChanges, ViewContainerRef } from '@angular/core';
 import { TableComponent, unsubscribe } from '@deepkit/desktop-ui';
 import { Type } from '@deepkit/type';
 import { Subscription } from 'rxjs';
-import { inputRegistry } from '../../registry';
+import { ComponentRegistry } from '../../registry';
 import { isProperty } from '../../utils';
 
 @Component({
@@ -13,7 +13,6 @@ import { isProperty } from '../../utils';
             display: none;
         }
     `],
-    standalone: false
 })
 export class InputEditingComponent implements OnDestroy, OnChanges {
     @Input() model: any;
@@ -34,9 +33,10 @@ export class InputEditingComponent implements OnDestroy, OnChanges {
     @unsubscribe()
     protected subChange?: Subscription;
 
+    registry = inject(ComponentRegistry);
+
     constructor(
         private containerRef: ViewContainerRef,
-        private resolver: ComponentFactoryResolver,
         @Optional() private table?: TableComponent<any>,
     ) {
     }
@@ -58,13 +58,12 @@ export class InputEditingComponent implements OnDestroy, OnChanges {
     protected link() {
         this.unlink();
 
-        const component = inputRegistry.get(this.type);
+        const component = this.registry.inputRegistry.get(this.type);
         if (!component) {
             return;
         }
 
-        const componentFactory = this.resolver.resolveComponentFactory(component);
-        this.componentRef = this.containerRef.createComponent(componentFactory);
+        this.componentRef = this.containerRef.createComponent(component);
         this.componentRef.instance.model = this.model;
         this.componentRef.instance.modelChange = this.modelChange;
         this.componentRef.instance.type = this.type;
@@ -84,16 +83,17 @@ export class InputEditingComponent implements OnDestroy, OnChanges {
 
                 if (event.key.toLowerCase() !== 'tab') return;
                 event.preventDefault();
+                console.log('input keydown', event);
                 const currentColumn = this.row.$__activeColumn;
-                const currentIndex = this.table.sortedColumnDefs.findIndex(v => v.name === currentColumn);
+                const currentIndex = this.table.sortedColumns().findIndex(v => v.name() === currentColumn);
                 if (currentIndex === -1) return;
 
                 if (event.shiftKey) {
-                    const next = this.table.sortedColumnDefs[currentIndex - 1];
-                    if (next) this.row.$__activeColumn = next.name;
+                    const next = this.table.sortedColumns()[currentIndex - 1];
+                    if (next) this.row.$__activeColumn = next.name();
                 } else {
-                    const next = this.table.sortedColumnDefs[currentIndex + 1];
-                    if (next) this.row.$__activeColumn = next.name;
+                    const next = this.table.sortedColumns()[currentIndex + 1];
+                    if (next) this.row.$__activeColumn = next.name();
                 }
             });
         }

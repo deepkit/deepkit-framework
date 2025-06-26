@@ -2,8 +2,7 @@ import { html } from '@deepkit/template';
 
 export class Website {
     constructor(
-        protected props: { title?: string },
-        protected children: string,
+        protected props: { children: any[], title?: string },
     ) {
     }
 
@@ -19,7 +18,7 @@ export class Website {
             <body>
             <div class="frame">
                 <div class="content">
-                    {this.children}
+                    {this.props.children}
                 </div>
             </div>
             </body>

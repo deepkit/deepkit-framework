@@ -10,7 +10,6 @@
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
     "target": "es2020",
-
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",

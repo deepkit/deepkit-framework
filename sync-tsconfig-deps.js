@@ -3,6 +3,8 @@ const fs = require('fs');
 const packages = fs.readdirSync('packages/');
 
 const packageConfigs = {};
+const tsConfigs = [];
+const tsConfigESMs = [];
 
 for (const name of packages) {
     const path = `packages/${name}`;
@@ -14,29 +16,31 @@ for (const name of packages) {
 
     if (!fs.existsSync(packageJsonPath)) throw new Error(`package ${name} has no package.json`);
     if (!fs.existsSync(tsConfigPath)) continue;
+    tsConfigs.push(name);
 
     packageConfigs[name] = {
         path: path,
+    };
+
+    try {
+        packageConfigs[name].package = JSON.parse(fs.readFileSync(packageJsonPath, { encoding: 'utf8' }));
+    } catch (error) {
+        throw new Error(`Could not read ${packageJsonPath}: ${error}`);
     }
 
     try {
-        packageConfigs[name].package = JSON.parse(fs.readFileSync(packageJsonPath, {encoding: 'utf8'}));
+        packageConfigs[name].tsConfig = JSON.parse(fs.readFileSync(tsConfigPath, { encoding: 'utf8' }));
     } catch (error) {
-        throw new Error(`Could not read ${packageJsonPath}: ${error}`)
-    }
-
-    try {
-        packageConfigs[name].tsConfig = JSON.parse(fs.readFileSync(tsConfigPath, {encoding: 'utf8'}));
-    } catch (error) {
-        throw new Error(`Could not read ${tsConfigPath}: ${error}`)
+        throw new Error(`Could not read ${tsConfigPath}: ${error}`);
     }
 
     try {
         if (fs.existsSync(tsConfigESMPath)) {
-            packageConfigs[name].tsConfigESM = JSON.parse(fs.readFileSync(tsConfigESMPath, {encoding: 'utf8'}));
+            packageConfigs[name].tsConfigESM = JSON.parse(fs.readFileSync(tsConfigESMPath, { encoding: 'utf8' }));
+            tsConfigESMs.push(name);
         }
     } catch (error) {
-        throw new Error(`Could not read ${tsConfigESMPath}: ${error}`)
+        throw new Error(`Could not read ${tsConfigESMPath}: ${error}`);
     }
 }
 
@@ -44,21 +48,20 @@ for (const [name, config] of Object.entries(packageConfigs)) {
     const deps = Array.from(new Set([
         ...Object.keys(config.package.dependencies || {}),
         ...Object.keys(config.package.devDependencies || {}),
-        ...Object.keys(config.package.peerDependencies || {})
+        ...Object.keys(config.package.peerDependencies || {}),
     ])).filter(v => {
         const [, depName] = v.split('/');
-        return v.startsWith('@deepkit/') && !fs.existsSync(`packages/${depName}/angular.json`)
+        return v.startsWith('@deepkit/') && !fs.existsSync(`packages/${depName}/angular.json`);
     });
 
     const path = `packages/${name}`;
     const tsConfigPath = `${path}/tsconfig.json`;
     const tsConfigESMPath = `${path}/tsconfig.esm.json`;
 
-    let tsConfigChanged = false;
     config.tsConfig.references = [];
     for (const dep of deps) {
         const [, depName] = dep.split('/');
-        config.tsConfig.references.push({path: `../${depName}/tsconfig.json`});
+        config.tsConfig.references.push({ path: `../${depName}/tsconfig.json` });
     }
     fs.writeFileSync(tsConfigPath, JSON.stringify(config.tsConfig, undefined, 2));
 
@@ -70,12 +73,18 @@ for (const [name, config] of Object.entries(packageConfigs)) {
             const [, depName] = dep.split('/');
             const requiredReference = fs.existsSync(`packages/${depName}/tsconfig.esm.json`)
                 ? `../${depName}/tsconfig.esm.json` : `../${depName}/tsconfig.json`;
-            config.tsConfigESM.references.push({path: requiredReference});
+            config.tsConfigESM.references.push({ path: requiredReference });
         }
         fs.writeFileSync(tsConfigESMPath, JSON.stringify(config.tsConfigESM, undefined, 2));
     }
 }
 
+const rootTsConfig = JSON.parse(fs.readFileSync('tsconfig.json', { encoding: 'utf8' }));
+const rootTsConfigESM = JSON.parse(fs.readFileSync('tsconfig.esm.json', { encoding: 'utf8' }));
+rootTsConfig.references = tsConfigs.map(name => ({ path: `./packages/${name}/tsconfig.json` }));
+rootTsConfigESM.references = tsConfigESMs.map(name => ({ path: `./packages/${name}/tsconfig.esm.json` }));
+fs.writeFileSync('tsconfig.json', JSON.stringify(rootTsConfig, undefined, 2));
+fs.writeFileSync('tsconfig.esm.json', JSON.stringify(rootTsConfigESM, undefined, 2));
 
 //
 // const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, { encoding: 'utf8' }));

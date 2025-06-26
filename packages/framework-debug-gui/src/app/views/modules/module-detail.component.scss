@@ -10,7 +10,7 @@
 .name, .config {
     margin: 5px 0;
     font-size: 12px;
-    color: var(--text-light);
+    color: var(--dui-text-light);
 }
 
 :host-context(.dui-theme-light) .module {
@@ -24,7 +24,7 @@
     font-size: 12px;
 
     .description {
-        color: var(--text-light);
+        color: var(--dui-text-light);
     }
 
     .imported-services-grid {
@@ -36,7 +36,7 @@
             white-space: nowrap;
 
             .module-name {
-                color: var(--text-light);
+                color: var(--dui-text-light);
             }
 
             &:hover {
@@ -57,7 +57,7 @@
         top: 0;
         left: 24px;
         height: 100%;
-        border-right: 1px solid var(--line-color-light);
+        border-right: 1px solid var(--dui-line-color-light);
     }
 
     .last {
@@ -77,7 +77,7 @@
         top: 13px;
         left: -30px;
         width: 30px;
-        border-top: 1px solid var(--line-color-light);
+        border-top: 1px solid var(--dui-line-color-light);
     }
 
     .line-left-last {
@@ -97,7 +97,7 @@
 
     .section-title {
         font-size: 12px;
-        color: var(--text-light);
+        color: var(--dui-text-light);
         margin-bottom: 3px;
     }
 
@@ -110,6 +110,6 @@
         text-align: center;
         padding: 15px;
         font-size: 12px;
-        color: var(--text-light);
+        color: var(--dui-text-light);
     }
 }

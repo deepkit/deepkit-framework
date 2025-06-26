@@ -1,16 +1,19 @@
 import { AfterViewInit, Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
-import { SelectboxComponent, unsubscribe } from '@deepkit/desktop-ui';
+import { OptionDirective, SelectBoxComponent, unsubscribe } from '@deepkit/desktop-ui';
 import { Subscription } from 'rxjs';
 import { TypeEnum } from '@deepkit/type';
+import { FormsModule } from '@angular/forms';
 
 @Component({
     template: `
-        <dui-select #select [(ngModel)]="model" (ngModelChange)="modelChange.emit(this.model); done.emit()"
-                    textured style="width: 100%">
-            <dui-option [value]="kv.value" *ngFor="let kv of keyValues">{{kv.label}}</dui-option>
-        </dui-select>
+      <dui-select #select [(ngModel)]="model" (ngModelChange)="modelChange.emit(this.model); done.emit()"
+                  textured style="width: 100%">
+        @for (kv of keyValues; track kv) {
+          <dui-option [value]="kv.value">{{ kv.label }}</dui-option>
+        }
+      </dui-select>
     `,
-    standalone: false
+    imports: [SelectBoxComponent, FormsModule, OptionDirective],
 })
 export class EnumInputComponent implements OnChanges, OnInit, AfterViewInit, OnDestroy {
     @Input() model: any;
@@ -23,7 +26,7 @@ export class EnumInputComponent implements OnChanges, OnInit, AfterViewInit, OnD
     @Output() done = new EventEmitter<void>();
     @Output() keyDown = new EventEmitter<KeyboardEvent>();
 
-    @ViewChild('select') select?: SelectboxComponent<any>;
+    @ViewChild('select') select?: SelectBoxComponent<any>;
 
     @unsubscribe()
     protected dropdownSub?: Subscription;
@@ -41,9 +44,6 @@ export class EnumInputComponent implements OnChanges, OnInit, AfterViewInit, OnD
 
     ngAfterViewInit() {
         this.select?.open();
-        this.dropdownSub = this.select?.dropdown.hidden.subscribe(() => {
-            this.done.emit();
-        });
     }
 
     load() {

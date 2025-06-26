@@ -1,7 +1,7 @@
-import { Component, Input } from "@angular/core";
-import { CommunityQuestion } from "@app/common/models";
-import { ContentRenderComponent } from "@app/app/components/content-render.component";
-import { NgForOf, NgIf } from "@angular/common";
+import { Component, Input } from '@angular/core';
+import { CommunityQuestion } from '@app/common/models';
+import { ContentRenderComponent } from '@app/app/components/content-render.component';
+
 
 @Component({
     selector: 'app-community-question',
@@ -40,32 +40,40 @@ import { NgForOf, NgIf } from "@angular/common";
 
     `],
     imports: [
-        ContentRenderComponent,
-        NgIf,
-        NgForOf
-    ],
+    ContentRenderComponent
+],
     template: `
         <div class="message">
-            <div class="image" *ngIf="question.userAvatar">
-                <img [src]="question.userAvatar" class="avatar" alt="User Avatar"/>
+          @if (question.userAvatar) {
+            <div class="image">
+              <img [src]="question.userAvatar" class="avatar" alt="User Avatar"/>
             </div>
-            <div class="content">
-                <div class="user" *ngIf="question.user">&#64;{{question.user}}</div>
-                <app-render-content [content]="question.content"></app-render-content>
-            </div>
+          }
+          <div class="content">
+            @if (question.user) {
+              <div class="user">&#64;{{question.user}}</div>
+            }
+            <app-render-content [content]="question.content"></app-render-content>
+          </div>
         </div>
-
-        <div class="message" *ngFor="let m of question.messages">
-            <div class="image" *ngIf="m.userAvatar">
+        
+        @for (m of question.messages; track m) {
+          <div class="message">
+            @if (m.userAvatar) {
+              <div class="image">
                 <img [src]="m.userAvatar" class="avatar" alt="User Avatar"/>
-            </div>
+              </div>
+            }
             <div class="content" id="answer-{{m.id}}">
-                <div class="user" *ngIf="m.user">&#64;{{m.user}}</div>
-                <app-render-content [content]="m.content"></app-render-content>
+              @if (m.user) {
+                <div class="user">&#64;{{m.user}}</div>
+              }
+              <app-render-content [content]="m.content"></app-render-content>
             </div>
-        </div>
-
-    `
+          </div>
+        }
+        
+        `
 })
 export class CommunityQuestionMessagesComponent {
     @Input() question!: CommunityQuestion;

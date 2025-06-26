@@ -8,48 +8,43 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ChangeDetectorRef,
-    Component,
-    ContentChild,
-    EventEmitter,
-    HostListener,
-    Input,
-    OnChanges,
-    Output,
-    SimpleChanges,
-    SkipSelf,
-} from '@angular/core';
-import { FormGroup, NgControl } from '@angular/forms';
-import { detectChangesNextFrame } from '../app';
+import { booleanAttribute, ChangeDetectorRef, Component, ContentChild, HostListener, input, output, signal, SkipSelf } from '@angular/core';
+import { FormGroup, FormsModule, NgControl, ReactiveFormsModule } from '@angular/forms';
+import { KeyValuePipe } from '@angular/common';
 
 @Component({
     selector: 'dui-form-row',
-    standalone: false,
     template: `
-        <div class="label" [style.width.px]="labelWidth">{{label}}<div class="description" *ngIf="description">{{description}}</div></div>
-        <div class="field">
-            <ng-content></ng-content>
+      <div class="label" [style.width.px]="labelWidth()">{{ label() }}@if (description()) {
+        <div class="description">{{ description() }}</div>
+      }</div>
+      <div class="field">
+        <ng-content></ng-content>
 
-            <div class="error" *ngIf="ngControl && ngControl.errors && ngControl.touched">
-                <div *ngFor="let kv of ngControl.errors|keyvalue">
-                    {{isString(kv.value) ? '' : kv.key}}{{isString(kv.value) ? kv.value : ''}}
-                </div>
-            </div>
-        </div>`,
+        @if (ngControl && ngControl.errors && ngControl.touched) {
+          <div class="error">
+            @for (kv of ngControl.errors|keyvalue; track kv) {
+              <div>
+                {{ isString(kv.value) ? '' : kv.key }}{{ isString(kv.value) ? kv.value : '' }}
+              </div>
+            }
+          </div>
+        }
+      </div>`,
     host: {
-        '[class.left-aligned]': 'left !== false'
+        '[class.left-aligned]': 'left()',
     },
-    styleUrls: ['./form-row.component.scss']
+    styleUrls: ['./form-row.component.scss'],
+    imports: [KeyValuePipe],
 })
 export class FormRowComponent {
-    @Input() label: string = '';
-    @Input() description: string = '';
+    label = input<string>('');
+    description = input<string>('');
 
-    @Input() labelWidth?: number;
-    @Input() left: boolean | '' = false;
+    labelWidth = input<number>();
+    left = input(false, { transform: booleanAttribute });
 
-    @ContentChild(NgControl, {static: false}) ngControl?: NgControl;
+    @ContentChild(NgControl, { static: false }) ngControl?: NgControl;
 
     isString(v: any) {
         return 'string' === typeof v;
@@ -58,29 +53,29 @@ export class FormRowComponent {
 
 @Component({
     selector: 'dui-form',
-    standalone: false,
     template: `
-        <form [formGroup]="formGroup" (submit)="$event.preventDefault();submitForm()">
-            <ng-content></ng-content>
-            <div *ngIf="errorText" class="error">{{errorText}}</div>
-        </form>
+      <form [formGroup]="formGroup()" (submit)="$event.preventDefault();submitForm()">
+        <ng-content></ng-content>
+        @if (errorText(); as text) {
+          <div class="error">{{ text }}</div>
+        }
+      </form>
     `,
-    styleUrls: ['./form.component.scss']
+    styleUrls: ['./form.component.scss'],
+    imports: [FormsModule, ReactiveFormsModule],
 })
-export class FormComponent implements OnChanges {
-    @Input() formGroup: FormGroup = new FormGroup({});
+export class FormComponent {
+    formGroup = input<FormGroup>(new FormGroup({}));
 
-    @Input() disabled: boolean = false;
+    disabled = input<boolean>(false);
 
-    @Input() submit?: () => Promise<any> | any;
+    submit = input<() => Promise<any> | any>();
 
-    @Output() success = new EventEmitter();
-    @Output() error = new EventEmitter();
+    success = output();
+    error = output();
 
-    @Output() disableChange = new EventEmitter();
-
-    public errorText = '';
-    public submitting = false;
+    errorText = signal('');
+    submitting = signal(false);
 
     constructor(
         protected cd: ChangeDetectorRef,
@@ -90,35 +85,30 @@ export class FormComponent implements OnChanges {
 
     @HostListener('keyup', ['$event'])
     onEnter(event: KeyboardEvent) {
-        if (this.submit && event.key.toLowerCase() === 'enter'
+        if (this.submit() && event.key.toLowerCase() === 'enter'
             && event.target && (event.target as HTMLElement).tagName.toLowerCase() === 'input') {
             this.submitForm();
         }
     }
 
-    ngOnChanges(changes: SimpleChanges) {
-        if (changes.disabled) {
-            this.disableChange.emit(this.disabled);
-        }
-    }
-
     get invalid() {
-        return this.formGroup.invalid;
+        return this.formGroup().invalid;
     }
 
     async submitForm() {
-        if (this.disabled) return;
-        if (this.submitting) return;
-        if (this.formGroup.invalid) return;
-        this.errorText = '';
+        if (this.disabled()) return;
+        if (this.submitting()) return;
+        const formGroup = this.formGroup();
+        if (formGroup.invalid) return;
+        this.errorText.set('');
 
-        this.submitting = true;
-        detectChangesNextFrame(this.cd);
+        this.submitting.set(true);
 
         try {
-            if (this.submit) {
+            const submit = this.submit();
+            if (submit) {
                 try {
-                    await this.submit();
+                    await submit();
                     this.success.emit();
                 } catch (error: any) {
                     this.error.emit(error);
@@ -126,7 +116,7 @@ export class FormComponent implements OnChanges {
                     if (error.errors && error.errors[0]) {
                         //we got a validation-like error object
                         for (const item of error.errors) {
-                            const control = this.formGroup.get(item.path);
+                            const control = formGroup.get(item.path);
                             if (control) {
                                 control.setErrors({
                                     ...control.errors,
@@ -135,14 +125,12 @@ export class FormComponent implements OnChanges {
                             }
                         }
                     } else {
-                        this.errorText = error.message || error;
+                        this.errorText.set(error.message || error);
                     }
-                    console.log('form error', error);
                 }
             }
         } finally {
-            this.submitting = false;
-            detectChangesNextFrame(this.cd);
+            this.submitting.set(false);
         }
     }
 }

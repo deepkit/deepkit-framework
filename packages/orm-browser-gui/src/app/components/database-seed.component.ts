@@ -1,47 +1,49 @@
 import { ChangeDetectorRef, Component, Input, OnChanges } from '@angular/core';
 import { DatabaseInfo, EntityPropertySeed, FakerTypes, SeedDatabase } from '@deepkit/orm-browser-api';
-import { trackByIndex, trackBySchema } from '../utils';
+import { trackBySchema } from '../utils';
 import { ControllerClient } from '../client';
 import { BrowserState } from '../browser-state';
-import { DuiDialog } from '@deepkit/desktop-ui';
+import { ButtonComponent, CheckboxComponent, DuiDialog, InputComponent } from '@deepkit/desktop-ui';
 import { FakerTypeDialogComponent } from './dialog/faker-type-dialog.component';
 import { ReflectionClass } from '@deepkit/type';
+import { FormsModule } from '@angular/forms';
+import { DatabaseSeedPropertiesComponent } from './database-seed-properties.component';
 
 @Component({
     selector: 'orm-browser-seed',
     template: `
-        <div class="actions">
-            <dui-button [disabled]="seeding" (click)="seed()">Seed</dui-button>
-        </div>
-        <div class="entities" *ngIf="database && fakerTypes">
-            <div class="entity" *ngFor="let entity of database.getClassSchemas(); trackBy: trackBySchema">
-                <ng-container
-                    *ngIf="state.getSeedSettings(fakerTypes, database.name, entity.getName()) as settings">
-                    <h3>
-                        <dui-checkbox [(ngModel)]="settings.active">{{entity.getClassName()}}</dui-checkbox>
-                    </h3>
-
-                    <ng-container *ngIf="settings.active">
-                        <div class="settings">
-                            <dui-input lightFocus round type="number" [(ngModel)]="settings.amount" placeholder="amount"></dui-input>
-                            <dui-checkbox style="margin-left: 5px;" [(ngModel)]="settings.truncate">Delete all before seeding</dui-checkbox>
-                        </div>
-
-                        <orm-browser-seed-properties [fakerTypes]="fakerTypes" [entity]="entity" [properties]="settings.properties" (changed)="typeChanged(entity)"></orm-browser-seed-properties>
-                    </ng-container>
-                </ng-container>
+      <div class="actions">
+        <dui-button [disabled]="seeding" (click)="seed()">Seed</dui-button>
+      </div>
+      @if (database && fakerTypes) {
+        <div class="entities">
+          @for (entity of database.getClassSchemas(); track trackBySchema($index, entity)) {
+            <div class="entity">
+              @if (state.getSeedSettings(fakerTypes, database.name, entity.getName()); as settings) {
+                <h3>
+                  <dui-checkbox [(ngModel)]="settings.active">{{ entity.getClassName() }}</dui-checkbox>
+                </h3>
+                @if (settings.active) {
+                  <div class="settings">
+                    <dui-input lightFocus round type="number" [(ngModel)]="settings.amount" placeholder="amount"></dui-input>
+                    <dui-checkbox style="margin-left: 5px;" [(ngModel)]="settings.truncate">Delete all before seeding</dui-checkbox>
+                  </div>
+                  <orm-browser-seed-properties [fakerTypes]="fakerTypes" [entity]="entity" [properties]="settings.properties" (changed)="typeChanged(entity)"></orm-browser-seed-properties>
+                }
+              }
             </div>
+          }
         </div>
+      }
     `,
     styleUrls: ['./database-seed.component.scss'],
-    standalone: false
+    imports: [ButtonComponent, CheckboxComponent, FormsModule, InputComponent, DatabaseSeedPropertiesComponent],
 })
 export class DatabaseSeedComponent implements OnChanges {
     @Input() database!: DatabaseInfo;
     fakerTypes?: FakerTypes;
     fakerTypesArray?: ({ name: string, type: string })[];
     trackBySchema = trackBySchema;
-    trackByIndex = trackByIndex;
 
     seeding: boolean = false;
 
@@ -76,7 +78,7 @@ export class DatabaseSeedComponent implements OnChanges {
 
         const { component } = this.duiDialog.open(FakerTypeDialogComponent, {
             fakerTypes: this.fakerTypes,
-            selected: property.faker
+            selected: property.faker,
         });
 
         component.chosen.subscribe((value: string) => {

@@ -8,63 +8,47 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ChangeDetectorRef, Injectable, TemplateRef, ViewContainerRef } from '@angular/core';
+import { Injectable, Signal, signal, TemplateRef, ViewContainerRef } from '@angular/core';
 import { arrayRemoveItem } from '@deepkit/core';
 import { WindowMenuState } from './window-menu';
-import { BehaviorSubject } from 'rxjs';
-import { detectChangesNextFrame } from '../app/utils';
+import { BrowserWindow } from '../../core/utils';
 
-interface WinHeader {
+export interface WinHeader {
     getBottomPosition(): number;
 }
 
-interface Win {
+export interface Win {
     id: number;
-    electronWindow?: any;
+    browserWindow: BrowserWindow;
+
     getClosestNonDialogWindow(): Win | undefined;
-    header?: WinHeader;
+
+    header: Signal<WinHeader | undefined>;
     viewContainerRef: ViewContainerRef;
 }
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class WindowRegistry {
     id = 0;
 
     registry = new Map<Win, {
         state: WindowState,
         menu: WindowMenuState,
-        cd: ChangeDetectorRef,
         viewContainerRef: ViewContainerRef
     }>();
 
     windowHistory: Win[] = [];
     activeWindow?: Win;
 
-    /**
-     * When BrowserWindow of electron is focused.
-     */
-    public focused = new BehaviorSubject(false);
-
-    constructor() {
-        this.focused.subscribe((v) => {
-            for (const win of this.registry.values()) {
-                win.state.focus.next(v);
-            }
-            detectChangesNextFrame();
-        });
+    getAllElectronWindows(): BrowserWindow[] {
+        return [...this.registry.keys()].filter(v => v.browserWindow.isElectron()).map(v => v.browserWindow);
     }
 
-    getAllElectronWindows(): any[] {
-        return [...this.registry.keys()].filter(v => !!v.electronWindow).map(v => v.electronWindow);
-    }
-
-    register(win: Win, cd: ChangeDetectorRef, state: WindowState, menu: WindowMenuState, viewContainerRef: ViewContainerRef) {
+    register(win: Win, state: WindowState, menu: WindowMenuState, viewContainerRef: ViewContainerRef) {
         this.id++;
         win.id = this.id;
 
-        this.registry.set(win, {
-            state, menu, cd, viewContainerRef,
-        });
+        this.registry.set(win, { state, menu, viewContainerRef });
     }
 
     /**
@@ -97,76 +81,64 @@ export class WindowRegistry {
         arrayRemoveItem(this.windowHistory, win);
         this.windowHistory.push(win);
 
-        reg.state.focus.next(true);
+        reg.state.focus.set(true);
         reg.menu.focus();
-        detectChangesNextFrame();
     }
 
     blur(win: Win) {
         const reg = this.registry.get(win);
         if (reg) {
-            reg.state.focus.next(false);
+            reg.state.focus.set(false);
         }
         if (this.activeWindow === win) {
-            delete this.activeWindow;
+            this.activeWindow = undefined;
         }
-
-        detectChangesNextFrame();
     }
 
     unregister(win: Win) {
         const reg = this.registry.get(win);
         if (reg) {
-            reg.state.focus.next(false);
+            reg.state.focus.set(false);
         }
 
         this.registry.delete(win);
         arrayRemoveItem(this.windowHistory, win);
+        if (this.activeWindow === win) {
+            this.activeWindow = undefined;
+        }
 
         if (this.windowHistory.length) {
             this.focus(this.windowHistory[this.windowHistory.length - 1]);
         }
-        detectChangesNextFrame();
     }
 }
 
-interface AlignedButtonGroup {
-    sidebarMoved: () => void;
+export interface AlignedButtonGroup {
     activateOneTimeAnimation: () => void;
 }
 
 @Injectable()
 export class WindowState {
-    public buttonGroupAlignedToSidebar?: AlignedButtonGroup;
-    public focus = new BehaviorSubject<boolean>(false);
-    public disableInputs = new BehaviorSubject<boolean>(false);
+    public buttonGroupAlignedToSidebar = signal<AlignedButtonGroup | undefined>(undefined);
+    public focus = signal(false);
+    public disableInputs = signal(false);
 
-    public toolbars: { [name: string]: TemplateRef<any>[] } = {};
-    public toolbarContainers: { [name: string]: { toolbarsUpdated: () => void } } = {};
-
-    closable = true;
-    maximizable = true;
-    minimizable = true;
-
-    constructor() {
-    }
+    public toolbars = signal<{ [name: string]: TemplateRef<any>[] }>({});
 
     public addToolbarContainer(forName: string, template: TemplateRef<any>) {
-        if (!this.toolbars[forName]) {
-            this.toolbars[forName] = [];
+        let toolbars = this.toolbars()[forName];
+        if (!toolbars) {
+            toolbars = [];
         }
 
-        this.toolbars[forName].push(template);
-
-        if (this.toolbarContainers[forName]) {
-            this.toolbarContainers[forName].toolbarsUpdated();
-        }
+        toolbars.push(template);
+        this.toolbars.update(v => ({ ...v, [forName]: toolbars.slice() }));
     }
 
     public removeToolbarContainer(forName: string, template: TemplateRef<any>) {
-        arrayRemoveItem(this.toolbars[forName], template);
-        if (this.toolbarContainers[forName]) {
-            this.toolbarContainers[forName].toolbarsUpdated();
-        }
+        const toolbars = this.toolbars()[forName];
+        if (!toolbars) return;
+        arrayRemoveItem(toolbars, template);
+        this.toolbars.update(v => ({ ...v, [forName]: toolbars.slice() }));
     }
 }

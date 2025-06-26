@@ -10,15 +10,16 @@
 
 import { ChangeDetectorRef, OnDestroy, Pipe, PipeTransform } from '@angular/core';
 import { Observable, Subscription } from 'rxjs';
-import { detectChangesNextFrame } from './utils';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { humanBytes } from '@deepkit/core';
 
 /**
  * Almost the same as |async pipe, but renders directly (detectChanges() instead of marking it only(markForCheck())
  * on ChangeDetectorRef.
+ *
+ * @deprecated Do not use this pipe anymore, it is not necessary. Use the async pipe instead.
  */
-@Pipe({ name: 'asyncRender', standalone: false, pure: false })
+@Pipe({ name: 'asyncRender', pure: false })
 export class AsyncRenderPipe implements OnDestroy, PipeTransform {
     protected subscription?: Subscription;
     protected lastValue?: any;
@@ -41,12 +42,12 @@ export class AsyncRenderPipe implements OnDestroy, PipeTransform {
             if (value instanceof Promise) {
                 value.then((v) => {
                     this.lastReturnedValue = v;
-                    detectChangesNextFrame(this.cd);
+                    this.cd.detectChanges();
                 });
             } else if (value) {
                 this.subscription = value.subscribe((next) => {
                     this.lastReturnedValue = next;
-                    detectChangesNextFrame(this.cd);
+                    this.cd.detectChanges();
                 });
             }
         }
@@ -55,7 +56,7 @@ export class AsyncRenderPipe implements OnDestroy, PipeTransform {
     }
 }
 
-@Pipe({name: 'objectURL', standalone: false})
+@Pipe({ name: 'objectURL' })
 export class ObjectURLPipe implements PipeTransform, OnDestroy {
     protected lastUrl?: string;
 
@@ -69,13 +70,13 @@ export class ObjectURLPipe implements PipeTransform, OnDestroy {
     transform(buffer?: ArrayBuffer | ArrayBufferView, mimeType?: string): SafeUrl | undefined {
         if (buffer) {
             if (this.lastUrl) URL.revokeObjectURL(this.lastUrl);
-            this.lastUrl = URL.createObjectURL(new Blob([buffer], {type: mimeType}));
+            this.lastUrl = URL.createObjectURL(new Blob([buffer], { type: mimeType }));
             return this.sanitizer.bypassSecurityTrustResourceUrl(this.lastUrl);
         }
     }
 }
 
-@Pipe({name: 'fileSize', standalone: false})
+@Pipe({ name: 'fileSize' })
 export class HumanFileSizePipe implements PipeTransform {
     transform(bytes: number, si: boolean = false): string {
         return humanBytes(bytes, si);

@@ -1,8 +1,8 @@
 
 :host {
-    padding: 8px;
     display: flex;
     white-space: nowrap;
+    gap: 6px;
     word-break: keep-all;
 
     &.align-center {
@@ -12,8 +12,4 @@
     &.align-right {
         justify-content: flex-end;
     }
-}
-
-:host ::ng-deep > *:not(dui-button-group) {
-    margin-right: 6px;
 }

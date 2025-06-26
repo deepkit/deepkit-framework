@@ -2,24 +2,29 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { BrowserState } from '../browser-state';
 import { ControllerClient } from '../client';
 import { trackByDatabase, trackBySchema } from '../utils';
-import { detectChangesNextFrame } from '@deepkit/desktop-ui';
+import { RouterLink } from '@angular/router';
+import { ListItemComponent } from '@deepkit/desktop-ui';
 
 @Component({
     selector: 'orm-browser-list',
     template: `
-        <ng-container *ngFor="let db of state.databases; trackBy: trackByDatabase; let i = index">
-            <dui-list-item [routerLink]="['/database', encodeURIComponent(db.name)]" [routerLinkExact]="true">{{db.name}} ({{db.adapter}})</dui-list-item>
-            <dui-list-item [routerLink]="['/database', encodeURIComponent(db.name), encodeURIComponent(entity.getName())]"
-                           *ngFor="let entity of db.getClassSchemas(); trackBy: trackBySchema">
-                <div class="item">
-                    <div>{{entity.getClassName()}}</div>
-                    <div class="add" *ngIf="state.hasAddedItems(db.name, entity.getName()) as items">
-                        ({{state.getAddedItems(db.name, entity.getName()).length}})
-                    </div>
-                    <div class="count">{{counts[state.getStoreKey(db.name, entity.getName())] || 0}}</div>
+      @for (db of state.databases; track trackByDatabase(i, db); let i = $index) {
+        <dui-list-item [routerLink]="['/database', encodeURIComponent(db.name)]" [routerLinkActiveOptions]="{exact: true}">{{ db.name }} ({{ db.adapter }})</dui-list-item>
+        @for (entity of db.getClassSchemas(); track trackBySchema($index, entity)) {
+          <dui-list-item [routerLink]="['/database', encodeURIComponent(db.name), encodeURIComponent(entity.getName())]"
+          >
+            <div class="item">
+              <div>{{ entity.getClassName() }}</div>
+              @if (state.hasAddedItems(db.name, entity.getName()); as items) {
+                <div class="add">
+                  ({{ state.getAddedItems(db.name, entity.getName()).length }})
                 </div>
-            </dui-list-item>
-        </ng-container>
+              }
+              <div class="count">{{ counts[state.getStoreKey(db.name, entity.getName())] || 0 }}</div>
+            </div>
+          </dui-list-item>
+        }
+      }
     `,
     styles: [`
         .item {
@@ -29,15 +34,15 @@ import { detectChangesNextFrame } from '@deepkit/desktop-ui';
 
         .item .add {
             margin-left: 5px;
-            color: var(--color-orange);
+            color: var(--dui-color-orange);
         }
 
         .item .count {
             margin-left: auto;
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
     `],
-    standalone: false
+    imports: [ListItemComponent, RouterLink],
 })
 export class DatabaseBrowserListComponent implements OnInit {
     encodeURIComponent = encodeURIComponent;
@@ -54,8 +59,6 @@ export class DatabaseBrowserListComponent implements OnInit {
 
     async ngOnInit() {
         this.state.databases = await this.controllerClient.getDatabases();
-        detectChangesNextFrame(this.cd);
-
         this.state.onDataChange.subscribe(this.loadCounts.bind(this));
         await this.loadCounts();
     }

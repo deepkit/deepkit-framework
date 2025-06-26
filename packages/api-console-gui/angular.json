@@ -2,6 +2,9 @@
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
   "newProjectRoot": "projects",
+  "cli": {
+    "packageManager": "yarn"
+  },
   "projects": {
     "api-console-gui": {
       "projectType": "application",
@@ -30,10 +33,6 @@
               "src/assets"
             ],
             "styles": [
-              "../desktop-ui/src/scss/reset.scss",
-              "../desktop-ui/src/scss/all.scss",
-              "../desktop-ui/src/scss/icon.scss",
-              "../ui-library/src/styles/style-code.scss",
               "src/styles.scss"
             ],
             "scripts": []
@@ -95,8 +94,5 @@
         }
       }
     }
-  },
-  "cli": {
-    "analytics": "3aa0b572-3d14-4946-b6c9-04eafb95c2cf"
   }
 }

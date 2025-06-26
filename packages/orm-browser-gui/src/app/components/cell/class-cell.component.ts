@@ -3,10 +3,7 @@ import { isReferenceType, ReflectionClass, TypeClass, TypeObjectLiteral } from '
 import { objToString } from './utils';
 import { BrowserState } from '../../browser-state';
 
-@Component({
-    template: `{{label}}`,
-    standalone: false
-})
+@Component({ template: `{{ label }}` })
 export class ClassCellComponent implements OnChanges, OnInit {
     @Input() model: any;
     @Input() type!: TypeClass | TypeObjectLiteral;

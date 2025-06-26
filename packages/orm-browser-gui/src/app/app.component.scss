@@ -11,7 +11,7 @@
 .app-label {
     margin: 0 8px;
     display: inline-block;
-    color: var(--text-grey);
+    color: var(--dui-text-grey);
 }
 
 .top-right {
@@ -27,11 +27,11 @@
         text-transform: uppercase;
 
         .connected {
-            color: var(--color-green);
+            color: var(--dui-color-green);
         }
 
         .disconnected {
-            color: var(--color-red);
+            color: var(--dui-color-red);
         }
     }
 }

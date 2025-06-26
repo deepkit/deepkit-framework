@@ -2,115 +2,130 @@
   "files": [],
   "references": [
     {
-      "path": "packages/angular-ssr/tsconfig.esm.json"
+      "path": "./packages/angular-ssr/tsconfig.esm.json"
     },
     {
-      "path": "packages/core/tsconfig.esm.json"
+      "path": "./packages/api-console-api/tsconfig.esm.json"
     },
     {
-      "path": "packages/core-rxjs/tsconfig.esm.json"
+      "path": "./packages/api-console-module/tsconfig.esm.json"
     },
     {
-      "path": "packages/type/tsconfig.esm.json"
+      "path": "./packages/app/tsconfig.esm.json"
     },
     {
-      "path": "packages/type-compiler/tsconfig.esm.json"
+      "path": "./packages/bench/tsconfig.esm.json"
     },
     {
-      "path": "packages/bson/tsconfig.esm.json"
+      "path": "./packages/broker/tsconfig.esm.json"
     },
     {
-      "path": "packages/api-console-api/tsconfig.esm.json"
+      "path": "./packages/bson/tsconfig.esm.json"
     },
     {
-      "path": "packages/api-console-module/tsconfig.esm.json"
+      "path": "./packages/bun/tsconfig.esm.json"
     },
     {
-      "path": "packages/app/tsconfig.esm.json"
+      "path": "./packages/core/tsconfig.esm.json"
     },
     {
-      "path": "packages/create-app/tsconfig.esm.json"
+      "path": "./packages/core-rxjs/tsconfig.esm.json"
     },
     {
-      "path": "packages/event/tsconfig.esm.json"
+      "path": "./packages/create-app/tsconfig.esm.json"
     },
     {
-      "path": "packages/workflow/tsconfig.esm.json"
+      "path": "./packages/event/tsconfig.esm.json"
     },
     {
-      "path": "packages/http/tsconfig.esm.json"
+      "path": "./packages/filesystem/tsconfig.esm.json"
     },
     {
-      "path": "packages/template/tsconfig.esm.json"
+      "path": "./packages/filesystem-aws-s3/tsconfig.esm.json"
     },
     {
-      "path": "packages/skeleton/tsconfig.esm.json"
+      "path": "./packages/filesystem-ftp/tsconfig.esm.json"
     },
     {
-      "path": "packages/stopwatch/tsconfig.esm.json"
+      "path": "./packages/filesystem-google/tsconfig.esm.json"
     },
     {
-      "path": "packages/injector/tsconfig.esm.json"
+      "path": "./packages/filesystem-sftp/tsconfig.esm.json"
     },
     {
-      "path": "packages/framework/tsconfig.esm.json"
+      "path": "./packages/framework/tsconfig.esm.json"
     },
     {
-      "path": "packages/framework-debug-api/tsconfig.esm.json"
+      "path": "./packages/framework-debug-api/tsconfig.esm.json"
     },
     {
-      "path": "packages/mongo/tsconfig.esm.json"
+      "path": "./packages/http/tsconfig.esm.json"
     },
     {
-      "path": "packages/sql/tsconfig.esm.json"
+      "path": "./packages/injector/tsconfig.esm.json"
     },
     {
-      "path": "packages/mysql/tsconfig.esm.json"
+      "path": "./packages/logger/tsconfig.esm.json"
     },
     {
-      "path": "packages/postgres/tsconfig.esm.json"
+      "path": "./packages/mongo/tsconfig.esm.json"
     },
     {
-      "path": "packages/sqlite/tsconfig.esm.json"
+      "path": "./packages/mysql/tsconfig.esm.json"
     },
     {
-      "path": "packages/logger/tsconfig.esm.json"
+      "path": "./packages/orm/tsconfig.esm.json"
     },
     {
-      "path": "packages/rpc/tsconfig.esm.json"
+      "path": "./packages/orm-browser/tsconfig.esm.json"
     },
     {
-      "path": "packages/rpc-tcp/tsconfig.esm.json"
+      "path": "./packages/orm-browser-api/tsconfig.esm.json"
     },
     {
-      "path": "packages/broker/tsconfig.esm.json"
+      "path": "./packages/postgres/tsconfig.esm.json"
     },
     {
-      "path": "packages/orm-browser/tsconfig.esm.json"
+      "path": "./packages/rpc/tsconfig.esm.json"
     },
     {
-      "path": "packages/orm-browser-api/tsconfig.esm.json"
+      "path": "./packages/rpc-tcp/tsconfig.esm.json"
     },
     {
-      "path": "packages/vite/tsconfig.esm.json"
+      "path": "./packages/run/tsconfig.esm.json"
     },
     {
-      "path": "packages/bun/tsconfig.esm.json"
+      "path": "./packages/skeleton/tsconfig.esm.json"
     },
     {
-      "path": "packages/filesystem/tsconfig.esm.json"
+      "path": "./packages/sql/tsconfig.esm.json"
     },
     {
-      "path": "packages/filesystem-aws-s3/tsconfig.esm.json"
+      "path": "./packages/sqlite/tsconfig.esm.json"
     },
     {
-      "path": "packages/filesystem-ftp/tsconfig.esm.json"
+      "path": "./packages/stopwatch/tsconfig.esm.json"
     },
     {
-      "path": "packages/filesystem-sftp/tsconfig.esm.json"
+      "path": "./packages/template/tsconfig.esm.json"
     },
     {
-      "path": "packages/filesystem-google/tsconfig.esm.json"
+      "path": "./packages/topsort/tsconfig.esm.json"
+    },
+    {
+      "path": "./packages/type/tsconfig.esm.json"
+    },
+    {
+      "path": "./packages/type-compiler/tsconfig.esm.json"
+    },
+    {
+      "path": "./packages/type-spec/tsconfig.esm.json"
+    },
+    {
+      "path": "./packages/vite/tsconfig.esm.json"
+    },
+    {
+      "path": "./packages/workflow/tsconfig.esm.json"
     }
   ]
 }

@@ -1,15 +1,4 @@
-import {
-    ApplicationRef,
-    Component,
-    createComponent,
-    EnvironmentInjector,
-    Input,
-    OnChanges,
-    OnInit,
-    reflectComponentType,
-    Renderer2,
-    ViewContainerRef,
-} from '@angular/core';
+import { ApplicationRef, Component, createComponent, EnvironmentInjector, Input, OnChanges, OnInit, reflectComponentType, Renderer2, ViewContainerRef } from '@angular/core';
 import { Content } from '@app/common/models';
 import { ScreenComponent, ScreensComponent } from '@app/app/components/screens.component';
 import { HighlightCodeComponent } from '@app/app/components/highlight-code.component';
@@ -28,9 +17,9 @@ const whitelist = ['div', 'p', 'a', 'button', 'iframe', 'pre', 'span', 'code', '
         '[class.app-box]': 'true',
     },
     template: `
-        <div class="title">{{title}}</div>
-        <ng-content></ng-content>
-    `
+      <div class="title">{{ title }}</div>
+      <ng-content></ng-content>
+    `,
 })
 export class ContentRenderBox {
     @Input() title: string = '';
@@ -48,8 +37,8 @@ export class ContentRenderBox {
         }
     `],
     template: `
-        <iframe [src]="srcAllowed" allowfullscreen></iframe>
-    `
+      <iframe [src]="srcAllowed" allowfullscreen></iframe>
+    `,
 })
 export class ContentCodeBox implements OnInit {
     @Input() src: string = '';
@@ -139,13 +128,13 @@ export class ContentCodeBox implements OnInit {
 
     `],
     template: `
-        <div class="text">
-            <ng-content></ng-content>
-        </div>
-        <div class="code">
-            <ng-content select="highlight-code"></ng-content>
-        </div>
-    `
+      <div class="text">
+        <ng-content></ng-content>
+      </div>
+      <div class="code">
+        <ng-content select="highlight-code"></ng-content>
+      </div>
+    `,
 })
 export class ContentRenderFeature {
 }
@@ -159,7 +148,7 @@ type ContentCreated = { hostView?: any, type?: any, node: Node };
             display: inline;
         }
     `],
-    template: ``
+    template: ``,
 })
 export class ContentRenderComponent implements OnInit, OnChanges {
     @Input() content!: (Content | string)[] | Content | string;
@@ -170,7 +159,7 @@ export class ContentRenderComponent implements OnInit, OnChanges {
         private renderer: Renderer2,
         private router: Router,
         private injector: EnvironmentInjector,
-        private app: ApplicationRef
+        private app: ApplicationRef,
     ) {
     }
 
@@ -235,10 +224,12 @@ export class ContentRenderComponent implements OnInit, OnChanges {
 
             const component = createComponent(components[content.tag], {
                 environmentInjector: this.injector,
-                projectableNodes
+                projectableNodes,
             });
 
-            Object.assign(component.instance as any, content.props || {});
+            for (const [k, v] of Object.entries(content.props || {})) {
+                component.setInput(k, v);
+            }
 
             if (content.props && content.props.class) {
                 this.renderer.setAttribute(component.location.nativeElement, 'class', content.props.class);
@@ -309,11 +300,12 @@ export class ContentRenderComponent implements OnInit, OnChanges {
         } else {
             if (content.tag === 'pre' && content.children && content.props && typeof content.props.class === 'string' && content.props.class.startsWith('language-')) {
                 const component = createComponent(HighlightCodeComponent, { environmentInjector: this.injector });
-                component.instance.lang = content.props.class.substr('language-'.length);
-                component.instance.code = content.children[0] as string;
+                component.setInput('lang', content.props.class.substr('language-'.length));
+                component.setInput('code', content.children[0] as string);
 
                 const params = new URLSearchParams(content.props.meta || '');
-                component.instance.meta = Object.fromEntries(params.entries());
+                const meta = Object.fromEntries(params.entries());
+                component.setInput('title', meta.title || '');
 
                 this.app.attachView(component.hostView);
                 component.changeDetectorRef.detectChanges();

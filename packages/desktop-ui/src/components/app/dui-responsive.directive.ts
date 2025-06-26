@@ -8,22 +8,22 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Directive, ElementRef, HostListener, Input, OnInit } from '@angular/core';
+import { Directive, HostListener, input, OnInit } from '@angular/core';
 import { nextTick } from '@deepkit/core';
+import { injectElementRef } from './utils';
 
 @Directive({
     selector: '[duiClassMin]',
-    standalone: false,
 })
 export class DuiResponsiveDirective implements OnInit {
     clazz: { [className: string]: boolean } = {};
     protected lastRequest: any;
 
-    @Input() duiClassMin: { [className: string]: number } = {};
+    duiClassMin = input<{
+        [className: string]: number;
+    }>({});
 
-    constructor(
-        private element: ElementRef,
-    ) { }
+    element = injectElementRef();
 
     ngOnInit() {
         this.onResize();
@@ -37,7 +37,7 @@ export class DuiResponsiveDirective implements OnInit {
 
         this.lastRequest = nextTick(() => {
             const element: HTMLElement = this.element.nativeElement;
-            for (const [name, number] of Object.entries(this.duiClassMin)) {
+            for (const [name, number] of Object.entries(this.duiClassMin())) {
                 const valid = element.offsetWidth > number;
                 if (this.clazz[name] !== valid) {
                     this.clazz[name] = valid;

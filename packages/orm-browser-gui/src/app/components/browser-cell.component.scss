@@ -1,6 +1,6 @@
 .undefined,
 .null {
-    color: var(--text-light);
+    color: var(--dui-text-light);
 }
 
 .cell-actions {
@@ -31,7 +31,7 @@
 
     &.invalid {
         border-radius: 24px;
-        border: 1px solid var(--color-red);
+        border: 1px solid var(--dui-color-red);
     }
 
     &.editing {

@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { CommonModule, ViewportScroller } from '@angular/common';
+import { ViewportScroller } from '@angular/common';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
 import { AppTitle } from '@app/app/components/title';
 import { HeaderComponent } from '@app/app/components/header.component';
@@ -7,16 +7,18 @@ import { FooterComponent } from '@app/app/components/footer.component';
 
 @Component({
     selector: 'app-root',
-    imports: [CommonModule, RouterOutlet, AppTitle, HeaderComponent, FooterComponent],
+    imports: [RouterOutlet, AppTitle, HeaderComponent, FooterComponent],
     template: `
         <app-title value="Deepkit Enterprise TypeScript Framework"></app-title>
-
+        
         <dw-header [sticky]="activeRoute.firstChild?.snapshot?.data?.stickyHeader" [search]="activeRoute.firstChild?.snapshot?.data?.search"></dw-header>
-
+        
         <router-outlet></router-outlet>
-
-        <dw-footer *ngIf="withFooter"></dw-footer>
-    `,
+        
+        @if (withFooter) {
+          <dw-footer></dw-footer>
+        }
+        `,
     styleUrls: ['./app.component.css']
 })
 export class AppComponent {

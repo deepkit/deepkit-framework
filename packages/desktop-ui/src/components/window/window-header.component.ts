@@ -8,75 +8,59 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ChangeDetectorRef,
-    Component,
-    ElementRef,
-    HostBinding,
-    Input,
-    OnDestroy,
-    OnInit,
-    SkipSelf,
-    TemplateRef,
-    ViewChild,
-} from '@angular/core';
-import { WindowState } from './window-state';
+import { Component, ElementRef, forwardRef, HostBinding, inject, input, OnDestroy, OnInit, TemplateRef, ViewChild } from '@angular/core';
+import { WindowState, WinHeader } from './window-state';
 import { Electron } from '../../core/utils';
+import { IconComponent } from '../icon/icon.component';
+import { NgTemplateOutlet } from '@angular/common';
 
 @Component({
     selector: 'dui-window-header',
-    standalone: false,
     template: `
-        <div class="title">
-            <ng-content></ng-content>
-            <div class="closer">
-                <div (click)="minimize()">
-                    <dui-icon [size]="18" name="gnome_minimize"></dui-icon>
-                </div>
-                <div (click)="maximize()">
-                    <dui-icon [size]="18" name="gnome_maximize"></dui-icon>
-                </div>
-                <div (click)="close()" class="highlight">
-                    <dui-icon [size]="18" name="gnome_close"></dui-icon>
-                </div>
-            </div>
+      <div class="title">
+        <ng-content></ng-content>
+        <div class="closer">
+          <div (click)="minimize()">
+            <dui-icon [size]="18" name="gnome_minimize"></dui-icon>
+          </div>
+          <div (click)="maximize()">
+            <dui-icon [size]="18" name="gnome_maximize"></dui-icon>
+          </div>
+          <div (click)="close()" class="highlight">
+            <dui-icon [size]="18" name="gnome_close"></dui-icon>
+          </div>
         </div>
-        <div class="toolbar" *ngIf="windowState.toolbars['default']">
-            <dui-window-toolbar-container></dui-window-toolbar-container>
+      </div>
+      @if (windowState.toolbars()['default']) {
+        <div class="toolbar">
+          <dui-window-toolbar-container></dui-window-toolbar-container>
         </div>
+      }
     `,
     host: {
-        '[class.inactive]': '!windowState.focus.value',
-        '[class.size-default]': `size === 'default'`,
-        '[class.size-small]': `size === 'small'`,
+        '[class.inactive]': '!windowState.focus()',
+        '[class.size-default]': `size() === 'default'`,
+        '[class.size-small]': `size() === 'small'`,
     },
-    styleUrls: ['./window-header.component.scss']
+    styleUrls: ['./window-header.component.scss'],
+    imports: [IconComponent, forwardRef(() => WindowToolbarContainerComponent)],
 })
-export class WindowHeaderComponent implements OnDestroy {
-    @Input() public size: 'small' | 'default' = 'default';
+export class WindowHeaderComponent implements WinHeader {
+    public size = input<'small' | 'default'>('default');
 
     @HostBinding('class.with-toolbar')
-    get withToolbar() {
-        return this.windowState.toolbars['default'] && this.windowState.toolbars['default'].length;
+    protected get withToolbar() {
+        return this.windowState.toolbars()['default']?.length;
     }
-
-    protected focusSub: any = this.windowState.focus.subscribe((v) => {
-        this.cdParent.markForCheck();
-    });
 
     constructor(
         public windowState: WindowState,
-        @SkipSelf() protected cdParent: ChangeDetectorRef,
         protected element: ElementRef,
     ) {
         this.windowState = windowState;
     }
 
-    ngOnDestroy() {
-        this.focusSub.unsubscribe();
-    }
-
-    public getBottomPosition(): number {
+    getBottomPosition(): number {
         const rect = this.element.nativeElement.getBoundingClientRect();
         return rect.y + rect.height;
     }
@@ -101,66 +85,51 @@ export class WindowHeaderComponent implements OnDestroy {
 
 @Component({
     selector: 'dui-window-toolbar',
-    standalone: false,
     template: `
-        <ng-template #templateRef>
-            <ng-content></ng-content>
-        </ng-template>
-    `
+      <ng-template #templateRef>
+        <ng-content></ng-content>
+      </ng-template>
+    `,
 })
 export class WindowToolbarComponent implements OnDestroy, OnInit {
-    @Input() for: string = 'default';
-    @ViewChild('templateRef', { static: true }) template!: TemplateRef<any>;
+    for = input<string>('default');
+    @ViewChild('templateRef', { static: true }) template?: TemplateRef<any>;
 
     constructor(protected windowState: WindowState) {
     }
 
     ngOnInit() {
-        this.windowState.addToolbarContainer(this.for, this.template);
+        if (!this.template) return;
+        this.windowState.addToolbarContainer(this.for(), this.template);
     }
 
     ngOnDestroy(): void {
-        this.windowState.removeToolbarContainer(this.for, this.template);
+        if (!this.template) return;
+        this.windowState.removeToolbarContainer(this.for(), this.template);
     }
 }
 
 @Component({
     selector: 'dui-window-toolbar-container',
-    standalone: false,
     template: `
-        <ng-container *ngIf="windowState.toolbars[name]">
-            <ng-container *ngFor="let template of windowState.toolbars[name]">
-                <ng-container [ngTemplateOutlet]="template" [ngTemplateOutletContext]="{}"></ng-container>
-            </ng-container>
-        </ng-container>
+      @if (windowState.toolbars()[name()]; as toolbars) {
+        @for (template of toolbars; track $index) {
+          <ng-container [ngTemplateOutlet]="template" [ngTemplateOutletContext]="{}"></ng-container>
+        }
+      }
     `,
     styles: [`
         :host {
             display: flex;
+            flex-direction: row;
+            gap: 6px;
         }
     `],
+    imports: [
+        NgTemplateOutlet,
+    ],
 })
-export class WindowToolbarContainerComponent implements OnInit, OnDestroy {
-    @Input() name: string = 'default';
-
-    constructor(
-        public windowState: WindowState,
-        protected cd: ChangeDetectorRef,
-    ) {
-    }
-
-    ngOnInit() {
-        if (this.windowState.toolbarContainers[this.name] && this.name === 'default') {
-            console.warn(`You have multiple <dui-window-toolbar-container> with no name. This is not allowed.`);
-        }
-        this.windowState.toolbarContainers[this.name] = this;
-    }
-
-    public toolbarsUpdated() {
-        this.cd.detectChanges();
-    }
-
-    ngOnDestroy(): void {
-        delete this.windowState.toolbarContainers[this.name];
-    }
+export class WindowToolbarContainerComponent {
+    name = input<string>('default');
+    windowState = inject(WindowState);
 }

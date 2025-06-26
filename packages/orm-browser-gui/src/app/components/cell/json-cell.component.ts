@@ -2,35 +2,43 @@ import { ChangeDetectorRef, Component, Input, OnChanges, OnInit } from '@angular
 import { isArray, isObject } from '@deepkit/core';
 import { objToString } from './utils';
 import { BrowserState } from '../../browser-state';
+import { BinaryCellComponent } from './binary-cell.component';
+import { DatePipe } from '@angular/common';
 
 @Component({
     selector: 'orm-browser-json-cell',
     template: `
-        <ng-container [ngSwitch]="true">
-            <div *ngSwitchCase="model === null" class="null">null</div>
-            <div *ngSwitchCase="model === undefined" class="undefined">undefined</div>
-            <ng-container *ngSwitchCase="iBinary(model)">
-                <orm-browser-binary-cell [model]="model"></orm-browser-binary-cell>
-            </ng-container>
-            <span class="monospace" *ngSwitchCase="isDate(model)">
-                {{model|date:'M/d/yy, h:mm:ss'}}<span class="date-ms">{{model|date:'.SSS'}}</span>
-            </span>
-            <ng-container *ngSwitchDefault>
-                {{label}}
-            </ng-container>
-        </ng-container>
+      @switch (true) {
+        @case (model === null) {
+          <div class="null">null</div>
+        }
+        @case (model === undefined) {
+          <div class="undefined">undefined</div>
+        }
+        @case (iBinary(model)) {
+          <orm-browser-binary-cell [model]="model"></orm-browser-binary-cell>
+        }
+        @case (isDate(model)) {
+          <span class="monospace">
+      {{ model|date:'M/d/yy, h:mm:ss' }}<span class="date-ms">{{ model|date:'.SSS' }}</span>
+    </span>
+        }
+        @default {
+          {{ label }}
+        }
+      }
     `,
     styles: [`
         .undefined,
         .null {
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
 
         .date-ms {
-            color: var(--text-light);
+            color: var(--dui-text-light);
         }
     `],
-    standalone: false
+    imports: [BinaryCellComponent, DatePipe]
 })
 export class JsonCellComponent implements OnChanges, OnInit {
     @Input() model: any;

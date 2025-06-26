@@ -12,7 +12,7 @@ import { Injectable } from '@angular/core';
 import { Collection, RpcWebSocketClient } from '@deepkit/rpc';
 import { DebugControllerInterface, DebugMediaInterface, DebugRequest, Workflow } from '@deepkit/framework-debug-api';
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class ControllerClient {
     protected requests?: Promise<Collection<DebugRequest>>;
     protected workflows: { [name: string]: Promise<Workflow> } = {};

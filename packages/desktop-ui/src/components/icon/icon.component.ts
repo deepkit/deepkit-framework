@@ -8,61 +8,72 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Component, HostBinding, Input, OnChanges, OnInit } from '@angular/core';
+import { booleanAttribute, Component, HostBinding, input, OnChanges, OnInit } from '@angular/core';
 
 @Component({
     selector: 'dui-icon',
-    standalone: false,
-    template: `{{name}}`,
+    template: `{{ name() }}`,
     host: {
         '[class.ui-icon]': 'true',
-        '[style.fontSize.px]': 'usedSize',
+        '[style.font-size.px]': 'usedSize',
         '[style.height.px]': 'usedSize',
         '[style.width.px]': 'usedSize',
-        '[style.color]': 'color',
+        '[style.color]': 'color()',
     },
-    styleUrls: ['./icon.component.scss']
+    styleUrls: ['./icon.component.scss'],
 })
 export class IconComponent implements OnInit, OnChanges {
     /**
-     * The icon for this button. Either a icon name same as for dui-icon, or an image path.
+     * The icon for this button.
      */
-    @Input() name?: string;
+    name = input.required<string>();
 
     /**
-     * Change in the icon size. Should not be necessary usually.
+     * The icon size (default 17). Should not be necessary usually.
      */
-    @Input() size?: number;
+    size = input<number>();
 
-    @Input() clickable: boolean | '' = false;
+    /**
+     * Enables interactive style for this icon.
+     */
+    clickable = input(false, { transform: booleanAttribute });
 
-    @Input() color?: string;
+    /**
+     * The color of the icon. If not set, it will use `currentColor` by default.
+     */
+    color = input<string>();
 
-    public usedSize = 17;
+    /**
+     * If true, the icon will be disabled and not clickable.
+     */
+    disabled = input<boolean>(false);
+
+    protected usedSize = 17;
 
     @HostBinding('class.clickable')
     get isClickable() {
-        return false !== this.clickable;
+        return false !== this.clickable();
     }
 
-    @Input() disabled: boolean = false;
     @HostBinding('class.disabled')
     get isDisabled() {
-        return false !== this.disabled;
+        return false !== this.disabled();
     }
 
     constructor() {
     }
 
     ngOnChanges(): void {
-        if (this.size) {
-            this.usedSize = this.size;
+        const size = this.size();
+        if (size) {
+            this.usedSize = size;
         }
 
-        if (!this.size && this.name) {
-            const pos = this.name.indexOf('_');
+        const name = this.name();
+        if (!size && name) {
+            const pos = name.indexOf('_');
             if (pos !== -1) {
-                const potentialNumber = parseInt(this.name.slice(0, pos), 10);
+                const potentialNumber = parseInt(name.slice(0, pos), 10);
                 if (potentialNumber) {
                     this.usedSize = potentialNumber;
                 }

@@ -1,32 +1,33 @@
-import { Page } from "@app/common/models";
+import { Page } from '@app/common/models';
 
-import frontMatterParser from "gray-matter";
-import { cast } from "@deepkit/type";
-import { Client } from "discord.js";
+import frontMatterParser from 'gray-matter';
+import { cast } from '@deepkit/type';
+import type { Client } from 'discord.js';
+import { asyncOperation } from '@deepkit/core';
 
 function renderText(node: any): any {
-    if (typeof node === "string") return node;
-    if (typeof node === "object")
+    if (typeof node === 'string') return node;
+    if (typeof node === 'object')
         return Array.isArray(node.children)
-            ? node.children.map((child: any) => renderText(child)).join("")
+            ? node.children.map((child: any) => renderText(child)).join('')
             : renderText(node.children);
-    return "";
+    return '';
 }
 
 function getHeadings(node: any): any {
     if (node != undefined) {
-        if (typeof node === "string") {
+        if (typeof node === 'string') {
             return [];
         }
-        if (typeof node.tag === "string") {
+        if (typeof node.tag === 'string') {
             const tag = node.tag;
             const level = parseInt(tag[1], 10);
-            if (tag[0] === "h" && !isNaN(level)) {
+            if (tag[0] === 'h' && !isNaN(level)) {
                 return [
                     {
                         level,
                         text: renderText(node),
-                        id: node.props && node.props.id ? String(node.props.id) : "",
+                        id: node.props && node.props.id ? String(node.props.id) : '',
                     },
                 ];
             }
@@ -55,7 +56,7 @@ const getOnlyChildren = (ast: any) => {
     // rehype-react add an outer div by default
     // lets try to remove it
     if (
-        ast.tag === "div" &&
+        ast.tag === 'div' &&
         ast.children != undefined &&
         Array.isArray(ast.children) &&
         ast.children.length === 1 &&
@@ -69,61 +70,73 @@ const getOnlyChildren = (ast: any) => {
 export class MarkdownParser {
     protected proccesor?: any;
 
-    async load() {
-        const unified = await import('unified');
-        this.proccesor = unified.unified();
+    loading?: Promise<void>;
 
-        //markdown to mdast
-        this.proccesor.use((await import("remark-parse")).default);
+    load(): Promise<void> {
+        if (this.loading) return this.loading;
+        return this.loading = asyncOperation<void>(async (resolve) => {
+            if (this.proccesor) return;
+            const unified = await import('unified');
+            this.proccesor = unified.unified();
 
-        //github flavored markdown
-        this.proccesor.use((await import("remark-gfm")).default);
+            //markdown to mdast
+            this.proccesor.use((await import('remark-parse')).default);
 
-        //markdown to html
-        this.proccesor.use((await import("remark-rehype")).default, {
-            allowDangerousHtml: true, handlers: {
-                code: (state: any, node: any) => {
-                    // Create `<pre>`.
-                    const result = {
-                        type: 'element',
-                        tagName: 'pre',
-                        properties: {
-                            meta: node.meta,
-                            className: ['language-' + (node.lang || '')]
-                        },
-                        children: [{ type: 'text', value: node.value || '' }]
-                    }
-                    state.patch(node, result);
-                    return result;
-                }
-            }
+            //github flavored markdown
+            this.proccesor.use((await import('remark-gfm')).default);
+
+            //markdown to html
+            this.proccesor.use((await import('remark-rehype')).default, {
+                allowDangerousHtml: true, handlers: {
+                    code: (state: any, node: any) => {
+                        // Create `<pre>`.
+                        const result = {
+                            type: 'element',
+                            tagName: 'pre',
+                            properties: {
+                                meta: node.meta,
+                                className: ['language-' + (node.lang || '')],
+                            },
+                            children: [{ type: 'text', value: node.value || '' }],
+                        };
+                        state.patch(node, result);
+                        return result;
+                    },
+                },
+            });
+            // this.proccesor.use(remarkCodeTitle);
+
+            //reparse tree, so we can use html in markdown
+            //@ts-ignore
+            this.proccesor.use((await import('rehype-raw')).default);
+
+            //add id to headings
+            //@ts-ignore
+            this.proccesor.use((await import('rehype-slug')).default);
+
+            //convert to handy object structure
+            //@ts-ignore
+            this.proccesor.use((await import('rehype-react')).default, {
+                createElement: (component: any, props: any, children: any) => {
+                    return {
+                        tag: component,
+                        props: props && Object.keys(props).length ? props : undefined,
+                        children,
+                    };
+                },
+            } as any);
+            resolve();
         });
-        // this.proccesor.use(remarkCodeTitle);
-
-        //reparse tree, so we can use html in markdown
-        //@ts-ignore
-        this.proccesor.use((await import("rehype-raw")).default);
-
-        //add id to headings
-        //@ts-ignore
-        this.proccesor.use((await import("rehype-slug")).default);
-
-        //convert to handy object structure
-        //@ts-ignore
-        this.proccesor.use((await import("rehype-react")).default, {
-            createElement: (component: any, props: any, children: any) => {
-                return {
-                    tag: component,
-                    props: props && Object.keys(props).length ? props : undefined,
-                    children,
-                };
-            },
-        } as any);
     }
 
     constructor(
-        private client?: Client
+        private client?: Client,
     ) {
+    }
+
+    async loadAndParse(content: string): Promise<Page> {
+        await this.load();
+        return this.parse(content);
     }
 
     parse(content: string): Page {
@@ -135,19 +148,22 @@ export class MarkdownParser {
     }
 
     parseRaw(content: string): Page {
-        if (!this.proccesor) throw new Error("MarkdownParser not loaded.");
+        if (!this.proccesor) throw new Error('MarkdownParser not loaded.');
 
         const front = frontMatterParser(content);
         const processed = this.proccesor.processSync(front.content);
 
         if (
             processed != undefined &&
-            typeof processed === "object" &&
+            typeof processed === 'object' &&
             processed.result != undefined &&
-            typeof processed.result === "object"
+            typeof processed.result === 'object'
         ) {
-            return cast<Page>(Object.assign(extractMetaFromBodyNode(processed.result), front.data, { params: front.data, body: getOnlyChildren(processed.result) }));
+            return cast<Page>(Object.assign(extractMetaFromBodyNode(processed.result), front.data, {
+                params: front.data,
+                body: getOnlyChildren(processed.result),
+            }));
         }
-        throw new Error("unified processSync didn't return an object.");
+        throw new Error('unified processSync didn\'t return an object.');
     }
 }

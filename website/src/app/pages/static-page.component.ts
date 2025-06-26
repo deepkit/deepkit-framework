@@ -5,30 +5,30 @@ import { ControllerClient } from '@app/app/client';
 import { ActivatedRoute } from '@angular/router';
 import { AppDescription, AppTitle } from '@app/app/components/title';
 import { LoadingComponent } from '@app/app/components/loading';
-import { NgIf } from '@angular/common';
 
 
 @Component({
     imports: [
-        ContentRenderComponent,
-        AppTitle,
-        LoadingComponent,
-        NgIf,
-        AppDescription,
-    ],
+    ContentRenderComponent,
+    AppTitle,
+    LoadingComponent,
+    AppDescription
+],
     template: `
         <div class="app-content normalize-text" style="margin-top: 50px;">
-            <app-loading *ngIf="!page"></app-loading>
-
-            <div *ngIf="page">
-                <app-title value="{{page.title}}"></app-title>
-
-                <app-description [value]="page.title + ' - ' + bodyToString(subline)"></app-description>
-
-                <app-render-content [content]="page.body"></app-render-content>
+          @if (!page) {
+            <app-loading></app-loading>
+          }
+        
+          @if (page) {
+            <div>
+              <app-title value="{{page.title}}"></app-title>
+              <app-description [value]="page.title + ' - ' + bodyToString(subline)"></app-description>
+              <app-render-content [content]="page.body"></app-render-content>
             </div>
+          }
         </div>
-    `,
+        `,
 })
 export class StaticPageComponent implements OnInit {
     page?: Page;

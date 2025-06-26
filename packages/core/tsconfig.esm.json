@@ -4,5 +4,9 @@
     "outDir": "./dist/esm",
     "module": "ES2020"
   },
-  "references": []
+  "references": [
+    {
+      "path": "../bench/tsconfig.esm.json"
+    }
+  ]
 }

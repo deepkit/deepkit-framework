@@ -11,22 +11,9 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Input, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
 import { DatabaseInfo } from '@deepkit/orm-browser-api';
 import { graphlib, layout } from 'dagre';
-import { default as createPanZoom, PanZoom } from 'panzoom';
+import panzoom from 'panzoom';
 import { BrowserText } from './browser-text';
-import {
-    isAutoIncrementType,
-    isBackReferenceType,
-    isPrimaryKeyType,
-    isReferenceType,
-    isSetType,
-    ReflectionClass,
-    ReflectionKind,
-    resolveClassType,
-    stringifyType,
-    Type,
-    TypeProperty,
-    TypePropertySignature
-} from '@deepkit/type';
+import { isAutoIncrementType, isBackReferenceType, isPrimaryKeyType, isReferenceType, isSetType, ReflectionClass, ReflectionKind, resolveClassType, stringifyType, Type, TypeProperty, TypePropertySignature } from '@deepkit/type';
 
 type EdgeNode = { d: string, class?: string };
 type DKNode = { entity: ReflectionClass<any>, properties: (TypeProperty | TypePropertySignature)[], height: number, width: number, x: number, y: number };
@@ -34,42 +21,44 @@ type DKNode = { entity: ReflectionClass<any>, properties: (TypeProperty | TypePr
 @Component({
     selector: 'database-graph',
     template: `
-        <div class="nodes" (dblclick)="zoomToFit()"
-             #graph
-             [style.width.px]="graphWidth"
-             [style.height.px]="graphHeight">
-            <svg
-                [style.width.px]="graphWidth"
-                [style.height.px]="graphHeight">
-                <path
-                    *ngFor="let edge of edges"
-                    [attr.d]="edge.d" [class]="edge.class"></path>
-            </svg>
+      <div class="nodes" (dblclick)="zoomToFit()"
+           #graph
+           [style.width.px]="graphWidth"
+           [style.height.px]="graphHeight">
+        <svg
+          [style.width.px]="graphWidth"
+          [style.height.px]="graphHeight">
+          @for (edge of edges; track edge) {
+            <path
+              [attr.d]="edge.d" [class]="edge.class"></path>
+          }
+        </svg>
 
-            <div
-                *ngFor="let node of nodes"
-                [style.left.px]="(node.x - (node.width/2))"
-                [style.top.px]="(node.y - (node.height/2))"
-                [style.width.px]="node.width"
-                [style.height.px]="node.height"
-                class="node">
-                <ng-container *ngIf="node.property">
-                    {{node.property.name}}
-                </ng-container>
-                <ng-container *ngIf="node.entity && node.properties">
-                    <div class="header">
-                        {{node.entity.getClassName()}}
-                    </div>
-
-                    <div *ngFor="let property of node.properties">
-                        {{propertyLabel(property)}}
-                    </div>
-                </ng-container>
-            </div>
-        </div>
+        @for (node of nodes; track node) {
+          <div
+            [style.left.px]="(node.x - (node.width/2))"
+            [style.top.px]="(node.y - (node.height/2))"
+            [style.width.px]="node.width"
+            [style.height.px]="node.height"
+            class="node">
+            @if (node.property) {
+              {{ node.property.name }}
+            }
+            @if (node.entity && node.properties) {
+              <div class="header">
+                {{ node.entity.getClassName() }}
+              </div>
+              @for (property of node.properties; track property) {
+                <div>
+                  {{ propertyLabel(property) }}
+                </div>
+              }
+            }
+          </div>
+        }
+      </div>
     `,
     styleUrls: ['./database-graph.component.scss'],
-    standalone: false
 })
 export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
     @Input() database?: DatabaseInfo;
@@ -89,7 +78,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
     browserText = new BrowserText();
 
     @ViewChild('graph') graphElement?: ElementRef<HTMLDivElement>;
-    graphPanZoom?: PanZoom;
+    graphPanZoom?: ReturnType<typeof panzoom>;
 
     constructor(
         protected cd: ChangeDetectorRef,
@@ -171,7 +160,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
                 if (w > maxWidth) maxWidth = w;
             }
 
-            g.setNode(entity.getName(), { entity: entity, properties, width: maxWidth, height: propertyListOffset + (entity.getProperties().length * propertyHeight), });
+            g.setNode(entity.getName(), { entity: entity, properties, width: maxWidth, height: propertyListOffset + (entity.getProperties().length * propertyHeight) });
         }
 
         function addEdge(entity: ReflectionClass<any>, rootType: Type, property: Type) {
@@ -306,10 +295,10 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
 
         if (this.graphElement) {
             if (!this.graphPanZoom) {
-                this.graphPanZoom = createPanZoom(this.graphElement.nativeElement, {
+                this.graphPanZoom = panzoom(this.graphElement.nativeElement, {
                     bounds: true,
                     zoomSpeed: 0.065,
-                    zoomDoubleClickSpeed: 1
+                    zoomDoubleClickSpeed: 1,
                 });
                 this.zoomToFit(true);
             } else if (true) {
@@ -320,12 +309,12 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
         this.cd.detectChanges();
     }
 
-    async zoomToFit(force: boolean = false) {
+    zoomToFit(force: boolean = false) {
         this._zoomToFit();
-        requestAnimationFrame(this._zoomToFit.bind(this, force));
+        requestAnimationFrame(() => this._zoomToFit(force));
     }
 
-    async _zoomToFit(force: boolean = false) {
+    _zoomToFit(force: boolean = false) {
         try {
             if (this.graphElement && this.graphPanZoom) {
                 const svg = this.graphElement.nativeElement;
@@ -371,7 +360,7 @@ export class DatabaseGraphComponent implements OnChanges, AfterViewInit {
                 this.graphPanZoom.moveBy(
                     Math.floor(newX - xys.x),
                     Math.floor(newY - xys.y),
-                    false
+                    false,
                 );
 
                 //correct way to zoom with center of graph as origin when scaled

@@ -12,20 +12,63 @@
  * @reflection never
  */
 import { Subscription } from 'rxjs';
-import { ChangeDetectorRef, EventEmitter } from '@angular/core';
-import { ActivatedRoute, Router, UrlTree } from '@angular/router';
+import { ChangeDetectorRef, EventEmitter, Inject, Injectable } from '@angular/core';
 import { nextTick } from '@deepkit/core';
-import type Hammer from 'hammerjs';
+import { DOCUMENT } from '@angular/common';
 
 const electron = 'undefined' === typeof window ? undefined : (window as any).electron || ((window as any).require ? (window as any).require('electron') : undefined);
 
-export async function getHammer(): Promise<typeof Hammer | undefined> {
-    if ('undefined' === typeof window) return;
-    //@ts-ignore
-    const hammer = await import('hammerjs');
-    return hammer.default;
+export type ElectronOrBrowserWindow = Window & {
+    setVibrancy?: (vibrancy: string) => void;
+    addListener?: (event: string, listener: (...args: any[]) => void) => void;
+    removeListener?: (event: string, listener: (...args: any[]) => void) => void;
+};
+
+@Injectable({ providedIn: 'root' })
+export class BrowserWindow {
+    constructor(@Inject(DOCUMENT) private window?: ElectronOrBrowserWindow) {
+    }
+
+    isElectron() {
+        return !!this.window?.setVibrancy;
+    }
+
+    getWindow(): ElectronOrBrowserWindow | undefined {
+        return this.window;
+    }
+
+    setVibrancy(vibrancy: string): void {
+        if (!this.window) return;
+
+        if (this.window.setVibrancy) {
+            this.window.setVibrancy(vibrancy);
+        } else {
+            console.warn('setVibrancy is not supported by this window.');
+        }
+    }
+
+    addListener(event: string, listener: (...args: any[]) => void): void {
+        if (!this.window) return;
+
+        if (this.window.addEventListener) {
+            this.window.addEventListener(event, listener);
+        } else if (this.window.addListener) {
+            this.window.addListener(event, listener);
+        }
+    }
+
+    removeListener(event: string, listener: (...args: any[]) => void): void {
+        if (!this.window) return;
+
+        if (this.window.removeEventListener) {
+            this.window.removeEventListener(event, listener);
+        } else if (this.window.removeListener) {
+            this.window.removeListener(event, listener);
+        }
+    }
 }
 
+@Injectable({ providedIn: 'root' })
 export class Electron {
     public static getRemote(): any {
         if (!electron) {
@@ -140,7 +183,7 @@ export function triggerResize() {
     });
 }
 
-type FocusWatcherUnsubscribe = () => void;
+export type FocusWatcherUnsubscribe = () => void;
 
 /**
  * Observes focus changes on target elements and emits when focus is lost.
@@ -148,14 +191,14 @@ type FocusWatcherUnsubscribe = () => void;
  * This is used to track multi-element focus changes, such as when a user clicks from a dropdown toggle into the dropdown menu.
  */
 export function focusWatcher(
-    target: HTMLElement, allowedFocuses: HTMLElement[] = [],
+    target: Element, allowedFocuses: Element[] = [],
     onBlur: () => void,
-    customChecker?: (currentlyFocused: HTMLElement | null) => boolean,
+    customChecker?: (currentlyFocused: Element | null) => boolean,
 ): FocusWatcherUnsubscribe {
     const doc = target.ownerDocument;
     if (doc.body.tabIndex === -1) doc.body.tabIndex = 1;
 
-    let currentlyFocused: HTMLElement | null = target;
+    let currentlyFocused: Element | null = target;
 
     let subscribed = true;
 
@@ -222,29 +265,6 @@ export function focusWatcher(
     }
 
     return unsubscribe;
-}
-
-interface RouteLike {
-    routerLink?: string | UrlTree | any[];
-    routerLinkExact?: boolean;
-    router?: Router,
-    activatedRoute?: ActivatedRoute;
-    queryParams?: { [name: string]: any };
-}
-
-export function isRouteActive(route: RouteLike): boolean {
-    if (!route.router) return false;
-
-    if ('string' === typeof route.routerLink) {
-        return route.router.isActive(route.routerLink, route.routerLinkExact === true);
-    } else if (Array.isArray(route.routerLink)) {
-        return route.router.isActive(route.router.createUrlTree(route.routerLink, {
-            queryParams: route.queryParams,
-            relativeTo: route.activatedRoute,
-        }), route.routerLinkExact === true);
-    } else {
-        return route.router.isActive(route.routerLink!, route.routerLinkExact === true);
-    }
 }
 
 export function redirectScrollableParentsToWindowResize(node: Element, passive = true) {

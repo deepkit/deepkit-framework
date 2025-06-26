@@ -3,11 +3,10 @@
  * This file is part of Deepkit and licensed under GNU GPL v3. See the LICENSE file for more information.
  */
 
-import { Component, Input } from '@angular/core';
+import { booleanAttribute, Component, input } from '@angular/core';
 
 @Component({
     selector: 'dui-section-header',
-    standalone: false,
     template: `
         <div class="title">
             <ng-content></ng-content>
@@ -15,10 +14,10 @@ import { Component, Input } from '@angular/core';
         <div class="line"></div>
     `,
     host: {
-        '[class.center]': 'center !== false'
+        '[class.center]': 'center()'
     },
     styleUrls: ['./section-header.component.scss']
 })
 export class SectionHeaderComponent {
-    @Input() center: boolean | '' = false;
+    center = input(false, { transform: booleanAttribute });
 }

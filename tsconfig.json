@@ -2,121 +2,166 @@
   "files": [],
   "references": [
     {
-      "path": "packages/angular-ssr/tsconfig.json"
+      "path": "./packages/angular-ssr/tsconfig.json"
     },
     {
-      "path": "packages/core/tsconfig.json"
+      "path": "./packages/api-console-api/tsconfig.json"
     },
     {
-      "path": "packages/core-rxjs/tsconfig.json"
+      "path": "./packages/api-console-gui/tsconfig.json"
     },
     {
-      "path": "packages/api-console-api/tsconfig.json"
+      "path": "./packages/api-console-module/tsconfig.json"
     },
     {
-      "path": "packages/api-console-module/tsconfig.json"
+      "path": "./packages/app/tsconfig.json"
     },
     {
-      "path": "packages/app/tsconfig.json"
+      "path": "./packages/bench/tsconfig.json"
     },
     {
-      "path": "packages/create-app/tsconfig.json"
+      "path": "./packages/broker/tsconfig.json"
     },
     {
-      "path": "packages/event/tsconfig.json"
+      "path": "./packages/bson/tsconfig.json"
     },
     {
-      "path": "packages/workflow/tsconfig.json"
+      "path": "./packages/bun/tsconfig.json"
     },
     {
-      "path": "packages/stopwatch/tsconfig.json"
+      "path": "./packages/core/tsconfig.json"
     },
     {
-      "path": "packages/http/tsconfig.json"
+      "path": "./packages/core-rxjs/tsconfig.json"
     },
     {
-      "path": "packages/template/tsconfig.json"
+      "path": "./packages/create-app/tsconfig.json"
     },
     {
-      "path": "packages/skeleton/tsconfig.json"
+      "path": "./packages/desktop-ui/tsconfig.json"
     },
     {
-      "path": "packages/framework-debug-api/tsconfig.json"
+      "path": "./packages/devtool/tsconfig.json"
     },
     {
-      "path": "packages/framework/tsconfig.json"
+      "path": "./packages/event/tsconfig.json"
     },
     {
-      "path": "packages/type/tsconfig.json"
+      "path": "./packages/example-app/tsconfig.json"
     },
     {
-      "path": "packages/type-compiler/tsconfig.json"
+      "path": "./packages/filesystem/tsconfig.json"
     },
     {
-      "path": "packages/bson/tsconfig.json"
+      "path": "./packages/filesystem-aws-s3/tsconfig.json"
     },
     {
-      "path": "packages/injector/tsconfig.json"
+      "path": "./packages/filesystem-ftp/tsconfig.json"
     },
     {
-      "path": "packages/mongo/tsconfig.json"
+      "path": "./packages/filesystem-google/tsconfig.json"
     },
     {
-      "path": "packages/sql/tsconfig.json"
+      "path": "./packages/filesystem-sftp/tsconfig.json"
     },
     {
-      "path": "packages/mysql/tsconfig.json"
+      "path": "./packages/framework/tsconfig.json"
     },
     {
-      "path": "packages/postgres/tsconfig.json"
+      "path": "./packages/framework-debug-api/tsconfig.json"
     },
     {
-      "path": "packages/sqlite/tsconfig.json"
+      "path": "./packages/framework-debug-gui/tsconfig.json"
     },
     {
-      "path": "packages/rpc/tsconfig.json"
+      "path": "./packages/framework-examples/tsconfig.json"
     },
     {
-      "path": "packages/rpc-tcp/tsconfig.json"
+      "path": "./packages/framework-integration/tsconfig.json"
     },
     {
-      "path": "packages/logger/tsconfig.json"
+      "path": "./packages/http/tsconfig.json"
     },
     {
-      "path": "packages/orm/tsconfig.json"
+      "path": "./packages/injector/tsconfig.json"
     },
     {
-      "path": "packages/orm-browser/tsconfig.json"
+      "path": "./packages/logger/tsconfig.json"
     },
     {
-      "path": "packages/orm-browser-api/tsconfig.json"
+      "path": "./packages/mongo/tsconfig.json"
     },
     {
-      "path": "packages/orm-integration/tsconfig.json"
+      "path": "./packages/mysql/tsconfig.json"
     },
     {
-      "path": "packages/broker/tsconfig.json"
+      "path": "./packages/orm/tsconfig.json"
     },
     {
-      "path": "packages/vite/tsconfig.json"
+      "path": "./packages/orm-browser/tsconfig.json"
     },
     {
-      "path": "packages/bun/tsconfig.json"
+      "path": "./packages/orm-browser-api/tsconfig.json"
     },
     {
-      "path": "packages/filesystem/tsconfig.json"
+      "path": "./packages/orm-browser-example/tsconfig.json"
     },
     {
-      "path": "packages/filesystem-aws-s3/tsconfig.json"
+      "path": "./packages/orm-browser-gui/tsconfig.json"
     },
     {
-      "path": "packages/filesystem-ftp/tsconfig.json"
+      "path": "./packages/orm-integration/tsconfig.json"
     },
     {
-      "path": "packages/filesystem-sftp/tsconfig.json"
+      "path": "./packages/postgres/tsconfig.json"
     },
     {
-      "path": "packages/filesystem-google/tsconfig.json"
+      "path": "./packages/rpc/tsconfig.json"
+    },
+    {
+      "path": "./packages/rpc-tcp/tsconfig.json"
+    },
+    {
+      "path": "./packages/run/tsconfig.json"
+    },
+    {
+      "path": "./packages/skeleton/tsconfig.json"
+    },
+    {
+      "path": "./packages/sql/tsconfig.json"
+    },
+    {
+      "path": "./packages/sqlite/tsconfig.json"
+    },
+    {
+      "path": "./packages/stopwatch/tsconfig.json"
+    },
+    {
+      "path": "./packages/template/tsconfig.json"
+    },
+    {
+      "path": "./packages/topsort/tsconfig.json"
+    },
+    {
+      "path": "./packages/type/tsconfig.json"
+    },
+    {
+      "path": "./packages/type-angular/tsconfig.json"
+    },
+    {
+      "path": "./packages/type-compiler/tsconfig.json"
+    },
+    {
+      "path": "./packages/type-spec/tsconfig.json"
+    },
+    {
+      "path": "./packages/ui-library/tsconfig.json"
+    },
+    {
+      "path": "./packages/vite/tsconfig.json"
+    },
+    {
+      "path": "./packages/workflow/tsconfig.json"
     }
   ]
 }

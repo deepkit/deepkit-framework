@@ -1,20 +1,18 @@
+import { provideServerRendering, RenderMode, withRoutes } from '@angular/ssr';
 import { APP_BOOTSTRAP_LISTENER, ApplicationConfig, mergeApplicationConfig, REQUEST_CONTEXT } from '@angular/core';
-import { provideServerRendering } from '@angular/platform-server';
 import { appConfig } from './app.config';
 import { PageResponse } from '@app/app/page-response';
 import { NavigationEnd, Router } from '@angular/router';
 import { HTTP_TRANSFER_CACHE_ORIGIN_MAP } from '@angular/common/http';
-import { provideServerRouting, RenderMode } from '@angular/ssr';
 
 const serverConfig: ApplicationConfig = {
     providers: [
-        provideServerRendering(),
-        provideServerRouting([
+        provideServerRendering(withRoutes([
             {
                 path: '**',
                 renderMode: RenderMode.Server,
             },
-        ]),
+        ])),
         {
             provide: HTTP_TRANSFER_CACHE_ORIGIN_MAP,
             deps: [REQUEST_CONTEXT],
@@ -45,8 +43,7 @@ const serverConfig: ApplicationConfig = {
                     });
                 };
             },
-        },
-    ],
+        }],
 };
 
 export const config = mergeApplicationConfig(appConfig, serverConfig);

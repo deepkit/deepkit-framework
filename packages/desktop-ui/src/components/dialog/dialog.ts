@@ -8,102 +8,95 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    ApplicationRef,
-    ChangeDetectorRef,
-    Component,
-    ComponentFactoryResolver,
-    ComponentRef,
-    Directive,
-    ElementRef,
-    Inject,
-    Injectable,
-    Injector,
-    Input,
-    OnDestroy,
-    Type,
-    ViewContainerRef,
-} from '@angular/core';
-import { DialogComponent } from './dialog.component';
+import { ApplicationRef, Component, ComponentFactoryResolver, ComponentRef, Directive, ElementRef, Inject, Injectable, Injector, input, OnDestroy, Type, ViewContainerRef } from '@angular/core';
+import { CloseDialogDirective, DialogActionsComponent, DialogComponent } from './dialog.component';
 import { isTargetChildOf } from '../../core/utils';
-import { DuiDialogProgress, ProgressDialogState } from './progress-dialog.component';
 import { DOCUMENT } from '@angular/common';
 import { WindowRegistry } from '../window/window-state';
 import { Overlay } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
+import { ButtonComponent, HotkeyDirective } from '../button/button.component';
+import { InputComponent } from '../input/input.component';
+import { FormsModule } from '@angular/forms';
 
 
 @Component({
-    standalone: false,
     template: `
-        <h3>{{title || 'No title'}}</h3>
-        <div *ngIf="content">{{content}}</div>
+      <h3>{{ title() || 'No title' }}</h3>
+      @if (content()) {
+        <div>{{ content() }}</div>
+      }
 
-        <dui-dialog-actions>
-            <dui-button hotkey="escape" [closeDialog]="false">Cancel</dui-button>
-            <dui-button focus [closeDialog]="true">OK</dui-button>
-        </dui-dialog-actions>
-    `
+      <dui-dialog-actions>
+        <dui-button hotkey="escape" [closeDialog]="false">Cancel</dui-button>
+        <dui-button auto-focus [closeDialog]="true">OK</dui-button>
+      </dui-dialog-actions>
+    `,
+    imports: [DialogActionsComponent, ButtonComponent, HotkeyDirective, CloseDialogDirective],
 })
 export class DuiDialogConfirm {
-    @Input() title: string = 'Confirm';
-    @Input() content: string = '';
+    title = input<string>('Confirm');
+    content = input<string>('');
 
     static dialogDefaults = {
-        maxWidth: '700px'
+        maxWidth: '700px',
     };
 }
 
 @Component({
-    standalone: false,
     template: `
-        <h3>{{title || 'No title'}}</h3>
-        <div *ngIf="content" class="text-selection" style="white-space: pre-line;">{{content}}</div>
+      <h3>{{ title() || 'No title' }}</h3>
+      @if (content()) {
+        <div class="text-selection" style="white-space: pre-line;">{{ content() }}</div>
+      }
 
-        <dui-dialog-actions>
-            <dui-button focus hotkey="escape"  [closeDialog]="true">OK</dui-button>
-        </dui-dialog-actions>
-    `
+      <dui-dialog-actions>
+        <dui-button auto-focus hotkey="escape" [closeDialog]="true">OK</dui-button>
+      </dui-dialog-actions>
+    `,
+    imports: [DialogActionsComponent, ButtonComponent, HotkeyDirective, CloseDialogDirective],
 })
 export class DuiDialogAlert {
-    @Input() title: string = 'Alert';
-    @Input() content: string = '';
+    title = input<string>('Alert');
+    content = input<string>('');
 
     static dialogDefaults = {
-        maxWidth: '700px'
+        maxWidth: '700px',
     };
 }
 
 @Component({
-    standalone: false,
     template: `
-        <h3>{{title || 'No title'}}</h3>
-        <div *ngIf="content" class="text-selection" style="white-space: pre-line;">{{content}}</div>
-        <div style="padding-top: 5px;">
-            <dui-input style="width: 100%" (enter)="dialog.close(value)" focus [(ngModel)]="value"></dui-input>
-        </div>
+      <h3>{{ title() || 'No title' }}</h3>
+      @if (content(); as content) {
+        <div class="text-selection" style="white-space: pre-line;">{{ content }}</div>
+      }
+      <div style="padding-top: 5px;">
+        <dui-input style="width: 100%" (enter)="dialog.close(value())" auto-focus [(ngModel)]="value"></dui-input>
+      </div>
 
-        <dui-dialog-actions>
-            <dui-button hotkey="escape" [closeDialog]="false">Cancel</dui-button>
-            <dui-button [closeDialog]="value">OK</dui-button>
-        </dui-dialog-actions>
-    `
+      <dui-dialog-actions>
+        <dui-button hotkey="escape" [closeDialog]="false">Cancel</dui-button>
+        <dui-button [closeDialog]="value()">OK</dui-button>
+      </dui-dialog-actions>
+    `,
+    imports: [InputComponent, FormsModule, DialogActionsComponent, ButtonComponent, HotkeyDirective, CloseDialogDirective],
 })
 export class DuiDialogPrompt {
-    @Input() title: string = 'Alert';
-    @Input() content: string = '';
+    title = input<string>('Alert');
+    content = input<string>('');
 
-    @Input() value: string = '';
+    value = input<string>('');
 
     static dialogDefaults = {
-        maxWidth: '700px'
+        maxWidth: '700px',
     };
 
     constructor(public dialog: DialogComponent) {
     }
 }
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class DuiDialog {
     constructor(
         protected resolver: ComponentFactoryResolver,
@@ -123,6 +116,7 @@ export class DuiDialog {
             const comp = overlayRef.attach(portal);
             comp.instance.closed.subscribe((v) => {
                 comp.destroy();
+                overlayRef.detach();
                 overlayRef.dispose();
             });
 
@@ -133,8 +127,7 @@ export class DuiDialog {
             viewContainerRef = this.registry.getCurrentViewContainerRef();
         }
 
-        const factory = this.resolver.resolveComponentFactory(DialogComponent);
-        return viewContainerRef.createComponent(factory);
+        return viewContainerRef.createComponent(DialogComponent);
     }
 
     public open<T>(
@@ -144,22 +137,19 @@ export class DuiDialog {
         viewContainerRef: ViewContainerRef | null = null,
     ): { dialog: DialogComponent, close: Promise<any>, component: T } {
         const comp = this.getComponentRef(viewContainerRef);
-        comp.instance.visible = true;
-        comp.instance.component = component;
-        comp.instance.componentInputs = inputs;
+        comp.setInput('visible', true);
+        comp.setInput('component', component);
+        comp.setInput('componentInputs', inputs);
 
         if ((component as any).dialogDefaults) {
-            for (const [i, v] of Object.entries((component as any).dialogDefaults)) {
-                (comp.instance as any)[i] = v;
+            for (const [i, v] of Object.entries((component as any).dialogDefaults) as Array<[string, any]>) {
+                comp.setInput(i, v);
             }
         }
 
         for (const [i, v] of Object.entries(dialogInputs)) {
-            (comp.instance as any)[i] = v;
+            comp.setInput(i, v);
         }
-
-        comp.instance.show();
-        comp.changeDetectorRef.detectChanges();
 
         const close = new Promise((resolve) => {
             comp.instance.closed.subscribe((v) => {
@@ -168,45 +158,50 @@ export class DuiDialog {
             });
         });
 
+        comp.instance.show();
+
         return {
             dialog: comp.instance,
             close,
-            component: comp.instance.wrapperComponentRef!.instance!.renderComponentDirective!.component!.instance,
+            component: comp.instance.wrapperComponentRef?.instance?.renderComponentDirective?.component?.instance,
         };
     }
 
-    public async alert(title: string, content?: string, dialodInputs: { [name: string]: any } = {}): Promise<boolean> {
-        const { dialog } = this.open(DuiDialogAlert, { title, content }, dialodInputs);
+    public async alert(title: string, content: string = '', inputs: { [name: string]: any } = {}): Promise<boolean> {
+        const { dialog } = this.open(DuiDialogAlert, { title, content }, inputs);
         return dialog.toPromise();
     }
 
-    public async confirm(title: string, content?: string, dialodInputs: { [name: string]: any } = {}): Promise<boolean> {
-        const { dialog } = this.open(DuiDialogConfirm, { title, content }, dialodInputs);
+    public async confirm(title: string, content: string = '', inputs: { [name: string]: any } = {}): Promise<boolean> {
+        const { dialog } = this.open(DuiDialogConfirm, { title, content }, inputs);
         return dialog.toPromise();
     }
 
-    public async prompt(title: string, value: string, content?: string, dialodInputs: { [name: string]: any } = {}): Promise<false | string> {
-        const { dialog } = this.open(DuiDialogPrompt, { title, value, content }, dialodInputs);
+    public async prompt(title: string, value: string, content?: string, inputs: { [name: string]: any } = {}): Promise<false | string> {
+        const { dialog } = this.open(DuiDialogPrompt, { title, value, content }, inputs);
         return dialog.toPromise();
-    }
-
-    public progress(): ProgressDialogState {
-        const state$ = new ProgressDialogState;
-        this.open(DuiDialogProgress, { state$ });
-        return state$;
     }
 }
 
-@Directive({
-    standalone: false,
-    selector: '[confirm]',
-})
+/**
+ * Directive to show a confirmation dialog when the user clicks on the element.
+ *
+ * ```html
+ * <dui-button confirm="Really delete?" (click)="delete()">Delete</dui-button>
+ * ```
+ */
+@Directive({ selector: '[confirm]' })
 export class DuiDialogConfirmDirective implements OnDestroy {
-    @Input() confirm!: string;
+    /**
+     * The confirm message to show when the user clicks on the element.
+     *
+     * Use `Title\nText` to specify a title and text, separated by a newline.
+     */
+    confirm = input.required<string>();
 
-    ignoreNextClick = false;
+    protected ignoreNextClick = false;
 
-    callback = async (event: MouseEvent) => {
+    protected callback = async (event: MouseEvent) => {
         if (isTargetChildOf(event.target, this.element.nativeElement)) {
             if (this.ignoreNextClick) {
                 this.ignoreNextClick = false;
@@ -215,26 +210,34 @@ export class DuiDialogConfirmDirective implements OnDestroy {
 
             event.stopPropagation();
             event.preventDefault();
-            const [title, text] = this.confirm.split('\n');
+            const confirm = this.confirm();
+            const firstNewlineIndex = confirm.indexOf('\n');
+            let title = '';
+            let text = '';
+            if (firstNewlineIndex !== -1) {
+                title = confirm.substring(0, firstNewlineIndex);
+                text = confirm.substring(firstNewlineIndex + 1);
+            } else {
+                title = confirm;
+                text = '';
+            }
             const a = await this.dialog.confirm(title, text, {});
             if (a) {
                 this.ignoreNextClick = true;
                 this.element.nativeElement.dispatchEvent(event);
             }
-            this.cd.detectChanges();
         }
     };
 
     constructor(
         protected element: ElementRef<HTMLElement>,
         protected dialog: DuiDialog,
-        protected cd: ChangeDetectorRef,
         @Inject(DOCUMENT) protected document: any,
     ) {
-        this.document.body!.addEventListener('click', this.callback, true);
+        this.document.body?.addEventListener('click', this.callback, true);
     }
 
     ngOnDestroy() {
-        this.document.body!.removeEventListener('click', this.callback, true);
+        this.document.body?.removeEventListener('click', this.callback, true);
     }
 }

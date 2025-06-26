@@ -1,59 +1,54 @@
 import { RpcClientEventIncomingMessage, RpcClientEventOutgoingMessage, RpcTypes } from '@deepkit/rpc';
-import { Component, Input, OnChanges } from '@angular/core';
-import { trackByIndex } from '@deepkit/ui-library';
+import { Component, computed, input } from '@angular/core';
+import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { inspect } from '../../utils';
+import { DatePipe } from '@angular/common';
 
 @Component({
     selector: 'rpc-inspect-message',
     template: `
-        <div class="header">
-            <div class="id">
-                {{message.id}}
-            </div>
-            <div class="type">
-                {{RpcTypes[message.type] || message.type}}
-            </div>
-            <div style="flex: 1;">
-                {{message.date|date:'MMM d, HH:mm:ss.SSS'}}
-            </div>
-            <div *ngIf="message.composite">
-                [composite]
-            </div>
+      <div class="header">
+        <div class="id">
+          {{ message().id }}
         </div>
-        <div class="body">
-            <div class="composite" *ngIf="message.composite">
-                <div class="message" *ngFor="let m of messages; trackBy: trackByIndex">
-                    <div>{{RpcTypes[m.type] || m.type}}</div>
-                    <div class="code overlay-scrollbar-small" codeHighlight [code]="m.body"></div>
-                </div>
-            </div>
-            <ng-container *ngIf="!message.composite">
-                <div class="code overlay-scrollbar-small" codeHighlight [code]="body"></div>
-            </ng-container>
+        <div class="type">
+          {{ RpcTypes[message().type] || message().type }}
         </div>
+        <div style="flex: 1;">
+          {{ message().date|date:'MMM d, HH:mm:ss.SSS' }}
+        </div>
+
+        @if (message().composite) {
+          <div>
+            [composite]
+          </div>
+        }
+      </div>
+      <div class="body">
+        @if (message().composite) {
+          <div class="composite">
+            @for (m of messages(); track $index) {
+              <div class="message">
+                <div>{{ RpcTypes[m.type] || m.type }}</div>
+                <code-highlight [code]="m.body"></code-highlight>
+              </div>
+            }
+          </div>
+        } @else {
+          <code-highlight [code]="body()"></code-highlight>
+        }
+      </div>
     `,
     styleUrls: ['./rpc-inspect-message.component.scss'],
-    standalone: false
+    imports: [
+        DatePipe,
+        CodeHighlightComponent,
+
+    ],
 })
-export class RpcInspectMessageComponent implements OnChanges {
+export class RpcInspectMessageComponent {
     RpcTypes = RpcTypes;
-    trackByIndex = trackByIndex;
-    @Input() message!: RpcClientEventIncomingMessage | RpcClientEventOutgoingMessage;
-
-    messages: { type: number, body: string }[] = [];
-
-    public body: string = '';
-
-    ngOnChanges(): void {
-        this.body = inspect(this.message.body);
-
-        this.messages = [];
-        for (const message of this.message.messages) {
-            this.messages.push({
-                type: message.type,
-                body: inspect(message.body)
-            });
-        }
-    }
-
+    message = input.required<RpcClientEventIncomingMessage | RpcClientEventOutgoingMessage>();
+    messages = computed(() => this.message().messages.map(v => ({ type: v.type, body: inspect(v.body) })));
+    body = computed(() => this.message().body);
 }

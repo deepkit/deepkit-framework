@@ -2,6 +2,9 @@
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
   "newProjectRoot": "projects",
+  "cli": {
+    "packageManager": "yarn"
+  },
   "projects": {
     "orm-browser-gui": {
       "projectType": "application",
@@ -30,10 +33,7 @@
               "src/assets"
             ],
             "styles": [
-              "src/styles.scss",
-              "@deepkit/desktop-ui/src/scss/reset.scss",
-              "@deepkit/desktop-ui/src/scss/all.scss",
-              "@deepkit/desktop-ui/src/scss/icon.scss"
+              "src/styles.scss"
             ],
             "scripts": []
           },
@@ -91,8 +91,5 @@
         }
       }
     }
-  },
-  "cli": {
-    "analytics": false
   }
 }

@@ -1,11 +1,10 @@
-import { Component, Input } from '@angular/core';
+import { Component, input } from '@angular/core';
 
 
 @Component({
     selector: 'dui-label',
-    standalone: false,
     template: `
-        <label>{{label}}</label>
+        <label>{{label()}}</label>
         <ng-content></ng-content>
     `,
     styles: [`
@@ -19,20 +18,19 @@ import { Component, Input } from '@angular/core';
 
         label {
             display: block;
-            color: var(--text-light);
+            color: var(--dui-text-light);
             margin-bottom: 6px;
             user-select: none;
         }
     `]
 })
 export class LabelComponent {
-    @Input() label: string = '';
+    label = input<string>('');
 }
 
 
 @Component({
     selector: 'dui-label-grid',
-    standalone: false,
     template: `
         <ng-content></ng-content>
     `,
@@ -48,10 +46,10 @@ export class LabelComponent {
     }
 })
 export class LabelGridComponent {
-    @Input() labelWidth: string | number = '150px';
-    @Input() labelMaxWidth: string | number = '1fr';
+    labelWidth = input<string | number>('150px');
+    labelMaxWidth = input<string | number>('1fr');
 
-    get templateColumns(){
-        return `repeat(auto-fit, minmax(${this.labelWidth}, ${this.labelMaxWidth}))`;
+    protected get templateColumns(){
+        return `repeat(auto-fit, minmax(${this.labelWidth()}, ${this.labelMaxWidth()}))`;
     }
 }

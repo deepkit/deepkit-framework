@@ -227,22 +227,20 @@ export class BrokerBusSubject<T> extends Subject<T> {
         protected onPublish: (value: T) => void,
     ) {
         super();
-    }
+        this.subscribe = (...args: any[]) => {
+            const sub = super.subscribe(...args);
 
-    // @ts-ignore
-    override subscribe(...args: Parameters<Subject<T>['subscribe']>): Subscription {
-        const sub = super.subscribe(...args);
-
-        if (this.refCount++ === 0) {
-            this.onFirst();
-        }
-
-        sub.add(() => {
-            if (--this.refCount === 0) {
-                this.onLast();
+            if (this.refCount++ === 0) {
+                this.onFirst();
             }
-        });
-        return sub;
+
+            sub.add(() => {
+                if (--this.refCount === 0) {
+                    this.onLast();
+                }
+            });
+            return sub;
+        }
     }
 
     override next(value: T, publish = true): void {

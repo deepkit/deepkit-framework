@@ -3,24 +3,29 @@ import { filetypeinfo } from 'magic-bytes.js';
 import * as FileSaver from 'file-saver';
 import { Type } from '@deepkit/type';
 import { TypeDecoration } from './utils';
+import { DropdownComponent, HumanFileSizePipe, IconComponent, ObjectURLPipe, OpenDropdownHoverDirective } from '@deepkit/desktop-ui';
 
 @Component({
     selector: 'orm-browser-binary-cell',
     template: `
-        <ng-container *ngIf="image">
-            <img [src]="image|objectURL"
-                 [openDropdownHover]="drop"
-                 style="max-height: 100%; max-width: 50px;"/>
-            <dui-dropdown #drop [width]="450" [height]="450">
-                <div style="height: 100%; display: flex; justify-content: center; align-items: center">
-                    <img [src]="image|objectURL" style="max-height: 100%; max-width: 100%;"/>
-                </div>
-            </dui-dropdown>
-        </ng-container>
-        <dui-icon name="download" *ngIf="model && model.byteLength > 0" (click)="download(); $event.preventDefault(); $event.stopPropagation()" clickable></dui-icon>
-        <div class="bytes" *ngIf="model">
-            {{model.byteLength|fileSize}}
+      @if (image) {
+        <img [src]="image|objectURL"
+             [openDropdownHover]="drop"
+             style="max-height: 100%; max-width: 50px;" />
+        <dui-dropdown #drop [width]="450" [height]="450">
+          <div style="height: 100%; display: flex; justify-content: center; align-items: center">
+            <img [src]="image|objectURL" style="max-height: 100%; max-width: 100%;" />
+          </div>
+        </dui-dropdown>
+      }
+      @if (model && model.byteLength > 0) {
+        <dui-icon name="download" (click)="download(); $event.preventDefault(); $event.stopPropagation()" clickable></dui-icon>
+      }
+      @if (model) {
+        <div class="bytes">
+          {{ model.byteLength|fileSize }}
         </div>
+      }
     `,
     styles: [`
         :host {
@@ -31,12 +36,12 @@ import { TypeDecoration } from './utils';
 
         dui-icon, .bytes {
             margin-left: 6px;
-            color: var(--text-light);
+            color: var(--dui-text-light);
             font-size: 12px;
         }
 
     `],
-    standalone: false
+    imports: [OpenDropdownHoverDirective, DropdownComponent, IconComponent, ObjectURLPipe, HumanFileSizePipe],
 })
 export class BinaryCellComponent implements OnInit, OnChanges {
     @Input() model: any;

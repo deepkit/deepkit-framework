@@ -36,7 +36,7 @@
             background-color: transparent;
             border-radius: 3px;
             border: 1px solid var(--dui-selection-light);
-            color: var(--text-grey);
+            color: var(--dui-text-grey);
             text-align: center;
             font: inherit;
             resize: none;
@@ -88,7 +88,7 @@
         img, app-loading-spinner {
             border-radius: 5px;
             //background-color: rgba(35, 35, 35, 0.87);
-            background-color: var(--line-color-light);
+            background-color: var(--dui-line-color-light);
         }
 
         .title span {

@@ -1,6 +1,3 @@
-$focusOutlineColor: #6da0e7;
-$focusOutlineColorDark: #2a729c;
-
 @mixin box-textured {
     border-top: 1px solid #c9cac9;
     border-bottom: 1px solid #a1a1a1;
@@ -14,13 +11,10 @@ $focusOutlineColorDark: #2a729c;
     background-image: linear-gradient(-180deg, #EEEEEE 5%, #E4E4E4 5%, #E2E2E2 49%, #DCDCDC 100%);
 }
 
-
 @mixin box-textured-dark {
     color: white;
 
     background-image: linear-gradient(-180deg, #787878 1px, #696969 1px, #696969 95%);
-    //border-top: 1px solid #313131;
-    //border-bottom: 1px solid #2a2a2a;
     border-left: 1px solid #303030;
     border-right: 1px solid #303030;
 }
@@ -45,21 +39,4 @@ $focusOutlineColorDark: #2a729c;
     border-bottom: 1px solid #818181;
     border-left: 1px solid #818181;
     border-right: 1px solid #818181;
-}
-
-@mixin focus-border {
-    outline: 0;
-    border-color: $focusOutlineColor;
-    box-shadow: 3px 3px 0 $focusOutlineColor, -3px -3px 0 $focusOutlineColor, -3px 3px 0 $focusOutlineColor, 3px -3px 0 $focusOutlineColor;
-}
-
-@mixin focus-border-dark {
-    border-color: $focusOutlineColorDark;
-    box-shadow: 3px 3px 0 $focusOutlineColorDark, -3px -3px 0 $focusOutlineColorDark, -3px 3px 0 $focusOutlineColorDark, 3px -3px 0 $focusOutlineColorDark;
-}
-
-
-@mixin background-vibrancy {
-    backdrop-filter: var(--dui-background-vibrancy);
-    background-color: var(--dui-toolbar-bg-trans);
 }

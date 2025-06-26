@@ -11,21 +11,22 @@
 import {
     AfterViewInit,
     ApplicationRef,
-    ChangeDetectorRef,
+    booleanAttribute,
     Component,
     ComponentRef,
     Directive,
     ElementRef,
     EventEmitter,
     HostListener,
+    inject,
     Injector,
-    Input,
+    input,
+    model,
     OnChanges,
     OnDestroy,
     Optional,
     Output,
     SimpleChanges,
-    SkipSelf,
     TemplateRef,
     Type,
     ViewChild,
@@ -36,105 +37,119 @@ import { ComponentPortal } from '@angular/cdk/portal';
 import { WindowRegistry } from '../window/window-state';
 import { WindowComponent } from '../window/window.component';
 import { RenderComponentDirective } from '../core/render-component.directive';
-import { IN_DIALOG } from '../app/token';
-import { OverlayStack, OverlayStackItem, ReactiveChangeDetectionModule, unsubscribe } from '../app';
+import { OverlayStack, OverlayStackItem } from '../app/app';
 import { Subscription } from 'rxjs';
-import { ButtonComponent } from '../button';
+import { ButtonComponent } from '../button/button.component';
+import { WindowContentComponent } from '../window/window-content.component';
+import { NgTemplateOutlet } from '@angular/common';
+import { unsubscribe } from '../app/reactivate-change-detection';
 
 @Component({
-    standalone: false,
     template: `
-        <dui-window>
-            <dui-window-content class="{{class}}">
-                <ng-container *ngIf="component"
-                              #renderComponentDirective
-                              [renderComponent]="component" [renderComponentInputs]="componentInputs">
-                </ng-container>
+      <dui-window [dialog]="true" [normalize-style]="windowComponent?.normalizeStyle()">
+        <dui-window-content class="{{class()}}" [class.dui-normalized]="normalized()">
+          @if (component()) {
+            <ng-container
+              #renderComponentDirective
+              [renderComponent]="component()" [renderComponentInputs]="componentInputs()">
+            </ng-container>
+          }
 
-                <ng-container *ngIf="content" [ngTemplateOutlet]="content"></ng-container>
+          @if (content(); as content) {
+            <ng-container [ngTemplateOutlet]="content"></ng-container>
+          }
 
-                <ng-container *ngIf="container">
-                    <ng-container [ngTemplateOutlet]="container"></ng-container>
-                </ng-container>
+          @if (container(); as container) {
+            <ng-container [ngTemplateOutlet]="container"></ng-container>
+          } @else {
+            <ng-content></ng-content>
+          }
+        </dui-window-content>
 
-                <ng-container *ngIf="!container">
-                    <ng-content></ng-content>
-                </ng-container>
-            </dui-window-content>
-
-            <div class="dialog-actions" *ngIf="actions">
-                <ng-container [ngTemplateOutlet]="actions"></ng-container>
-            </div>
-        </dui-window>
+        @if (actions(); as actions) {
+          <div class="dialog-actions">
+            <ng-container [ngTemplateOutlet]="actions"></ng-container>
+          </div>
+        }
+      </dui-window>
     `,
     host: {
-        '[attr.tabindex]': '1'
+        '[attr.tabindex]': '1',
     },
-    styleUrls: ['./dialog-wrapper.component.scss']
+    styleUrls: ['./dialog-wrapper.component.scss'],
+    imports: [WindowComponent, WindowContentComponent, RenderComponentDirective, NgTemplateOutlet],
 })
 export class DialogWrapperComponent {
-    @Input() component?: Type<any>;
-    @Input() componentInputs: { [name: string]: any } = {};
+    component = input<Type<any>>();
+    componentInputs = input<{ [name: string]: any; }>({});
 
-    actions?: TemplateRef<any> | undefined;
-    container?: TemplateRef<any> | undefined;
-    content?: TemplateRef<any> | undefined;
-    class: string = '';
+    actions = model<TemplateRef<any> | undefined>(undefined);
+    container = model<TemplateRef<any> | undefined>(undefined);
+    content = model<TemplateRef<any> | undefined>(undefined);
+    class = input<string>('');
+    normalized = input(true, { transform: booleanAttribute });
 
     @ViewChild(RenderComponentDirective, { static: false }) renderComponentDirective?: RenderComponentDirective;
 
-    constructor(
-        protected cd: ChangeDetectorRef,
-    ) {
+    windowComponent = inject(WindowComponent, { optional: true });
+
+    setActions(actions: TemplateRef<any> | undefined) {
+        this.actions.set(actions);
     }
 
-    public setActions(actions: TemplateRef<any> | undefined) {
-        this.actions = actions;
-        this.cd.detectChanges();
-    }
-
-    public setDialogContainer(container: TemplateRef<any> | undefined) {
-        this.container = container;
-        this.cd.detectChanges();
+    setDialogContainer(container: TemplateRef<any> | undefined) {
+        this.container.set(container);
     }
 }
 
+/**
+ * A dialog component that can be used to display content in a modal dialog.
+ *
+ * ```html
+ * <dui-dialog #dialog [maxWidth]="500">
+ *     Hello World!
+ *     <dui-button closeDialog>Abort</dui-button>
+ *     <dui-button>OK</dui-button>
+ * </dui-dialog>
+ * <dui-button openDialog="dialog">Open Dialog</dui-button>
+ * ```
+ */
 @Component({
     selector: 'dui-dialog',
-    standalone: false,
     template: `
-        <ng-template #template>
-            <ng-content></ng-content>
-        </ng-template>`,
+      <ng-template #template>
+        <ng-content></ng-content>
+      </ng-template>`,
     styles: [`:host {
         display: none;
-    }`]
+    }`],
 })
 export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
-    @Input() title: string = '';
+    title = input<string>('');
 
-    @Input() visible: boolean = false;
-    @Output() visibleChange = new EventEmitter<boolean>();
+    visible = model<boolean>(false);
 
-    @Input() class: string = '';
+    class = input<string>('');
 
-    @Input() noPadding: boolean | '' = false;
+    noPadding = input(false, { transform: booleanAttribute });
 
-    @Input() minWidth?: number | string;
-    @Input() minHeight?: number | string;
+    minWidth = input<number | string>();
+    minHeight = input<number | string>();
 
-    @Input() width?: number | string;
-    @Input() height?: number | string;
+    width = input<number | string>();
+    height = input<number | string>();
 
-    @Input() maxWidth?: number | string;
-    @Input() maxHeight?: number | string;
+    maxWidth = input<number | string>();
+    maxHeight = input<number | string>();
 
-    @Input() center: boolean = false;
+    center = input<boolean>(false);
 
-    @Input() backDropCloses: boolean = false;
+    backDropCloses = input<boolean>(false);
 
-    @Input() component?: Type<any>;
-    @Input() componentInputs: { [name: string]: any } = {};
+    component = input<Type<any>>();
+    componentInputs = input<{
+        [name: string]: any;
+    }>({});
 
     @Output() closed = new EventEmitter<any>();
     @Output() open = new EventEmitter<any>();
@@ -144,8 +159,8 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     actions?: TemplateRef<any> | undefined;
     container?: TemplateRef<any> | undefined;
 
-    public overlayRef?: OverlayRef;
-    public wrapperComponentRef?: ComponentRef<DialogWrapperComponent>;
+    overlayRef?: OverlayRef;
+    wrapperComponentRef?: ComponentRef<DialogWrapperComponent>;
 
     protected lastOverlayStackItem?: OverlayStackItem;
 
@@ -153,16 +168,14 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         protected applicationRef: ApplicationRef,
         protected overlayStack: OverlayStack,
         protected viewContainerRef: ViewContainerRef,
-        protected cd: ChangeDetectorRef,
         protected overlay: Overlay,
         protected injector: Injector,
         protected registry: WindowRegistry,
-        @Optional() @SkipSelf() protected cdParent?: ChangeDetectorRef,
         @Optional() protected window?: WindowComponent,
     ) {
     }
 
-    public toPromise(): Promise<any> {
+    toPromise(): Promise<any> {
         return new Promise((resolve) => {
             this.closed.subscribe((v: any) => {
                 resolve(v);
@@ -170,14 +183,14 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         });
     }
 
-    public setDialogContainer(container: TemplateRef<any> | undefined) {
+    setDialogContainer(container: TemplateRef<any> | undefined) {
         this.container = container;
         if (this.wrapperComponentRef) {
             this.wrapperComponentRef.instance.setDialogContainer(container);
         }
     }
 
-    public setActions(actions: TemplateRef<any> | undefined) {
+    setActions(actions: TemplateRef<any> | undefined) {
         this.actions = actions;
         if (this.wrapperComponentRef) {
             this.wrapperComponentRef.instance.setActions(actions);
@@ -185,20 +198,20 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (this.visible) {
+        if (this.visible()) {
             this.show();
         } else {
             this.close(undefined);
         }
     }
 
-    public show() {
+    show() {
         if (this.overlayRef) {
             return;
         }
 
         const window = this.window ? this.window.getClosestNonDialogWindow() : this.registry.getOuterActiveWindow();
-        const offsetTop = window && window.header ? window.header.getBottomPosition() : 0;
+        const offsetTop = window && window.header()?.getBottomPosition() || 0;
 
         // const document = this.registry.getCurrentViewContainerRef().element.nativeElement.ownerDocument;
 
@@ -222,27 +235,28 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
             .position()
             .global().centerHorizontally().top(offsetTop + 'px');
 
-        if (this.center) {
+        const center = this.center();
+        if (center) {
             positionStrategy = overlay
                 .position()
                 .global().centerHorizontally().centerVertically();
         }
 
         this.overlayRef = overlay.create({
-            width: this.width || undefined,
-            height: this.height || undefined,
-            minWidth: this.minWidth || undefined,
-            minHeight: this.minHeight || undefined,
-            maxWidth: this.maxWidth || '90%',
-            maxHeight: this.maxHeight || '90%',
+            width: this.width() || undefined,
+            height: this.height() || undefined,
+            minWidth: this.minWidth() || undefined,
+            minHeight: this.minHeight() || undefined,
+            maxWidth: this.maxWidth() || '90%',
+            maxHeight: this.maxHeight() || '90%',
             hasBackdrop: true,
-            panelClass: [this.class, (this.center ? 'dialog-overlay' : 'dialog-overlay-with-animation'), this.noPadding !== false ? 'dialog-overlay-no-padding' : ''],
+            panelClass: [this.class(), (center ? 'dialog-overlay' : 'dialog-overlay-with-animation'), this.noPadding() !== false ? 'dialog-overlay-no-padding' : ''],
             scrollStrategy: overlay.scrollStrategies.reposition(),
             positionStrategy: positionStrategy,
         });
 
-        if (this.backDropCloses) {
-            this.overlayRef!.backdropClick().subscribe(() => {
+        if (this.backDropCloses()) {
+            this.overlayRef.backdropClick().subscribe(() => {
                 this.close(undefined);
             });
         }
@@ -252,40 +266,34 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
             providers: [
                 { provide: DialogComponent, useValue: this },
                 { provide: WindowComponent, useValue: window },
-                { provide: IN_DIALOG, useValue: true },
             ],
         });
 
         this.open.emit();
         const portal = new ComponentPortal(DialogWrapperComponent, this.viewContainerRef, injector);
 
-        this.wrapperComponentRef = this.overlayRef!.attach(portal);
-        this.wrapperComponentRef.instance.component = this.component!;
-        this.wrapperComponentRef.instance.componentInputs = this.componentInputs;
-        this.wrapperComponentRef.instance.content = this.template!;
-        this.wrapperComponentRef.instance.class = this.class!;
+        this.wrapperComponentRef = this.overlayRef.attach(portal);
+        this.wrapperComponentRef.setInput('component', this.component());
+        this.wrapperComponentRef.setInput('componentInputs', this.componentInputs());
+        this.wrapperComponentRef.setInput('content', this.template);
+        this.wrapperComponentRef.setInput('class', this.class());
 
         if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
         this.lastOverlayStackItem = this.overlayStack.register(this.overlayRef.hostElement);
 
         if (this.actions) {
-            this.wrapperComponentRef!.instance.setActions(this.actions);
+            this.wrapperComponentRef.instance.setActions(this.actions);
         }
 
         if (this.container) {
-            this.wrapperComponentRef!.instance.setDialogContainer(this.container);
+            this.wrapperComponentRef.instance.setDialogContainer(this.container);
         }
 
-        this.overlayRef!.updatePosition();
+        this.overlayRef.updatePosition();
 
-        this.visible = true;
-        this.visibleChange.emit(true);
+        this.visible.set(true);
 
-        this.wrapperComponentRef!.location.nativeElement.focus();
-        this.wrapperComponentRef!.changeDetectorRef.detectChanges();
-
-        this.cd.detectChanges();
-        if (this.cdParent) this.cdParent.detectChanges();
+        this.wrapperComponentRef.location.nativeElement.focus();
     }
 
     protected beforeUnload() {
@@ -303,13 +311,13 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     ngAfterViewInit() {
     }
 
-    public close(v?: any) {
+    close(v?: any) {
+        const open = !!this.overlayRef;
         this.beforeUnload();
-        this.visible = false;
-        this.visibleChange.emit(false);
-
-        this.closed.emit(v);
-        ReactiveChangeDetectionModule.tick();
+        this.visible.set(false);
+        if (open) {
+            this.closed.emit(v);
+        }
     }
 
     ngOnDestroy(): void {
@@ -318,14 +326,16 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
 }
 
 /**
- * This directive is necessary if you want to load and render the dialog content
- * only when opening the dialog. Without it, it is immediately rendered, which can cause
- * performance and injection issues.
+ * Directive to lazy load a dialog container.
+ *
+ * ```html
+ * <dui-dialog #dialog>
+ *   <ng-container *dialogContainer>
+ *     Lazy loaded dialog content.
+ *   </ng-container>
+ * </dui-dialog>
  */
-@Directive({
-    'selector': '[dialogContainer]',
-    standalone: false,
-})
+@Directive({ selector: '[dialogContainer]' })
 export class DialogDirective {
     constructor(protected dialog: DialogComponent, public template: TemplateRef<any>) {
         this.dialog.setDialogContainer(this.template);
@@ -334,8 +344,7 @@ export class DialogDirective {
 
 @Component({
     selector: 'dui-dialog-actions',
-    standalone: false,
-    template: '<ng-template #template><ng-content></ng-content></ng-template>'
+    template: '<ng-template #template><ng-content></ng-content></ng-template>',
 })
 export class DialogActionsComponent implements AfterViewInit, OnDestroy {
     @ViewChild('template', { static: true }) template!: TemplateRef<any>;
@@ -356,39 +365,46 @@ export class DialogActionsComponent implements AfterViewInit, OnDestroy {
 
 @Component({
     selector: 'dui-dialog-error',
-    standalone: false,
     template: '<ng-content></ng-content>',
-    styleUrls: ['./dialog-error.component.scss']
+    styleUrls: ['./dialog-error.component.scss'],
 })
 export class DialogErrorComponent {
 }
 
-
-@Directive({
-    selector: '[closeDialog]',
-    standalone: false,
-})
+/**
+ * A directive to close the dialog on regular left click.
+ * Can be used inside a dialog to close it.
+ *
+ * ```html
+ * <dui-button closeDialog>Close</dui-button>
+ * ```
+ */
+@Directive({ selector: '[closeDialog]' })
 export class CloseDialogDirective {
-    @Input() closeDialog: any;
+    closeDialog = input<any>();
 
     constructor(protected dialog: DialogComponent) {
     }
 
     @HostListener('click')
-    onClick() {
-        this.dialog.close(this.closeDialog);
+    protected onClick() {
+        this.dialog.close(this.closeDialog());
     }
 }
 
 /**
  * A directive to open the given dialog on regular left click.
+ *
+ * ```html
+ * <dui-dialog #myDialog>
+ *     Hi there!
+ * </dui-dialog>
+ * <dui-button openDialog="myDialog">Open Dialog</dui-button>
+ * ```
  */
-@Directive({
-    'selector': '[openDialog]',
-    standalone: false,
-})
+@Directive({ selector: '[openDialog]' })
 export class OpenDialogDirective implements AfterViewInit, OnChanges, OnDestroy {
-    @Input() openDialog?: DialogComponent;
+    openDialog = input<DialogComponent>();
 
     @unsubscribe()
     openSub?: Subscription;
@@ -414,18 +430,20 @@ export class OpenDialogDirective implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     protected link() {
-        if (this.button && this.openDialog) {
-            this.openSub = this.openDialog.open.subscribe(() => {
-                if (this.button) this.button.active = true;
+        const openDialog = this.openDialog();
+        if (this.button && openDialog) {
+            this.openSub = openDialog.open.subscribe(() => {
+                if (this.button) this.button.active.set(true);
             });
-            this.hiddenSub = this.openDialog.closed.subscribe(() => {
-                if (this.button) this.button.active = false;
+            this.hiddenSub = openDialog.closed.subscribe(() => {
+                if (this.button) this.button.active.set(false);
             });
         }
     }
 
     @HostListener('click')
-    onClick() {
-        if (this.openDialog) this.openDialog.show();
+    protected onClick() {
+        const openDialog = this.openDialog();
+        if (openDialog) openDialog.show();
     }
 }

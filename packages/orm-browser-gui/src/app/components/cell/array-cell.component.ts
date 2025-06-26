@@ -1,15 +1,7 @@
-import {
-    Component,
-    ComponentFactoryResolver,
-    ComponentRef,
-    Input,
-    OnChanges,
-    OnInit,
-    ViewContainerRef,
-} from '@angular/core';
+import { Component, ComponentFactoryResolver, ComponentRef, inject, Input, OnChanges, OnInit, ViewContainerRef } from '@angular/core';
 import { isArray } from '@deepkit/core';
 import { TypeArray } from '@deepkit/type';
-import { inputRegistry } from '../../registry';
+import { ComponentRegistry } from '../../registry';
 
 @Component({
     template: ``,
@@ -17,14 +9,14 @@ import { inputRegistry } from '../../registry';
         :host ::ng-deep ~ ng-component:not(:last-of-type)::after {
             content: ',';
         }
-    `],
-    standalone: false
+    `]
 })
 export class ArrayCellComponent implements OnChanges, OnInit  {
     @Input() model: any;
     @Input() type!: TypeArray;
 
     protected componentRefs: ComponentRef<any>[] = [];
+    registry = inject(ComponentRegistry);
 
     constructor(
         private containerRef: ViewContainerRef,
@@ -49,7 +41,7 @@ export class ArrayCellComponent implements OnChanges, OnInit  {
             ref.destroy();
         }
 
-        const component = inputRegistry.get(subType);
+        const component = this.registry.inputRegistry.get(subType);
         if (!component) return;
         const componentFactory = this.resolver.resolveComponentFactory(component);
 

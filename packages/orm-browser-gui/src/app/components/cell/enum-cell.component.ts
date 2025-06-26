@@ -1,10 +1,7 @@
 import { Component, Input, OnChanges, OnInit } from '@angular/core';
 import { TypeEnum } from '@deepkit/type';
 
-@Component({
-    template: `{{keyValueMap ? keyValueMap[model] : model}}`,
-    standalone: false
-})
+@Component({ template: `{{ keyValueMap ? keyValueMap[model] : model }}` })
 export class EnumCellComponent implements OnChanges, OnInit {
     @Input() model: any;
     @Input() type!: TypeEnum;

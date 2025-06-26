@@ -1,10 +1,8 @@
-@import "../../scss/mixins";
-
 :host {
-    display: block;
+    display: flex;
+    flex-direction: column;
     border: 1px solid #c5c5c5;
     background-color: white;
-    height: 100px;
 
     --background-header: #f0f0f0;
     --border-header: #cecece;
@@ -16,10 +14,6 @@
 
     --border-right-row-freeze: rgba(197, 197, 197, 0.5);
     --background-row-hover: #e0e0e0;
-
-    .frame {
-        height: 100%;
-    }
 }
 
 :host-context(.dui-theme-dark) {
@@ -33,21 +27,13 @@
     --background-row-hover: #333333;
 }
 
-.cdk-virtual-scroll-viewport {
-    height: 100%;
-}
-
-%header-background {
-    background: var(--background-header);
-    border-bottom: 1px solid var(--border-header);
-}
-
 .header {
     white-space: nowrap;
     height: 23px;
     overflow: hidden;
     padding-right: 13px;
-    @extend %header-background;
+    background: var(--background-header);
+    border-bottom: 1px solid var(--border-header);
 
     > div {
         position: relative;
@@ -69,7 +55,8 @@
         &.freeze {
             position: sticky;
             z-index: 2;
-            @extend %header-background;
+            background: var(--background-header);
+            border-bottom: 1px solid var(--border-header);
         }
 
         dui-icon {
@@ -96,20 +83,21 @@
 }
 
 .body {
-    height: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 
-    &.with-header {
-        height: calc(100% - 23px);
+    cdk-virtual-scroll-viewport {
+        flex: 1;
     }
-}
-
-.cdk-virtual-scroll-viewport {
-    overflow: auto !important;
 }
 
 .table-row {
     border-bottom: 1px solid rgba(192, 192, 192, 0.05);
     background-color: var(--background-row);
+    display: flex;
+    align-items: start;
+    flex-wrap: nowrap;
 
     > div {
         position: relative;
@@ -123,6 +111,8 @@
         white-space: nowrap;
         text-overflow: ellipsis;
         left: 0;
+        flex-shrink: 0;
+        flex-grow: 0;
 
         &.freeze {
             position: sticky;
@@ -131,8 +121,8 @@
 
         &.active-drop {
             opacity: 0.8;
-            border-left: 1px solid var(--line-color-light);
-            border-right: 1px solid var(--line-color-light);
+            border-left: 1px solid var(--dui-line-color-light);
+            border-right: 1px solid var(--dui-line-color-light);
         }
 
         &.other-cell {
@@ -158,18 +148,21 @@
     }
 }
 
-:host.auto-height {
-    .table-cell {
-        white-space: unset;
+:host.no-virtual-scrolling {
+    height: unset;
+
+    .table-row {
+        min-width: 100%;
+        width: fit-content;
+
+        > div {
+            white-space: unset;
+        }
     }
 }
 
 :host:focus {
     outline: 0;
-}
-
-:host:focus:not(.no-focus-outline) {
-    @include focus-border;
 }
 
 :host-context(.dui-theme-dark) {
@@ -182,10 +175,6 @@
         &:active {
             background-color: #474747;
         }
-    }
-
-    &:focus:not(.no-focus-outline) {
-        @include focus-border-dark;
     }
 }
 

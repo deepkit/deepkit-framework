@@ -1,22 +1,14 @@
-import {
-    AfterViewInit,
-    ChangeDetectorRef,
-    Component,
-    ElementRef,
-    HostListener,
-    OnDestroy,
-    OnInit,
-    ViewChild,
-} from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ControllerClient } from '../../client';
 import { decodeFrameData, decodeFrames } from '@deepkit/framework-debug-api';
 import { Application, Container, Graphics, InteractionEvent, Rectangle, Text, TextStyle } from 'pixi.js';
 import { FrameCategory, FrameEnd, FrameStart } from '@deepkit/stopwatch';
-import * as Hammer from 'hammerjs';
 import { ChangeFeed, Crunch, formatTime, FrameItem, FrameParser, getFrameX, ViewState } from './frame';
 import { CrunchContainer, FrameContainer } from './frame-container';
 import { Subject } from 'rxjs';
 import { ClientProgress } from '@deepkit/rpc';
+import { DatePipe, DecimalPipe, JsonPipe } from '@angular/common';
+import { ButtonComponent, ButtonGroupComponent, DragDirective, DuiDragEvent, WindowToolbarComponent } from '@deepkit/desktop-ui';
 
 interface FrameData {
     cid: number;
@@ -305,164 +297,156 @@ class ProfilerContainer extends Container {
 
 @Component({
     template: `
-        <dui-window-toolbar for="main">
-            <dui-button-group>
-                <!--                <dui-button textured icon="arrow_right" (click)="forward()"></dui-button>-->
-                <dui-button textured icon="garbage" (click)="resetProfilerFrames()"></dui-button>
-            </dui-button-group>
+      <dui-window-toolbar for="main">
+        <dui-button-group>
+          <!--                <dui-button textured icon="arrow_right" (click)="forward()"></dui-button>-->
+          <dui-button textured icon="garbage" (click)="resetProfilerFrames()"></dui-button>
+        </dui-button-group>
 
-            <div>
-                {{profiler.parser.frames}} frames, {{profiler.parser.rootItems.length}} contexts
-            </div>
-        </dui-window-toolbar>
-
-        <!--        <div class="top-frames">-->
-
-        <!--        </div>-->
-
-        <div class="canvas" #canvas></div>
-
-        <!--        <profile-timeline [parser]="parser" [selected]="selectedFrameChildrenStats.contextStart" (selectItem)="timelineSelect($event)"></profile-timeline>-->
-
-        <div class="inspector text-selection" *ngIf="selectedFrame">
-            <h3>{{selectedFrame.frame.label}}</h3>
-
-            <div style="margin-bottom: 10px;">
-                <label>Type</label>
-                {{FrameCategory[selectedFrame.frame.category]}}
-            </div>
-
-            <div style="margin-bottom: 10px;">
-                <label>debug</label>
-                x: {{selectedFrame.x}} ({{getFrameX(selectedFrame, viewState)}}, end: {{getFrameX(selectedFrame, viewState) + selectedFrame.took}})
-                y: {{selectedFrame.y}}
-                crunches: {{selectedFrame.context.allCrunches}}
-            </div>
-
-            <div style="margin-bottom: 10px;">
-                <label>took</label>
-                {{selectedFrame.took}} ({{selectedFrame.x + selectedFrame.took}})
-            </div>
-
-            <ng-container *ngIf="selectedFrameChildrenStats.contextStart">
-
-                <div>
-                    <label>Context</label>
-
-                    {{FrameCategory[selectedFrameChildrenStats.contextStart.frame.category]}} (#{{selectedFrameChildrenStats.contextStart.frame.context}})
-                    {{selectedFrameChildrenStats.contextStart.frame.label}}
-                </div>
-
-                <div>
-                    <label>Time from start of context</label>
-
-                    {{formatTime(selectedFrame.x - selectedFrameChildrenStats.contextStart.x, 3)}}
-                </div>
-            </ng-container>
-
-            <div>
-                <label style="width: 70px;">Started</label>
-                <ng-container>
-                    {{selectedFrame.frame.timestamp / 1000|date:'HH:mm:ss.SSS'}}
-                </ng-container>
-            </div>
-
-            <div>
-                <label style="width: 70px;">Ended</label>
-                <ng-container *ngIf="selectedFrame.took">
-                    {{(selectedFrame.frame.timestamp + selectedFrame.took) / 1000|date:'HH:mm:ss.SSS'}}
-                </ng-container>
-                <ng-container *ngIf="!selectedFrame.took">
-                    Pending
-                </ng-container>
-            </div>
-
-            <div>
-                <label style="width: 70px;">Total time</label>
-
-                <ng-container *ngIf="selectedFrame.took">
-                    {{formatTime(selectedFrame.took, 3)}}
-                </ng-container>
-
-                <ng-container *ngIf="!selectedFrame.took">
-                    Pending
-                </ng-container>
-            </div>
-
-            <ng-container *ngIf="selectedFrame.frame.category === FrameCategory.http">
-                <div>
-                    <label>Method</label>
-                    {{selectedFrameData.method}}
-                </div>
-                <div>
-                    <label>Client IP</label>
-                    {{selectedFrameData.clientIp}}
-                </div>
-                <div>
-                    <label>Response Status</label>
-                    {{selectedFrameData.responseStatus || 'pending'}}
-                </div>
-            </ng-container>
-
-            <ng-container *ngIf="selectedFrame.frame.category === FrameCategory.database">
-                <div>
-                    <label>Entity</label>
-                    {{selectedFrameData.className}}
-                </div>
-
-                <div style="padding: 10px 0;">
-                    <label class="header">SQL</label>
-                    <ng-container *ngFor="let item of selectedFrameChildren">
-                        <ng-container *ngIf="item.data && item.frame.category === FrameCategory.databaseQuery">
-                            <div>
-                                {{item.data.sql}}<br/>
-                                {{item.data.sqlParams|json}}
-                            </div>
-                        </ng-container>
-                    </ng-container>
-                </div>
-            </ng-container>
-
-            <ng-container *ngIf="selectedFrame.frame.category === FrameCategory.databaseQuery">
-                <div style="padding: 10px 0;">
-                    <label class="header">SQL</label>
-                    {{selectedFrameData.sql}}<br/>
-                    {{selectedFrameData.sqlParams|json}}
-                </div>
-            </ng-container>
-
-            <ng-container *ngIf="selectedFrameChildren.length">
-                <h4 style="margin-top: 10px;">Child frames ({{selectedFrameChildren.length}})</h4>
-
-                <div class="child">
-                    <label>Self time</label>
-                    <div class="bar">
-                        <div class="bg" [style.width.%]="(selectedFrame.took-selectedFrameChildrenStats.totalTime) / selectedFrame.took * 100"></div>
-                        <div class="text">
-                            {{formatTime(selectedFrame.took - selectedFrameChildrenStats.totalTime, 3)}}
-                            ({{(selectedFrame.took - selectedFrameChildrenStats.totalTime) / selectedFrame.took * 100|number:'2.2-2'}}%)
-                        </div>
-                    </div>
-                </div>
-
-                <div class="child" *ngFor="let item of selectedFrameChildren">
-                    <label>{{item.frame.label}}</label>
-                    <div class="bar">
-                        <div class="bg" [style.width.%]="item.took / selectedFrame.took * 100"></div>
-                        <div class="text">
-                            {{formatTime(item.took, 3)}}
-                            ({{item.took / selectedFrame.took * 100|number:'2.2-2'}}%)
-                        </div>
-                    </div>
-                </div>
-            </ng-container>
-            <!--            <div>-->
-            <!--                {{selectedFrameData|json}}-->
-            <!--            </div>-->
+        <div>
+          {{ profiler.parser.frames }} frames, {{ profiler.parser.rootItems.length }} contexts
         </div>
+      </dui-window-toolbar>
+
+      <!--        <div class="top-frames">-->
+
+      <!--        </div>-->
+
+      <div class="canvas" (duiDrag)="onDrag($event)" (duiDragStart)="onDragStart($event)" #canvas></div>
+
+      <!--        <profile-timeline [parser]="parser" [selected]="selectedFrameChildrenStats.contextStart" (selectItem)="timelineSelect($event)"></profile-timeline>-->
+
+      @if (selectedFrame) {
+        <div class="inspector text-selection">
+          <h3>{{ selectedFrame.frame.label }}</h3>
+          <div style="margin-bottom: 10px;">
+            <label>Type</label>
+            {{ FrameCategory[selectedFrame.frame.category] }}
+          </div>
+          <div style="margin-bottom: 10px;">
+            <label>debug</label>
+            x: {{ selectedFrame.x }} ({{ getFrameX(selectedFrame, viewState) }}, end: {{ getFrameX(selectedFrame, viewState) + selectedFrame.took }})
+            y: {{ selectedFrame.y }}
+            crunches: {{ selectedFrame.context.allCrunches }}
+          </div>
+          <div style="margin-bottom: 10px;">
+            <label>took</label>
+            {{ selectedFrame.took }} ({{ selectedFrame.x + selectedFrame.took }})
+          </div>
+          @if (selectedFrameChildrenStats.contextStart) {
+            <div>
+              <label>Context</label>
+              {{ FrameCategory[selectedFrameChildrenStats.contextStart.frame.category] }} (#{{ selectedFrameChildrenStats.contextStart.frame.context }})
+              {{ selectedFrameChildrenStats.contextStart.frame.label }}
+            </div>
+            <div>
+              <label>Time from start of context</label>
+              {{ formatTime(selectedFrame.x - selectedFrameChildrenStats.contextStart.x, 3) }}
+            </div>
+          }
+          <div>
+            <label style="width: 70px;">Started</label>
+            <ng-container>
+              {{ selectedFrame.frame.timestamp / 1000|date:'HH:mm:ss.SSS' }}
+            </ng-container>
+          </div>
+          <div>
+            <label style="width: 70px;">Ended</label>
+            @if (selectedFrame.took) {
+              {{ (selectedFrame.frame.timestamp + selectedFrame.took) / 1000|date:'HH:mm:ss.SSS' }}
+            }
+            @if (!selectedFrame.took) {
+              Pending
+            }
+          </div>
+          <div>
+            <label style="width: 70px;">Total time</label>
+            @if (selectedFrame.took) {
+              {{ formatTime(selectedFrame.took, 3) }}
+            }
+            @if (!selectedFrame.took) {
+              Pending
+            }
+          </div>
+          @if (selectedFrame.frame.category === FrameCategory.http) {
+            <div>
+              <label>Method</label>
+              {{ selectedFrameData.method }}
+            </div>
+            <div>
+              <label>Client IP</label>
+              {{ selectedFrameData.clientIp }}
+            </div>
+            <div>
+              <label>Response Status</label>
+              {{ selectedFrameData.responseStatus || 'pending' }}
+            </div>
+          }
+          @if (selectedFrame.frame.category === FrameCategory.database) {
+            <div>
+              <label>Entity</label>
+              {{ selectedFrameData.className }}
+            </div>
+            <div style="padding: 10px 0;">
+              <label class="header">SQL</label>
+              @for (item of selectedFrameChildren; track item) {
+                @if (item.data && item.frame.category === FrameCategory.databaseQuery) {
+                  <div>
+                    {{ item.data.sql }}<br />
+                    {{ item.data.sqlParams|json }}
+                  </div>
+                }
+              }
+            </div>
+          }
+          @if (selectedFrame.frame.category === FrameCategory.databaseQuery) {
+            <div style="padding: 10px 0;">
+              <label class="header">SQL</label>
+              {{ selectedFrameData.sql }}<br />
+              {{ selectedFrameData.sqlParams|json }}
+            </div>
+          }
+          @if (selectedFrameChildren.length) {
+            <h4 style="margin-top: 10px;">Child frames ({{ selectedFrameChildren.length }})</h4>
+            <div class="child">
+              <label>Self time</label>
+              <div class="bar">
+                <div class="bg" [style.width.%]="(selectedFrame.took-selectedFrameChildrenStats.totalTime) / selectedFrame.took * 100"></div>
+                <div class="text">
+                  {{ formatTime(selectedFrame.took - selectedFrameChildrenStats.totalTime, 3) }}
+                  ({{ (selectedFrame.took - selectedFrameChildrenStats.totalTime) / selectedFrame.took * 100|number:'2.2-2' }}%)
+                </div>
+              </div>
+            </div>
+            @for (item of selectedFrameChildren; track item) {
+              <div class="child">
+                <label>{{ item.frame.label }}</label>
+                <div class="bar">
+                  <div class="bg" [style.width.%]="item.took / selectedFrame.took * 100"></div>
+                  <div class="text">
+                    {{ formatTime(item.took, 3) }}
+                    ({{ item.took / selectedFrame.took * 100|number:'2.2-2' }}%)
+                  </div>
+                </div>
+              </div>
+            }
+          }
+          <!--            <div>-->
+          <!--                {{selectedFrameData|json}}-->
+          <!--            </div>-->
+        </div>
+      }
     `,
     styleUrls: ['./profile.component.scss'],
-    standalone: false
+    imports: [
+        DatePipe,
+        JsonPipe,
+        DecimalPipe,
+        WindowToolbarComponent,
+        ButtonGroupComponent,
+        ButtonComponent,
+        DragDirective,
+    ],
 })
 export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
     getFrameX = getFrameX;
@@ -651,6 +635,16 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
         });
     }
 
+    protected offsetXStart = 0;
+    protected onDragStart(event: DuiDragEvent) {
+        this.offsetXStart = this.viewState.scrollX
+    }
+
+    protected onDrag(event: DuiDragEvent) {
+        this.viewState.scrollX = this.offsetXStart - (event.deltaX * this.viewState.zoom);
+        this.profiler.viewChanged();
+    }
+
     protected createCanvas() {
         // The application will create a canvas element for you that you
         // can then insert into the DOM.
@@ -667,24 +661,6 @@ export class ProfileComponent implements OnInit, OnDestroy, AfterViewInit {
         this.viewState.height = this.canvas.nativeElement.clientHeight;
 
         this.app.stage.addChild(this.profiler);
-
-        const mc = new Hammer.Manager(this.app.renderer.view);
-        mc.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 0 }));
-
-        let offsetXStart = 0;
-        mc.on('panstart', () => {
-            offsetXStart = this.viewState.scrollX;
-            this.profiler.ignoreNextClick = true;
-        });
-        mc.on('panend', () => {
-            offsetXStart = this.viewState.scrollX;
-        });
-
-        mc.on('pan', (ev) => {
-            if (ev.deltaX === 0) return;
-            this.viewState.scrollX = offsetXStart - (ev.deltaX * this.viewState.zoom);
-            this.profiler.viewChanged();
-        });
 
         this.app.renderer.view.addEventListener('wheel', (event) => {
             const newZoom = Math.min(1000000, Math.max(0.1, this.viewState.zoom - (Math.min(event.deltaY * -1 / 500, 0.3) * this.viewState.zoom)));

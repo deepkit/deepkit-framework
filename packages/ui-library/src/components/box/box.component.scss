@@ -1,7 +1,7 @@
 :host {
     display: block;
     position: relative;
-    border: 1px solid var(--line-color-light);
+    border: 1px solid var(--dui-line-color-light);
     border-radius: 3px;
     background-color: var(--dui-window-header-bg);
     margin: 20px 0;
@@ -31,7 +31,7 @@
 }
 
 .box-info-text {
-    color: var(--text-light);
+    color: var(--dui-text-light);
     font-size: 12px;
     text-align: center;
     padding: 15px;

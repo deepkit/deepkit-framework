@@ -1,12 +1,17 @@
 import { Component } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { MediaComponent } from './media.component';
 
 
 @Component({
     template: `
-        <app-media *ngIf="filesystemId !== undefined" [filesystem]="filesystemId"></app-media>
+      @if (filesystemId !== undefined) {
+        <app-media [filesystem]="filesystemId"></app-media>
+      }
     `,
-    standalone: false
+    imports: [
+        MediaComponent,
+    ],
 })
 export class FilesystemComponent {
     filesystemId?: number;

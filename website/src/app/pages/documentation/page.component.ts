@@ -3,7 +3,7 @@ import { bodyToString, Content, Page, parseBody, projectMap } from '@app/common/
 import { AppDescription, AppTitle } from '@app/app/components/title';
 import { ContentRenderComponent } from '@app/app/components/content-render.component';
 import { LoadingComponent } from '@app/app/components/loading';
-import { NgForOf, ViewportScroller } from '@angular/common';
+import { ViewportScroller } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ControllerClient } from '@app/app/client';
 import { PageResponse } from '@app/app/page-response';
@@ -11,49 +11,50 @@ import { waitForInit } from '@app/app/utils';
 
 @Component({
     imports: [
-        AppDescription,
-        AppTitle,
-        ContentRenderComponent,
-        LoadingComponent,
-        NgForOf,
-    ],
+    AppDescription,
+    AppTitle,
+    ContentRenderComponent,
+    LoadingComponent
+],
     styleUrls: ['./page.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <nav class="table-of-content">
-            <a [href]="router.url.split('#')[0] + '#' + h.link" class="intend-{{h.indent}}" *ngFor="let h of headers()">
-                {{ h.label }}
+          @for (h of headers(); track h) {
+            <a [href]="router.url.split('#')[0] + '#' + h.link" class="intend-{{h.indent}}">
+              {{ h.label }}
             </a>
+          }
         </nav>
         <div class="app-content normalize-text">
-            @if (loading()) {
-                <app-loading></app-loading>
-            }
-
-            @if (project(); as project) {
-                <app-title value="{{project}}"></app-title>
-            }
-            @if (error(); as error) {
-                <div class="error">
-                    {{ error }}
-                </div>
-            }
-            @if (page(); as page) {
-                <div>
-                    <app-title value="{{page.title}} Documentation"></app-title>
-
-                    <app-description
-                        [value]="page.title + ' Documentation - ' + bodyToString(subline())"></app-description>
-
-                    @if (project(); as project) {
-                        <div class="app-pre-headline">{{ project }}</div>
-                    }
-                    <app-render-content [content]="page.body"></app-render-content>
-                </div>
-            }
-            <!--            <app-ask [fixed]="true"></app-ask>-->
+          @if (loading()) {
+            <app-loading></app-loading>
+          }
+        
+          @if (project(); as project) {
+            <app-title value="{{project}}"></app-title>
+          }
+          @if (error(); as error) {
+            <div class="error">
+              {{ error }}
+            </div>
+          }
+          @if (page(); as page) {
+            <div>
+              <app-title value="{{page.title}} Documentation"></app-title>
+        
+              <app-description
+              [value]="page.title + ' Documentation - ' + bodyToString(subline())"></app-description>
+        
+              @if (project(); as project) {
+                <div class="app-pre-headline">{{ project }}</div>
+              }
+              <app-render-content [content]="page.body"></app-render-content>
+            </div>
+          }
+          <!--            <app-ask [fixed]="true"></app-ask>-->
         </div>
-    `
+        `
 })
 export class DocumentationPageComponent implements OnInit {
     protected readonly bodyToString = bodyToString;
