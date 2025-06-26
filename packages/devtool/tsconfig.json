@@ -33,9 +33,6 @@
   },
   "references": [
     {
-      "path": "../api-console-api/tsconfig.json"
-    },
-    {
       "path": "../bson/tsconfig.json"
     },
     {
@@ -64,9 +61,6 @@
     },
     {
       "path": "../type-compiler/tsconfig.json"
-    },
-    {
-      "path": "../ui-library/tsconfig.json"
     }
   ]
 }

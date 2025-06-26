@@ -48,9 +48,9 @@ class MyRouteParameterResolver {
     }
 }
 
-@http.controller().resolveParameter(User, MyRouteParameterResolver)
+@(http.controller().resolveParameter(User, MyRouteParameterResolver))
 class ApiController {
-    @http.GET().use(authGroup('api'))
+    @(http.GET().use(authGroup('api')))
     api(user: User) {
         return new JSONResponse('hi ' + user.username);
     }

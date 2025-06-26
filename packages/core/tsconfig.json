@@ -32,5 +32,9 @@
   "exclude": [
     "tests"
   ],
-  "references": []
+  "references": [
+    {
+      "path": "../bench/tsconfig.json"
+    }
+  ]
 }

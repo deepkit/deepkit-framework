@@ -1,6 +1,5 @@
 import { AfterViewInit, Component, computed, ContentChildren, inject, Injectable, input, Input, QueryList, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import '@angular/compiler';
 import { CodeHighlightComponent, ThemeSwitcherComponent } from '@deepkit/ui-library';
 import { ButtonGroupComponent, InputComponent, pendingTask, TabButtonComponent, TableCellDirective, TableColumnDirective, TableComponent } from '@deepkit/desktop-ui';
 import { derivedAsync } from 'ngxtension/derived-async';
@@ -594,7 +593,7 @@ export class ApiDocComponent {
 
                     const params: string[] = !prop.signatures[0].parameters ?
                         [] :
-                        prop.signatures[0].parameters.map(v => v.name + (isOptional(v.type) ? '?' : '') + ': ' + typeToString(v.type));
+                        prop.signatures[0].parameters.map((v: any) => v.name + (isOptional(v.type) ? '?' : '') + ': ' + typeToString(v.type));
 
                     tableData.push({
                         name: prop.name + '(' + params.join(', ') + ')',

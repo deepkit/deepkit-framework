@@ -6,6 +6,7 @@
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "sideEffects": false,
+  "private": true,
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
@@ -40,6 +41,7 @@
     "@deepkit/type": "^1.0.1",
     "@types/prismjs": "^1.26.0",
     "ng-packagr": "^20.0.1",
+    "ngxtension": "^5.1.0",
     "rxjs": "~7.8.0"
   },
   "jest": {

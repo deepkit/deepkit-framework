@@ -5,6 +5,7 @@ import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 import { User, UserGroup } from './bookstore/user.js';
 import { Group } from './bookstore/group.js';
 import { UserCredentials } from './bookstore/user-credentials.js';
+import { ConsoleLogger } from '@deepkit/logger';
 
 //import { MongoDatabaseAdapter } from '@deepkit/mongo';
 
@@ -70,7 +71,7 @@ class Review {
     }
 }
 
-export interface GroupInterface extends Entity<{collection: 'interfaceGroups'}> {
+export interface GroupInterface extends Entity<{ collection: 'interfaceGroups' }> {
     id: number & PrimaryKey & AutoIncrement;
     created: Date;
     name: string;
@@ -80,4 +81,4 @@ const database = new Database(new SQLiteDatabaseAdapter('./example.sqlite'), [Us
 // const database = new Database(new MySQLDatabaseAdapter({database: 'orm-example', user: 'root'}), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
 // const database = new Database(new PostgresDatabaseAdapter({database: 'orm-example', user: 'postgres'}), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
 //const database = new Database(new MongoDatabaseAdapter('mongodb://localhost'), [User, UserCredentials, Book, Review, Image, Group, UserGroup]);
-database.enableLogging();
+database.setLogger(new ConsoleLogger());
