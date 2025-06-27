@@ -201,7 +201,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     /**
      * Toggles the dropdown open or closed.
      */
-    toggle(target?: HTMLElement | ElementRef | MouseEvent) {
+    toggle(target?: Element | ElementRef | MouseEvent | EventTarget | 'center' | null) {
         if (this.isOpen()) {
             this.close();
         } else {
@@ -219,7 +219,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     /**
      * Opens the dropdown at the given target element or mouse position.
      */
-    open(target?: Element | ElementRef | MouseEvent | 'center', initiator?: HTMLElement | ElementRef | {
+    open(target?: Element | ElementRef | MouseEvent | EventTarget | 'center' | null, initiator?: HTMLElement | ElementRef | {
         x: number,
         y: number,
         width: number,
@@ -300,7 +300,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         } else {
             this.positionStrategy = this.overlayService
                 .position()
-                .flexibleConnectedTo(target)
+                .flexibleConnectedTo(target as Element)
                 .withFlexibleDimensions(false)
                 .withViewportMargin(12)
                 .withPush(true)

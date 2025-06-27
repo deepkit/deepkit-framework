@@ -105,17 +105,17 @@ function isHotKeyActive(hotkey: HotKey, event: KeyboardEvent) {
 @Component({
     selector: 'dui-button-hotkey',
     styles: [`
-        :host {
-            display: inline-flex;
-            flex-direction: row;
-        }
+      :host {
+        display: inline-flex;
+        flex-direction: row;
+      }
 
-        span {
-            text-transform: uppercase;
-            color: var(--dui-text-grey);
-            margin-left: 3px;
-            font-size: 11px;
-        }
+      span {
+        text-transform: uppercase;
+        color: var(--dui-text-grey);
+        margin-left: 3px;
+        font-size: 11px;
+      }
     `],
     template: `
       @if (metaKey) {
@@ -207,7 +207,7 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
         '[class.primary]': 'primary()',
         '[class.icon-left]': '!iconRight()',
         '[class.icon-right]': 'iconRight()',
-        '[class.with-text]': 'hasText()',
+        '[class.icon-only]': 'iconOnly()',
         '[class.square]': 'square()',
         '[class.textured]': 'textured()',
         '[class.active]': 'isActive()',
@@ -223,7 +223,7 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
         forwardRef(() => HotkeyDirective),
     ],
 })
-export class ButtonComponent implements OnInit, AfterViewInit {
+export class ButtonComponent implements OnInit {
     hotKeySize = hotKeySize;
 
     /**
@@ -281,13 +281,15 @@ export class ButtonComponent implements OnInit, AfterViewInit {
     square = input(false, { transform: booleanAttribute });
     textured = input(false, { transform: booleanAttribute });
 
-    /**
-     * Auto-detected but could be set manually as well.
-     * Necessary for correct icon placement.
-     */
-    withText?: boolean;
-
-    protected detectedText: boolean = false;
+    iconOnly = computed(() => {
+        if (!this.icon()) return false;
+        for (const child of this.element.nativeElement.childNodes) {
+            if (child.nodeType === Node.TEXT_NODE) {
+                return false;
+            }
+        }
+        return true;
+    });
 
     protected element = injectElementRef();
     protected formComponent = inject(FormComponent, { optional: true });
@@ -307,10 +309,6 @@ export class ButtonComponent implements OnInit, AfterViewInit {
         this.element.nativeElement.removeAttribute('tabindex');
     }
 
-    protected hasText() {
-        return this.withText === undefined ? this.detectedText : this.withText;
-    }
-
     protected isActive() {
         return this.routerLinkActive.isActive || this.active();
     }
@@ -320,17 +318,6 @@ export class ButtonComponent implements OnInit, AfterViewInit {
             setTimeout(() => {
                 this.element.nativeElement.focus();
             }, 10);
-        }
-    }
-
-    ngAfterViewInit() {
-        const icon = this.icon();
-        if (icon) {
-            const content = this.element.nativeElement.innerText.trim();
-            const hasText = content !== icon && content.length > 0;
-            if (hasText) {
-                this.detectedText = true;
-            }
         }
     }
 

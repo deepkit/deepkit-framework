@@ -47,7 +47,7 @@ body {
     --dui-text-grey: #6c6970;
     --dui-text-light: #737880;
 
-    --dui-color-black: black;
+    --dui-color-text: black;
     --dui-color-green: green;
     --dui-color-red: red;
     --dui-color-orange: orange;
@@ -86,7 +86,7 @@ body {
     text-rendering: geometricPrecision;
     -moz-osx-font-smoothing: grayscale;
     line-height: 18px;
-    color: var(--dui-color-black);
+    color: var(--dui-color-text);
     cursor: default;
     user-select: none;
     -webkit-user-select: none;
@@ -270,10 +270,11 @@ body.dui-theme-dark {
     --dui-text-grey: #aaadb7;
     --dui-text-light: #7a7f88;
 
-    --dui-color-black: #ffffff;
+    --dui-color-text: #ffffff;
     --dui-color-green: #0bd40b;
     --dui-color-red: #ff5c5c;
     --dui-color-orange: orange;
+    --dui-input-text: white;
 
     --dui-selection-light: #3662e1;
     --dui-selection-unfocused: #acaeb936;
@@ -288,6 +289,12 @@ body.dui-theme-dark {
     --dui-window-header-bg: #2d2d2d;
 
     --dui-focus-outline-color: #2a729c;
+
+    .dui-normalized {
+        a, a:link {
+            color: #78a1bf;
+        }
+    }
 
     .dui-panel {
         background-color: #383636;

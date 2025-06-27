@@ -1,4 +1,4 @@
-import { booleanAttribute, Component, computed, inject, input, model, Renderer2 } from '@angular/core';
+import { booleanAttribute, Component, computed, effect, inject, input, model, Renderer2 } from '@angular/core';
 import { DragDirective, DuiDragEvent } from '../app/drag';
 import { clamp } from '../app/utils.js';
 
@@ -82,6 +82,24 @@ export class SplitterComponent {
 
     protected startSize = 0;
     protected renderer = inject(Renderer2);
+
+    constructor() {
+        effect(() => {
+            const property = this.property();
+            const element = this.element();
+            if (!element) return;
+
+            // make sure flex-grow and flex-shrink are set to 0
+            if (property === 'flex-basis') {
+                this.renderer.setStyle(this.element(), 'flex-grow', '0');
+                this.renderer.setStyle(this.element(), 'flex-shrink', '0');
+            }
+            const size = this.size();
+            if (size) {
+                this.renderer.setStyle(element, property, `${size}px`);
+            }
+        });
+    }
 
     protected onDuiDragStart() {
         this.startSize = this.size();

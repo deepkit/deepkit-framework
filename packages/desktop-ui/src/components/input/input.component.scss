@@ -154,7 +154,6 @@ textarea {
 }
 
 :host-context(.dui-theme-dark) {
-    color: white;
     background-image: linear-gradient(-180deg, #3D3D3D 0%, #414141 10%, #414141 100%);
 
     &.semi-transparent {
@@ -170,10 +169,6 @@ textarea {
 
     &.light-focus.focused {
         border: 1px solid #5d666e;
-    }
-
-    input, textarea {
-        color: white;
     }
 }
 

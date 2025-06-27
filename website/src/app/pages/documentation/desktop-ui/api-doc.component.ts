@@ -406,7 +406,7 @@ export class ApiDocProvider {
             // }
         }
 
-        console.debug('available modules', docs.children.map(v => v.name));
+        console.log('available modules', docs.children.map(v => v.name));
         throw new Error(`No component ${component} found.`);
     }
 }

@@ -478,7 +478,7 @@ pre.console {
 .app-content,
 .app-content-full {
     position: relative;
-    min-height: 90vh;
+    min-height: calc(100vh - 35px);
     padding-top: 80px;
     padding-bottom: 250px;
     margin: auto;

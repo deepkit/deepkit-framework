@@ -24,12 +24,16 @@ import { DocDesktopUIAppComponent } from './app.component.js';
 import { DocDesktopUIDragComponent } from './drag.component.js';
 import { DocDesktopUITabsComponent } from './tabs.component.js';
 import { DesktopUIIndexComponent } from './index.component.js';
+import { DocDesktopUIAdaptiveContainerComponent } from './adaptive-container.component.js';
+import { DocDesktopUIStylesComponent } from '@app/app/pages/documentation/desktop-ui/styles.component.js';
 
 const routes: Routes = [
     {
         path: '', component: DesktopUIIndexComponent, children: [
             { path: 'getting-started', component: DocDesktopUIGettingStartedComponent },
             { path: 'icons', component: DocDesktopUIIconComponent },
+            { path: 'styles', component: DocDesktopUIStylesComponent },
+            { path: 'adaptive-container', component: DocDesktopUIAdaptiveContainerComponent },
             { path: 'button', component: DocDesktopUIButtonComponent },
             { path: 'button-group', component: DocDesktopUIButtonGroupComponent },
             { path: 'app', component: DocDesktopUIAppComponent },
@@ -41,8 +45,8 @@ const routes: Routes = [
             { path: 'input', component: DocDesktopUIInputComponent },
             { path: 'list', component: DocDesktopUIListComponent },
             { path: 'checkbox', component: DocDesktopUICheckboxComponent },
-            { path: 'radiobox', component: DocDesktopUIRadioButtonComponent },
-            { path: 'selectbox', component: DocDesktopUISelectboxComponent },
+            { path: 'radio', component: DocDesktopUIRadioButtonComponent },
+            { path: 'select', component: DocDesktopUISelectboxComponent },
             { path: 'slider', component: DocDesktopUISliderComponent },
             { path: 'table', component: DocDesktopUITableComponent },
             { path: 'window', component: DocDesktopUIWindowComponent },

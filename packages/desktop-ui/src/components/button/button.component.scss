@@ -17,7 +17,6 @@ In macOS we have 4 types of buttons:
     color: var(--dui-button-text);
     padding: 0 15px;
     overflow: hidden;
-    text-overflow: ellipsis;
     text-align: center;
 
     display: inline-flex;
@@ -41,16 +40,6 @@ In macOS we have 4 types of buttons:
         &:not(.disabled):active {
             background-image: linear-gradient(180deg, #c1c1c1 0%, #b5b5b5 100%);
         }
-    }
-
-    &:not(.icon-right):not(.square):not(.tight).with-text > dui-icon {
-        position: relative;
-        left: -4px;
-    }
-
-    &.icon-right:not(.square):not(.tight).with-text > dui-icon {
-        position: relative;
-        right: -4px;
     }
 }
 
@@ -103,7 +92,7 @@ In macOS we have 4 types of buttons:
 }
 
 :host.icon {
-    padding: 0 10px;
+    padding-left: 10px;
 
     &.square {
         padding: 0;
@@ -111,6 +100,10 @@ In macOS we have 4 types of buttons:
     }
 
     overflow: visible;
+}
+
+:host.icon-only {
+    padding: 0 5px;
 }
 
 .show-hotkey {

@@ -53,10 +53,6 @@ export class DragDirective {
     }
 
     protected onPointerDown(e: PointerEvent) {
-        if (!this.duiDragThreshold()) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
         if (e.button !== 0) return;
 
         this.startX = e.clientX;
