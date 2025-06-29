@@ -33,7 +33,7 @@ import { IconComponent } from '@deepkit/desktop-ui';
 
         @if (actions && !isAutoIncrementType(property.type) && row.$__activeColumn !== property.name) {
           <div class="cell-actions">
-            <dui-icon name="arrow-small-left" clickable
+            <dui-icon name="arrow_small_left" clickable
                       (click)="reset(row, property.name)"
                       title="Reset to original value"
                       [class.active]="true"></dui-icon>

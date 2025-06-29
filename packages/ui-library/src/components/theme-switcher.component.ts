@@ -5,7 +5,7 @@ import { DropdownComponent, DropdownItemComponent, DuiApp, IconComponent, OpenDr
 @Component({
     selector: 'dui-theme-switcher',
     template: `
-      <dui-icon clickable name="color-theme" [openDropdown]="darkModeDropdown"></dui-icon>
+      <dui-icon clickable name="color_theme" [openDropdown]="darkModeDropdown"></dui-icon>
       <dui-dropdown #darkModeDropdown>
         <dui-dropdown-item (click)="duiApp.setDarkMode(undefined)" [selected]="!duiApp.isDarkModeOverwritten()">Auto</dui-dropdown-item>
         <dui-dropdown-item (click)="duiApp.setDarkMode(false)" [selected]="duiApp.isDarkModeOverwritten() && !duiApp.isDarkMode()">Light

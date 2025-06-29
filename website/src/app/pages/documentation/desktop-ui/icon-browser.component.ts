@@ -6,7 +6,7 @@ import { IconComponent, InputComponent } from '@deepkit/desktop-ui';
 @Component({
     selector: 'icon-browser',
     template: `
-      <dui-input [(ngModel)]="query" clearer lightFocus icon="filter"
+      <dui-input [(ngModel)]="query" clearer round lightFocus icon="filter"
                  (ngModelChange)="cd.detectChanges()" placeholder="Filter ..."></dui-input>
       <div class="icons">
         @for (icon of filter(icons); track icon) {

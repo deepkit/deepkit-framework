@@ -70,7 +70,7 @@ import { AppTitle } from '@app/app/components/title.js';
             </div>
 
             <dui-button-group>
-              <dui-icon name="zoom-to-fit" clickable></dui-icon>
+              <dui-icon name="zoom_to_fit" clickable></dui-icon>
               Clickable icon
             </dui-button-group>
 
@@ -83,16 +83,16 @@ import { AppTitle } from '@app/app/components/title.js';
               </dui-button-group>
 
               <dui-button-group padding="none">
-                <dui-button textured small icon="15_text-format-bold"></dui-button>
-                <dui-button textured small [active]="true" icon="15_text-format-italic"></dui-button>
-                <dui-button textured small icon="15_text-format-underline"></dui-button>
-                <dui-button textured small icon="15_text-format-strikethrough"></dui-button>
+                <dui-button textured small icon="15_text_format_bold"></dui-button>
+                <dui-button textured small [active]="true" icon="15_text_format_italic"></dui-button>
+                <dui-button textured small icon="15_text_format_underline"></dui-button>
+                <dui-button textured small icon="15_text_format_strikethrough"></dui-button>
               </dui-button-group>
 
               <dui-button-group padding="none">
-                <dui-button textured small [active]="true" icon="15_text-format-align-left"></dui-button>
-                <dui-button textured small icon="15_text-format-align-center"></dui-button>
-                <dui-button textured small icon="15_text-format-align-right"></dui-button>
+                <dui-button textured small [active]="true" icon="15_text_format_align_left"></dui-button>
+                <dui-button textured small icon="15_text_format_align_center"></dui-button>
+                <dui-button textured small icon="15_text_format_align_right"></dui-button>
               </dui-button-group>
             </dui-button-groups>
           </div>
@@ -132,14 +132,14 @@ src/assets/icons
 ├── plus.svg
 ├── projects.svg
 └── settings.svg
-└── 15_text-format-code.svg
+└── 15_text_format_code.svg
 \`' />
 
         Note: All icons are per default 17x17 px. Some are 15x15 px, but dui-icon uses per default 17px. If you have different sized icons than 17x17
         px
         you <strong>should</strong> strongly prefix those with the size. For example, our 15x15 px icons are named
-        <code>15_text-format-bold</code>,
-        <code>15_text-format-code</code> etc. Dui-icon automatically detects the size on that prefix. If you don't provide a prefix it uses 17px which
+        <code>15_text_format_bold</code>,
+        <code>15_text_format_code</code> etc. Dui-icon automatically detects the size on that prefix. If you don't provide a prefix it uses 17px which
         only
         works correctly with 17x17 pixels, all other sizes will appear blurry. Optionally, you can specify on each dui-icon a
         <code>size</code> input, but
@@ -203,7 +203,7 @@ export class DocDesktopUIIconComponent {
 
 
 <dui-button-group>
-    <dui-icon name="zoom-to-fit" clickable></dui-icon>
+    <dui-icon name="zoom_to_fit" clickable></dui-icon>
     Clickable icon
 </dui-button-group>
 
@@ -216,16 +216,16 @@ export class DocDesktopUIIconComponent {
     </dui-button-group>
 
     <dui-button-group padding="none">
-        <dui-button textured small icon="15_text-format-bold"></dui-button>
-        <dui-button textured small [active]="true" icon="15_text-format-italic"></dui-button>
-        <dui-button textured small icon="15_text-format-underline"></dui-button>
-        <dui-button textured small icon="15_text-format-strikethrough"></dui-button>
+        <dui-button textured small icon="15_text_format_bold"></dui-button>
+        <dui-button textured small [active]="true" icon="15_text_format_italic"></dui-button>
+        <dui-button textured small icon="15_text_format_underline"></dui-button>
+        <dui-button textured small icon="15_text_format_strikethrough"></dui-button>
     </dui-button-group>
     
     <dui-button-group padding="none">
-        <dui-button textured small [active]="true" icon="15_text-format-align-left"></dui-button>
-        <dui-button textured small icon="15_text-format-align-center"></dui-button>
-        <dui-button textured small icon="15_text-format-align-right"></dui-button>
+        <dui-button textured small [active]="true" icon="15_text_format_align-left"></dui-button>
+        <dui-button textured small icon="15_text_format_align-center"></dui-button>
+        <dui-button textured small icon="15_text_format_align-right"></dui-button>
     </dui-button-group>
 </dui-button-groups>
 `;

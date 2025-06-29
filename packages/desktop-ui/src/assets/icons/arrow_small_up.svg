@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="17px" height="17px" viewBox="0 0 17 17" version="1.1" xmlns="http://www.w3.org/2000/svg">
     <!-- Generator: Sketch 59.1 (86144) - https://sketch.com -->
-    <title>arrow-small-right</title>
+    <title>arrow_small_up</title>
     <desc>Created with Sketch.</desc>
-    <g id="arrow-small-right" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+    <g id="arrow_small_up" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
         <g id="compare" transform="translate(3.000000, 5.000000)" fill="#000000" fill-rule="nonzero">
-            <polygon id="Path" points="7.01 3 0 3 0 5 7.01 5 7.01 8 11 4 7.01 0"></polygon>
+            <polygon id="Path" transform="translate(5.500000, 4.000000) rotate(-90.000000) translate(-5.500000, -4.000000) " points="7.01 3 0 3 0 5 7.01 5 7.01 8 11 4 7.01 0"></polygon>
         </g>
     </g>
 </svg>
