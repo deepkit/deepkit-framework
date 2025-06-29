@@ -105,6 +105,7 @@ import { AppTitle } from '@app/app/components/title.js';
         flex-direction: column;
         height: 400px;
         width: 100%;
+        overflow: hidden;
         background-color: #333333aa;
 
         .top {
@@ -117,6 +118,7 @@ import { AppTitle } from '@app/app/components/title.js';
           background-color: #555555aa;
           padding: 10px;
           text-align: center;
+          min-height: 50px;
           flex: 1;
         }
       }

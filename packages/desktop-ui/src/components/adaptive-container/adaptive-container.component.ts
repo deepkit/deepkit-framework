@@ -91,10 +91,10 @@ export class AdaptiveContainerComponent implements OnInit, AfterViewInit, OnDest
 
     protected vertical = computed(() => this.direction() === 'column' || this.direction() === 'column-reverse');
 
-    /**
-     * The elements that are currently hidden, either placed in the dropdown or detected as hidden.
-     */
     hiddenElements = signal<HTMLElement[]>([]);
+    /**
+     * The elements that are currently hidden, either currently hidden (display: none) or moved to the hidden container.
+     */
 
     hiddenContainer = signal<HTMLElement | undefined>(undefined);
 
@@ -226,6 +226,7 @@ export class AdaptiveContainerComponent implements OnInit, AfterViewInit, OnDest
 
 /**
  * Directive to mark an element as a hidden container for the adaptive container.
+ * If defined, adaptive-container uses this element to place hidden elements into it.
  *
  * ```html
  * <dui-adaptive-container>

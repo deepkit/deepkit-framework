@@ -169,6 +169,7 @@ export class DocDesktopUIAdaptiveContainerComponent {
       <dui-button icon="check"></dui-button>
       <dui-button>Button 4</dui-button>
       <dui-button>Button 5</dui-button>
+      <dui-button class="dui-adaptive-fallback" [openDropdown]="container.dropdown()">More</dui-button>
     </dui-adaptive-container>
 `;
 }
