@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { booleanAttribute, ChangeDetectionStrategy, Component, contentChild, inject, input, OnDestroy, OnInit, ViewContainerRef } from '@angular/core';
+import { booleanAttribute, ChangeDetectionStrategy, Component, contentChild, forwardRef, inject, input, OnDestroy, OnInit, ViewContainerRef } from '@angular/core';
 import { WindowContentComponent } from './window-content.component';
 import { Win, WindowRegistry, WindowState } from './window-state';
 import { WindowMenuState } from './window-menu';
@@ -44,8 +44,8 @@ export class WindowFrameComponent {
     },
     changeDetection: ChangeDetectionStrategy.OnPush,
     providers: [
-        WindowState,
-        WindowMenuState,
+        forwardRef(() => WindowState),
+        forwardRef(() => WindowMenuState),
     ],
 })
 export class WindowComponent implements OnInit, OnDestroy, Win {

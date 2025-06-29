@@ -113,14 +113,12 @@ export class OptionSeparatorDirective {
           @if (isSeparator(option)) {
             <dui-dropdown-separator></dui-dropdown-separator>
           } @else {
-            <dui-dropdown-item
+            <dui-dropdown-item checkbox
               (click)="select(option.value())"
-              [selected]="value() === option.value()"
-            >
+              [selected]="value() === option.value()">
               @if (option.dynamic) {
                 <ng-container [ngTemplateOutlet]="option.dynamic.template"></ng-container>
-              }
-              @if (!option.dynamic) {
+              } @else {
                 <div>
                   <div [innerHTML]="option.element.nativeElement.innerHTML"></div>
                 </div>

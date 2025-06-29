@@ -25,13 +25,13 @@ export class BaseComponent {
       {{ name() }} disabled={{ isDisabled }}
     `,
     styles: [`
-        :host {
-            display: inline-block;
-        }
+      :host {
+        display: inline-block;
+      }
 
-        :host.disabled {
-            border: 1px solid red;
-        }
+      :host.disabled {
+        border: 1px solid red;
+      }
     `],
     host: {
         '[class.is-textarea]': 'name() === "textarea"',
@@ -42,7 +42,14 @@ export class UiComponentComponent extends BaseComponent {
 }
 
 export class OverlayStackItem {
-    constructor(public host: HTMLElement, protected stack: OverlayStackItem[], public release: () => void) {
+    constructor(
+        public level: number,
+        public host: HTMLElement,
+        public component: any,
+        public close: () => void,
+        protected stack: OverlayStackItem[],
+        public release: () => void,
+    ) {
     }
 
     getAllAfter(): OverlayStackItem[] {
@@ -80,14 +87,32 @@ export class OverlayStackItem {
 export class OverlayStack {
     public stack: OverlayStackItem[] = [];
 
-    public register(host: HTMLElement): OverlayStackItem {
-        const item = new OverlayStackItem(host, this.stack, () => {
+    public register(host: HTMLElement, component: any, onClose: () => void): OverlayStackItem {
+        const item = new OverlayStackItem(this.getCurrentLevel(), host, component, onClose, this.stack, () => {
             const before = item.getPrevious();
             if (before) before.host.focus();
             arrayRemoveItem(this.stack, item);
         });
         this.stack.push(item);
         return item;
+    }
+
+    forEach(callback: (item: OverlayStackItem) => void): void {
+        for (const item of this.stack.slice()) {
+            callback(item);
+        }
+    }
+
+    getCurrentLevel() {
+        return this.stack.length;
+    }
+
+    getLevel(item: OverlayStackItem): number {
+        return this.stack.indexOf(item);
+    }
+
+    getForComponent(component: any): OverlayStackItem | undefined {
+        return this.stack.find(item => item.component === component);
     }
 }
 

@@ -174,6 +174,7 @@ import { DuiStyleComponent } from '@deepkit/desktop-ui';
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/dropdown">Dropdown</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/icons">Icons</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/input">Input</a>
+            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/menu">Menu</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/slider">Slider</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/radio">Radio</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/select">Select</a>
@@ -182,7 +183,6 @@ import { DuiStyleComponent } from '@deepkit/desktop-ui';
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/table">Table</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/tabs">Tabs</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/window">Window</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/window-menu">Window Menu</a>
             <a routerLinkActive="active" routerLink="/documentation/desktop-ui/window-toolbar">Window Toolbar</a>
           </div>
         </nav>

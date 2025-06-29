@@ -8,29 +8,23 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { MenuDirective } from '../app/menu.component';
 import { arrayRemoveItem, nextTick } from '@deepkit/core';
-import { Subscription } from 'rxjs';
 import { Injectable } from '@angular/core';
 import { Electron } from '../../core/utils';
+import type { MenuComponent } from '../app/menu';
+import { buildElectronMenuTemplate } from '../app/menu-electron';
 
 @Injectable()
 export class WindowMenuState {
-    menus: MenuDirective[] = [];
-    subscriptions = new Map<MenuDirective, Subscription>();
+    menus: MenuComponent[] = [];
 
-    addMenu(menu: MenuDirective) {
+    addMenu(menu: MenuComponent) {
         this.menus.push(menu);
-        this.subscriptions.set(menu, menu.change.subscribe(() => {
-            this.build();
-        }));
 
         this.build();
     }
 
-    removeMenu(menu: MenuDirective) {
-        this.subscriptions.get(menu)!.unsubscribe();
-        this.subscriptions.delete(menu);
+    removeMenu(menu: MenuComponent) {
         arrayRemoveItem(this.menus, menu);
         this.build();
     }
@@ -47,8 +41,9 @@ export class WindowMenuState {
         //todo, merge menus with same id(), id falls back to role+label
         // then we can use fileMenu in sub views and add sub menu items as we want
         for (const menu of this.menus) {
-            if (menu.validOs()) {
-                template.push(menu.buildTemplate());
+            if (!menu.forApp()) continue;
+            for (const child of menu.children()) {
+                template.push(buildElectronMenuTemplate(child));
             }
         }
 

@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { ApiDocComponent, CodeFrameComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
-import { DragDirective, DuiDragEvent, SplitterComponent } from '@deepkit/desktop-ui';
+import { DragDirective, DuiDragEvent, PositionChangeDirective, SplitterComponent } from '@deepkit/desktop-ui';
 import { AppTitle } from '@app/app/components/title.js';
 
 @Component({
@@ -13,7 +13,7 @@ import { AppTitle } from '@app/app/components/title.js';
         DragDirective,
         SplitterComponent,
         AppTitle,
-
+        PositionChangeDirective,
     ],
     template: `
       <div class="app-content normalize-text">
@@ -26,11 +26,22 @@ import { AppTitle } from '@app/app/components/title.js';
           It can be used to implement custom drag and drop functionality, to create resizable elements, or to implement custom drag interactions.
         </p>
 
+        <p>
+          This example uses another directive <code>duiPositionChange</code> which uses <code>observePosition</code>
+          to monitor arbitrary element position and size changes (using efficient IntersectObserver and ResizeObserver).
+        </p>
+
         <doc-code-frame>
           <div class="area">
             <div class="knob" (duiDrag)="onDrag($event)" (duiDragStart)="onDragStart($event)"
+                 (duiPositionChange)="position.set($event)"
                  [style.left.px]="left()">Drag Me
             </div>
+          </div>
+          <div class="area">
+            @if (position(); as pos) {
+              {{ pos.x }}px/{{ pos.y }}px
+            }
           </div>
           <code-highlight lang="html" [code]="dragCode" />
           <code-highlight lang="typescript" [code]="dragCodeTS" />
@@ -68,53 +79,55 @@ import { AppTitle } from '@app/app/components/title.js';
       </div>
     `,
     styles: `
-        .area {
-            height: 50px;
-            background-color: #333333aa;
-            position: relative;
+      .area {
+        height: 50px;
+        background-color: #333333aa;
+        position: relative;
 
-            .knob {
-                border-radius: 2px;
-                position: absolute;
-                display: flex;
-                text-align: center;
-                align-items: center;
-                justify-content: center;
-                top: 0;
-                left: 0;
-                width: 50px;
-                height: 50px;
-                background-color: #111111dd;
-                cursor: move;
-            }
+        .knob {
+          border-radius: 2px;
+          position: absolute;
+          display: flex;
+          text-align: center;
+          align-items: center;
+          justify-content: center;
+          top: 0;
+          left: 0;
+          width: 50px;
+          height: 50px;
+          background-color: #111111dd;
+          cursor: move;
+        }
+      }
+
+      .splitter {
+        display: flex;
+        flex-direction: column;
+        height: 400px;
+        width: 100%;
+        background-color: #333333aa;
+
+        .top {
+          background-color: #444444aa;
+          padding: 10px;
+          text-align: center;
         }
 
-        .splitter {
-            display: flex;
-            flex-direction: column;
-            height: 400px;
-            width: 100%;
-            background-color: #333333aa;
-
-            .top {
-                background-color: #444444aa;
-                padding: 10px;
-                text-align: center;
-            }
-
-            .bottom {
-                background-color: #555555aa;
-                padding: 10px;
-                text-align: center;
-                flex: 1;
-            }
+        .bottom {
+          background-color: #555555aa;
+          padding: 10px;
+          text-align: center;
+          flex: 1;
         }
+      }
     `,
 })
 export class DocDesktopUIDragComponent {
     topSize = signal(100);
 
-    left = signal(0);
+    position = signal<DOMRectReadOnly | undefined>(undefined);
+
+    left = signal(150);
     protected leftStart = 0;
 
     onDrag(event: DuiDragEvent) {
@@ -156,8 +169,14 @@ topSize = signal(100);
     `;
 
     dragCode = `
-      <div class="area" (duiDrag)="onDrag($event)" (duiDragStart)="onDragStart($event)">
+      <div class="area" (duiDrag)="onDrag($event)" (duiDragStart)="onDragStart($event)"
+                 (duiPositionChange)="position.set($event)">
         <div class="knob" [style.left.px]="left()">Drag Me</div>
+      </div>
+      <div class="area">
+        @if (position(); as pos) {
+          {{ pos.x }}px/{{ pos.y }}px
+        }
       </div>
     `;
 }

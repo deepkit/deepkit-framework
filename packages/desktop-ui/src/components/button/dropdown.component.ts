@@ -16,13 +16,14 @@ import {
     Directive,
     ElementRef,
     EmbeddedViewRef,
+    forwardRef,
     HostListener,
     inject,
     Injector,
     input,
+    model,
     OnChanges,
     OnDestroy,
-    Optional,
     output,
     OutputRefSubscription,
     signal,
@@ -35,12 +36,14 @@ import { TemplatePortal } from '@angular/cdk/portal';
 import { ConnectedPosition, Overlay, OverlayConfig, OverlayRef, PositionStrategy } from '@angular/cdk/overlay';
 import { focusWatcher } from '../../core/utils';
 import { isArray } from '@deepkit/core';
-import { ButtonComponent } from './button.component';
+import { ActiveComponent } from './button.component';
 import { NgTemplateOutlet } from '@angular/common';
 import { IconComponent } from '../icon/icon.component';
 import { OverlayStack, OverlayStackItem } from '../app/app';
 import { unsubscribe } from '../app/reactivate-change-detection';
 import { WindowComponent } from '../window/window.component';
+import { injectElementRef } from '../app/utils';
+import { observePosition, PositionObserverDisconnect } from '../app/position';
 
 /**
  * A dropdown component that can be used to display a list of items or content in a popup.
@@ -56,7 +59,7 @@ import { WindowComponent } from '../window/window.component';
         <div class="dui-body dui-dropdown"
              [class.dui-normalized]="windowComponent?.normalizeStyle()"
              tabindex="1" #dropdown>
-          <div class="content" [class.overlay-scrollbar-small]="scrollbars()">
+          <div class="dui-dropdown-content" [class.overlay-scrollbar-small]="scrollbars()">
             @if (container(); as container) {
               <ng-container [ngTemplateOutlet]="container"></ng-container>
             } @else {
@@ -124,6 +127,8 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
      */
     overlay = input(false, { transform: booleanAttribute });
 
+    hasBackdrop = input(false, { transform: booleanAttribute });
+
     show = input<boolean>();
 
     /**
@@ -146,6 +151,11 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
      */
     hidden = output();
 
+    /**
+     * Triggered when the dropdown loses focus and is about to close.
+     */
+    lostFocus = output<FocusEvent>();
+
     @ViewChild('dropdownTemplate', {
         static: false,
         read: TemplateRef,
@@ -154,6 +164,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
     protected container = signal<TemplateRef<any> | undefined>(undefined);
 
+    protected positionObserver?: PositionObserverDisconnect;
     protected relativeToInitiator?: HTMLElement;
 
     protected lastOverlayStackItem?: OverlayStackItem;
@@ -201,11 +212,13 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     /**
      * Toggles the dropdown open or closed.
      */
-    toggle(target?: Element | ElementRef | MouseEvent | EventTarget | 'center' | null) {
+    toggle(target?: Element | ElementRef | MouseEvent | EventTarget | 'center' | null): boolean {
         if (this.isOpen()) {
             this.close();
+            return false;
         } else {
             this.open(target);
+            return true;
         }
     }
 
@@ -265,7 +278,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 .withFlexibleDimensions(false)
                 .withViewportMargin(12)
                 .withPush(true)
-                .withDefaultOffsetY(this.overlay() !== false ? 15 : 0)
+                .withDefaultOffsetY(this.overlay() ? 15 : 0)
                 .withPositions([
                     ...this.connectedPositions(),
                     {
@@ -304,7 +317,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 .withFlexibleDimensions(false)
                 .withViewportMargin(12)
                 .withPush(true)
-                .withDefaultOffsetY(this.overlay() !== false ? 15 : 0)
+                .withDefaultOffsetY(this.overlay() ? 15 : 0)
                 .withPositions([
                     ...this.connectedPositions(),
                     {
@@ -337,7 +350,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 minWidth: 50,
                 maxWidth: 450,
                 maxHeight: '90%',
-                hasBackdrop: false,
+                hasBackdrop: this.hasBackdrop(),
                 scrollStrategy: this.overlayService.scrollStrategies.reposition(),
                 positionStrategy: this.positionStrategy,
             };
@@ -363,6 +376,10 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             this.overlayRef.updatePosition();
             this.shown.emit();
             this.showChange.emit(true);
+            if (!this.overlayRef) {
+                console.log('Dropdown closed in emitting events');
+                return;
+            }
             // console.log('this.overlayRef', initiator, this.overlayRef.overlayElement);
             this.setInitiator(initiator);
             if (this.relativeToInitiator) {
@@ -386,7 +403,15 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             }, 50);
 
             if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
-            this.lastOverlayStackItem = this.overlayStack.register(this.overlayRef.hostElement);
+            this.lastOverlayStackItem = this.overlayStack.register(this.overlayRef.hostElement, this, () => this.close());
+        }
+
+        if (target instanceof Element) {
+            if (!this.positionObserver) {
+                this.positionObserver = observePosition(target, () => {
+                    this.overlayRef?.updatePosition();
+                });
+            }
         }
 
         const allowedFocusValue = this.allowedFocus();
@@ -403,8 +428,9 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             this.lastFocusWatcher = focusWatcher(
                 this.overlayRef.overlayElement,
                 allowedFocus,
-                () => {
+                (event) => {
                     if (!this.keepOpen()) {
+                        this.lostFocus.emit(event);
                         this.close();
                     }
                 },
@@ -461,6 +487,10 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             this.lastOverlayStackItem.release();
             this.lastOverlayStackItem = undefined;
         }
+        if (this.positionObserver) {
+            this.positionObserver();
+            this.positionObserver = undefined;
+        }
         this.isOpen.set(false);
 
         if (this.relativeToInitiator && this.overlayRef) {
@@ -513,39 +543,47 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 export class OpenDropdownDirective implements AfterViewInit, OnDestroy {
     openDropdown = input<DropdownComponent>();
 
+    openDropdownHover = input(false, { transform: booleanAttribute });
+
     @unsubscribe()
     openSub?: OutputRefSubscription;
 
     @unsubscribe()
     hiddenSub?: OutputRefSubscription;
 
-    constructor(
-        protected elementRef: ElementRef,
-        @Optional() protected button?: ButtonComponent,
-    ) {
+    activeComponent = inject(ActiveComponent, { optional: true });
+
+    protected elementRef = injectElementRef();
+
+    ngAfterViewInit() {
+        const openDropdown = this.openDropdown();
+        const button = this.activeComponent;
+        if (button && openDropdown) {
+            this.openSub = openDropdown.shown.subscribe(() => {
+                button.active.set(true);
+            });
+            this.hiddenSub = openDropdown.hidden.subscribe(() => {
+                button.active.set(false);
+            });
+        }
     }
 
     ngOnDestroy() {
     }
 
-    ngAfterViewInit() {
-        const openDropdown = this.openDropdown();
-        if (this.button && openDropdown) {
-            this.openSub = openDropdown.shown.subscribe(() => {
-                if (this.button) this.button.active.set(true);
-            });
-            this.hiddenSub = openDropdown.hidden.subscribe(() => {
-                if (this.button) this.button.active.set(false);
-            });
-        }
-    }
-
     @HostListener('click')
     protected onClick() {
         const openDropdown = this.openDropdown();
-        if (openDropdown) {
-            openDropdown.toggle(this.elementRef);
-        }
+        if (!openDropdown) return;
+        openDropdown.toggle(this.elementRef);
+    }
+
+    @HostListener('pointerenter')
+    protected onPointerEnter() {
+        if (!this.openDropdownHover()) return;
+        const openDropdown = this.openDropdown();
+        if (!openDropdown) return;
+        openDropdown.open(this.elementRef);
     }
 }
 
@@ -666,14 +704,15 @@ export class ContextDropdownDirective {
         '[class.dui-normalized]': 'true',
     },
     styles: [`
-        :host {
-            display: block;
-            padding: 4px 0;
-        }
+      :host {
+        display: block;
+        padding: 4px 0;
+        border-radius: 4px;
+      }
 
-        div {
-            border-top: 1px solid var(--dui-line-color-light);
-        }
+      div {
+        border-top: 1px solid var(--dui-line-color-light);
+      }
     `],
 })
 export class DropdownSplitterComponent {
@@ -716,31 +755,57 @@ export class DropdownContainerDirective {
     template: `
       @if (selected()) {
         <dui-icon [size]="14" class="selected" name="check"></dui-icon>
+      } @else if (checkbox()) {
+        <dui-icon [size]="14" class="selected" name=""></dui-icon>
       }
       <ng-content></ng-content>
     `,
     host: {
+        '[attr.tabindex]': '0',
         '[class.dui-normalized]': 'true',
         '[class.selected]': 'selected()',
         '[class.disabled]': 'disabled()',
+        '[class.checkbox]': 'checkbox()',
+        '[class.active]': 'active()',
     },
     styleUrls: ['./dropdown-item.component.scss'],
+    providers: [
+        { provide: ActiveComponent, useExisting: forwardRef(() => DropdownItemComponent) },
+    ],
     imports: [IconComponent],
 })
-export class DropdownItemComponent {
+export class DropdownItemComponent implements ActiveComponent, OnDestroy {
     selected = input(false);
+    /**
+     * Whether the button is active (pressed)
+     */
+    active = model<boolean>(false);
+    destroy = output();
 
     disabled = input(false, { transform: booleanAttribute });
 
+    /**
+     * When set to true, the item is optimised to display left-aligned checkboxes next to the text.
+     */
+    checkbox = input(false, { transform: booleanAttribute });
+
     closeOnClick = input<boolean>(true);
 
-    constructor(protected dropdown: DropdownComponent) {
+    protected element = injectElementRef();
+    protected dropdown = inject(DropdownComponent, { optional: true });
+
+    activate() {
+        this.element.nativeElement.click();
+    }
+
+    ngOnDestroy() {
+        this.destroy.emit();
     }
 
     @HostListener('click')
     protected onClick() {
         if (this.closeOnClick()) {
-            this.dropdown.close();
+            this.dropdown?.close();
         }
     }
 }

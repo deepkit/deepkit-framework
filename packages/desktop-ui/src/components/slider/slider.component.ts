@@ -32,6 +32,7 @@ import { DragDirective, DuiDragEvent } from '../app/drag';
     host: {
         '[class.mini]': 'mini()',
         '(duiDrag)': 'onDuiDrag($event)',
+        '(mousedown)': 'valueFromMouse($event)',
     },
     hostDirectives: [
         {
@@ -84,7 +85,7 @@ export class SliderComponent extends ValueAccessorBase<number> {
         return (this.normalizedValue() - this.min()) / (this.max() - this.min()) * 100;
     });
 
-    private valueFromMouse(event: DuiDragEvent) {
+    protected valueFromMouse(event: { clientX: number }) {
         const x = event.clientX - this.dragContainer.getBoundingClientRect().x;
         this.updateValueFromX(x);
     }

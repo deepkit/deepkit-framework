@@ -17,10 +17,9 @@ import { CodeHighlightComponent } from '@deepkit/ui-library';
             @if (!isValueRequired) {
               <dui-checkbox [ngModel]="enabled"
                             (ngModelChange)="setEnabled($event)"
-              >{{ String(decoration.name) }}??
+              >{{ String(decoration.name) }}
               </dui-checkbox>
             }
-            {{model().active()}}
             @if (isValueRequired) {
               <div>{{ String(decoration.name) }}</div>
             }

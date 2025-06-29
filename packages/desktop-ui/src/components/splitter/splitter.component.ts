@@ -1,6 +1,6 @@
 import { booleanAttribute, Component, computed, effect, inject, input, model, Renderer2 } from '@angular/core';
-import { DragDirective, DuiDragEvent } from '../app/drag';
-import { clamp } from '../app/utils.js';
+import { DragDirective, DuiDragEvent, DuiDragStartEvent } from '../app/drag';
+import { clamp } from '../app/utils';
 
 /**
  * A splitter component that can be used for layout resizing. With an indicator that shows a handle.
@@ -30,7 +30,7 @@ import { clamp } from '../app/utils.js';
         '[class.splitter-with-indicator]': 'indicator()',
         '[class.horizontal]': 'isHorizontal()',
         '[class.vertical]': '!isHorizontal()',
-        '(duiDragStart)': 'onDuiDragStart()',
+        '(duiDragStart)': 'onDuiDragStart($event)',
         '(duiDrag)': 'onDuiDrag($event)',
         '(duiDragEnd)': 'onDuiDragEnd($event)',
         '(duiDragCancel)': 'onDuiDragCancel()',
@@ -101,7 +101,7 @@ export class SplitterComponent {
         });
     }
 
-    protected onDuiDragStart() {
+    protected onDuiDragStart($event: DuiDragStartEvent) {
         this.startSize = this.size();
         const element = this.element();
         if (!element) return;

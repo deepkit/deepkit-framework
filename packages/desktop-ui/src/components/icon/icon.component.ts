@@ -52,12 +52,12 @@ export class IconComponent implements OnInit, OnChanges {
 
     @HostBinding('class.clickable')
     get isClickable() {
-        return false !== this.clickable();
+        return this.clickable();
     }
 
     @HostBinding('class.disabled')
     get isDisabled() {
-        return false !== this.disabled();
+        return this.disabled();
     }
 
     constructor() {

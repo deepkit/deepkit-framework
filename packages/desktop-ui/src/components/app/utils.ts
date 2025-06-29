@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { Directive, ElementRef, HostListener, inject, input, OnChanges } from '@angular/core';
+import { Directive, ElementRef, HostListener, inject, Input, input, OnChanges, OnDestroy, OnInit, output } from '@angular/core';
 import { nextTick } from '@deepkit/core';
 import { Electron } from '../../core/utils';
 import { DOCUMENT } from '@angular/common';
@@ -67,4 +67,30 @@ export function scheduleWindowResizeEvent() {
         window.dispatchEvent(new Event('resize'));
         lastScheduleResize = undefined;
     });
+}
+
+@Directive({ selector: 'ng-template[templateType]' })
+export class TemplateContextTypeDirective<T> {
+    @Input() protected templateType!: T;
+
+    public static ngTemplateContextGuard<T>(dir: TemplateContextTypeDirective<T>, ctx: unknown,
+    ): ctx is T {
+        return true;
+    }
+}
+
+
+@Directive({ selector: '[onDomCreation]' })
+export class OnDomCreationDirective implements OnInit, OnDestroy {
+    onDomCreation = output<Element>();
+    onDomCreationDestroy = output<Element>();
+    private element: ElementRef<HTMLElement> = injectElementRef();
+
+    ngOnInit() {
+        this.onDomCreation.emit(this.element.nativeElement);
+    }
+
+    ngOnDestroy() {
+        this.onDomCreationDestroy.emit(this.element.nativeElement);
+    }
 }

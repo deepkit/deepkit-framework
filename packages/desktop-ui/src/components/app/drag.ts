@@ -1,13 +1,10 @@
 import { Directive, input, output } from '@angular/core';
 import { injectElementRef } from './utils';
 
-export interface DuiDragEvent {
+export interface DuiDragEvent extends PointerEvent {
     id: number;
-    target?: PointerEvent['target'];
     deltaX: number;
     deltaY: number;
-    clientX: number;
-    clientY: number;
 }
 
 export interface DuiDragStartEvent extends DuiDragEvent {
@@ -54,6 +51,7 @@ export class DragDirective {
 
     protected onPointerDown(e: PointerEvent) {
         if (e.button !== 0) return;
+        e.stopPropagation();
 
         this.startX = e.clientX;
         this.startY = e.clientY;
@@ -76,18 +74,15 @@ export class DragDirective {
             if (!this.dragging) {
                 const start = threshold ? dx * dx + dy * dy >= threshold : true;
                 if (start) {
-                    const eventObject: DuiDragStartEvent = {
+                    const startEvent: DuiDragStartEvent = Object.assign(event, {
                         id,
                         accept: true,
-                        target: this.draggingElement,
                         deltaX: dx,
                         deltaY: dy,
-                        clientX: event.clientX,
-                        clientY: event.clientY,
-                    };
-                    this.duiDragStart.emit(eventObject);
-                    this.dragging = eventObject.accept;
-                    if (!eventObject.accept) {
+                    });
+                    this.duiDragStart.emit(startEvent);
+                    this.dragging = startEvent.accept;
+                    if (!startEvent.accept) {
                         this.abort(id);
                         return;
                     }
@@ -95,14 +90,12 @@ export class DragDirective {
             }
 
             if (this.dragging) {
-                this.duiDrag.emit({
+                const dragEvent: DuiDragEvent = Object.assign(event, {
                     id,
-                    target: this.draggingElement,
                     deltaX: dx,
                     deltaY: dy,
-                    clientX: event.clientX,
-                    clientY: event.clientY,
                 });
+                this.duiDrag.emit(dragEvent);
             }
         };
 
@@ -111,21 +104,22 @@ export class DragDirective {
             this.controller?.abort();
 
             if (this.dragging) {
+                event.stopPropagation();
                 const dx = event.clientX - this.startX;
                 const dy = event.clientY - this.startY;
-                this.duiDragEnd.emit({
+                const dragEndEvent: DuiDragEvent = Object.assign(event, {
                     id,
-                    target: this.draggingElement,
                     deltaX: dx,
                     deltaY: dy,
-                    clientX: event.clientX,
-                    clientY: event.clientY,
                 });
+                this.duiDragEnd.emit(dragEndEvent);
+                this.element.nativeElement.addEventListener('click', (up) => up.stopPropagation(), { capture: true, once: true });
             }
         };
 
         const onKey = (event: KeyboardEvent) => {
             if (!this.dragging) return;
+            event.stopPropagation();
             if (event.key === 'Escape') {
                 el.releasePointerCapture(e.pointerId);
                 this.controller?.abort();

@@ -76,19 +76,22 @@ export class ValueAccessorBase<T> implements ControlValueAccessor, OnDestroy {
     }
 
     /**
-     * Internal note: This method is called from Angular Forms. Do not use it in UI code.
+     * This is called whenever value() needs to update. Either through Angular forms or through setValue().
+     * Do not call this method in UI code, use setValue() instead so that angular forms informed about the change.
+     *
+     * This is a good place to normalize values whenever they change. (like clamping a number to a range)
      */
     writeValue(value?: T) {
         this.value.set(value);
     }
 
     /**
-     * Set the value from UI code
+     * Set the value from UI code.
      */
     setValue(value: T | undefined) {
         this.writeValue(value);
         for (const callback of this._changedCallback) {
-            callback(value);
+            callback(this.value());
         }
     }
 

@@ -10,7 +10,6 @@
 
 import {
     AfterViewInit,
-    ApplicationRef,
     booleanAttribute,
     ChangeDetectorRef,
     Component,
@@ -22,6 +21,7 @@ import {
     HostBinding,
     HostListener,
     inject,
+    Injectable,
     input,
     model,
     OnChanges,
@@ -29,8 +29,10 @@ import {
     OnInit,
     Optional,
     output,
+    OutputEmitterRef,
     signal,
     SkipSelf,
+    WritableSignal,
 } from '@angular/core';
 import { WindowComponent } from '../window/window.component';
 import { AlignedButtonGroup, WindowState } from '../window/window-state';
@@ -41,6 +43,16 @@ import { isMacOs } from '../../core/utils';
 import { IconComponent } from '../icon/icon.component';
 import { RouterLinkActive } from '@angular/router';
 import { injectElementRef } from '../app/utils';
+import { DOCUMENT } from '@angular/common';
+
+export abstract class ActiveComponent {
+    abstract active: WritableSignal<boolean>;
+    abstract registeredHotkey?: WritableSignal<string>;
+    abstract showHotkey?: WritableSignal<boolean>;
+    abstract destroy: OutputEmitterRef<void>;
+
+    abstract activate(): void;
+}
 
 /**
  * hotkey has format of "ctrl+shift+alt+key", e.g "ctrl+s" or "shift+o"
@@ -69,7 +81,7 @@ function hotKeySize(hotkey: HotKey) {
 function isHotKeyActive(hotkey: HotKey, event: KeyboardEvent) {
     const eventKey = event.key.toLowerCase();
 
-    const hotkeys = hotkey.split(',');
+    const hotkeys = hotkey.toLowerCase().split(',');
     for (const hotkey of hotkeys) {
         const keys = hotkey.split('+');
         let match = true;
@@ -108,13 +120,12 @@ function isHotKeyActive(hotkey: HotKey, event: KeyboardEvent) {
       :host {
         display: inline-flex;
         flex-direction: row;
+        gap: 3px;
       }
 
       span {
         text-transform: uppercase;
         color: var(--dui-text-grey);
-        margin-left: 3px;
-        font-size: 11px;
       }
     `],
     template: `
@@ -166,7 +177,7 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
         const hotkeyValue = this.hotkey();
         if (!hotkeyValue) return;
 
-        const hotkeys = hotkeyValue.split(',');
+        const hotkeys = hotkeyValue.toLowerCase().trim().split(',');
         for (const hotkey of hotkeys) {
             const keys = hotkey.split('+');
             for (const key of keys) {
@@ -190,11 +201,8 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
       @if (iconRight() && icon(); as icon) {
         <dui-icon [color]="iconColor()" [name]="icon" [size]="iconSize()"></dui-icon>
       }
-      @if (showHotkey()) {
-        <div class="show-hotkey" [style.width.px]="hotKeySize(showHotkey()) * 6"></div>
-      }
-      @if (showHotkey()) {
-        <dui-button-hotkey style="position: absolute; right: 6px; top: 0;" [hotkey]="showHotkey()"></dui-button-hotkey>
+      @if (showHotkey() && registeredHotkey(); as hotkey) {
+        <dui-button-hotkey [hotkey]="hotkey"></dui-button-hotkey>
       }
     `,
     host: {
@@ -205,7 +213,7 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
         '[class.tight]': 'tight()',
         '[class.highlighted]': 'highlighted()',
         '[class.primary]': 'primary()',
-        '[class.icon-left]': '!iconRight()',
+        '[class.icon-left]': 'icon() && !iconRight()',
         '[class.icon-right]': 'iconRight()',
         '[class.icon-only]': 'iconOnly()',
         '[class.square]': 'square()',
@@ -217,14 +225,17 @@ export class ButtonHotkeyComponent implements OnChanges, OnInit {
     hostDirectives: [
         { directive: RouterLinkActive, inputs: ['routerLinkActiveOptions'] },
     ],
+    providers: [
+        { provide: ActiveComponent, useExisting: forwardRef(() => ButtonComponent) },
+    ],
     imports: [
         IconComponent,
         ButtonHotkeyComponent,
-        forwardRef(() => HotkeyDirective),
     ],
 })
-export class ButtonComponent implements OnInit {
+export class ButtonComponent implements OnInit, ActiveComponent, OnDestroy {
     hotKeySize = hotKeySize;
+    destroy = output();
 
     /**
      * The icon for this button. Either a icon name same as for dui-icon, or an image path.
@@ -240,7 +251,8 @@ export class ButtonComponent implements OnInit {
 
     iconColor = input<string>();
 
-    showHotkey = model<HotKey>('');
+    showHotkey = model<boolean>(false);
+    registeredHotkey = signal('');
 
     /**
      * Whether the button is active (pressed)
@@ -309,8 +321,16 @@ export class ButtonComponent implements OnInit {
         this.element.nativeElement.removeAttribute('tabindex');
     }
 
+    ngOnDestroy() {
+        this.destroy.emit();
+    }
+
     protected isActive() {
         return this.routerLinkActive.isActive || this.active();
+    }
+
+    activate() {
+        this.element.nativeElement.click();
     }
 
     ngOnInit() {
@@ -332,6 +352,80 @@ export class ButtonComponent implements OnInit {
     }
 }
 
+@Injectable({ providedIn: 'root' })
+export class HotkeyRegistry implements OnDestroy {
+    active: { key: HotKey, component: ActiveComponent }[] = [];
+
+    protected document = inject(DOCUMENT);
+    protected controller = new AbortController();
+    protected knownComponents = new Set<ActiveComponent>();
+
+    showHotKeyOn = 'alt';
+
+    constructor() {
+        this.document.addEventListener('keydown', (event: KeyboardEvent) => {
+            // If only alt is pressed (not other keys, we display the hotkey)
+            if (this.showHotKeyOn && event.key.toLowerCase() === this.showHotKeyOn) {
+                for (const item of this.active) {
+                    item.component.showHotkey?.set(true);
+                }
+                return;
+            }
+
+            for (const item of this.active) {
+                if (isHotKeyActive(item.key, event)) {
+                    this.activate(item.component);
+                    event.preventDefault();
+                    return;
+                }
+            }
+        }, { signal: this.controller.signal });
+
+        this.document.addEventListener('keyup', (event: KeyboardEvent) => {
+            // If only alt is pressed (not other keys, we display the hotkey)
+            if (this.showHotKeyOn && event.key.toLowerCase() === this.showHotKeyOn) {
+                for (const item of this.active) {
+                    item.component.showHotkey?.set(false);
+                }
+                return;
+            }
+        }, { signal: this.controller.signal });
+    }
+
+    activate(component: ActiveComponent) {
+        if (component.active()) return;
+        component.activate();
+        component.active.set(true);
+
+        setTimeout(() => {
+            component.active.set(false);
+        }, 200);
+    }
+
+    ngOnDestroy() {
+        this.controller.abort();
+    }
+
+    unregister(component: ActiveComponent) {
+        const index = this.active.findIndex(v => v.component === component);
+        if (index !== -1) {
+            this.active.splice(index, 1);
+        }
+        this.knownComponents.delete(component);
+    }
+
+    register(key: HotKey, component: ActiveComponent) {
+        this.active = this.active.filter(v => v.component !== component);
+        this.active.unshift({ key, component });
+        if (!this.knownComponents.has(component)) {
+            this.knownComponents.add(component);
+            component.destroy.subscribe(() => {
+                this.unregister(component);
+            });
+        }
+    }
+}
+
 /**
  * Adds a hotkey to a button.
  *
@@ -341,61 +435,37 @@ export class ButtonComponent implements OnInit {
  * ```
  */
 @Directive({ selector: '[hotkey]' })
-export class HotkeyDirective {
+export class HotkeyDirective implements OnDestroy {
     hotkey = input.required<HotKey>();
     protected oldButtonActive?: boolean;
+    protected hotkeyRegistry = inject(HotkeyRegistry);
+    protected activeComponent = inject(ActiveComponent, { optional: true });
+    protected element = injectElementRef();
 
-    protected active = false;
+    registeredHotkey = signal('');
 
-    constructor(
-        private elementRef: ElementRef,
-        private app: ApplicationRef,
-        @Optional() private button?: ButtonComponent,
-    ) {
+    active = signal(false);
+    destroy = output();
+
+    ngOnDestroy() {
+        this.destroy.emit();
     }
 
-    @HostListener('document:keydown', ['$event'])
-    protected onKeyDown(event: KeyboardEvent) {
-        //if only alt is pressed (not other keys, we display the hotkey)
-        if (event.key.toLowerCase() === 'alt') {
-            if (this.button) {
-                this.button.showHotkey.set(this.hotkey());
-                return;
+    constructor() {
+        const component = this.activeComponent || this;
+        effect(() => {
+            const hotkey = this.hotkey();
+            component.registeredHotkey?.set(hotkey);
+            if (hotkey) {
+                this.hotkeyRegistry.register(hotkey, component);
+            } else {
+                this.hotkeyRegistry.unregister(component);
             }
-        }
-
-        const active = isHotKeyActive(this.hotkey(), event);
-        if (!active) return;
-        event.preventDefault();
-
-        if (this.active) return;
-        this.active = true;
-        this.elementRef.nativeElement.click();
-
-        if (this.button) {
-            this.oldButtonActive = this.button.active();
-            this.button.active.set(true);
-
-            setTimeout(() => {
-                if (this.button && this.oldButtonActive !== undefined) {
-                    this.button.active.set(this.oldButtonActive);
-                    this.oldButtonActive = undefined;
-                    this.active = false;
-                    this.app.tick();
-                }
-            }, 40);
-        }
+        });
     }
 
-    @HostListener('document:keyup', ['$event'])
-    protected onKeyUp(event: KeyboardEvent) {
-        //if only alt is pressed (not other keys, we display the hotkey)
-        if (event.key.toLowerCase() === 'alt') {
-            if (this.button) {
-                this.button.showHotkey.set('');
-                return;
-            }
-        }
+    activate() {
+        this.element.nativeElement.click();
     }
 }
 

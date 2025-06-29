@@ -8,5 +8,6 @@ import { DuiApp } from './app';
     encapsulation: ViewEncapsulation.None,
 })
 export class DuiStyleComponent {
+    // required to call DuiApp.start
     duiApp = inject(DuiApp);
 }

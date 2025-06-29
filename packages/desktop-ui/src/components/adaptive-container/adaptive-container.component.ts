@@ -1,62 +1,12 @@
-import { AfterViewInit, Component, computed, contentChild, Directive, effect, ElementRef, input, OnDestroy, OnInit, signal, TemplateRef, viewChild } from '@angular/core';
+import { AfterViewInit, Component, computed, contentChild, Directive, effect, ElementRef, forwardRef, input, OnDestroy, OnInit, output, signal, viewChild } from '@angular/core';
 import { injectElementRef } from '../app/utils';
-import { ButtonComponent } from '../button/button.component';
 import { DropdownComponent, DropdownContainerDirective } from '../button/dropdown.component';
-import { NgTemplateOutlet } from '@angular/common';
 
-interface ElementWithVisibility {
-    node: Element;
-    visible: boolean;
-}
+type DuiAdaptivePlaceholder = Comment & { duiElement: DuiAdaptiveElement };
+type DuiAdaptiveElement = HTMLElement & { duiPlaceholder?: DuiAdaptivePlaceholder };
 
-@Directive({
-    selector: '[duiPlaceElements]',
-    standalone: true,
-})
-export class PlaceElements implements OnDestroy {
-    duiPlaceElements = input.required<Element[]>();
-    protected host = injectElementRef();
-
-    protected placedElements = new Set<Element>();
-    protected oldParent?: HTMLElement;
-
-    constructor() {
-        effect(() => this.place());
-    }
-
-    protected place() {
-        const elements = this.duiPlaceElements();
-        const parent = this.host.nativeElement;
-        if (!parent) return;
-
-        for (const element of elements) {
-            if (this.placedElements.has(element)) continue;
-            if (!this.oldParent && element.parentElement) this.oldParent = element.parentElement;
-            this.placedElements.add(element);
-            parent.appendChild(element);
-            element.classList.remove('dui-ac-hidden');
-        }
-
-        // Remove elements that are no longer in the list
-        for (const child of this.placedElements) {
-            if (!elements.includes(child)) {
-                child.classList.add('dui-ac-hidden');
-                this.placedElements.delete(child);
-                if (this.oldParent) {
-                    this.oldParent.appendChild(child);
-                }
-            }
-        }
-    }
-
-    ngOnDestroy() {
-        for (const element of this.placedElements) {
-            element.classList.add('dui-ac-hidden');
-            if (this.oldParent) {
-                this.oldParent.appendChild(element);
-            }
-        }
-    }
+function isAdaptivePlaceholder(node: Node): node is DuiAdaptivePlaceholder {
+    return node instanceof Comment && 'duiElement' in node;
 }
 
 /**
@@ -88,36 +38,24 @@ export class PlaceElements implements OnDestroy {
         '[class.column]': 'direction() === "column"',
         '[class.row-reverse]': 'direction() === "row-reverse"',
         '[class.column-reverse]': 'direction() === "column-reverse"',
-        '[style.padding]': 'element() ? undefined : elementPadding()',
-        '[class.has-hidden]': 'hiddenElements().length > 0',
     },
     template: `
       <ng-content></ng-content>
-      <div #toggleButtonContainer class="toggle-button">
-        @if (!contentDropdownComponent()) {
-          <dui-dropdown class="dropdownClass()">
-            <div class="dui-dropdown-content" *dropdownContainer [duiPlaceElements]="hiddenElements()"></div>
-          </dui-dropdown>
-        }
-        @if (effectiveButtonTemplate(); as template) {
-          <ng-container *ngTemplateOutlet="template; context: { $implicit: this }"></ng-container>
-        } @else {
-          <dui-button textured (click)="toggleDropdown($event)" icon="arrow"></dui-button>
-        }
-      </div>
+      @if (!contentDropdownComponent()) {
+        <dui-dropdown class="dropdownClass()" [host]="host">
+          <div class="dui-adaptive-container-dropdown-content" *dropdownContainer duiAdaptiveHiddenContainer></div>
+        </dui-dropdown>
+      }
     `,
     styleUrl: './adaptive-container.component.scss',
     imports: [
-        ButtonComponent,
         DropdownComponent,
-        PlaceElements,
+        forwardRef(() => AdaptiveHiddenContainer),
         DropdownContainerDirective,
-        NgTemplateOutlet,
     ],
 })
-export class AdaptiveContainerComponent implements OnInit, AfterViewInit {
+export class AdaptiveContainerComponent implements OnInit, AfterViewInit, OnDestroy {
     protected host = injectElementRef();
-    protected toggleButtonContainer = viewChild('toggleButtonContainer', { read: ElementRef });
     protected contentDropdownComponent = contentChild(DropdownComponent);
     protected viewDropdownComponent = viewChild(DropdownComponent);
 
@@ -136,152 +74,145 @@ export class AdaptiveContainerComponent implements OnInit, AfterViewInit {
 
     direction = input<'row' | 'column' | 'row-reverse' | 'column-reverse'>('row');
 
-    buttonTemplate = input<TemplateRef<any>>();
+    /**
+     * Triggers for elements that are now hidden.
+     */
+    visibilityChange = output<Element[]>();
 
-    protected registeredButtonTemplate = signal<TemplateRef<any> | undefined>(undefined);
-
-    protected effectiveButtonTemplate = computed(() => this.buttonTemplate() || this.registeredButtonTemplate());
+    /**
+     * Trigger for elements that were hidden and are now shown again.
+     */
+    showElements = output<Element[]>();
 
     protected effectiveElement = computed<HTMLElement>(() => {
         const element = this.element();
         return element instanceof ElementRef ? element.nativeElement : element || this.host.nativeElement;
     });
 
-    protected update = signal(0);
-
     protected vertical = computed(() => this.direction() === 'column' || this.direction() === 'column-reverse');
 
-    elementPadding = computed(() => {
-        if (this.hiddenElements().length < 1) return undefined;
-        const toggleButton = this.toggleButtonContainer()?.nativeElement;
-        // Ensure the toggle button is not considered part of the adaptive container
-        return toggleButton ? getPadding(toggleButton.getBoundingClientRect(), this.direction()) : undefined;
-    });
+    /**
+     * The elements that are currently hidden, either placed in the dropdown or detected as hidden.
+     */
+    hiddenElements = signal<HTMLElement[]>([]);
 
-    protected nodes = computed(() => {
-        this.update();
-        const element = this.effectiveElement();
-        if (!element.getBoundingClientRect) return [];
+    hiddenContainer = signal<HTMLElement | undefined>(undefined);
 
-        const nodes: Element[] = [];
-        for (const node of element.childNodes) {
-            if (!(node instanceof Element)) continue;
-            const rect = node.getBoundingClientRect();
-            if (rect.width === 0 && rect.height === 0) {
-                continue; // Skip invisible elements
-            }
-            nodes.push(node);
+    registerHiddenContainer(hiddenContainer: HTMLElement) {
+        this.hiddenContainer.set(hiddenContainer);
+        const state = getState(this.effectiveElement());
+        // Move all hidden items to the hidden container
+        for (const node of state.nodes) {
+            if (!isHidden(node, hiddenContainer)) continue;
+            hideElement(node, hiddenContainer);
         }
-        return nodes;
-    });
+    }
 
-    protected dominatingElement = computed(() => {
-        const nodes = this.nodes();
+    unregisterHiddenContainer(hiddenContainer: HTMLElement) {
+        if (this.hiddenContainer() === hiddenContainer) {
+            this.hiddenContainer.set(undefined);
+            // Move all items back
+            const visibleContainer = this.effectiveElement();
+            for (let i = hiddenContainer.childNodes.length - 1; i >= 0; i--) {
+                const element = hiddenContainer.childNodes[i];
+                if (element instanceof HTMLElement && 'duiPlaceholder' in element) {
+                    element.style.display = 'none';
+                    visibleContainer.insertBefore(element, element.duiPlaceholder as DuiAdaptivePlaceholder);
+                }
+            }
+        }
+    }
+
+    update() {
+        const visibleContainer = this.effectiveElement();
+        const hiddenContainer = this.hiddenContainer();
+
         const vertical = this.vertical();
+        const { nodes, fallbacks } = getState(visibleContainer);
 
-        let firstElement: DOMRect | undefined;
-        for (const node of nodes) {
-            const rect = node.getBoundingClientRect();
-            if (!firstElement) {
-                firstElement = rect;
-                continue;
-            }
-            if (vertical) {
-                if (rect.left < firstElement.left) {
-                    firstElement = rect; // Find the leftmost element
+        if (isOverflowing(visibleContainer, vertical)) {
+            for (const node of fallbacks) node.style.display = '';
+
+            const nowHidden: HTMLElement[] = [];
+            // Hide one more from the end until no overflow anymore.
+            for (let i = nodes.length - 1; i >= 0; i--) {
+                const node = nodes[i];
+                const element = node instanceof Comment ? node.duiElement : node;
+                if (isHidden(node, hiddenContainer)) {
+                    nowHidden.unshift(element);
+                    continue;
                 }
-            } else {
-                if (rect.top < firstElement.top) {
-                    firstElement = rect; // Find the topmost element
-                }
-            }
-        }
+                hideElement(node, hiddenContainer);
+                nowHidden.unshift(element);
 
-        if (!firstElement) return;
-
-        // We have to determine the element that acts as threshold to determine what other elements have been wrapped.
-        // if horizontal, this is the first row
-        let dominatingElement: DOMRect = firstElement;
-
-        for (const node of nodes) {
-            const rect = node.getBoundingClientRect();
-            if (vertical) {
-                if (rect.left >= dominatingElement.width + dominatingElement.left) {
-                    // The first element that is wrapped
+                if (!isOverflowing(visibleContainer, vertical)) {
+                    // It fits now, so we are done
                     break;
                 }
-                if (rect.left + rect.width > dominatingElement.left + dominatingElement.width) {
-                    // New dominating element
-                    dominatingElement = rect;
-                }
-            } else {
-                if (rect.top >= dominatingElement.height + dominatingElement.top) {
-                    // The first element that is wrapped
+            }
+            this.hiddenElements.set(nowHidden);
+        } else {
+            for (const node of fallbacks) node.style.display = 'none';
+
+            const hiddenNodes = nodes.filter(node => isHidden(node, hiddenContainer));
+            // All visible, so nothing we can do
+            if (!hiddenNodes.length) return;
+            // Check if there is room for more elements
+
+            // 1. Check if all fit without fallbacks
+            for (const node of hiddenNodes) {
+                showElement(node, visibleContainer);
+            }
+
+            if (!isOverflowing(visibleContainer, vertical)) {
+                // Great all fit, keep it like this
+                this.hiddenElements.set([]);
+                return;
+            }
+
+            // Since we have overflow, make sure fallbacks are visible again
+            // and elements are hidden again
+            for (const node of fallbacks) node.style.display = '';
+            for (let i = hiddenNodes.length - 1; i >= 0; i--) {
+                hideElement(hiddenNodes[i], hiddenContainer);
+            }
+
+            // 2. Try to unhide one more until it overflows again
+            let unhidden = 0;
+            for (const node of hiddenNodes) {
+                // Show it
+                showElement(node, visibleContainer);
+
+                if (isOverflowing(visibleContainer, vertical)) {
+                    // It does not fit, so hide it again and stop
+                    hideElement(node, hiddenContainer);
                     break;
                 }
-                if (rect.top + rect.height > dominatingElement.top + dominatingElement.height) {
-                    // New dominating element
-                    dominatingElement = rect;
-                }
+                unhidden++;
             }
+            const nowHidden = hiddenNodes.slice(unhidden).map(v => v instanceof Comment ? v.duiElement : v);
+            this.hiddenElements.set(nowHidden);
         }
-        return dominatingElement;
-    });
+    }
 
-    elements = computed(() => {
-        const dominatingElement = this.dominatingElement();
-        if (!dominatingElement) return [];
-        const nodes = this.nodes();
-        const vertical = this.vertical();
-
-        const elements: ElementWithVisibility[] = [];
-        for (const node of nodes) {
-            const rect = node.getBoundingClientRect();
-            if (vertical) {
-                const visible = rect.left <= dominatingElement.left;
-                elements.push({ node, visible });
-            } else {
-                const visible = rect.top <= dominatingElement.top;
-                elements.push({ node, visible });
-            }
-        }
-
-        return elements;
-    });
-
-    hiddenElements = computed(() => this.elements().filter(e => !e.visible).map(v => v.node));
+    protected lastObserver: ResizeObserver | undefined;
+    protected lastMutationObserver: MutationObserver | undefined;
 
     constructor() {
         if ('undefined' !== typeof ResizeObserver) {
-            let lastObserver: ResizeObserver | undefined;
             effect(() => {
-                if (lastObserver) {
-                    lastObserver.disconnect();
-                    lastObserver = undefined;
-                }
-                lastObserver = new ResizeObserver(() => {
-                    this.update.update(v => v + 1);
+                this.lastObserver?.disconnect();
+                this.lastObserver = new ResizeObserver(() => {
+                    this.update();
                 });
-                lastObserver.observe(this.effectiveElement());
+                this.lastObserver.observe(this.effectiveElement());
             });
         }
-
-        effect(() => {
-            const elements = this.elements();
-            for (const element of elements) {
-                if (element.visible) {
-                    element.node.classList.remove('dui-ac-hidden');
-                } else {
-                    element.node.classList.add('dui-ac-hidden');
-                }
-            }
-        });
     }
 
-    toggleDropdown(target: Parameters<DropdownComponent['toggle']>[0]) {
-        const dropdown = this.contentDropdownComponent() || this.viewDropdownComponent();
-        if (!dropdown) return;
-        dropdown.toggle(target);
+    ngOnDestroy() {
+        this.lastObserver?.disconnect();
+        this.lastMutationObserver?.disconnect();
     }
 
     ngOnInit() {
@@ -289,41 +220,34 @@ export class AdaptiveContainerComponent implements OnInit, AfterViewInit {
     }
 
     ngAfterViewInit() {
-        this.update.update(v => v + 1);
-    }
-
-    registerButtonTemplate(template: TemplateRef<any>) {
-        this.registeredButtonTemplate.set(template);
-    }
-
-    unregisterButtonTemplate(template: TemplateRef<any>) {
-        if (this.registeredButtonTemplate() === template) {
-            this.registeredButtonTemplate.set(undefined);
-        }
+        this.update();
     }
 }
 
 /**
- * Directive to register a template for the adaptive container button.
+ * Directive to mark an element as a hidden container for the adaptive container.
  *
  * ```html
  * <dui-adaptive-container>
- *   <dui-button>Button 1</dui-button>
- *   <dui-button>Button 2</dui-button>
- *   <dui-button *duiAdaptiveContainerButton (click)="container.toggleDropdown($event.target)">OPEN</dui-button>
+ *     <dui-button>Button 1</dui-button>
+ *     <dui-button>Button 2</dui-button>
+ *     <dui-dropdown>
+ *       <div *dropdownContainer duiAdaptiveHiddenContainer></ng-container>
+ *     </dui-dropdown>
  * </dui-adaptive-container>
  * ```
  */
 @Directive({
-    selector: '[duiAdaptiveContainerButton]',
+    selector: '[duiAdaptiveHiddenContainer]',
+    standalone: true,
 })
-export class DuiAdaptiveContainerButton implements OnDestroy {
-    constructor(private container: AdaptiveContainerComponent, public template: TemplateRef<any>) {
-        this.container.registerButtonTemplate(this.template);
+export class AdaptiveHiddenContainer implements OnDestroy {
+    constructor(private host: ElementRef, private container: AdaptiveContainerComponent) {
+        container.registerHiddenContainer(host.nativeElement);
     }
 
     ngOnDestroy() {
-        this.container.unregisterButtonTemplate(this.template);
+        this.container.unregisterHiddenContainer(this.host.nativeElement);
     }
 }
 
@@ -338,4 +262,77 @@ export function getPadding(rect: DOMRect, direction: 'row' | 'column' | 'row-rev
         case 'column-reverse':
             return `${rect.height}px 0 0 0`;
     }
+}
+
+function isOverflowing(element: HTMLElement, vertical: boolean): boolean {
+    return vertical ? element.scrollHeight > element.clientHeight : element.scrollWidth > element.clientWidth;
+}
+
+function isHidden(
+    elementOrPlaceholder: DuiAdaptiveElement | DuiAdaptivePlaceholder,
+    hiddenContainer: HTMLElement | undefined,
+): boolean {
+    const element = elementOrPlaceholder instanceof Comment ? elementOrPlaceholder.duiElement : elementOrPlaceholder;
+    if (element.parentElement === hiddenContainer) return true;
+    return element.style.display === 'none';
+}
+
+function hideElement(
+    elementOrPlaceholder: DuiAdaptiveElement | DuiAdaptivePlaceholder,
+    hiddenContainer: HTMLElement | undefined,
+) {
+    const element = elementOrPlaceholder instanceof Comment ? elementOrPlaceholder.duiElement : elementOrPlaceholder;
+    element.style.display = 'none';
+    if (!element.parentElement) return;
+
+    if (!element.duiPlaceholder) {
+        const comment = Object.assign(document.createComment('dui-adaptive-placeholder'), {
+            duiElement: element,
+        }) as DuiAdaptivePlaceholder;
+        element.duiPlaceholder = comment;
+        element.parentElement.insertBefore(comment, element);
+    }
+    if (hiddenContainer && element.parentElement !== hiddenContainer) {
+        hiddenContainer.insertBefore(element, hiddenContainer.firstChild);
+        element.style.display = '';
+    }
+}
+
+function showElement(
+    elementOrPlaceholder: DuiAdaptiveElement | DuiAdaptivePlaceholder,
+    visibleContainer: HTMLElement,
+) {
+    const element = elementOrPlaceholder instanceof Comment ? elementOrPlaceholder.duiElement : elementOrPlaceholder;
+    element.style.display = '';
+    if (!element.parentElement) return;
+
+    if (element.duiPlaceholder) {
+        // Move the element back to the visible container, keep the comment for later
+        visibleContainer.insertBefore(element, element.duiPlaceholder);
+    }
+}
+
+function getState(visibleContainer: HTMLElement) {
+    const nodes: (DuiAdaptiveElement | DuiAdaptivePlaceholder)[] = [];
+    const fallbacks: HTMLElement[] = [];
+    for (let i = 0; i < visibleContainer.childNodes.length; i++) {
+        const node = visibleContainer.childNodes[i];
+        if (node instanceof HTMLElement) {
+            if (node.classList.contains('dui-adaptive-fallback')) {
+                fallbacks.push(node);
+            } else {
+                nodes.push(node);
+            }
+        } else if (isAdaptivePlaceholder(node)) {
+
+            // Referenced element is already part of visibleContainer, so skip it
+            // so that we don't have it twice.
+            if (node.duiElement.parentElement === visibleContainer) continue;
+
+            // TODO: Check of node.duiElement is still attached to the DOM, if not
+            //  remove the comment as well and ignore it
+            nodes.push(node as DuiAdaptivePlaceholder);
+        }
+    }
+    return { nodes, fallbacks };
 }

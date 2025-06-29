@@ -15,7 +15,7 @@ In macOS we have 4 types of buttons:
     font-weight: 500;
     height: 21px;
     color: var(--dui-button-text);
-    padding: 0 15px;
+    padding: 0 12px;
     overflow: hidden;
     text-align: center;
 
@@ -26,6 +26,7 @@ In macOS we have 4 types of buttons:
     user-select: none;
     white-space: nowrap;
     text-overflow: ellipsis;
+    gap: 4px;
 
     border-radius: 4px;
 
@@ -91,9 +92,13 @@ In macOS we have 4 types of buttons:
     }
 }
 
-:host.icon {
-    padding-left: 10px;
+dui-button-hotkey {
+    margin-left: 4px;
+    font-size: 12px;
+    justify-items: right;
+}
 
+:host.icon {
     &.square {
         padding: 0;
         min-width: 22px;
@@ -102,12 +107,17 @@ In macOS we have 4 types of buttons:
     overflow: visible;
 }
 
-:host.icon-only {
-    padding: 0 5px;
+:host.icon-left {
+    padding-left: 6px;
+
 }
 
-.show-hotkey {
-    margin-left: 4px;
+:host.icon-right {
+    padding-right: 6px;
+}
+
+:host.icon-only {
+    padding: 0 5px;
 }
 
 :host.tight {
@@ -119,18 +129,6 @@ In macOS we have 4 types of buttons:
     font-size: 11px;
     height: 18px;
     line-height: 16px;
-
-    .show-hotkey {
-        font-size: 11px;
-        line-height: 16px;
-        height: 18px;
-    }
-}
-
-:host.small, :host.tight {
-    .show-hotkey {
-        margin-left: 14px;
-    }
 }
 
 :host-context(.dui-theme-light) {

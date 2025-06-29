@@ -43,7 +43,7 @@ import { AppTitle } from '@app/app/components/title.js';
 
         <doc-code-frame>
           <div>
-            <dui-table style="height: 180px;" multiSelect [items]="items" [selectable]="true" [(selected)]="selectedItems" preferenceKey="demo">
+            <dui-table style="height: 180px;" [items]="items" [selectable]="true" [(selected)]="selectedItems" preferenceKey="demo">
               <dui-dropdown duiTableCustomRowContextMenu>
                 <dui-dropdown-item [disabled]="!selectedItems.length" (click)="remove()">Delete</dui-dropdown-item>
               </dui-dropdown>
@@ -77,14 +77,17 @@ import { AppTitle } from '@app/app/components/title.js';
         <h2>Disabling Virtual Scrolling</h2>
         <p>
           For small datasets, you can disable virtual scrolling by setting the <code>virtualScroll</code> property to <code>false</code>.
-          This enables rows to have different heights. This example has also <code>no-focus-outline</code> set.
+          This enables rows to have different heights. This example has also <code>no-focus-outline</code>, <code>multi-select</code>,
+          and <code>freezeColumns</code> enabled.
         </p>
 
         <doc-code-frame>
           <div>
-            <dui-table style="height: 180px;" [virtualScrolling]="false" multiSelect no-focus-outline [items]="items" [selectable]="true" [(selected)]="selectedItems" preferenceKey="demo2">
+            <dui-table style="height: 180px;" [virtualScrolling]="false"
+                       [freezeColumns]="1" multi-select no-focus-outline [items]="items" [selectable]="true"
+                       [(selected)]="selectedItems" preferenceKey="demo2">
+              <dui-table-column name="i" width="100" />
               <dui-table-column name="title" header="Title" width="350" />
-              <dui-table-column name="i" width="200" />
               <dui-table-column name="created" header="Created" width="450" />
             </dui-table>
           </div>
@@ -102,7 +105,7 @@ import { AppTitle } from '@app/app/components/title.js';
 })
 export class DocDesktopUITableComponent {
     items = [
-        { id: 1, created: new Date, title: 'first lorem ipsum dolor sit amet consectetur adipiscing elit' },
+        { i: 1, created: new Date, title: 'first lorem ipsum dolor sit amet consectetur adipiscing elit' },
         { i: 2, created: new Date, title: 'second lorem ipsum dolor sit amet consectetur adipiscing elit' },
         { i: 3, created: new Date, title: 'another lorem ipsum dolor sit amet consectetur adipiscing elit' },
         { i: 4, created: new Date, title: 'yet another lorem ipsum dolor' },
@@ -133,15 +136,17 @@ export class DocDesktopUITableComponent {
     };
 
     code2 = `
-    <dui-table style="height: 180px;" [virtualScrolling]="false" multiSelect no-focus-outline [items]="items" [selectable]="true" [(selected)]="selectedItems" preferenceKey="demo2">
+    <dui-table style="height: 180px;" [virtualScrolling]="false"
+               [freezeColumns]="1" multi-select no-focus-outline [items]="items" [selectable]="true" 
+               [(selected)]="selectedItems" preferenceKey="demo2">
+      <dui-table-column name="i" width="100" />
       <dui-table-column name="title" header="Title" width="350" />
-      <dui-table-column name="i" width="200" />
       <dui-table-column name="created" header="Created" width="450" />
     </dui-table>
 `;
 
     code = `
-    <dui-table style="height: 180px;" multiSelect [items]="items" [selectable]="true" [(selected)]="selectedItems" preferenceKey="demo">
+    <dui-table style="height: 180px;" [items]="items" [selectable]="true" [(selected)]="selectedItems" preferenceKey="demo">
         <dui-dropdown duiTableCustomRowContextMenu>
             <dui-dropdown-item [disabled]="!selectedItems.length" (click)="remove()">Delete</dui-dropdown-item>
         </dui-dropdown>

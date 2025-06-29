@@ -2,38 +2,8 @@
 :host {
   position: relative;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   overflow: hidden;
-}
-
-.toggle-button {
-  position: absolute;
-  top: 0;
-  right: 0;
-  visibility: hidden;
-}
-
-:host.row-reverse .toggle-button {
-  left: 0;
-  right: unset;
-}
-
-:host.column .toggle-button {
-  top: unset;
-  left: 0;
-  bottom: 0;
-}
-
-:host.column-reverse .toggle-button {
-  top: 0;
-  left: 0;
-  bottom: unset;
-}
-
-:host.has-hidden {
-  .toggle-button {
-    visibility: visible;
-  }
 }
 
 :host.row {
@@ -52,18 +22,16 @@
   flex-direction: column-reverse;
 }
 
-:host ::ng-deep > * {
-  flex: 0 0 auto;
-  min-width: 0;
-}
-
 :host ::ng-deep > .dui-ac-hidden {
-  visibility: hidden;
-  pointer-events: none;
+  display: none;
 }
 
-.dui-dropdown-content {
+.dui-adaptive-container-dropdown-content {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.dui-overflow-fallback {
+  display: none;
 }

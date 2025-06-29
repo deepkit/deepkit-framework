@@ -192,7 +192,7 @@ export type FocusWatcherUnsubscribe = () => void;
  */
 export function focusWatcher(
     target: Element, allowedFocuses: Element[] = [],
-    onBlur: () => void,
+    onBlur: (event: FocusEvent) => void,
     customChecker?: (currentlyFocused: Element | null) => boolean,
 ): FocusWatcherUnsubscribe {
     const doc = target.ownerDocument;
@@ -220,33 +220,33 @@ export function focusWatcher(
         return customChecker ? customChecker(currentlyFocused) : false;
     }
 
-    function emitBlurIfNeeded() {
+    function emitBlurIfNeeded(event: FocusEvent) {
         if (!currentlyFocused) {
             // Shouldn't be possible to have no element at all with focus.
             // This means usually that the item that had previously focus was deleted.
             currentlyFocused = target;
         }
         if (subscribed && !isFocusAllowed()) {
-            onBlur();
+            onBlur(event);
             unsubscribe();
             return true;
         }
         return false;
     }
 
-    function onFocusOut() {
+    function onFocusOut(event: FocusEvent) {
         currentlyFocused = null;
-        emitBlurIfNeeded();
+        emitBlurIfNeeded(event);
     }
 
     function onFocusIn(event: FocusEvent) {
         currentlyFocused = event.target as any;
-        emitBlurIfNeeded();
+        emitBlurIfNeeded(event);
     }
 
     function onMouseDown(event: FocusEvent) {
         currentlyFocused = event.target as any;
-        if (emitBlurIfNeeded()) {
+        if (emitBlurIfNeeded(event)) {
             event.stopImmediatePropagation();
             event.preventDefault();
         }

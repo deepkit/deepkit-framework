@@ -66,6 +66,11 @@ import { AppTitle } from '@app/app/components/title.js';
                 </div>
               </dui-dropdown>
             </p>
+            
+            <p>
+              <dui-button textured [disabled]="disabled" icon="check">Confirm</dui-button>
+              <dui-button textured [disabled]="disabled" icon="check" icon-right>Confirm</dui-button>
+            </p>
 
             <p>
               <dui-button textured [disabled]="disabled" [openDropdown]="dropdown2" icon="arrow_down" icon-right>

@@ -238,7 +238,7 @@ interface THBox {
           @for (column of sortedFilteredColumns(); track $index; let columnIndex = $index) {
             <div class="th"
                  [style.width.px]="column.getWidth()"
-                 (mouseup)="sortBy(column.name() || '', $event)"
+                 (click)="sortBy(column.name() || '', $event)"
                  [class.freeze]="columnIndex < freezeColumns()"
                  [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(columnIndex) : undefined"
                  [attr.name]="column.name()"
@@ -274,7 +274,7 @@ interface THBox {
                  [contextDropdown]="customRowDropdown()?.dropdown"
                  [class.selected]="selectedMap.has(row)"
                  [class.odd]="isOdd"
-                 (mousedown)="select(row, $event)"
+                 (click)="select(row, $event)"
                  (contextmenu)="select(row, $event)"
                  (dblclick)="dblclick.emit(row)"
             >
@@ -309,7 +309,7 @@ interface THBox {
                    [class.selected]="selectedMap.has(row)"
                    [class.odd]="isOdd"
                    [style.height.px]="itemHeight()"
-                   (mousedown)="select(row, $event)"
+                   (click)="select(row, $event)"
                    (contextmenu)="select(row, $event)"
                    (dblclick)="dblclick.emit(row)"
               >
@@ -421,7 +421,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     /**
      * Whether multiple rows are selectable at the same time.
      */
-    multiSelect = input(false, { transform: booleanAttribute });
+    multiSelect = input(false, { alias: 'multi-select', transform: booleanAttribute });
 
     /**
      * TrackFn for ngFor to improve performance. Default is order by index.
@@ -686,8 +686,6 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
             return;
         }
 
-        if ($event && $event.button === 2) return;
-
         const column = this.columnMap()[name];
         if (!column?.sortable()) {
             return;
@@ -751,7 +749,6 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     onHeadDragStart(event: DuiDragStartEvent, index: number) {
         const ths = this.ths();
         const element = this.headMove.element = ths[index]?.nativeElement;
-        console.log('head drag start', element, ths, index);
         if (!this.headMove.element) {
             event.accept = false;
             return;
@@ -893,7 +890,6 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
                 sortedColumns.splice(newPosition, 0, directive);
 
                 for (let [i, v] of eachPair(sortedColumns)) {
-                    console.log('i', i, v.name(), v.getPosition());
                     v.effectivePosition.set(i);
                 }
             }
