@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.16](https://github.com/deepkit/deepkit-framework/compare/v1.0.15...v1.0.16) (2025-06-30)
+
+### Bug Fixes
+
+- **desktop-ui:** fix icon font in webkit ([87e60b5](https://github.com/deepkit/deepkit-framework/commit/87e60b525eba6b553f068b97ff97aabe424a6662))
+- **desktop-ui:** remove AbortController for addEventListener since bad browser support ([a35ffe1](https://github.com/deepkit/deepkit-framework/commit/a35ffe1fc40675a4c0ea7c163f06de8fc450ce5e))
+
+### Features
+
+- **desktop-ui:** better docs, new dui-adaptive-container component ([e4497e8](https://github.com/deepkit/deepkit-framework/commit/e4497e8daf0de716fb49a7de3998e24d2571477f))
+- **desktop-ui:** more docs ([9433089](https://github.com/deepkit/deepkit-framework/commit/94330899c817e58ae0b588243c8bd338790d9908))
+- **desktop-ui:** new duiPositionChange directive, new dui-menu component, automatically reposition dropdown, improved dui-adaptive-container ([dc8fa12](https://github.com/deepkit/deepkit-framework/commit/dc8fa12852d1ac3f859752c1c350b1b3c4fea2b3))
+
 ## [1.0.15](https://github.com/deepkit/deepkit-framework/compare/v1.0.14...v1.0.15) (2025-06-26)
 
 ### Bug Fixes

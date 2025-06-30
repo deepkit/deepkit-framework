@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.16](https://github.com/deepkit/deepkit-framework/compare/v1.0.15...v1.0.16) (2025-06-30)
+
+### Features
+
+- **desktop-ui:** new duiPositionChange directive, new dui-menu component, automatically reposition dropdown, improved dui-adaptive-container ([dc8fa12](https://github.com/deepkit/deepkit-framework/commit/dc8fa12852d1ac3f859752c1c350b1b3c4fea2b3))
+
 ## [1.0.15](https://github.com/deepkit/deepkit-framework/compare/v1.0.14...v1.0.15) (2025-06-26)
 
 ### Features

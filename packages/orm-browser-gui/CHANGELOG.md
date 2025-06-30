@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.16](https://github.com/deepkit/deepkit-framework/compare/v1.0.15...v1.0.16) (2025-06-30)
+
+### Bug Fixes
+
+- **desktop-ui:** fix icon font in webkit ([87e60b5](https://github.com/deepkit/deepkit-framework/commit/87e60b525eba6b553f068b97ff97aabe424a6662))
+
 ## [1.0.15](https://github.com/deepkit/deepkit-framework/compare/v1.0.14...v1.0.15) (2025-06-26)
 
 ### Features

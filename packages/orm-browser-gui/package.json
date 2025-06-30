@@ -1,6 +1,6 @@
 {
   "name": "@deepkit/orm-browser-gui",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "scripts": {
     "ng": "ng",
     "start": "NODE_OPTIONS=--preserve-symlinks ng serve",
@@ -36,7 +36,7 @@
     "@deepkit/bson": "^1.0.15",
     "@deepkit/core": "^1.0.15",
     "@deepkit/core-rxjs": "^1.0.15",
-    "@deepkit/desktop-ui": "^1.0.15",
+    "@deepkit/desktop-ui": "^1.0.16",
     "@deepkit/event": "^1.0.15",
     "@deepkit/injector": "^1.0.15",
     "@deepkit/logger": "^1.0.15",
