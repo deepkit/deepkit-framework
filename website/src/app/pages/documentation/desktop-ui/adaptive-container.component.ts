@@ -144,12 +144,13 @@ import { AdaptiveContainerComponent, ButtonComponent, CheckboxComponent, OpenDro
         display: flex;
         flex-direction: column;
         gap: 8px;
+        flex: 1;
+        min-width: 350px;
       }
 
       .layout div {
         padding: 8px;
         background-color: #444444aa;
-        flex: 1;
         overflow: hidden;
       }
 
