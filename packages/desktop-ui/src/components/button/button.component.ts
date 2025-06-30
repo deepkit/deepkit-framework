@@ -42,7 +42,7 @@ import { isMacOs } from '../../core/utils';
 
 import { IconComponent } from '../icon/icon.component';
 import { RouterLinkActive } from '@angular/router';
-import { injectElementRef } from '../app/utils';
+import { injectElementRef, registerEventListener, RegisterEventListenerRemove } from '../app/utils';
 import { DOCUMENT } from '@angular/common';
 
 export abstract class ActiveComponent {
@@ -357,13 +357,14 @@ export class HotkeyRegistry implements OnDestroy {
     active: { key: HotKey, component: ActiveComponent }[] = [];
 
     protected document = inject(DOCUMENT);
-    protected controller = new AbortController();
+    protected removeKeyDown?: RegisterEventListenerRemove;
+    protected removeKeyUp?: RegisterEventListenerRemove;
     protected knownComponents = new Set<ActiveComponent>();
 
     showHotKeyOn = 'alt';
 
     constructor() {
-        this.document.addEventListener('keydown', (event: KeyboardEvent) => {
+        this.removeKeyDown = registerEventListener(this.document, 'keydown', (event) => {
             // If only alt is pressed (not other keys, we display the hotkey)
             if (this.showHotKeyOn && event.key.toLowerCase() === this.showHotKeyOn) {
                 for (const item of this.active) {
@@ -379,9 +380,9 @@ export class HotkeyRegistry implements OnDestroy {
                     return;
                 }
             }
-        }, { signal: this.controller.signal });
+        });
 
-        this.document.addEventListener('keyup', (event: KeyboardEvent) => {
+        this.removeKeyUp = registerEventListener(this.document, 'keyup', (event) => {
             // If only alt is pressed (not other keys, we display the hotkey)
             if (this.showHotKeyOn && event.key.toLowerCase() === this.showHotKeyOn) {
                 for (const item of this.active) {
@@ -389,7 +390,7 @@ export class HotkeyRegistry implements OnDestroy {
                 }
                 return;
             }
-        }, { signal: this.controller.signal });
+        });
     }
 
     activate(component: ActiveComponent) {
@@ -403,7 +404,8 @@ export class HotkeyRegistry implements OnDestroy {
     }
 
     ngOnDestroy() {
-        this.controller.abort();
+        this.removeKeyDown?.();
+        this.removeKeyUp?.();
     }
 
     unregister(component: ActiveComponent) {

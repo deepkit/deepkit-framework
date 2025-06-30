@@ -89,11 +89,6 @@ export class SplitterComponent {
             const element = this.element();
             if (!element) return;
 
-            // make sure flex-grow and flex-shrink are set to 0
-            if (property === 'flex-basis') {
-                this.renderer.setStyle(this.element(), 'flex-grow', '0');
-                this.renderer.setStyle(this.element(), 'flex-shrink', '0');
-            }
             const size = this.size();
             if (size) {
                 this.renderer.setStyle(element, property, `${size}px`);

@@ -37,7 +37,7 @@ import {
 import { arrayHasItem, arrayRemoveItem, eachPair, empty, first, getPathValue, indexOf, nextTick } from '@deepkit/core';
 import { CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { ContextDropdownDirective, DropdownComponent, DropdownComponent as DropdownComponent_1, DropdownContainerDirective, DropdownItemComponent, DropdownSplitterComponent } from '../button/dropdown.component';
-import { injectElementRef } from '../app/utils';
+import { injectElementRef, registerEventListener, RegisterEventListenerRemove } from '../app/utils';
 import { findParentWithClass } from '../../core/utils';
 import { formatDate, NgTemplateOutlet } from '@angular/common';
 import { IconComponent } from '../icon/icon.component';
@@ -595,7 +595,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     }
 
     ngOnDestroy(): void {
-
+        this.removeScrollListener?.();
     }
 
     protected freezeLeft(untilIndex: number): number {
@@ -725,6 +725,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     };
 
     protected headMoveThBoxes: THBox[] = [];
+    protected removeScrollListener?: RegisterEventListenerRemove;
 
     protected headMove: {
         element?: HTMLElement;
@@ -902,7 +903,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     ngAfterViewInit(): void {
         const element = (this.viewportElement() || this.body())?.nativeElement;
         if (!element) return;
-        element.addEventListener('scroll', () => {
+        this.removeScrollListener = registerEventListener(element, 'scroll', () => {
             const scrollLeft = element.scrollLeft;
             const header = this.header();
             if (!header) return;

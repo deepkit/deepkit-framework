@@ -1,5 +1,5 @@
 import { Directive, input, output } from '@angular/core';
-import { injectElementRef } from './utils';
+import { injectElementRef, registerEventListener, RegisterEventListenerRemove } from './utils';
 
 export interface DuiDragEvent extends PointerEvent {
     id: number;
@@ -42,11 +42,14 @@ export class DragDirective {
     protected startY = 0;
     protected dragging = false;
     protected draggingElement?: DuiDragEvent['target'];
-    protected controller?: AbortController;
-    protected destroy = new AbortController();
+
+    protected destroy: RegisterEventListenerRemove;
+    protected removePointerMove?: RegisterEventListenerRemove;
+    protected removePointerUp?: RegisterEventListenerRemove;
+    protected removeKeyUp?: RegisterEventListenerRemove;
 
     constructor() {
-        this.element.nativeElement.addEventListener('pointerdown', (e) => this.onPointerDown(e), { signal: this.destroy.signal });
+        this.destroy = registerEventListener(this.element.nativeElement, 'pointerdown', (e) => this.onPointerDown(e));
     }
 
     protected onPointerDown(e: PointerEvent) {
@@ -61,9 +64,7 @@ export class DragDirective {
         el.setPointerCapture(e.pointerId);
         const id = ++this.id;
 
-        this.controller?.abort();
-        this.controller = new AbortController();
-        const signal = this.controller.signal;
+        this.dragging = false;
         const threshold = this.duiDragThreshold() * this.duiDragThreshold();
         this.draggingElement = e.target;
 
@@ -101,9 +102,10 @@ export class DragDirective {
 
         const onUp = (event: PointerEvent) => {
             el.releasePointerCapture(event.pointerId);
-            this.controller?.abort();
+            this.release();
 
             if (this.dragging) {
+                this.dragging = false;
                 event.stopPropagation();
                 const dx = event.clientX - this.startX;
                 const dy = event.clientY - this.startY;
@@ -122,21 +124,27 @@ export class DragDirective {
             event.stopPropagation();
             if (event.key === 'Escape') {
                 el.releasePointerCapture(e.pointerId);
-                this.controller?.abort();
+                this.dragging = false;
+                this.release();
                 this.duiDragCancel.emit(id);
             }
         };
 
-        window.addEventListener('pointermove', onMove, { signal });
-        window.addEventListener('pointerup', onUp, { signal });
+        this.removePointerMove = registerEventListener(window, 'pointermove', onMove);
+        this.removePointerUp = registerEventListener(window, 'pointerup', onUp, { once: true });
         if (this.duiDragAbortOnEscape()) {
-            window.addEventListener('keydown', onKey, { signal });
+            this.removeKeyUp = registerEventListener(window, 'keydown', onKey);
         }
     }
 
+    protected release() {
+        this.removePointerMove?.();
+        this.removePointerUp?.();
+        this.removeKeyUp?.();
+    }
+
     protected abort(id: number) {
-        this.controller?.abort();
-        this.controller = undefined;
+        this.release();
         this.draggingElement = undefined;
         if (this.dragging) {
             this.duiDragCancel.emit(id);
@@ -145,7 +153,9 @@ export class DragDirective {
     }
 
     ngOnDestroy() {
-        this.controller?.abort();
-        this.destroy.abort();
+        this.removePointerMove?.();
+        this.removePointerUp?.();
+        this.removeKeyUp?.();
+        this.destroy();
     }
 }

@@ -94,3 +94,19 @@ export class OnDomCreationDirective implements OnInit, OnDestroy {
         this.onDomCreationDestroy.emit(this.element.nativeElement);
     }
 }
+
+export type RegisterEventListenerRemove = () => void;
+
+export function registerEventListener<
+    T extends Element | Document | Window,
+    K extends keyof KeyMap,
+    KeyMap extends GlobalEventHandlersEventMap = T extends Document ? DocumentEventMap : T extends Window ? WindowEventMap : HTMLElementEventMap,
+>(
+    element: T,
+    type: K,
+    listener: (ev: KeyMap[K]) => any,
+    options?: AddEventListenerOptions,
+): RegisterEventListenerRemove {
+    element.addEventListener(type as string, listener as EventListenerOrEventListenerObject, options);
+    return () => element.removeEventListener(type as string, listener as EventListenerOrEventListenerObject, options);
+}
