@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command, WriteConcernMessage } from './command.js';
+import { Command, WriteConcernMessage } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
 import type { MongoClientConfig } from '../config.js';
 import type { Host } from '../host.js';
@@ -20,7 +20,7 @@ type RequestSchema = {
     index: string[];
 } & WriteConcernMessage;
 
-export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command<BaseResponse> {
+export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command<void> {
     constructor(
         public schema: T,
         public names: string[],
@@ -28,18 +28,17 @@ export class DropIndexesCommand<T extends ReflectionClass<any>> extends Command<
         super();
     }
 
-    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<BaseResponse> {
+    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<void> {
         const cmd: RequestSchema = {
             dropIndexes: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
             index: this.names,
         };
 
-        // if (transaction) transaction.applyTransaction(cmd);
         config.applyWriteConcern(cmd, this.options);
 
         try {
-            return await this.sendAndWait<RequestSchema>(cmd);
+            await this.sendAndWait<RequestSchema>(cmd);
         } catch (error) {
             throw new Error(`Could not drop indexes ${JSON.stringify(this.names)}: ${error}`);
         }

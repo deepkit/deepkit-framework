@@ -8,12 +8,13 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { BaseResponse, Command, WriteConcernMessage } from './command.js';
+import { Command, WriteConcernMessage } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
 import { MongoError } from '../error.js';
 import type { MongoClientConfig } from '../config.js';
 import type { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
+import { formatError } from '@deepkit/core';
 
 export interface CreateIndex {
     key: { [name: string]: 1 },
@@ -29,7 +30,7 @@ type RequestSchema = {
     indexes: CreateIndex[];
 } & WriteConcernMessage;
 
-export class CreateIndexesCommand<T extends ReflectionClass<any>> extends Command<BaseResponse> {
+export class CreateIndexesCommand<T extends ReflectionClass<any>> extends Command<void> {
     constructor(
         public schema: T,
         public indexes: CreateIndex[],
@@ -37,7 +38,7 @@ export class CreateIndexesCommand<T extends ReflectionClass<any>> extends Comman
         super();
     }
 
-    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<BaseResponse> {
+    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<void> {
         const cmd: RequestSchema = {
             createIndexes: this.schema.getCollectionName() || 'unknown',
             $db: this.schema.databaseSchemaName || config.defaultDb || 'admin',
@@ -46,12 +47,14 @@ export class CreateIndexesCommand<T extends ReflectionClass<any>> extends Comman
 
         config.applyWriteConcern(cmd, this.options);
 
-        // if (transaction) transaction.applyTransaction(cmd);
-
         try {
-            return await this.sendAndWait<RequestSchema>(cmd);
+            await this.sendAndWait<RequestSchema>(cmd);
         } catch (error) {
-            throw new MongoError(`Could not drop indexes ${JSON.stringify(this.indexes)}: ${error}`);
+            if (formatError(error).includes('Index already exists')) {
+                // ignore when we get `Index already exists with a different name`
+                return;
+            }
+            throw new MongoError(`Could not create indexes ${JSON.stringify(this.indexes)}: ${error}`);
         }
     }
 
