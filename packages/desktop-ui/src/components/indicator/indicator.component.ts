@@ -12,6 +12,8 @@ import { ChangeDetectorRef, Component, OnChanges, OnDestroy, input } from '@angu
 import { ProgressTracker } from '@deepkit/core-rxjs';
 import { Subscription } from 'rxjs';
 import { DecimalPipe } from '@angular/common';
+import { DialogActionsComponent } from '../dialog/dialog.component';
+import { ButtonComponent } from '../button/button.component';
 
 @Component({
     selector: 'dui-indicator',
@@ -56,6 +58,17 @@ export class IndicatorComponent {
     `],
     template: `
       @if (progressTracker(); as progressTracker) {
+
+        @if (title()) {
+          <h2>{{ title() }}</h2>
+        }
+
+        @if (description()) {
+          <p>{{ description() }}</p>
+        }
+
+        <ng-content />
+
         <div class="indicator" [class.vertical]="display() === 'vertical'" [class.hide]="progressTracker.ended">
           <dui-indicator [step]="step"></dui-indicator>
           @if (progressTracker.current; as group) {
@@ -64,11 +77,18 @@ export class IndicatorComponent {
             </div>
           }
         </div>
+
+        <dui-dialog-actions>
+          <dui-button textured (click)="progressTracker.stop()">Stop</dui-button>
+        </dui-dialog-actions>
       }
     `,
-    imports: [IndicatorComponent, DecimalPipe]
+    imports: [IndicatorComponent, DecimalPipe, DialogActionsComponent, ButtonComponent, DialogActionsComponent, ButtonComponent],
 })
 export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
+    title = input<string>('Progress');
+    description = input<string>('');
+
     progressTracker = input<ProgressTracker>();
     display = input<'horizontal' | 'vertical'>('horizontal');
 

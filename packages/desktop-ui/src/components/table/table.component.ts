@@ -267,24 +267,28 @@ interface THBox {
       }
       @let valueFetch = valueFetcher();
 
+      @let selectedSet$ = selectedSet();
+      @let contextDropdown = customRowDropdown()?.dropdown;
+      @let freezeColumns$ = freezeColumns();
+      
       <div class="body" [class.overlay-scrollbar-small]="!virtualScrolling()" #body (click)="clickCell($event)" (dblclick)="dblClickCell($event)">
         @if (!virtualScrolling()) {
           @for (row of filterSorted(); track trackByFn(i, row); let i = $index; let isOdd = $odd) {
             <div class="table-row {{rowClass()(row)}}"
-                 [contextDropdown]="customRowDropdown()?.dropdown"
-                 [class.selected]="selectedMap.has(row)"
+                 [contextDropdown]="contextDropdown"
+                 [class.selected]="selectedSet$.has(row)"
                  [class.odd]="isOdd"
                  (click)="select(row, $event)"
                  (contextmenu)="select(row, $event)"
-                 (dblclick)="dblclick.emit(row)"
+                 (dblclick)="rowDblClick.emit(row)"
             >
               @for (column of sortedFilteredColumns(); track $index; let columnIndex = $index) {
                 <div class="table-cell"
                      [class]="column.class() + ' ' + cellClass()(row, column.name())"
                      [attr.row-column]="column.name()"
-                     [class.freeze]="columnIndex < freezeColumns()"
-                     [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(columnIndex) : undefined"
-                     [class.freeze-last]="columnIndex === freezeColumns() - 1"
+                     [class.freeze]="columnIndex < freezeColumns$"
+                     [style.left.px]="columnIndex < freezeColumns$ ? freezeLeft(columnIndex) : undefined"
+                     [class.freeze-last]="columnIndex === freezeColumns$ - 1"
                      [attr.row-i]="i"
                      [style.flex-basis.px]="column.getWidth()"
                 >
@@ -305,21 +309,21 @@ interface THBox {
             <ng-container
               *cdkVirtualFor="let row of filterSorted(); trackBy: trackByFn; let i = index; odd as isOdd">
               <div class="table-row {{rowClass()(row)}}"
-                   [contextDropdown]="customRowDropdown()?.dropdown"
-                   [class.selected]="selectedMap.has(row)"
+                   [contextDropdown]="contextDropdown"
+                   [class.selected]="selectedSet$.has(row)"
                    [class.odd]="isOdd"
                    [style.height.px]="itemHeight()"
                    (click)="select(row, $event)"
                    (contextmenu)="select(row, $event)"
-                   (dblclick)="dblclick.emit(row)"
+                   (dblclick)="rowDblClick.emit(row)"
               >
                 @for (column of sortedFilteredColumns(); track $index; let columnIndex = $index) {
                   <div class="table-cell"
                        [class]="column.class() + ' ' + cellClass()(row, column.name())"
                        [attr.row-column]="column.name()"
-                       [class.freeze]="columnIndex < freezeColumns()"
-                       [style.left.px]="columnIndex < freezeColumns() ? freezeLeft(columnIndex) : undefined"
-                       [class.freeze-last]="columnIndex === freezeColumns() - 1"
+                       [class.freeze]="columnIndex < freezeColumns$"
+                       [style.left.px]="columnIndex < freezeColumns$ ? freezeLeft(columnIndex) : undefined"
+                       [class.freeze-last]="columnIndex === freezeColumns$ - 1"
                        [attr.row-i]="i"
                        [style.flex-basis.px]="column.getWidth()"
                   >
@@ -503,8 +507,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
         return sorted.slice();
     });
 
-    // TODO rework that to be reactive
-    protected selectedMap = new Map<T, boolean>();
+    protected selectedSet = computed<Set<T>>(() => new Set(this.selected()));
 
     /**
      * Elements that are selected, by reference.
@@ -516,7 +519,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
     /**
      * When a row gets double-clicked.
      */
-    dblclick = output<T>();
+    rowDblClick = output<T>();
 
     cellClick = output<{ item: T, column: string }>();
     cellDblClick = output<{ item: T, column: string }>();
@@ -576,7 +579,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
 
     protected ignoreThisSort = false;
 
-    protected element = injectElementRef();
+    element = injectElementRef();
 
     constructor() {
         effect(() => this.loadPreference());
@@ -962,7 +965,7 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
         if (event.key === 'Enter') {
             const firstSelected = first(this.selected());
             if (firstSelected) {
-                this.dblclick.emit(firstSelected);
+                this.rowDblClick.emit(firstSelected);
             }
         }
 
@@ -1056,43 +1059,35 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
         const selected = this.selected();
         if (!this.multiSelect()) {
             this.selected.set([item]);
-            this.selectedMap.clear();
-            this.selectedMap.set(item, true);
         } else {
             if ($event && $event.shiftKey) {
                 const indexSelected = items.indexOf(item);
 
                 if (selected[0]) {
                     const firstSelected = items.indexOf(selected[0]);
-                    this.selectedMap.clear();
 
                     if (firstSelected < indexSelected) {
                         //we select all from index -> indexSelected, downwards
                         for (let i = firstSelected; i <= indexSelected; i++) {
                             selected.push(items[i]);
-                            this.selectedMap.set(items[i], true);
                         }
                     } else {
                         //we select all from indexSelected -> index, upwards
                         for (let i = firstSelected; i >= indexSelected; i--) {
                             selected.push(items[i]);
-                            this.selectedMap.set(items[i], true);
                         }
                     }
                 } else {
                     //we start at 0 and select all until index
                     for (let i = 0; i <= indexSelected; i++) {
                         selected.push(items[i]);
-                        this.selectedMap.set(items[i], true);
                     }
                 }
                 this.selected.set([item]);
             } else if ($event && $event.metaKey) {
                 if (arrayHasItem(selected, item)) {
                     arrayRemoveItem(selected, item);
-                    this.selectedMap.delete(item);
                 } else {
-                    this.selectedMap.set(item, true);
                     selected.push(item);
                 }
                 this.selected.set(selected.slice());
@@ -1102,8 +1097,6 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
                 const resetSelection = !isItemSelected || !isRightButton;
                 if (resetSelection) {
                     this.selected.set([item]);
-                    this.selectedMap.clear();
-                    this.selectedMap.set(item, true);
                 }
             }
         }

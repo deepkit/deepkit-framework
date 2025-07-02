@@ -149,8 +149,6 @@
 }
 
 :host.no-virtual-scrolling {
-    height: unset;
-
     .table-row {
         min-width: 100%;
         width: fit-content;

@@ -382,7 +382,7 @@ export class HotkeyRegistry implements OnDestroy {
             }
         });
 
-        this.removeKeyUp = registerEventListener(this.document, 'keyup', (event) => {
+        this.removeKeyUp = registerEventListener(this.document, 'keydown', (event) => {
             // If only alt is pressed (not other keys, we display the hotkey)
             if (this.showHotKeyOn && event.key.toLowerCase() === this.showHotKeyOn) {
                 for (const item of this.active) {

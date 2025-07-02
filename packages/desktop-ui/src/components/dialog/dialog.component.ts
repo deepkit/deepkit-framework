@@ -47,7 +47,7 @@ import { unsubscribe } from '../app/reactivate-change-detection';
 @Component({
     template: `
       <dui-window [dialog]="true" [normalize-style]="windowComponent?.normalizeStyle()">
-        <dui-window-content class="{{class()}}" [class.dui-normalized]="normalized()">
+        <dui-window-content class="{{class()}}" [class.dui-normalized]="normalizeStyle()">
           @if (component()) {
             <ng-container
               #renderComponentDirective
@@ -87,7 +87,7 @@ export class DialogWrapperComponent {
     container = model<TemplateRef<any> | undefined>(undefined);
     content = model<TemplateRef<any> | undefined>(undefined);
     class = input<string>('');
-    normalized = input(true, { transform: booleanAttribute });
+    normalizeStyle = input(false, { alias: 'normalize-style', transform: booleanAttribute });
 
     @ViewChild(RenderComponentDirective, { static: false }) renderComponentDirective?: RenderComponentDirective;
 
@@ -145,6 +145,8 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
     center = input<boolean>(false);
 
     backDropCloses = input<boolean>(false);
+
+    normalizeStyle = input(false, { alias: 'normalize-style', transform: booleanAttribute });
 
     component = input<Type<any>>();
     componentInputs = input<{
@@ -250,7 +252,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
             maxWidth: this.maxWidth() || '90%',
             maxHeight: this.maxHeight() || '90%',
             hasBackdrop: true,
-            panelClass: [this.class(), (center ? 'dialog-overlay' : 'dialog-overlay-with-animation'), this.noPadding() !== false ? 'dialog-overlay-no-padding' : ''],
+            panelClass: [this.class(), (center ? 'dialog-overlay' : 'dialog-overlay-with-animation'), this.noPadding() ? 'dialog-overlay-no-padding' : ''],
             scrollStrategy: overlay.scrollStrategies.reposition(),
             positionStrategy: positionStrategy,
         });

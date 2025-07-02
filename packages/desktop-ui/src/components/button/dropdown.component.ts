@@ -56,8 +56,8 @@ import { observePosition, PositionObserverDisconnect } from '../app/position';
     selector: 'dui-dropdown',
     template: `
       <ng-template #dropdownTemplate>
-        <div class="dui-body dui-dropdown"
-             [class.dui-normalized]="windowComponent?.normalizeStyle()"
+        <div class="dui-body dui-dropdown {{dropdownClass()}}"
+             [class.dui-normalized]="normalizeStyle() || windowComponent?.normalizeStyle()"
              tabindex="1" #dropdown>
           <div class="dui-dropdown-content" [class.overlay-scrollbar-small]="scrollbars()">
             @if (container(); as container) {
@@ -91,9 +91,11 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     host = input<Element | ElementRef>();
 
     /**
-     * Additional elements that are allowed to have focus without closing the dropdown.
+     * Additional elements that are allowed to have focus without closing the dropdown.cdk-global-overlay-wrapper
      */
     allowedFocus = input<(Element | ElementRef)[] | (Element | ElementRef)>([]);
+
+    normalizeStyle = input(false, { alias: 'normalize-style', transform: booleanAttribute });
 
     /**
      * Keeps the dropdown open when it should be closed, ideal for debugging purposes.
@@ -121,6 +123,8 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
      * Whether the dropdown aligns to the horizontal center.
      */
     center = input<boolean>(false);
+
+    dropdownClass = input('');
 
     /**
      * Whether is styled as overlay
@@ -202,7 +206,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         this.lastFocusWatcher?.();
     }
 
-    @HostListener('window:keyup', ['$event'])
+    @HostListener('window:keydown', ['$event'])
     protected key(event: KeyboardEvent) {
         if (!this.keepOpen() && this.isOpen() && event.key.toLowerCase() === 'escape' && this.lastOverlayStackItem && this.lastOverlayStackItem.isLast()) {
             this.close();
@@ -381,7 +385,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 return;
             }
             // console.log('this.overlayRef', initiator, this.overlayRef.overlayElement);
-            this.setInitiator(initiator);
+            if (initiator) this.setInitiator(initiator);
             if (this.relativeToInitiator) {
                 const overlayElement = this.overlayRef.overlayElement;
                 const rect = this.getInitiatorRelativeRect();

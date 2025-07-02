@@ -266,7 +266,7 @@ body {
     transform: none;
 }
 
-body.dui-theme-dark {
+.dui-theme-dark {
     --dui-text-grey: #aaadb7;
     --dui-text-light: #7a7f88;
 
@@ -327,7 +327,7 @@ body.dui-theme-dark {
     }
 }
 
-body.dui-theme-light {
+.dui-theme-light {
     .dui-panel {
         background-color: #e3e3e3;
         border: 1px solid #dfdfdf;

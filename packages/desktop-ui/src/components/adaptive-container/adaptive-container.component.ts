@@ -14,12 +14,10 @@ function isAdaptivePlaceholder(node: Node): node is DuiAdaptivePlaceholder {
  * in a row or column, depending on the specified direction. It uses flexbox to manage the layout
  * and automatically hides elements that overflow the container's bounds.
  *
- * You should set always an appropriate height.
+ * The container uses flex-wrap: nowrap to detect overflow and hides elements (display: none) that do not fit.
  *
- * For direction=row, you might want to set the height of the container to the maximum height of the children.
- *
- * For direction=column, you might want to set the height to 100% or a fixed height and
- * children should have a fixed width or a width of 100%.
+ * Overflowing elements can be moved to a hidden container automatically, which per default is put into a dropdown
+ * that can be opened to show the hidden elements.
  *
  * ```html
  * <dui-adaptive-container>
