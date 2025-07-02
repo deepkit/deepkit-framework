@@ -169,7 +169,7 @@ export class DocDesktopUITableComponent {
         </dui-table-column>
     </dui-table>
     <dui-button-group padding="none" style="margin-top: 10px;">
-        <dui-input (enter)="itemName && addItem()" lightFocus [(ngModel)]="itemName" required></dui-input>
+        <dui-input (enter)="itemName && addItem()" lightFocus [(ngModel)]="itemName" [required]="true"></dui-input>
         <dui-button [disabled]="!selectedItems.length" (click)="remove()" square icon="remove"></dui-button>
         <dui-button (click)="addItem()" [disabled]="!itemName" square icon="add"></dui-button>
     </dui-button-group>
