@@ -18,7 +18,7 @@ import { DatePipe } from '@angular/common';
       <dui-input placeholder="Filter" round semiTransparent lightFocus [(ngModel)]="filterQuery"></dui-input>
 
       <dui-table style="flex: 1 1" [trackFn]="trackFn" [items]="requests"
-                 (dblclick)="open($event)"
+                 (rowDblClick)="open($event)"
                  selectable defaultSort="started" defaultSortDirection="desc" no-focus-outline>
         <dui-table-column [width]="90" name="method" header="Method"></dui-table-column>
         <dui-table-column class="text-tabular" [width]="130" name="statusCode" header="Status"></dui-table-column>
