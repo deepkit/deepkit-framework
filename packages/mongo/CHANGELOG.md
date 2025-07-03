@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.17](https://github.com/deepkit/deepkit-framework/compare/v1.0.16...v1.0.17) (2025-07-03)
+
+### Bug Fixes
+
+- **mongo:** don't throw when index already exists ([6a4e194](https://github.com/deepkit/deepkit-framework/commit/6a4e19474aac20f66c140470796eaf38e402906e))
+
 ## [1.0.15](https://github.com/deepkit/deepkit-framework/compare/v1.0.14...v1.0.15) (2025-06-26)
 
 ### Features

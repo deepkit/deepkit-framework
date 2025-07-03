@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.17](https://github.com/deepkit/deepkit-framework/compare/v1.0.16...v1.0.17) (2025-07-03)
+
+### Bug Fixes
+
+- **framework-debug-gui:** adjust to new desktop-ui output rowDblClick ([8710039](https://github.com/deepkit/deepkit-framework/commit/87100391f11945485978985f7e4520c994efd048))
+- **mongo:** don't throw when index already exists ([6a4e194](https://github.com/deepkit/deepkit-framework/commit/6a4e19474aac20f66c140470796eaf38e402906e))
+- **website:** docs ([807120a](https://github.com/deepkit/deepkit-framework/commit/807120a3a9a967f6aaa5a99782e7d6a33955b097))
+
+### Features
+
+- **desktop-ui:** table performance improvement, decouple styles from body, improve ProgressIndicatorComponent ([5333fe6](https://github.com/deepkit/deepkit-framework/commit/5333fe6cf6a46f3c5e272df53b403c943d7c7076))
+
 ## [1.0.16](https://github.com/deepkit/deepkit-framework/compare/v1.0.15...v1.0.16) (2025-06-30)
 
 ### Bug Fixes

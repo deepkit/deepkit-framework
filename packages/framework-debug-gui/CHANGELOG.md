@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.17](https://github.com/deepkit/deepkit-framework/compare/v1.0.16...v1.0.17) (2025-07-03)
+
+### Bug Fixes
+
+- **framework-debug-gui:** adjust to new desktop-ui output rowDblClick ([8710039](https://github.com/deepkit/deepkit-framework/commit/87100391f11945485978985f7e4520c994efd048))
+
 ## [1.0.16](https://github.com/deepkit/deepkit-framework/compare/v1.0.15...v1.0.16) (2025-06-30)
 
 **Note:** Version bump only for package @deepkit/framework-debug-gui
