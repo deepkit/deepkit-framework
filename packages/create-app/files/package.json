@@ -12,7 +12,7 @@
     "install": "deepkit-type-install",
     "app:watch": "node --watch -r ts-node/register app.ts",
     "update-deepkit": "npx update-by-scope @deepkit",
-    "client-rpc": "ts-node client-rpc.ts"
+    "client-rpc": "ts-node client.rpc.ts"
   },
   "dependencies": {
     "@deepkit/api-console-gui": "^1.0.1",
