@@ -51,6 +51,24 @@ and are automatically validated and deserialized. The order of the parameters di
 As soon as a complex object (interface, class, object literal) is defined, it is treated as a service dependency
 and the Dependency Injection Container tries to resolve it. See the chapter [Dependency Injection](dependency-injection.md) for more information.
 
+## Multiple Arguments
+
+You can define multiple arguments by adding more parameters to your function or method:
+
+```typescript
+new App().command('greet', (firstName: string, lastName: string, age?: number) => {
+    console.log(`Hello ${firstName} ${lastName}${age ? `, you are ${age} years old` : ''}`);
+});
+```
+
+```sh
+$ ts-node app.ts greet John Doe
+Hello John Doe
+
+$ ts-node app.ts greet John Doe 25
+Hello John Doe, you are 25 years old
+```
+
 ## Flags
 
 Flags are another way to pass values to your command. Mostly these are optional, but they don't have to be. Parameters decorated with the `Flag` type can be passed via `--name value` or `--name=value`.
@@ -116,6 +134,59 @@ delete? false
 
 $ ts-node app.ts test --remove
 delete? true
+```
+
+### Object Flags
+
+You can use object literals as flags to group related options together:
+
+```typescript
+import { Flag } from '@deepkit/app';
+
+interface UserOptions {
+    name: string;
+    age?: number;
+    email?: string;
+}
+
+new App().command('create-user', (options: UserOptions & Flag) => {
+    console.log('Creating user:', options);
+});
+```
+
+```sh
+$ ts-node app.ts create-user --name "John Doe" --age 30 --email "john@example.com"
+Creating user: { name: 'John Doe', age: 30, email: 'john@example.com' }
+```
+
+### Flag Prefixes
+
+When using multiple object flags, you can use prefixes to avoid naming conflicts:
+
+```typescript
+interface DatabaseOptions {
+    host: string;
+    port?: number;
+}
+
+interface CacheOptions {
+    host: string;
+    ttl?: number;
+}
+
+new App().command('setup', (
+    db: DatabaseOptions & Flag,
+    cache: CacheOptions & Flag<{ prefix: 'cache' }>
+) => {
+    console.log('Database:', db);
+    console.log('Cache:', cache);
+});
+```
+
+```sh
+$ ts-node app.ts setup --host "db.example.com" --cache.host "cache.example.com" --cache.ttl 3600
+Database: { host: 'db.example.com' }
+Cache: { host: 'cache.example.com', ttl: 3600 }
 ```
 
 ### Multiple Flags
@@ -284,6 +355,41 @@ Validation error in id: Number needs to be positive [positive]
 
 This additional validation, which is very easy to do, makes the command much more robust against wrong entries. See the chapter [Validation](../runtime-types/validation.md) for more information.
 
+### Union Types
+
+Union types allow you to restrict values to a specific set of options:
+
+```typescript
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+new App().command('log', (message: string, level: LogLevel & Flag = 'info') => {
+    console.log(`[${level.toUpperCase()}] ${message}`);
+});
+```
+
+```sh
+$ ts-node app.ts log "Hello World" --level debug
+[DEBUG] Hello World
+
+$ ts-node app.ts log "Hello World" --level invalid
+Invalid value for option --level: invalid. No valid union member found. Valid: 'debug' | 'info' | 'warn' | 'error'
+```
+
+### Date and Complex Types
+
+Deepkit automatically handles complex types like dates:
+
+```typescript
+new App().command('schedule', (task: string, date: Date & Flag) => {
+    console.log(`Task "${task}" scheduled for ${date.toISOString()}`);
+});
+```
+
+```sh
+$ ts-node app.ts schedule "Meeting" --date "2024-01-15T10:00:00Z"
+Task "Meeting" scheduled for 2024-01-15T10:00:00.000Z
+```
+
 ## Description
 
 To describe a flag or argument, use `@description` comment decorator.
@@ -315,4 +421,36 @@ ARGUMENTS
 
 OPTIONS
   --remove  Delete the user?
+```
+
+## Command Namespacing
+
+You can organize commands into namespaces using the colon syntax:
+
+```typescript
+new App()
+    .command('user:create', (name: string) => {
+        console.log(`Creating user: ${name}`);
+    })
+    .command('user:delete', (id: number) => {
+        console.log(`Deleting user: ${id}`);
+    })
+    .command('user:list', () => {
+        console.log('Listing all users');
+    });
+```
+
+```sh
+$ ts-node app.ts user
+USAGE
+  $ ts-node app.ts user:[COMMAND]
+
+COMMANDS
+user
+  user:create
+  user:delete
+  user:list
+
+$ ts-node app.ts user:create "John Doe"
+Creating user: John Doe
 ```
