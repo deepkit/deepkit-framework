@@ -3,7 +3,7 @@
 
 A query is an object that describes how to retrieve or modify data from the database. It has several methods to describe the query and termination methods that execute them. The database adapter can extend the query API in many ways to support database specific features.
 
-You can create a query using `Database.query(T)` or `Session.query(T)`. We recommend Sessions as it improves performance.
+You can create a query using `Database.query(T)` or `Session.query(T)`. We recommend Sessions as it improves performance and provides automatic change detection.
 
 ```typescript
 @entity.name('user')
@@ -19,8 +19,12 @@ class User {
 
 const database = new Database(...);
 
-//[ { username: 'User1' }, { username: 'User2' }, { username: 'User2' } ]
+//[ { username: 'User1' }, { username: 'User2' }, { username: 'User3' } ]
 const users = await database.query(User).select('username').find();
+
+// Using session (recommended for better performance)
+const session = database.createSession();
+const users = await session.query(User).select('username').find();
 ```
 
 ## Filter
@@ -353,6 +357,120 @@ class UserQuery<T extends {birthdate?: Date}> extends Query<T>  {
         return this.filter({$and: [{birthdate: {$gte: start}}, {birthdate: {$lte: end}}]} as FilterQuery<T>);
     }
 }
+```
+
+## Aggregation
+
+Deepkit ORM supports powerful aggregation functions that allow you to perform calculations on groups of data. These functions are particularly useful for analytics and reporting.
+
+### Basic Aggregation Functions
+
+```typescript
+@entity.name('product')
+class Product {
+    id: number & PrimaryKey & AutoIncrement = 0;
+    category: string = '';
+    title: string = '';
+    price: number = 0;
+    rating: number = 0;
+}
+
+const database = new Database(...);
+
+// Sum all prices
+const totalValue = await database.query(Product).withSum('price').find();
+// Result: [{ price: 12345 }]
+
+// Count all products
+const productCount = await database.query(Product).withCount('id', 'total').find();
+// Result: [{ total: 150 }]
+
+// Get minimum price
+const cheapest = await database.query(Product).withMin('price').find();
+// Result: [{ price: 9.99 }]
+
+// Get maximum price
+const mostExpensive = await database.query(Product).withMax('price').find();
+// Result: [{ price: 999.99 }]
+
+// Calculate average price
+const avgPrice = await database.query(Product).withAverage('price').find();
+// Result: [{ price: 125.50 }]
+```
+
+### Group By with Aggregation
+
+Combine `groupBy()` with aggregation functions to perform calculations per group:
+
+```typescript
+// Group by category and sum prices
+const categoryTotals = await database.query(Product)
+    .groupBy('category')
+    .withSum('price')
+    .orderBy('category')
+    .find();
+// Result: [
+//   { category: 'electronics', price: 5000 },
+//   { category: 'books', price: 250 }
+// ]
+
+// Count products per category
+const categoryCounts = await database.query(Product)
+    .groupBy('category')
+    .withCount('id', 'productCount')
+    .orderBy('category')
+    .find();
+// Result: [
+//   { category: 'electronics', productCount: 25 },
+//   { category: 'books', productCount: 100 }
+// ]
+
+// Multiple aggregations
+const categoryStats = await database.query(Product)
+    .groupBy('category')
+    .withCount('id', 'count')
+    .withSum('price', 'totalValue')
+    .withAverage('price', 'avgPrice')
+    .withMin('price', 'cheapest')
+    .withMax('price', 'mostExpensive')
+    .orderBy('category')
+    .find();
+```
+
+### Group Concatenation
+
+The `withGroupConcat()` function concatenates values within each group:
+
+```typescript
+// Concatenate all product titles per category
+const categoryProducts = await database.query(Product)
+    .groupBy('category')
+    .withGroupConcat('title')
+    .find();
+
+// Note: Result format depends on database adapter
+// SQLite: [{ category: 'books', title: 'Book1,Book2,Book3' }]
+// MongoDB: [{ category: 'books', title: ['Book1', 'Book2', 'Book3'] }]
+```
+
+### Filtering Aggregated Results
+
+You can filter both before and after aggregation:
+
+```typescript
+// Filter before aggregation (affects input data)
+const expensiveCategoryTotals = await database.query(Product)
+    .filter({ price: { $gt: 100 } })  // Only expensive products
+    .groupBy('category')
+    .withSum('price')
+    .find();
+
+// Filter after aggregation (affects aggregated results)
+const highValueCategories = await database.query(Product)
+    .groupBy('category')
+    .withSum('price')
+    .filter({ price: { $gt: 1000 } })  // Only categories with total > 1000
+    .find();
 
 await session.query(User).lift(UserQuery).hasBirthday().find();
 ```

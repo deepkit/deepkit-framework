@@ -1,39 +1,153 @@
 # Raw Access
 
-It's often necessary to access the database directly, for example to run a SQL query that is not supported by the ORM.
-This can be done using the `raw` method on the `Database` class.
+Raw access allows you to execute database-specific queries when the ORM's query builder doesn't provide the functionality you need. This is particularly useful for complex queries, database-specific features, or performance-critical operations.
+
+## SQL Databases
+
+For SQL databases, use the `sql` template literal to create safe, parameterized queries:
 
 ```typescript
-import { PrimaryKey, AutoIncrement, @entity } from '@deepkit/type';
+import { PrimaryKey, AutoIncrement, entity } from '@deepkit/type';
 import { Database } from '@deepkit/orm';
-import { sql } from '@deepkit/sql';
-import { SqliteDatabaseAdapter } from '@deepkit/sqlite';
+import { sql, identifier } from '@deepkit/sql';
+import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 
-@entity.collection('users')
+@entity.name('user')
 class User {
     id: number & PrimaryKey & AutoIncrement = 0;
     created: Date = new Date;
-    constructor(public username: string) {}
+    username: string = '';
+    email: string = '';
+    age: number = 0;
 }
 
 const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [User]);
 
-const query = 'Pet%';
-const rows = await database.raw<User>(sql`SELECT * FROM users WHERE username LIKE ${query}`).find();
+// Basic query with parameters
+const searchTerm = 'Pet%';
+const users = await database.raw<User>(sql`
+    SELECT * FROM user
+    WHERE username LIKE ${searchTerm}
+`).find();
 
-const result = await database.raw<{ count: number }>(sql`SELECT count(*) as count FROM users WHERE username LIKE ${query}`).findOne();
+// Count query
+const result = await database.raw<{ count: number }>(sql`
+    SELECT count(*) as count
+    FROM user
+    WHERE username LIKE ${searchTerm}
+`).findOne();
 console.log('Found', result.count, 'users');
 ```
 
-The SQL query is built using the `sql` template string tag. This is a special template string tag that allows to pass values as parameters. These parameters are then automatically parsed and converted to a safe prepared statement. This is important to avoid SQL injection attacks.
+### Advanced SQL Examples
 
-To pass a dynamic identifier like a column name, `identifier` can be used:
+```typescript
+// Complex aggregation query
+type UserStats = {
+    ageGroup: string;
+    userCount: number;
+    avgAge: number;
+};
+
+const stats = await database.raw<UserStats>(sql`
+    SELECT
+        CASE
+            WHEN age < 18 THEN 'Under 18'
+            WHEN age BETWEEN 18 AND 30 THEN '18-30'
+            WHEN age BETWEEN 31 AND 50 THEN '31-50'
+            ELSE 'Over 50'
+        END as ageGroup,
+        COUNT(*) as userCount,
+        AVG(age) as avgAge
+    FROM user
+    GROUP BY ageGroup
+    ORDER BY avgAge
+`).find();
+
+// Window functions (PostgreSQL/MySQL)
+type UserRanking = {
+    id: number;
+    username: string;
+    age: number;
+    ageRank: number;
+};
+
+const rankings = await database.raw<UserRanking>(sql`
+    SELECT
+        id,
+        username,
+        age,
+        ROW_NUMBER() OVER (ORDER BY age DESC) as ageRank
+    FROM user
+    WHERE age > 18
+`).find();
+```
+
+## SQL Template Literals
+
+The `sql` template literal provides safe parameterization and prevents SQL injection attacks. All values are automatically escaped and converted to prepared statement parameters.
+
+### Dynamic Identifiers
+
+For dynamic column names or table names, you can use the `identifier()` function from `@deepkit/sql`:
 
 ```typescript
 import { identifier, sql } from '@deepkit/sql';
 
-let column = 'username';
-const rows = await database.raw<User>(sql`SELECT * FROM users WHERE ${identifier(column)} LIKE ${query}`).find();
+// Dynamic column selection
+const column = 'username';
+const sortColumn = 'created';
+const users = await database.raw<User>(sql`
+    SELECT ${identifier(column)}
+    FROM user
+    WHERE ${identifier(column)} LIKE ${'Pet%'}
+    ORDER BY ${identifier(sortColumn)} DESC
+`).find();
+
+// For most cases, you can reference columns directly in the template
+const users2 = await database.raw<User>(sql`
+    SELECT username, email
+    FROM user
+    WHERE username LIKE ${'Pet%'}
+    ORDER BY created DESC
+`).find();
+```
+
+### Entity References in SQL
+
+You can reference entity classes directly in SQL queries:
+
+```typescript
+// Use entity class as table reference
+const users = await database.raw<User>(sql`
+    SELECT * FROM ${User}
+    WHERE age > ${18}
+`).find();
+
+// Join with multiple entities
+@entity.name('order')
+class Order {
+    id: number & PrimaryKey & AutoIncrement = 0;
+    userId: number & Reference<User> = 0;
+    amount: number = 0;
+}
+
+type UserOrderSummary = {
+    username: string;
+    totalOrders: number;
+    totalAmount: number;
+};
+
+const summary = await database.raw<UserOrderSummary>(sql`
+    SELECT
+        u.username,
+        COUNT(o.id) as totalOrders,
+        SUM(o.amount) as totalAmount
+    FROM ${User} u
+    LEFT JOIN ${Order} o ON u.id = o.userId
+    GROUP BY u.id, u.username
+    HAVING totalOrders > 0
+`).find();
 ```
 
 For SQL adapters, the `raw` method returns an `RawQuery` with `findOne` and `find` methods to retrieve the results. To execute a SQL without returning rows like UPDATE/DELETE/etc, `execute` can be used:

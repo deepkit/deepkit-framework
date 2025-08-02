@@ -217,10 +217,244 @@ interface User {
 
 ## Default Values
 
-## Default Expressions
+## Database Field Options
 
-## Complex Types
+The `DatabaseField` decorator provides fine-grained control over how fields are handled in the database:
 
-## Exclude
+```typescript
+import { DatabaseField, entity, PrimaryKey, AutoIncrement } from '@deepkit/type';
 
-## Database Specific Column Types
+@entity.name('user')
+class User {
+    id: number & PrimaryKey & AutoIncrement = 0;
+
+    // Skip field during inserts (useful for computed columns)
+    username: string & DatabaseField<{ skip: true }> = '';
+
+    // Custom column name
+    email: string & DatabaseField<{ name: 'email_address' }> = '';
+
+    // Skip during updates only
+    createdAt: Date & DatabaseField<{ skipUpdate: true }> = new Date();
+
+    // Skip during inserts only
+    updatedAt: Date & DatabaseField<{ skipInsert: true }> = new Date();
+
+    constructor(username: string, email: string) {
+        this.username = username;
+        this.email = email;
+    }
+}
+```
+
+## Embedded Objects
+
+Deepkit ORM supports embedded objects for complex data structures:
+
+```typescript
+interface Address {
+    street: string;
+    city: string;
+    zipCode: string;
+    country: string;
+}
+
+interface ContactInfo {
+    phone?: string;
+    website?: string;
+    socialMedia: {
+        twitter?: string;
+        linkedin?: string;
+    };
+}
+
+@entity.name('company')
+class Company {
+    id: number & PrimaryKey & AutoIncrement = 0;
+
+    // Embedded object
+    address: Address = {
+        street: '',
+        city: '',
+        zipCode: '',
+        country: ''
+    };
+
+    // Nested embedded objects
+    contact: ContactInfo = {
+        socialMedia: {}
+    };
+
+    constructor(public name: string) {}
+}
+
+// Usage
+const company = new Company('Tech Corp');
+company.address = {
+    street: '123 Main St',
+    city: 'San Francisco',
+    zipCode: '94105',
+    country: 'USA'
+};
+
+company.contact = {
+    phone: '+1-555-0123',
+    website: 'https://techcorp.com',
+    socialMedia: {
+        twitter: '@techcorp',
+        linkedin: 'company/techcorp'
+    }
+};
+
+await database.persist(company);
+
+// Query embedded fields
+const companies = await database.query(Company)
+    .filter({ 'address.city': 'San Francisco' })
+    .find();
+```
+
+## Advanced Validation
+
+Combine multiple validation constraints for robust data integrity:
+
+```typescript
+import {
+    entity, PrimaryKey, AutoIncrement,
+    MinLength, MaxLength, Pattern, Positive,
+    validate, ValidatorError
+} from '@deepkit/type';
+
+// Custom validator function
+function ValidAge(min: number = 0, max: number = 150) {
+    return (value: number): ValidatorError | void => {
+        if (value < min || value > max) {
+            return new ValidatorError('age', `Age must be between ${min} and ${max}`);
+        }
+    };
+}
+
+@entity.name('user')
+class User {
+    id: number & PrimaryKey & AutoIncrement = 0;
+
+    // Multiple string constraints
+    username: string & MinLength<3> & MaxLength<20> & Pattern<'^[a-zA-Z0-9_]+$'> = '';
+
+    // Email validation
+    email: string & Pattern<'^[^@]+@[^@]+\.[^@]+$'> = '';
+
+    // Custom validation
+    @t.validate(ValidAge(13, 120))
+    age: number & Positive = 0;
+
+    // Optional field with validation
+    website?: string & Pattern<'^https?://.*'>;
+
+    constructor(username: string, email: string, age: number) {
+        this.username = username;
+        this.email = email;
+        this.age = age;
+    }
+}
+
+// Validation is automatically applied during persist operations
+try {
+    const user = new User('ab', 'invalid-email', -5); // Invalid data
+    await database.persist(user);
+} catch (error) {
+    console.log('Validation errors:', error.message);
+}
+```
+
+## Complex Types and Arrays
+
+Handle arrays and complex data types:
+
+```typescript
+@entity.name('blog_post')
+class BlogPost {
+    id: number & PrimaryKey & AutoIncrement = 0;
+
+    // Array of strings
+    tags: string[] = [];
+
+    // Array of numbers
+    ratings: number[] = [];
+
+    // Array of embedded objects
+    comments: Array<{
+        author: string;
+        content: string;
+        createdAt: Date;
+        likes: number;
+    }> = [];
+
+    // JSON field for flexible data
+    metadata: Record<string, any> = {};
+
+    // Binary data
+    thumbnail?: Uint8Array;
+
+    constructor(
+        public title: string,
+        public content: string,
+        public authorId: number
+    ) {}
+}
+
+// Usage
+const post = new BlogPost('My First Post', 'Hello World!', 1);
+post.tags = ['javascript', 'typescript', 'deepkit'];
+post.comments = [
+    {
+        author: 'John',
+        content: 'Great post!',
+        createdAt: new Date(),
+        likes: 5
+    }
+];
+post.metadata = {
+    featured: true,
+    category: 'tutorial',
+    readTime: 5
+};
+
+await database.persist(post);
+
+// Query array fields
+const jsPosts = await database.query(BlogPost)
+    .filter({ tags: { $in: ['javascript'] } })
+    .find();
+```
+
+## Exclude Fields
+
+Exclude sensitive or computed fields from database operations:
+
+```typescript
+import { Exclude } from '@deepkit/type';
+
+@entity.name('user')
+class User {
+    id: number & PrimaryKey & AutoIncrement = 0;
+    username: string = '';
+    email: string = '';
+
+    // Excluded from database operations
+    password: string & Exclude<'database'> = '';
+
+    // Computed field - not stored in database
+    get displayName(): string & Exclude<'database'> {
+        return `${this.firstName} ${this.lastName}`;
+    }
+
+    // Temporary field for business logic
+    isNewUser: boolean & Exclude<'database'> = false;
+
+    constructor(username: string, email: string) {
+        this.username = username;
+        this.email = email;
+    }
+}
+```
