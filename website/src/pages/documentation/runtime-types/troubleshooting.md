@@ -1,6 +1,42 @@
 # Troubleshooting
 
-This guide covers common issues and their solutions when working with Deepkit's runtime type system.
+This comprehensive guide helps you resolve common issues when working with Deepkit Runtime Types. Issues are organized by category with step-by-step solutions.
+
+## Quick Diagnosis
+
+Before diving into specific solutions, try these quick checks:
+
+1. **Verify basic setup**:
+   ```bash
+   # Check if packages are installed
+   npm list @deepkit/type @deepkit/type-compiler
+
+   # Verify tsconfig.json has reflection enabled
+   grep -A 5 -B 5 "reflection" tsconfig.json
+   ```
+
+2. **Test with a simple example**:
+   ```typescript
+   import { is } from '@deepkit/type';
+
+   // This should work if everything is set up correctly
+   console.log(is<string>('hello')); // Should print: true
+   console.log(is<number>('hello')); // Should print: false
+   ```
+
+3. **Check for error messages**:
+   - "No type received" → Type compiler issue
+   - "ValidationError" → Data validation issue
+   - "Cannot read property" → Missing type information
+
+## Common Error Messages
+
+| Error | Likely Cause | Quick Fix |
+|-------|--------------|-----------|
+| "No type received" | Type compiler not working | Check tsconfig.json, reinstall type compiler |
+| "Type information not available" | Missing `reflection: true` | Add to tsconfig.json |
+| "ValidationError: Not a ..." | Data doesn't match type | Check your data structure |
+| "Cannot resolve type" | Import/export issue | Verify type is properly exported |
 
 ## Installation Issues
 

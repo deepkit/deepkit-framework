@@ -1,6 +1,68 @@
 # Type Guards and Assertions
 
-Type guards and assertions are essential tools for runtime type checking in TypeScript. Deepkit provides powerful functions that not only check types at runtime but also provide TypeScript with the necessary type information for proper type narrowing.
+## What are Type Guards?
+
+Type guards are functions that perform runtime checks to determine if a value matches a specific type. They serve two crucial purposes:
+
+1. **Runtime Safety**: Verify that data actually matches expected types at runtime
+2. **Type Narrowing**: Inform TypeScript's type system about the verified type
+
+### The Problem: TypeScript Types Don't Exist at Runtime
+
+Consider this common scenario:
+
+```typescript
+interface User {
+    id: number;
+    username: string;
+    email: string;
+}
+
+function processUser(data: any) {
+    // ❌ Dangerous: No runtime verification
+    return data.username.toUpperCase(); // Might crash if data.username is undefined
+}
+
+// This could crash your application
+processUser({}); // TypeError: Cannot read property 'toUpperCase' of undefined
+```
+
+### The Solution: Runtime Type Checking
+
+With Deepkit type guards, you can safely verify types at runtime:
+
+```typescript
+import { is } from '@deepkit/type';
+
+function processUser(data: unknown) {
+    if (is<User>(data)) {
+        // ✅ Safe: TypeScript knows data is User here
+        return data.username.toUpperCase(); // Guaranteed to work
+    }
+    throw new Error('Invalid user data');
+}
+```
+
+## When to Use Type Guards
+
+Type guards are essential when dealing with:
+
+- **API responses** - External data that might not match your interfaces
+- **User input** - Form data, URL parameters, file uploads
+- **Configuration files** - JSON/YAML configs that could be malformed
+- **Database results** - Data that might have changed schema
+- **Message queues** - Inter-service communication data
+- **Third-party libraries** - Data from external packages
+
+## Core Functions
+
+Deepkit provides three main functions for runtime type checking:
+
+| Function | Purpose | Returns | Use Case |
+|----------|---------|---------|----------|
+| `is<T>()` | Type guard | `boolean` | Conditional logic, safe access |
+| `assert<T>()` | Type assertion | `void` (throws on fail) | Fail-fast validation |
+| `validate<T>()` | Detailed validation | `ValidationError[]` | User-friendly error messages |
 
 ## Type Guards with `is`
 
