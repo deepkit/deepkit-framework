@@ -1,36 +1,111 @@
 # Security
 
-Deepkit HTTP provides comprehensive security features including authentication, authorization, session management, and protection against common web vulnerabilities. This chapter covers how to implement secure HTTP applications.
+Security is paramount in web applications, and Deepkit HTTP provides a comprehensive security framework that integrates seamlessly with its type system and event-driven architecture. This chapter covers essential security concepts and practical implementations for building secure HTTP applications.
+
+## Security Fundamentals
+
+Web application security involves multiple layers of protection:
+
+### Defense in Depth
+- **Input Validation**: Validate all incoming data at the application boundary
+- **Authentication**: Verify user identity before granting access
+- **Authorization**: Control what authenticated users can access
+- **Data Protection**: Encrypt sensitive data in transit and at rest
+- **Error Handling**: Prevent information leakage through error messages
+- **Monitoring**: Log security events and detect suspicious activity
+
+### Deepkit's Security Advantages
+
+Deepkit HTTP's type-driven approach provides inherent security benefits:
+
+- **Automatic Validation**: TypeScript types automatically validate input data
+- **Type Safety**: Compile-time guarantees prevent many runtime vulnerabilities
+- **Event System**: Centralized security logic through HTTP workflow events
+- **Dependency Injection**: Clean separation of security concerns
+- **Testing**: Easy to test security logic in isolation
 
 ## Authentication
 
-Authentication verifies the identity of users accessing your application. Deepkit HTTP supports various authentication methods through its event system and dependency injection.
+Authentication is the process of verifying that users are who they claim to be. Deepkit HTTP provides flexible authentication mechanisms through its event system, allowing you to implement various authentication strategies.
 
-### Basic Authentication with Headers
+### Authentication Strategies
 
-You can implement authentication by listening to HTTP workflow events and checking authentication headers:
+Common authentication methods include:
+
+- **Token-based**: JWT, API keys, bearer tokens
+- **Session-based**: Server-side sessions with cookies
+- **Basic Authentication**: Username/password in headers (HTTPS only)
+- **OAuth/OpenID**: Third-party authentication providers
+- **Multi-factor**: Combining multiple authentication methods
+
+### How Authentication Works in Deepkit
+
+Authentication in Deepkit HTTP happens during the HTTP workflow, specifically in the `onAuth` event. This allows you to:
+
+1. **Intercept requests**: Check authentication before routes execute
+2. **Set user context**: Make authenticated user available to routes
+3. **Handle failures**: Return appropriate error responses
+4. **Centralize logic**: Keep authentication logic in one place
+
+### Token-Based Authentication
+
+Token-based authentication is stateless and scalable, making it ideal for APIs and modern web applications. Here's how to implement it with Deepkit HTTP:
+
+#### Basic Token Authentication
 
 ```typescript
 import { App } from '@deepkit/app';
 import { FrameworkModule } from '@deepkit/framework';
-import { http, httpWorkflow, HttpUnauthorizedError, HttpRequest } from '@deepkit/http';
-import { eventDispatcher } from '@deepkit/event';
+import { http, httpWorkflow, HttpUnauthorizedError } from '@deepkit/http';
 
 class User {
-    constructor(public username: string, public id: number) {}
+    constructor(
+        public id: number,
+        public username: string,
+        public email: string,
+        public roles: string[] = []
+    ) {}
+}
+
+class AuthService {
+    private validTokens = new Map([
+        ['token123', { id: 1, username: 'john', email: 'john@example.com', roles: ['user'] }],
+        ['token456', { id: 2, username: 'jane', email: 'jane@example.com', roles: ['user', 'admin'] }]
+    ]);
+
+    validateToken(token: string): User | null {
+        const userData = this.validTokens.get(token);
+        if (!userData) return null;
+
+        return new User(userData.id, userData.username, userData.email, userData.roles);
+    }
 }
 
 class UserController {
     @http.GET('/profile')
     getProfile(user: User) {
-        return { username: user.username, id: user.id };
+        return {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            roles: user.roles
+        };
+    }
+
+    @http.GET('/protected-data')
+    getProtectedData(user: User) {
+        return {
+            message: 'This is protected data',
+            accessedBy: user.username,
+            timestamp: new Date()
+        };
     }
 }
 
 const app = new App({
     controllers: [UserController],
-    imports: [new FrameworkModule],
     providers: [
+        AuthService,
         {
             provide: User,
             scope: 'http',
@@ -38,35 +113,42 @@ const app = new App({
                 throw new Error('User must be set via injector context during authentication');
             }
         }
-    ]
+    ],
+    imports: [new FrameworkModule]
 });
 
-// Authentication listener
-app.listen(httpWorkflow.onAuth, (event) => {
+// Authentication event listener
+app.listen(httpWorkflow.onAuth, (event, authService: AuthService) => {
     const authHeader = event.request.headers.authorization;
 
     if (!authHeader) {
         throw new HttpUnauthorizedError('Authorization header required');
     }
 
-    // Validate token (this is a simple example)
-    const validTokens = {
-        'token123': { username: 'john', id: 1 },
-        'token456': { username: 'jane', id: 2 }
-    };
+    // Extract token from "Bearer <token>" format
+    const token = authHeader.startsWith('Bearer ')
+        ? authHeader.substring(7)
+        : authHeader;
 
-    const userData = validTokens[authHeader];
-    if (!userData) {
-        throw new HttpUnauthorizedError('Invalid token');
+    const user = authService.validateToken(token);
+    if (!user) {
+        throw new HttpUnauthorizedError('Invalid or expired token');
     }
 
-    // Set user via injector context
-    const user = new User(userData.username, userData.id);
+    // Make user available to controllers via dependency injection
     event.injectorContext.set(User, user);
 });
 
 app.run();
 ```
+
+#### Why This Pattern Works
+
+1. **Centralized Authentication**: All authentication logic is in one event listener
+2. **Type Safety**: The `User` object is properly typed throughout the application
+3. **Dependency Injection**: Controllers receive the authenticated user automatically
+4. **Error Handling**: Invalid tokens result in proper HTTP 401 responses
+5. **Testability**: Easy to mock the `AuthService` for testing
 
 ### JWT Authentication
 

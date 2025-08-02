@@ -1,29 +1,134 @@
-# Events
+# HTTP Events and Workflow
 
-The HTTP module is based on a workflow engine that provides various event tokens that can be used to hook into the entire process of processing an HTTP request.
+Deepkit HTTP is built around a sophisticated workflow engine that processes HTTP requests through a series of well-defined stages. This event-driven architecture allows you to hook into any part of the request/response cycle, providing unprecedented control and flexibility.
 
-The workflow engine is a finite state machine that creates a new state machine instance for each HTTP request and then jumps from position to position. The first position is the `start` and the last the `response`. Additional code can be executed in each position.
+## Understanding the HTTP Workflow
+
+The HTTP workflow is a finite state machine that processes each request through a predictable sequence of stages. Think of it as an assembly line where each station (event) can inspect, modify, or redirect the request.
+
+### Why Use an Event-Driven Architecture?
+
+- **Separation of Concerns**: Keep different aspects of request processing isolated
+- **Extensibility**: Add new functionality without modifying core code
+- **Testability**: Test individual workflow stages in isolation
+- **Flexibility**: Conditionally execute logic based on request characteristics
+- **Maintainability**: Clear, predictable flow makes debugging easier
+
+### The Request Lifecycle
+
+Every HTTP request flows through these stages:
+
+1. **Request Received**: Raw HTTP request arrives
+2. **Route Resolution**: Find matching route for the request
+3. **Authentication**: Verify user identity
+4. **Parameter Resolution**: Extract and validate route parameters
+5. **Authorization**: Check if user can access the resource
+6. **Controller Execution**: Run the actual business logic
+7. **Response Generation**: Convert result to HTTP response
+
+Each stage fires specific events that you can listen to and customize.
 
 ![HTTP Workflow](/assets/documentation/framework/http-workflow.png)
 
-Each event token has its own event type with additional information.
+### Event-Driven vs Traditional Middleware
 
-| Event-Token                   | Description                                                                                                         |
-|-------------------------------|---------------------------------------------------------------------------------------------------------------------|
-| httpWorkflow.onRequest        | When a new request comes in                                                                                         |
-| httpWorkflow.onRoute          | When the route should be resolved from the request                                                                  |
-| httpWorkflow.onRouteNotFound  | When the route is not found                                                                                         |
-| httpWorkflow.onAuth           | When authentication happens                                                                                         |
-| httpWorkflow.onResolveParameters | When route parameters are resolved                                                                                 |
-| httpWorkflow.onAccessDenied   | When access is denied                                                                                               |
-| httpWorkflow.onController     | When the controller action is called                                                                                |
-| httpWorkflow.onControllerError | When the controller action threw an error                                                                           |
-| httpWorkflow.onParametersFailed | When route parameters resolving failed                                                                             |
-| httpWorkflow.onResponse       | When the controller action has been called. This is the place where the result is converted to a response.          |
+Traditional middleware runs in a linear chain, but Deepkit's event system allows for:
 
-Since all HTTP events are based on the workflow engine, its behavior can be modified by using the specified event and jumping there with the `event.next()` method.
+- **Non-linear flow**: Jump between different workflow stages
+- **Conditional execution**: Skip stages based on request characteristics
+- **Rich context**: Access to full request/response state at each stage
+- **Type safety**: Strongly typed event data and parameters
 
-The HTTP module uses its own event listeners on these event tokens to implement HTTP request processing. All these event listeners have a priority of 100, which means that when you listen for an event, your listener is executed first by default (since the default priority is 0). Add a priority above 100 to run after the HTTP default handler.
+## HTTP Workflow Events
+
+Each stage in the HTTP workflow fires specific events that you can listen to. Understanding when each event fires and what data is available helps you choose the right place to implement your logic.
+
+| Event | When It Fires | Purpose | Available Data |
+|-------|---------------|---------|----------------|
+| `httpWorkflow.onRequest` | Request received | Initialize request processing | `HttpRequest`, `HttpResponse` |
+| `httpWorkflow.onRoute` | Route resolution | Custom routing logic | Request, potential routes |
+| `httpWorkflow.onRouteNotFound` | No route matches | Handle 404s, fallback routes | Request, attempted path |
+| `httpWorkflow.onAuth` | Before authentication | Verify user identity | Request, route info |
+| `httpWorkflow.onResolveParameters` | Parameter extraction | Custom parameter resolution | Route parameters, request |
+| `httpWorkflow.onAccessDenied` | Authorization failed | Handle access denied | User context, route |
+| `httpWorkflow.onController` | Before route handler | Pre-execution logic | Controller, method, parameters |
+| `httpWorkflow.onControllerError` | Route handler error | Error handling | Error object, request context |
+| `httpWorkflow.onParametersFailed` | Parameter validation failed | Handle validation errors | Validation errors, parameters |
+| `httpWorkflow.onResponse` | After route handler | Response transformation | Route result, response object |
+
+### Event Execution Order and Priority
+
+Events execute in a specific order, and you can control when your listeners run relative to Deepkit's built-in handlers:
+
+```typescript
+// Default priority (0) - runs BEFORE Deepkit's handlers
+app.listen(httpWorkflow.onAuth, (event) => {
+    console.log('Custom auth logic runs first');
+});
+
+// High priority (100+) - runs AFTER Deepkit's handlers
+app.listen(httpWorkflow.onAuth, (event) => {
+    console.log('This runs after Deepkit processes auth');
+}, 150);
+
+// Low priority (negative) - runs last
+app.listen(httpWorkflow.onResponse, (event) => {
+    console.log('Final response processing');
+}, -100);
+```
+
+**Key Insight**: Deepkit's built-in HTTP handlers use priority 100. Your listeners run first by default (priority 0), giving you the opportunity to modify behavior before Deepkit's processing.
+
+### Controlling Workflow Flow
+
+The workflow engine allows you to control the flow of request processing:
+
+```typescript
+app.listen(httpWorkflow.onAuth, (event) => {
+    if (!isAuthenticated(event.request)) {
+        // Jump directly to access denied, skipping normal flow
+        event.accessDenied();
+        return; // Important: return to prevent further processing
+    }
+
+    // Continue normal flow (implicit)
+});
+
+app.listen(httpWorkflow.onController, (event) => {
+    if (maintenanceMode) {
+        // Send response immediately, bypassing controller
+        event.send(new JSONResponse({ message: 'Under maintenance' }, 503));
+        return;
+    }
+
+    // Continue to controller execution
+});
+```
+
+### Event Data and Context
+
+Each event provides rich context about the current request state:
+
+```typescript
+app.listen(httpWorkflow.onController, (event) => {
+    // Request information
+    console.log('Method:', event.request.method);
+    console.log('URL:', event.request.url);
+    console.log('Headers:', event.request.headers);
+
+    // Route information
+    console.log('Route path:', event.route.path);
+    console.log('Route groups:', event.route.groups);
+    console.log('Route name:', event.route.name);
+
+    // Controller information
+    console.log('Controller class:', event.controllerClass.name);
+    console.log('Method name:', event.methodName);
+
+    // Modify injector context
+    event.injectorContext.set(SomeService, new SomeService());
+});
+```
 
 For example, suppose you want to catch the event when a controller is invoked. If a particular controller is to be invoked, we check if the user has access to it. If the user has access, we continue. But if not, we jump to the next workflow item `accessDenied`. There, the procedure of an access-denied is then automatically processed further.
 
