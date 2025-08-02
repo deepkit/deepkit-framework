@@ -217,90 +217,33 @@ Modules config
 ...
 ```
 
-## Documentation
+## Application Server
 
-### Getting Started
-- [Getting Started](./framework/getting-started.md) - Quick start guide and basic concepts
-- [Configuration](./framework/configuration.md) - Complete configuration reference
-- [Application Server](./framework/application-server.md) - Server lifecycle and management
+## File Structure
 
-### Core Features
-- [RPC](./framework/rpc.md) - Real-time communication with WebSockets
-- [Database](./framework/database.md) - Database integration and migrations
-- [Testing](./framework/testing.md) - Comprehensive testing strategies
-- [Events](./framework/events.md) - Event system and lifecycle hooks
+## Auto-CRUD
 
-### Advanced Topics
-- [Workers](./framework/workers.md) - Multi-process architecture
-- [Broker](./framework/broker.md) - Message broker and inter-process communication
-- [Debugging & Profiling](./framework/debugging-profiling.md) - Debug tools and performance analysis
-- [Zones](./framework/zones.md) - Request context management
-- [Filesystem](./framework/filesystem.md) - File storage abstraction
+## Events
 
-### Deployment & Production
-- [Deployment](./framework/deployment.md) - Production deployment strategies
-- [Public Directory](./framework/public.md) - Static file serving
-- [API Console](./framework/api-console.md) - Interactive API documentation
+Deepkit framework comes with various event tokens on which event listeners can be registered.
 
-### Related Documentation
-- [HTTP](./http.md) - HTTP controllers and REST APIs
-- [Dependency Injection](./dependency-injection.md) - Service container and providers
-- [ORM](./orm.md) - Database modeling and queries
-- [App](./app.md) - Application foundation and CLI
+See the [Events](./app/events.md) chapter to learn more about how events work.
 
-## Quick Examples
+### Dispatch Events
 
-### HTTP API
+Events are sent via the `EventDispatcher` class. In a Deepkit Framework application, this can be provided via dependency injection.
+
 ```typescript
-import { http } from '@deepkit/http';
+import { cli, Command } from '@deepkit/app';
+import { EventDispatcher } from '@deepkit/event';
 
-class UserController {
-    @http.GET('/users/:id')
-    getUser(@http.param() id: number) {
-        return { id, name: `User ${id}` };
+@cli.controller('test')
+export class TestCommand implements Command {
+    constructor(protected eventDispatcher: EventDispatcher) {
     }
 
-    @http.POST('/users')
-    createUser(@http.body() userData: CreateUserData) {
-        return this.userService.create(userData);
-    }
-}
-```
-
-### RPC Controller
-```typescript
-import { rpc } from '@deepkit/rpc';
-
-@rpc.controller('users')
-class UserRpcController {
-    @rpc.action()
-    async getUser(id: number): Promise<User> {
-        return await this.userService.findById(id);
-    }
-
-    @rpc.action()
-    getUserUpdates(): Observable<User> {
-        return this.userService.getUpdateStream();
-    }
-}
-```
-
-### Service with Dependencies
-```typescript
-class UserService {
-    constructor(
-        private database: Database,
-        private logger: Logger,
-        private eventDispatcher: EventDispatcher
-    ) {}
-
-    async createUser(userData: CreateUserData): Promise<User> {
-        const user = await this.database.persist(new User(userData));
-
-        await this.eventDispatcher.dispatch(onUserCreated, new UserCreatedEvent(user.id));
-        this.logger.log(`User created: ${user.id}`);
-
-        return user;
+    async execute() {
+        this.eventDispatcher.dispatch(UserAdded, new UserEvent({ username: 'Peter' }));
     }
 }
 ```
