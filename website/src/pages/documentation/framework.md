@@ -3,6 +3,26 @@
 Deepkit Framework is a highly modular, scalable, and fast TypeScript framework for building web applications, APIs, and microservices.
 It is designed to be as flexible as necessary and as structured as required, allowing developers to maintain high development speeds, both in the short term and the long term.
 
+## Overview
+
+Deepkit Framework provides a comprehensive set of features for modern web development:
+
+### Core Features
+- **Application Server** - HTTP and RPC servers with multi-process support
+- **Dependency Injection** - Powerful service container with scoped providers
+- **Real-time Communication** - WebSocket-based RPC with type safety
+- **Database Integration** - Built-in ORM with migration support
+- **Message Broker** - Inter-process communication and caching
+- **Testing Utilities** - Comprehensive testing framework
+- **Debug & Profiling** - Built-in debugging and performance tools
+
+### Architecture
+- **Modular Design** - Import only what you need
+- **Type Safety** - Full TypeScript support throughout
+- **Event-Driven** - Comprehensive event system
+- **Multi-Process** - Worker process support for scalability
+- **Cloud-Ready** - Built for modern deployment scenarios
+
 ## App and Framework Module
 
 Deepkit Framework is based on [Deepkit App](./app.md) in `@deepkit/app` and provides the `FrameworkModule` module in `@deepkit/framework`, which can be imported in your `App`.
@@ -17,17 +37,26 @@ The `App` abstraction brings:
 
 The `FrameworkModule` module brings additional features:
 
-- Application server
-    - HTTP server
-    - RPC server
+- **Application Server**
+    - HTTP server with middleware support
+    - RPC server with WebSocket communication
     - Multi-process load balancing
-    - SSL
-- Debugging CLI commands
-- Database Migration configuration/commands
-- Debugging/Profiler GUI via `{debug: true}` option
-- Interactive API documentation (like Swagger)
-- Providers for DatabaseRegistry, ProcessLocking, Broker, Sessions
-- Integration Test APIs
+    - SSL/HTTPS support
+    - Static file serving
+- **Development Tools**
+    - Interactive debugger and profiler
+    - Database browser and migration tools
+    - API documentation interface
+    - Request/response logging
+- **Production Features**
+    - Message broker for inter-process communication
+    - Distributed caching and locking
+    - Session management
+    - Graceful shutdown handling
+- **Testing Support**
+    - In-memory testing utilities
+    - Mock services and adapters
+    - Integration testing framework
 
 You can write applications with or without the `FrameworkModule`.
 
@@ -188,33 +217,90 @@ Modules config
 ...
 ```
 
-## Application Server
+## Documentation
 
-## File Structure
+### Getting Started
+- [Getting Started](./framework/getting-started.md) - Quick start guide and basic concepts
+- [Configuration](./framework/configuration.md) - Complete configuration reference
+- [Application Server](./framework/application-server.md) - Server lifecycle and management
 
-## Auto-CRUD
+### Core Features
+- [RPC](./framework/rpc.md) - Real-time communication with WebSockets
+- [Database](./framework/database.md) - Database integration and migrations
+- [Testing](./framework/testing.md) - Comprehensive testing strategies
+- [Events](./framework/events.md) - Event system and lifecycle hooks
 
-## Events
+### Advanced Topics
+- [Workers](./framework/workers.md) - Multi-process architecture
+- [Broker](./framework/broker.md) - Message broker and inter-process communication
+- [Debugging & Profiling](./framework/debugging-profiling.md) - Debug tools and performance analysis
+- [Zones](./framework/zones.md) - Request context management
+- [Filesystem](./framework/filesystem.md) - File storage abstraction
 
-Deepkit framework comes with various event tokens on which event listeners can be registered.
+### Deployment & Production
+- [Deployment](./framework/deployment.md) - Production deployment strategies
+- [Public Directory](./framework/public.md) - Static file serving
+- [API Console](./framework/api-console.md) - Interactive API documentation
 
-See the [Events](./app/events.md) chapter to learn more about how events work.
+### Related Documentation
+- [HTTP](./http.md) - HTTP controllers and REST APIs
+- [Dependency Injection](./dependency-injection.md) - Service container and providers
+- [ORM](./orm.md) - Database modeling and queries
+- [App](./app.md) - Application foundation and CLI
 
-### Dispatch Events
+## Quick Examples
 
-Events are sent via the `EventDispatcher` class. In a Deepkit Framework application, this can be provided via dependency injection.
-
+### HTTP API
 ```typescript
-import { cli, Command } from '@deepkit/app';
-import { EventDispatcher } from '@deepkit/event';
+import { http } from '@deepkit/http';
 
-@cli.controller('test')
-export class TestCommand implements Command {
-    constructor(protected eventDispatcher: EventDispatcher) {
+class UserController {
+    @http.GET('/users/:id')
+    getUser(@http.param() id: number) {
+        return { id, name: `User ${id}` };
     }
 
-    async execute() {
-        this.eventDispatcher.dispatch(UserAdded, new UserEvent({ username: 'Peter' }));
+    @http.POST('/users')
+    createUser(@http.body() userData: CreateUserData) {
+        return this.userService.create(userData);
+    }
+}
+```
+
+### RPC Controller
+```typescript
+import { rpc } from '@deepkit/rpc';
+
+@rpc.controller('users')
+class UserRpcController {
+    @rpc.action()
+    async getUser(id: number): Promise<User> {
+        return await this.userService.findById(id);
+    }
+
+    @rpc.action()
+    getUserUpdates(): Observable<User> {
+        return this.userService.getUpdateStream();
+    }
+}
+```
+
+### Service with Dependencies
+```typescript
+class UserService {
+    constructor(
+        private database: Database,
+        private logger: Logger,
+        private eventDispatcher: EventDispatcher
+    ) {}
+
+    async createUser(userData: CreateUserData): Promise<User> {
+        const user = await this.database.persist(new User(userData));
+
+        await this.eventDispatcher.dispatch(onUserCreated, new UserCreatedEvent(user.id));
+        this.logger.log(`User created: ${user.id}`);
+
+        return user;
     }
 }
 ```
