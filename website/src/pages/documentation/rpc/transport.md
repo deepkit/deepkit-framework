@@ -43,7 +43,7 @@ Understanding what each transport supports helps you make informed decisions:
 | **Load Balancer Support** | Good | Fair | Excellent | N/A |
 | **Real-time Capabilities** | ✅ Excellent | ✅ Excellent | ❌ No | ✅ Perfect |
 | **Message Ordering** | ✅ Guaranteed | ✅ Guaranteed | ❌ No | ✅ Guaranteed |
-| **Automatic Reconnection** | ✅ Available | ✅ Available | N/A | N/A |
+| **Reconnection on Action** | ✅ Yes | ✅ Yes | N/A | N/A |
 
 ### Protocol Deep Dive
 
@@ -269,45 +269,322 @@ const result = await controller.myAction('test');
 | Real-time | ✅ | ✅ | ❌ | ✅ |
 | Connection Pooling | ✅ | ✅ | ✅ | N/A |
 
-## Connection Management
+## Connection Management and Reconnection
+
+Understanding how Deepkit RPC handles connections and reconnections is crucial for building robust applications. The RPC client provides fine-grained control over connection behavior.
+
+### Important Reconnection Behavior
+
+**Key Point**: The RPC client does **NOT** automatically reconnect on its own. Reconnection only happens when you trigger an action after a disconnect.
+
+```typescript
+const client = new RpcWebSocketClient('ws://127.0.0.1:8081');
+await client.connect();
+
+// If the connection drops here and you don't call any actions,
+// the client will stay disconnected indefinitely
+```
+
+### How Reconnection Actually Works
+
+Reconnection is triggered **only** when you attempt to call an action while disconnected:
+
+```typescript
+const client = new RpcWebSocketClient('ws://127.0.0.1:8081');
+const controller = client.controller<MyController>('/api');
+
+// Initial connection
+await client.connect();
+
+// Connection drops (network issue, server restart, etc.)
+// Client is now disconnected but doesn't try to reconnect
+
+// This action call will trigger a reconnection attempt
+try {
+    const result = await controller.someAction(); // Reconnects automatically
+    console.log('Action succeeded, connection restored');
+} catch (error) {
+    console.log('Action failed, connection could not be restored');
+}
+```
 
 ### Connection Events
+
+Monitor connection state changes with these events:
 
 ```typescript
 const client = new RpcWebSocketClient('ws://127.0.0.1:8081');
 
-client.onConnect.subscribe(() => {
-    console.log('Connected to server');
+// Connection established (including initial connection)
+client.transporter.connection.subscribe((connected: boolean) => {
+    console.log('Connection state:', connected ? 'Connected' : 'Disconnected');
 });
 
-client.onDisconnect.subscribe(() => {
-    console.log('Disconnected from server');
+// Reconnection events (not called for initial connection)
+client.transporter.reconnected.subscribe((connectionId: number) => {
+    console.log('Reconnected with connection ID:', connectionId);
+    // Good place to refresh data that might have changed
 });
 
-client.onError.subscribe((error) => {
+// Disconnection events
+client.transporter.disconnected.subscribe((connectionId: number) => {
+    console.log('Disconnected, connection ID was:', connectionId);
+    // Connection will not be restored until next action call
+});
+
+// Error events (followed by disconnection)
+client.transporter.errored.subscribe(({ connectionId, error }) => {
     console.error('Connection error:', error);
 });
 
 await client.connect();
 ```
 
-### Automatic Reconnection
+### Manual Reconnection
+
+You can manually trigger reconnection attempts:
 
 ```typescript
-const client = new RpcWebSocketClient('ws://127.0.0.1:8081', {
-    // Enable automatic reconnection
-    autoReconnect: true,
+const client = new RpcWebSocketClient('ws://127.0.0.1:8081');
 
-    // Reconnection delay (ms)
-    reconnectDelay: 1000,
+async function tryReconnect() {
+    try {
+        await client.connect();
+        console.log('Reconnected successfully');
+    } catch (error) {
+        console.log('Reconnection failed:', error.message);
+        // Try again after delay
+        setTimeout(tryReconnect, 5000);
+    }
+}
 
-    // Maximum reconnection attempts
-    maxReconnectAttempts: 10,
-
-    // Exponential backoff
-    reconnectBackoff: 1.5,
+// Listen for disconnections and attempt manual reconnection
+client.transporter.disconnected.subscribe(() => {
+    console.log('Connection lost, attempting to reconnect...');
+    tryReconnect();
 });
 ```
+
+### Practical Reconnection Patterns
+
+#### Pattern 1: Reactive Data Refresh
+
+Refresh application data when reconnection occurs:
+
+```typescript
+class DataService {
+    private client = new RpcWebSocketClient('ws://127.0.0.1:8081');
+    private controller = this.client.controller<DataController>('/data');
+
+    constructor() {
+        // Refresh data when reconnected
+        this.client.transporter.reconnected.subscribe(() => {
+            this.refreshAllData();
+        });
+    }
+
+    private async refreshAllData() {
+        try {
+            // Reload critical data that might have changed during disconnect
+            await this.loadUserData();
+            await this.loadNotifications();
+            console.log('Data refreshed after reconnection');
+        } catch (error) {
+            console.error('Failed to refresh data:', error);
+        }
+    }
+
+    async loadUserData() {
+        return this.controller.getUserData();
+    }
+
+    async loadNotifications() {
+        return this.controller.getNotifications();
+    }
+}
+```
+
+#### Pattern 2: Connection Status UI
+
+Show connection status to users:
+
+```typescript
+class ConnectionStatusService {
+    private client = new RpcWebSocketClient('ws://127.0.0.1:8081');
+    public connectionStatus$ = new BehaviorSubject<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
+
+    constructor() {
+        this.client.transporter.connection.subscribe(connected => {
+            this.connectionStatus$.next(connected ? 'connected' : 'disconnected');
+        });
+
+        this.client.transporter.disconnected.subscribe(() => {
+            this.connectionStatus$.next('reconnecting');
+            this.attemptReconnection();
+        });
+    }
+
+    private async attemptReconnection() {
+        let attempts = 0;
+        const maxAttempts = 5;
+
+        while (attempts < maxAttempts && this.connectionStatus$.value === 'reconnecting') {
+            try {
+                await this.client.connect();
+                break; // Success, connection.subscribe will update status
+            } catch (error) {
+                attempts++;
+                console.log(`Reconnection attempt ${attempts}/${maxAttempts} failed`);
+
+                if (attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 2000 * attempts)); // Exponential backoff
+                }
+            }
+        }
+
+        if (attempts >= maxAttempts) {
+            console.error('Failed to reconnect after maximum attempts');
+        }
+    }
+}
+```
+
+#### Pattern 3: Graceful Action Handling
+
+Handle actions gracefully during connection issues:
+
+```typescript
+class RobustApiService {
+    private client = new RpcWebSocketClient('ws://127.0.0.1:8081');
+    private controller = this.client.controller<ApiController>('/api');
+
+    async performAction<T>(actionFn: () => Promise<T>, retries = 3): Promise<T> {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                return await actionFn();
+            } catch (error) {
+                console.log(`Action attempt ${attempt}/${retries} failed:`, error.message);
+
+                if (attempt === retries) {
+                    throw new Error(`Action failed after ${retries} attempts: ${error.message}`);
+                }
+
+                // Wait before retry
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
+        }
+
+        throw new Error('Unexpected error in performAction');
+    }
+
+    async saveData(data: any) {
+        return this.performAction(() => this.controller.saveData(data));
+    }
+
+    async loadData(id: string) {
+        return this.performAction(() => this.controller.loadData(id));
+    }
+}
+```
+
+### Connection State Checking
+
+Check connection status before performing actions:
+
+```typescript
+const client = new RpcWebSocketClient('ws://127.0.0.1:8081');
+
+// Check if currently connected
+if (client.transporter.isConnected()) {
+    console.log('Client is connected');
+} else {
+    console.log('Client is disconnected');
+}
+
+// Get current connection ID (increments on each reconnection)
+const connectionId = client.transporter.connectionId;
+console.log('Current connection ID:', connectionId);
+```
+
+### Best Practices for Reconnection
+
+1. **Don't rely on automatic reconnection** - implement your own reconnection logic
+2. **Refresh data after reconnection** - server state may have changed during disconnect
+3. **Show connection status to users** - let them know when the app is offline
+4. **Implement retry logic for critical actions** - network issues are temporary
+5. **Use exponential backoff** - avoid overwhelming the server with reconnection attempts
+
+```typescript
+class BestPracticeClient {
+    private client = new RpcWebSocketClient('ws://127.0.0.1:8081');
+    private reconnectAttempts = 0;
+    private maxReconnectAttempts = 10;
+    private baseReconnectDelay = 1000;
+
+    constructor() {
+        this.setupConnectionHandling();
+    }
+
+    private setupConnectionHandling() {
+        // Reset reconnect attempts on successful connection
+        this.client.transporter.connection.subscribe(connected => {
+            if (connected) {
+                this.reconnectAttempts = 0;
+            }
+        });
+
+        // Handle disconnections with exponential backoff
+        this.client.transporter.disconnected.subscribe(() => {
+            this.scheduleReconnection();
+        });
+
+        // Refresh data on reconnection
+        this.client.transporter.reconnected.subscribe(() => {
+            this.onReconnected();
+        });
+    }
+
+    private scheduleReconnection() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.error('Maximum reconnection attempts reached');
+            return;
+        }
+
+        this.reconnectAttempts++;
+        const delay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+
+        console.log(`Scheduling reconnection attempt ${this.reconnectAttempts} in ${delay}ms`);
+
+        setTimeout(async () => {
+            try {
+                await this.client.connect();
+            } catch (error) {
+                console.log('Reconnection failed:', error.message);
+                this.scheduleReconnection(); // Try again
+            }
+        }, delay);
+    }
+
+    private async onReconnected() {
+        console.log('Reconnected successfully, refreshing application state');
+        // Refresh critical application data
+        await this.refreshApplicationData();
+    }
+
+    private async refreshApplicationData() {
+        // Implement your data refresh logic here
+    }
+}
+```
+
+### Connection Events Summary
+
+| Event | When Triggered | Use Case |
+|-------|---------------|----------|
+| `connection` | Connection state changes | Update UI connection status |
+| `reconnected` | After successful reconnection | Refresh data, notify user |
+| `disconnected` | When connection is lost | Start reconnection attempts |
+| `errored` | Before disconnection on error | Log errors, show error messages |
 
 ### Security
 
