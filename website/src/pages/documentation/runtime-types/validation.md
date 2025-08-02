@@ -41,18 +41,109 @@ All three functions are used in roughly the same way. The type is specified or r
 ```typescript
 import { validate, is, assert } from '@deepkit/type';
 
-const errors = validate<string>('abc'); //[]
-const errors = validate<string>(123); //[{code: 'type', message: 'Not a string'}]
+// Basic validation - returns array of errors
+const errors1 = validate<string>('abc'); // []
+const errors2 = validate<string>(123); // [{code: 'type', message: 'Not a string', path: '', value: 123}]
 
+// Type guard - returns boolean and narrows type
 if (is<string>(value)) {
     // value is guaranteed to be a string
+    console.log(value.toUpperCase());
 }
 
+// Type assertion - throws error if invalid
 function doSomething(value: any) {
-    assert<string>(value); //throws on invalid data
-
-    // value is guaranteed to be a string
+    assert<string>(value); // throws ValidationError on invalid data
+    // value is guaranteed to be a string from this point
+    return value.toUpperCase();
 }
+```
+
+### Primitive Type Validation
+
+```typescript
+import { validate } from '@deepkit/type';
+
+// String validation
+console.log(validate<string>('Hello')); // []
+console.log(validate<string>(123));
+// [{ code: 'type', message: 'Not a string', path: '', value: 123 }]
+
+// Number validation
+console.log(validate<number>(123)); // []
+console.log(validate<number>('Hello'));
+// [{ code: 'type', message: 'Not a number', path: '', value: 'Hello' }]
+
+// Boolean validation
+console.log(validate<boolean>(true)); // []
+console.log(validate<boolean>('true'));
+// [{ code: 'type', message: 'Not a boolean', path: '', value: 'true' }]
+```
+
+### Built-in Validator Constraints
+
+Deepkit provides many built-in validator constraints that can be applied to types:
+
+```typescript
+import { validate, Email, MinLength, MaxLength, Positive } from '@deepkit/type';
+
+// Email validation
+type UserEmail = string & Email;
+console.log(validate<UserEmail>('user@example.com')); // []
+console.log(validate<UserEmail>('invalid-email'));
+// [{ path: '', code: 'pattern', message: 'Pattern ^\\S+@\\S+$ does not match', value: 'invalid-email' }]
+
+// String length validation
+type Username = string & MinLength<3>;
+console.log(validate<Username>('john')); // []
+console.log(validate<Username>('jo'));
+// [{ path: '', code: 'minLength', message: 'Min length is 3', value: 'jo' }]
+
+// Number validation
+type Price = number & Positive;
+console.log(validate<Price>(99.99)); // []
+console.log(validate<Price>(-10));
+// [{ path: '', code: 'positive', message: 'Number must be positive', value: -10 }]
+
+// Combined constraints
+type ProductName = string & MinLength<2> & MaxLength<100>;
+console.log(validate<ProductName>('Laptop')); // []
+console.log(validate<ProductName>('A'));
+// [{ path: '', code: 'minLength', message: 'Min length is 2', value: 'A' }]
+```
+
+### Custom Validators
+
+You can create custom validators for specific business logic:
+
+```typescript
+import { validate, Validate, ValidatorError } from '@deepkit/type';
+
+// Pre-defined validator function
+function startsWith(prefix: string) {
+    return (value: any) => {
+        const valid = typeof value === 'string' && value.startsWith(prefix);
+        return valid ? undefined : new ValidatorError('startsWith', `Does not start with ${prefix}`);
+    };
+}
+
+const startsWithA = startsWith('a');
+type MyType = string & Validate<typeof startsWithA>;
+
+console.log(validate<MyType>('apple')); // []
+console.log(validate<MyType>('banana'));
+// [{ path: '', code: 'startsWith', message: 'Does not start with a', value: 'banana' }]
+
+// Validator with arguments
+function startsWithLetter(value: any, type: any, letter: string) {
+    const valid = typeof value === 'string' && value.startsWith(letter);
+    return valid ? undefined : new ValidatorError('startsWith', `Does not start with ${letter}`);
+}
+
+type StartsWithB = string & Validate<typeof startsWithLetter, 'b'>;
+console.log(validate<StartsWithB>('banana')); // []
+console.log(validate<StartsWithB>('apple'));
+// [{ path: '', code: 'startsWith', message: 'Does not start with b', value: 'apple' }]
 ```
 
 If you work with more complex types like classes or interfaces, the array can also contain several entries.

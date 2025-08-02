@@ -487,3 +487,201 @@ groupAnnotation.getAnnotations(type); //['a', 'b']
 ```
 
 See [Runtime Types Reflection](./reflection.md) to learn more.
+
+## Advanced Type Annotations
+
+### Database Annotations
+
+These annotations are primarily used by Deepkit ORM but can be useful for documentation and tooling:
+
+```typescript
+import { PrimaryKey, AutoIncrement, Unique, Index, Reference } from '@deepkit/type';
+
+class User {
+    id!: number & PrimaryKey & AutoIncrement;
+    username!: string & Unique;
+    email!: string & Unique & Index;
+    profileId?: number & Reference<Profile>;
+}
+
+class Profile {
+    id!: number & PrimaryKey & AutoIncrement;
+    firstName!: string & Index;
+    lastName!: string & Index;
+    bio?: string;
+}
+```
+
+### Validation Annotations
+
+Comprehensive validation constraints for different data types:
+
+```typescript
+import {
+    MinLength, MaxLength, Pattern, Email,
+    Minimum, Maximum, Positive, Negative,
+    MinItems, MaxItems, Validate
+} from '@deepkit/type';
+
+interface UserProfile {
+    // String constraints
+    username: string & MinLength<3> & MaxLength<20> & Pattern<'^[a-zA-Z0-9_]+$'>;
+    email: string & Email;
+
+    // Number constraints
+    age: number & Minimum<0> & Maximum<150>;
+    score: number & Positive;
+
+    // Array constraints
+    tags: string[] & MinItems<1> & MaxItems<10>;
+
+    // Custom validation
+    password: string & Validate<typeof validatePassword>;
+}
+
+function validatePassword(value: any): ValidatorError | void {
+    if (typeof value !== 'string') return new ValidatorError('type', 'Must be string');
+    if (value.length < 8) return new ValidatorError('minLength', 'Min 8 characters');
+    if (!/[A-Z]/.test(value)) return new ValidatorError('uppercase', 'Must contain uppercase');
+    if (!/[0-9]/.test(value)) return new ValidatorError('number', 'Must contain number');
+}
+```
+
+### Serialization Annotations
+
+Control how types are serialized and deserialized:
+
+```typescript
+import { Excluded, Group, MapName, Embedded } from '@deepkit/type';
+
+class User {
+    id!: number;
+
+    @MapName('user_name')
+    username!: string;
+
+    password!: string & Excluded; // Never serialized
+
+    internalNotes!: string & Group<'internal'>; // Only in internal group
+
+    profile!: Profile & Embedded; // Embedded in parent object
+}
+
+class Profile {
+    firstName!: string;
+    lastName!: string;
+    avatar?: string;
+}
+
+// Serialization with groups
+const publicUser = serialize<User>(user, { groupsExclude: ['internal'] });
+// { id: 1, user_name: 'john', profile: { firstName: 'John', lastName: 'Doe' } }
+
+const internalUser = serialize<User>(user, { groups: ['internal'] });
+// { internalNotes: 'Some notes' }
+```
+
+### Type Branding and Nominal Types
+
+Create distinct types that are structurally identical but semantically different:
+
+```typescript
+import { Brand } from '@deepkit/type';
+
+type UserId = number & Brand<'UserId'>;
+type ProductId = number & Brand<'ProductId'>;
+type Email = string & Brand<'Email'>;
+
+// These are different types even though they're all numbers/strings
+function getUser(id: UserId): User { /* ... */ }
+function getProduct(id: ProductId): Product { /* ... */ }
+
+const userId: UserId = 123 as UserId;
+const productId: ProductId = 456 as ProductId;
+
+getUser(userId); // ✓ Correct
+getUser(productId); // ✗ TypeScript error - wrong brand
+
+// Email branding with validation
+function createEmail(value: string): Email {
+    if (!value.includes('@')) {
+        throw new Error('Invalid email format');
+    }
+    return value as Email;
+}
+```
+
+### Complex Type Combinations
+
+Combine multiple annotations for sophisticated type definitions:
+
+```typescript
+import {
+    PrimaryKey, AutoIncrement, MinLength, MaxLength,
+    Email, Group, Excluded, Optional, Index
+} from '@deepkit/type';
+
+class BlogPost {
+    id!: number & PrimaryKey & AutoIncrement;
+
+    title!: string & MinLength<5> & MaxLength<200> & Index;
+
+    slug!: string & MinLength<5> & MaxLength<200> & Unique & Index;
+
+    content!: string & MinLength<10>;
+
+    authorEmail!: string & Email & Index;
+
+    publishedAt?: Date & Group<'published'>;
+
+    draft!: boolean & Group<'internal'>;
+
+    internalNotes?: string & Group<'internal'> & Excluded;
+
+    tags!: string[] & MinItems<1> & MaxItems<20>;
+
+    metadata?: Record<string, any> & Group<'admin'>;
+}
+
+// Usage with different serialization contexts
+const publicPost = serialize<BlogPost>(post, {
+    groupsExclude: ['internal', 'admin']
+});
+
+const adminPost = serialize<BlogPost>(post, {
+    groups: ['published', 'internal', 'admin']
+});
+```
+
+### Runtime Type Inspection
+
+Access type annotations at runtime for dynamic behavior:
+
+```typescript
+import { ReflectionClass, groupAnnotation, excludedAnnotation } from '@deepkit/type';
+
+class DataProcessor {
+    static processEntity<T>(entityClass: ClassType<T>, data: any) {
+        const reflection = ReflectionClass.from(entityClass);
+
+        // Get all non-excluded properties
+        const serializableProps = reflection.getProperties().filter(prop =>
+            !excludedAnnotation.getFirst(prop.type)
+        );
+
+        // Process by groups
+        const publicProps = reflection.getPropertiesInGroup('public');
+        const internalProps = reflection.getPropertiesInGroup('internal');
+
+        console.log('Serializable properties:', serializableProps.map(p => p.name));
+        console.log('Public properties:', publicProps.map(p => p.name));
+        console.log('Internal properties:', internalProps.map(p => p.name));
+
+        return {
+            public: serialize(data, { groups: ['public'] }),
+            internal: serialize(data, { groups: ['internal'] }),
+            full: serialize(data, { groupsExclude: [] })
+        };
+    }
+}
+```

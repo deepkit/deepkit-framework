@@ -165,5 +165,166 @@ In the case of invalid data, no attempt is made to convert it and instead an err
 
 ### Embedded
 
+## Advanced Serialization Examples
+
+### Working with Classes
+
+```typescript
+import { cast, serialize, deserialize } from '@deepkit/type';
+
+class User {
+    created: Date = new Date();
+
+    constructor(public username: string) {}
+}
+
+// Deserialize to class instance
+const user = cast<User>({
+    username: 'Peter',
+    created: '2021-10-19T00:22:58.257Z'
+});
+
+console.log(user instanceof User); // true
+console.log(user.created instanceof Date); // true
+
+// Serialize class instance
+const json = serialize<User>(user);
+console.log(json);
+// { username: 'Peter', created: '2021-10-19T00:22:58.257Z' }
+```
+
+### Groups for Selective Serialization
+
+Groups allow you to serialize only specific properties based on context:
+
+```typescript
+import { cast, serialize, Group } from '@deepkit/type';
+
+class Settings {
+    weight: string & Group<'privateSettings'> = '12g';
+    color: string = 'red';
+}
+
+class User {
+    id: number = 0;
+    password: string & Group<'secret'> = '';
+    settings: Settings = new Settings();
+
+    constructor(public username: string & Group<'public'>) {}
+}
+
+const user = new User('john');
+user.password = 'secret123';
+
+// Serialize only public information
+const publicData = serialize<User>(user, { groupsExclude: ['secret', 'privateSettings'] });
+console.log(publicData);
+// { id: 0, username: 'john', settings: { color: 'red' } }
+
+// Serialize only specific groups
+const secretData = serialize<User>(user, { groups: ['secret'] });
+console.log(secretData);
+// { password: 'secret123' }
+```
+
+### Custom Serialization for Complex Types
+
+```typescript
+import { serializer, executeTypeArgumentAsArray } from '@deepkit/type';
+
+class MyIterable<T> implements Iterable<T> {
+    items: T[] = [];
+
+    constructor(items: T[] = []) {
+        this.items = items;
+    }
+
+    [Symbol.iterator](): Iterator<T> {
+        return this.items[Symbol.iterator]();
+    }
+
+    add(item: T) {
+        this.items.push(item);
+    }
+}
+
+// Register custom deserializer
+serializer.deserializeRegistry.registerClass(MyIterable, (type, state) => {
+    executeTypeArgumentAsArray(type, 0, state);
+    state.convert(value => new MyIterable(value));
+});
+
+// Register custom serializer
+serializer.serializeRegistry.registerClass(MyIterable, (type, state) => {
+    state.convert((value: MyIterable<unknown>) => value.items);
+    executeTypeArgumentAsArray(type, 0, state);
+});
+
+// Usage
+const iterable = deserialize<MyIterable<string>>(['a', 'b', 'c']);
+console.log(iterable instanceof MyIterable); // true
+console.log([...iterable]); // ['a', 'b', 'c']
+
+const serialized = serialize<MyIterable<string>>(iterable);
+console.log(serialized); // ['a', 'b', 'c']
+```
+
+### Error Handling in Serialization
+
+```typescript
+import { cast, ValidationError } from '@deepkit/type';
+
+interface Product {
+    id: number;
+    name: string;
+    price: number;
+}
+
+try {
+    const product = cast<Product>({
+        id: 'invalid', // Should be number
+        name: 'Laptop',
+        price: 999.99
+    });
+} catch (error) {
+    if (error instanceof ValidationError) {
+        console.log('Validation errors:');
+        error.errors.forEach(err => {
+            console.log(`- ${err.path}: ${err.message}`);
+        });
+        // Output:
+        // - id: Not a number
+    }
+}
+```
+
 ## Naming Strategy
+
+Naming strategies allow you to transform property names during serialization:
+
+```typescript
+import { serialize, deserialize, underscoreNamingStrategy } from '@deepkit/type';
+
+interface User {
+    firstName: string;
+    lastName: string;
+    emailAddress: string;
+}
+
+const user: User = {
+    firstName: 'John',
+    lastName: 'Doe',
+    emailAddress: 'john@example.com'
+};
+
+// Serialize with underscore naming
+const json = serialize<User>(user, { namingStrategy: underscoreNamingStrategy });
+console.log(json);
+// { first_name: 'John', last_name: 'Doe', email_address: 'john@example.com' }
+
+// Deserialize with underscore naming
+const backToUser = deserialize<User>(json, { namingStrategy: underscoreNamingStrategy });
+console.log(backToUser);
+// { firstName: 'John', lastName: 'Doe', emailAddress: 'john@example.com' }
+```
 
