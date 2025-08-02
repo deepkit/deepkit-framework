@@ -171,9 +171,62 @@ new Server(
 });
 ```
 
+## Testing
+
+Deepkit HTTP provides comprehensive testing utilities that allow you to test your HTTP applications without starting an actual server:
+
+```typescript
+import { expect, test } from '@jest/globals';
+import { createTestingApp } from '@deepkit/framework';
+import { HttpRequest } from '@deepkit/http';
+
+class UserController {
+    @http.GET('/users/:id')
+    getUser(id: number) {
+        return { id, name: `User ${id}` };
+    }
+}
+
+test('user controller', async () => {
+    const testing = createTestingApp({
+        controllers: [UserController]
+    });
+
+    const response = await testing.request(HttpRequest.GET('/users/42'));
+    expect(response.statusCode).toBe(200);
+    expect(response.json).toEqual({ id: 42, name: 'User 42' });
+});
+```
+
+For more comprehensive testing examples, see the [Testing](testing.md) documentation.
+
 ## HTTP Client
 
-todo: fetch API, validation, und cast.
+Deepkit HTTP provides utilities for making HTTP requests with automatic validation and type casting:
+
+```typescript
+import { HttpRequest } from '@deepkit/http';
+
+// Create requests with fluent API
+const request = HttpRequest.POST('/api/users')
+    .json({ name: 'John', email: 'john@example.com' })
+    .header('Authorization', 'Bearer token123')
+    .build();
+
+// For file uploads
+const uploadRequest = HttpRequest.POST('/upload')
+    .multiPart([
+        {
+            name: 'file',
+            file: Buffer.from('file content'),
+            fileName: 'document.txt'
+        },
+        {
+            name: 'description',
+            value: 'Important document'
+        }
+    ]);
+```
 
 ## Route Names
 
@@ -205,7 +258,74 @@ const router = app.get(HttpRouter);
 router.resolveUrl('userDetail', {id: 2}); //=> '/user/2'
 ```
 
-## Security
+## Error Handling
 
-## Sessions
+Deepkit HTTP provides built-in error classes for common HTTP errors:
+
+```typescript
+import {
+    HttpBadRequestError,
+    HttpUnauthorizedError,
+    HttpNotFoundError,
+    HttpAccessDeniedError
+} from '@deepkit/http';
+
+class UserController {
+    @http.GET('/users/:id')
+    getUser(id: number) {
+        if (id <= 0) {
+            throw new HttpBadRequestError('Invalid user ID');
+        }
+
+        const user = findUser(id);
+        if (!user) {
+            throw new HttpNotFoundError('User not found');
+        }
+
+        return user;
+    }
+
+    @http.DELETE('/users/:id')
+    deleteUser(id: number, currentUser: User) {
+        if (!currentUser) {
+            throw new HttpUnauthorizedError('Authentication required');
+        }
+
+        if (!currentUser.canDelete(id)) {
+            throw new HttpAccessDeniedError('Insufficient permissions');
+        }
+
+        deleteUser(id);
+        return { success: true };
+    }
+}
+```
+
+## Configuration
+
+Configure HTTP behavior through the HttpConfig:
+
+```typescript
+import { HttpConfig } from '@deepkit/http';
+
+const httpConfig = new HttpConfig();
+httpConfig.port = 3000;
+httpConfig.host = '0.0.0.0';
+httpConfig.parser.multipartJsonKey = 'json';
+httpConfig.parser.maxFileSize = 10 * 1024 * 1024; // 10MB
+
+const app = new App({
+    config: { http: httpConfig },
+    imports: [new FrameworkModule]
+});
+```
+
+## Next Steps
+
+- **[Input & Output](input-output.md)**: Learn about handling request data and responses
+- **[Security](security.md)**: Implement authentication, authorization, and security best practices
+- **[Middleware](middleware.md)**: Add custom middleware for cross-cutting concerns
+- **[Events](events.md)**: Hook into the HTTP request lifecycle with events
+- **[Testing](testing.md)**: Write comprehensive tests for your HTTP applications
+- **[Dependency Injection](dependency-injection.md)**: Use DI for better code organization
 

@@ -262,6 +262,260 @@ const ApiModule = new AppModule({}, {
 });
 ```
 
+## Advanced Middleware Patterns
 
+### Async Middleware
 
+Middleware can be asynchronous and perform complex operations:
 
+```typescript
+class DatabaseMiddleware implements HttpMiddleware {
+    constructor(private database: Database) {}
+
+    async execute(request: HttpRequest, response: HttpResponse, next: (err?: any) => void) {
+        try {
+            // Perform async database operation
+            const user = await this.database.getUserFromSession(request);
+            request.store.user = user;
+            next();
+        } catch (error) {
+            next(error);
+        }
+    }
+}
+```
+
+### Error Handling Middleware
+
+```typescript
+class ErrorHandlingMiddleware implements HttpMiddleware {
+    async execute(request: HttpRequest, response: HttpResponse, next: (err?: any) => void) {
+        try {
+            next();
+        } catch (error) {
+            console.error('Request error:', error);
+
+            if (!response.headersSent) {
+                response.statusCode = 500;
+                response.setHeader('Content-Type', 'application/json');
+                response.end(JSON.stringify({
+                    error: 'Internal Server Error',
+                    message: process.env.NODE_ENV === 'development' ? error.message : undefined
+                }));
+            }
+        }
+    }
+}
+```
+
+### Request Logging Middleware
+
+```typescript
+class RequestLoggingMiddleware implements HttpMiddleware {
+    async execute(request: HttpRequest, response: HttpResponse, next: (err?: any) => void) {
+        const startTime = Date.now();
+
+        console.log(`${request.method} ${request.url} - Started`);
+
+        // Override response.end to log completion
+        const originalEnd = response.end.bind(response);
+        response.end = function(chunk?: any) {
+            const duration = Date.now() - startTime;
+            console.log(`${request.method} ${request.url} - ${response.statusCode} - ${duration}ms`);
+            return originalEnd(chunk);
+        };
+
+        next();
+    }
+}
+```
+
+### Authentication Middleware
+
+```typescript
+class AuthenticationMiddleware implements HttpMiddleware {
+    async execute(request: HttpRequest, response: HttpResponse, next: (err?: any) => void) {
+        const authHeader = request.headers.authorization;
+
+        if (!authHeader) {
+            response.statusCode = 401;
+            response.setHeader('Content-Type', 'application/json');
+            response.end(JSON.stringify({ error: 'Authentication required' }));
+            return;
+        }
+
+        try {
+            const token = authHeader.replace('Bearer ', '');
+            const user = await this.validateToken(token);
+            request.store.user = user;
+            next();
+        } catch (error) {
+            response.statusCode = 401;
+            response.setHeader('Content-Type', 'application/json');
+            response.end(JSON.stringify({ error: 'Invalid token' }));
+        }
+    }
+
+    private async validateToken(token: string): Promise<User> {
+        // Implement token validation logic
+        throw new Error('Not implemented');
+    }
+}
+```
+
+### Rate Limiting Middleware
+
+```typescript
+class RateLimitingMiddleware implements HttpMiddleware {
+    private requests = new Map<string, { count: number; resetTime: number }>();
+    private maxRequests = 100;
+    private windowMs = 15 * 60 * 1000; // 15 minutes
+
+    async execute(request: HttpRequest, response: HttpResponse, next: (err?: any) => void) {
+        const clientIp = request.ip || request.headers['x-forwarded-for'] as string;
+        const now = Date.now();
+
+        const userRequests = this.requests.get(clientIp);
+
+        if (!userRequests || now > userRequests.resetTime) {
+            this.requests.set(clientIp, { count: 1, resetTime: now + this.windowMs });
+            next();
+            return;
+        }
+
+        if (userRequests.count >= this.maxRequests) {
+            response.statusCode = 429;
+            response.setHeader('Content-Type', 'application/json');
+            response.setHeader('Retry-After', Math.ceil((userRequests.resetTime - now) / 1000).toString());
+            response.end(JSON.stringify({ error: 'Too many requests' }));
+            return;
+        }
+
+        userRequests.count++;
+        next();
+    }
+}
+```
+
+### CORS Middleware
+
+```typescript
+class CorsMiddleware implements HttpMiddleware {
+    private allowedOrigins = ['http://localhost:3000', 'https://myapp.com'];
+
+    async execute(request: HttpRequest, response: HttpResponse, next: (err?: any) => void) {
+        const origin = request.headers.origin;
+
+        if (origin && this.allowedOrigins.includes(origin)) {
+            response.setHeader('Access-Control-Allow-Origin', origin);
+        }
+
+        response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        response.setHeader('Access-Control-Allow-Credentials', 'true');
+
+        if (request.method === 'OPTIONS') {
+            response.statusCode = 200;
+            response.end();
+            return;
+        }
+
+        next();
+    }
+}
+```
+
+## Middleware Ordering
+
+The order of middleware execution is important. Middleware is executed in the order it's registered:
+
+```typescript
+new App({
+    middlewares: [
+        httpMiddleware.for(CorsMiddleware),           // 1. Handle CORS first
+        httpMiddleware.for(RequestLoggingMiddleware), // 2. Log requests
+        httpMiddleware.for(RateLimitingMiddleware),   // 3. Rate limiting
+        httpMiddleware.for(AuthenticationMiddleware), // 4. Authentication
+        httpMiddleware.for(ErrorHandlingMiddleware),  // 5. Error handling last
+    ],
+    imports: [new FrameworkModule]
+});
+```
+
+## Conditional Middleware
+
+Apply middleware only to specific routes or conditions:
+
+```typescript
+class ConditionalMiddleware implements HttpMiddleware {
+    async execute(request: HttpRequest, response: HttpResponse, next: (err?: any) => void) {
+        // Only apply to API routes
+        if (request.url.startsWith('/api/')) {
+            // Apply middleware logic
+            console.log('API request:', request.url);
+        }
+
+        next();
+    }
+}
+
+// Or use route-specific middleware
+new App({
+    middlewares: [
+        httpMiddleware.for(AuthenticationMiddleware).forRoutes({ path: '/admin/*' }),
+        httpMiddleware.for(RateLimitingMiddleware).forRoutes({ group: 'api' }),
+    ],
+});
+```
+
+## Testing Middleware
+
+```typescript
+import { expect, test } from '@jest/globals';
+import { createTestingApp } from '@deepkit/framework';
+
+test('middleware execution', async () => {
+    const logs: string[] = [];
+
+    class TestMiddleware implements HttpMiddleware {
+        async execute(request: HttpRequest, response: HttpResponse, next: (err?: any) => void) {
+            logs.push(`Before: ${request.method} ${request.url}`);
+            next();
+            logs.push(`After: ${request.method} ${request.url}`);
+        }
+    }
+
+    class TestController {
+        @http.GET('/test')
+        test() {
+            logs.push('Controller executed');
+            return 'success';
+        }
+    }
+
+    const testing = createTestingApp({
+        controllers: [TestController],
+        providers: [TestMiddleware],
+        middlewares: [httpMiddleware.for(TestMiddleware)]
+    });
+
+    await testing.request(HttpRequest.GET('/test'));
+
+    expect(logs).toEqual([
+        'Before: GET /test',
+        'Controller executed',
+        'After: GET /test'
+    ]);
+});
+```
+
+## Best Practices
+
+1. **Keep middleware focused**: Each middleware should have a single responsibility
+2. **Handle errors properly**: Always use try-catch in async middleware
+3. **Call next()**: Always call next() to continue the middleware chain
+4. **Order matters**: Place middleware in logical order (CORS first, error handling last)
+5. **Use dependency injection**: Inject services into middleware constructors
+6. **Test middleware**: Write unit tests for middleware logic
+7. **Performance considerations**: Avoid heavy operations in frequently called middleware
+8. **Conditional application**: Use route filters to apply middleware selectively

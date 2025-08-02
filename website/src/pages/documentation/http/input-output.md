@@ -482,3 +482,232 @@ router.add(
 The `User` object does not necessarily have to depend on a parameter. It could just as well depend on a session or an HTTP header, and only be provided when the user is logged in. In `RouteParameterResolverContext` a lot of information about the HTTP request is available, so that many use cases can be mapped.
 
 In principle, it is also possible to have complex parameter types provided via the Dependency Injection container from the `http` scope, since these are also available in the route function or method. However, this has the disadvantage that no asynchronous function calls can be used, since the DI container is synchronous throughout.
+
+## File Uploads
+
+Deepkit HTTP provides comprehensive support for file uploads through multipart form data. Files are automatically parsed and made available as `UploadedFile` objects.
+
+### Single File Upload
+
+```typescript
+import { UploadedFile } from '@deepkit/http';
+
+router.post('/upload', (file: UploadedFile) => {
+    return {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        path: file.path
+    };
+});
+```
+
+### Multiple Files Upload
+
+```typescript
+interface UploadData {
+    files: UploadedFile[];
+    description: string;
+}
+
+router.post('/upload-multiple', (body: HttpBody<UploadData>) => {
+    return {
+        uploadedCount: body.files.length,
+        description: body.description,
+        files: body.files.map(f => ({
+            name: f.name,
+            size: f.size
+        }))
+    };
+});
+```
+
+### Mixed Form Data with Files
+
+```typescript
+interface FormData {
+    profilePicture: UploadedFile;
+    name: string;
+    age: number;
+    tags: string[];
+}
+
+router.post('/profile', (body: HttpBody<FormData>) => {
+    return {
+        message: 'Profile updated',
+        user: {
+            name: body.name,
+            age: body.age,
+            tags: body.tags
+        },
+        uploadedFile: {
+            name: body.profilePicture.name,
+            size: body.profilePicture.size
+        }
+    };
+});
+```
+
+### File Upload Validation
+
+```typescript
+import { MaxLength, MinLength } from '@deepkit/type';
+
+interface FileUploadRequest {
+    file: UploadedFile;
+    title: string & MinLength<3> & MaxLength<100>;
+    category: 'image' | 'document' | 'video';
+}
+
+router.post('/upload-validated', (body: HttpBody<FileUploadRequest>) => {
+    // Validate file type
+    if (body.category === 'image' && !body.file.type.startsWith('image/')) {
+        throw new HttpBadRequestError('File must be an image');
+    }
+
+    // Validate file size (example: max 5MB)
+    if (body.file.size > 5 * 1024 * 1024) {
+        throw new HttpBadRequestError('File too large');
+    }
+
+    return {
+        message: 'File uploaded successfully',
+        file: {
+            name: body.file.name,
+            size: body.file.size,
+            type: body.file.type
+        }
+    };
+});
+```
+
+### File Processing
+
+```typescript
+import { promises as fs } from 'fs';
+import path from 'path';
+
+router.post('/process-file', async (file: UploadedFile) => {
+    // Read file content
+    const content = await fs.readFile(file.path);
+
+    // Process the file (example: save to permanent location)
+    const permanentPath = path.join('/uploads', file.name);
+    await fs.copyFile(file.path, permanentPath);
+
+    // Clean up temporary file
+    await fs.unlink(file.path);
+
+    return {
+        message: 'File processed',
+        originalSize: file.size,
+        savedPath: permanentPath
+    };
+});
+```
+
+## Advanced Response Types
+
+Deepkit HTTP supports various response types beyond simple JSON responses.
+
+### HTML Responses
+
+```typescript
+import { HtmlResponse } from '@deepkit/http';
+
+router.get('/page', () => {
+    return new HtmlResponse(`
+        <html>
+            <body>
+                <h1>Welcome</h1>
+                <p>This is an HTML response</p>
+            </body>
+        </html>
+    `);
+});
+```
+
+### Custom Response Headers
+
+```typescript
+import { Response } from '@deepkit/http';
+
+router.get('/download', () => {
+    const response = new Response('File content here', 200);
+    response.setHeader('Content-Type', 'application/octet-stream');
+    response.setHeader('Content-Disposition', 'attachment; filename="file.txt"');
+    return response;
+});
+```
+
+### Streaming Responses
+
+```typescript
+import { Readable } from 'stream';
+
+router.get('/stream', (response: HttpResponse) => {
+    response.setHeader('Content-Type', 'text/plain');
+
+    const stream = new Readable({
+        read() {
+            this.push(`Data chunk ${Date.now()}\n`);
+        }
+    });
+
+    stream.pipe(response);
+});
+```
+
+### JSON Response with Custom Status
+
+```typescript
+import { JSONResponse } from '@deepkit/http';
+
+router.post('/create', (data: any) => {
+    // Create resource logic here
+
+    return new JSONResponse({
+        message: 'Resource created',
+        id: 123
+    }, 201); // HTTP 201 Created
+});
+```
+
+## Error Responses
+
+Proper error handling with appropriate HTTP status codes:
+
+```typescript
+import {
+    HttpBadRequestError,
+    HttpNotFoundError,
+    HttpUnauthorizedError,
+    HttpAccessDeniedError
+} from '@deepkit/http';
+
+router.get('/user/:id', (id: number) => {
+    if (id <= 0) {
+        throw new HttpBadRequestError('Invalid user ID');
+    }
+
+    const user = findUser(id);
+    if (!user) {
+        throw new HttpNotFoundError('User not found');
+    }
+
+    return user;
+});
+
+router.delete('/user/:id', (id: number, currentUser: User) => {
+    if (!currentUser) {
+        throw new HttpUnauthorizedError('Authentication required');
+    }
+
+    if (!currentUser.canDeleteUser(id)) {
+        throw new HttpAccessDeniedError('Insufficient permissions');
+    }
+
+    deleteUser(id);
+    return { message: 'User deleted' };
+});
+```
