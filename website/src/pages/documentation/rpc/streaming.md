@@ -1,10 +1,81 @@
 # Streaming with RxJS
 
-Deepkit RPC provides native support for RxJS streaming, allowing you to work with real-time data flows between client and server. You can return `Observable`, `Subject`, or `BehaviorSubject` from your RPC actions, and they will be automatically serialized and streamed to the client.
+## Understanding RPC Streaming
 
-## Observable
+Deepkit RPC's streaming capabilities represent a fundamental shift from traditional request-response patterns to real-time, reactive data flows. By integrating natively with RxJS, Deepkit RPC enables you to build applications that respond to data changes in real-time, handle continuous data streams, and maintain live connections between clients and servers.
 
-Use `Observable` for one-way data streams from server to client:
+### Why Streaming Matters
+
+Traditional RPC systems are limited to simple request-response patterns:
+- Client sends request → Server processes → Server sends response → Connection closes
+
+Streaming RPC enables continuous communication:
+- Client subscribes → Server streams data continuously → Client receives real-time updates → Connection stays alive
+
+This enables powerful use cases:
+- **Real-time Dashboards**: Live metrics and monitoring data
+- **Chat Applications**: Instant message delivery
+- **Collaborative Editing**: Real-time document synchronization
+- **Live Data Feeds**: Stock prices, sensor data, social media feeds
+- **Progress Tracking**: Long-running operation updates
+- **Event Sourcing**: Streaming event logs and state changes
+
+### How Streaming Works in Deepkit RPC
+
+Deepkit RPC's streaming is built on several key technologies:
+
+1. **RxJS Integration**: Native support for Observables, Subjects, and BehaviorSubjects
+2. **Efficient Serialization**: Streaming data is serialized to BSON for optimal performance
+3. **Automatic Chunking**: Large data streams are automatically chunked for memory efficiency
+4. **Type Safety**: Full TypeScript type safety for streaming data
+5. **Error Propagation**: Errors in streams are properly forwarded to clients
+6. **Backpressure Handling**: Built-in mechanisms to handle fast producers and slow consumers
+
+### RxJS Streaming Types
+
+Deepkit RPC supports three main RxJS types, each with different characteristics:
+
+| Type | Use Case | Behavior | Memory |
+|------|----------|----------|---------|
+| **Observable** | One-way data streams | Emits values, then completes | Low |
+| **Subject** | Multi-cast streaming | Multiple subscribers, no initial value | Medium |
+| **BehaviorSubject** | State streaming | Multiple subscribers, has current value | Higher |
+
+### Streaming Architecture
+
+```
+┌─────────────┐    WebSocket/TCP    ┌─────────────┐
+│   Client    │ ←──────────────────→ │   Server    │
+│             │                     │             │
+│ Observable  │ ← Streaming Data ←  │ Observable  │
+│ Subject     │ ↔ Bidirectional ↔   │ Subject     │
+│ BehaviorSub │ ← Current State ←   │ BehaviorSub │
+└─────────────┘                     └─────────────┘
+```
+
+The server creates RxJS streams and returns them from RPC actions. Deepkit RPC automatically:
+1. Serializes each emitted value to BSON
+2. Sends it over the network connection
+3. Deserializes it on the client
+4. Reconstructs the RxJS stream with proper typing
+
+## Observable Streams
+
+Observables are perfect for one-way data streams from server to client. They represent a sequence of values emitted over time, and they complete when the data source is exhausted or an error occurs.
+
+### When to Use Observables
+
+- **Finite Data Streams**: When you have a known set of data to stream (e.g., file contents, database results)
+- **One-Time Operations**: Operations that produce multiple values but eventually complete
+- **Historical Data**: Streaming past events or records
+- **Batch Processing**: Streaming results of batch operations
+
+### Observable Characteristics
+
+- **Cold Streams**: Each subscription creates a new execution
+- **Completion**: Observables signal when they're done emitting values
+- **Memory Efficient**: No state is maintained between emissions
+- **Cleanup**: Automatic cleanup when client unsubscribes
 
 ```typescript
 import { Observable } from 'rxjs';

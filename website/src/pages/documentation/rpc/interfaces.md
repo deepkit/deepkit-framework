@@ -1,6 +1,53 @@
 # RPC Interfaces
 
-RPC interfaces provide a type-safe way to define contracts between your backend and frontend. Using `ControllerSymbol` and TypeScript interfaces, you can ensure that both sides of your application stay in sync and benefit from full type safety.
+## The Power of Type-Safe Contracts
+
+RPC interfaces represent one of Deepkit RPC's most powerful features: the ability to define type-safe contracts between your client and server that are enforced at compile time, runtime, and across the network boundary. This goes far beyond simple API documentation - it creates a living contract that prevents integration bugs and enables confident refactoring.
+
+### Why RPC Interfaces Matter
+
+Traditional API development suffers from several problems:
+
+1. **API Drift**: Client and server implementations diverge over time
+2. **Runtime Errors**: Type mismatches are only discovered at runtime
+3. **Documentation Lag**: API documentation becomes outdated
+4. **Refactoring Fear**: Changing APIs is risky due to unknown dependencies
+5. **Integration Bugs**: Client-server integration issues are common
+
+RPC interfaces solve these problems by:
+
+- **Compile-Time Safety**: TypeScript catches type mismatches before deployment
+- **Living Documentation**: The interface IS the documentation and it's always current
+- **Refactoring Confidence**: Changes to interfaces are caught immediately
+- **Contract Enforcement**: Both client and server must implement the same interface
+- **IDE Support**: Full IntelliSense and auto-completion across the network boundary
+
+### How RPC Interfaces Work
+
+```
+┌─────────────────┐    Shared Interface    ┌─────────────────┐
+│     Client      │ ←─────────────────────→ │     Server      │
+│                 │                        │                 │
+│ controller<T>() │ ← Type-Safe Proxy ←    │ implements T    │
+│                 │                        │                 │
+│ Compile-Time    │    Runtime Validation  │ Compile-Time    │
+│ Type Checking   │ ←─────────────────────→ │ Type Checking   │
+└─────────────────┘                        └─────────────────┘
+```
+
+The interface serves as a contract that:
+1. **Client** uses to generate type-safe method calls
+2. **Server** implements to ensure API compliance
+3. **TypeScript** uses to validate both sides at compile time
+4. **Deepkit RPC** uses to validate data at runtime
+
+### Interface Architecture
+
+RPC interfaces consist of three main components:
+
+1. **ControllerSymbol**: A unique identifier that links client and server
+2. **TypeScript Interface**: Defines the method signatures and types
+3. **Entity Classes**: Define the data structures used in the interface
 
 ## Basic Interface Definition
 

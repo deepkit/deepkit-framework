@@ -1,6 +1,87 @@
 # Progress Tracking
 
-Deepkit RPC automatically provides progress tracking for large data transfers. When sending or receiving large payloads, the data is automatically chunked and progress information is made available to track upload and download progress.
+## Understanding RPC Progress Tracking
+
+Progress tracking in RPC systems addresses a critical user experience challenge: providing feedback during long-running operations or large data transfers. Without progress information, users are left wondering if their operation is working, how long it will take, or if it has failed. Deepkit RPC's automatic progress tracking provides real-time feedback for any operation that involves significant data transfer.
+
+### Why Progress Tracking Matters
+
+Modern applications handle increasingly large amounts of data:
+
+- **File Uploads**: Documents, images, videos, datasets
+- **Data Exports**: Reports, backups, bulk data downloads
+- **Batch Operations**: Processing thousands of records
+- **Streaming Data**: Real-time data feeds, live updates
+- **Synchronization**: Syncing large datasets between systems
+
+Without progress tracking, users experience:
+- **Uncertainty**: Is the operation working or stuck?
+- **Frustration**: How much longer will this take?
+- **Abandonment**: Users may cancel operations that are actually progressing
+- **Poor UX**: No feedback creates anxiety and confusion
+
+### How Deepkit RPC Progress Tracking Works
+
+Deepkit RPC implements automatic progress tracking through several mechanisms:
+
+1. **Automatic Chunking**: Large messages are automatically split into chunks
+2. **Progress Events**: Each chunk transfer generates progress events
+3. **Bidirectional Tracking**: Both upload and download progress are tracked
+4. **Type-Agnostic**: Works with any data type (objects, arrays, binary data)
+5. **Memory Efficient**: Streaming prevents memory overflow
+6. **Error Resilient**: Progress continues even if individual chunks fail
+
+### The Chunking System
+
+```
+Large Data (1MB)
+┌─────────────────────────────────────────────────────┐
+│                    Original Data                    │
+└─────────────────────────────────────────────────────┘
+                         │
+                    Automatic Chunking
+                         │
+                         ▼
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+│ Chunk 1  │ │ Chunk 2  │ │ Chunk 3  │ │ Chunk 4  │
+│  (64KB)  │ │  (64KB)  │ │  (64KB)  │ │  (64KB)  │
+└──────────┘ └──────────┘ └──────────┘ └──────────┘
+     │            │            │            │
+     ▼            ▼            ▼            ▼
+  Progress     Progress     Progress     Progress
+   Event        Event        Event        Event
+```
+
+### Progress Information Structure
+
+Progress events provide comprehensive information:
+
+```typescript
+interface ProgressInfo {
+    current: number;    // Bytes transferred so far
+    total: number;      // Total bytes to transfer
+    progress: number;   // Completion ratio (0.0 to 1.0)
+    speed?: number;     // Transfer speed in bytes/second
+    eta?: number;       // Estimated time remaining in seconds
+    chunkIndex?: number; // Current chunk being processed
+    totalChunks?: number; // Total number of chunks
+}
+```
+
+### Automatic vs Manual Progress
+
+Deepkit RPC provides two types of progress tracking:
+
+#### Automatic Progress (Recommended)
+- **Zero Configuration**: Works automatically for large data transfers
+- **Transparent**: No changes needed to existing RPC actions
+- **Efficient**: Optimized chunk sizes and transfer patterns
+- **Reliable**: Built-in error handling and retry logic
+
+#### Manual Progress (Advanced)
+- **Custom Control**: Define your own progress reporting logic
+- **Business Logic**: Report progress based on business operations, not just data transfer
+- **Complex Operations**: Multi-stage operations with custom progress calculation
 
 ## Basic Usage
 

@@ -1,6 +1,111 @@
 # Peer-to-Peer Communication
 
-Deepkit RPC supports peer-to-peer communication through the Deepkit Broker, allowing clients to communicate directly with each other through the server. This enables powerful distributed architectures and real-time collaboration features.
+## Understanding RPC Peer-to-Peer Architecture
+
+Peer-to-peer (P2P) communication in Deepkit RPC represents a paradigm shift from traditional client-server models to distributed architectures where clients can communicate directly with each other through the server acting as a broker. This enables powerful patterns for real-time collaboration, distributed computing, and decentralized applications while maintaining the security and control of a centralized broker.
+
+### Traditional vs P2P Communication Models
+
+#### Traditional Client-Server Model
+```
+Client A ──────→ Server ←────── Client B
+         Request        Request
+
+Client A ←────── Server ──────→ Client B
+         Response       Response
+```
+
+**Limitations:**
+- All communication must go through server business logic
+- Server becomes a bottleneck for client-to-client interactions
+- Difficult to implement real-time collaboration features
+- Server must maintain state for all client interactions
+
+#### P2P Broker Model
+```
+Client A ←──────→ Server ←──────→ Client B
+         Register        Register
+
+Client A ←─────────────────────→ Client B
+         Direct P2P Communication
+         (through server broker)
+```
+
+**Advantages:**
+- Direct client-to-client communication
+- Server acts as secure broker and coordinator
+- Reduced server load for client interactions
+- Natural fit for collaborative applications
+- Scalable architecture for distributed systems
+
+### How P2P Works in Deepkit RPC
+
+Deepkit RPC's P2P system operates through a broker pattern:
+
+1. **Client Registration**: Clients register themselves as peers with unique IDs
+2. **Capability Advertisement**: Peers can advertise their available controllers/services
+3. **Discovery**: Peers can discover other available peers and their capabilities
+4. **Secure Communication**: All P2P communication is mediated by the server for security
+5. **Type Safety**: Full TypeScript type safety is maintained across peer connections
+
+### P2P Architecture Components
+
+```
+┌─────────────┐    ┌─────────────────┐    ┌─────────────┐
+│   Peer A    │    │   RPC Broker    │    │   Peer B    │
+│             │    │    (Server)     │    │             │
+│ Controllers │◄──►│  - Peer Registry │◄──►│ Controllers │
+│ Services    │    │  - Security     │    │ Services    │
+│ Capabilities│    │  - Routing      │    │ Capabilities│
+└─────────────┘    │  - Discovery    │    └─────────────┘
+                   └─────────────────┘
+```
+
+### Key P2P Concepts
+
+#### Peer Identity
+- **Unique Peer IDs**: Each peer has a unique identifier
+- **Registration**: Peers must register with the broker before communication
+- **Authentication**: Peer registration can be secured with authentication
+- **Lifecycle Management**: Automatic cleanup when peers disconnect
+
+#### Peer Controllers
+- **Distributed Services**: Peers can expose RPC controllers to other peers
+- **Service Discovery**: Peers can discover available services on other peers
+- **Type Safety**: Full TypeScript interfaces for peer-to-peer calls
+- **Error Handling**: Proper error propagation across peer connections
+
+#### Security Model
+- **Broker Mediation**: All communication goes through the secure broker
+- **Access Control**: Fine-grained control over peer-to-peer permissions
+- **Authentication**: Peer registration and communication can be authenticated
+- **Audit Trail**: All peer interactions can be logged and monitored
+
+### Use Cases for P2P Communication
+
+#### Real-time Collaboration
+- **Document Editing**: Multiple users editing the same document
+- **Whiteboarding**: Shared drawing and annotation tools
+- **Code Collaboration**: Real-time code editing and review
+- **Design Tools**: Collaborative design and prototyping
+
+#### Gaming and Entertainment
+- **Multiplayer Games**: Real-time game state synchronization
+- **Chat Systems**: Direct messaging between players
+- **Matchmaking**: Peer discovery and game room creation
+- **Streaming**: Peer-to-peer content streaming
+
+#### Distributed Computing
+- **Task Distribution**: Distributing work across multiple clients
+- **Data Processing**: Collaborative data analysis and processing
+- **Resource Sharing**: Sharing computational resources between peers
+- **Load Balancing**: Distributing load across peer nodes
+
+#### Communication Platforms
+- **Video Conferencing**: Direct peer-to-peer video/audio streams
+- **File Sharing**: Direct file transfers between users
+- **Screen Sharing**: Remote desktop and screen sharing
+- **Instant Messaging**: Real-time messaging with presence
 
 ## Basic Peer-to-Peer Setup
 

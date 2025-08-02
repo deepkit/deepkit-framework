@@ -1,6 +1,72 @@
-# Transport Protocol
+# Transport Protocols
 
-Deepkit RPC supports multiple transport protocols to accommodate different use cases and environments. Each transport has its own advantages and trade-offs.
+## Understanding RPC Transport
+
+The transport layer is the foundation of any RPC system - it determines how data flows between client and server, what features are available, and how the system performs under different conditions. Deepkit RPC's pluggable transport architecture allows you to choose the optimal protocol for your specific use case while maintaining the same high-level API.
+
+### Transport Layer Responsibilities
+
+The transport layer handles:
+
+1. **Connection Management**: Establishing, maintaining, and closing connections
+2. **Data Serialization**: Converting RPC messages to wire format
+3. **Message Framing**: Delimiting message boundaries in the data stream
+4. **Error Handling**: Managing network errors and connection failures
+5. **Flow Control**: Managing data flow to prevent buffer overflow
+6. **Security**: Encryption, authentication, and authorization at the transport level
+
+### Choosing the Right Transport
+
+Different transports excel in different scenarios:
+
+| Use Case | Recommended Transport | Why |
+|----------|----------------------|-----|
+| **Web Applications** | WebSockets | Browser compatibility, full feature support |
+| **Microservices** | TCP | Maximum performance, server-to-server |
+| **Mobile Apps** | WebSockets | Works through firewalls, handles network changes |
+| **IoT Devices** | TCP | Lower overhead, efficient for constrained devices |
+| **Development/Testing** | Direct | No network overhead, perfect for unit tests |
+| **Legacy Integration** | HTTP | Compatible with existing HTTP infrastructure |
+
+### Transport Feature Matrix
+
+Understanding what each transport supports helps you make informed decisions:
+
+| Feature | WebSockets | TCP | HTTP | Direct |
+|---------|------------|-----|------|--------|
+| **Browser Support** | ✅ Native | ❌ No | ✅ Yes | ❌ No |
+| **Streaming (RxJS)** | ✅ Full | ✅ Full | ❌ No | ✅ Full |
+| **Bidirectional** | ✅ Yes | ✅ Yes | ❌ No | ✅ Yes |
+| **Performance** | Good | Excellent | Fair | Excellent |
+| **Connection Overhead** | Medium | Low | High | None |
+| **Firewall Friendly** | ✅ Yes | ❌ Often blocked | ✅ Yes | N/A |
+| **Load Balancer Support** | Good | Fair | Excellent | N/A |
+| **Real-time Capabilities** | ✅ Excellent | ✅ Excellent | ❌ No | ✅ Perfect |
+| **Message Ordering** | ✅ Guaranteed | ✅ Guaranteed | ❌ No | ✅ Guaranteed |
+| **Automatic Reconnection** | ✅ Available | ✅ Available | N/A | N/A |
+
+### Protocol Deep Dive
+
+#### WebSocket Protocol
+- **Underlying**: TCP with HTTP upgrade handshake
+- **Message Format**: Binary frames with BSON payload
+- **Connection**: Persistent, full-duplex
+- **Overhead**: ~2-14 bytes per message frame
+- **Best For**: Web applications, real-time features
+
+#### TCP Protocol
+- **Underlying**: Raw TCP sockets
+- **Message Format**: Length-prefixed BSON messages
+- **Connection**: Persistent, full-duplex
+- **Overhead**: ~4 bytes per message (length prefix)
+- **Best For**: Server-to-server communication, maximum performance
+
+#### HTTP Protocol
+- **Underlying**: HTTP/1.1 or HTTP/2
+- **Message Format**: JSON over HTTP POST
+- **Connection**: Request-response only
+- **Overhead**: ~200-500 bytes per request (HTTP headers)
+- **Best For**: Simple integrations, debugging, legacy systems
 
 ## WebSockets
 
