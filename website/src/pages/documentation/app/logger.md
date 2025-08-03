@@ -116,10 +116,6 @@ All messages from a scoped logger are prefixed with the `MyService` scope name n
 
 With formatters, you can change the message format, e.g. add the timestamp. When an application is started via `server:start`, a `DefaultFormatter` is automatically added (which adds timestamp, range and log level) if no other formatter is available.
 
-## JSON Transporter
-
-To change the output to JSON protocols, you can use the supplied `JSONTransport`.
-
 ## Context Data
 
 To add contextual data to a log entry, add a simple object literal as the last argument. Only log calls with at least two arguments can contain contextual data.

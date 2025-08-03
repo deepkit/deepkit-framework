@@ -23,63 +23,61 @@ import { AdaptiveContainerComponent, ButtonComponent, CheckboxComponent, OpenDro
     ],
     host: { ngSkipHydration: 'true' },
     template: `
-      <div class="app-content normalize-text">
-        <div class="app-pre-headline">Desktop UI</div>
-        <h1>Adaptive Container</h1>
-        <app-title value="Adaptive Container"></app-title>
+      <div class="app-pre-headline">Desktop UI</div>
+      <h1>Adaptive Container</h1>
+      <app-title value="Adaptive Container"></app-title>
 
-        <p>
-          Adaptive container is a component that allows you to use flex box
-          layout with content that automatically hides (display: none) children
-          that overflow the available space.
-        </p>
+      <p>
+        Adaptive container is a component that allows you to use flex box
+        layout with content that automatically hides (display: none) children
+        that overflow the available space.
+      </p>
 
-        <p>
-          Every children with the class <code>dui-adaptive-fallback</code>
-          will be made visible once at least one of the other children
-          is hidden. This allows you to create a button that opens a dropdown
-          with the hidden buttons.
-        </p>
+      <p>
+        Every children with the class <code>dui-adaptive-fallback</code>
+        will be made visible once at least one of the other children
+        is hidden. This allows you to create a button that opens a dropdown
+        with the hidden buttons.
+      </p>
 
-        <p>
-          If you want to customize the dropdown, you can define as children your own <code>dui-dropdown</code>
-          and define in it an container element with <code>[duiAdaptiveHiddenContainer]</code> directive.
-          This places the hidden elements automatically into this container element.
-        </p>
-        <doc-code-frame>
-          <div class="layout" [class.fill-space]="fillSpace()">
-            <div #left class="left">
-              <div #leftTop [class.animate]="animate()">
-                <dui-adaptive-container #container [direction]="direction()">
-                  <dui-button>Button 1</dui-button>
-                  <dui-button>Big Button 2</dui-button>
-                  <dui-button icon="check"></dui-button>
-                  <dui-button>Button 4</dui-button>
-                  <dui-button>Button 5</dui-button>
-                  <dui-button class="dui-adaptive-fallback" [openDropdown]="container.dropdown()">More</dui-button>
-                </dui-adaptive-container>
-              </div>
-              <dui-splitter horizontal [(size)]="leftTopSize" [element]="leftTop"></dui-splitter>
-              <div>Resize the areas to see how the adaptive container adjusts.</div>
+      <p>
+        If you want to customize the dropdown, you can define as children your own <code>dui-dropdown</code>
+        and define in it an container element with <code>[duiAdaptiveHiddenContainer]</code> directive.
+        This places the hidden elements automatically into this container element.
+      </p>
+      <doc-code-frame>
+        <div class="layout" [class.fill-space]="fillSpace()">
+          <div #left class="left">
+            <div #leftTop [class.animate]="animate()">
+              <dui-adaptive-container #container [direction]="direction()">
+                <dui-button>Button 1</dui-button>
+                <dui-button>Big Button 2</dui-button>
+                <dui-button icon="check"></dui-button>
+                <dui-button>Button 4</dui-button>
+                <dui-button>Button 5</dui-button>
+                <dui-button class="dui-adaptive-fallback" [openDropdown]="container.dropdown()">More</dui-button>
+              </dui-adaptive-container>
             </div>
-            <dui-splitter [(size)]="leftSize" [element]="left"></dui-splitter>
-            <div class="actions">
-              <dui-radio-group [(ngModel)]="direction">
-                <dui-radio-button value="row">Row</dui-radio-button>
-                <dui-radio-button value="row-reverse">Row Reverse</dui-radio-button>
-                <dui-radio-button value="column">Column</dui-radio-button>
-                <dui-radio-button value="column-reverse">Column Reverse</dui-radio-button>
-              </dui-radio-group>
-              <dui-checkbox [(ngModel)]="fillSpace">Stretch Buttons</dui-checkbox>
-              <dui-checkbox [(ngModel)]="animate">Animate</dui-checkbox>
-            </div>
+            <dui-splitter horizontal [(size)]="leftTopSize" [element]="leftTop"></dui-splitter>
+            <div>Resize the areas to see how the adaptive container adjusts.</div>
           </div>
-          <code-highlight lang="html" [code]="code" />
-        </doc-code-frame>
+          <dui-splitter [(size)]="leftSize" [element]="left"></dui-splitter>
+          <div class="actions">
+            <dui-radio-group [(ngModel)]="direction">
+              <dui-radio-button value="row">Row</dui-radio-button>
+              <dui-radio-button value="row-reverse">Row Reverse</dui-radio-button>
+              <dui-radio-button value="column">Column</dui-radio-button>
+              <dui-radio-button value="column-reverse">Column Reverse</dui-radio-button>
+            </dui-radio-group>
+            <dui-checkbox [(ngModel)]="fillSpace">Stretch Buttons</dui-checkbox>
+            <dui-checkbox [(ngModel)]="animate">Animate</dui-checkbox>
+          </div>
+        </div>
+        <code-highlight lang="html" [code]="code" />
+      </doc-code-frame>
 
-        <api-doc component="AdaptiveContainerComponent"></api-doc>
-        <api-doc component="AdaptiveHiddenContainer"></api-doc>
-      </div>
+      <api-doc component="AdaptiveContainerComponent"></api-doc>
+      <api-doc component="AdaptiveHiddenContainer"></api-doc>
     `,
     styles: [`
       dui-radio-group {

@@ -27,7 +27,7 @@ import { AppTitle } from '@app/app/components/title.js';
 
         <doc-code-frame>
           <div>
-            <dui-dialog [(visible)]="showDialog" title="Cool modal">
+            <dui-dialog [(visible)]="showDialog" title="Cool modal" normalize-style>
               <h3>Hi this is a new window</h3>
 
               <p>
@@ -62,8 +62,10 @@ import { AppTitle } from '@app/app/components/title.js';
               </dui-dialog-actions>
             </dui-dialog>
 
-            <dui-dialog #dialog>
+            <dui-dialog #dialog normalize-style>
               <h3>Are you sure?</h3>
+              
+              <p>Please confirm</p>
 
               <dui-dialog #anotherOne [maxWidth]="500">
                 <h3>No worries</h3>
@@ -83,7 +85,7 @@ import { AppTitle } from '@app/app/components/title.js';
               </dui-dialog-actions>
             </dui-dialog>
 
-            <dui-dialog #dialog2 [minHeight]="250" [minWidth]="500">
+            <dui-dialog #dialog2 [minHeight]="250" [minWidth]="500" normalize-style>
               <ng-container *dialogContainer>
                 <div style="position: absolute;left: 0; right: 0; top: 0; bottom: 0; border: 2px solid red;">
                   I'm absolute

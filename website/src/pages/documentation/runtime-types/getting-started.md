@@ -58,7 +58,7 @@ And run it with `ts-node`:
 
 ## Interactive Example
 
-<codebox src="https://codesandbox.io/p/sandbox/deepkit-runtime-types-fjmc2f?file=index.ts"></codebox>
+Here is a codesandbox example: https://codesandbox.io/p/sandbox/deepkit-runtime-types-fjmc2f?file=index.ts
 
 ## Type compiler
 

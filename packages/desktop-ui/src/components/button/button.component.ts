@@ -546,8 +546,8 @@ export class ButtonGroupComponent implements AfterViewInit, OnDestroy, AlignedBu
                 this.element.nativeElement.style.paddingLeft = newLeft;
                 return;
             }
+            this.element.nativeElement.style.paddingLeft = '0px';
         }
-        this.element.nativeElement.style.paddingLeft = '0px';
     }
 }
 
@@ -628,6 +628,7 @@ export class FileChooserDirective extends ValueAccessorBase<File[]> implements O
 export interface FilePickerItem {
     data: Uint8Array;
     name: string;
+    mimeType: string;
 }
 
 function readFile(file: File): Promise<Uint8Array | undefined> {
@@ -687,7 +688,7 @@ export class FilePickerDirective extends ValueAccessorBase<FilePickerItem[]> imp
                         if (file) {
                             const uint8Array = await readFile(file);
                             if (uint8Array) {
-                                res.push({ data: uint8Array, name: file.name });
+                                res.push({ data: uint8Array, name: file.name, mimeType: file.type });
                             }
                         }
                     }
@@ -697,7 +698,7 @@ export class FilePickerDirective extends ValueAccessorBase<FilePickerItem[]> imp
                     if (file) {
                         const data = await readFile(file);
                         if (data) {
-                            this.setValue([{ data, name: file.name }]);
+                            this.setValue([{ data, name: file.name, mimeType: file.type }]);
                         }
                     }
                 }
@@ -778,7 +779,7 @@ export class FileDropDirective extends ValueAccessorBase<FilePickerItem[]> imple
                     if (file) {
                         const uint8Array = await readFile(file);
                         if (uint8Array) {
-                            res.push({ data: uint8Array, name: file.name });
+                            res.push({ data: uint8Array, name: file.name, mimeType: file.type });
                         }
                     }
                 }
@@ -790,7 +791,7 @@ export class FileDropDirective extends ValueAccessorBase<FilePickerItem[]> imple
                 if (file) {
                     const uint8Array = await readFile(file);
                     if (uint8Array) {
-                        res.push({ data: uint8Array, name: file.name });
+                        res.push({ data: uint8Array, name: file.name, mimeType: file.type });
                     }
                 }
             }

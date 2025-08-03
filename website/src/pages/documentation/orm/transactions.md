@@ -81,4 +81,5 @@ await database.transaction(async (session) => {
 
 While transactions for MySQL, PostgreSQL, and SQLite work by default, you must first set up MongoDB as a "replica set".
 
-To convert a standard MongoDB instance to a replica set, please refer to the official documentation link:https://docs.mongodb.com/manual/tutorial/convert-standalone-to-replica-set/[Convert a Standalone to a Replica Set].
+To convert a standard MongoDB instance to a replica set, please refer to the official documentation link:
+[Convert a Standalone to a Replica Set](https://docs.mongodb.com/manual/tutorial/convert-standalone-to-replica-set).

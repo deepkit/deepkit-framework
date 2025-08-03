@@ -20,6 +20,9 @@
       "path": "./packages/broker/tsconfig.esm.json"
     },
     {
+      "path": "./packages/broker-redis/tsconfig.esm.json"
+    },
+    {
       "path": "./packages/bson/tsconfig.esm.json"
     },
     {
@@ -48,6 +51,9 @@
     },
     {
       "path": "./packages/filesystem-google/tsconfig.esm.json"
+    },
+    {
+      "path": "./packages/filesystem-database/tsconfig.esm.json"
     },
     {
       "path": "./packages/filesystem-sftp/tsconfig.esm.json"

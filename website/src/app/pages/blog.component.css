@@ -1,0 +1,86 @@
+:host {
+  display: flex;
+  flex-direction: row;
+  min-height: calc(100vh - 35px);
+}
+
+.logo-container {
+  flex: 0;
+  display: flex;
+  justify-content: right;
+  padding-left: 15px;
+
+  dw-header-logo {
+    flex: 0 1 270px;
+  }
+}
+
+.header {
+  /*background: #090A0B;*/
+}
+
+.sidebar {
+  flex: 0 0 calc(50% - 280px);
+  position: relative;
+  /*background: #090A0B;*/
+
+
+  @media (max-width: 1080px) {
+    display: none;
+  }
+
+  nav {
+    padding-top: 45px;
+    margin-right: 12px;
+  }
+
+  a, a:link {
+    display: flex;
+    flex-direction: row;
+    justify-content: end;
+    padding: 5px 15px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: rgba(227, 236, 240, 0.95);
+
+    &:hover {
+      background: #0F1217;
+      color: white;
+      text-decoration: none;
+    }
+
+    > :first-child {
+      padding-right: 25px;
+      color: rgba(227, 236, 240, 0.75);
+      @media (max-width: 1330px) {
+        display: none;
+      }
+    }
+
+    > :last-child {
+      flex: 0 1 244px;
+      text-align: left;
+    }
+  }
+}
+
+.layout {
+  /*background: #090A0B;*/
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 6px;
+
+  @media (max-width: 1080px) {
+    max-width: 850px;
+    margin: 0 auto;
+  }
+
+  .header {
+    flex: 0;
+  }
+}
+
+dw-header-nav {
+  max-width: 830px;
+}

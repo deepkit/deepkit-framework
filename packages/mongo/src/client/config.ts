@@ -13,7 +13,7 @@ import { CommandOptions, ConnectionOptions } from './options.js';
 import { parse as parseUrl } from 'url';
 import { parse as parseQueryString } from 'querystring';
 import { MongoError } from './error.js';
-import { arrayRemoveItem, eachPair, singleStack } from '@deepkit/core';
+import { arrayRemoveItem, singleStack } from '@deepkit/core';
 import { resolveSrvHosts } from './dns.js';
 import { cast, ReflectionClass } from '@deepkit/type';
 import { ReadPreferenceMessage, TransactionalMessage, WriteConcernMessage } from './command/command.js';
@@ -370,7 +370,7 @@ export class MongoClientConfig {
             const hostsData = await this.resolveSrvHosts();
             const options = { ...hostsData.options ? parseQueryString(hostsData.options) : {} };
             const partialOptions = cast<ConnectionOptions>(options) as {};
-            for (const [k, v] of eachPair(partialOptions)) {
+            for (const [k, v] of Object.entries(partialOptions)) {
                 this.options[k] = v;
             }
             const hosts = hostsData.hosts;

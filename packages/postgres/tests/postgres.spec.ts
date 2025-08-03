@@ -2,9 +2,10 @@ import { expect, test } from '@jest/globals';
 import pg from 'pg';
 import { assertInstanceOf } from '@deepkit/core';
 import { DatabaseError, DatabaseInsertError, UniqueConstraintFailure } from '@deepkit/orm';
-import { AutoIncrement, DatabaseField, PrimaryKey, UUID, Unique, cast, entity, uuid } from '@deepkit/type';
+import { AutoIncrement, cast, DatabaseField, entity, PrimaryKey, Unique, UUID, uuid } from '@deepkit/type';
 
 import { databaseFactory } from './factory.js';
+import { ConsoleLogger } from '@deepkit/logger';
 
 
 test('count', async () => {
@@ -17,7 +18,7 @@ test('count', async () => {
     pg.types.setTypeParser(1700, parseFloat);
     pg.types.setTypeParser(20, BigInt);
 
-    (BigInt.prototype as any).toJSON = function () {
+    (BigInt.prototype as any).toJSON = function() {
         return this.toString();
     };
 
@@ -189,7 +190,9 @@ test('json field and query', async () => {
 test('unique constraint 1', async () => {
     class Model {
         id: number & PrimaryKey & AutoIncrement = 0;
-        constructor(public username: string & Unique = '') {}
+
+        constructor(public username: string & Unique = '') {
+        }
     }
 
     const database = await databaseFactory([Model]);
@@ -203,7 +206,7 @@ test('unique constraint 1', async () => {
         await expect(database.persist(m1)).rejects.toBeInstanceOf(UniqueConstraintFailure);
 
         try {
-            await database.persist(m1)
+            await database.persist(m1);
         } catch (error: any) {
             assertInstanceOf(error, UniqueConstraintFailure);
             assertInstanceOf(error.cause, DatabaseInsertError);
@@ -221,14 +224,14 @@ test('unique constraint 1', async () => {
     }
 
     {
-        const m = await database.query(Model).filter({username: 'paul'}).findOne();
+        const m = await database.query(Model).filter({ username: 'paul' }).findOne();
         m.username = 'peter';
         await expect(database.persist(m)).rejects.toThrow('Key (username)=(peter) already exists');
         await expect(database.persist(m)).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
 
     {
-        const p = database.query(Model).filter({username: 'paul'}).patchOne({username: 'peter'});
+        const p = database.query(Model).filter({ username: 'paul' }).patchOne({ username: 'peter' });
         await expect(p).rejects.toThrow('Key (username)=(peter) already exists');
         await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
@@ -249,5 +252,46 @@ test('database field name with filter', async () => {
     {
         const dbUser = await database.query(User).filterField('id', user.id).findOne();
         expect(dbUser.id).toEqual(user.id);
+    }
+});
+
+test('json array', async () => {
+    type Block = { type: string, data: any };
+
+    class Model {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        blocks: any[] = [];
+        createdAt: Date = new Date();
+        updatedAt: Date = new Date();
+
+        publishedAt: Date = new Date(0);
+        published: boolean = false;
+
+        slug: string = '';
+        title: string = '';
+    }
+
+    const database = await databaseFactory([Model]);
+    const logger = new ConsoleLogger();
+    logger.setLevel('debug');
+    database.setLogger(logger);
+
+    {
+        const model = new Model();
+        model.title = '13';
+        model.blocks = [{ type: 'a', data: { yes: 1 } }];
+        await database.persist(model);
+    }
+
+    {
+        const model = await database.query(Model).findOne();
+        model.title = '14';
+        model.blocks = [{ type: 'a', data: { yes: 0 } }, { type: 'a', data: { no: '23' } }];
+        await database.persist(model);
+    }
+    {
+        const model = await database.query(Model).findOne();
+        expect(model.title).toBe('14');
+        expect(model.blocks.length).toEqual(2);
     }
 });

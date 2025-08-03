@@ -1,13 +1,4 @@
-import {
-    getTypeJitContainer,
-    getValidatorFunction,
-    ReflectionKind,
-    Type,
-    TypeObjectLiteral,
-    TypePropertySignature,
-    ValidationError,
-    ValidationErrorItem,
-} from '@deepkit/type';
+import { getTypeJitContainer, getValidatorFunction, ReflectionKind, Type, TypeObjectLiteral, TypePropertySignature, ValidationError, ValidationErrorItem } from '@deepkit/type';
 import { getBSONDeserializer } from './bson-deserializer.js';
 import { BSONSerializer, BSONSerializerState, getBSONSerializer } from './bson-serializer.js';
 
@@ -28,10 +19,10 @@ interface Options {
  * This abstraction also calls validation on the decoded and encoded values.
  */
 export function getBsonEncoder(type: Type, options: Partial<Options> = {}): BsonEncoder {
-    options = Object.assign({ validation: true }, options) as Options;
-
     const container = getTypeJitContainer(type);
     if (container.bsonEncoder) return container.bsonEncoder;
+
+    options = Object.assign({ validation: true }, options) as Options;
 
     const standaloneType = type.kind === ReflectionKind.objectLiteral || (type.kind === ReflectionKind.class && type.types.length);
 
@@ -46,7 +37,7 @@ export function getBsonEncoder(type: Type, options: Partial<Options> = {}): Bson
     } : (data: any) => data;
 
     if (!standaloneType) {
-        //BSON only supports objects, so we wrap it into a {v: type} object.
+        // BSON only supports objects, so we wrap it into a {v: type} object.
         const wrappedType: TypeObjectLiteral = {
             kind: ReflectionKind.objectLiteral,
             types: [{

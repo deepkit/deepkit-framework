@@ -959,6 +959,7 @@ export class MediaComponent implements OnInit, OnDestroy {
     onOpen() {
         if (!this.selected.length || this.renameFile) return;
         const files = this.getSelectedFiles();
+        if (!files.length) return;
         this.open(files[0].path, true);
     }
 

@@ -49,13 +49,7 @@ export async function staticOnRoute(
     return new Promise(resolve => {
         stat(finalLocalPath, (err, stat) => {
             if (stat && stat.isFile()) {
-                event.routeFound(
-                    new RouteConfig('static', ['GET'], event.url, {
-                        type: 'function',
-                        fn: staticServe,
-                    }),
-                    () => ({ arguments: [localPath, relativePath, event.request, event.response], parameters: {} }),
-                );
+                event.routeFoundCallback(staticServe, [localPath, relativePath, event.request, event.response]);
             }
             resolve(undefined);
         });

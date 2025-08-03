@@ -1,5 +1,5 @@
 import { App } from '@deepkit/app';
-import { FrameworkModule, onServerMainBootstrap } from '@deepkit/framework';
+import { FrameworkModule, onServerMainBootstrap, serveFilesystem } from '@deepkit/framework';
 import { AppConfig } from './config';
 import { MainController } from '@app/server/controller/main.controller';
 import { Search } from '@app/server/search';
@@ -17,15 +17,29 @@ import { MarkdownParser } from '@app/common/markdown';
 import { migrate } from '@app/server/commands/migrate';
 import { importExamples, importQuestions } from '@app/server/commands/import';
 import { BenchmarkController, BenchmarkHttpController } from '@app/server/controller/benchmark.controller';
-import { AngularModule, RequestHandler } from '@deepkit/angular-ssr';
-import { isMainModule } from '@angular/ssr/node';
+import { AdminController } from '@app/server/controller/admin.controller';
+import { RpcKernelSecurity, SessionState } from '@deepkit/rpc';
+import { AppRpcKernelSecurity, AppSession } from '@app/server/rpc';
+import { UserAuthentication } from '@app/server/user-authentication';
+import { AdminFilesController } from '@app/server/controller/admin-files.controller';
+import { Filesystem } from '@deepkit/filesystem';
+import { FilesystemDatabaseAdapter } from '@deepkit/filesystem-database';
+import { translateCommand } from '@app/server/commands/translate';
 
 (global as any).window = undefined;
 (global as any).document = undefined;
 
+function createFilesystem(database: Database) {
+    return new Filesystem(new FilesystemDatabaseAdapter({ database }), {
+        baseUrl: '/media',
+    });
+}
+
 export const app = new App({
     config: AppConfig,
     controllers: [
+        AdminController,
+        AdminFilesController,
         MainController,
         WebController,
         BenchmarkController,
@@ -37,7 +51,17 @@ export const app = new App({
         Search,
         Url,
         MarkdownParser,
+        UserAuthentication,
         { provide: Database, useClass: MainDatabase },
+        { provide: Filesystem, useFactory: createFilesystem },
+        { provide: RpcKernelSecurity, scope: 'rpc', useClass: AppRpcKernelSecurity },
+        {
+            provide: AppSession, scope: 'rpc', useFactory: (sessionState: SessionState) => {
+                const session = sessionState.getSession();
+                if (session instanceof AppSession) return session;
+                throw new Error('Not authenticated');
+            },
+        },
         {
             provide: OpenAI, useFactory(openaiApiKey: AppConfig['openaiApiKey']) {
                 return new OpenAI({ apiKey: openaiApiKey });
@@ -62,21 +86,12 @@ export const app = new App({
         new FrameworkModule({
             migrateOnStartup: true, //yolo
             httpRpcBasePath: 'api/v1',
-            broker: {
-                startOnBootstrap: false,
-            },
-        }),
-        new AngularModule({
-            moduleUrl: import.meta.url,
-            serverBaseUrl: 'http://localhost:8080',
         }),
     ],
 });
 
 app.setup((module, config) => {
-    if (config.baseUrl) {
-        module.getImportedModuleByClass(AngularModule).configure({ publicBaseUrl: config.baseUrl });
-    }
+    serveFilesystem<Filesystem>(module, { baseUrl: 'media/' });
 });
 
 app.command('search:index', async (search: Search) => await search.index());
@@ -94,19 +109,17 @@ app.command('import:questions', importQuestions);
 app.command('import:examples', importExamples);
 app.command('migrate', migrate);
 
+app.command('translate', translateCommand);
+
 app.listen(onServerMainBootstrap, registerBot);
 app.listen(onServerMainBootstrap, (event, parser: MarkdownParser) => parser.load());
 
-app.loadConfigFromEnv({ namingStrategy: 'same', prefix: 'app_', envFilePath: ['local.env'] });
+app.loadConfigFromEnv({ namingStrategy: 'upper', prefix: 'APP_', envFilePath: ['local.env'] });
 
-const isBuild = process.env.BUILD === 'angular'; //detecting prerender
-const isMain = isMainModule(import.meta.url);
+// app.configureProvider<Logger>(logger => {
+//     logger.setLevel('debug');
+// });
 
-if (isMain) {
+if ('undefined' !== typeof module && require.main === module) {
     void app.run();
 }
-
-export const reqHandler =
-    isBuild || isMain
-        ? () => undefined
-        : app.get(RequestHandler).create();

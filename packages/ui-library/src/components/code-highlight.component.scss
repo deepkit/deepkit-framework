@@ -57,12 +57,12 @@ pre.codeHighlight[title] {
 
 pre.codeHighlight[title]:before {
     display: block;
-    text-align: center;
+    text-align: left;
     content: attr(title);
     margin-bottom: 10px;
-    font-size: 14px;
-    color: #b0b0b0;
-    font-style: italic;
+    font-size: 12px;
+    color: #818181;
+    border-bottom: 1px solid rgba(129, 129, 129, 0.2);
 }
 
 code[class*="language-"],
@@ -235,13 +235,10 @@ pre[class*="language-"] {
 
 }
 
-
-
 .dui-theme-light {
     code[class*="language-"],
     pre[class*="language-"] {
         color: #111b27;
-        background: none;
         font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
         text-align: left;
         white-space: pre;

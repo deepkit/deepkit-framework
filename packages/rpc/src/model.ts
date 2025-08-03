@@ -375,7 +375,7 @@ export interface rpcClientId {
 }
 
 export interface rpcChunk {
-    id: number; //chunk id
+    seq: number; //sequence number of this chunk
     total: number; //size in bytes
     v: Uint8Array;
 }

@@ -1,15 +1,21 @@
-
-/**
- * @public
+/*
+ * Deepkit Framework
+ * Copyright (C) 2021 Deepkit UG, Marc J. Schmidt
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License.
+ *
+ * You should have received a copy of the MIT License along with this program.
  */
+
+/** @group Array */
+
 export function arrayHasItem<T>(array: T[], item: T): boolean {
     return -1 !== array.indexOf(item);
 }
 
 /**
  * Clears the array so its empty. Returns the amount of removed items.
- *
- * @public
  */
 export function arrayClear<T>(array: T[]): number {
     const found = array.length;
@@ -19,8 +25,6 @@ export function arrayClear<T>(array: T[]): number {
 
 /**
  * Removes on particular item by reference of an array.
- *
- * @public
  */
 export function arrayRemoveItem<T>(array: T[], item: T): boolean {
     const index = array.indexOf(item);
@@ -49,8 +53,6 @@ export function arrayRemoveItem<T>(array: T[], item: T): boolean {
  * arrayMoveItem(array, 'c', +1); //['a', 'b', 'c']
  *
  * ```
- *
- * @public
  */
 export function arrayMoveItem<A extends T[], T>(array: A, item: T, move: number): A {
     if (move === 0) return array;

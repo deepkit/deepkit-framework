@@ -15,28 +15,26 @@ import { AppTitle } from '@app/app/components/title.js';
         AppTitle,
     ],
     template: `
-      <div class="app-content normalize-text">
-        <div class="app-pre-headline">Desktop UI</div>
-        <h1>Checkbox</h1>
-        <app-title value="Checkbox"></app-title>
+      <div class="app-pre-headline">Desktop UI</div>
+      <h1>Checkbox</h1>
+      <app-title value="Checkbox"></app-title>
 
-        <doc-code-frame>
-          <div>
-            <p>
-              <dui-checkbox [(ngModel)]="active">Disable all</dui-checkbox>
-              <br />
-              Active: {{ active }}
-            </p>
-            <p>
-              <dui-checkbox [(ngModel)]="active" [disabled]="true">Disabled</dui-checkbox>
-              <br />
-            </p>
-          </div>
-          <code-highlight lang="html" [code]="code" />
-        </doc-code-frame>
+      <doc-code-frame>
+        <div>
+          <p>
+            <dui-checkbox [(ngModel)]="active">Disable all</dui-checkbox>
+            <br />
+            Active: {{ active }}
+          </p>
+          <p>
+            <dui-checkbox [(ngModel)]="active" [disabled]="true">Disabled</dui-checkbox>
+            <br />
+          </p>
+        </div>
+        <code-highlight lang="html" [code]="code" />
+      </doc-code-frame>
 
-        <api-doc component="CheckboxComponent"></api-doc>
-      </div>
+      <api-doc component="CheckboxComponent"></api-doc>
     `,
 })
 export class DocDesktopUICheckboxComponent {

@@ -8,19 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import {
-    AbstractClassType,
-    arrayRemoveItem,
-    ClassType,
-    getClassName,
-    getInheritanceChain,
-    getParentClass,
-    indent,
-    isArray,
-    isClass,
-    isGlobalClass,
-    TypeAnnotation,
-} from '@deepkit/core';
+import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, getInheritanceChain, getParentClass, indent, isArray, isClass, isGlobalClass, TypeAnnotation } from '@deepkit/core';
 import { TypeNumberBrand } from '@deepkit/type-spec';
 import { getProperty, ReceiveType, reflect, ReflectionClass, resolveReceiveType, toSignature } from './reflection.js';
 import { isExtendable } from './extends.js';
@@ -549,7 +537,11 @@ export type FindType<T extends Type, LOOKUP extends ReflectionKind> = T extends 
  * type t = {a: InlineRuntimeType<typeof value>}
  * ```
  */
-export type InlineRuntimeType<T extends ReflectionClass<any> | Type | number | string | boolean | bigint> = T extends ReflectionClass<infer K> ? K : any;
+export type InlineRuntimeType<T extends ReceiveType<unknown> | undefined | ReflectionClass<any> | Type | number | string | boolean | bigint, R = any> = T extends ReflectionClass<infer K>
+    ? K : T extends ReceiveType<unknown>
+        ? R : T extends Type ? R
+            : T extends undefined
+                ? never : T;
 
 export function isType(entry: any): entry is Type {
     return entry && 'object' === typeof entry && 'number' === typeof entry.kind;

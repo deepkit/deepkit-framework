@@ -50,18 +50,7 @@ import {
     TypePropertySignature,
     TypeTemplateLiteral,
 } from './type.js';
-import {
-    AbstractClassType,
-    arrayRemoveItem,
-    ClassType,
-    getClassName,
-    isArray,
-    isClass,
-    isFunction,
-    isGlobalClass,
-    isPrototypeOfBase,
-    stringifyValueWithType,
-} from '@deepkit/core';
+import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isArray, isClass, isFunction, isGlobalClass, isPrototypeOfBase, stringifyValueWithType } from '@deepkit/core';
 import { Packed, resolvePacked, resolveRuntimeType } from './processor.js';
 import { NoTypeReceived } from '../utils.js';
 import { findCommonLiteral } from '../inheritance.js';
@@ -81,7 +70,7 @@ import { SerializedTypes, serializeType } from '../type-serialization.js';
  * }
  * ```
  */
-export type ReceiveType<T> = Packed | Type | ClassType<T>;
+export type ReceiveType<T> = Packed<T> | ClassType<T> | Type;
 
 export function resolveReceiveType(type?: Packed | Type | Function | ClassType | AbstractClassType | ReflectionClass<any>): Type {
     if (!type) throw new NoTypeReceived();

@@ -1,29 +1,37 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnDestroy } from '@angular/core';
+import { AppImagesComponent } from '@app/app/components/images.component.js';
 
 @Component({
     selector: 'app-image',
     standalone: true,
     template: `
-        <a target="_blank" href="{{src}}">
-            <img alt="{{alt || altFromSrc}}" src="{{src}}"/>
-        </a>
+      <a target="_blank" href="{{src}}">
+        <img alt="{{alt || altFromSrc}}" src="{{src}}" />
+      </a>
     `,
     styles: [`
-        :host {
-            display: flex;
-            max-width: 100%;
-            text-align: center;
-        }
+      :host {
+        display: flex;
+        max-width: 100%;
+        text-align: center;
+      }
 
-        img {
-            height: 100%;
-            object-fit: contain;
-        }
-    `]
+      img {
+        object-fit: contain;
+      }
+    `],
 })
-export class ImageComponent {
+export class ImageComponent implements OnDestroy {
     @Input() src!: string;
     @Input() alt?: string;
+
+    constructor(protected images: AppImagesComponent) {
+        images.registerImage(this);
+    }
+
+    ngOnDestroy() {
+        this.images.unregisterImage(this);
+    }
 
     get altFromSrc(): string {
         let name = this.src.substr(this.src.lastIndexOf('.'));

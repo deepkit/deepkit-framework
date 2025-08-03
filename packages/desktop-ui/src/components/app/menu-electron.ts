@@ -25,7 +25,7 @@ export function buildElectronMenuTemplate(menu: MenuBase) {
     const sublabel = menu.sublabel();
     if (sublabel) result['sublabel'] = sublabel;
 
-    if (!menu.enabled()) result['enabled'] = false;
+    if (menu.disabled()) result['enabled'] = false;
     if (menu.type) result['type'] = menu.type;
 
     const accelerator = menu.accelerator();

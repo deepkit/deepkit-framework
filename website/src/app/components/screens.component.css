@@ -48,19 +48,19 @@
   }
 }
 
-.screen {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 30px;
-  flex-basis: 350px;
-  flex-shrink: 0;
-  flex-grow: 0;
+/*.screen {*/
+/*  display: inline-flex;*/
+/*  align-items: center;*/
+/*  justify-content: center;*/
+/*  margin-right: 30px;*/
+/*  flex-basis: 350px;*/
+/*  flex-shrink: 0;*/
+/*  flex-grow: 0;*/
 
-  a, img {
-    max-width: 100%;
-    max-height: 100%;
-    height: 250px;
-    mix-blend-mode: multiply;
-  }
-}
+/*  a, img {*/
+/*    max-width: 100%;*/
+/*    max-height: 100%;*/
+/*    height: 250px;*/
+/*    mix-blend-mode: multiply;*/
+/*  }*/
+/*}*/

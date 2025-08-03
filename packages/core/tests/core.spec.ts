@@ -8,23 +8,11 @@ import {
     escapeRegExp,
     getClassName,
     getClassTypeFromInstance,
+    getCurrentDirName,
+    getCurrentFileName,
     getObjectKeysSize,
     getParentClass,
     getPathValue,
-    isArray,
-    isAsyncFunction,
-    isClass,
-    isClassInstance,
-    isConstructable,
-    isFunction,
-    isGlobalClass,
-    isIterable,
-    isNumeric,
-    isObject,
-    isPlainObject,
-    isPromise,
-    isPrototypeOfBase,
-    isUndefined,
     iterableSize,
     rangeArray,
     setPathValue,
@@ -32,6 +20,7 @@ import {
     stringifyValueWithType,
     zip,
 } from '../src/core.js';
+import { isArray, isAsyncFunction, isClass, isClassInstance, isConstructable, isFunction, isGlobalClass, isIterable, isNumeric, isObject, isPlainObject, isPromise, isPrototypeOfBase, isUndefined } from '../src/type-guards.js';
 
 class SimpleClass {
     constructor(public name: string) {
@@ -55,7 +44,7 @@ test('helper getClassName', () => {
 });
 
 test('error', () => {
-    const custom = new CustomError('my message', {cause: new Error('that is the cause')});
+    const custom = new CustomError('my message', { cause: new Error('that is the cause') });
     expect((custom as any).cause.message).toEqual('that is the cause');
 });
 
@@ -67,7 +56,7 @@ test('helper isObject', () => {
     expect(isObject(undefined)).toBe(false);
     expect(isObject(() => {
     })).toBe(false);
-    expect(isObject(function () {
+    expect(isObject(function() {
     })).toBe(false);
     expect(isObject(1)).toBe(false);
     expect(isObject('1')).toBe(false);
@@ -85,7 +74,7 @@ test('helper isPromise', async () => {
     expect(isPromise(undefined)).toBe(false);
     expect(isPromise(() => {
     })).toBe(false);
-    expect(isPromise(function () {
+    expect(isPromise(function() {
     })).toBe(false);
     expect(isPromise(1)).toBe(false);
     expect(isPromise('1')).toBe(false);
@@ -131,9 +120,9 @@ test('helper isFunction', () => {
     })).toBe(true);
     expect(isFunction(async () => {
     })).toBe(true);
-    expect(isFunction(function () {
+    expect(isFunction(function() {
     })).toBe(true);
-    expect(isFunction(async function () {
+    expect(isFunction(async function() {
     })).toBe(true);
     expect(isFunction(class Peter {
     })).toBe(false);
@@ -142,7 +131,7 @@ test('helper isFunction', () => {
     expect(isFunction(class {
     })).toBe(false);
 
-    const fn = function () {
+    const fn = function() {
     };
     fn.toString = () => 'class{}';
     expect(isFunction(fn)).toBe(false);
@@ -165,9 +154,9 @@ test('helper isAsyncFunction', () => {
     })).toBe(false);
     expect(isAsyncFunction(async () => {
     })).toBe(true);
-    expect(isAsyncFunction(function () {
+    expect(isAsyncFunction(function() {
     })).toBe(false);
-    expect(isAsyncFunction(async function () {
+    expect(isAsyncFunction(async function() {
     })).toBe(true);
 });
 
@@ -187,9 +176,9 @@ test('helper isClass', () => {
     })).toBe(false);
     expect(isClass(async () => {
     })).toBe(false);
-    expect(isClass(function () {
+    expect(isClass(function() {
     })).toBe(false);
-    expect(isClass(async function () {
+    expect(isClass(async function() {
     })).toBe(false);
 
     expect(isClass(SimpleClass)).toBe(true);
@@ -205,7 +194,7 @@ test('helper isPlainObject', () => {
     expect(isPlainObject('1')).toBe(false);
     expect(isPlainObject(() => {
     })).toBe(false);
-    expect(isPlainObject(function () {
+    expect(isPlainObject(function() {
     })).toBe(false);
 
     expect(isPlainObject(new Date())).toBe(false);
@@ -250,11 +239,11 @@ test('helper is isUndefined', () => {
 
 test('test getPathValue', () => {
     expect(getPathValue({
-        bla: 3
+        bla: 3,
     }, 'bla')).toBe(3);
 
     expect(getPathValue({
-        bla: 3
+        bla: 3,
     }, 'bla2', null)).toBe(null);
 
     expect(getPathValue({}, 'bla', 'another')).toBe('another');
@@ -264,28 +253,28 @@ test('test getPathValue', () => {
 test('test getPathValue deep', () => {
     expect(getPathValue({
         bla: {
-            mowla: 5
-        }
+            mowla: 5,
+        },
     }, 'bla.mowla')).toBe(5);
 
     expect(getPathValue({
-        'bla.mowla': 5
+        'bla.mowla': 5,
     }, 'bla.mowla')).toBe(5);
 
     expect(getPathValue({
         bla: {
             mowla: {
-                evenDeeper: true
-            }
-        }
+                evenDeeper: true,
+            },
+        },
     }, 'bla.mowla.evenDeeper')).toBe(true);
 
     expect(getPathValue({
         bla: {
             mowla: {
-                evenDeeper: true
-            }
-        }
+                evenDeeper: true,
+            },
+        },
     }, 'bla.mowla')['evenDeeper']).toBe(true);
 });
 
@@ -416,9 +405,9 @@ test('isConstructable', () => {
     })).toBe(true);
     expect(isConstructable(class {
     }.bind(undefined))).toBe(true);
-    expect(isConstructable(function () {
+    expect(isConstructable(function() {
     })).toBe(true);
-    expect(isConstructable(function () {
+    expect(isConstructable(function() {
     }.bind(undefined))).toBe(true);
     expect(isConstructable(() => {
     })).toBe(false);
@@ -426,7 +415,7 @@ test('isConstructable', () => {
     }).bind(undefined))).toBe(false);
     expect(isConstructable(async () => {
     })).toBe(false);
-    expect(isConstructable(async function () {
+    expect(isConstructable(async function() {
     })).toBe(false);
     expect(isConstructable(function* () {
     })).toBe(false);
@@ -621,8 +610,14 @@ test('isGlobalClass', () => {
 
     class MyError extends Error {
     }
+
     expect(isGlobalClass(Error)).toBe(true);
     expect(isGlobalClass(MyError)).toBe(false);
 
     expect(isGlobalClass(Uint8Array)).toBe(true);
+});
+
+test('current file', () => {
+    expect(getCurrentFileName().endsWith('packages/core/tests/core.spec.ts')).toBe(true);
+    expect(getCurrentDirName().endsWith('packages/core/tests')).toBe(true);
 });

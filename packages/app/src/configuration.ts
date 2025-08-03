@@ -14,7 +14,7 @@ import { existsSync, readFileSync } from 'fs';
 class ConfigOptionNotFound extends Error {
 }
 
-export function resolveEnvFilePath(path: string): string | undefined {
+function resolveEnvFilePath(path: string): string | undefined {
     const resolvedPath = isAbsolute(path) ? path : findFileUntilPackageRoot(path);
     if (!resolvedPath || !existsSync(resolvedPath)) return undefined;
 
@@ -38,6 +38,9 @@ function findFileUntilPackageRoot(fileName: string): string | undefined {
     }
 }
 
+/**
+ * @internal
+ */
 export class EnvConfiguration {
     protected container: { [name: string]: any } = {};
 

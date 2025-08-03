@@ -8,7 +8,7 @@
   "files": [
     "src/main.ts",
     "src/main.server.ts",
-    "src/server/app.ts"
+    "src/server/app.angular.ts"
   ],
   "include": [
     "src/**/*.d.ts"

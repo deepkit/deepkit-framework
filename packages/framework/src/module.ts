@@ -21,19 +21,12 @@ import { http, HttpLogger, HttpModule, HttpRegExp, HttpRequest, HttpResponse, se
 import { InjectorContext, ProviderWithScope, Token } from '@deepkit/injector';
 import { BrokerConfig, FrameworkConfig } from './module.config.js';
 import { Logger } from '@deepkit/logger';
-import { SessionHandler } from './session.js';
 import { RpcServer, WebWorkerFactory } from './worker.js';
 import { Stopwatch, StopwatchStore } from '@deepkit/stopwatch';
 import { OrmBrowserController } from './orm-browser/controller.js';
 import { DatabaseListener } from './database/database-listener.js';
 import { Database, DatabaseRegistry } from '@deepkit/orm';
-import {
-    MigrationCreateController,
-    MigrationDownCommand,
-    MigrationPendingCommand,
-    MigrationProvider,
-    MigrationUpCommand,
-} from '@deepkit/sql/commands';
+import { MigrationCreateController, MigrationDownCommand, MigrationPendingCommand, MigrationProvider, MigrationUpCommand } from '@deepkit/sql/commands';
 import { FileStopwatchStore } from './debug/stopwatch/store.js';
 import { DebugProfileFramesCommand } from './cli/debug-debug-frames.js';
 import { rpcClass, RpcKernel, RpcKernelBaseConnection, RpcKernelConnection, RpcKernelSecurity, SessionState } from '@deepkit/rpc';
@@ -94,9 +87,6 @@ export class FrameworkModule extends createModuleClass({
         { provide: BrokerBus, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerBus(adapter) },
         { provide: BrokerKeyValue, useFactory: (adapter: BrokerDeepkitAdapter) => new BrokerKeyValue(adapter) },
 
-        //move to HttpModule?
-        { provide: SessionHandler, scope: 'http' },
-
         // { provide: LiveDatabase, scope: 'rpc' },
         { provide: RpcKernelSecurity, scope: 'rpc' },
 
@@ -133,7 +123,6 @@ export class FrameworkModule extends createModuleClass({
         MigrationProvider,
 
         DatabaseRegistry,
-        SessionHandler,
 
         HttpRequest,
         RpcInjectorContext,

@@ -1,0 +1,54 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  text-align: left;
+}
+
+dui-button-groups {
+  padding: 8px 12px;
+  justify-content: space-around;
+  border-bottom: 1px solid var(--dui-line-sidebar);
+}
+
+dw-header-logo {
+  height: unset;
+  margin: auto;
+  flex: 0;
+
+  ::ng-deep img {
+    height: 20px !important;
+  }
+}
+
+dw-admin-files {
+  flex: 1;
+}
+
+.frame {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px;
+  background: #202020;
+  gap: 10px;
+
+  > * {
+    border-radius: 6px;
+    flex: 1;
+    overflow: hidden;
+    border: 1px solid #ffffff30;
+    box-shadow: 0 2px 15px #00000042;
+  }
+
+  dui-splitter {
+    flex: 0;
+  }
+
+  dui-filesystem {
+    flex: 0 0 300px;
+  }
+}

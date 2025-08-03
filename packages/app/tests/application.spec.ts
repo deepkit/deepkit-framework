@@ -1,11 +1,13 @@
 import { beforeEach, expect, test } from '@jest/globals';
-import { App, AppErrorEvent, AppEvent, AppExecutedEvent, onAppError, onAppExecute, onAppExecuted, onAppShutdown } from '../src/app.js';
-import { ClassType, Inject, isClass } from '@deepkit/core';
+import { App, onAppError, onAppExecute, onAppExecuted, onAppShutdown } from '../src/app.js';
+import { ClassType, getCurrentDirName, Inject, isClass } from '@deepkit/core';
 import { ProviderWithScope, Token } from '@deepkit/injector';
 import { AppModule, createModule, createModuleClass } from '../src/module.js';
-import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, eventDispatcher, EventToken } from '@deepkit/event';
+import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, eventDispatcher, EventOfEventToken, EventToken } from '@deepkit/event';
 import { cli, Command, Flag } from '../src/command.js';
 import { ControllerConfig, ServiceContainer } from '../src/service-container.js';
+
+const dirname = getCurrentDirName();
 
 Error.stackTraceLimit = 100;
 
@@ -53,7 +55,7 @@ test('loadConfigFromEnvVariables', async () => {
 
 test('loadConfigFromEnvFile', async () => {
     const app = new App({ config: Config, providers: [Service], imports: [new BaseModule] });
-    app.loadConfigFromEnv({ envFilePath: __dirname + '/test.env' });
+    app.loadConfigFromEnv({ envFilePath: dirname + '/test.env' });
 
     const service = app.get(Service);
     expect(service.token).toBe('changed5');
@@ -595,10 +597,10 @@ test('events', async () => {
     class MyService {
     }
 
-    let executeEvent: AppEvent | undefined = undefined;
-    let executedEvent: AppExecutedEvent | undefined = undefined;
-    let errorEvent: AppErrorEvent | undefined = undefined;
-    let shutdownEvent: AppEvent | undefined = undefined;
+    let executeEvent: EventOfEventToken<typeof onAppExecute> | undefined = undefined;
+    let executedEvent: EventOfEventToken<typeof onAppExecuted> | undefined = undefined;
+    let errorEvent: EventOfEventToken<typeof onAppError> | undefined = undefined;
+    let shutdownEvent: EventOfEventToken<typeof onAppShutdown> | undefined = undefined;
 
     const app = new App({
             providers: [MyService],

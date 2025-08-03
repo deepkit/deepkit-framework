@@ -11,20 +11,7 @@
 import { arrayRemoveItem, bufferToString, ClassType, createBuffer, ensureError, getClassName } from '@deepkit/core';
 import { ReceiveType, ReflectionKind, resolveReceiveType, serialize, stringifyUuid, Type, typeOf, writeUuid } from '@deepkit/type';
 import { RpcMessageSubject } from '../client/message-subject.js';
-import {
-    AuthenticationError,
-    ControllerDefinition,
-    ForwardedRpcStats,
-    rpcAuthenticate,
-    rpcClientId,
-    RpcError,
-    rpcError,
-    rpcPeerRegister,
-    rpcResponseAuthenticate,
-    RpcStats,
-    RpcTransportStats,
-    RpcTypes,
-} from '../model.js';
+import { AuthenticationError, ControllerDefinition, ForwardedRpcStats, rpcAuthenticate, rpcClientId, RpcError, rpcError, rpcPeerRegister, rpcResponseAuthenticate, RpcStats, RpcTransportStats, RpcTypes } from '../model.js';
 import {
     BodyDecoder,
     createRpcCompositeMessage,
@@ -46,14 +33,7 @@ import { RemoteController } from '../client/client.js';
 import { InjectorContext, InjectorModule, NormalizedProvider, Resolver } from '@deepkit/injector';
 import { Logger, LoggerInterface } from '@deepkit/logger';
 import { RpcAction, rpcClass } from '../decorators.js';
-import {
-    createWriter,
-    RpcBinaryWriter,
-    TransportBinaryMessageChunkWriter,
-    TransportConnection,
-    TransportMessageWriter,
-    TransportOptions,
-} from '../transport.js';
+import { createWriter, RpcBinaryWriter, TransportBinaryMessageChunkWriter, TransportConnection, TransportMessageWriter, TransportOptions } from '../transport.js';
 import { HttpRpcMessage, RpcHttpRequest, RpcHttpResponse } from './http.js';
 import { SingleProgress } from '../progress.js';
 import { DataEvent, EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
@@ -238,8 +218,9 @@ export abstract class RpcKernelBaseConnection {
 
     protected reader = new RpcBinaryMessageReader(
         this.handleMessage.bind(this),
-        (id: number) => {
-            this.writer(createRpcMessage(id, RpcTypes.ChunkAck), this.transportOptions, this.stats);
+        (id: number, active: boolean) => {
+            const message = active ? createRpcMessage(id, RpcTypes.ChunkAck) : createRpcMessage(id, RpcTypes.Error)
+            this.writer(message, this.transportOptions, this.stats);
         },
     );
 

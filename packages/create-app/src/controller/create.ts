@@ -1,10 +1,12 @@
-import { cli } from '@deepkit/app';
+import { cli, findParentPath } from '@deepkit/app';
 import { Logger } from '@deepkit/logger';
-import { existsSync, copySync } from 'fs-extra';
+import { copySync, existsSync } from 'fs-extra';
 import { basename, join } from 'path';
 import { readFileSync, writeFileSync } from 'fs';
-import { findParentPath } from '@deepkit/app';
 import { spawn } from 'child_process';
+import { getCurrentDirName } from '@deepkit/core';
+
+const dirname = getCurrentDirName();
 
 async function exec(command: string, cwd: string): Promise<void> {
     const child = spawn(command, { cwd: cwd, shell: true, stdio: 'inherit' });
@@ -29,7 +31,7 @@ export class CreateController {
         }
         this.logger.log(`Creating project in <green>${localPath}</green> ...`);
 
-        const filesPath = findParentPath('files', __dirname);
+        const filesPath = findParentPath('files', dirname);
         if (!filesPath) throw new Error(`No file template files found`);
         const node_modules = join(filesPath, 'node_modules');
         const package_json = join(filesPath, 'package-lock.json');

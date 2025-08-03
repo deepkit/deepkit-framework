@@ -8,6 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+/** @group String */
+
 export function indent(indentation: number, prefix: string = '') {
     return (str: string = '') => {
         return ' '.repeat(indentation) + str.replace(/\n/g, '\n' + (' '.repeat(indentation)) + prefix);

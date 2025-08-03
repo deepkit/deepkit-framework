@@ -40,11 +40,21 @@ export * from './components/core/render-component.directive';
 export * from './components/dialog/dialog';
 export * from './components/dialog/dialog.component';
 
+export * from './components/filesystem/api';
+export * from './components/filesystem/cache';
+export * from './components/filesystem/filesystem.component';
+export * from './components/filesystem/components/file-uploader.component';
+export * from './components/filesystem/components/file-detail.component';
+export * from './components/filesystem/components/file-quick-look.component';
+export * from './components/filesystem/components/file-thumbnail.component';
+export * from './components/filesystem/components/file-dialog.component';
+
 export * from './components/form/form.component';
 
 export * from './components/icon/icon.component';
 
 export * from './components/indicator/indicator.component';
+export * from './components/indicator/loading-spinner.component';
 
 export * from './components/input/input.component';
 
@@ -75,5 +85,5 @@ export * from './components/window/window-footer.component';
 export * from './components/window/window-header.component';
 export * from './components/window/window-menu';
 export * from './components/window/window-sidebar.component';
+export * from './components/window/window-manager.component';
 export * from './components/window/window-state';
-

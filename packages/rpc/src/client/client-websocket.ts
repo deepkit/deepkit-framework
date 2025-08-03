@@ -52,9 +52,10 @@ export function webSocketFromBaseUrl(baseUrl: string, portMapping: { [name: numb
  * Creates a provider for RpcWebSocketClient that is compatible with Angular and Deepkit.
  * baseUrl needs to be absolute.
  */
-export function provideRpcWebSocketClient(baseUrl: string = typeof location !== 'undefined' ? location.origin : 'http://localhost', portMapping: {
-    [name: number]: number
-} = {}) {
+export function provideRpcWebSocketClient(
+    baseUrl: string = typeof location !== 'undefined' ? location.origin : 'http://localhost',
+    portMapping: { [name: number]: number } = {},
+) {
     return {
         provide: RpcWebSocketClient,
         useFactory: () => new RpcWebSocketClient(webSocketFromBaseUrl(baseUrl, portMapping)),

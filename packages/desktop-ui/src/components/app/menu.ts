@@ -27,7 +27,7 @@ export abstract class MenuBase implements ActiveComponent, OnDestroy {
     label = input<string>();
     sublabel = input<string>();
     icon = input<string>();
-    enabled = input<boolean>(true);
+    disabled = input<boolean>(false);
     accelerator = input<string>();
     role = input<string>();
     hotkey = input<string>('');
@@ -46,6 +46,8 @@ export abstract class MenuBase implements ActiveComponent, OnDestroy {
 
     registeredHotkey = signal('');
     click = output();
+
+    checkboxStyle = false;
 
     public type = '';
     level = signal(0);
@@ -183,8 +185,11 @@ export class MenuRenderDirective implements OnDestroy {
             }
             this.createdViews = [];
 
+            const needsCheckboxStyle = items.some(item => item.visible() && item instanceof MenuCheckboxDirective || item instanceof MenuRadioComponent);
+
             for (const item of items) {
                 if (!item.visible()) continue;
+                item.checkboxStyle = needsCheckboxStyle;
 
                 const view = this.viewContainerRef.createEmbeddedView(this.template(), { $implicit: item });
                 this.createdViews.push(view);
@@ -222,7 +227,6 @@ export class MenuItemTemplate {
       <ng-template #template2 menuItemTemplate let-item>
         @if (item.type === 'separator') {
           <dui-dropdown-separator />
-        } @else if (item.type === 'checkbox') {
         } @else if (item.type === 'radio') {
         } @else if (item.type === 'spacer') {
           @if (item.template(); as itemTemplate) {
@@ -239,6 +243,8 @@ export class MenuItemTemplate {
             </dui-dropdown>
             <dui-dropdown-item [class.first-level]="item.level() === 0"
                                [active]="item.active()"
+                               [checkbox]="item.checkboxStyle"
+                               [disabled]="item.disabled()"
                                (onDomCreation)="registerDropdownItem($event, item)"
                                [openDropdown]="dropdown" [openDropdownHover]="active()">
               @if (!item.label() && item.template(); as itemTemplate) {
@@ -257,6 +263,9 @@ export class MenuItemTemplate {
           } @else {
             <dui-dropdown-item [class.first-level]="item.level() === 1" (click)="activate(item)"
                                [active]="item.active()"
+                               [checkbox]="item.checkboxStyle"
+                               [selected]="selected(item)"
+                               [disabled]="item.disabled()"
                                (onDomCreation)="registerDropdownItem($event, item)"
                                (pointerenter)="hideSiblingsAndAbove(item)">
               @if (!item.label() && item.template(); as itemTemplate) {
@@ -291,7 +300,7 @@ export class MenuItemTemplate {
         justify-self: flex-end;
         margin-left: auto;
       }
-      
+
       .space {
         width: 8px;
       }
@@ -352,6 +361,12 @@ export class MenuComponent implements OnDestroy {
 
     registerDropdownItem(item: Element, menu: MenuBase) {
         this.dropdownItemsMap.set(item, menu);
+    }
+
+    selected(item: MenuBase): boolean {
+        if (item instanceof MenuCheckboxDirective) return item.checked();
+        if (item instanceof MenuRadioComponent) return item.checked();
+        return false;
     }
 
     constructor() {

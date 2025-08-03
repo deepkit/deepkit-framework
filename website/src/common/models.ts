@@ -27,7 +27,7 @@ export const projectMap: { [name: string]: string } = {
     'app': 'Deepkit App',
     'filesystem': 'Deepkit Filesystem',
     'broker': 'Deepkit Broker',
-}
+};
 
 export function link(q: CommunityQuestion) {
     if (q.type === 'example') return `/documentation/${q.category}/examples/${q.slug}`;
@@ -55,14 +55,15 @@ export function bodyToString(body?: string | Content | (string | Content)[]): st
     return result;
 }
 
-export function parseBody(body: Content): { title: string, subline?: Content, intro: Content[], rest: Content[] } {
+export function parseBody(body: Content | Content['children']): { title: string, subline?: Content, intro: Content[], rest: Content[] } {
     let title = '';
     let subline: Content | undefined = undefined;
     const intro: Content[] = [];
     const rest: Content[] = [];
+    const children = Array.isArray(body) ? body : [body];
 
-    for (const child of body.children || []) {
-        if ('string' === typeof child) continue;
+    for (const child of children) {
+        if (!child || 'string' === typeof child) continue;
         if (!title && child.tag === 'h1') {
             title = child.children ? child.children[0] as string : '';
             continue;
@@ -175,7 +176,7 @@ export class CommunityMessage {
     order: number & Index = 0; //0 means first message, initial question, 1 means the first question
     assistant: boolean = false;
 
-    source: ('markdown' | 'community') & DatabaseField<{type: 'text'}> = 'community';
+    source: ('markdown' | 'community') & DatabaseField<{ type: 'text' }> = 'community';
 
     type: string & Index = 'question'; //question, answer, reject, edit, example
     title: string = '';
@@ -194,7 +195,7 @@ export class CommunityMessage {
     discordMessageId?: string & Index;
     discordThreadId?: string & Index;
 
-    meta: {[name: string]: any} = {};
+    meta: { [name: string]: any } = {};
 
     constructor(
         public userId: string,
@@ -297,3 +298,115 @@ export interface UiCodeExample {
 
 
 export const magicSeparator = '##-------------------------------------------------##';
+
+/**
+ * Loosely describes a JSON representation of a Prosemirror document or node
+ */
+type JSONContent = {
+    type?: string;
+    attrs?: Record<string, any>;
+    content?: JSONContent[];
+    marks?: {
+        type: string;
+        attrs?: Record<string, any>;
+        [key: string]: any;
+    }[];
+    text?: string;
+    [key: string]: any;
+};
+
+function serialize(key: string, value: any) {
+    return value === null ? undefined : value;
+}
+
+export function isBlockEqual(a: JSONContent, b: JSONContent): boolean {
+    return JSON.stringify(a, serialize) === JSON.stringify(b, serialize);
+    // if (a.content?.length !== b.content?.length) return false;
+    // if (a.content && b.content) {
+    //     for (let i = 0; i < (a.content?.length || 0); i++) {
+    //         if (!isBlockEqual(a.content[i], b.content[i])) return false;
+    //     }
+    // }
+}
+
+export function isBlocksEqual(a?: JSONContent[], b?: JSONContent[]): boolean {
+    if (!a || !b) {
+        return false;
+    }
+
+    if (a.length !== b.length) {
+        return false;
+    }
+    for (let i = 0; i < a.length; i++) {
+        if (!isBlockEqual(a[i], b[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+export function getTitleFromBlocks(blocks: JSONContent[]): string {
+    const h1 = blocks.find(v => v.type === 'heading' && v.attrs?.level === 1);
+    return h1?.content?.[0]?.text || '';
+}
+
+export function setTitleAndSlugFromBlocks(blog: BlogEntity) {
+    const title = getTitleFromBlocks(blog.content);
+    blog.title = title;
+    blog.slug = slugify(title);
+    blog.image = getImageBlogPost(blog);
+}
+
+export function getImageBlogPost(post: BlogEntity): string {
+    const first = post.content[1];
+    if (!first || first.type !== 'image') return '';
+    return first.attrs?.path || '';
+}
+
+@(entity.name('blog').index(['slug']))
+export class BlogEntity {
+    id: number & PrimaryKey & AutoIncrement = 0;
+    createdAt: Date = new Date();
+    updatedAt: Date = new Date();
+
+    publishedAt: Date = new Date();
+    published: boolean = false;
+
+    /**
+     * If the first content (after header) is an image, this blog entry
+     * will be displayed as a blog image post.
+     */
+    image: string & DatabaseField<{ default: '' }> = '';
+
+    slug: string = '';
+    title: string = '';
+    content: JSONContent[] = [];
+}
+
+// Want in angular pipe the format e.g. "15 Jul 24"
+export const blogDateFormat = 'dd MMM yy';
+
+// Not used yet, but will be used in the future when we converted markdown documentation to more dynamic content.
+@(entity.name('page').index(['url']))
+export class PageEntity {
+    id: number & PrimaryKey & AutoIncrement = 0;
+    createdAt: Date = new Date();
+    updatedAt: Date = new Date();
+
+    /**
+     * Computed when parent slug or self slug changes.
+     */
+    url: string = '';
+
+    slug: string = '';
+    title: string = '';
+
+    link?: '';
+    content?: JSONContent[];
+
+    description?: string;
+
+    level: number = 0; // 0 is root, 1 is first child, etc.
+    left: number = 0; // left position in tree, used for sorting
+    right: number = 0; // right position in tree, used for sorting
+}

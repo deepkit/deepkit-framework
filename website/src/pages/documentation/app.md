@@ -1,20 +1,21 @@
 # Deepkit App
 
-Command-line Interface (CLI) programs are programs that interact via the terminal in the form of text input and text output. The advantage of interacting with the application in this variant is that only a terminal must exist either locally or via an SSH connection.
+The Deepkit App abstraction is the most fundamental building block of a Deepkit application. It is usually where you start building your application.
+It can be seen as a "script", which is executed in a JavaScript environment like Node.js. It is the entry point for your application and provides a way to define CLI commands, services, configuration, events, and more.
 
-Deepkit App in `@deepkit/app` is a framework for building command line applications and is the base for Deepkit Framework. It uses Deepkit's dependency injection container, event system, logger, and other features to provide a solid foundation for your application.
+Command-line Interface (CLI) programs are programs that interact via the terminal in the form of text input and text output. The advantage of interacting with the application in this variant is that only a terminal must exist either locally or via an SSH connection.
 
 It provides:
 
-- Module System
-- Service container with inheritance
-- Dependency Injection
-- Event System
-- Command Line Interface
+- CLI commands
+- Module system
+- Service container
+- Dependency injection
+- Event system
 - Logger
 - Configuration loader (env, dotenv, json)
 
-A CLI application in Deepkit has full access to the DI container and can thus access all providers and configuration options.  The arguments and options of the CLI commands are controlled by method parameters via TypeScript types and are automatically serialized and validated.
+A command in Deepkit has full access to the DI container and can thus access all providers and configuration options. The arguments and options of the CLI commands are controlled by method parameters via TypeScript types and are automatically serialized and validated.
 
 [Deepkit Framework](./framework.md) with `@deepkit/framework` extends this further with an application server for HTTP/RPC, a debugger/profiler, and much more.
 

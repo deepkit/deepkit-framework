@@ -6,14 +6,12 @@ import { MarkdownParser } from '@app/common/markdown';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
 export class PageProcessor {
     constructor(protected parser: MarkdownParser) {
     }
 
     async read(url: string): Promise<string> {
-        const dir = findParentPath('src/pages', __dirname);
+        const dir = findParentPath('src/pages');
         if (!dir) throw new Error('Pages folder not found');
         url = url.replace(/[^a-zA-Z0-9\-_\/]/g, '');
         const file = url + '.md';

@@ -1,13 +1,7 @@
-import {
-    createRpcMessage,
-    readBinaryRpcMessage,
-    RpcBinaryMessageReader,
-    RpcMessage,
-    RpcMessageDefinition,
-    serializeBinaryRpcMessage,
-} from './protocol.js';
+import { createRpcMessage, readBinaryRpcMessage, RpcBinaryMessageReader, RpcMessage, RpcMessageDefinition, serializeBinaryRpcMessage } from './protocol.js';
 import { SingleProgress } from './progress.js';
 import { rpcChunk, RpcError, RpcTransportStats, RpcTypes } from './model.js';
+import { asyncOperation } from '@deepkit/core';
 
 export class TransportOptions {
     /**
@@ -87,7 +81,7 @@ export type RpcBinaryWriter = (buffer: Uint8Array) => void;
  * block valuable memory.
  */
 export class TransportBinaryMessageChunkWriter {
-    protected chunkId = 0;
+    protected pendingChunksForMessage = new Map<number, Promise<unknown>>();
 
     constructor(
         protected reader: RpcBinaryMessageReader,
@@ -103,28 +97,54 @@ export class TransportBinaryMessageChunkWriter {
             .catch(error => console.log('TransportBinaryMessageChunkWriter writeAsync error', error));
     }
 
-    async writeFull(writer: RpcBinaryWriter, buffer: Uint8Array, progress?: SingleProgress): Promise<void> {
-        if (this.options.chunkSize && buffer.byteLength >= this.options.chunkSize) {
-            //split up
-            const chunkId = this.chunkId++;
-            const message = readBinaryRpcMessage(buffer); //we need the original message-id, so the chunks are correctly assigned in Progress tracker
+    protected sendChunks(writer: RpcBinaryWriter, message: RpcMessage, buffer: Uint8Array, progress?: SingleProgress): Promise<void> {
+        return asyncOperation(async (resolve) => {
             let offset = 0;
-            while (offset < buffer.byteLength) {
-                //todo: check back-pressure and wait if necessary
+            let currentResolve: undefined | ((active: boolean) => void);
+            progress?.abortController.signal.addEventListener('abort', () => {
+                writer(serializeBinaryRpcMessage(createRpcMessage(message.id, RpcTypes.Error)));
+                currentResolve?.(false);
+            });
+            let sequence = 0;
+            while (offset < buffer.byteLength && !progress?.aborted) {
                 const slice = buffer.slice(offset, offset + this.options.chunkSize);
                 const chunkMessage = createRpcMessage<rpcChunk>(message.id, RpcTypes.Chunk, {
-                    id: chunkId,
+                    seq: sequence++,
                     total: buffer.byteLength,
                     v: slice,
                 });
                 offset += slice.byteLength;
-                const promise = new Promise((resolve) => {
+                const promise = new Promise<boolean>((resolve) => {
+                    currentResolve = resolve;
                     this.reader.onChunkAck(message.id, resolve);
                 });
                 writer(serializeBinaryRpcMessage(chunkMessage));
-                await promise;
+                const active = await promise;
+                if (!active) break;
                 progress?.set(buffer.byteLength, offset);
             }
+            const aborted = offset < buffer.byteLength;
+            this.reader.removeChunkAck(message.id, aborted);
+            resolve();
+        });
+    }
+
+    async writeFull(writer: RpcBinaryWriter, buffer: Uint8Array, progress?: SingleProgress): Promise<void> {
+        if (this.options.chunkSize && buffer.byteLength >= this.options.chunkSize) {
+            // We need the original message-id, so the chunks are correctly assigned in Progress tracker
+            const message = readBinaryRpcMessage(buffer);
+
+            // Only ever one active chunk stream per message context id
+            while (this.pendingChunksForMessage.has(message.id)) {
+                // wait for previous chunks to be sent
+                await this.pendingChunksForMessage.get(message.id);
+            }
+
+            const promise = this.sendChunks(writer, message, buffer, progress).then(() => {
+                this.pendingChunksForMessage.delete(message.id);
+            });
+            this.pendingChunksForMessage.set(message.id, promise);
+            await promise;
         } else {
             writer(buffer);
             progress?.set(buffer.byteLength, buffer.byteLength);

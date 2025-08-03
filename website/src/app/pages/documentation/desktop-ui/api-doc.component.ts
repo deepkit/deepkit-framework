@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, computed, ContentChildren, inject, Injectable, input, Input, QueryList, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CodeHighlightComponent, ThemeSwitcherComponent } from '@deepkit/ui-library';
+import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { ButtonGroupComponent, InputComponent, pendingTask, TabButtonComponent, TableCellDirective, TableColumnDirective, TableComponent } from '@deepkit/desktop-ui';
 import { derivedAsync } from 'ngxtension/derived-async';
 import { MarkdownParser } from '@app/common/markdown.js';
@@ -10,7 +10,6 @@ import { ContentRenderComponent } from '@app/app/components/content-render.compo
     selector: 'doc-code-frame',
     template: `
       <div>
-        <dui-theme-switcher />
         <div style="margin-bottom: 10px;">
           <dui-button-group>
             <dui-tab-button (click)="showPage('')" [active]="show === ''">Preview</dui-tab-button>
@@ -66,7 +65,7 @@ import { ContentRenderComponent } from '@app/app/components/content-render.compo
     imports: [
         ButtonGroupComponent,
         TabButtonComponent,
-        ThemeSwitcherComponent,
+
     ],
 })
 export class CodeFrameComponent implements AfterViewInit {

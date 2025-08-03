@@ -1,34 +1,19 @@
 /** @reflection never */
 import { describe, expect, test } from '@jest/globals';
 import * as ts from 'typescript';
-import { getPreEmitDiagnostics, ModuleKind, ScriptTarget, TransformationContext, transpileModule } from 'typescript';
-import { DeclarationTransformer, ReflectionTransformer, transformer } from '@deepkit/type-compiler';
+import { ModuleKind, ScriptTarget, TransformationContext, transpileModule } from 'typescript';
+import { DeclarationTransformer, ReflectionTransformer } from '@deepkit/type-compiler';
 import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../src/reflection/reflection.js';
-import {
-    assertType,
-    defaultAnnotation,
-    primaryKeyAnnotation,
-    ReflectionKind,
-    ReflectionVisibility,
-    stringifyType,
-    Type,
-    TypeClass,
-    TypeFunction,
-    TypeMethod,
-    TypeObjectLiteral,
-    TypeProperty,
-    TypeUnion
-} from '../src/reflection/type.js';
+import { assertType, defaultAnnotation, primaryKeyAnnotation, ReflectionKind, ReflectionVisibility, stringifyType, Type, TypeClass, TypeFunction, TypeMethod, TypeObjectLiteral, TypeProperty, TypeUnion } from '../src/reflection/type.js';
 import { ReflectionOp } from '@deepkit/type-spec';
 import { ClassType, isObject } from '@deepkit/core';
-import { pack, resolveRuntimeType, typeInfer } from '../src/reflection/processor.js';
+import { pack, resolveRuntimeType } from '../src/reflection/processor.js';
 import { expectEqualType } from './utils.js';
 import { createSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import { dirname, join } from 'path';
 import { readFileSync } from 'fs';
 
 Error.stackTraceLimit = 200;
-
 
 const defaultLibLocation = __dirname + '/node_modules/typescript/lib/';
 

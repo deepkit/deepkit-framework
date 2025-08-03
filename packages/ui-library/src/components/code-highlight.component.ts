@@ -7,7 +7,6 @@ import { pendingTask } from '@deepkit/desktop-ui';
 @Component({
     selector: 'code-highlight',
     host: {
-        '[class.overlay-scrollbar-small]': 'true',
         '[class.inline]': 'inline()',
     },
     styleUrl: './code-highlight.component.scss',

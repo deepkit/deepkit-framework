@@ -1,246 +1,185 @@
-import { Component } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ImageComponent } from '@app/app/components/image.component';
-import { AppImagesComponent } from '@app/app/components/images.component';
 import { AppTitle } from '@app/app/components/title';
-
+import { HeaderComponent } from '@app/app/components/header.component.js';
+import { FooterComponent } from '@app/app/components/footer.component.js';
+import { libraries } from '@app/common/docs.js';
 
 @Component({
+    selector: 'a[package]',
+    template: `
+      <div class="title">
+        <span>{{ title() }}</span>
+        <span class="package">{{ package() }}</span>
+      </div>
+      <div>
+        {{ description() }}
+      </div>
+    `,
+    styles: `
+      :host, :host:link {
+        display: flex;
+        background: rgba(24, 28, 35, 0.60);
+        flex-direction: column;
+        gap: 6px;
+        padding: 20px 17px;
+        border-radius: 4px;
+        /*border-top: 1px solid rgba(224, 224, 224, 0.26);*/
+        cursor: pointer;
+        font-size: 13px;
+        color: #E3ECF0;
+      }
+
+      :host:hover {
+        background: rgba(24, 28, 35, 0.90);
+        text-decoration: none !important;
+        color: #E3ECF0 !important;
+        /*  border-top: 1px solid var(--color-link);*/
+      }
+
+      .title {
+        color: white;
+        display: flex;
+        gap: 6px;
+        font-size: 15px;
+
+        &:hover {
+          text-decoration: none;
+        }
+      }
+
+      .package {
+        margin-left: auto;
+        text-align: right;
+        color: #969B9C;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+    `
+})
+export class LibraryEntryComponent {
+    title = input.required<string>();
+    package = input.required<string>();
+    description = input.required<string>();
+}
+
+@Component({
+    selector: 'app-libraries',
     styles: [`
-        .app-boxes {
-            margin-top: 50px;
-            grid-gap: 50px;
+      .category {
+        font-size: 12px;
+        /*font-weight: 700;*/
+        color: #969B9C;
+        text-transform: uppercase;
+        display: flex;
+        flex-direction: row;
+
+        &::after {
+          content: '';
+          display: block;
+          flex: 1;
+          height: 1px;
+          background: rgba(224, 224, 224, 0.16);
+          margin-left: 10px;
+          top: 13px;
+          position: relative;
+        }
+      }
+
+      .libraries {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        grid-gap: 20px;
+
+        .main {
+          grid-column: 1 / -1;
         }
 
-        .libraries, .app-banner .wrapper {
-            max-width: 880px;
+        .twice {
+          grid-column: 1 / span 2;
+        }
+      }
+
+      .banner {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+        margin: 20px auto;
+        padding: 40px 10px;
+        border: 1px dashed rgba(224, 224, 224, 0.16);
+        background-color: #12151A;
+
+        h2, div {
+          margin: 0;
+          font-size: 16px;
+          font-style: normal;
+          line-height: 180%;
+          color: #C5C5C5;
+          font-weight: normal;
         }
 
-        .libraries {
-            max-width: 950px;
+        h2 {
+          color: white;
         }
+      }
 
-        .library, .library:link {
-            text-align: left;
-            display: block;
+      .cta {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        justify-content: center;
 
-            color: white !important;
-
-            &:hover {
-                text-decoration: none;
-            }
-
-            h3 {
-                margin: 0;
-                padding: 0;
-                font-size: 18px;
-                font-style: normal;
-                font-weight: 700;
-                line-height: normal;
-            }
-
-            .subline {
-                color: #979797;
-                font-size: 14px;
-                margin-bottom: 10px;
-            }
-
-            p {
-                margin: 0;
-                padding: 0;
-                font-size: 14px;
-                line-height: 180%;
-            }
+        a, a:link {
+          color: white;
+          font-size: 14px;
         }
+      }
     `],
     imports: [
-        RouterLink,
-        ImageComponent,
-        AppImagesComponent,
         AppTitle,
+        HeaderComponent,
+        LibraryEntryComponent,
+        RouterLink,
+        FooterComponent,
     ],
     template: `
-        <app-title value="Libraries"></app-title>
-        <div class="app-content-full">
-            <div class="app-banner left">
-                <div class="wrapper">
-                    <h1>LIBRARIES</h1>
+      <app-title value="Libraries"></app-title>
+      <dw-header />
+      <div class="app-content-full">
+        <div class="wrapper banner">
+          <h2>Deepkit is a modular framework for TypeScript backend web applications.</h2>
+          <div>Structured, scalable, and built for enterprise-grade architecture.</div>
 
-                    <div>
-                        <p>
-                            A collection of open source TypeScript libraries under MIT license that work standalone or
-                            in combination. Each library lives in its own NPM package, is
-                            carefully optimised, and follows modern best practises.
-                        </p>
-
-                        <p>
-                            Progressively adopt Deepkit libraries one by one or use all together in Deepkit Framework.
-                        </p>
-                    </div>
-                </div>
-            </div>
-            <div class="wrapper libraries">
-                <div class="app-boxes">
-                    <a routerLink="/library/type" class="app-box hover library">
-                        <h3>Runtime Types</h3>
-                        <div class="subline">&#64;deepkit/type</div>
-                        <p>
-                            Runtime TypeScript types with reflection, high-performance serialization and validation, and
-                            much more.
-                        </p>
-                    </a>
-                    <a routerLink="/library/app" class="app-box hover library">
-                        <h3>Deepkit App</h3>
-                        <div class="subline">&#64;deepkit/app</div>
-                        <p>
-                            A command line interface (CLI) framework for TypeScript with service container, module
-                            system,
-                            hooks, and easy to define commands.
-                        </p>
-                    </a>
-                    <a routerLink="/library/framework" class="app-box hover library">
-                        <h3>Deepkit Framework</h3>
-                        <div class="subline">&#64;deepkit/framework</div>
-                        <p>
-                            A framework that brings together all Deepkit libraries with application server,
-                            debugging and profiler tools, and much more.
-                        </p>
-                    </a>
-                    <a routerLink="/library/orm" class="app-box hover library">
-                        <h3>Deepkit ORM</h3>
-                        <div class="subline">&#64;deepkit/orm</div>
-                        <p>
-                            High performance TypeScript ORM with Unit Of Work, migrations, and much more.
-                            MySQL, PostgreSQL, SQLite, MongoDB.
-                        </p>
-                    </a>
-                    <a routerLink="/library/rpc" class="app-box hover library">
-                        <h3>Deepkit RPC</h3>
-                        <div class="subline">&#64;deepkit/rpc</div>
-                        <p>
-                            A end-to-end typesafe and modern high performance Remote Procedure Call (RPC) framework for
-                            TypeScript.
-                        </p>
-                    </a>
-                    <a routerLink="/library/http" class="app-box hover library">
-                        <h3>Deepkit HTTP</h3>
-                        <div class="subline">&#64;deepkit/http</div>
-                        <p>
-                            A HTTP kernel and router with async controller support based on workflow system and
-                            decorators.
-                        </p>
-                    </a>
-                    <a routerLink="/library/injector" class="app-box hover library">
-                        <h3>Dependency Injection</h3>
-                        <div class="subline">&#64;deepkit/injector</div>
-                        <p>
-                            The most advanced dependency injection container for TypeScript.
-                        </p>
-                    </a>
-                    <a routerLink="/library/template" class="app-box hover library">
-                        <h3>Template</h3>
-                        <div class="subline">&#64;deepkit/template</div>
-                        <p>
-                            Fully typesafe and fast template engine based on JSX, with support for dependency injection
-                            and async templates.
-                        </p>
-                    </a>
-                    <a routerLink="/library/broker" class="app-box hover library">
-                        <h3>Broker</h3>
-                        <div class="subline">&#64;deepkit/broker</div>
-                        <p>
-                            Typesafe message bus server for pub/sub pattern, key-value storage, and central atomic app
-                            locks.
-                        </p>
-                    </a>
-                    <a routerLink="/documentation/app/logger" class="app-box hover library">
-                        <h3>Logger</h3>
-                        <div class="subline">&#64;deepkit/logger</div>
-                        <p>
-                            Logger library with support for colors, scopes, various transporter and formatter.
-                        </p>
-                    </a>
-                </div>
-            </div>
-
-            <div class="wrapper app-product">
-                <h2>Deepkit ORM Browser</h2>
-
-                <p>
-                    Deepkit ORM Browser is a web application that allows you to browse your database schema, edit your data,
-                    see migration changes, and seed your database. Everything based on your TypeScript entity types.
-                </p>
-
-                <p>
-                    It is part of Framework Debugger but can also be used standalone.
-                </p>
-
-                <p>
-                    <a class="button big" routerLink="/library/orm-browser">Learn more</a>
-                </p>
-
-                <app-images>
-                    <app-image src="/assets/screenshots-orm-browser/content-editing.png"></app-image>
-                    <app-image src="/assets/screenshots-orm-browser/model-diagram.png"></app-image>
-                    <app-image src="/assets/screenshots-orm-browser/query.png"></app-image>
-                    <app-image src="/assets/screenshots-orm-browser/seed.png"></app-image>
-                </app-images>
-            </div>
-
-            <div class="wrapper app-product">
-                <h2>Deepkit API Console</h2>
-
-                <p>
-                    Auto documentation of your HTTP and RPC API right in the browser showing all your
-                    routes, actions, parameters, return types, status codes, in TypeScript type syntax.
-                </p>
-
-                <p>
-                    Interactively explore and test your API with the API Console.
-                </p>
-
-                <p>
-                    It is part of Framework Debugger but can also be used standalone.
-                </p>
-
-                <p>
-                    <a class="button big" routerLink="/library/api-console">Learn more</a>
-                </p>
-
-                <app-images>
-                    <app-image src="/assets/screenshots/api-console-http-get.png"></app-image>
-                    <app-image src="/assets/screenshots/api-console-http-post.png"></app-image>
-                    <app-image src="/assets/screenshots/api-console-overview.png"></app-image>
-                    <app-image src="/assets/screenshots/api-console-overview-detail.png"></app-image>
-                    <app-image src="/assets/screenshots/api-console-overview-detail-get.png"></app-image>
-                </app-images>
-            </div>
-
-            <div class="wrapper app-product">
-                <h2>Deepkit Debugger</h2>
-
-                <p>
-                    Deepkit Framework Debugger is a web application giving you insights into your application.
-                </p>
-
-                <p>
-                    Module hiarchy, configuration, APIs, database, profiler, and much more.
-                </p>
-
-                <p>
-                    <a class="button big" routerLink="/library/framework">Learn more</a>
-                </p>
-
-                <app-images>
-                    <app-image src="/assets/screenshots/debugger-http.png"></app-image>
-                    <app-image src="/assets/screenshots/debugger-modules.png"></app-image>
-                    <app-image src="/assets/screenshots-profiler/overview.png"></app-image>
-                    <app-image src="/assets/screenshots/debugger-configuration.png"></app-image>
-                    <app-image src="/assets/screenshots/debugger-api-http.png"></app-image>
-                </app-images>
-            </div>
+          <div class="cta" style="padding-top: 10px;">
+            <a href="https://discord.gg/U24mryk7Wq"><img alt="Discord" src="https://img.shields.io/discord/759513055117180999?style=square&label=Discord" /></a>
+            <a href="https://www.npmjs.com/package/@deepkit/type"><img alt="npm" src="https://img.shields.io/npm/v/@deepkit/type.svg?style=square" /></a>
+          </div>
+          <div class="cta">
+            <a class="button" routerLink="/documentation/app">Getting Started</a>
+            <a class="button" href="https://github.com/deepkit/deepkit-framework">View on GitHub</a>
+          </div>
         </div>
+        <div class="wrapper libraries">
+          @for (category of libraries; track $index) {
+            <div class="category">{{ category.category }}</div>
+            <div class="grid">
+              @for (library of category.items; track $index) {
+                <a [title]="library.title" class="{{library.class || ''}}" [routerLink]="library.path" [package]="library.package" [description]="library.description"></a>
+              }
+            </div>
+          }
+        </div>
+
+        <dw-footer />
     `
 })
 export class LibrariesComponent {
+    protected readonly libraries = libraries;
 }

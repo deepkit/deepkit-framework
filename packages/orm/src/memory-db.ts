@@ -12,14 +12,7 @@ import { DatabaseSession, DatabaseTransaction } from './database-session.js';
 import { DatabaseQueryModel, GenericQueryResolver, Query } from './query.js';
 import { Changes, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath, serialize, Serializer } from '@deepkit/type';
 import { AbstractClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
-import {
-    DatabaseAdapter,
-    DatabaseAdapterQueryFactory,
-    DatabaseEntityRegistry,
-    DatabasePersistence,
-    DatabasePersistenceChangeSet,
-    MigrateOptions,
-} from './database-adapter.js';
+import { DatabaseAdapter, DatabaseAdapterQueryFactory, DatabaseEntityRegistry, DatabasePersistence, DatabasePersistenceChangeSet, MigrateOptions } from './database-adapter.js';
 import { DeleteResult, OrmEntity, PatchResult } from './type.js';
 import { findQueryList } from './utils.js';
 import { convertQueryFilter } from './query-filter.js';
@@ -199,7 +192,7 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
 
                 patchResult.modified = items.length;
                 for (const item of items) {
-
+                    const oldPrimary = item[primaryKey];
                     if (changes.$inc) {
                         for (const [path, v] of Object.entries(changes.$inc)) {
                             setPathValue(item, path, getPathValue(item, path) + v);
@@ -228,6 +221,10 @@ export class MemoryQueryFactory extends DatabaseAdapterQueryFactory {
 
                     patchResult.primaryKeys.push(item);
                     store.items.set(item[primaryKey] as any, serializer(item));
+                    if (oldPrimary !== item[primaryKey]) {
+                        // we changed the primary key, so we need to remove the old one
+                        store.items.delete(oldPrimary as any);
+                    }
                 }
             }
         }

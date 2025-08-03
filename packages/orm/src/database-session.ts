@@ -12,36 +12,15 @@ import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet
 import { DatabaseEntityRegistry } from './database-adapter.js';
 import { DatabaseValidationError, OrmEntity } from './type.js';
 import { AbstractClassType, ClassType, CustomError, forwardTypeArguments } from '@deepkit/core';
-import {
-    getPrimaryKeyExtractor,
-    getTypeJitContainer,
-    isReferenceInstance,
-    markAsHydrated,
-    PrimaryKeyFields,
-    ReceiveType,
-    ReflectionClass,
-    ReflectionKind,
-    stringifyType,
-    Type,
-    typeSettings,
-    UnpopulatedCheck,
-    validate,
-} from '@deepkit/type';
+import { getPrimaryKeyExtractor, getTypeJitContainer, isReferenceInstance, markAsHydrated, PrimaryKeyFields, ReceiveType, ReflectionClass, ReflectionKind, stringifyType, Type, typeSettings, UnpopulatedCheck, validate } from '@deepkit/type';
 import { GroupArraySort } from '@deepkit/topsort';
 import { getClassState, getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map.js';
 import { getClassSchemaInstancePairs } from './utils.js';
 import { HydratorFn } from './formatter.js';
 import { getReference } from './reference.js';
-import {
-    DatabaseErrorInsertEvent,
-    DatabaseErrorUpdateEvent,
-    onDatabaseError,
-    UnitOfWorkCommitEvent,
-    UnitOfWorkEvent,
-    UnitOfWorkUpdateEvent,
-} from './event.js';
+import { DatabaseErrorInsertEvent, DatabaseErrorUpdateEvent, onDatabaseError, UnitOfWorkCommitEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event.js';
 import { Stopwatch } from '@deepkit/stopwatch';
-import { EventDispatcherInterface, EventToken } from '@deepkit/event';
+import { EventDispatcher, EventToken } from '@deepkit/event';
 import { DatabasePluginRegistry } from './plugin/plugin.js';
 import { Logger } from '@deepkit/logger';
 
@@ -74,7 +53,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     constructor(
         protected round: number = 0,
         protected session: DatabaseSession<any>,
-        protected eventDispatcher: EventDispatcherInterface,
+        protected eventDispatcher: EventDispatcher,
         public logger: Logger,
         protected identityMap?: IdentityMap,
     ) {
@@ -379,7 +358,7 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
     constructor(
         public readonly adapter: ADAPTER,
         public readonly entityRegistry: DatabaseEntityRegistry,
-        public readonly eventDispatcher: EventDispatcherInterface,
+        public readonly eventDispatcher: EventDispatcher,
         public pluginRegistry: DatabasePluginRegistry,
         public logger: Logger,
         public stopwatch?: Stopwatch,

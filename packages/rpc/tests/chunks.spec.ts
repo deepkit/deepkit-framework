@@ -97,6 +97,65 @@ test('chunks', async () => {
     }
 });
 
+test('abort', async () => {
+    @rpc.controller('test')
+    class TestController {
+        @rpc.action()
+        uploadBig(file: Uint8Array): number {
+            console.log('asd');
+            return file.length;
+        }
+
+        @rpc.action()
+        downloadBig(size: number): Uint8Array {
+            return Buffer.alloc(size);
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(TestController, 'test');
+
+    const client = new DirectClient(kernel);
+    const controller = client.controller<TestController>('test');
+
+    // Upload chunks:
+    // Client sends RpcTypes.Chunk
+    // Server sends RpcTypes.ChunkAck
+    // Server can send RpcTypes.Error to abort the upload
+    // Client can send RpcTypes.Error to abort the upload
+    {
+        const uploadFile = Buffer.alloc(550_000);
+        const progress = ClientProgress.track();
+        const promise = controller.uploadBig(uploadFile);
+        progress.upload.subscribe(value => {
+            if (value.progress > 0.5) progress.abort();
+        });
+
+        await expect(promise).rejects.toThrow('Aborted');
+        expect(progress.upload.progress).toBeGreaterThan(0.5);
+        expect(progress.upload.progress).toBeLessThan(1.0);
+        expect(progress.upload.done).toBe(true);
+    }
+
+    // Download chunks:
+    // Server sends RpcTypes.Chunk
+    // Client sends RpcTypes.ChunkAck
+    // Client can send RpcTypes.Error to abort the download
+    // Server can send RpcTypes.Error to abort the download
+    {
+        const progress = ClientProgress.track();
+        const promise = controller.downloadBig(550_000);
+        progress.download.subscribe(value => {
+            if (value.progress > 0.5) progress.abort();
+        });
+
+        await expect(promise).rejects.toThrow('Aborted');
+        expect(progress.download.progress).toBeGreaterThan(0.5);
+        expect(progress.download.progress).toBeLessThan(1.0);
+        expect(progress.download.done).toBe(true);
+    }
+});
+
 test('back controller', async () => {
     @rpc.controller('test')
     class TestController {

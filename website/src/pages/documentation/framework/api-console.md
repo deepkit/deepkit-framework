@@ -27,5 +27,3 @@ new App({
     ]
 })
 ```
-
-Per default `new ApiConsoleModule` shows all HTTP and RPC routes. You can also specify which routes should be shown using the methods on the `ApiConsoleModule` class.

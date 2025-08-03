@@ -18,19 +18,7 @@ import { HttpRouter, RouteConfig, RouteParameterResolverForInjector } from './ro
 import { createWorkflow, WorkflowEvent } from '@deepkit/workflow';
 import type { ElementStruct, render } from '@deepkit/template';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
-import {
-    getSerializeFunction,
-    hasTypeInformation,
-    ReflectionKind,
-    resolveReceiveType,
-    SerializationError,
-    serialize,
-    serializer,
-    Type,
-    typeSettings,
-    UnpopulatedCheck,
-    ValidationError,
-} from '@deepkit/type';
+import { getSerializeFunction, hasTypeInformation, ReflectionKind, resolveReceiveType, SerializationError, serialize, serializer, Type, typeSettings, UnpopulatedCheck, ValidationError } from '@deepkit/type';
 import stream from 'stream';
 
 export function isElementStruct(v: any): v is ElementStruct {
@@ -206,6 +194,16 @@ export class HttpRouteEvent extends HttpWorkflowEvent {
     routeFound(route: RouteConfig, parameterResolver: RouteParameterResolverForInjector) {
         this.route = route;
         this.next('auth', new HttpAuthEvent(this.injectorContext, this.request, this.response, this.route, parameterResolver));
+    }
+
+    routeFoundCallback<T extends any[]>(callback: (...args: T) => void, args: T) {
+        this.routeFound(
+            new RouteConfig('static', ['GET'], this.url, {
+                type: 'function',
+                fn: callback,
+            }),
+            () => ({ arguments: args, parameters: {} }),
+        );
     }
 
     notFound() {

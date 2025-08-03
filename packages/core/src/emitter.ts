@@ -8,6 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+/** @group Event */
+
 import { arrayRemoveItem } from './array.js';
 
 type AsyncSubscriber<T> = (event: T) => Promise<void> | void;

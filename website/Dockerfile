@@ -20,23 +20,8 @@ ADD package.json lerna.json tsconfig.json tsconfig.esm.json typedoc.js typedoc.d
 ADD .yarnrc.yml yarn.lock /app/
 ADD .yarn /app/.yarn
 
-ADD packages/broker /app/packages/broker
-ADD packages/ui-library /app/packages/ui-library
-ADD packages/desktop-ui /app/packages/desktop-ui
-ADD packages/bson /app/packages/bson
-ADD packages/core-rxjs /app/packages/core-rxjs
-ADD packages/rpc /app/packages/rpc
-ADD packages/core /app/packages/core
-ADD packages/bench /app/packages/bench
-ADD packages/app /app/packages/app
-ADD packages/logger /app/packages/logger
-ADD packages/stopwatch /app/packages/stopwatch
-ADD packages/workflow /app/packages/workflow
-ADD packages/injector /app/packages/injector
-ADD packages/event /app/packages/event
-ADD packages/type /app/packages/type
-ADD packages/type-compiler /app/packages/type-compiler
-ADD packages/type-spec /app/packages/type-spec
+ADD packages /app/packages
+RUN rm -rf /app/packages/devtool
 ADD website/package.json /app/website/package.json
 
 RUN node sync-tsconfig-deps.js
@@ -44,6 +29,8 @@ RUN --mount=type=cache,target=/root/.yarn YARN_CACHE_FOLDER=/root/.yarn yarn ins
 
 ADD website /app/website
 RUN npm run build
+
+RUN cd website && npm run api-docs
 
 FROM node:24-alpine3.20
 ENV TZ="Europe/Berlin"
