@@ -154,15 +154,61 @@ In Deepkit everything is now done via this `app.ts`. You can rename the file as 
 
 Deepkit App automatically converts function parameters into CLI arguments and flags. The order of the parameters dictates the order of the CLI arguments
 
-Parameters can be any TypeScript type and are automatically validated and deserialized. 
+Parameters can be any TypeScript type and are automatically validated and deserialized.
 
-See the chapter [Arguments & Flags](./app/arguments.md) for more information.
+```typescript
+// Simple arguments
+app.command('greet', (name: string, age?: number) => {
+    console.log(`Hello ${name}${age ? `, you are ${age}` : ''}`);
+});
 
+// Flags with validation
+import { Flag, Email, Positive } from '@deepkit/app';
 
-## Dependency Injection
+app.command('create-user', (
+    email: string & Email & Flag,
+    age: number & Positive & Flag,
+    admin: boolean & Flag = false
+) => {
+    console.log(`Creating user: ${email}, age: ${age}, admin: ${admin}`);
+});
+```
 
-Deepkit App sets up a service container and for each imported module its own Dependency Injection container that inherits from its parents. 
-It brings out of the box following providers you can automatically inject into your services, controllers, and event listeners:
+See the chapter [Arguments & Flags](./app/arguments.md) for comprehensive examples and advanced usage.
+
+## Services & Dependency Injection
+
+Deepkit App provides a powerful dependency injection system that automatically resolves and injects dependencies:
+
+```typescript
+class UserService {
+    users: string[] = [];
+
+    addUser(name: string) {
+        this.users.push(name);
+        return `User ${name} added`;
+    }
+}
+
+class EmailService {
+    sendEmail(to: string, subject: string) {
+        console.log(`Sending email to ${to}: ${subject}`);
+    }
+}
+
+const app = new App({
+    providers: [UserService, EmailService]
+});
+
+// Functional command with DI
+app.command('add-user', (name: string, userService: UserService, emailService: EmailService) => {
+    const result = userService.addUser(name);
+    emailService.sendEmail(`${name}@example.com`, 'Welcome!');
+    console.log(result);
+});
+```
+
+Built-in providers available out of the box:
 
 - `Logger` for logging
 - `EventDispatcher` for event handling
@@ -170,19 +216,130 @@ It brings out of the box following providers you can automatically inject into y
 - `MiddlewareRegistry` for registered middleware
 - `InjectorContext` for the current injector context
 
-As soon as you import Deepkit Framework you get additional providers. See [Deepkit Framework](./framework.md) for more details.
+See the chapters [Services](./app/services.md) and [Dependency Injection](./app/dependency-injection.md) for more details.
 
+## Configuration
 
-## Exit code
-
-The exit code is 0 by default, which means that the command was executed successfully. To change the exit code, a number other than 0 should be returned in the exucute method.
+Type-safe configuration with automatic environment variable loading:
 
 ```typescript
-@cli.controller('test')
-export class TestCommand {
-    async execute() {
-        console.error('Error :(');
-        return 12;
+import { MinLength } from '@deepkit/type';
+
+class AppConfig {
+    appName: string & MinLength<3> = 'MyApp';
+    port: number = 3000;
+    debug: boolean = false;
+    databaseUrl!: string; // Required
+}
+
+const app = new App({
+    config: AppConfig
+})
+.loadConfigFromEnv() // Loads APP_* environment variables
+.configure({ debug: true }); // Override programmatically
+
+app.command('show-config', (config: AppConfig) => {
+    console.log('App configuration:', config);
+});
+```
+
+See the chapter [Configuration](./app/configuration.md) for advanced configuration patterns.
+
+## Modules
+
+Organize your application into reusable modules:
+
+```typescript
+import { createModuleClass } from '@deepkit/app';
+
+export class DatabaseModule extends createModuleClass({
+    providers: [DatabaseService],
+    exports: [DatabaseService]
+}) {}
+
+export class UserModule extends createModuleClass({
+    imports: [new DatabaseModule()],
+    providers: [UserService],
+    controllers: [UserController]
+}) {}
+
+const app = new App({
+    imports: [new UserModule()]
+});
+```
+
+See the chapter [Modules](./app/modules.md) for module patterns and best practices.
+
+## Event System
+
+Handle application events and create custom event-driven architectures:
+
+```typescript
+import { EventToken, onAppExecute } from '@deepkit/app';
+
+const UserCreated = new EventToken('user.created');
+
+app.listen(onAppExecute, (event) => {
+    console.log('Command starting:', event.command);
+});
+
+app.listen(UserCreated, (event, logger: Logger) => {
+    logger.log('User created:', event.data);
+});
+
+app.command('create-user', async (name: string, eventDispatcher: EventDispatcher) => {
+    // Create user logic...
+    await eventDispatcher.dispatch(UserCreated, { name });
+});
+```
+
+See the chapter [Events](./app/events.md) for comprehensive event handling.
+
+## Testing
+
+Deepkit App provides excellent testing support:
+
+```typescript
+import { createTestingApp } from '@deepkit/framework';
+
+test('user creation command', async () => {
+    const testing = createTestingApp({
+        providers: [UserService],
+        controllers: [CreateUserCommand]
+    });
+
+    const exitCode = await testing.app.execute(['create-user', 'John']);
+    expect(exitCode).toBe(0);
+
+    const userService = testing.app.get(UserService);
+    expect(userService.users).toContain('John');
+});
+```
+
+See the chapter [Testing](./app/testing.md) for comprehensive testing strategies.
+
+## Exit Codes
+
+Control command exit codes for proper CLI behavior:
+
+```typescript
+@cli.controller('deploy')
+export class DeployCommand {
+    async execute(environment: string): Promise<number> {
+        try {
+            await this.deployToEnvironment(environment);
+            console.log('Deployment successful');
+            return 0; // Success
+        } catch (error) {
+            console.error('Deployment failed:', error.message);
+            return 1; // Error
+        }
     }
 }
 ```
+
+## Advanced Topics
+
+- **[Application Lifecycle](./app/lifecycle.md)**: Understanding startup, shutdown, and lifecycle events
+- **[Best Practices](./app/best-practices.md)**: Patterns and recommendations for robust applications
+- **[Troubleshooting](./app/troubleshooting.md)**: Common issues and debugging techniques

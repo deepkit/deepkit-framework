@@ -1,33 +1,181 @@
-# Errors
+# Error Handling
 
-Thrown errors are automatically forwarded to the client with all its information like the error message and also the stacktrace.
+## Understanding RPC Error Handling
 
-If nominal instances for the error object is import (because you use instanceof), it is required to use `@entity.name('@error:unique-name')` so that the given error class is registered in the runtime and reused.
+Error handling in distributed systems is fundamentally different from local error handling. When an error occurs on the server, it must be serialized, transmitted over the network, and reconstructed on the client while preserving as much context as possible. Deepkit RPC provides sophisticated error handling that maintains error types, messages, stack traces, and custom properties across the network boundary.
+
+### How RPC Errors Work
+
+When an error occurs in a server action:
+
+1. **Error Capture**: The RPC kernel catches the thrown error
+2. **Serialization**: Error properties (message, stack, custom fields) are serialized
+3. **Type Preservation**: If the error class is registered, its type identity is preserved
+4. **Network Transmission**: Serialized error data is sent to the client
+5. **Reconstruction**: The client reconstructs the error with its original type and properties
+6. **Client Handling**: The client can use `instanceof` checks and access all error properties
+
+### Error Serialization Process
+
+```
+Server Side                    Network                     Client Side
+┌─────────────┐               ┌─────────┐                ┌─────────────┐
+│ throw new   │  serialize    │ BSON    │   deserialize  │ instanceof  │
+│ CustomError │ ────────────→ │ Error   │ ─────────────→ │ CustomError │
+│             │               │ Data    │                │ === true    │
+└─────────────┘               └─────────┘                └─────────────┘
+```
+
+## Custom Error Classes
+
+For type-safe error handling, define custom error classes and register them with unique names:
+
+### Basic Custom Error
 
 ```typescript
-@entity.name('@error:myError')
-class MyError extends Error {}
+import { entity } from '@deepkit/type';
 
-//server
-@rpc.controller('/main')
-class Controller {
-    @rpc.action()
-    saveUser(user: User): void {
-        throw new MyError('Can not save user');
+// Register the error class with a unique name
+// The '@error:' prefix is a convention for error types
+@entity.name('@error:myError')
+class MyError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'MyError';
+    }
+}
+```
+
+### Rich Error Classes
+
+Create errors with additional context and properties:
+
+```typescript
+@entity.name('@error:validationError')
+class ValidationError extends Error {
+    constructor(
+        message: string,
+        public field: string,
+        public value: any,
+        public constraints: string[]
+    ) {
+        super(message);
+        this.name = 'ValidationError';
     }
 }
 
-//client
-//[MyError] makes sure the class MyError is known in runtime
-const controller = client.controller<Controller>('/main', [MyError]);
+@entity.name('@error:notFoundError')
+class NotFoundError extends Error {
+    constructor(
+        public resourceType: string,
+        public resourceId: string | number
+    ) {
+        super(`${resourceType} with ID ${resourceId} not found`);
+        this.name = 'NotFoundError';
+    }
+}
 
-try {
-    await controller.getUser(2);
-} catch (e) {
-    if (e instanceof MyError) {
-        //ops, could not save user
-    } else {
-        //all other errors
+@entity.name('@error:authenticationError')
+class AuthenticationError extends Error {
+    constructor(
+        message: string,
+        public code: 'INVALID_CREDENTIALS' | 'TOKEN_EXPIRED' | 'ACCESS_DENIED'
+    ) {
+        super(message);
+        this.name = 'AuthenticationError';
+    }
+}
+```
+
+### Server-Side Error Throwing
+
+```typescript
+@rpc.controller('/users')
+class UserController {
+    constructor(private userService: UserService) {}
+
+    @rpc.action()
+    async saveUser(user: CreateUserData): Promise<User> {
+        // Validate input
+        if (!user.email || !user.email.includes('@')) {
+            throw new ValidationError(
+                'Invalid email address',
+                'email',
+                user.email,
+                ['must be a valid email address']
+            );
+        }
+
+        // Check if user already exists
+        const existingUser = await this.userService.findByEmail(user.email);
+        if (existingUser) {
+            throw new ValidationError(
+                'Email already in use',
+                'email',
+                user.email,
+                ['must be unique']
+            );
+        }
+
+        try {
+            return await this.userService.create(user);
+        } catch (dbError) {
+            // Wrap database errors in application errors
+            throw new Error(`Failed to save user: ${dbError.message}`);
+        }
+    }
+
+    @rpc.action()
+    async getUser(id: number): Promise<User> {
+        const user = await this.userService.findById(id);
+        if (!user) {
+            throw new NotFoundError('User', id);
+        }
+        return user;
+    }
+}
+```
+
+### Client-Side Error Handling
+
+```typescript
+// Register error classes with the client controller
+const controller = client.controller<UserController>('/users', [
+    ValidationError,
+    NotFoundError,
+    AuthenticationError
+]);
+
+async function createUser(userData: CreateUserData): Promise<User | null> {
+    try {
+        const user = await controller.saveUser(userData);
+        console.log('User created successfully:', user);
+        return user;
+
+    } catch (error) {
+        // Handle specific error types
+        if (error instanceof ValidationError) {
+            console.error(`Validation failed for ${error.field}:`, error.message);
+            console.error('Constraints:', error.constraints);
+            this.showFieldError(error.field, error.message);
+
+        } else if (error instanceof NotFoundError) {
+            console.error(`Resource not found: ${error.resourceType} ${error.resourceId}`);
+            this.showNotFoundMessage(error.resourceType);
+
+        } else if (error instanceof AuthenticationError) {
+            console.error(`Authentication failed: ${error.code}`);
+            if (error.code === 'TOKEN_EXPIRED') {
+                this.redirectToLogin();
+            }
+
+        } else {
+            // Handle unexpected errors
+            console.error('Unexpected error:', error.message);
+            this.showGenericErrorMessage();
+        }
+
+        return null;
     }
 }
 ```

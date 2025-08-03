@@ -3,6 +3,26 @@
 Deepkit Framework is a highly modular, scalable, and fast TypeScript framework for building web applications, APIs, and microservices.
 It is designed to be as flexible as necessary and as structured as required, allowing developers to maintain high development speeds, both in the short term and the long term.
 
+## Overview
+
+Deepkit Framework provides a comprehensive set of features for modern web development:
+
+### Core Features
+- **Application Server** - HTTP and RPC servers with multi-process support
+- **Dependency Injection** - Powerful service container with scoped providers
+- **Real-time Communication** - WebSocket-based RPC with type safety
+- **Database Integration** - Built-in ORM with migration support
+- **Message Broker** - Inter-process communication and caching
+- **Testing Utilities** - Comprehensive testing framework
+- **Debug & Profiling** - Built-in debugging and performance tools
+
+### Architecture
+- **Modular Design** - Import only what you need
+- **Type Safety** - Full TypeScript support throughout
+- **Event-Driven** - Comprehensive event system
+- **Multi-Process** - Worker process support for scalability
+- **Cloud-Ready** - Built for modern deployment scenarios
+
 ## App and Framework Module
 
 Deepkit Framework is based on [Deepkit App](./app.md) in `@deepkit/app` and provides the `FrameworkModule` module in `@deepkit/framework`, which can be imported in your `App`.
@@ -17,17 +37,26 @@ The `App` abstraction brings:
 
 The `FrameworkModule` module brings additional features:
 
-- Application server
-    - HTTP server
-    - RPC server
+- **Application Server**
+    - HTTP server with middleware support
+    - RPC server with WebSocket communication
     - Multi-process load balancing
-    - SSL
-- Debugging CLI commands
-- Database Migration configuration/commands
-- Debugging/Profiler GUI via `{debug: true}` option
-- Interactive API documentation (like Swagger)
-- Providers for DatabaseRegistry, ProcessLocking, Broker, Sessions
-- Integration Test APIs
+    - SSL/HTTPS support
+    - Static file serving
+- **Development Tools**
+    - Interactive debugger and profiler
+    - Database browser and migration tools
+    - API documentation interface
+    - Request/response logging
+- **Production Features**
+    - Message broker for inter-process communication
+    - Distributed caching and locking
+    - Session management
+    - Graceful shutdown handling
+- **Testing Support**
+    - In-memory testing utilities
+    - Mock services and adapters
+    - Integration testing framework
 
 You can write applications with or without the `FrameworkModule`.
 

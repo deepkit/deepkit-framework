@@ -223,6 +223,246 @@ new App({
 | onAppError                  | When a command failed to execute                                                                                                |
 | onAppShutdown               | When the application is about to shut down.                                                                                     |
 
+## Practical Examples
+
+### User Management Events
+
+Create a complete user management system with events:
+
+```typescript
+import { DataEventToken, BaseEvent } from '@deepkit/event';
+
+// Define events
+const UserCreated = new DataEventToken<{id: string, email: string}>('user.created');
+const UserDeleted = new DataEventToken<{id: string}>('user.deleted');
+const UserEmailChanged = new DataEventToken<{id: string, oldEmail: string, newEmail: string}>('user.email.changed');
+
+// Services that emit events
+class UserService {
+    constructor(private eventDispatcher: EventDispatcher) {}
+
+    async createUser(email: string): Promise<string> {
+        const id = generateId();
+        // ... create user logic
+
+        await this.eventDispatcher.dispatch(UserCreated, { id, email });
+        return id;
+    }
+
+    async deleteUser(id: string): Promise<void> {
+        // ... delete user logic
+        await this.eventDispatcher.dispatch(UserDeleted, { id });
+    }
+}
+
+// Event listeners
+class EmailService {
+    @eventDispatcher.listen(UserCreated)
+    async sendWelcomeEmail(event: typeof UserCreated.event) {
+        console.log(`Sending welcome email to ${event.data.email}`);
+        // Send email logic
+    }
+
+    @eventDispatcher.listen(UserDeleted)
+    async sendGoodbyeEmail(event: typeof UserDeleted.event) {
+        console.log(`User ${event.data.id} deleted, sending goodbye email`);
+    }
+}
+
+class AuditService {
+    @eventDispatcher.listen(UserCreated, 1) // Higher priority (lower number)
+    logUserCreation(event: typeof UserCreated.event) {
+        console.log(`AUDIT: User created - ID: ${event.data.id}, Email: ${event.data.email}`);
+    }
+
+    @eventDispatcher.listen(UserDeleted, 1)
+    logUserDeletion(event: typeof UserDeleted.event) {
+        console.log(`AUDIT: User deleted - ID: ${event.data.id}`);
+    }
+}
+```
+
+### Command Events with Data
+
+Create events that carry command execution data:
+
+```typescript
+class CommandExecutionEvent extends BaseEvent {
+    command: string = '';
+    args: string[] = [];
+    startTime: Date = new Date();
+    endTime?: Date;
+    exitCode?: number;
+    error?: Error;
+}
+
+const CommandStarted = new EventToken<CommandExecutionEvent>('command.started');
+const CommandCompleted = new EventToken<CommandExecutionEvent>('command.completed');
+const CommandFailed = new EventToken<CommandExecutionEvent>('command.failed');
+
+// Metrics service that tracks command performance
+class MetricsService {
+    private commandMetrics = new Map<string, {count: number, totalTime: number}>();
+
+    @eventDispatcher.listen(CommandStarted)
+    onCommandStarted(event: CommandExecutionEvent) {
+        console.log(`Command started: ${event.command} with args: ${event.args.join(' ')}`);
+    }
+
+    @eventDispatcher.listen(CommandCompleted)
+    onCommandCompleted(event: CommandExecutionEvent) {
+        if (event.endTime && event.startTime) {
+            const duration = event.endTime.getTime() - event.startTime.getTime();
+            const metrics = this.commandMetrics.get(event.command) || {count: 0, totalTime: 0};
+            metrics.count++;
+            metrics.totalTime += duration;
+            this.commandMetrics.set(event.command, metrics);
+
+            console.log(`Command ${event.command} completed in ${duration}ms`);
+        }
+    }
+
+    @eventDispatcher.listen(CommandFailed)
+    onCommandFailed(event: CommandExecutionEvent) {
+        console.error(`Command ${event.command} failed:`, event.error?.message);
+    }
+
+    getMetrics() {
+        return Array.from(this.commandMetrics.entries()).map(([command, metrics]) => ({
+            command,
+            count: metrics.count,
+            averageTime: metrics.totalTime / metrics.count
+        }));
+    }
+}
+```
+
+### Event-Driven Workflow
+
+Create complex workflows using events:
+
+```typescript
+// Workflow events
+const OrderCreated = new DataEventToken<{orderId: string, userId: string, amount: number}>('order.created');
+const PaymentProcessed = new DataEventToken<{orderId: string, paymentId: string}>('payment.processed');
+const InventoryReserved = new DataEventToken<{orderId: string, items: string[]}>('inventory.reserved');
+const OrderFulfilled = new DataEventToken<{orderId: string}>('order.fulfilled');
+
+class OrderWorkflow {
+    @eventDispatcher.listen(OrderCreated)
+    async processPayment(event: typeof OrderCreated.event, paymentService: PaymentService) {
+        try {
+            const paymentId = await paymentService.processPayment(event.data.amount);
+            await this.eventDispatcher.dispatch(PaymentProcessed, {
+                orderId: event.data.orderId,
+                paymentId
+            });
+        } catch (error) {
+            console.error(`Payment failed for order ${event.data.orderId}:`, error);
+        }
+    }
+
+    @eventDispatcher.listen(PaymentProcessed)
+    async reserveInventory(event: typeof PaymentProcessed.event, inventoryService: InventoryService) {
+        const items = await inventoryService.reserveItems(event.data.orderId);
+        await this.eventDispatcher.dispatch(InventoryReserved, {
+            orderId: event.data.orderId,
+            items
+        });
+    }
+
+    @eventDispatcher.listen(InventoryReserved)
+    async fulfillOrder(event: typeof InventoryReserved.event) {
+        // Fulfill order logic
+        await this.eventDispatcher.dispatch(OrderFulfilled, {
+            orderId: event.data.orderId
+        });
+    }
+}
+```
+
+### Error Handling in Events
+
+Handle errors gracefully in event listeners:
+
+```typescript
+class RobustEventListener {
+    @eventDispatcher.listen(UserCreated)
+    async handleUserCreated(event: typeof UserCreated.event, logger: Logger) {
+        try {
+            // Risky operation
+            await this.sendWelcomeEmail(event.data.email);
+        } catch (error) {
+            logger.error('Failed to send welcome email:', error);
+            // Don't re-throw - let other listeners continue
+        }
+    }
+
+    @eventDispatcher.listen(UserCreated)
+    async criticalUserCreatedHandler(event: typeof UserCreated.event) {
+        try {
+            await this.createUserProfile(event.data.id);
+        } catch (error) {
+            // This is critical - stop event propagation
+            event.stop();
+            throw error;
+        }
+    }
+}
+```
+
+## Testing Events
+
+Test event-driven code effectively:
+
+```typescript
+import { createTestingApp } from '@deepkit/framework';
+
+test('user creation triggers welcome email', async () => {
+    const mockEmailService = {
+        sendWelcomeEmail: jest.fn()
+    };
+
+    const testing = createTestingApp({
+        providers: [
+            UserService,
+            { provide: EmailService, useValue: mockEmailService }
+        ],
+        listeners: [EmailService]
+    });
+
+    const userService = testing.app.get(UserService);
+    await userService.createUser('test@example.com');
+
+    expect(mockEmailService.sendWelcomeEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+            data: expect.objectContaining({
+                email: 'test@example.com'
+            })
+        })
+    );
+});
+
+test('event propagation can be stopped', async () => {
+    const listener1 = jest.fn();
+    const listener2 = jest.fn();
+
+    const testing = createTestingApp({});
+
+    testing.app.listen(UserCreated, (event) => {
+        listener1();
+        event.stop(); // Stop propagation
+    }, 0);
+
+    testing.app.listen(UserCreated, listener2, 1); // Lower priority
+
+    await testing.app.dispatch(UserCreated, { id: '1', email: 'test@example.com' });
+
+    expect(listener1).toHaveBeenCalled();
+    expect(listener2).not.toHaveBeenCalled(); // Should not be called due to stop()
+});
+```
+
 ## Low Level API
 
 Below is an example of the low-level API from @deepkit/event. When using the Deepkit App, event listeners are not registered directly via the EventDispatcher, but rather through modules. But you can still use the low-level API if you want to.

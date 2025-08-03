@@ -190,5 +190,151 @@ main();
 
 ### MongoDB
 
+```bash
+npm install @deepkit/mongo
+```
+
+```typescript
+import { MongoDatabaseAdapter } from '@deepkit/mongo';
+
+const database = new Database(
+    new MongoDatabaseAdapter('mongodb://localhost:27017/myapp'),
+    [User]
+);
+```
+
+## Testing Setup
+
+For testing, we recommend using `SQLiteDatabaseAdapter` with in-memory databases for the best balance of performance and SQL feature support:
+
+```typescript
+import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
+
+// In your test files
+describe('User tests', () => {
+    let database: Database;
+
+    beforeEach(async () => {
+        // Use SQLite in-memory database for testing
+        database = new Database(new SQLiteDatabaseAdapter(':memory:'), [User]);
+        await database.migrate();
+    });
+
+    afterEach(async () => {
+        await database.disconnect();
+    });
+
+    test('should create user', async () => {
+        const user = new User('testuser', 'test@example.com');
+        await database.persist(user);
+
+        const found = await database.query(User).findOne();
+        expect(found.username).toBe('testuser');
+    });
+});
+```
+
+> **Note**: While `MemoryDatabaseAdapter` is available for simple tests, `SQLiteDatabaseAdapter` with `:memory:` is recommended as it provides full SQL compatibility and better represents production behavior.
+
+## Quick Start Example
+
+Here's a complete example to get you started:
+
+```typescript
+import { entity, PrimaryKey, AutoIncrement, MinLength } from '@deepkit/type';
+import { Database } from '@deepkit/orm';
+import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
+
+@entity.name('user')
+class User {
+    id: number & PrimaryKey & AutoIncrement = 0;
+    created: Date = new Date();
+
+    constructor(
+        public username: string & MinLength<3>,
+        public email: string
+    ) {}
+}
+
+@entity.name('post')
+class Post {
+    id: number & PrimaryKey & AutoIncrement = 0;
+    created: Date = new Date();
+
+    constructor(
+        public author: User & Reference,
+        public title: string,
+        public content: string
+    ) {}
+}
+
+async function main() {
+    // Setup database
+    const database = new Database(
+        new SQLiteDatabaseAdapter('./blog.sqlite'),
+        [User, Post]
+    );
+
+    // Create tables
+    await database.migrate();
+
+    // Create user
+    const user = new User('john_doe', 'john@example.com');
+    await database.persist(user);
+
+    // Create post
+    const post = new Post(user, 'My First Post', 'Hello, World!');
+    await database.persist(post);
+
+    // Query data
+    const posts = await database.query(Post)
+        .joinWith('author')
+        .find();
+
+    console.log('Posts:', posts);
+
+    // Using session for multiple operations
+    const session = database.createSession();
+
+    const foundUser = await session.query(User).findOne();
+    foundUser.username = 'john_updated';
+
+    const newPost = new Post(foundUser, 'Second Post', 'More content!');
+    session.add(newPost);
+
+    await session.commit(); // Saves both changes
+
+    await database.disconnect();
+}
+
+main().catch(console.error);
+```
+
 ## Plugins
+
+Deepkit ORM supports a plugin system for extending functionality. Some built-in plugins include:
+
+### Soft Delete Plugin
+```typescript
+import { SoftDeletePlugin } from '@deepkit/orm';
+
+const database = new Database(adapter, entities);
+database.registerPlugin(new SoftDeletePlugin());
+```
+
+### Log Plugin
+```typescript
+import { LogPlugin } from '@deepkit/orm';
+
+const database = new Database(adapter, entities);
+database.registerPlugin(new LogPlugin());
+```
+
+## Next Steps
+
+- Learn about [Entities](entity.md) and how to define them
+- Understand [Queries](query.md) and filtering
+- Explore [Relations](relations.md) between entities
+- Master [Sessions](session.md) for efficient operations
+- Set up [Testing](testing.md) for your application
 

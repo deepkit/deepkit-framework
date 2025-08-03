@@ -289,3 +289,166 @@ function validate<T>(data: any, type?: ReceiveType<T>): void {
 ```
 
 It is useful to assign the result to the same variable to avoid creating a new one unnecessarily. In `type` now either a type object is stored or an error is thrown, if for example no type argument was passed, Deepkit's type compiler was not installed correctly, or the emitting of type information is not activated (see the section Installation above).
+
+## Practical Reflection Examples
+
+### Inspecting Class Properties
+
+```typescript
+import { ReflectionClass, typeOf } from '@deepkit/type';
+import { Group, PrimaryKey, Email } from '@deepkit/type';
+
+class User {
+    id!: number & PrimaryKey;
+    username!: string;
+    email!: string & Email;
+    password!: string & Group<'secret'>;
+    createdAt!: Date;
+}
+
+const reflection = ReflectionClass.from(User);
+
+// Get all properties
+console.log('All properties:');
+reflection.getProperties().forEach(prop => {
+    console.log(`- ${prop.name}: ${prop.type.kind}`);
+});
+
+// Get properties in specific groups
+console.log('Secret properties:');
+reflection.getPropertiesInGroup('secret').forEach(prop => {
+    console.log(`- ${prop.name}`);
+});
+
+// Check if property has specific annotations
+const emailProp = reflection.getProperty('email');
+console.log('Email property has Email annotation:', emailProp.type.kind);
+
+// Get primary key properties
+const primaryKeys = reflection.getPrimaries();
+console.log('Primary keys:', primaryKeys.map(p => p.name));
+```
+
+### Working with Type Information
+
+```typescript
+import { typeOf, stringifyType, ReflectionKind } from '@deepkit/type';
+
+interface Product {
+    id: number;
+    name: string;
+    price: number;
+    tags: string[];
+    metadata?: Record<string, any>;
+}
+
+const productType = typeOf<Product>();
+
+function analyzeType(type: any, depth = 0): void {
+    const indent = '  '.repeat(depth);
+
+    switch (type.kind) {
+        case ReflectionKind.objectLiteral:
+            console.log(`${indent}Object with properties:`);
+            type.types.forEach((prop: any) => {
+                console.log(`${indent}  ${prop.name}${prop.optional ? '?' : ''}: `);
+                analyzeType(prop.type, depth + 2);
+            });
+            break;
+
+        case ReflectionKind.array:
+            console.log(`${indent}Array of:`);
+            analyzeType(type.type, depth + 1);
+            break;
+
+        case ReflectionKind.string:
+            console.log(`${indent}string`);
+            break;
+
+        case ReflectionKind.number:
+            console.log(`${indent}number`);
+            break;
+
+        default:
+            console.log(`${indent}${stringifyType(type)}`);
+    }
+}
+
+analyzeType(productType);
+```
+
+### Dynamic Property Access
+
+```typescript
+import { ReflectionClass, ReflectionProperty } from '@deepkit/type';
+
+class DynamicModel {
+    id!: number;
+    name!: string;
+    email!: string;
+    age!: number;
+}
+
+const reflection = ReflectionClass.from(DynamicModel);
+
+function getPropertyValue(obj: any, propertyName: string): any {
+    const property = reflection.getProperty(propertyName);
+    return obj[propertyName];
+}
+
+function setPropertyValue(obj: any, propertyName: string, value: any): void {
+    const property = reflection.getProperty(propertyName);
+    // You could add type checking here based on property.type
+    obj[propertyName] = value;
+}
+
+function getPropertyNames(): string[] {
+    return reflection.getProperties().map(p => p.name);
+}
+
+// Usage
+const model = new DynamicModel();
+setPropertyValue(model, 'name', 'John');
+setPropertyValue(model, 'age', 30);
+
+console.log('Property names:', getPropertyNames());
+console.log('Name:', getPropertyValue(model, 'name'));
+console.log('Age:', getPropertyValue(model, 'age'));
+```
+
+### Type Comparison and Compatibility
+
+```typescript
+import { typeOf, isSameType, stringifyType } from '@deepkit/type';
+
+interface User {
+    id: number;
+    name: string;
+}
+
+interface Person {
+    id: number;
+    name: string;
+}
+
+interface ExtendedUser extends User {
+    email: string;
+}
+
+const userType = typeOf<User>();
+const personType = typeOf<Person>();
+const extendedUserType = typeOf<ExtendedUser>();
+
+console.log('User and Person are same type:', isSameType(userType, personType));
+console.log('User and ExtendedUser are same type:', isSameType(userType, extendedUserType));
+
+// Compare type structures
+function compareTypes(type1: any, type2: any): void {
+    console.log(`Type 1: ${stringifyType(type1)}`);
+    console.log(`Type 2: ${stringifyType(type2)}`);
+    console.log(`Same: ${isSameType(type1, type2)}`);
+}
+
+compareTypes(userType, personType);
+compareTypes(userType, extendedUserType);
+```

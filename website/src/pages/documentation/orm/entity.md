@@ -1,11 +1,30 @@
 # Entity
 
-An entity is either a class or an object literal (interface) and always has a primary key.
-The entity is decorated with all necessary information using type annotations from `@deepkit/type`. For example, a primary key is defined as well as various fields and their validation constraints. These fields reflect the database structure, usually a table or a collection.
+An entity represents a data model that maps to a database table or collection. It defines the structure, constraints, and relationships of your data using TypeScript types and decorators. Entities are the foundation of your application's data layer.
 
-Through special type annotations like `Mapped<'name'>` a field name can also be mapped to another name in the database.
+## What is an Entity?
 
-## Class
+An entity is a TypeScript class or interface that:
+- **Represents a business concept** (User, Product, Order, etc.)
+- **Maps to a database table/collection**
+- **Has exactly one primary key**
+- **Defines field types and constraints**
+- **Can have relationships to other entities**
+
+### Entity Design Principles
+
+1. **Single Responsibility**: Each entity should represent one clear business concept
+2. **Data Integrity**: Use type constraints to enforce business rules
+3. **Normalization**: Avoid data duplication through proper relationships
+4. **Performance**: Consider indexing for frequently queried fields
+
+## Entity Definition Methods
+
+Deepkit ORM supports two approaches for defining entities: classes (recommended) and interfaces.
+
+## Class-Based Entities (Recommended)
+
+Classes provide the most flexibility and are the recommended approach for defining entities. They support methods, computed properties, and provide better IDE support.
 
 ```typescript
 import { entity, PrimaryKey, AutoIncrement, Unique, MinLength, MaxLength } from '@deepkit/type';
@@ -21,41 +40,87 @@ class User {
         public username: string & Unique & MinLength<2> & MaxLength<16>,
         public email: string & Unique,
     ) {}
+
+    // Business logic methods
+    getFullName(): string {
+        return `${this.firstName || ''} ${this.lastName || ''}`.trim();
+    }
+
+    isActive(): boolean {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return this.created > thirtyDaysAgo;
+    }
 }
 
 const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [User]);
 await database.migrate();
 
-await database.persist(new User('Peter'));
+const user = new User('peter_doe', 'peter@example.com');
+user.firstName = 'Peter';
+user.lastName = 'Doe';
+
+await database.persist(user);
 
 const allUsers = await database.query(User).find();
-console.log('all users', allUsers);
+console.log('Full name:', allUsers[0].getFullName()); // "Peter Doe"
 ```
 
-## Interface
+### Benefits of Class-Based Entities
+
+- **Methods**: Add business logic directly to entities
+- **Computed Properties**: Calculate derived values
+- **Type Safety**: Full TypeScript support with IntelliSense
+- **Inheritance**: Share common functionality between entities
+- **Validation**: Custom validation logic in methods
+
+## Interface-Based Entities
+
+Interfaces provide a lightweight approach when you only need data structure without methods. They're useful for simple data models or when working with external APIs.
 
 ```typescript
 import { PrimaryKey, AutoIncrement, Unique, MinLength, MaxLength } from '@deepkit/type';
 
 interface User {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+    id: number & PrimaryKey & AutoIncrement;
+    created: Date;
     firstName?: string;
     lastName?: string;
     username: string & Unique & MinLength<2> & MaxLength<16>;
+    email: string & Unique;
 }
 
 const database = new Database(new SQLiteDatabaseAdapter(':memory:'));
-database.register<User>({name: 'user'});
+database.register<User>({ name: 'user' });
 
 await database.migrate();
 
-const user: User = {id: 0, created: new Date, username: 'Peter'};
+const user: User = {
+    id: 0,
+    created: new Date(),
+    username: 'peter_doe',
+    email: 'peter@example.com'
+};
+
 await database.persist(user);
 
 const allUsers = await database.query<User>().find();
 console.log('all users', allUsers);
 ```
+
+### When to Use Interfaces
+
+**Use interfaces when:**
+- You need simple data structures without behavior
+- Working with external APIs or data sources
+- Building lightweight microservices
+- You prefer functional programming patterns
+
+**Use classes when:**
+- You need business logic methods
+- You want computed properties
+- You need complex validation
+- You're building rich domain models
 
 ## Primitives
 
@@ -217,10 +282,244 @@ interface User {
 
 ## Default Values
 
-## Default Expressions
+## Database Field Options
 
-## Complex Types
+The `DatabaseField` decorator provides fine-grained control over how fields are handled in the database:
 
-## Exclude
+```typescript
+import { DatabaseField, entity, PrimaryKey, AutoIncrement } from '@deepkit/type';
 
-## Database Specific Column Types
+@entity.name('user')
+class User {
+    id: number & PrimaryKey & AutoIncrement = 0;
+
+    // Skip field during inserts (useful for computed columns)
+    username: string & DatabaseField<{ skip: true }> = '';
+
+    // Custom column name
+    email: string & DatabaseField<{ name: 'email_address' }> = '';
+
+    // Skip during updates only
+    createdAt: Date & DatabaseField<{ skipUpdate: true }> = new Date();
+
+    // Skip during inserts only
+    updatedAt: Date & DatabaseField<{ skipInsert: true }> = new Date();
+
+    constructor(username: string, email: string) {
+        this.username = username;
+        this.email = email;
+    }
+}
+```
+
+## Embedded Objects
+
+Deepkit ORM supports embedded objects for complex data structures:
+
+```typescript
+interface Address {
+    street: string;
+    city: string;
+    zipCode: string;
+    country: string;
+}
+
+interface ContactInfo {
+    phone?: string;
+    website?: string;
+    socialMedia: {
+        twitter?: string;
+        linkedin?: string;
+    };
+}
+
+@entity.name('company')
+class Company {
+    id: number & PrimaryKey & AutoIncrement = 0;
+
+    // Embedded object
+    address: Address = {
+        street: '',
+        city: '',
+        zipCode: '',
+        country: ''
+    };
+
+    // Nested embedded objects
+    contact: ContactInfo = {
+        socialMedia: {}
+    };
+
+    constructor(public name: string) {}
+}
+
+// Usage
+const company = new Company('Tech Corp');
+company.address = {
+    street: '123 Main St',
+    city: 'San Francisco',
+    zipCode: '94105',
+    country: 'USA'
+};
+
+company.contact = {
+    phone: '+1-555-0123',
+    website: 'https://techcorp.com',
+    socialMedia: {
+        twitter: '@techcorp',
+        linkedin: 'company/techcorp'
+    }
+};
+
+await database.persist(company);
+
+// Query embedded fields
+const companies = await database.query(Company)
+    .filter({ 'address.city': 'San Francisco' })
+    .find();
+```
+
+## Advanced Validation
+
+Combine multiple validation constraints for robust data integrity:
+
+```typescript
+import {
+    entity, PrimaryKey, AutoIncrement,
+    MinLength, MaxLength, Pattern, Positive,
+    validate, ValidatorError
+} from '@deepkit/type';
+
+// Custom validator function
+function ValidAge(min: number = 0, max: number = 150) {
+    return (value: number): ValidatorError | void => {
+        if (value < min || value > max) {
+            return new ValidatorError('age', `Age must be between ${min} and ${max}`);
+        }
+    };
+}
+
+@entity.name('user')
+class User {
+    id: number & PrimaryKey & AutoIncrement = 0;
+
+    // Multiple string constraints
+    username: string & MinLength<3> & MaxLength<20> & Pattern<'^[a-zA-Z0-9_]+$'> = '';
+
+    // Email validation
+    email: string & Pattern<'^[^@]+@[^@]+\.[^@]+$'> = '';
+
+    // Custom validation
+    @t.validate(ValidAge(13, 120))
+    age: number & Positive = 0;
+
+    // Optional field with validation
+    website?: string & Pattern<'^https?://.*'>;
+
+    constructor(username: string, email: string, age: number) {
+        this.username = username;
+        this.email = email;
+        this.age = age;
+    }
+}
+
+// Validation is automatically applied during persist operations
+try {
+    const user = new User('ab', 'invalid-email', -5); // Invalid data
+    await database.persist(user);
+} catch (error) {
+    console.log('Validation errors:', error.message);
+}
+```
+
+## Complex Types and Arrays
+
+Handle arrays and complex data types:
+
+```typescript
+@entity.name('blog_post')
+class BlogPost {
+    id: number & PrimaryKey & AutoIncrement = 0;
+
+    // Array of strings
+    tags: string[] = [];
+
+    // Array of numbers
+    ratings: number[] = [];
+
+    // Array of embedded objects
+    comments: Array<{
+        author: string;
+        content: string;
+        createdAt: Date;
+        likes: number;
+    }> = [];
+
+    // JSON field for flexible data
+    metadata: Record<string, any> = {};
+
+    // Binary data
+    thumbnail?: Uint8Array;
+
+    constructor(
+        public title: string,
+        public content: string,
+        public authorId: number
+    ) {}
+}
+
+// Usage
+const post = new BlogPost('My First Post', 'Hello World!', 1);
+post.tags = ['javascript', 'typescript', 'deepkit'];
+post.comments = [
+    {
+        author: 'John',
+        content: 'Great post!',
+        createdAt: new Date(),
+        likes: 5
+    }
+];
+post.metadata = {
+    featured: true,
+    category: 'tutorial',
+    readTime: 5
+};
+
+await database.persist(post);
+
+// Query array fields
+const jsPosts = await database.query(BlogPost)
+    .filter({ tags: { $in: ['javascript'] } })
+    .find();
+```
+
+## Exclude Fields
+
+Exclude sensitive or computed fields from database operations:
+
+```typescript
+import { Exclude } from '@deepkit/type';
+
+@entity.name('user')
+class User {
+    id: number & PrimaryKey & AutoIncrement = 0;
+    username: string = '';
+    email: string = '';
+
+    // Excluded from database operations
+    password: string & Exclude<'database'> = '';
+
+    // Computed field - not stored in database
+    get displayName(): string & Exclude<'database'> {
+        return `${this.firstName} ${this.lastName}`;
+    }
+
+    // Temporary field for business logic
+    isNewUser: boolean & Exclude<'database'> = false;
+
+    constructor(username: string, email: string) {
+        this.username = username;
+        this.email = email;
+    }
+}
+```

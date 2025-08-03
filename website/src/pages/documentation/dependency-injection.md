@@ -197,3 +197,26 @@ It should be noted here that although in theory the dependency inversion princip
 
 Design patterns should not be used blindly and across the board for even the simplest code. However, if the prerequisites such as a complex architecture, large applications, or a scaling team are given, dependency inversion and other design patterns only unfold their true strength.
 
+## Deepkit Dependency Injection Guide
+
+Now that you understand the concepts, explore Deepkit's powerful dependency injection system:
+
+### Getting Started
+- **[Getting Started](./dependency-injection/getting-started.md)** - Installation, basic usage, and choosing the right API level
+- **[Injection Patterns](./dependency-injection/injection.md)** - Constructor, property, and parameter injection techniques
+
+### Core Concepts
+- **[Providers](./dependency-injection/providers.md)** - Different provider types, lifecycle management, and tagged providers
+- **[Scopes](./dependency-injection/scopes.md)** - Request-scoped services, scope isolation, and performance considerations
+- **[Configuration](./dependency-injection/configuration.md)** - Type-safe configuration injection and validation
+
+### Advanced Topics
+- **[Advanced Patterns](./dependency-injection/advanced-patterns.md)** - Plugin architecture, factory patterns, decorators, and middleware
+- **[Performance](./dependency-injection/performance.md)** - Optimization strategies, benchmarking, and best practices
+- **[Testing](./dependency-injection/testing.md)** - Unit testing, mocking, and integration testing with DI
+
+### Troubleshooting
+- **[Debugging & Error Handling](./dependency-injection/debugging.md)** - Common errors, debugging techniques, and prevention strategies
+
+Each guide includes practical examples, best practices, and real-world patterns to help you build maintainable, testable applications with Deepkit's dependency injection system.
+

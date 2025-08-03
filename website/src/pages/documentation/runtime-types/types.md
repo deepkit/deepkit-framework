@@ -1,60 +1,215 @@
-# Type Annotations
+# Types and Annotations
 
-Type annotations are normal TypeScript types that contain meta-information that can be read and change the behavior of various functions at runtime. Deepkit already provides some type annotations that cover many use cases. For example, a class property can be marked as primary key, reference, or index. The database library can use this information at runtime to create the correct SQL queries without prior code generation.
+## What are Type Annotations?
 
-Validator constraints such as `MaxLength`, `Maximum`, or `Positive` can also be added to any type. It is also possible to tell the serializer how to serialize or deserialize a particular value. In addition, it is possible to create completely custom type annotations and read them at runtime, in order to use the type system at runtime in a very individual way.
+Type annotations in Deepkit are special TypeScript types that add metadata to your regular types. They provide additional information that can be used at runtime for validation, serialization, database operations, and more.
 
-Deepkit comes with a whole set of type annotations, all of which can be used directly from `@deepkit/type`. They are designed not to come from multiple libraries, so as not to tie code directly to a particular library such as Deepkit RPC or Deepkit Database. This allows easier reuse of types, even in the frontend, although database type annotations are used for example.
+### How Type Annotations Work
 
-Following is a list of existing type annotations. The validator and serializer of `@deepkit/type` and `@deepkit/bson` and Deepkit Database of `@deepkit/orm` used this information differently. See the corresponding chapters to learn more about this.
-
-## Integer/Float
-
-Integer and floats are defined as a base as `number` and has several sub-variants:
-
-| Type    | Description                                                                                                                                                                                                           |
-|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| integer | An integer of arbitrary size.                                                                                                                                                                                         |
-| int8    | An integer between -128 and 127.                                                                                                                                                                                      |
-| uint8   | An integer between 0 and 255.                                                                                                                                                                                         |
-| int16   | An integer between -32768 and 32767.                                                                                                                                                                                  |
-| uint16  | An integer between 0 and 65535.                                                                                                                                                                                       |
-| int32   | An integer between -2147483648 and 2147483647.                                                                                                                                                                        |
-| uint32  | An integer between 0 and 4294967295.                                                                                                                                                                                  |
-| float   | Same as number, but might have different meaning in database context.                                                                                                                                                 |
-| float32 | A float between -3.40282347e+38 and 3.40282347e+38. Note that JavaScript is not able to check correctly the range due to precision issues, but the information might be handy for the database or binary serializers. |
-| float64 | Same as number, but might have different meaning in database context.                                                                                                                                                 |
+Type annotations use TypeScript's intersection types (`&`) to attach metadata to base types:
 
 ```typescript
-import { integer } from '@deepkit/type';
+// Base type
+type Username = string;
+
+// With annotations
+type Username = string & MinLength<3> & MaxLength<20>;
+
+// Multiple annotations
+type Price = number & Positive & Maximum<10000>;
+```
+
+### Why Use Type Annotations?
+
+Type annotations enable:
+
+- **Validation**: Automatic data validation based on type constraints
+- **Serialization**: Custom serialization behavior for different targets
+- **Database Mapping**: ORM field configuration and relationships
+- **API Documentation**: Automatic schema generation
+- **Code Generation**: Type-driven code generation
+
+### Annotation Categories
+
+Deepkit provides annotations in several categories:
+
+| Category | Purpose | Examples |
+|----------|---------|----------|
+| **Validation** | Data validation constraints | `MinLength`, `Email`, `Positive` |
+| **Serialization** | Control serialization behavior | `Group`, `Excluded`, `MapName` |
+| **Database** | ORM field configuration | `PrimaryKey`, `Reference`, `Index` |
+| **Numeric** | Specialized number types | `integer`, `float32`, `UUID` |
+| **Custom** | User-defined metadata | `Data`, `Validate` |
+
+## Basic Usage
+
+### Adding Constraints
+
+```typescript
+import { MinLength, MaxLength, Email, Positive } from '@deepkit/type';
 
 interface User {
-    id: integer;
+    // String with length constraints
+    username: string & MinLength<3> & MaxLength<20>;
+
+    // Email validation
+    email: string & Email;
+
+    // Positive number
+    age: number & Positive;
+
+    // Optional field with constraints
+    bio?: string & MaxLength<500>;
 }
 ```
 
-Here the `id` of the user is a number at runtime, but is interpreted as an integer in the validation and serialization.
-This means that here, for example, no floats may be used in validation and the serializer automatically converts floats into integers.
+### Combining with Validation
 
 ```typescript
-import { is, integer } from '@deepkit/type';
+import { validate, cast } from '@deepkit/type';
 
-is<integer>(12); //true
-is<integer>(12.5); //false
+const userData = {
+    username: 'jo',              // Too short
+    email: 'invalid-email',      // Invalid format
+    age: -5                      // Negative number
+};
+
+const errors = validate<User>(userData);
+console.log(errors);
+// [
+//   { path: 'username', code: 'minLength', message: 'Min length is 3' },
+//   { path: 'email', code: 'pattern', message: 'Pattern ^\\S+@\\S+$ does not match' },
+//   { path: 'age', code: 'positive', message: 'Number must be positive' }
+// ]
 ```
 
-The subtypes can be used in the same way and are useful if a specific range of numbers is to be allowed.
+## Supported TypeScript Features
+
+Deepkit Runtime Types supports the complete TypeScript type system:
+
+### Primitive Types
+- `string`, `number`, `boolean`, `bigint`, `symbol`
+- `null`, `undefined`, `void`, `never`, `any`, `unknown`
+
+### Complex Types
+- **Objects**: `{ name: string; age: number }`
+- **Arrays**: `string[]`, `Array<number>`
+- **Tuples**: `[string, number, boolean]`
+- **Functions**: `(x: number) => string`
+- **Classes**: Full class support with inheritance
+
+### Advanced Types
+- **Unions**: `string | number | boolean`
+- **Intersections**: `A & B & C`
+- **Generics**: `Array<T>`, `Promise<T>`, `Map<K, V>`
+- **Conditional Types**: `T extends U ? X : Y`
+- **Mapped Types**: `{ [K in keyof T]: T[K] }`
+- **Template Literals**: `` `prefix-${string}` ``
+
+### Example: Complex Type Structure
 
 ```typescript
-import { is, int8 } from '@deepkit/type';
+interface ApiResponse<T> {
+    success: boolean;
+    data?: T;
+    error?: string;
+    metadata: {
+        timestamp: Date;
+        version: string;
+    };
+}
 
-is<int8>(-5); //true
-is<int8>(5); //true
-is<int8>(-200); //false
-is<int8>(2500); //false
+type UserResponse = ApiResponse<User>;
+type ProductListResponse = ApiResponse<Product[]>;
+
+// All of these work with runtime validation
+const userResponse = cast<UserResponse>(apiData);
+const productList = cast<ProductListResponse>(productData);
 ```
 
-## Float
+## Numeric Type Annotations
+
+### Integer Types
+
+Deepkit provides specialized integer types that are validated at runtime and provide hints for serialization and database storage:
+
+| Type | Range | Description |
+|------|-------|-------------|
+| `integer` | Unlimited | Any integer value |
+| `int8` | -128 to 127 | 8-bit signed integer |
+| `uint8` | 0 to 255 | 8-bit unsigned integer |
+| `int16` | -32,768 to 32,767 | 16-bit signed integer |
+| `uint16` | 0 to 65,535 | 16-bit unsigned integer |
+| `int32` | -2,147,483,648 to 2,147,483,647 | 32-bit signed integer |
+| `uint32` | 0 to 4,294,967,295 | 32-bit unsigned integer |
+
+```typescript
+import { integer, int8, uint16, is, cast } from '@deepkit/type';
+
+interface Product {
+    id: integer;           // Any integer
+    categoryId: uint16;    // 0-65535
+    stockLevel: int8;      // -128 to 127
+}
+
+// Validation examples
+is<integer>(42);      // true
+is<integer>(42.5);    // false - not an integer
+is<int8>(100);        // true
+is<int8>(200);        // false - outside range
+is<uint16>(65000);    // true
+is<uint16>(-1);       // false - negative not allowed
+
+// Automatic conversion during casting
+const product = cast<Product>({
+    id: "123",         // String → integer
+    categoryId: 42.7,  // Float → uint16 (rounded)
+    stockLevel: "5"    // String → int8
+});
+```
+
+### Float Types
+
+Float types provide precision hints for databases and binary serializers:
+
+| Type | Description |
+|------|-------------|
+| `float` | Generic floating-point number |
+| `float32` | 32-bit floating-point (single precision) |
+| `float64` | 64-bit floating-point (double precision) |
+
+```typescript
+import { float32, float64 } from '@deepkit/type';
+
+interface Measurement {
+    temperature: float32;  // Single precision
+    precision: float64;    // Double precision
+}
+```
+
+### Why Use Specialized Numeric Types?
+
+1. **Validation**: Ensure values are within expected ranges
+2. **Database Optimization**: Use appropriate column types
+3. **Binary Serialization**: Optimize storage size
+4. **API Documentation**: Clear type specifications
+
+```typescript
+interface GameScore {
+    playerId: uint32;      // Player IDs are always positive
+    score: integer;        // Scores can be negative
+    level: uint8;          // Levels 1-255
+    accuracy: float32;     // Percentage with single precision
+}
+
+// This will validate ranges automatically
+const score = cast<GameScore>({
+    playerId: 12345,
+    score: -100,
+    level: 5,
+    accuracy: 95.7
+});
+```
 
 ## UUID
 
@@ -487,3 +642,201 @@ groupAnnotation.getAnnotations(type); //['a', 'b']
 ```
 
 See [Runtime Types Reflection](./reflection.md) to learn more.
+
+## Advanced Type Annotations
+
+### Database Annotations
+
+These annotations are primarily used by Deepkit ORM but can be useful for documentation and tooling:
+
+```typescript
+import { PrimaryKey, AutoIncrement, Unique, Index, Reference } from '@deepkit/type';
+
+class User {
+    id!: number & PrimaryKey & AutoIncrement;
+    username!: string & Unique;
+    email!: string & Unique & Index;
+    profileId?: number & Reference<Profile>;
+}
+
+class Profile {
+    id!: number & PrimaryKey & AutoIncrement;
+    firstName!: string & Index;
+    lastName!: string & Index;
+    bio?: string;
+}
+```
+
+### Validation Annotations
+
+Comprehensive validation constraints for different data types:
+
+```typescript
+import {
+    MinLength, MaxLength, Pattern, Email,
+    Minimum, Maximum, Positive, Negative,
+    MinItems, MaxItems, Validate
+} from '@deepkit/type';
+
+interface UserProfile {
+    // String constraints
+    username: string & MinLength<3> & MaxLength<20> & Pattern<'^[a-zA-Z0-9_]+$'>;
+    email: string & Email;
+
+    // Number constraints
+    age: number & Minimum<0> & Maximum<150>;
+    score: number & Positive;
+
+    // Array constraints
+    tags: string[] & MinItems<1> & MaxItems<10>;
+
+    // Custom validation
+    password: string & Validate<typeof validatePassword>;
+}
+
+function validatePassword(value: any): ValidatorError | void {
+    if (typeof value !== 'string') return new ValidatorError('type', 'Must be string');
+    if (value.length < 8) return new ValidatorError('minLength', 'Min 8 characters');
+    if (!/[A-Z]/.test(value)) return new ValidatorError('uppercase', 'Must contain uppercase');
+    if (!/[0-9]/.test(value)) return new ValidatorError('number', 'Must contain number');
+}
+```
+
+### Serialization Annotations
+
+Control how types are serialized and deserialized:
+
+```typescript
+import { Excluded, Group, MapName, Embedded } from '@deepkit/type';
+
+class User {
+    id!: number;
+
+    @MapName('user_name')
+    username!: string;
+
+    password!: string & Excluded; // Never serialized
+
+    internalNotes!: string & Group<'internal'>; // Only in internal group
+
+    profile!: Profile & Embedded; // Embedded in parent object
+}
+
+class Profile {
+    firstName!: string;
+    lastName!: string;
+    avatar?: string;
+}
+
+// Serialization with groups
+const publicUser = serialize<User>(user, { groupsExclude: ['internal'] });
+// { id: 1, user_name: 'john', profile: { firstName: 'John', lastName: 'Doe' } }
+
+const internalUser = serialize<User>(user, { groups: ['internal'] });
+// { internalNotes: 'Some notes' }
+```
+
+### Type Branding and Nominal Types
+
+Create distinct types that are structurally identical but semantically different:
+
+```typescript
+import { Brand } from '@deepkit/type';
+
+type UserId = number & Brand<'UserId'>;
+type ProductId = number & Brand<'ProductId'>;
+type Email = string & Brand<'Email'>;
+
+// These are different types even though they're all numbers/strings
+function getUser(id: UserId): User { /* ... */ }
+function getProduct(id: ProductId): Product { /* ... */ }
+
+const userId: UserId = 123 as UserId;
+const productId: ProductId = 456 as ProductId;
+
+getUser(userId); // ✓ Correct
+getUser(productId); // ✗ TypeScript error - wrong brand
+
+// Email branding with validation
+function createEmail(value: string): Email {
+    if (!value.includes('@')) {
+        throw new Error('Invalid email format');
+    }
+    return value as Email;
+}
+```
+
+### Complex Type Combinations
+
+Combine multiple annotations for sophisticated type definitions:
+
+```typescript
+import {
+    PrimaryKey, AutoIncrement, MinLength, MaxLength,
+    Email, Group, Excluded, Optional, Index
+} from '@deepkit/type';
+
+class BlogPost {
+    id!: number & PrimaryKey & AutoIncrement;
+
+    title!: string & MinLength<5> & MaxLength<200> & Index;
+
+    slug!: string & MinLength<5> & MaxLength<200> & Unique & Index;
+
+    content!: string & MinLength<10>;
+
+    authorEmail!: string & Email & Index;
+
+    publishedAt?: Date & Group<'published'>;
+
+    draft!: boolean & Group<'internal'>;
+
+    internalNotes?: string & Group<'internal'> & Excluded;
+
+    tags!: string[] & MinItems<1> & MaxItems<20>;
+
+    metadata?: Record<string, any> & Group<'admin'>;
+}
+
+// Usage with different serialization contexts
+const publicPost = serialize<BlogPost>(post, {
+    groupsExclude: ['internal', 'admin']
+});
+
+const adminPost = serialize<BlogPost>(post, {
+    groups: ['published', 'internal', 'admin']
+});
+```
+
+### Runtime Type Inspection
+
+Access type annotations at runtime for dynamic behavior:
+
+```typescript
+import { ReflectionClass, groupAnnotation, excludedAnnotation } from '@deepkit/type';
+
+class DataProcessor {
+    static processEntity<T>(entityClass: ClassType<T>, data: any) {
+        const reflection = ReflectionClass.from(entityClass);
+
+        // Get all non-excluded properties
+        const serializableProps = reflection.getProperties().filter(prop =>
+            !excludedAnnotation.getFirst(prop.type)
+        );
+
+        // Process by groups
+        const publicProps = reflection.getPropertiesInGroup('public');
+        const internalProps = reflection.getPropertiesInGroup('internal');
+
+        console.log('Serializable properties:', serializableProps.map(p => p.name));
+        console.log('Public properties:', publicProps.map(p => p.name));
+        console.log('Internal properties:', internalProps.map(p => p.name));
+
+        return {
+            public: serialize(data, { groups: ['public'] }),
+            internal: serialize(data, { groups: ['internal'] }),
+            full: serialize(data, { groupsExclude: [] })
+        };
+    }
+}
+```

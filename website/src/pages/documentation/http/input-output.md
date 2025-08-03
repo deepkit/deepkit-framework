@@ -1,106 +1,317 @@
 # Input & Output
 
-The input and output of an HTTP route is the data that is sent to the server and the data that is sent back to the client. This includes the path parameters, query parameters, body, headers, and the response itself. In this chapter, we will look at how to read, deserialize, validate, and write data in an HTTP route.
+HTTP applications are fundamentally about processing input data from clients and returning appropriate output. Deepkit HTTP revolutionizes this process by leveraging TypeScript's type system to provide automatic validation, serialization, and type safety throughout the entire request/response cycle.
 
-## Input
+## Understanding Deepkit's Type-Driven Approach
 
-All the following input variations function in the same way for both the functional and the controller API. They allow data to be read from an HTTP request in a typesafe and decoupled manner. This not only leads to significantly increased security, but also simplifies unit testing, since strictly speaking, not even an HTTP request object needs to exist to test the route.
+Traditional HTTP frameworks require you to manually parse, validate, and convert request data. Deepkit HTTP eliminates this boilerplate by using TypeScript types as the source of truth for data processing. This approach provides several key benefits:
 
-All parameters are automatically converted (deserialized) to the defined TypeScript type and validated. This is done via Deepkit Runtime Types and its [Serialization](../runtime-types/serialization.md) and [Validation](../runtime-types/validation) features.
+### Automatic Data Processing
+- **Deserialization**: Convert string-based HTTP data to proper TypeScript types
+- **Validation**: Ensure data meets your type constraints before reaching your business logic
+- **Type Safety**: Compile-time guarantees that your data matches expected types
+- **Error Handling**: Automatic HTTP error responses for invalid data
 
-For simplicity, all examples with the functional API are shown below.
+### Security by Design
+Type-driven validation means malformed or malicious data is rejected before it reaches your application logic. This significantly reduces security vulnerabilities and makes your application more robust.
+
+### Simplified Testing
+Since route functions work with pure TypeScript types rather than HTTP-specific objects, you can test your business logic without creating mock HTTP requests. This leads to faster, more focused unit tests.
+
+## Input Processing
+
+Deepkit HTTP can extract and validate data from multiple sources in an HTTP request:
+
+- **Path Parameters**: Values extracted from URL segments (e.g., `/users/:id`)
+- **Query Parameters**: Key-value pairs from the URL query string (e.g., `?page=1&limit=10`)
+- **Request Body**: JSON, form data, or multipart data sent in the request body
+- **Headers**: HTTP headers for authentication, content negotiation, etc.
+- **Files**: Uploaded files through multipart form data
+
+All input types work identically with both the functional and controller APIs. The examples below use the functional API for simplicity, but the same patterns apply to controller methods.
+
+### How Type Conversion Works
+
+Deepkit uses "soft type conversion" to intelligently convert HTTP string data to your TypeScript types:
+
+```typescript
+// URL: /users/123
+router.get('/users/:id', (id: number) => {
+    // 'id' is automatically converted from string "123" to number 123
+    console.log(typeof id); // "number"
+    return { userId: id };
+});
+```
+
+This conversion is powered by Deepkit's [Runtime Types](../runtime-types/serialization.md) system, which understands your TypeScript types at runtime and can safely convert between different representations.
 
 ### Path Parameters
 
-Path parameters are values extracted from the URL of the route. The type of the value depends on the type at the associated parameter of the function or method. The conversion is done automatically with the feature [Soft Type Conversion](../runtime-types/serialization#soft-type-conversion).
+Path parameters extract values from URL segments and are one of the most common ways to pass data to HTTP routes. Deepkit automatically extracts these values and converts them to the appropriate TypeScript types.
+
+#### Basic Path Parameters
 
 ```typescript
-router.get('/:text', (text: string) => {
-    return 'Hello ' + text;
+// Simple string parameter
+router.get('/hello/:name', (name: string) => {
+    return `Hello ${name}!`;
+});
+
+// Numeric parameter with automatic conversion
+router.get('/users/:id', (id: number) => {
+    // The string "123" from URL becomes the number 123
+    console.log(typeof id); // "number"
+    return { userId: id, name: `User ${id}` };
+});
+
+// Boolean parameter
+router.get('/posts/:published', (published: boolean) => {
+    // URL values "true"/"false" become boolean true/false
+    return { showPublished: published };
 });
 ```
 
-```sh
-$ curl http://localhost:8080/galaxy
-Hello galaxy
-```
-
-If a Path parameter is defined as a type other than string, it will be converted correctly.
+#### Multiple Path Parameters
 
 ```typescript
-router.get('/user/:id', (id: number) => {
-    return `${id} ${typeof id}`;
+router.get('/users/:userId/posts/:postId', (userId: number, postId: number) => {
+    return {
+        user: userId,
+        post: postId,
+        url: `/users/${userId}/posts/${postId}`
+    };
 });
 ```
 
-```sh
-$ curl http://localhost:8080/user/23
-23 number
-```
+#### Path Parameter Validation
 
-Additional validation constraints can also be applied to the types.
+Add validation constraints to ensure path parameters meet your requirements:
 
 ```typescript
-import { Positive } from '@deepkit/type';
+import { Positive, MinLength, MaxLength } from '@deepkit/type';
 
-router.get('/user/:id', (id: number & Positive) => {
-    return `${id} ${typeof id}`;
+// Ensure ID is a positive number
+router.get('/users/:id', (id: number & Positive) => {
+    return { userId: id };
+});
+
+// Validate string length
+router.get('/categories/:slug', (slug: string & MinLength<3> & MaxLength<50>) => {
+    return { category: slug };
+});
+
+// Combine multiple constraints
+router.get('/products/:id', (id: number & Positive & Maximum<999999>) => {
+    return { productId: id };
 });
 ```
 
-All validation types from `@deepkit/type` can be applied. For more on this, see [HTTP Validation](#validation).
+When validation fails, Deepkit automatically returns a `400 Bad Request` response with details about the validation error.
 
-The Path parameters have `[^]+` set as a regular expression by default in the URL matching. The RegExp for this can be customized as follows:
+#### Advanced Path Parameter Patterns
+
+For complex URL patterns, you can customize the regular expression used for matching:
 
 ```typescript
 import { HttpRegExp } from '@deepkit/http';
-import { Positive } from '@deepkit/type';
 
-router.get('/user/:id', (id: HttpRegExp<number & Positive, '[0-9]+'>) => {
-    return `${id} ${typeof id}`;
+// Only match numeric IDs
+router.get('/users/:id', (id: HttpRegExp<number, '[0-9]+'>) => {
+    return { userId: id };
+});
+
+// Match specific patterns (e.g., UUIDs)
+router.get('/resources/:uuid', (
+    uuid: HttpRegExp<string, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'>
+) => {
+    return { resourceId: uuid };
 });
 ```
 
-This is only necessary in exceptional cases, because often the types in combination with validation types themselves already correctly restrict possible values.
+**Note**: Custom regular expressions are rarely needed since TypeScript types combined with validation constraints usually provide sufficient control over acceptable values.
+
+#### Path Parameter Best Practices
+
+1. **Use descriptive names**: `userId` instead of `id` when the context isn't clear
+2. **Apply validation**: Always validate numeric IDs with `Positive`
+3. **Keep URLs simple**: Avoid too many path parameters in a single route
+4. **Use consistent patterns**: Establish URL conventions across your application
+
+```typescript
+// Good: Clear, validated, consistent
+router.get('/users/:userId', (userId: number & Positive) => { /* ... */ });
+router.get('/users/:userId/posts/:postId', (userId: number & Positive, postId: number & Positive) => { /* ... */ });
+
+// Avoid: Unclear, unvalidated
+router.get('/data/:x/:y/:z', (x: any, y: any, z: any) => { /* ... */ });
+```
 
 ### Query Parameters
 
-Query parameters are values from the URL after the `?` character and can be read with the `HttpQuery<T>` type. The name of the parameter corresponds to the name of the query parameter.
+Query parameters provide a flexible way to pass optional data and configuration to your routes. They appear after the `?` in URLs and are commonly used for filtering, pagination, sorting, and other optional parameters.
+
+#### Understanding Query Parameters
+
+Query parameters are key-value pairs in the URL query string:
+- `?page=1&limit=10` - Multiple parameters
+- `?search=typescript` - Single parameter
+- `?tags=web&tags=api` - Array parameters (same key multiple times)
+
+#### Basic Query Parameters
+
+Use the `HttpQuery<T>` type to extract and validate individual query parameters:
 
 ```typescript
 import { HttpQuery } from '@deepkit/http';
 
-router.get('/', (text: HttpQuery<number>) => {
-    return `Hello ${text}`;
+// Single query parameter with type conversion
+router.get('/search', (query: HttpQuery<string>) => {
+    return { searchTerm: query, results: [] };
+});
+
+// Multiple query parameters
+router.get('/posts', (
+    page: HttpQuery<number> = 1,
+    limit: HttpQuery<number> = 10
+) => {
+    return {
+        posts: [],
+        pagination: { page, limit, total: 0 }
+    };
 });
 ```
 
-```sh
-$ curl http://localhost:8080/\?text\=galaxy
-Hello galaxy
-```
+#### Query Parameter Validation
 
-Query parameters are also automatically deserialized and validated.
+Apply validation constraints to ensure query parameters meet your requirements:
 
 ```typescript
 import { HttpQuery } from '@deepkit/http';
-import { MinLength } from '@deepkit/type';
+import { MinLength, Positive, Maximum } from '@deepkit/type';
 
-router.get('/', (text: HttpQuery<string> & MinLength<3>) => {
-    return 'Hello ' + text;
-}
+router.get('/search', (
+    // Search term must be at least 3 characters
+    query: HttpQuery<string & MinLength<3>>,
+    // Page must be positive
+    page: HttpQuery<number & Positive> = 1,
+    // Limit must be between 1 and 100
+    limit: HttpQuery<number & Positive & Maximum<100>> = 10
+) => {
+    return {
+        searchTerm: query,
+        page,
+        limit,
+        results: []
+    };
+});
 ```
 
-```sh
-$ curl http://localhost:8080/\?text\=galaxy
-Hello galaxy
-$ curl http://localhost:8080/\?text\=ga
-error
+#### Optional vs Required Query Parameters
+
+```typescript
+// Required query parameter (no default value)
+router.get('/filter', (category: HttpQuery<string>) => {
+    return { category, items: [] };
+});
+
+// Optional query parameter (with default value)
+router.get('/posts', (
+    published: HttpQuery<boolean> = true,
+    sortBy: HttpQuery<'date' | 'title' | 'author'> = 'date'
+) => {
+    return { published, sortBy, posts: [] };
+});
 ```
 
-All validation types from `@deepkit/type` can be applied. For more on this, see [HTTP Validation](#validation).
+#### Array Query Parameters
 
-Warning: Parameter values are not escaped/sanitized. Their direct return in a string in a route as HTML opens a security hole (XSS). Make sure that external input is never trusted and filtere/sanitize/convert data where necessary.
+Handle multiple values for the same query parameter:
+
+```typescript
+// URL: /posts?tags=web&tags=api&tags=typescript
+router.get('/posts', (tags: HttpQuery<string[]> = []) => {
+    return {
+        selectedTags: tags,
+        posts: [] // Filter posts by tags
+    };
+});
+
+// URL: /products?ids=1&ids=2&ids=3
+router.get('/products', (ids: HttpQuery<number[]> = []) => {
+    return {
+        requestedIds: ids,
+        products: [] // Fetch products by IDs
+    };
+});
+```
+
+#### Complex Query Parameter Types
+
+```typescript
+// Enum-like string unions
+router.get('/posts', (
+    status: HttpQuery<'draft' | 'published' | 'archived'> = 'published'
+) => {
+    return { status, posts: [] };
+});
+
+// Date parameters (automatically parsed)
+router.get('/events', (
+    startDate: HttpQuery<Date>,
+    endDate: HttpQuery<Date>
+) => {
+    return {
+        dateRange: { start: startDate, end: endDate },
+        events: []
+    };
+});
+```
+
+#### Security Considerations
+
+**Important**: Query parameter values are not automatically escaped or sanitized. When returning user input directly in HTML responses, you risk XSS vulnerabilities:
+
+```typescript
+// ❌ DANGEROUS - Direct output without escaping
+router.get('/search', (query: HttpQuery<string>) => {
+    return `<h1>Results for: ${query}</h1>`; // XSS vulnerability!
+});
+
+// ✅ SAFE - Use JSON responses or proper escaping
+router.get('/search', (query: HttpQuery<string>) => {
+    return { searchTerm: query, results: [] }; // JSON is safe
+});
+
+// ✅ SAFE - Proper HTML escaping when needed
+import { escapeHtml } from 'some-escaping-library';
+router.get('/search', (query: HttpQuery<string>) => {
+    return `<h1>Results for: ${escapeHtml(query)}</h1>`;
+});
+```
+
+#### Query Parameter Best Practices
+
+1. **Use defaults**: Provide sensible defaults for optional parameters
+2. **Validate input**: Always validate query parameters, especially for pagination
+3. **Limit arrays**: Set maximum lengths for array parameters to prevent abuse
+4. **Document parameters**: Make it clear which parameters are required vs optional
+5. **Consistent naming**: Use consistent parameter names across your API
+
+```typescript
+// Good example with validation and defaults
+router.get('/api/posts', (
+    page: HttpQuery<number & Positive & Maximum<1000>> = 1,
+    limit: HttpQuery<number & Positive & Maximum<100>> = 20,
+    search: HttpQuery<string & MinLength<1> & MaxLength<100>> = '',
+    tags: HttpQuery<string[] & MaxItems<10>> = []
+) => {
+    return {
+        posts: [],
+        pagination: { page, limit, total: 0 },
+        filters: { search, tags }
+    };
+});
+```
 
 ### Query Model
 
@@ -482,3 +693,232 @@ router.add(
 The `User` object does not necessarily have to depend on a parameter. It could just as well depend on a session or an HTTP header, and only be provided when the user is logged in. In `RouteParameterResolverContext` a lot of information about the HTTP request is available, so that many use cases can be mapped.
 
 In principle, it is also possible to have complex parameter types provided via the Dependency Injection container from the `http` scope, since these are also available in the route function or method. However, this has the disadvantage that no asynchronous function calls can be used, since the DI container is synchronous throughout.
+
+## File Uploads
+
+Deepkit HTTP provides comprehensive support for file uploads through multipart form data. Files are automatically parsed and made available as `UploadedFile` objects.
+
+### Single File Upload
+
+```typescript
+import { UploadedFile } from '@deepkit/http';
+
+router.post('/upload', (file: UploadedFile) => {
+    return {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        path: file.path
+    };
+});
+```
+
+### Multiple Files Upload
+
+```typescript
+interface UploadData {
+    files: UploadedFile[];
+    description: string;
+}
+
+router.post('/upload-multiple', (body: HttpBody<UploadData>) => {
+    return {
+        uploadedCount: body.files.length,
+        description: body.description,
+        files: body.files.map(f => ({
+            name: f.name,
+            size: f.size
+        }))
+    };
+});
+```
+
+### Mixed Form Data with Files
+
+```typescript
+interface FormData {
+    profilePicture: UploadedFile;
+    name: string;
+    age: number;
+    tags: string[];
+}
+
+router.post('/profile', (body: HttpBody<FormData>) => {
+    return {
+        message: 'Profile updated',
+        user: {
+            name: body.name,
+            age: body.age,
+            tags: body.tags
+        },
+        uploadedFile: {
+            name: body.profilePicture.name,
+            size: body.profilePicture.size
+        }
+    };
+});
+```
+
+### File Upload Validation
+
+```typescript
+import { MaxLength, MinLength } from '@deepkit/type';
+
+interface FileUploadRequest {
+    file: UploadedFile;
+    title: string & MinLength<3> & MaxLength<100>;
+    category: 'image' | 'document' | 'video';
+}
+
+router.post('/upload-validated', (body: HttpBody<FileUploadRequest>) => {
+    // Validate file type
+    if (body.category === 'image' && !body.file.type.startsWith('image/')) {
+        throw new HttpBadRequestError('File must be an image');
+    }
+
+    // Validate file size (example: max 5MB)
+    if (body.file.size > 5 * 1024 * 1024) {
+        throw new HttpBadRequestError('File too large');
+    }
+
+    return {
+        message: 'File uploaded successfully',
+        file: {
+            name: body.file.name,
+            size: body.file.size,
+            type: body.file.type
+        }
+    };
+});
+```
+
+### File Processing
+
+```typescript
+import { promises as fs } from 'fs';
+import path from 'path';
+
+router.post('/process-file', async (file: UploadedFile) => {
+    // Read file content
+    const content = await fs.readFile(file.path);
+
+    // Process the file (example: save to permanent location)
+    const permanentPath = path.join('/uploads', file.name);
+    await fs.copyFile(file.path, permanentPath);
+
+    // Clean up temporary file
+    await fs.unlink(file.path);
+
+    return {
+        message: 'File processed',
+        originalSize: file.size,
+        savedPath: permanentPath
+    };
+});
+```
+
+## Advanced Response Types
+
+Deepkit HTTP supports various response types beyond simple JSON responses.
+
+### HTML Responses
+
+```typescript
+import { HtmlResponse } from '@deepkit/http';
+
+router.get('/page', () => {
+    return new HtmlResponse(`
+        <html>
+            <body>
+                <h1>Welcome</h1>
+                <p>This is an HTML response</p>
+            </body>
+        </html>
+    `);
+});
+```
+
+### Custom Response Headers
+
+```typescript
+import { Response } from '@deepkit/http';
+
+router.get('/download', () => {
+    const response = new Response('File content here', 200);
+    response.setHeader('Content-Type', 'application/octet-stream');
+    response.setHeader('Content-Disposition', 'attachment; filename="file.txt"');
+    return response;
+});
+```
+
+### Streaming Responses
+
+```typescript
+import { Readable } from 'stream';
+
+router.get('/stream', (response: HttpResponse) => {
+    response.setHeader('Content-Type', 'text/plain');
+
+    const stream = new Readable({
+        read() {
+            this.push(`Data chunk ${Date.now()}\n`);
+        }
+    });
+
+    stream.pipe(response);
+});
+```
+
+### JSON Response with Custom Status
+
+```typescript
+import { JSONResponse } from '@deepkit/http';
+
+router.post('/create', (data: any) => {
+    // Create resource logic here
+
+    return new JSONResponse({
+        message: 'Resource created',
+        id: 123
+    }, 201); // HTTP 201 Created
+});
+```
+
+## Error Responses
+
+Proper error handling with appropriate HTTP status codes:
+
+```typescript
+import {
+    HttpBadRequestError,
+    HttpNotFoundError,
+    HttpUnauthorizedError,
+    HttpAccessDeniedError
+} from '@deepkit/http';
+
+router.get('/user/:id', (id: number) => {
+    if (id <= 0) {
+        throw new HttpBadRequestError('Invalid user ID');
+    }
+
+    const user = findUser(id);
+    if (!user) {
+        throw new HttpNotFoundError('User not found');
+    }
+
+    return user;
+});
+
+router.delete('/user/:id', (id: number, currentUser: User) => {
+    if (!currentUser) {
+        throw new HttpUnauthorizedError('Authentication required');
+    }
+
+    if (!currentUser.canDeleteUser(id)) {
+        throw new HttpAccessDeniedError('Insufficient permissions');
+    }
+
+    deleteUser(id);
+    return { message: 'User deleted' };
+});
+```

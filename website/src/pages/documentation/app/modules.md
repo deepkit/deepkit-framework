@@ -512,6 +512,308 @@ new App({
 }).run();
 ```
 
+## Testing Modules
+
+Test modules in isolation or as part of larger applications:
+
+```typescript
+import { createTestingApp } from '@deepkit/framework';
+
+test('DatabaseModule provides DatabaseService', () => {
+    const testing = createTestingApp({
+        imports: [new DatabaseModule({ host: 'localhost' })]
+    });
+
+    const dbService = testing.app.get(DatabaseService);
+    expect(dbService).toBeInstanceOf(DatabaseService);
+});
+
+test('UserModule integrates with DatabaseModule', () => {
+    const testing = createTestingApp({
+        imports: [new UserModule()]
+    });
+
+    const userService = testing.app.get(UserService);
+    const dbService = testing.app.get(DatabaseService);
+
+    expect(userService).toBeInstanceOf(UserService);
+    expect(dbService).toBeInstanceOf(DatabaseService);
+});
+
+test('Module configuration validation', () => {
+    expect(() => {
+        new DatabaseModule({ host: '' }); // Invalid empty host
+    }).toThrow('Host cannot be empty');
+});
+```
+
+## Module Composition Patterns
+
+### Plugin Architecture
+
+Create a plugin system using modules:
+
+```typescript
+interface Plugin {
+    name: string;
+    version: string;
+    initialize(): void;
+}
+
+class PluginModule extends createModuleClass({}) {
+    constructor(private plugin: Plugin) {
+        super();
+    }
+
+    process() {
+        this.addProvider({ provide: this.plugin.name, useValue: this.plugin });
+        this.plugin.initialize();
+    }
+}
+
+// Usage
+const app = new App({
+    imports: [
+        new PluginModule(new EmailPlugin()),
+        new PluginModule(new CachePlugin()),
+        new PluginModule(new MetricsPlugin())
+    ]
+});
+```
+
+### Feature Flags
+
+Use modules to implement feature flags:
+
+```typescript
+class FeatureConfig {
+    enableNewUI: boolean = false;
+    enableBetaFeatures: boolean = false;
+}
+
+class FeatureModule extends createModuleClass({
+    config: FeatureConfig
+}) {
+    process() {
+        if (this.config.enableNewUI) {
+            this.addProvider(NewUIService);
+            this.addController(NewUIController);
+        }
+
+        if (this.config.enableBetaFeatures) {
+            this.addProvider(BetaFeatureService);
+        }
+    }
+}
+```
+
+### Environment-Specific Modules
+
+Load different modules based on environment:
+
+```typescript
+class AppModule extends createModuleClass({}) {
+    process() {
+        const environment = process.env.NODE_ENV || 'development';
+
+        // Always load core modules
+        this.addImport(new DatabaseModule());
+        this.addImport(new UserModule());
+
+        // Environment-specific modules
+        if (environment === 'development') {
+            this.addImport(new DevToolsModule());
+            this.addImport(new MockServicesModule());
+        } else if (environment === 'production') {
+            this.addImport(new MonitoringModule());
+            this.addImport(new CacheModule());
+        }
+
+        if (environment === 'test') {
+            this.addImport(new TestUtilitiesModule());
+        }
+    }
+}
+```
+
+## Advanced Module Hooks
+
+### Dynamic Provider Registration
+
+Register providers dynamically based on runtime conditions:
+
+```typescript
+class DynamicModule extends createModuleClass({}) {
+    processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
+        // Automatically register all services that implement a specific interface
+        if (isClass(token) && implementsInterface(token, 'EventHandler')) {
+            this.eventHandlers.push(token);
+        }
+
+        // Add logging to all services in development
+        if (process.env.NODE_ENV === 'development' && isClass(token)) {
+            this.wrapWithLogging(provider);
+        }
+    }
+
+    postProcess() {
+        // Register all found event handlers
+        for (const handler of this.eventHandlers) {
+            this.addProvider(handler);
+        }
+    }
+}
+```
+
+### Cross-Module Communication
+
+Enable modules to communicate with each other:
+
+```typescript
+class ModuleRegistry {
+    private modules = new Map<string, AppModule<any>>();
+
+    register(name: string, module: AppModule<any>) {
+        this.modules.set(name, module);
+    }
+
+    get(name: string): AppModule<any> | undefined {
+        return this.modules.get(name);
+    }
+}
+
+class CommunicatingModule extends createModuleClass({
+    name: 'communicating'
+}) {
+    process() {
+        // Register self in registry
+        const registry = this.getImportedModuleByClass(RegistryModule)
+            .get(ModuleRegistry);
+        registry.register(this.name, this);
+
+        // Find and configure other modules
+        const userModule = registry.get('user');
+        if (userModule) {
+            userModule.configure({ enableNotifications: true });
+        }
+    }
+}
+```
+
+## Module Best Practices
+
+### 1. Single Responsibility
+
+Each module should have a clear, single responsibility:
+
+```typescript
+// Good: Focused on user management
+class UserModule extends createModuleClass({
+    providers: [UserService, UserRepository, UserValidator],
+    controllers: [UserController],
+    exports: [UserService]
+}) {}
+
+// Bad: Too many responsibilities
+class EverythingModule extends createModuleClass({
+    providers: [UserService, EmailService, PaymentService, LoggingService],
+    // ... too many unrelated services
+}) {}
+```
+
+### 2. Clear Dependencies
+
+Make module dependencies explicit:
+
+```typescript
+class UserModule extends createModuleClass({
+    imports: [
+        new DatabaseModule(), // Explicit dependency
+        new EmailModule()     // Another explicit dependency
+    ],
+    providers: [UserService]
+}) {
+    process() {
+        // Validate dependencies are available
+        if (!this.getImportedModuleByClass(DatabaseModule)) {
+            throw new Error('UserModule requires DatabaseModule');
+        }
+    }
+}
+```
+
+### 3. Configuration Validation
+
+Validate module configuration early:
+
+```typescript
+class ApiConfig {
+    baseUrl!: string;
+    timeout: number = 5000;
+    retries: number = 3;
+}
+
+class ApiModule extends createModuleClass({
+    config: ApiConfig
+}) {
+    process() {
+        // Validate configuration
+        if (!this.config.baseUrl) {
+            throw new Error('API base URL is required');
+        }
+
+        if (!this.config.baseUrl.startsWith('http')) {
+            throw new Error('API base URL must be a valid HTTP URL');
+        }
+
+        if (this.config.timeout < 1000) {
+            console.warn('API timeout is very low, consider increasing it');
+        }
+    }
+}
+```
+
+### 4. Graceful Degradation
+
+Handle missing optional dependencies gracefully:
+
+```typescript
+class NotificationModule extends createModuleClass({
+    providers: [NotificationService]
+}) {
+    process() {
+        // Optional email integration
+        try {
+            const emailModule = this.getImportedModuleByClass(EmailModule);
+            this.configureProvider<NotificationService>(service => {
+                service.setEmailService(emailModule.get(EmailService));
+            });
+        } catch {
+            console.log('Email module not available, notifications will use console only');
+        }
+    }
+}
+```
+
 ## Injector Context
 
 The InjectorContext is the dependency injection container. It allows you to request/instantiate services from your own or other modules. This is necessary if for example you have stored a controller in `processControllers` and want to correctly instantiate them.
+
+```typescript
+class ControllerRegistry {
+    private controllers = new Map<string, {module: AppModule<any>, controller: ClassType}>();
+
+    register(name: string, module: AppModule<any>, controller: ClassType) {
+        this.controllers.set(name, { module, controller });
+    }
+
+    instantiate(name: string, injectorContext: InjectorContext) {
+        const entry = this.controllers.get(name);
+        if (!entry) throw new Error(`Controller ${name} not found`);
+
+        // Get the correct injector for the module
+        const injector = injectorContext.getInjector(entry.module);
+        return injector.get(entry.controller);
+    }
+}
+```

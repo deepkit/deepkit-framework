@@ -223,7 +223,7 @@ export class MyService {
 new MyService({title: 'Hello', host: '0.0.0.0'});
 
 //or you can use type aliases
-type MyServiceConfig = Pick<Config, 'title' | 'host'};
+type MyServiceConfig = Pick<Config, 'title' | 'host'>;
 export class MyService {
      constructor(private config: MyServiceConfig) {
      }
@@ -262,4 +262,231 @@ export class MyService {
          return this.config.title;
      }
 }
+```
+
+## Advanced Configuration Patterns
+
+### Conditional Configuration
+
+Configure services based on configuration values:
+
+```typescript
+class AppConfig {
+    environment: 'development' | 'production' = 'development';
+    enableCache: boolean = false;
+    logLevel: 'debug' | 'info' | 'warn' | 'error' = 'info';
+}
+
+const app = new App({
+    config: AppConfig
+})
+.setup((module, config) => {
+    // Add development-only services
+    if (config.environment === 'development') {
+        module.addProvider(DevToolsService);
+    }
+
+    // Configure logger based on log level
+    module.configureProvider<Logger>(logger => {
+        logger.level = config.logLevel === 'debug' ? 5 : 3;
+    });
+
+    // Conditionally add cache service
+    if (config.enableCache) {
+        module.addProvider(CacheService);
+    }
+});
+```
+
+### Nested Configuration
+
+Organize complex configuration with nested objects:
+
+```typescript
+class DatabaseConfig {
+    host: string = 'localhost';
+    port: number = 5432;
+    username: string = 'user';
+    password!: string;
+    ssl: {
+        enabled: boolean;
+        cert?: string;
+        key?: string;
+    } = { enabled: false };
+}
+
+class AppConfig {
+    database: DatabaseConfig = new DatabaseConfig();
+    redis: {
+        host: string;
+        port: number;
+    } = {
+        host: 'localhost',
+        port: 6379
+    };
+}
+```
+
+Environment variables for nested configuration:
+```bash
+# Nested object properties
+APP_DATABASE_HOST=db.example.com
+APP_DATABASE_PORT=5432
+APP_DATABASE_SSL_ENABLED=true
+APP_REDIS_HOST=cache.example.com
+```
+
+### Configuration Validation
+
+Add custom validation to configuration:
+
+```typescript
+import { MinLength, Minimum, Maximum, Email } from '@deepkit/type';
+
+class AppConfig {
+    // String validation
+    appName: string & MinLength<3> = 'MyApp';
+
+    // Number validation
+    port: number & Minimum<1000> & Maximum<65535> = 3000;
+
+    // Email validation
+    adminEmail?: string & Email;
+
+    // Custom validation in process hook
+    databaseUrl!: string;
+}
+
+class AppModule extends createModuleClass({
+    config: AppConfig
+}) {
+    process() {
+        // Custom validation logic
+        if (!this.config.databaseUrl.startsWith('postgresql://')) {
+            throw new Error('Database URL must be a PostgreSQL connection string');
+        }
+
+        if (this.config.port === 3000 && this.config.appName === 'MyApp') {
+            console.warn('Using default configuration values in production');
+        }
+    }
+}
+```
+
+## Configuration Loading Priority
+
+Configuration is loaded in the following order (later sources override earlier ones):
+
+1. Default values in configuration class
+2. Module constructor parameters
+3. Configuration loaders (in order they were added)
+4. `app.configure()` calls
+
+```typescript
+class Config {
+    port: number = 3000; // 1. Default value
+}
+
+const app = new App({
+    config: Config
+})
+.loadConfigFromEnv() // 3. Environment variables
+.configure({ port: 8080 }); // 4. Programmatic override
+
+// Final port value: 8080 (from configure call)
+```
+
+## Environment-Specific Configuration
+
+### Multiple Environment Files
+
+Load different configuration files based on environment:
+
+```typescript
+const environment = process.env.NODE_ENV || 'development';
+
+const app = new App({
+    config: AppConfig
+})
+.loadConfigFromEnv({
+    envFilePath: [
+        `.env.${environment}.local`,
+        `.env.${environment}`,
+        '.env.local',
+        '.env'
+    ]
+});
+```
+
+### Environment Variable Naming
+
+Customize environment variable naming:
+
+```typescript
+app.loadConfigFromEnv({
+    prefix: 'MYAPP_',
+    namingStrategy: (name: string) => {
+        // Custom naming strategy
+        return name.toUpperCase().replace(/([A-Z])/g, '_$1');
+    }
+});
+```
+
+## Troubleshooting Configuration
+
+### Common Issues
+
+**Problem**: Configuration not loading from environment variables
+
+**Solution**: Check naming convention and prefix:
+```bash
+# Wrong
+export PORT=3000
+
+# Correct (with default APP_ prefix)
+export APP_PORT=3000
+```
+
+**Problem**: Type validation errors
+
+**Solution**: Ensure environment values can be converted:
+```bash
+# Wrong - cannot convert to number
+export APP_PORT=abc
+
+# Correct
+export APP_PORT=3000
+```
+
+**Problem**: Required fields not provided
+
+**Solution**: Provide all required configuration:
+```typescript
+class Config {
+    databaseUrl!: string; // Required
+}
+
+// Must provide via environment or configure()
+export APP_DATABASE_URL="postgresql://localhost/mydb"
+```
+
+### Debug Configuration Loading
+
+Enable debug logging to see configuration loading:
+
+```typescript
+import { Logger, ConsoleTransport } from '@deepkit/logger';
+
+const app = new App({
+    config: AppConfig,
+    providers: [
+        { provide: Logger, useValue: new Logger([new ConsoleTransport()], 5) }
+    ]
+})
+.loadConfigFromEnv();
+
+// Check final configuration
+app.command('debug-config', (config: AppConfig, logger: Logger) => {
+    logger.log('Final configuration:', config);
+});
 ```
