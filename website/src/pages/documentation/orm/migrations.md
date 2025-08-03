@@ -1,19 +1,68 @@
 # Migrations
 
-Migrations are a way to make database schema changes in a structured and organized manner. They are stored as TypeScript files in a directory and can be executed using the command-line tool.
+Migrations provide a version-controlled way to evolve your database schema over time. They ensure that database changes are applied consistently across different environments (development, staging, production) and can be safely rolled back if needed.
 
-Deepkit ORM migrations are enabled by default when Deepkit Framework is used. 
+## Why Use Migrations?
 
-## Commands
+Migrations solve several critical problems in database management:
 
-- `migration:create` - Generates a new migration file based on a database diff
-- `migration:pending` - Shows pending migration files
-- `migration:up` - Executes pending migration files.
-- `migration:down` - Executes down migration, reverting old migration files
+1. **Version Control**: Track database schema changes alongside code changes
+2. **Team Collaboration**: Ensure all developers have the same database structure
+3. **Deployment Safety**: Apply schema changes reliably in production
+4. **Rollback Capability**: Revert problematic changes when needed
+5. **Environment Consistency**: Keep development, staging, and production in sync
 
-These commands are available either in application when you import the `FrameworkModule` or via the `deepkit-sql` command-line tool from `@deepkit/sql`.
+## How Migrations Work
 
-The [migration integration of FrameworkModule](../framework/database.md#migration) automatically reads your Databases (you have to define them as provider), while with `deepkit-sql` you have to specify the TypeScript file that exports the database. THe latter is useful if you use Deepkit ORM standalone without Deepkit Framework.
+Deepkit ORM automatically generates migrations by comparing your current entity definitions with the existing database schema. This diff-based approach means you focus on defining your entities, and the ORM handles the database changes.
+
+### Migration Lifecycle
+
+1. **Modify Entities**: Change your TypeScript entity definitions
+2. **Generate Migration**: Run `migration:create` to generate a migration file
+3. **Review & Customize**: Examine and optionally modify the generated migration
+4. **Apply Migration**: Run `migration:up` to execute pending migrations
+5. **Deploy**: Include migration files in your deployment process
+
+Deepkit ORM migrations are enabled by default when using Deepkit Framework.
+
+## Migration Commands
+
+Deepkit ORM provides several commands for managing migrations:
+
+| Command | Purpose | When to Use |
+|---------|---------|-------------|
+| `migration:create` | Generates a new migration file based on entity changes | After modifying entity definitions |
+| `migration:pending` | Shows migrations that haven't been applied yet | Before deploying or to check status |
+| `migration:up` | Executes pending migrations | During deployment or development setup |
+| `migration:down` | Reverts the last migration | When you need to rollback changes |
+
+### Command Availability
+
+These commands are available in two ways:
+
+1. **With Deepkit Framework**: Commands are automatically available when you import `FrameworkModule`
+2. **Standalone**: Use the `deepkit-sql` CLI tool from `@deepkit/sql` package
+
+### Framework vs Standalone
+
+**Deepkit Framework Integration**:
+- Automatically discovers database providers
+- Integrates with application configuration
+- Suitable for full Deepkit applications
+
+**Standalone CLI**:
+- Requires explicit database file specification
+- Useful for ORM-only projects
+- More control over migration process
+
+```bash
+# Framework approach (automatic discovery)
+npm run migration:create
+
+# Standalone approach (explicit database file)
+./node_modules/.bin/deepkit-sql migration:create --path database.ts --migrationDir src/migrations
+```
 
 ## Creating a migration
 

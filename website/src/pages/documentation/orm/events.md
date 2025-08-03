@@ -1,48 +1,112 @@
 # Events
 
-Events are a way to hook into Deepkit ORM and allow you to write powerful plugins. There are two
-categories of events: Query events and Unit-of-Work events. Plugin authors typically use both to
-support both ways of manipulating data.
+Events provide a powerful way to hook into Deepkit ORM's lifecycle and implement cross-cutting concerns like auditing, caching, validation, and authorization. They allow you to execute custom logic at specific points during database operations without modifying your core business logic.
 
-Events are registered via `Database.listen` un an event token. Short-lived event listeners can also
-be registered on sessions.
+## Understanding ORM Events
+
+Events in Deepkit ORM are fired at key moments during database operations, allowing you to:
+- **Audit changes**: Track who modified what and when
+- **Implement caching**: Cache frequently accessed data
+- **Add authorization**: Check permissions before operations
+- **Validate data**: Perform complex validation beyond type constraints
+- **Transform data**: Modify data before saving or after loading
+- **Integrate external systems**: Sync with search engines, message queues, etc.
+
+## Event Categories
+
+There are two main categories of events:
+
+1. **Query Events**: Triggered during direct database queries (`Database.query()`)
+2. **Unit-of-Work Events**: Triggered during session operations (`Session.commit()`)
+
+## Event Registration
+
+Events can be registered at the database level (global) or session level (scoped):
 
 ```typescript
 import { Query, Database } from '@deepkit/orm';
 
 const database = new Database(...);
+
+// Global event listener - applies to all operations
 database.listen(Query.onFetch, async (event) => {
+    console.log('Data fetched:', event.classSchema.name);
 });
 
 const session = database.createSession();
 
-//will only be executed for this particular session
+// Session-scoped event listener - only for this session
 session.eventDispatcher.listen(Query.onFetch, async (event) => {
+    console.log('Session-specific fetch');
 });
+```
+
+### Event Listener Lifecycle
+
+```typescript
+// Register an event listener
+const unsubscribe = database.listen(Query.onFetch, async (event) => {
+    // Your event handling logic
+});
+
+// Unregister when no longer needed
+unsubscribe();
 ```
 
 ## Query Events
 
-Query events are triggered when a query is executed via `Database.query()` or `Session.query()`.
+Query events are triggered when operations are executed via `Database.query()` or `Session.query()`. These events allow you to intercept and modify queries before they're executed, or process results after they're returned.
 
-Each event has its own additional properties such as the type of entity, the query itself and the
-database session. You can override the query by setting a new query to `Event.query`.
+### Query Event Capabilities
+
+- **Modify queries**: Add filters, change ordering, or alter the query structure
+- **Access metadata**: Get information about the entity type and operation
+- **Transform results**: Modify data after it's fetched from the database
+- **Implement security**: Add row-level security filters
+- **Add logging**: Track query execution for debugging or auditing
+
+### Basic Query Event Usage
 
 ```typescript
 import { Query, Database } from '@deepkit/orm';
 
 const database = new Database(...);
 
-const unsubscribe = database.listen(Query.onFetch, async event => {
-    //overwrite the query of the user, so something else is executed.
-    event.query = event.query.filterField('fieldName', 123);
+// Intercept fetch operations
+const unsubscribe = database.listen(Query.onFetch, async (event) => {
+    console.log(`Fetching ${event.classSchema.name} entities`);
+
+    // Add a filter to all queries for this entity
+    if (event.classSchema.name === 'user') {
+        event.query = event.query.filter({ active: true });
+    }
 });
 
-//to delete the hook call unsubscribe
+// Clean up when done
 unsubscribe();
 ```
 
-"Query" has several event tokens:
+### Practical Example: Soft Delete Implementation
+
+```typescript
+// Automatically filter out deleted records
+database.listen(Query.onFetch, async (event) => {
+    // Add deleted filter to all entities that have a 'deletedAt' field
+    if (event.classSchema.hasProperty('deletedAt')) {
+        event.query = event.query.filter({ deletedAt: null });
+    }
+});
+
+// Automatically set deletedAt instead of actually deleting
+database.listen(Query.onDeletePre, async (event) => {
+    if (event.classSchema.hasProperty('deletedAt')) {
+        // Convert delete to update
+        event.query = event.query.patchMany({ deletedAt: new Date() });
+    }
+});
+```
+
+### Available Query Events
 
 | Event-Token        | Description                                                 |
 |--------------------|-------------------------------------------------------------|

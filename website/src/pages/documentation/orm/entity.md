@@ -1,11 +1,30 @@
 # Entity
 
-An entity is either a class or an object literal (interface) and always has a primary key.
-The entity is decorated with all necessary information using type annotations from `@deepkit/type`. For example, a primary key is defined as well as various fields and their validation constraints. These fields reflect the database structure, usually a table or a collection.
+An entity represents a data model that maps to a database table or collection. It defines the structure, constraints, and relationships of your data using TypeScript types and decorators. Entities are the foundation of your application's data layer.
 
-Through special type annotations like `Mapped<'name'>` a field name can also be mapped to another name in the database.
+## What is an Entity?
 
-## Class
+An entity is a TypeScript class or interface that:
+- **Represents a business concept** (User, Product, Order, etc.)
+- **Maps to a database table/collection**
+- **Has exactly one primary key**
+- **Defines field types and constraints**
+- **Can have relationships to other entities**
+
+### Entity Design Principles
+
+1. **Single Responsibility**: Each entity should represent one clear business concept
+2. **Data Integrity**: Use type constraints to enforce business rules
+3. **Normalization**: Avoid data duplication through proper relationships
+4. **Performance**: Consider indexing for frequently queried fields
+
+## Entity Definition Methods
+
+Deepkit ORM supports two approaches for defining entities: classes (recommended) and interfaces.
+
+## Class-Based Entities (Recommended)
+
+Classes provide the most flexibility and are the recommended approach for defining entities. They support methods, computed properties, and provide better IDE support.
 
 ```typescript
 import { entity, PrimaryKey, AutoIncrement, Unique, MinLength, MaxLength } from '@deepkit/type';
@@ -21,41 +40,87 @@ class User {
         public username: string & Unique & MinLength<2> & MaxLength<16>,
         public email: string & Unique,
     ) {}
+
+    // Business logic methods
+    getFullName(): string {
+        return `${this.firstName || ''} ${this.lastName || ''}`.trim();
+    }
+
+    isActive(): boolean {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return this.created > thirtyDaysAgo;
+    }
 }
 
 const database = new Database(new SQLiteDatabaseAdapter(':memory:'), [User]);
 await database.migrate();
 
-await database.persist(new User('Peter'));
+const user = new User('peter_doe', 'peter@example.com');
+user.firstName = 'Peter';
+user.lastName = 'Doe';
+
+await database.persist(user);
 
 const allUsers = await database.query(User).find();
-console.log('all users', allUsers);
+console.log('Full name:', allUsers[0].getFullName()); // "Peter Doe"
 ```
 
-## Interface
+### Benefits of Class-Based Entities
+
+- **Methods**: Add business logic directly to entities
+- **Computed Properties**: Calculate derived values
+- **Type Safety**: Full TypeScript support with IntelliSense
+- **Inheritance**: Share common functionality between entities
+- **Validation**: Custom validation logic in methods
+
+## Interface-Based Entities
+
+Interfaces provide a lightweight approach when you only need data structure without methods. They're useful for simple data models or when working with external APIs.
 
 ```typescript
 import { PrimaryKey, AutoIncrement, Unique, MinLength, MaxLength } from '@deepkit/type';
 
 interface User {
-    id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+    id: number & PrimaryKey & AutoIncrement;
+    created: Date;
     firstName?: string;
     lastName?: string;
     username: string & Unique & MinLength<2> & MaxLength<16>;
+    email: string & Unique;
 }
 
 const database = new Database(new SQLiteDatabaseAdapter(':memory:'));
-database.register<User>({name: 'user'});
+database.register<User>({ name: 'user' });
 
 await database.migrate();
 
-const user: User = {id: 0, created: new Date, username: 'Peter'};
+const user: User = {
+    id: 0,
+    created: new Date(),
+    username: 'peter_doe',
+    email: 'peter@example.com'
+};
+
 await database.persist(user);
 
 const allUsers = await database.query<User>().find();
 console.log('all users', allUsers);
 ```
+
+### When to Use Interfaces
+
+**Use interfaces when:**
+- You need simple data structures without behavior
+- Working with external APIs or data sources
+- Building lightweight microservices
+- You prefer functional programming patterns
+
+**Use classes when:**
+- You need business logic methods
+- You want computed properties
+- You need complex validation
+- You're building rich domain models
 
 ## Primitives
 

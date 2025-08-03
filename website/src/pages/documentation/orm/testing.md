@@ -1,12 +1,36 @@
 # Testing with Deepkit ORM
 
-Testing database-driven applications requires careful consideration of data isolation, performance, and test reliability. Deepkit ORM provides several tools and patterns to make testing easier and more effective.
+Testing database-driven applications presents unique challenges: ensuring data isolation between tests, managing test performance, and maintaining test reliability across different environments. Deepkit ORM provides several strategies and tools to address these challenges effectively.
+
+## Testing Challenges and Solutions
+
+### Common Testing Challenges
+
+1. **Data Isolation**: Tests should not interfere with each other
+2. **Performance**: Tests should run quickly to maintain developer productivity
+3. **Reliability**: Tests should produce consistent results across environments
+4. **Complexity**: Database tests can be complex to set up and maintain
+
+### Deepkit ORM Solutions
+
+- **Multiple Database Adapters**: Choose the right adapter for different testing scenarios
+- **In-Memory Databases**: Fast, isolated test environments
+- **Session Management**: Clean, predictable state management
+- **Migration Support**: Consistent schema setup across test runs
 
 ## Database Adapters for Testing
 
 ### SQLite Database Adapter (Recommended)
 
-For most testing scenarios, we recommend using `SQLiteDatabaseAdapter` with in-memory databases. This provides the best balance of performance, SQL compatibility, and feature support:
+SQLite with in-memory databases is the recommended approach for most testing scenarios. It provides an excellent balance of performance, SQL feature compatibility, and isolation.
+
+#### Why SQLite for Testing?
+
+- **Performance**: In-memory databases are extremely fast
+- **Isolation**: Each test gets a completely fresh database
+- **SQL Compatibility**: Supports most SQL features including joins, aggregations, and transactions
+- **No Setup**: No external database server required
+- **Deterministic**: Consistent behavior across different environments
 
 ```typescript
 import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';

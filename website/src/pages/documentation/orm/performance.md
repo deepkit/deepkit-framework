@@ -1,6 +1,25 @@
 # Performance Best Practices
 
-Optimizing database performance is crucial for scalable applications. Deepkit ORM provides several features and patterns to help you build high-performance database operations.
+Database performance is critical for application scalability and user experience. Deepkit ORM provides powerful features for optimization, but understanding when and how to use them is key to building high-performance applications.
+
+## Performance Fundamentals
+
+Before diving into specific techniques, understand these core principles:
+
+1. **Minimize Database Round Trips**: Batch operations when possible
+2. **Use Appropriate Indexes**: Index frequently queried and sorted fields
+3. **Select Only Needed Data**: Avoid loading unnecessary fields or relationships
+4. **Leverage Database Features**: Use aggregation, filtering, and sorting at the database level
+5. **Monitor Query Patterns**: Identify and optimize slow queries
+
+## Understanding the Performance Impact
+
+Different ORM patterns have varying performance characteristics:
+
+- **Sessions**: Higher memory usage but better for complex operations
+- **Direct Queries**: Lower overhead for simple operations
+- **Joins**: More efficient than N+1 queries but can be complex
+- **Aggregation**: Much faster than application-level calculations
 
 ## Session vs Database Queries
 
@@ -66,10 +85,38 @@ await session.commit(); // Automatically generates UPDATE statement
 ```
 
 ### Identity Map Best Practices:
-- Use sessions for related operations to benefit from identity map
-- Be aware that sessions hold references to entities (memory usage)
-- Create new sessions for different logical units of work
-- Don't keep sessions alive too long in long-running processes
+
+**Benefits:**
+- Eliminates duplicate database queries for the same entity
+- Ensures object identity consistency
+- Enables automatic change detection
+- Reduces memory allocation for duplicate objects
+
+**Considerations:**
+- Sessions hold references to all loaded entities (memory usage)
+- Identity map is per-session, not global
+- Long-lived sessions can accumulate many entities
+
+**Best Practices:**
+```typescript
+// Good: Short-lived session for related operations
+async function updateUserProfile(userId: number, updates: any) {
+    const session = database.createSession();
+
+    const user = await session.query(User).filter({ id: userId }).findOne();
+    const profile = await session.query(Profile).filter({ userId }).findOne();
+
+    // Both entities benefit from identity map
+    Object.assign(user, updates);
+    profile.lastUpdated = new Date();
+
+    await session.commit();
+    // Session is garbage collected after function ends
+}
+
+// Avoid: Long-lived sessions that accumulate entities
+const globalSession = database.createSession(); // Don't do this
+```
 
 ## Batch Operations
 
