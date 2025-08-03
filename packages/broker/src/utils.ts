@@ -3,16 +3,25 @@ import { xxHash32 } from 'js-xxhash';
 
 import { Queue } from './kernel.js';
 
+/**
+ * @internal
+ */
 export function parseTime(value?: string | number): number | undefined {
     if ('undefined' === typeof value) return;
     if ('string' === typeof value) return value ? parse(value) || 0 : undefined;
     return value;
 }
 
+/**
+ * @internal
+ */
 export function fastHash(value: Uint8Array): number {
     return xxHash32(value);
 }
 
+/**
+ * @internal
+ */
 export function handleMessageDeduplication(hash: string | number, queue: Queue, value: Uint8Array, ttl: number): boolean {
     if (queue.deduplicateMessageHashes.has(hash)) return true;
     setTimeout(() => queue.deduplicateMessageHashes.delete(hash), ttl);

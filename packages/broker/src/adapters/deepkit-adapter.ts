@@ -38,7 +38,7 @@ export class BrokerDeepkitConnection extends RpcBaseClient {
     activeChannels = new Map<string, { listeners: number, callbacks: ((v: Uint8Array) => void)[] }>();
     consumers = new Map<string, { listeners: number, callbacks: ((id: number, v: Uint8Array) => Promise<void>)[] }>();
 
-    subscribedToInvalidations?: ((message: brokerInvalidateCacheMessage) => void)[];
+    subscribedToInvalidations?: ((key: string) => void)[];
 
     protected onMessage(message: RpcMessage) {
         if (message.routeType === RpcMessageRouteType.server) {
@@ -52,9 +52,9 @@ export class BrokerDeepkitConnection extends RpcBaseClient {
                 if (!channel) return;
                 for (const callback of channel.callbacks) callback(body.v);
             } else if (message.type === BrokerType.ResponseInvalidationCache) {
-                const body = message.parseBody<brokerInvalidateCacheMessage>();
+                const key = message.parseBody<brokerInvalidateCacheMessage>().key;
                 if (this.subscribedToInvalidations) {
-                    for (const callback of this.subscribedToInvalidations) callback(body);
+                    for (const callback of this.subscribedToInvalidations) callback(key);
                 }
             } else if (message.type === BrokerType.QueueResponseHandleMessage) {
                 const body = message.parseBody<BrokerQueueResponseHandleMessage>();
@@ -119,7 +119,7 @@ export class BrokerDeepkitPool {
  */
 export class BrokerDeepkitAdapter implements BrokerAdapter {
     protected pool = new BrokerDeepkitPool(this.options);
-    protected onInvalidateCacheCallbacks: ((message: brokerInvalidateCacheMessage) => void)[] = [];
+    protected onInvalidateCacheCallbacks: ((key: string) => void)[] = [];
 
     constructor(public options: BrokerDeepkitAdapterOptions) {
     }
@@ -128,7 +128,7 @@ export class BrokerDeepkitAdapter implements BrokerAdapter {
         await this.pool.disconnect();
     }
 
-    onInvalidateCache(callback: (message: brokerInvalidateCacheMessage) => void): void {
+    onInvalidateCache(callback: (key: string) => void): void {
         this.onInvalidateCacheCallbacks.push(callback);
     }
 

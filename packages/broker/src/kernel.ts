@@ -8,18 +8,10 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+/** @group Kernel */
+
 import { arrayRemoveItem, ProcessLock, ProcessLocker } from '@deepkit/core';
-import {
-    createRpcMessage,
-    RpcKernel,
-    RpcKernelBaseConnection,
-    RpcKernelConnections,
-    RpcMessage,
-    RpcMessageBuilder,
-    RpcMessageRouteType,
-    RpcStats,
-    TransportConnection,
-} from '@deepkit/rpc';
+import { createRpcMessage, RpcKernel, RpcKernelBaseConnection, RpcKernelConnections, RpcMessage, RpcMessageBuilder, RpcMessageRouteType, RpcStats, TransportConnection } from '@deepkit/rpc';
 import { Logger } from '@deepkit/logger';
 import {
     brokerBusPublish,
@@ -56,6 +48,9 @@ import { handleMessageDeduplication } from './utils.js';
 import { InjectorContext } from '@deepkit/injector';
 import { EventDispatcher } from '@deepkit/event';
 
+/**
+ * @internal
+ */
 export interface Queue {
     currentId: number;
     name: string;

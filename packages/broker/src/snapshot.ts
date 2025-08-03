@@ -1,8 +1,11 @@
 import { getBSONDeserializer, getBSONSerializer } from '@deepkit/bson';
-import { BrokerState, Queue} from './kernel.js';
-import { QueueMessage, QueueMessageProcessing, SnapshotEntry, SnapshotEntryType} from './model.js';
+import { BrokerState, Queue } from './kernel.js';
+import { QueueMessage, QueueMessageProcessing, SnapshotEntry, SnapshotEntryType } from './model.js';
 import { handleMessageDeduplication } from './utils.js';
 
+/**
+ * @internal
+ */
 export function snapshotState(state: BrokerState, writer: (v: Uint8Array) => void) {
     const serializeEntry = getBSONSerializer<SnapshotEntry>();
     const serializeMessage = getBSONSerializer<QueueMessage>();
@@ -36,6 +39,9 @@ function ensureDocumentIsInBuffer(buffer: Buffer, reader: (size: number) => Uint
     return [buffer, documentSize];
 }
 
+/**
+ * @internal
+ */
 export function restoreState(state: BrokerState, reader: (size: number) => Uint8Array) {
     const deserializeEntry = getBSONDeserializer<SnapshotEntry>();
     const deserializeMessage = getBSONDeserializer<QueueMessage>();

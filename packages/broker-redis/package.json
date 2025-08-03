@@ -1,6 +1,7 @@
 {
-  "name": "@deepkit/broker",
+  "name": "@deepkit/broker-redis",
   "version": "1.0.15",
+  "description": "Deepkit Broker Redis adapter",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -10,11 +11,6 @@
       "types": "./dist/cjs/index.d.ts",
       "require": "./dist/cjs/index.js",
       "default": "./dist/esm/index.js"
-    },
-    "./test": {
-      "types": "./dist/cjs/tests/broker.spec.d.ts",
-      "require": "./dist/cjs/tests/broker.spec.js",
-      "default": "./dist/esm/tests/broker.spec.js"
     }
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
@@ -27,29 +23,12 @@
     "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
   },
   "dependencies": {
-    "@lukeed/ms": "^2.0.1",
-    "js-xxhash": "3.0.1"
-  },
-  "peerDependencies": {
-    "@deepkit/bson": "^1.0.1",
-    "@deepkit/core": "^1.0.1",
-    "@deepkit/event": "^1.0.1",
-    "@deepkit/injector": "^1.0.1",
-    "@deepkit/rpc": "^1.0.1",
-    "@deepkit/type": "^1.0.1",
-    "rxjs": "*"
-  },
-  "devDependencies": {
-    "@deepkit/bson": "^1.0.15",
+    "@deepkit/broker": "^1.0.15",
     "@deepkit/core": "^1.0.15",
-    "@deepkit/core-rxjs": "^1.0.15",
-    "@deepkit/event": "^1.0.15",
-    "@deepkit/injector": "^1.0.15",
-    "@deepkit/rpc": "^1.0.15",
-    "@deepkit/type": "^1.0.15",
-    "rxjs": "*"
+    "ioredis": "^5.6.1"
   },
   "jest": {
+    "runner": "../../jest-serial-runner.js",
     "testEnvironment": "node",
     "transform": {
       "^.+\\.(ts|tsx)$": [
@@ -64,10 +43,6 @@
     },
     "testMatch": [
       "**/tests/**/*.spec.ts"
-    ],
-    "setupFiles": [
-      "<rootDir>/../../jest-setup-runtime.js"
     ]
-  },
-  "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
+  }
 }

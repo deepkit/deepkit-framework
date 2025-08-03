@@ -5,7 +5,7 @@ import { BrokerAdapterCache } from './broker-cache.js';
 import { QueueMessageProcessing } from './model.js';
 import { BrokerAdapterKeyValue } from './broker-key-value.js';
 import { Logger } from '@deepkit/logger';
-import { Subject, Subscription } from 'rxjs';
+import { Subject } from 'rxjs';
 import { arrayRemoveItem, ensureError, formatError } from '@deepkit/core';
 import { provide, Provider } from '@deepkit/injector';
 
@@ -116,10 +116,20 @@ export interface BrokerAdapterBase {
 }
 
 export interface BrokerAdapterLock extends BrokerAdapterBase {
+    /**
+     * Acquires the lock. If the lock is already acquired by someone else, this method waits until the lock is released.
+     */
     lock(id: string, options: BrokerTimeOptionsResolved): Promise<undefined | Release>;
 
+    /**
+     * Checks if the lock is acquired by someone else.
+     */
     isLocked(id: string): Promise<boolean>;
 
+    /**
+     * Tries to acquire the lock.
+     * If the lock is already acquired, nothing happens.
+     */
     tryLock(id: string, options: BrokerTimeOptionsResolved): Promise<undefined | Release>;
 }
 
@@ -217,6 +227,8 @@ export class BrokerQueueChannel<T> {
     }
 }
 
+export type TypeOfSubject<T extends Subject<any>> = T extends Subject<infer U> ? U : never;
+
 export class BrokerBusSubject<T> extends Subject<T> {
     private refCount = 0;
 
@@ -240,7 +252,7 @@ export class BrokerBusSubject<T> extends Subject<T> {
                 }
             });
             return sub;
-        }
+        };
     }
 
     override next(value: T, publish = true): void {
@@ -611,3 +623,24 @@ export class BrokerLockItem {
 }
 
 export type BrokerAdapter = BrokerAdapterCache & BrokerAdapterBus & BrokerAdapterLock & BrokerAdapterQueue & BrokerAdapterKeyValue;
+export type AnyAdapter = BrokerAdapterCache | BrokerAdapterBus | BrokerAdapterLock | BrokerAdapterQueue | BrokerAdapterKeyValue;
+
+export function isBrokerAdapterCache(adapter: AnyAdapter): adapter is BrokerAdapterCache {
+    return typeof (adapter as BrokerAdapterCache).getCache === 'function';
+}
+
+export function isBrokerAdapterBus(adapter: AnyAdapter): adapter is BrokerAdapterBus {
+    return typeof (adapter as BrokerAdapterBus).publish === 'function';
+}
+
+export function isBrokerAdapterLock(adapter: AnyAdapter): adapter is BrokerAdapterLock {
+    return typeof (adapter as BrokerAdapterLock).lock === 'function';
+}
+
+export function isBrokerAdapterQueue(adapter: AnyAdapter): adapter is BrokerAdapterQueue {
+    return typeof (adapter as BrokerAdapterQueue).consume === 'function';
+}
+
+export function isBrokerAdapterKeyValue(adapter: AnyAdapter): adapter is BrokerAdapterKeyValue {
+    return typeof (adapter as BrokerAdapterKeyValue).get === 'function';
+}
