@@ -233,6 +233,8 @@ test('move', async () => {
 
     expect(await filesystem.exists('/file1.txt')).toBe(false);
     expect(await filesystem.exists('/file2.txt')).toBe(true);
+    expect(await filesystem.exists('/folder/file1.txt')).toBe(false);
+    expect(await filesystem.exists('/folder/file3.txt')).toBe(true);
 
     expect(await filesystem.readAsText('/file2.txt')).toBe('contents1');
 

@@ -7,16 +7,15 @@
     "sourceMap": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "target": "es2020",
-    "module": "CommonJS",
+    "module": "node16",
+    "skipLibCheck": true,
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": [
-      "@types/node"
-    ]
+    "types": []
   },
   "include": [
     "src",
@@ -27,6 +26,9 @@
   "references": [
     {
       "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../filesystem/tsconfig.json"
     }
   ]
 }

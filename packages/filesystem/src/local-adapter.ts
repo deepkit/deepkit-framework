@@ -1,4 +1,4 @@
-import { FileType, FileVisibility, Reporter, FilesystemAdapter, FilesystemFile } from './filesystem.js';
+import { FilesystemAdapter, FilesystemFile, FileType, FileVisibility, Reporter } from './filesystem.js';
 import { pathDirectory, pathNormalize } from '@deepkit/core';
 import type * as fs from 'fs/promises';
 
@@ -16,7 +16,7 @@ export interface FilesystemLocalAdapterOptions {
     };
 }
 
-export class FilesystemNodeLocalAdapter implements FilesystemAdapter {
+export class FilesystemLocalAdapter implements FilesystemAdapter {
     fs?: typeof fs;
 
     protected root: string;
@@ -224,5 +224,3 @@ export class FilesystemNodeLocalAdapter implements FilesystemAdapter {
         await fs.chmod(this.getPath(path), this.getMode('file', visibility));
     }
 }
-
-export const FilesystemLocalAdapter = FilesystemNodeLocalAdapter;
