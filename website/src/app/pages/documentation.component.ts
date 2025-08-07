@@ -1,9 +1,13 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AfterViewInit, ChangeDetectionStrategy, Component, effect, ElementRef, OnDestroy, ViewChild } from '@angular/core';
+import { IsActiveMatchOptions, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { PlatformHelper } from '@app/app/utils';
-import { DuiStyleComponent } from '@deepkit/desktop-ui';
+import { HeaderLogoComponent, HeaderNavComponent } from '@app/app/components/header.component.js';
+import { TableOfContentComponent } from '@app/app/components/table-of-content.component.js';
+import { ContentTextService } from '@app/app/components/content-text.component.js';
+import { DuiApp } from '@deepkit/desktop-ui';
+import { docs } from '@app/common/docs';
 
 @Component({
     imports: [
@@ -11,185 +15,52 @@ import { DuiStyleComponent } from '@deepkit/desktop-ui';
         RouterLink,
         FormsModule,
         RouterOutlet,
-        DuiStyleComponent,
+        HeaderNavComponent,
+        HeaderLogoComponent,
+        TableOfContentComponent,
     ],
     standalone: true,
     styleUrls: ['./documentation.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
-      <dui-style />
-      <div class="page">
-        <div class="content-wrapper">
-          <div class="menu-trigger"><a (click)="showMenu=!showMenu" class="button">Chapters</a></div>
-          <div (click)="showMenu=false; true">
-            <router-outlet></router-outlet>
-          </div>
-        </div>
+      <div class="wrapper">
+        <nav [class.showMenu]="showMenu" #nav>
+          <dw-header-logo />
 
-        <nav [class.showMenu]="showMenu" #nav (scrollend)="setScroll($event)">
-          <div style="margin-bottom: 25px;">
-            <a routerLinkActive="active" routerLink="/documentation/introduction">Introduction</a>
-            <!--                    <a routerLinkActive="active" routerLink="/documentation/questions">Questions & Answers</a>-->
-            <a href="https://api.framework.deepkit.io" target="_blank">API Reference</a>
-            <a routerLinkActive="active" routerLink="/documentation/examples">Examples</a>
-            <a href="https://discord.com/invite/PtfVf7B8UU" target="_blank">Join Discord</a>
-          </div>
-
-          <div class="category">
-            <div class="category-title">App</div>
-            <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/app">Getting started</a>
-            <a routerLinkActive="active" routerLink="/documentation/app/examples">Examples</a>
-            <a routerLinkActive="active" routerLink="/documentation/app/arguments">Arguments & Flags</a>
-            <a routerLinkActive="active" routerLink="/documentation/app/dependency-injection">Dependency Injection</a>
-            <a routerLinkActive="active" routerLink="/documentation/app/modules">Modules</a>
-            <a routerLinkActive="active" routerLink="/documentation/app/services">Services</a>
-            <a routerLinkActive="active" routerLink="/documentation/app/events">Events</a>
-            <a routerLinkActive="active" routerLink="/documentation/app/logger">Logger</a>
-            <a routerLinkActive="active" routerLink="/documentation/app/configuration">Configuration</a>
-          </div>
-
-          <div class="category">
-            <div class="category-title">Framework</div>
-            <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/framework">Getting started</a>
-            <a routerLinkActive="active" routerLink="/documentation/framework/examples">Examples</a>
-            <a routerLinkActive="active" routerLink="/documentation/framework/database">Database</a>
-            <a routerLinkActive="active" routerLink="/documentation/framework/testing">Testing</a>
-            <a routerLinkActive="active" routerLink="/documentation/framework/deployment">Deployment</a>
-            <a routerLinkActive="active" routerLink="/documentation/framework/public">Public Assets</a>
-          </div>
-
-          <div class="category">
-            <div class="category-title">Runtime Types</div>
-            <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/runtime-types">Introduction</a>
-            <a routerLinkActive="active" routerLink="/documentation/runtime-types/getting-started">Getting started</a>
-            <a routerLinkActive="active" routerLink="/documentation/runtime-types/examples">Examples</a>
-            <a routerLinkActive="active" routerLink="/documentation/runtime-types/types">Type Annotations</a>
-            <a routerLinkActive="active" routerLink="/documentation/runtime-types/reflection">Reflection</a>
-            <a routerLinkActive="active" routerLink="/documentation/runtime-types/serialization">Serialization</a>
-            <a routerLinkActive="active" routerLink="/documentation/runtime-types/validation">Validation</a>
-            <a routerLinkActive="active" routerLink="/documentation/runtime-types/extend">Extend</a>
-            <a routerLinkActive="active" routerLink="/documentation/runtime-types/custom-serializer">Custom serializer</a>
-            <a routerLinkActive="active" routerLink="/documentation/runtime-types/external-types">External Types</a>
-            <a routerLinkActive="active" routerLink="/documentation/runtime-types/bytecode">Bytecode</a>
-          </div>
-
-          <div class="category">
-            <div class="category-title">Dependency Injection</div>
-            <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}"
-               routerLink="/documentation/dependency-injection">Introduction</a>
-            <a routerLinkActive="active" routerLink="/documentation/dependency-injection/getting-started">Getting started</a>
-            <a routerLinkActive="active" routerLink="/documentation/dependency-injection/examples">Examples</a>
-            <a routerLinkActive="active" routerLink="/documentation/dependency-injection/providers">Providers</a>
-            <a routerLinkActive="active" routerLink="/documentation/dependency-injection/injection">Injection</a>
-            <a routerLinkActive="active" routerLink="/documentation/dependency-injection/configuration">Configuration</a>
-            <a routerLinkActive="active" routerLink="/documentation/dependency-injection/scopes">Scopes</a>
-          </div>
-
-          <div class="category">
-            <div class="category-title">Filesystem</div>
-            <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/filesystem">Getting started</a>
-            <a routerLinkActive="active" routerLink="/documentation/filesystem/examples">Examples</a>
-            <a routerLinkActive="active" routerLink="/documentation/filesystem/app">App</a>
-            <a routerLinkActive="active" routerLink="/documentation/filesystem/local">Local</a>
-            <a routerLinkActive="active" routerLink="/documentation/filesystem/memory">Memory</a>
-            <a routerLinkActive="active" routerLink="/documentation/filesystem/aws-s3">AWS S3</a>
-            <a routerLinkActive="active" routerLink="/documentation/filesystem/ftp">FTP</a>
-            <a routerLinkActive="active" routerLink="/documentation/filesystem/sftp">sFTP (SSH)</a>
-            <a routerLinkActive="active" routerLink="/documentation/filesystem/google-storage">Google Storage</a>
-          </div>
-
-          <div class="category">
-            <div class="category-title">Broker</div>
-            <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" routerLink="/documentation/broker">Getting started</a>
-            <!--                    <a routerLinkActive="active" routerLink="/documentation/broker/examples">Examples</a>-->
-            <a routerLinkActive="active" routerLink="/documentation/broker/cache">Cache</a>
-            <a routerLinkActive="active" routerLink="/documentation/broker/message-bus">Message Bus</a>
-            <a routerLinkActive="active" routerLink="/documentation/broker/message-queue">Message Queue</a>
-            <a routerLinkActive="active" routerLink="/documentation/broker/atomic-locks">Atomic Locks</a>
-            <a routerLinkActive="active" routerLink="/documentation/broker/key-value">Key Value</a>
-          </div>
-
-          <div class="category">
-            <div class="category-title">HTTP</div>
-            <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}"
-               routerLink="/documentation/http">Introduction</a>
-            <a routerLinkActive="active" routerLink="/documentation/http/getting-started">Getting started</a>
-            <a routerLinkActive="active" routerLink="/documentation/http/examples">Examples</a>
-            <a routerLinkActive="active" routerLink="/documentation/http/input-output">Input & Output</a>
-            <a routerLinkActive="active" routerLink="/documentation/http/views">Views</a>
-            <a routerLinkActive="active" routerLink="/documentation/http/dependency-injection">Dependency Injection</a>
-            <a routerLinkActive="active" routerLink="/documentation/http/events">Events</a>
-            <a routerLinkActive="active" routerLink="/documentation/http/middleware">Middleware</a>
-            <a routerLinkActive="active" routerLink="/documentation/http/security">Security</a>
-          </div>
-
-          <div class="category">
-            <div class="category-title">RPC</div>
-            <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}"
-               routerLink="/documentation/rpc">Introduction</a>
-            <a routerLinkActive="active" routerLink="/documentation/rpc/getting-started">Getting started</a>
-            <a routerLinkActive="active" routerLink="/documentation/rpc/examples">Examples</a>
-            <a routerLinkActive="active" routerLink="/documentation/rpc/dependency-injection">Dependency Injection</a>
-            <a routerLinkActive="active" routerLink="/documentation/rpc/security">Security</a>
-            <a routerLinkActive="active" routerLink="/documentation/rpc/errors">Errors</a>
-            <a routerLinkActive="active" routerLink="/documentation/rpc/transport">Transport</a>
-          </div>
-
-          <div class="category">
-            <div class="category-title">Database ORM</div>
-
-            <a routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}"
-               routerLink="/documentation/orm">Introduction</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/getting-started">Getting started</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/examples">Examples</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/entity">Entity</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/session">Session</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/query">Query</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/transactions">Transaction</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/inheritance">Inheritance</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/relations">Relations</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/events">Events</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/migrations">Migrations</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/orm-browser">ORM Browser</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/raw-access">Raw Access</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/seeding">Seeding</a>
-            <a routerLinkActive="active" routerLink="/documentation/orm/composite-primary-key">Composite primary
-              key</a>
-            <div class="section-title">Plugins</div>
-            <section>
-              <a routerLinkActive="active" routerLink="/documentation/orm/plugin-soft-delete">Soft-Delete</a>
-            </section>
-          </div>
-
-          <div class="category">
-            <div class="category-title">Desktop UI</div>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/getting-started">Getting started</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/app">App</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/styles">Styles</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/adaptive-container">Adaptive Container</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/button">Button</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/button-group">Button group</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/dialog">Dialog</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/drag">Drag</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/dropdown">Dropdown</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/icons">Icons</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/input">Input</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/menu">Menu</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/slider">Slider</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/radio">Radio</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/select">Select</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/checkbox">Checkbox</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/list">List</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/table">Table</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/tabs">Tabs</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/window">Window</a>
-            <a routerLinkActive="active" routerLink="/documentation/desktop-ui/window-toolbar">Window Toolbar</a>
+          <div class="container">
+            @for (doc of docs; track $index) {
+              <div class="category">
+                <div class="category-title">{{ doc.category }}</div>
+                @for (page of doc.pages; track $index) {
+                  <a routerLinkActive="active" [routerLinkActiveOptions]="pathMatchOnly"
+                     routerLink="/documentation/{{ page.path }}">{{ page.title }}</a>
+                }
+              </div>
+            }
           </div>
         </nav>
+        <div class="page">
+          <dw-header-nav />
+          <div class="content-wrapper">
+            <div class="menu-trigger" [class.open]="showMenu"><a (click)="showMenu=!showMenu" class="button">Chapters</a></div>
+            <div (click)="showMenu=false; true">
+              <router-outlet></router-outlet>
+            </div>
+          </div>
+        </div>
       </div>
-    `
+      <app-table-of-content />
+    `,
 })
 export class DocumentationComponent implements AfterViewInit, OnDestroy {
+    docs = docs;
+    pathMatchOnly: IsActiveMatchOptions = {
+        fragment: 'ignored',
+        matrixParams: 'ignored',
+        paths: 'exact',
+        queryParams: 'ignored',
+    };
+
     showMenu: boolean = false;
     scrolled = false;
 
@@ -200,10 +71,12 @@ export class DocumentationComponent implements AfterViewInit, OnDestroy {
     constructor(
         public platform: PlatformHelper,
         public router: Router,
+        public contentTextService: ContentTextService,
+        private duiApp: DuiApp,
     ) {
         this.sub = router.events.subscribe(() => {
             this.showMenu = false;
-            this.scrollToActiveLink();
+            setTimeout(() => this.scrollToActiveLink(), 100);
         });
     }
 
@@ -211,31 +84,25 @@ export class DocumentationComponent implements AfterViewInit, OnDestroy {
         this.sub.unsubscribe();
     }
 
-    setScroll(event: Event) {
-        if (!this.nav) return;
-        sessionStorage.setItem('documentation:sidebar:scrollTop', String(this.nav.nativeElement.scrollTop));
-    }
-
     protected scrollToActiveLink() {
-        if (!this.platform.isBrowser() || this.scrolled || !this.nav) return;
-        if ('undefined' === typeof sessionStorage) return;
+        if (!this.platform.isBrowser() || !this.nav) return;
 
-        const scrollTop = Number(sessionStorage.getItem('documentation:sidebar:scrollTop') || 0);
-        if (scrollTop > 0) {
+        const active = this.nav.nativeElement.querySelectorAll('a.active');
+        active.forEach((el: any) => {
+            const rect = el.getBoundingClientRect();
+            const isVisible = (
+                rect.top >= 0 &&
+                rect.left >= 0 &&
+                rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+            );
+            if (isVisible) return;
             this.scrolled = true;
-            this.nav.nativeElement.scrollTop = scrollTop;
-            return;
-        }
-
-        this.nav.nativeElement.querySelectorAll('a.active').forEach((el: any) => {
-            this.scrolled = true;
-            setTimeout(() => {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
+            el.scrollIntoView({ behavior: 'auto', block: 'nearest' });
         });
     }
 
     ngAfterViewInit() {
-        this.scrollToActiveLink();
+        setTimeout(() => this.scrollToActiveLink(), 100);
     }
 }

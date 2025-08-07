@@ -14,6 +14,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
+    "skipLibCheck": true,
     "importHelpers": true,
     "target": "es2020",
     "module": "es2020",
@@ -21,7 +22,7 @@
     "types": [],
     "paths": {
       "@app/*": [
-        "src/*"
+        "./src/*"
       ],
       "@deepkit/ui-library": [
         "../packages/ui-library/src/index.ts"

@@ -15,7 +15,7 @@ The Deepkit Framework and its associated libraries offer a range of events that 
 
 ## Usage
 
-If you use a Deepkit Framework app, the event system is already included and ready to use.
+If you use a Deepkit app, the event system is already included and ready to use.
 
 ```typescript
 import { App, onAppExecute } from '@deepkit/app';
@@ -238,32 +238,11 @@ dispatcher.listen(MyEvent, (event) => {
     console.log('MyEvent triggered!');
 });
 dispatcher.dispatch(MyEvent);
+
 ```
 
 ### Installation
 
-Since Deepkit's event system is based on Deepkit Runtime Types, it's essential to have @deepkit/type installed correctly. For further details, refer to [Runtime Type Installation](runtime-types.md#runtime-types-installation).
+The event system is included in @deepkit/app. If you want to use it standalone, you can install it manually:
 
-Once this is successfully accomplished, you can install @deepkit/event or the entire Deepkit Framework, which already includes the library under the hood.
-
-```sh
-npm install @deepkit/event
-```
-
-It's important to note that @deepkit/event relies on TypeScript decorators for its class listeners. Therefore, when using a class, you'll need to enable the `experimentalDecorators` feature.
-
-_File: tsconfig.json_
-
-```json
-{
-    "compilerOptions": {
-        "module": "CommonJS",
-        "target": "es6",
-        "moduleResolution": "node",
-        "experimentalDecorators": true
-    },
-    "reflection": true
-}
-```
-
-As soon as the library is installed, the API can be used directly.
+See [Event](../event.md) for installation instructions.

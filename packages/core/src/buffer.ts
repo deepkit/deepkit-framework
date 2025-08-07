@@ -1,3 +1,5 @@
+/** @group Binary */
+
 declare const Buffer: any;
 
 /**

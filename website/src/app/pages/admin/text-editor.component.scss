@@ -1,0 +1,63 @@
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+dui-button-groups {
+  justify-content: center;
+}
+
+.image-options {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+
+  .width {
+    width: 62px;
+  }
+}
+
+.content-text {
+  flex: 1;
+  --color-header: var(--context-text-color);
+  --color-text: var(--context-text-color);
+  text-align: center;
+  max-width: unset;
+
+  ::ng-deep > * {
+    max-width: calc(64ch + 100px);
+    text-align: left;
+    margin: auto;
+    border-radius: 8px;
+    padding: 50px;
+    background-color: #F3F3F3;
+  }
+
+  ::ng-deep .image {
+    line-height: 0;
+    margin-bottom: 12px;
+
+    &.align-center {
+      text-align: center;
+    }
+
+    &.align-right {
+      text-align: right;
+    }
+
+    &.ProseMirror-selectednode img {
+      outline: 2px solid var(--dui-selection);
+    }
+
+    img {
+      margin: auto;
+      width: 100%;
+      border-radius: 4px;
+    }
+  }
+}

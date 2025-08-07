@@ -63,7 +63,7 @@ import { debug } from '../debug.js';
 
 export type RuntimeStackEntry = Type | Object | (() => ClassType | Object) | string | number | boolean | bigint;
 
-export type Packed = (RuntimeStackEntry | string)[] & { __is?: (data: any) => boolean } & { __type?: Type } & { __unpack?: PackStruct };
+export type Packed<T = any> = (RuntimeStackEntry | string)[] & { __is?: (data: any) => boolean } & { __type?: Type } & { __unpack?: PackStruct };
 
 export class PackStruct {
     constructor(
@@ -1139,6 +1139,18 @@ export class Processor {
                                 this.push({ ...t.type, typeName: t.getClassName() });
                             } else if ('string' === typeof t || 'number' === typeof t || 'boolean' === typeof t || 'bigint' === typeof t) {
                                 this.push({ kind: ReflectionKind.literal, literal: t });
+                            } else if (Array.isArray(t)) {
+                                const directReference = !!(this.isEnded() && program.previous && program.previous.end === 0);
+                                const result = this.reflect(t, [], { inline: !directReference, reuseCached: directReference });
+                                if (directReference) program.directReturn = true;
+                                this.push(result, program);
+
+                                //this.reflect/run might create another program onto the stack. switch to it if so
+                                if (this.program !== program) {
+                                    //continue to next this.program.
+                                    program.program++; //manual increment as the for loop would normally do that
+                                    continue programLoop;
+                                }
                             } else {
                                 this.push(t);
                             }

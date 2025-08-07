@@ -25,7 +25,7 @@ export class BrokerConfig {
     /**
      * @description Automatically starts a single broker in the main process. Disable it if you have a custom broker node.
      */
-    startOnBootstrap: boolean = true;
+    startOnBootstrap: boolean = false;
 }
 
 export class FrameworkConfig {

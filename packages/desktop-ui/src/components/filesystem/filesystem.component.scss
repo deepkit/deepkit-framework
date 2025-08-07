@@ -1,0 +1,71 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+dui-button-groups {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+dui-button.tight {
+  padding: 0 5px;
+}
+
+dui-filesystem-file-thumbnail {
+  min-width: 50px;
+}
+
+dui-menu {
+  padding: 2px 1px;
+}
+
+dui-button-groups {
+  padding: 4px 7px;
+}
+
+.content {
+  border-top: 1px solid var(--dui-line-color-light);
+  flex: 1;
+
+  &.file {
+    overflow: hidden;
+  }
+
+  dui-table {
+    height: 100%;
+    border: 0;
+  }
+
+  &.folder {
+    display: grid;
+    gap: 15px;
+    padding: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(50px, 110px));
+    grid-auto-rows: max-content;
+
+    &.list {
+      display: block;
+      padding: 0;
+      border-top: 0;
+    }
+  }
+
+  &.file-drop-hover {
+    background-color: rgba(112, 112, 112, 0.14);
+  }
+
+  .error {
+    color: red;
+    text-align: center;
+    opacity: 0.5;
+    grid-column: 1/-1;
+  }
+}
+

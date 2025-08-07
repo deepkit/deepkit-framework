@@ -42,7 +42,8 @@ The entity type system is designed in such a way that these types or classes can
 
 ## Installation
 
-Since Deepkit ORM is based on Runtime Types, it is necessary to have `@deepkit/type` already installed correctly. See [Runtime Type Installation](runtime-types/getting-started.md).
+Since Deepkit ORM is based on Runtime Types, it is necessary to have `@deepkit/type` already installed correctly.
+See [Runtime Type Installation](../runtime-types/getting-started.md).
 
 If this is done successfully, `@deepkit/orm` itself and a database adapter can be installed.
 

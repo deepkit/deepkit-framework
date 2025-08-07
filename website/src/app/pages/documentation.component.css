@@ -1,194 +1,214 @@
 :host {
-    display: block;
+  display: block;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
 }
 
 .page {
-    max-width: 1100px;
-    margin: auto;
-    padding: 0;
+  flex: 1;
 
-    @media (max-width: 1120px) {
-        padding: 0 10px;
-    }
+  @media (max-width: 1120px) {
+    padding: 0 10px;
+  }
+}
+
+
+dw-header-logo {
+  padding-left: 6px;
 }
 
 .docs-header {
-    padding: 30px 0;
+  padding: 30px 0;
 }
 
 .docs-logo {
-    display: flex;
-    align-items: center;
-    font-size: 16px;
-    color: #171B1E;
-    letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  color: #171B1E;
+  letter-spacing: 1px;
 
-    img {
-        height: 26px;
-    }
+  img {
+    height: 26px;
+  }
 
-    &:hover {
-        text-decoration: none;
-    }
+  &:hover {
+    text-decoration: none;
+  }
 
-    div {
-        margin-left: 10px;
-        position: relative;
-    }
+  div {
+    margin-left: 10px;
+    position: relative;
+  }
 }
 
 .search {
-    position: relative;
+  position: relative;
 
-    .search-results {
-        position: absolute;
-        left: 0;
-        top: 50px;
-        width: 350px;
-        background-color: black;
-    }
+  .search-results {
+    position: absolute;
+    left: 0;
+    top: 50px;
+    width: 350px;
+    background-color: black;
+  }
+}
+
+.sidebar {
+  border: 2px solid red;
 }
 
 nav {
-    position: fixed;
-    top: 0;
-    bottom: 10px;
-    margin-top: 90px;
-    flex-basis: 220px;
-    text-align: left;
-    width: 200px;
-    padding-bottom: 100px;
+  align-self: flex-start;
+  position: sticky;
+  height: calc(100vh - 5px);
+  top: 0;
+  /*bottom: 10px;*/
+  flex-basis: 220px;
+  text-align: left;
+  width: 265px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 201;
+  transition: opacity 0.2s ease-in-out;
+  scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+  margin-left: -6px;
+  padding-left: 6px;
 
+  font-size: 14px;
+  line-height: 24px;
+  letter-spacing: 0;
+
+  @media (max-width: 860px) {
+    pointer-events: none;
+    opacity: 0;
+    position: fixed;
+  }
+
+  dw-header-logo {
+    flex: 0 0 80px;
+  }
+
+  a {
+    display: block;
+    font-size: 13px;
+    color: rgba(227, 236, 240, 0.95);
+    /*border-left: 0 solid transparent;*/
+    transition: background-color 0.1s ease-out;
+    background: transparent;
+    /*border-radius: 2px;*/
+    /*padding: 2px 8px;*/
+    padding: 0 6px;
+
+    margin: 2px 0;
+
+    &.active,
+    &:hover {
+      border-radius: 2px;
+      text-decoration: none;
+      /*border-left: 4px solid rgba(118, 133, 151, 0.33);*/
+      /*padding-left: 6px;*/
+      background: rgba(118, 133, 151, 0.33);
+      /*color: var(--color-link-active);*/
+    }
+  }
+
+  .container {
+    flex: 1;
     overflow: auto;
     overflow: overlay;
+    padding-bottom: 100px;
+    padding-top: 45px;
+
     @supports not (-webkit-hyphens: none) {
-        /* in safari this breaks scrolling styling, so we need to exclude it*/
-        scrollbar-width: thin;
+      /* in safari this breaks scrolling styling, so we need to exclude it*/
+      scrollbar-width: thin;
+    }
+  }
+
+  &.showMenu {
+    opacity: 1;
+    background-color: #0E1217;
+    pointer-events: all;
+    outline: 10px solid #0E1217;
+    border-right: 1px solid #212933;
+  }
+
+  .category {
+    .category-title {
+      font-weight: bold;
+      color: white;
+      padding: 0 6px;
     }
 
-    padding-top: 25px;
-    z-index: 500;
-    transition: opacity 0.2s ease-in-out;
-
-    @media (max-width: 760px) {
-        pointer-events: none;
-        opacity: 0;
+    &.category {
+      margin-bottom: 35px;
     }
 
-    &.showMenu {
-        opacity: 1;
-        background-color: #0E1217;
-        pointer-events: all;
-        outline: 10px solid #0E1217;
-        border-right: 1px solid #212933;
+    .section-title {
+      font-size: 13px;
+      margin-top: 10px;
+      padding: 0 6px;
+      color: grey;
     }
 
-    .category {
-        .category-title {
-            font-weight: bold;
-            color: white;
-        }
-
-        &.category {
-            margin-bottom: 35px;
-        }
-
-        .section-title {
-            font-size: 13px;
-            margin-top: 10px;
-            color: grey;
-        }
-
-        section {
-            padding-left: 5px;
-            margin-bottom: 15px;
-        }
+    section {
+      padding-left: 5px;
+      margin-bottom: 15px;
     }
-
-    a {
-        &.active {
-            color: var(--color-link-active);
-        }
-    }
-
-    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
-
-    &::-webkit-scrollbar {
-        height: 10px;
-        width: 10px;
-        background: transparent;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        background: rgba(169, 173, 175, 0.77);
-        border-radius: 8px;
-        border: 2px solid rgba(0, 0, 0, 0.01);
-        background-clip: padding-box;
-
-        &:hover {
-            background: #727475;
-            border: 2px solid rgba(0, 0, 0, 0.01);
-            background-clip: padding-box;
-        }
-    }
-
-    font-size: 14px;
-    line-height: 24px;
-    letter-spacing: 0;
+  }
 }
 
 .menu-trigger {
-    position: fixed;
-    z-index: 2000;
-    top: 26px;
-    right: 65px;
-    display: none;
+  position: fixed;
+  z-index: 100;
+  top: 25px;
+  left: 24px;
+  display: none;
 
-    @media (max-width: 760px) {
-        display: block;
-    }
-}
-
-nav {
+  @media (max-width: 860px) {
+    display: block;
+  }
 }
 
 .chapters {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding-bottom: 15px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 15px;
 
-    svg {
-        margin-left: 5px;
-        position: relative;
-        top: 2px;
-    }
+  svg {
+    margin-left: 5px;
+    position: relative;
+    top: 2px;
+  }
 }
 
 .content-wrapper {
-    margin-left: 200px;
-    padding-top: 35px;
-    padding-left: 25px;
-    background: linear-gradient(90deg, #13161C 0%, #0F1217 10.59%);
+  border-radius: 15px;
+  background: var(--color-content-text-bg);
+  padding-top: 30px;
+  padding-bottom: 50vh;
+  /*background: linear-gradient(90deg, #13161C 0%, #0F1217 10.59%);*/
 }
 
-@media (max-width: 760px) {
-    .chapters {
-        display: flex;
-        cursor: pointer;
-    }
+@media (max-width: 860px) {
+  .chapters {
+    display: flex;
+    cursor: pointer;
+  }
 
-    .wrapper {
-        display: block;
-        padding-top: 15px;
-    }
+  .wrapper {
+    display: block;
+  }
 
-    .content-wrapper {
-        margin-left: 0;
-    }
-
-    nav.showMenu {
-        display: block;
-    }
-
+  .content-wrapper {
+    margin-left: 0;
+  }
 }

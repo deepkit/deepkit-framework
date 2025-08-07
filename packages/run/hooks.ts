@@ -2,6 +2,7 @@ import { ModuleKind, readConfigFile, ScriptTarget, transpile } from 'typescript'
 import { existsSync, readFileSync } from 'fs';
 import { dirname, extname } from 'path';
 import { readFile, stat } from 'node:fs/promises';
+import { createMatchPath } from 'tsconfig-paths';
 
 let tsConfigPath = 'tsconfig.json';
 let currentPath = process.cwd();
@@ -25,19 +26,38 @@ const tsConfigNormalized = Object.assign({}, tsConfig?.config.compilerOptions ||
     sourceMap: true,
 });
 
+// Fully parse tsconfig for path resolution
+const matchPath = createMatchPath(
+    tsConfigNormalized.baseUrl || '.',
+    tsConfigNormalized.paths || {},
+);
+
 async function tryResolveTs(specifier, context, nextResolve) {
+    const matched = matchPath(specifier.replace(/\.js$/, '.ts'), undefined, (path) => existsSync(path), ['.ts', '.js', '.mjs']);
+    if (matched) {
+        specifier = matched;
+    }
+
     if (extname(specifier) === '.js') {
         const tsSpecifier = specifier.replace(/\.js$/, '.ts');
+        const url = new URL(tsSpecifier, context.parentURL);
         try {
             // Check if the .ts file exists before resolving
-            await stat(new URL(tsSpecifier, context.parentURL));
-            return nextResolve(tsSpecifier, context);
+            await stat(url);
+            return nextResolve(url.toString(), context);
         } catch {
             // If no .ts file is found, fall back to the default resolution
         }
-    }
-    if (extname(specifier) === '.ts') {
-        return { url: specifier, shortCircuit: true };
+    } else {
+        // Check with appended .ts if no extension is provided
+        const tsSpecifier = `${specifier}.ts`;
+        const url = new URL(tsSpecifier, context.parentURL);
+        try {
+            await stat(url);
+            return nextResolve(url.toString(), context);
+        } catch {
+            // If no .ts file is found, fall back to the default resolution
+        }
     }
     return nextResolve(specifier, context);
 }

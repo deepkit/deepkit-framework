@@ -32,7 +32,16 @@ export interface EventListener {
     order: number;
 }
 
-export type EventOfEvent<E> = E extends SimpleDataEvent<infer D> ? (D | E) : (E | void);
+type EventOfEvent<E> = E extends SimpleDataEvent<infer D> ? D : (E | void);
+
+/**
+ * Extract the event type of EventToken.
+ *
+ * @example
+ * ```typescript
+ * type AppExecuteEvent = EventOfEventToken<typeof onAppExecute>;
+ * ```
+ */
 export type EventOfEventToken<T> = T extends EventToken<infer E> | EventTokenSync<infer E> ? EventOfEvent<E> : void;
 
 export type Dispatcher<T extends EventToken<any>> = (...args: DispatchArguments<T>) => EventDispatcherDispatchType<T>;
@@ -240,23 +249,6 @@ export type EventDispatcherUnsubscribe = () => void;
 
 export type EventDispatcherDispatchType<T extends EventToken<any>> = T extends EventTokenSync<any> ? void : Promise<void>;
 
-export interface EventDispatcherInterface {
-    add(eventToken: EventToken<any>, listener: EventListenerContainerEntry): EventDispatcherUnsubscribe;
-
-    /**
-     * Register a new event listener for given token.
-     *
-     * order: The lower the order, the sooner the listener is called. Default is 0.
-     */
-    listen<T extends EventToken<any>>(eventToken: T, callback: EventListenerCallback<T>, order?: number): EventDispatcherUnsubscribe;
-
-    hasListeners(eventToken: EventToken<any>): boolean;
-
-    dispatch<T extends EventToken<any>>(eventToken: T, ...args: DispatchArguments<T>): EventDispatcherDispatchType<T>;
-
-    getDispatcher<T extends EventToken<any>>(eventToken: T): (...args: DispatchArguments<T>) => EventDispatcherDispatchType<T>;
-}
-
 function resolveEvent(event?: ValueOrFactory<BaseEvent>): BaseEvent {
     if (!event) return new BaseEvent();
     event = 'function' === typeof event ? event() : event;
@@ -279,7 +271,7 @@ interface Context {
 }
 
 /** @reflection never */
-export class EventDispatcher implements EventDispatcherInterface {
+export class EventDispatcher {
     protected context = new Map<EventToken<any>, Context>();
     protected awaiter = new Map<EventToken<any>, { promise?: Promise<any>, resolve?: (value: any) => void }>();
     protected instances: any[] = [];

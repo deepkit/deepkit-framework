@@ -1,0 +1,131 @@
+:host {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-items: center;
+  align-items: center;
+  height: 100%;
+  overflow: hidden;
+  gap: 3px;
+
+  &.list {
+    flex-direction: row;
+
+    img {
+      width: 22px;
+      height: 22px;
+      padding: 0;
+    }
+
+    .title {
+      height: unset;
+      text-align: left;
+    }
+  }
+
+  &.selected:not(.list) {
+    img, app-loading-spinner {
+      border-radius: 5px;
+      background-color: var(--dui-line-color-light);
+    }
+
+    .title span {
+      background-color: var(--dui-selection);
+      color: var(--color-text-selection);
+    }
+  }
+}
+
+.no-preview {
+}
+
+.title {
+  flex: 1 1 50px;
+  max-width: 100%;
+  font-size: 12px;
+  height: 50px;
+  padding: 2px;
+  text-align: center;
+  word-break: break-all;
+  line-height: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  span {
+    max-width: 100%;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    padding: 2px 5px;
+    line-height: 15px;
+    border-radius: 5px;
+  }
+
+  textarea, input {
+    height: 100%;
+    max-width: 100%;
+    background-color: transparent;
+    border-radius: 3px;
+    border: 1px solid var(--dui-selection-light);
+    color: var(--dui-text-grey);
+    text-align: center;
+    font: inherit;
+    resize: none;
+    overflow: auto;
+    overflow: overlay;
+    @supports not (-webkit-hyphens: none) {
+      /* in safari this breaks scrolling styling, so we need to exclude it*/
+      scrollbar-width: thin;
+    }
+    scrollbar-color: rgba(169, 173, 175, 0.77) transparent;
+  }
+
+  input {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+img {
+  padding: 5px 7px;
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
+
+  &.image-hidden {
+    padding: 0;
+    width: 0;
+    height: 0;
+    margin: 0;
+  }
+}
+
+.icon-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  flex: 0 0 80px;
+}
+
+:host.list .icon-container {
+  flex: 0 0 30px;
+}
+
+.icon {
+  background: no-repeat center center;
+  background-size: 60%;
+  height: 95%;
+  width: 95%;
+}
+
+.folder-icon {
+  background-image: url(../assets/folder-icon-dark.png);
+}
+
+.unknown-icon {
+  background-image: url(../assets/file-icon-unknown.png);
+  background-size: 50%;
+}

@@ -15,15 +15,13 @@
     "declaration": true,
     "composite": true,
     "types": [
-      "node"
+      "@types/node"
     ]
   },
   "include": [
     "src",
+    "tests",
     "index.ts"
-  ],
-  "exclude": [
-    "tests"
   ],
   "reflection": true,
   "references": [

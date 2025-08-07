@@ -34,7 +34,7 @@ import {
     viewChild,
     viewChildren,
 } from '@angular/core';
-import { arrayHasItem, arrayRemoveItem, eachPair, empty, first, getPathValue, indexOf, nextTick } from '@deepkit/core';
+import { arrayHasItem, arrayRemoveItem, empty, first, getPathValue, indexOf, nextTick } from '@deepkit/core';
 import { CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { ContextDropdownDirective, DropdownComponent, DropdownComponent as DropdownComponent_1, DropdownContainerDirective, DropdownItemComponent, DropdownSplitterComponent } from '../button/dropdown.component';
 import { injectElementRef, registerEventListener, RegisterEventListenerRemove } from '../app/utils';
@@ -893,8 +893,8 @@ export class TableComponent<T> implements AfterViewInit, OnInit, OnDestroy {
                 sortedColumns.splice(originalPosition, 1);
                 sortedColumns.splice(newPosition, 0, directive);
 
-                for (let [i, v] of eachPair(sortedColumns)) {
-                    v.effectivePosition.set(i);
+                for (let i = 0; i < sortedColumns.length; i++) {
+                    sortedColumns[i].effectivePosition.set(i);
                 }
             }
         }

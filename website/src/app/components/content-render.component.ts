@@ -1,4 +1,4 @@
-import { ApplicationRef, Component, createComponent, EnvironmentInjector, Input, OnChanges, OnInit, reflectComponentType, Renderer2, ViewContainerRef } from '@angular/core';
+import { ApplicationRef, Component, createComponent, EnvironmentInjector, Injector, Input, OnChanges, OnInit, output, reflectComponentType, Renderer2, ViewContainerRef } from '@angular/core';
 import { Content } from '@app/common/models';
 import { ScreenComponent, ScreensComponent } from '@app/app/components/screens.component';
 import { HighlightCodeComponent } from '@app/app/components/highlight-code.component';
@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import { AppImagesComponent } from '@app/app/components/images.component';
 import { ImageComponent } from '@app/app/components/image.component';
 import { DomSanitizer } from '@angular/platform-browser';
+import { ContentApiDocsComponent } from '@app/app/components/content-api-docs.component.js';
 
 const whitelist = ['div', 'p', 'a', 'button', 'iframe', 'pre', 'span', 'code', 'strong', 'hr', 'ul', 'li', 'ol', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'table', 'tbody', 'tr', 'td', 'th', 'boxes', 'box'];
 
@@ -148,11 +149,14 @@ type ContentCreated = { hostView?: any, type?: any, node: Node };
         display: inline;
       }
     `],
-    template: ``,
+    template: ` `,
 })
 export class ContentRenderComponent implements OnInit, OnChanges {
     @Input() content!: (Content | string)[] | Content | string;
     @Input() linkRelativeTo: string = '';
+    @Input() ignoreComponents: string[] = [];
+
+    onRender = output();
     private listeners: (() => void)[] = [];
 
     constructor(
@@ -189,9 +193,10 @@ export class ContentRenderComponent implements OnInit, OnChanges {
         this.clear();
         const children = this.renderContent(this.injector, this.content);
         for (const child of children) this.renderer.appendChild(this.viewRef.element.nativeElement, child.node);
+        this.onRender.emit();
     }
 
-    renderContent(injector: EnvironmentInjector, content: (Content | string)[] | Content | string): ContentCreated[] {
+    renderContent(injector: Injector, content: (Content | string)[] | Content | string): ContentCreated[] {
         const components: { [name: string]: any } = {
             'app-screens': ScreensComponent,
             'app-screen': ScreenComponent,
@@ -201,6 +206,7 @@ export class ContentRenderComponent implements OnInit, OnChanges {
             'app-image': ImageComponent,
             'feature': ContentRenderFeature,
             'codebox': ContentCodeBox,
+            'api-docs': ContentApiDocsComponent,
         };
 
         if ('string' === typeof content) {
@@ -213,27 +219,39 @@ export class ContentRenderComponent implements OnInit, OnChanges {
             }
             return children;
         } else if (components[content.tag]) {
-            const children: ContentCreated[] = content.children ? this.renderContent(this.injector, content.children) : [];
+            if (this.ignoreComponents.includes(content.tag)) return [];
 
             const type = reflectComponentType(components[content.tag]);
             if (!type) return [];
 
-            const projectableNodes: Node[][] = [];
-            for (const ngContent of type.ngContentSelectors) {
-                const nodes: Node[] = [];
-                for (const child of children) {
-                    if (child.node instanceof Text && ngContent === '*') {
-                        nodes.push(child.node);
-                    } else if (child.node instanceof HTMLElement && child.node.matches(ngContent)) {
-                        nodes.push(child.node);
-                    }
-                }
-                projectableNodes.push(nodes);
+            // const projectableNodes: Node[][] = [];
+            const contentPlaceholders: Comment[] = [];
+
+            // for (const ngContent of type.ngContentSelectors) {
+            //     const nodes: Node[] = [];
+            //     for (const child of children) {
+            //         if (child.node instanceof Text && ngContent === '*') {
+            //             nodes.push(child.node);
+            //         } else if (child.node instanceof HTMLElement && child.node.matches(ngContent)) {
+            //             nodes.push(child.node);
+            //         }
+            //     }
+            //     projectableNodes.push(nodes);
+            // }
+
+            for (let i = 0; i < type.ngContentSelectors.length; i++) {
+                const comment = this.renderer.createComment(`ng-content ${i}`);
+                contentPlaceholders.push(comment);
             }
 
             const component = createComponent(components[content.tag], {
                 environmentInjector: this.injector,
-                projectableNodes,
+                elementInjector: Injector.create({
+                    parent: injector,
+                    providers: [
+                        { provide: components[content.tag], useFactory: () => component.instance },
+                    ],
+                }),
             });
 
             for (const [k, v] of Object.entries(content.props || {})) {
@@ -242,6 +260,25 @@ export class ContentRenderComponent implements OnInit, OnChanges {
 
             if (content.props && content.props.class) {
                 this.renderer.setAttribute(component.location.nativeElement, 'class', content.props.class);
+            }
+            this.app.attachView(component.hostView);
+
+            const children: ContentCreated[] = content.children ? this.renderContent(component.injector, content.children) : [];
+
+            for (let i = 0; i < contentPlaceholders.length; i++) {
+                const placeholder = contentPlaceholders[i];
+                const selector = type.ngContentSelectors[i];
+                for (const child of children) {
+                    if (child.node instanceof HTMLElement && child.node.matches(selector)) {
+                        this.renderer.appendChild(placeholder.parentElement, child.node);
+                    } else if (child.node instanceof Text && selector === '*') {
+                        this.renderer.appendChild(placeholder.parentElement, child.node);
+                    }
+                }
+            }
+
+            if (component.instance instanceof HighlightCodeComponent) {
+                component.instance.onRender.subscribe(() => this.onRender.emit());
             }
 
             // function debug(v: any, stack: any[] = []): any {
@@ -271,39 +308,38 @@ export class ContentRenderComponent implements OnInit, OnChanges {
             //     return v;
             // }
 
-            if (type.ngContentSelectors.length === 0) {
-                const lView = (component.hostView as any)._lView;
-                const tView = lView[1];
-                // console.log('lView', debug(lView));
-                // console.log('lView[12]', debug(lView[12]));
-                let tNode = lView[12][5];
-                // console.log('tNode', debug(tNode));
-                const queries = tView.queries;
-                // console.log('lView', lView);
-                for (const child of children) {
-                    if (child.hostView) {
-                        const clView = (child.hostView as any)._lView;
-                        lView[1].data.push(child.type);
+            // if (type.ngContentSelectors.length === 0) {
+            //     const lView = (component.hostView as any)._lView;
+            //     const tView = lView[1];
+            //     // console.log('lView', debug(lView));
+            //     // console.log('lView[12]', debug(lView[12]));
+            //     let tNode = lView[12][5];
+            //     // console.log('tNode', debug(tNode));
+            //     const queries = tView.queries;
+            //     // console.log('lView', lView);
+            //     for (const child of children) {
+            //         if (child.hostView) {
+            //             const clView = (child.hostView as any)._lView;
+            //             lView[1].data.push(child.type);
+            //
+            //             // query.element check uses directiveStart and directiveEnd
+            //             // and iterates over all lView[i] where directiveStart <= i < directiveEnd.
+            //             // so we need to update these values every time we add a new directive
+            //             lView[1].firstChild.directiveEnd++;
+            //             lView[1].firstChild.providerIndexes = lView.length;
+            //             // console.log('clView', debug(clView));
+            //             lView.push(clView[8]);
+            //
+            //             if (queries) {
+            //                 for (const query of queries.queries) {
+            //                     query.elementStart(tView, tNode);
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
 
-                        // query.element check uses directiveStart and directiveEnd
-                        // and iterates over all lView[i] where directiveStart <= i < directiveEnd.
-                        // so we need to update these values every time we add a new directive
-                        lView[1].firstChild.directiveEnd++;
-                        lView[1].firstChild.providerIndexes = lView.length;
-                        // console.log('clView', debug(clView));
-                        lView.push(clView[8]);
-
-                        if (queries) {
-                            for (const query of queries.queries) {
-                                query.elementStart(tView, tNode);
-                            }
-                        }
-                    }
-                }
-            }
-
-            this.app.attachView(component.hostView);
-            component.changeDetectorRef.detectChanges();
+            // component.changeDetectorRef.detectChanges();
 
             return [{ hostView: component.hostView, type, node: component.location.nativeElement }];
         } else {
@@ -316,6 +352,9 @@ export class ContentRenderComponent implements OnInit, OnChanges {
                 const meta = Object.fromEntries(params.entries());
                 component.setInput('title', meta.title || '');
 
+                component.instance.onRender.subscribe(() => {
+                    this.onRender.emit()
+                });
                 this.app.attachView(component.hostView);
                 return [{ node: component.location.nativeElement }];
             }

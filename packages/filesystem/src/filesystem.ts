@@ -172,7 +172,6 @@ export interface FilesystemAdapter {
     /**
      * Appends the given contents to the given file.
      *
-     *
      * Optional. If not implemented, the file will be read into memory, content appended, and then written.
      */
     append?(path: string, contents: Uint8Array, reporter: Reporter): Promise<void>;
@@ -340,12 +339,12 @@ export class Filesystem {
         urlBuilder: (path: string) => {
             if (this.options.baseUrl) return this.options.baseUrl + path;
             return path;
-        }
+        },
     };
 
     constructor(
         public adapter: FilesystemAdapter,
-        options: Partial<FilesystemOptions> = {}
+        options: Partial<FilesystemOptions> = {},
     ) {
         Object.assign(this.options, options);
         if (this.options.baseUrl?.endsWith('/')) this.options.baseUrl = this.options.baseUrl.slice(0, -1);
@@ -632,12 +631,14 @@ export class Filesystem {
         source = resolveFilesystemPath(source);
         destination = resolveFilesystemPath(destination);
         return createProgress<void>(async (reporter) => {
+            if (source === destination) return;
+
             if (this.adapter.copy) {
                 return this.adapter.copy(source as string, destination as string, reporter);
             } else {
                 const file = await this.get(source);
                 const queue: { file: FilesystemFile, targetPath: string }[] = [
-                    { file, targetPath: destination as string }
+                    { file, targetPath: destination as string },
                 ];
                 while (queue.length) {
                     const entry = queue.shift()!;
@@ -665,13 +666,16 @@ export class Filesystem {
     move(source: FilesystemPath, destination: FilesystemPath): Operation<void> {
         source = resolveFilesystemPath(source);
         destination = resolveFilesystemPath(destination);
+
         return createProgress<void>(async (reporter) => {
+            if (source === destination) return;
+
             if (this.adapter.move) {
                 return this.adapter.move(source as string, destination as string, reporter);
             } else if (this.adapter.moveFile) {
                 const file = await this.get(source);
                 const queue: { file: FilesystemFile, targetPath: string }[] = [
-                    { file, targetPath: destination as string }
+                    { file, targetPath: destination as string },
                 ];
                 while (queue.length) {
                     const entry = queue.shift()!;
@@ -686,7 +690,12 @@ export class Filesystem {
                 }
             } else {
                 await this.copy(source, destination);
-                await this.delete(source);
+                const file = await this.get(source);
+                if (file.isDirectory()) {
+                    await this.deleteDirectory(source);
+                } else {
+                    await this.delete(source);
+                }
             }
         });
     }
@@ -776,7 +785,7 @@ export function provideNamedFilesystem(name: string, adapter: FilesystemAdapter 
         provide: token,
         useFactory: (adapter: FilesystemAdapter & Inject<typeof adapterId>) => {
             return new Filesystem(adapter, options);
-        }
+        },
     };
 
     return [adapterProvider, filesystemProvider];

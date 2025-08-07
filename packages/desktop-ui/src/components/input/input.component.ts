@@ -35,6 +35,7 @@ const dateTimeTypes: string[] = ['time', 'date', 'datetime', 'datetime-local'];
         @if (type() !== 'textarea') {
           <input
             #input
+            [name]="name()"
             [step]="step()"
             [readOnly]="readonly()"
             [attr.min]="min()"
@@ -80,6 +81,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
     placeholder = input<string>('');
 
+    name = input<string>('');
     icon = input<string>('');
 
     min = input<number>();
@@ -111,8 +113,8 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
     esc = output<KeyboardEvent>();
     enter = output<KeyboardEvent>();
-    keyDown = output<KeyboardEvent>();
-    keyUp = output<KeyboardEvent>();
+    keydown = output<KeyboardEvent>();
+    keyup = output<KeyboardEvent>();
     blur = output<FocusEvent>();
     focus = output<FocusEvent>();
 
@@ -178,7 +180,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
 
     protected onKeyDown(event: KeyboardEvent) {
         this.touch();
-        this.keyDown.emit(event);
+        this.keydown.emit(event);
     }
 
     protected onKeyUp(event: KeyboardEvent) {
@@ -190,7 +192,7 @@ export class InputComponent extends ValueAccessorBase<any> implements AfterViewI
             this.esc.emit(event);
         }
 
-        this.keyUp.emit(event);
+        this.keyup.emit(event);
     }
 
     focusInput() {

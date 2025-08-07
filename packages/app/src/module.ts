@@ -12,18 +12,12 @@ import { InjectorModule, InjectorModuleConfig, NormalizedProvider, ProviderWithS
 import { AbstractClassType, ClassType, CustomError, ExtractClassType, isClass } from '@deepkit/core';
 import { EventListener, EventToken } from '@deepkit/event';
 import { WorkflowDefinition } from '@deepkit/workflow';
-import {
-    getPartialSerializeFunction,
-    ReflectionFunction,
-    ReflectionKind,
-    ReflectionMethod,
-    resolveReceiveType,
-    serializer,
-    Type,
-    TypeClass,
-} from '@deepkit/type';
+import { getPartialSerializeFunction, ReflectionFunction, ReflectionKind, ReflectionMethod, resolveReceiveType, serializer, Type, TypeClass } from '@deepkit/type';
 import { ControllerConfig } from './service-container.js';
 
+/**
+ * @internal
+ */
 export interface MiddlewareConfig {
     getClassTypes(): ClassType[];
 }
@@ -44,6 +38,9 @@ export interface AddedListener {
     order: number;
 }
 
+/**
+ * Stringifies the listener to a human-readable string.
+ */
 export function stringifyListener(listener: AddedListener): string {
     if (listener.classType) {
         return listener.classType.name + '.' + listener.methodName;
@@ -182,7 +179,6 @@ export interface CreateModuleDefinition extends ModuleDefinition {
 }
 
 export type FunctionalModule = (module: AppModule<any>) => void;
-export type FunctionalModuleFactory = (...args: any[]) => (module: AppModule<any>) => void;
 
 export interface RootModuleDefinition extends ModuleDefinition {
     /**
@@ -198,6 +194,7 @@ let moduleId = 0;
 
 /**
  * @reflection never
+ * @internal
  */
 export type DeepPartial<T> =
     T extends string | number | bigint | boolean | null | undefined | symbol | Date | Set<any> | Map<any, any> | Uint8Array | ArrayBuffer | ArrayBufferView | Error | RegExp | Function | Promise<any> ? T :
@@ -205,6 +202,9 @@ export type DeepPartial<T> =
             [P in keyof T]: DeepPartial<T[P]>;
         }>;
 
+/**
+ * @internal
+ */
 export interface AppModuleClass<C extends InjectorModuleConfig> {
     new(config?: DeepPartial<C>): AppModule<C>;
 }

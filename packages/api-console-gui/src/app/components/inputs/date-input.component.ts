@@ -8,7 +8,7 @@ import { TypeDecoration } from '../../utils.js';
 @Component({
     template: `
       <dui-input round lightFocus type="datetime-local" style="width: 100%"
-                 (keyDown)="keyDown.emit($event)"
+                 (keydown)="keyDown.emit($event)"
                  [(ngModel)]="model().value" />
     `,
     imports: [

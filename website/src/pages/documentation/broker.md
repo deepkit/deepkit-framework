@@ -6,6 +6,9 @@ Deepkit Broker is a client and a server in one. It can be used as a standalone s
 
 The client uses an adapter pattern to support different backends. You can use the same code with different backends, or even use multiple backends at the same time.
 
+Currently, there are 3 adapters available. One is the default `BrokerDeepkitAdapter` which communicates with the Deepkit Broker server and comes with Deepkit Broker out of the box (including the server). 
+The second is `BrokerRedisAdapter` in [@deepkit/broker-redis](./package/broker-redis) which communicates with a Redis server. The third is `BrokerMemoryAdapter` which is an in-memory adapter for testing purposes.
+
 ## Installation
 
 Deepkit Broker is installed and activated per default when [Deepkit Framework](./framework.md) is used. Otherwise, you can install it via:
@@ -26,38 +29,11 @@ Deepkit Broker provides these main broker classes:
 
 These classes are designed to take a broker adapter to communicate with a broker server in a type-safe way.
 
-A default adapter `BrokerDeepkitAdapter` that communicates with Deepkit Broker server is included in the package, but you can write your own adapter to communicate with other broker servers (e.g. Redis).
-
-The FrameworkModule provides and registers the default adapter and connects to Deepkit Broker server, which runs per default in the same process.
-In a production environment, you would run the broker server in a separate process or even on a different machine.
-
-To give a high level overview of how the classes can be used outside the framework, here is an example:
-
 ```typescript
-import { BrokerBus, BrokerAdapterBus } from '@deepkit/broker';
+import { BrokerBus, BrokerMemoryAdapter } from '@deepkit/broker';
 
-class MyAdapter implements BrokerAdapterBus {
-  disconnect(): Promise<void> {
-    // implement: disconnect from broker server
-  }
-  async publish(name: string, message: any, type: Type): Promise<void> {
-    // implement: send message to broker server, name is 'my-channel-name', message is { foo: 'bar' }
-  }
-  async subscribe(name: string, callback: (message: any) => void, type: Type): Promise<Release> {
-    // implemenet: subscribe to broker server, name is 'my-channel-name'
-  }
-}
-
-// or BrokerDeepkitAdapter for the default adapter
-const adapter = new MyAdapter;
-const bus = new BrokerBus(adapter);
-
-interface MyMessage {
-  foo: string;
-}
-
-const channel = bus.channel<MyMessage>('my-channel-name');
-
+const bus = new BrokerBus(new BrokerMemoryAdapter());
+const channel = bus.channel<{ foo: string }>('my-channel-name');
 await channel.subscribe((message) => {
   console.log('received message', message);
 });
@@ -65,23 +41,20 @@ await channel.subscribe((message) => {
 await channel.publish({ foo: 'bar' });
 ```
 
-In this example we write our own adapter to communicate with a broker server. The adapter is then passed to the BrokerBus class, which is used to create a channel.
-This is the common pattern all Broker classes follow: They take an adapter in the constructor and use it to communicate with the broker server.
+The FrameworkModule provides and registers the default adapter and connects to Deepkit Broker server, which runs per default in the same process.
 
-The channel can then be used to subscribe to messages and publish messages.
-
-Thanks to runtime types and the call `channel<MyMessage>('my-channel-name');` everything is type-safe and the message can be validated and serialized automatically in the adapter directly.
+Thanks to runtime types and the call `channel<Type>('my-channel-name');` everything is type-safe and the message can be validated and serialized automatically in the adapter directly.
 The default implementation `BrokerDeepkitAdapter` handles this automatically for you (and uses BSON for serialization).
 
-Note that each broker class has its own adapter interface, so you can implement only the methods you need. The `BrokerDeepkitAdapter` implements all of these interfaces and can be used in all broker classes.
+Note that each broker class has its own adapter interface, so you can implement only the methods you need. The `BrokerDeepkitAdapter` implements all of these interfaces and can be used in all broker APIs.
+
+## Application Integration
 
 To use these classes in a Deepkit application with dependency injection, you can use the `FrameworkModule` which provides several things:
 
 - a default adapter for the broker server
 - the broker server itself (and starts it automatically)
 - and registers all broker classes as providers
-
-## Usage
 
 The `FrameworkModule` provides a default broker adapter for the configured broker server based on the given configuration.
 It also registers providers for all the broker classes, so you can inject them (e.g. BrokerBus) into your services and provider factories directly.
@@ -130,10 +103,32 @@ Almost all broker classes have this kind of derivation, so you can easily define
 
 ## Custom Adapter
 
-If you need more connections or a custom adapter, you can create your own adapter by implementing one or more of the following interfaces from `@deepkit/broker`:
+If you need a custom adapter, you can create your own adapter by implementing one or more of the following interfaces from `@deepkit/broker`:
 
 ```typescript
 export type BrokerAdapter = BrokerAdapterCache & BrokerAdapterBus & BrokerAdapterLock & BrokerAdapterQueue & BrokerAdapterKeyValue;
+```
+
+```typescript
+import { BrokerAdapterBus, BrokerBus, Release } from '@deepkit/broker';
+import { Type } from '@deepkit/type';
+
+class MyAdapter implements BrokerAdapterBus {
+  disconnect(): Promise<void> {
+    // implement: disconnect from broker server
+  }
+  async publish(name: string, message: any, type: Type): Promise<void> {
+    // implement: send message to broker server, name is 'my-channel-name', message is { foo: 'bar' }
+  }
+  async subscribe(name: string, callback: (message: any) => void, type: Type): Promise<Release> {
+    // implemenet: subscribe to broker server, name is 'my-channel-name'
+  }
+}
+
+// or BrokerDeepkitAdapter for the default adapter
+const adapter = new MyAdapter;
+const bus = new BrokerBus(adapter);
+
 ```
 
 ## Broker Server
@@ -141,7 +136,11 @@ export type BrokerAdapter = BrokerAdapterCache & BrokerAdapterBus & BrokerAdapte
 The Broker server starts automatically per default as soon as you import the `FrameworkModule` and run the `server:start` command.
 All Broker classes are configured per default to connect to this server.
 
-In a production environment, you would run the broker server in a separate process or even on a different machine. Instead of doing `server:start` you would start the broker server with `server:broker:start`.
+In a production environment, you would run the broker server in a separate process, or on a different machine. 
+Instead of doing `server:start` you would start the broker server with `server:broker:start`.
+
+If you have a lot of traffic and need scalability, you should use the [redis adapter](./package/broker-redis.md) instead. It is more complicated to set up, 
+since you have to run a Redis server, but it is more performant and can handle more traffic.
 
 ```bash
 ts-node app.ts server:broker:start

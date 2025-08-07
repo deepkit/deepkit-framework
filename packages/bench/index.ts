@@ -1,4 +1,4 @@
-export const AsyncFunction = (async () => {
+const AsyncFunction = (async () => {
 }).constructor as { new(...args: string[]): Function };
 
 function noop() {
@@ -76,6 +76,10 @@ function report(benchmark: Benchmark) {
     );
 }
 
+/**
+ * Registers a benchmark with the given name and function.
+ * Function can be synchronous or asynchronous.
+ */
 export function benchmark(name: string, fn: () => void) {
     benchmarks.push({
         name, fn,
@@ -89,6 +93,9 @@ export function benchmark(name: string, fn: () => void) {
     });
 }
 
+/**
+ * Runs all registered benchmarks each for the given number of seconds.
+ */
 export async function run(seconds: number = 1) {
     print('Node', process.version);
 
@@ -129,13 +136,6 @@ const asyncExecutors = [
     getAsyncExecutor(100000),
     getAsyncExecutor(1000000),
 ];
-
-const gcObserver = new PerformanceObserver((list) => {
-    for (const entry of list.getEntries()) {
-        current.gcEvents.push(entry.duration);
-    }
-});
-const a = gcObserver.observe({ entryTypes: ['gc'] });
 
 function test(seconds: number) {
     let iterations = 1;

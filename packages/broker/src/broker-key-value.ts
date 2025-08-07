@@ -1,7 +1,10 @@
+/** @group KeyValue */
+
 import { parseTime } from './utils.js';
 import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
 import { BrokerAdapterBase } from './broker.js';
 import { ConsoleLogger, LoggerInterface } from '@deepkit/logger';
+
 
 export interface BrokerKeyValueOptions {
     /**
@@ -29,7 +32,7 @@ export interface BrokerAdapterKeyValue extends BrokerAdapterBase {
 
     remove(key: string): Promise<any>;
 
-    increment(key: string, value: any): Promise<number>;
+    increment(key: string, value: number): Promise<number>;
 }
 
 export class BrokerKeyValueItem<T> {

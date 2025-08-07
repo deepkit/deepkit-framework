@@ -54,7 +54,12 @@ is<int8>(-200); //false
 is<int8>(2500); //false
 ```
 
-## Float
+```typescript
+import { is, float, float32, float64 } from '@deepkit/type';
+is<float>(12.5); //true
+is<float32>(12.5); //true
+is<float64>(12.5); //true
+````
 
 ## UUID
 

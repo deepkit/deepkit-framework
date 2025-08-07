@@ -3,16 +3,15 @@ import { findParentPath } from '@deepkit/app';
 import { readdir } from 'fs/promises';
 import { PageProcessor } from '@app/server/page-processor';
 import { CommunityMessage } from '@app/common/models';
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { getCurrentDirName } from '@deepkit/core';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const dirname = getCurrentDirName();
 
 export async function importExamples(
     database: Database,
-    page: PageProcessor
+    page: PageProcessor,
 ) {
-    const dir = findParentPath('src/pages/examples', __dirname);
+    const dir = findParentPath('src/pages/examples', dirname);
     if (!dir) throw new Error('Examples folder not found');
     const files = await readdir(dir);
 
@@ -40,14 +39,14 @@ export async function importExamples(
 
 export async function importQuestions(
     database: Database,
-    page: PageProcessor
+    page: PageProcessor,
 ) {
-    const dir = findParentPath('src/pages/questions', __dirname);
+    const dir = findParentPath('src/pages/questions', dirname);
     if (!dir) throw new Error('Examples folder not found');
     const files = await readdir(dir);
 
     await database.query(CommunityMessage)
-        .filter({ type: 'answer',  source: 'markdown' })
+        .filter({ type: 'answer', source: 'markdown' })
         .deleteMany();
 
     for (const file of files) {

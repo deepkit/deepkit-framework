@@ -9,8 +9,8 @@
  */
 
 import { expect, test } from '@jest/globals';
-import { typeOf } from '../src/reflection/reflection.js';
-import { assertType, ReflectionKind, stringifyResolvedType, Type } from '../src/reflection/type.js';
+import { ReceiveType, reflect, typeOf } from '../src/reflection/reflection.js';
+import { assertType, InlineRuntimeType, ReflectionKind, stringifyResolvedType, Type } from '../src/reflection/type.js';
 import { serialize } from '../src/serializer-facade.js';
 import { expectEqualType } from './utils.js';
 
@@ -287,4 +287,17 @@ test('dotted object', () => {
     const type = typeOf<t1>();
     // console.log(stringifyResolvedType(type));
     // expect(stringifyResolvedType(type)).toBe("'id' | 'username' | 'products' | 'mainProduct' | `products.${number}.id` | `products.${number}.title` | 'mainProduct.id' | 'mainProduct.title'")
+});
+
+test('forward type', () => {
+    function test1<T extends string>(title: string, type?: ReceiveType<T>) {
+        return (v: InlineRuntimeType<typeof type>) => {
+            return v;
+        };
+    }
+
+    const fn = test1<'bar'>('foo');
+    const type = reflect(fn);
+    const typeString = stringifyResolvedType(type);
+    expect(typeString).toBe(`(v: 'bar') => any`);
 });

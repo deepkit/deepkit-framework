@@ -8,7 +8,6 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-export * from './src/session.js';
 export * from './src/application-server.js';
 export * from './src/worker.js';
 export * from './src/database/database-listener.js';
@@ -19,4 +18,5 @@ export * from './src/module.config.js';
 export * from './src/module.js';
 export * from './src/crud.js';
 export * from './src/testing.js';
+export * from './src/filesystem.js';
 export * from './src/broker/broker.js';

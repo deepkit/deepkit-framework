@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "moduleResolution": "node16",
+    "target": "es2020",
+    "module": "node16",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "outDir": "./dist/cjs",
+    "declaration": true,
+    "composite": true,
+    "types": []
+  },
+  "include": [
+    "src",
+    "tests",
+    "index.ts"
+  ],
+  "reflection": true,
+  "references": [
+    {
+      "path": "../core/tsconfig.json"
+    },
+    {
+      "path": "../broker/tsconfig.json"
+    }
+  ]
+}

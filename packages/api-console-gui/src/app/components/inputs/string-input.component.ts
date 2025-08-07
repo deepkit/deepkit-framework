@@ -8,7 +8,7 @@ import { FormsModule } from '@angular/forms';
 @Component({
     template: `
       <dui-input lightFocus [type]="getType()" style="width: 100%"
-                 (keyDown)="keyDown.emit($event)"
+                 (keydown)="keyDown.emit($event)"
                  [placeholder]="placeholder()"
                  [(ngModel)]="model().value"
       ></dui-input>

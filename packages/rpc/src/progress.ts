@@ -11,14 +11,13 @@
 import { BehaviorSubject, Subject, Subscriber, Subscription, SubscriptionLike } from 'rxjs';
 
 export class SingleProgress extends Subject<SingleProgress> {
-    public done = false;
-
-    public total = 0;
-    public current = 0;
-    public stats = 0;
+    done = false;
+    total = 0;
+    current = 0;
+    stats = 0;
+    abortController: AbortController = new AbortController();
 
     protected lastTime = 0;
-
     protected triggerFinished?: Function;
     finished = new Promise((resolve) => {
         this.triggerFinished = resolve;
@@ -26,6 +25,18 @@ export class SingleProgress extends Subject<SingleProgress> {
 
     constructor() {
         super();
+    }
+
+    /**
+     * Aborts the current progress (either upload or download).
+     */
+    abort() {
+        this.abortController.abort();
+        this.done = true;
+    }
+
+    get aborted() {
+        return this.abortController.signal.aborted;
     }
 
     /**
@@ -40,24 +51,24 @@ export class SingleProgress extends Subject<SingleProgress> {
         return subscription;
     }
 
-    public setStart(total: number) {
+    setStart(total: number) {
         this.total = total;
         this.lastTime = Date.now();
     }
 
 
-    public setBatch(size: number) {
+    setBatch(size: number) {
         this.current += size;
         this.lastTime = Date.now();
     }
 
     get progress(): number {
-        if (this.done) return 1;
         if (this.total === 0) return 0;
         return this.current / this.total;
     }
 
     set(total: number, current: number) {
+        // console.log('set', { total, current, done: this.done });
         if (this.done) return;
         this.total = total;
         this.current = current;
@@ -72,8 +83,16 @@ export class SingleProgress extends Subject<SingleProgress> {
 }
 
 export class Progress extends BehaviorSubject<number> {
-    public readonly upload = new SingleProgress;
-    public readonly download = new SingleProgress;
+    readonly upload = new SingleProgress;
+    readonly download = new SingleProgress;
+
+    /**
+     * Aborts both upload and download progress.
+     */
+    abort() {
+        this.upload.abort();
+        this.download.abort();
+    }
 
     constructor() {
         super(0);
@@ -102,7 +121,7 @@ export class ClientProgress {
      * @example
      * ```typescript
      *
-     * ClientProgress.track();
+     * const progress = ClientProgress.track();
      * await api.myMethod();
      *
      * ```

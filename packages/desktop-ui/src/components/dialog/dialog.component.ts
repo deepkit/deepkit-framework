@@ -279,6 +279,7 @@ export class DialogComponent implements AfterViewInit, OnDestroy, OnChanges {
         this.wrapperComponentRef.setInput('componentInputs', this.componentInputs());
         this.wrapperComponentRef.setInput('content', this.template);
         this.wrapperComponentRef.setInput('class', this.class());
+        this.wrapperComponentRef.setInput('normalize-style', this.normalizeStyle());
 
         if (this.lastOverlayStackItem) this.lastOverlayStackItem.release();
         this.lastOverlayStackItem = this.overlayStack.register(this.overlayRef.hostElement, this, () => this.close());

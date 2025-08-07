@@ -14,8 +14,8 @@ import { eventDispatcher } from '@deepkit/event';
 import { createModuleClass } from '@deepkit/app';
 import { ApplicationServer } from '@deepkit/framework';
 import { Logger } from '@deepkit/logger';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
 class AngularConfig {
     /**

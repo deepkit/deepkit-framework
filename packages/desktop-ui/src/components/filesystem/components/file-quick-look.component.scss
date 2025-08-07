@@ -1,0 +1,54 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.quick-look-content {
+  flex: 1;
+  margin: 4px;
+  border-radius: 5px;
+  background: #1c1c1c;
+  min-height: 250px;
+  min-width: 350px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  .image, video {
+    max-width: 100%;
+    max-height: 100%;
+  }
+}
+
+
+.stats {
+  display: grid;
+  gap: 5px;
+  padding: 2px 8px;
+  grid-template-columns: repeat(auto-fill, minmax(50px, 90px));
+  grid-auto-rows: max-content;
+  font-size: 12px;
+
+  .label {
+    color: var(--dui-text-light);
+  }
+}
+
+.icon {
+  background: no-repeat center center;
+  background-size: 60%;
+  height: 100%;
+  width: 100%;
+}
+
+.folder-icon {
+  background-image: url(../assets/folder-icon-dark.png);
+}
+
+.unknown-icon {
+  background-image: url(../assets/file-icon-unknown.png);
+  background-size: 30%;
+}

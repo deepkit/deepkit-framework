@@ -8,6 +8,8 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
+/** @group Network */
+
 export class ParsedHost {
     public host: string = '127.0.0.1';
     public port: number = 0;

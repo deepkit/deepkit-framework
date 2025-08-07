@@ -7,16 +7,21 @@ import { DropdownComponent, DropdownItemComponent, DuiApp, IconComponent, OpenDr
     template: `
       <dui-icon clickable name="color_theme" [openDropdown]="darkModeDropdown"></dui-icon>
       <dui-dropdown #darkModeDropdown>
-        <dui-dropdown-item (click)="duiApp.setDarkMode(undefined)" [selected]="!duiApp.isDarkModeOverwritten()">Auto</dui-dropdown-item>
-        <dui-dropdown-item (click)="duiApp.setDarkMode(false)" [selected]="duiApp.isDarkModeOverwritten() && !duiApp.isDarkMode()">Light
+        <dui-dropdown-item checkbox (click)="duiApp.setDarkMode(undefined)" [selected]="!duiApp.isDarkModeOverwritten()">Auto</dui-dropdown-item>
+        <dui-dropdown-item checkbox (click)="duiApp.setDarkMode(false)" [selected]="duiApp.isDarkModeOverwritten() && !duiApp.isDarkMode()">Light
         </dui-dropdown-item>
-        <dui-dropdown-item (click)="duiApp.setDarkMode(true)" [selected]="duiApp.isDarkModeOverwritten() && duiApp.isDarkMode()">Dark
+        <dui-dropdown-item checkbox (click)="duiApp.setDarkMode(true)" [selected]="duiApp.isDarkModeOverwritten() && duiApp.isDarkMode()">Dark
         </dui-dropdown-item>
       </dui-dropdown>
     `,
     host: {
         ['class.dui-normalized']: 'true',
     },
+    styles: `
+      :host {
+        display: flex;
+      }
+    `,
     imports: [
         IconComponent,
         DropdownComponent,

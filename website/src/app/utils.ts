@@ -1,5 +1,6 @@
-import { inject, PendingTasks, PLATFORM_ID } from '@angular/core';
+import { inject, PendingTasks, PLATFORM_ID, WritableSignal } from '@angular/core';
 import { isPlatformBrowser, isPlatformServer } from '@angular/common';
+import { injectLocalStorage, LocalStorageOptionsWithDefaultValue } from 'ngxtension/inject-local-storage';
 
 export class PlatformHelper {
     platformId = inject(PLATFORM_ID);
@@ -53,4 +54,19 @@ export function waitForInit<T>(component: T, ref?: ExtractMethodsNames<T>) {
             // (component as any)[fn] = ori;
         }
     };
+}
+
+export function injectLocalStorageNumber(key: string, options?: Partial<LocalStorageOptionsWithDefaultValue<number>>): WritableSignal<number> {
+    return injectLocalStorage(key, {
+        defaultValue: 1,
+        parse: (value) => Number(value),
+        ...options,
+    }) as WritableSignal<number>;
+}
+
+export function injectLocalStorageString(key: string, options?: Partial<LocalStorageOptionsWithDefaultValue<string>>): WritableSignal<string> {
+    return injectLocalStorage(key, {
+        defaultValue: '',
+        ...options,
+    }) as WritableSignal<string>;
 }

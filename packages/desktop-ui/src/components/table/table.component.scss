@@ -1,196 +1,195 @@
 :host {
-    display: flex;
-    flex-direction: column;
-    border: 1px solid #c5c5c5;
-    background-color: white;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #c5c5c5;
+  background-color: white;
 
-    --background-header: #f0f0f0;
-    --border-header: #cecece;
+  --background-header: #f0f0f0;
+  --border-header: #cecece;
 
-    --background-row: #fefefe;
-    --text-row-selected: unset;
-    --background-row-odd: #f5f5f5;
-    --background-row-selected: #dcdcdc;
+  --background-row: #fefefe;
+  --text-row-selected: unset;
+  --background-row-odd: #f5f5f5;
+  --background-row-selected: #dcdcdc;
 
-    --border-right-row-freeze: rgba(197, 197, 197, 0.5);
-    --background-row-hover: #e0e0e0;
+  --border-right-row-freeze: rgba(197, 197, 197, 0.5);
+  --background-row-hover: #e0e0e0;
 }
 
 :host-context(.dui-theme-dark) {
-    --background-header: #2d2d2d;
-    --border-header: #474747;
+  --background-header: #2d2d2d;
+  --border-header: #474747;
 
-    --background-row: #1e1e1e;
-    --background-row-odd: #232323;
-    --background-row-selected: #444444;
-    --border-right-row-freeze: rgba(86, 86, 86, 0.5);
-    --background-row-hover: #333333;
+  --background-row: #1e1e1e;
+  --background-row-odd: #232323;
+  --background-row-selected: #444444;
+  --border-right-row-freeze: rgba(86, 86, 86, 0.5);
+  --background-row-hover: #333333;
 }
 
 .header {
-    white-space: nowrap;
+  white-space: nowrap;
+  flex: 0 0 23px;
+  overflow: hidden;
+  padding-right: 13px;
+  background: var(--background-header);
+  border-bottom: 1px solid var(--border-header);
+
+  > div {
+    position: relative;
+    display: inline-block;
     height: 23px;
+    padding: 3px 6px;
+    line-height: 17px;
+    text-align: left;
+    color: #303030;
+    font-size: 11px;
+    font-weight: 500;
+    z-index: 1;
+    left: 0;
+
     overflow: hidden;
-    padding-right: 13px;
-    background: var(--background-header);
-    border-bottom: 1px solid var(--border-header);
+    white-space: nowrap;
+    text-overflow: ellipsis;
 
-    > div {
-        position: relative;
-        display: inline-block;
-        height: 23px;
-        padding: 3px 6px;
-        line-height: 17px;
-        text-align: left;
-        color: #303030;
-        font-size: 11px;
-        font-weight: 500;
-        z-index: 1;
-        left: 0;
-
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-
-        &.freeze {
-            position: sticky;
-            z-index: 2;
-            background: var(--background-header);
-            border-bottom: 1px solid var(--border-header);
-        }
-
-        dui-icon {
-            float: right;
-            margin-top: 2px;
-            margin-right: 2px;
-        }
-
-        dui-splitter {
-            top: 3px;
-            right: -2px;
-            bottom: 3px;
-        }
-
-        &:active {
-            background-color: #e3e3e3;
-            font-weight: 500;
-        }
-
-        &.other-cell {
-            transition: left 0.1s ease-out;
-        }
+    &.freeze {
+      position: sticky;
+      z-index: 2;
+      background: var(--background-header);
+      border-bottom: 1px solid var(--border-header);
     }
+
+    dui-icon {
+      float: right;
+      margin-top: 2px;
+      margin-right: 2px;
+    }
+
+    dui-splitter {
+      top: 3px;
+      right: -2px;
+      bottom: 3px;
+    }
+
+    &:active {
+      background-color: #e3e3e3;
+      font-weight: 500;
+    }
+
+    &.other-cell {
+      transition: left 0.1s ease-out;
+    }
+  }
 }
 
 .body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 
-    cdk-virtual-scroll-viewport {
-        flex: 1;
-    }
+  cdk-virtual-scroll-viewport {
+    flex: 1;
+  }
 }
 
 .table-row {
-    border-bottom: 1px solid rgba(192, 192, 192, 0.05);
+  border-bottom: 1px solid rgba(192, 192, 192, 0.05);
+  background-color: var(--background-row);
+  display: flex;
+  align-items: start;
+  flex-wrap: nowrap;
+
+  &.odd, &.odd > div.freeze {
+    background-color: var(--background-row-odd);
+  }
+
+  &.selected, &.selected > div.freeze {
+    color: var(--text-row-selected);
+    background-color: var(--background-row-selected);
+  }
+}
+
+.table-cell {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  line-height: 16px;
+  min-height: 22px;
+  height: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  left: 0;
+  flex-shrink: 0;
+  flex-grow: 0;
+
+  &.freeze {
     background-color: var(--background-row);
-    display: flex;
-    align-items: start;
-    flex-wrap: nowrap;
+    position: sticky;
+    z-index: 2;
+  }
 
-    > div {
-        position: relative;
-        display: inline-block;
-        padding: 3px 6px;
-        line-height: 16px;
-        min-height: 22px;
-        height: 100%;
-        vertical-align: middle;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        left: 0;
-        flex-shrink: 0;
-        flex-grow: 0;
+  &.freeze-last {
+    border-right: 1px solid var(--border-right-row-freeze);
+  }
 
-        &.freeze {
-            position: sticky;
-            z-index: 2;
-        }
+  &.active-drop {
+    opacity: 0.8;
+    border-left: 1px solid var(--dui-line-color-light);
+    border-right: 1px solid var(--dui-line-color-light);
+  }
 
-        &.active-drop {
-            opacity: 0.8;
-            border-left: 1px solid var(--dui-line-color-light);
-            border-right: 1px solid var(--dui-line-color-light);
-        }
-
-        &.other-cell {
-            transition: left 0.1s ease-out;
-        }
-    }
-
-    > div.freeze {
-        background-color: var(--background-row);
-    }
-
-    > div.freeze-last {
-        border-right: 1px solid var(--border-right-row-freeze);
-    }
-
-    &.odd, &.odd > div.freeze {
-        background-color: var(--background-row-odd);
-    }
-
-    &.selected, &.selected > div.freeze {
-        color: var(--text-row-selected);
-        background-color: var(--background-row-selected);
-    }
+  &.other-cell {
+    transition: left 0.1s ease-out;
+  }
 }
 
 :host.no-virtual-scrolling {
-    .table-row {
-        min-width: 100%;
-        width: fit-content;
+  .table-row {
+    min-width: 100%;
+    width: fit-content;
 
-        > div {
-            white-space: unset;
-        }
+    > div {
+      white-space: unset;
     }
+  }
 }
 
 :host:focus {
-    outline: 0;
+  outline: 0;
 }
 
 :host-context(.dui-theme-dark) {
-    background-color: #1e1e1e;
-    border: 1px solid #565656;
+  background-color: #1e1e1e;
+  border: 1px solid #565656;
 
-    .th {
-        color: white;
+  .th {
+    color: white;
 
-        &:active {
-            background-color: #474747;
-        }
+    &:active {
+      background-color: #474747;
     }
+  }
 }
 
 :host.borderless {
-    border: 0;
+  border: 0;
 }
 
 :host:focus {
-    --background-row-selected: var(--dui-selection);
-    --text-row-selected: white;
+  --background-row-selected: var(--dui-selection);
+  --text-row-selected: white;
 }
 
 :host.with-hover {
-    .table-row:not(.selected):hover {
-        background-color: var(--background-row-hover);
+  .table-row:not(.selected):hover {
+    background-color: var(--background-row-hover);
 
-        > div.freeze {
-            background-color: var(--background-row-hover);
-        }
+    > div.freeze {
+      background-color: var(--background-row-hover);
     }
+  }
 }

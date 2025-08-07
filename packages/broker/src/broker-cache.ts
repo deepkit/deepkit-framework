@@ -1,5 +1,7 @@
+/** @group Cache */
+
 import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
-import { BrokerAdapterBase, BrokerInvalidateCacheMessage } from './broker.js';
+import { BrokerAdapterBase } from './broker.js';
 import { parseTime } from './utils.js';
 import { ConsoleLogger, LoggerInterface } from '@deepkit/logger';
 import { asyncOperation } from '@deepkit/core';
@@ -82,7 +84,7 @@ export interface BrokerAdapterCache extends BrokerAdapterBase {
 
     invalidateCache(key: string): Promise<void>;
 
-    onInvalidateCache(callback: (message: BrokerInvalidateCacheMessage) => void): void;
+    onInvalidateCache(callback: (key: string) => void): void;
 }
 
 export type CacheBuilder<T> = () => T | Promise<T>;
@@ -164,6 +166,7 @@ export class BrokerCacheItem<T> {
     }
 
     async invalidate() {
+        this.store.invalidate(this.key);
         await this.adapter.invalidateCache(this.key);
     }
 
@@ -234,8 +237,8 @@ export class BrokerCache {
     ) {
         this.config = parseBrokerCacheOptions(config);
         this.store = new BrokerCacheStore(this.config);
-        this.adapter.onInvalidateCache((message) => {
-            this.store.invalidate(message.key);
+        this.adapter.onInvalidateCache((key) => {
+            this.store.invalidate(key);
         });
     }
 

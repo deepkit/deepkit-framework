@@ -8,7 +8,7 @@ import { FormsModule } from '@angular/forms';
       <dui-input round textured lightFocus [type]="getType()" auto-focus style="width: 100%"
                  (blur)="done.emit()"
                  (enter)="done.emit()" (esc)="done.emit()"
-                 (keyDown)="keyDown.emit($event)"
+                 (keydown)="keyDown.emit($event)"
                  [(ngModel)]="model"
                  (ngModelChange)="modelChange.emit(this.model)"
       ></dui-input>

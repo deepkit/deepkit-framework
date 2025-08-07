@@ -35,7 +35,7 @@ To use this, pass the provider to the `RpcKernel`:
 const kernel = new RpcKernel([{provide: RpcKernelSecurity, useClass: MyKernelSecurity, scope: 'rpc'}]);
 ```
 
-Or, in the case of a Deepkit Framework application, override the `RpcKernelSecurity` class with a provider in the app:
+Or, in the case of a Deepkit app, override the `RpcKernelSecurity` class with a provider in the app:
 
 ```typescript
 import { App } from '@deepkit/type';

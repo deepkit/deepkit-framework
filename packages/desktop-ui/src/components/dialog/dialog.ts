@@ -8,7 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 
-import { ApplicationRef, Component, ComponentFactoryResolver, ComponentRef, Directive, ElementRef, Inject, Injectable, Injector, input, OnDestroy, Type, ViewContainerRef } from '@angular/core';
+import { ApplicationRef, Component, ComponentFactoryResolver, ComponentRef, Directive, ElementRef, Inject, Injectable, Injector, input, model, OnDestroy, Signal, Type, ViewContainerRef } from '@angular/core';
 import { CloseDialogDirective, DialogActionsComponent, DialogComponent } from './dialog.component';
 import { isTargetChildOf } from '../../core/utils';
 import { DOCUMENT } from '@angular/common';
@@ -86,7 +86,7 @@ export class DuiDialogPrompt {
     title = input<string>('Alert');
     content = input<string>('');
 
-    value = input<string>('');
+    value = model<string>('');
 
     static dialogDefaults = {
         maxWidth: '700px',
@@ -94,6 +94,10 @@ export class DuiDialogPrompt {
 
     constructor(public dialog: DialogComponent) {
     }
+}
+
+export type Inputs<T> = {
+    [P in keyof T]?: T[P] extends Signal<infer V> ? V : T[P];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -133,7 +137,7 @@ export class DuiDialog {
     public open<T>(
         component: Type<T>,
         inputs: { [name in keyof T]?: any } = {},
-        dialogInputs: Partial<DialogComponent> = {},
+        dialogInputs: Inputs<DialogComponent> = {},
         viewContainerRef: ViewContainerRef | null = null,
     ): { dialog: DialogComponent, close: Promise<any>, component: T } {
         const comp = this.getComponentRef(viewContainerRef);

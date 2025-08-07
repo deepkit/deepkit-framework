@@ -13,19 +13,14 @@ import { ConfigLoader, ServiceContainer } from './service-container.js';
 import { ConfigureProviderOptions, injectedFunction, InjectorContext, ResolveToken, Scope, Token } from '@deepkit/injector';
 import { AppModule, RootModuleDefinition } from './module.js';
 import { EnvConfiguration } from './configuration.js';
-import {
-    DataEventToken,
-    DispatchArguments,
-    EventDispatcher,
-    EventDispatcherDispatchType,
-    EventListener,
-    EventListenerCallback,
-    EventToken,
-} from '@deepkit/event';
+import { DataEventToken, DispatchArguments, EventDispatcher, EventDispatcherDispatchType, EventListener, EventListenerCallback, EventToken } from '@deepkit/event';
 import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
 import { Logger } from '@deepkit/logger';
 import { executeCommand, getArgsFromEnvironment, getBinFromEnvironment } from './command.js';
 
+/**
+ * @internal
+ */
 export function setPartialConfig(target: { [name: string]: any }, partial: {
     [name: string]: any
 }, incomingPath: string = '') {
@@ -160,10 +155,13 @@ class EnvConfigLoader {
     }
 }
 
+/**
+ * @internal
+ */
 export class RootAppModule<T extends RootModuleDefinition> extends AppModule<T> {
 }
 
-export interface AppEvent {
+interface AppEvent {
     /**
      * The command that is about to be executed.
      */
@@ -177,12 +175,12 @@ export interface AppEvent {
     injector: InjectorContext;
 }
 
-export interface AppExecutedEvent extends AppEvent {
+interface AppExecutedEvent extends AppEvent {
     exitCode: number;
 }
 
 
-export interface AppErrorEvent extends AppEvent {
+interface AppErrorEvent extends AppEvent {
     error: Error;
 }
 
@@ -211,13 +209,10 @@ export const onAppError = new DataEventToken<AppErrorEvent>('app.error');
 export const onAppShutdown = new DataEventToken<AppEvent>('app.shutdown');
 
 /**
- * This is the smallest available application abstraction in Deepkit.
+ * This is the application abstraction in Deepkit.
  *
- * It is based on a module and executes registered CLI controllers in `execute`.
- *
- * @deepkit/framework extends that with a more powerful Application class, that contains also HTTP and RPC controllers.
- *
- * You can use this class for more integrated unit-tests.
+ * It is based on a module (the root module)
+ * and executes registered CLI controllers in `execute`.
  */
 export class App<T extends RootModuleDefinition> {
     protected envConfigLoader?: EnvConfigLoader;

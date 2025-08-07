@@ -547,23 +547,52 @@ export function createRpcMessageSourceDestForBody<T>(
 }
 
 export class RpcBinaryMessageReader {
-    protected chunks = new Map<number, { loaded: number, buffers: Uint8Array[] }>();
+    protected chunks = new Map<number, { loaded: number, buffers: Uint8Array[], last: number }>();
     protected progress = new Map<number, SingleProgress>();
-    protected chunkAcks = new Map<number, Function>();
+    protected chunkAcks = new Map<number, (active: boolean) => void>();
     protected streamReader = new BsonStreamReader(this.gotMessage.bind(this));
+    protected lastCleanUpTimeout?: ReturnType<typeof setTimeout>;
+    protected chunkTimeout = 60_000; // 60 seconds
 
     constructor(
         protected readonly onMessage: (response: RpcMessage) => void,
-        protected readonly onChunk?: (id: number) => void,
+        protected readonly onChunk?: (id: number, abort: boolean) => void,
     ) {
     }
 
-    public onChunkAck(id: number, callback: Function) {
+    cleanUp() {
+        if (this.lastCleanUpTimeout) return;
+        this.lastCleanUpTimeout = setTimeout(() => {
+            this.lastCleanUpTimeout = undefined;
+
+            const now = Date.now();
+            for (const [id, chunks] of this.chunks.entries()) {
+                if (now - chunks.last > this.chunkTimeout) {
+                    // remove chunk
+                    this.removeChunkAck(id, true);
+                }
+            }
+        }, 5000);
+    }
+
+    public onChunkAck(id: number, callback: (active: boolean) => void) {
         this.chunkAcks.set(id, callback);
+    }
+
+    removeChunkAck(id: number, aborted = false) {
+        this.chunkAcks.delete(id);
+        if (aborted) {
+            this.onMessage(new ErroredRpcMessage(id, new RpcError('Aborted')));
+        }
     }
 
     public registerProgress(id: number, progress: SingleProgress) {
         this.progress.set(id, progress);
+
+        progress.abortController.signal.addEventListener('abort', () => {
+            this.onMessage(new ErroredRpcMessage(id, new RpcError('Aborted')));
+            this.chunks.delete(id);
+        });
     }
 
     public feed(buffer: Uint8Array, bytes?: number) {
@@ -572,30 +601,39 @@ export class RpcBinaryMessageReader {
 
     protected gotMessage(buffer: Uint8Array) {
         const message = readBinaryRpcMessage(buffer);
-        // console.log('reader got', message.id, RpcTypes[message.type], {routeType: message.routeType, bodySize: message.bodySize, byteLength: buffer.byteLength});
 
         if (message.type === RpcTypes.ChunkAck) {
             const ack = this.chunkAcks.get(message.id);
-            if (ack) ack();
+            if (ack) ack(true);
         } else if (message.type === RpcTypes.Chunk) {
             const progress = this.progress.get(message.id);
+            if (progress?.aborted) {
+                this.progress.delete(message.id);
+                this.chunks.delete(message.id);
+                this.onChunk?.(message.id, false);
+                return;
+            }
 
             const body = message.parseBody<rpcChunk>();
-            let chunks = this.chunks.get(body.id);
+            let chunks = this.chunks.get(message.id);
             if (!chunks) {
-                chunks = { buffers: [], loaded: 0 };
-                this.chunks.set(body.id, chunks);
+                if (body.seq > 0) return;
+                chunks = { buffers: [], loaded: 0, last: Date.now() };
+                this.chunks.set(message.id, chunks);
             }
             chunks.buffers.push(body.v);
+            chunks.last = Date.now();
             chunks.loaded += body.v.byteLength;
-            if (this.onChunk) this.onChunk(message.id);
-            if (progress) progress.set(body.total, chunks.loaded);
+
+            this.onChunk?.(message.id, true);
+            progress?.set(body.total, chunks.loaded);
+            this.cleanUp();
 
             if (chunks.loaded === body.total) {
-                //we're done
+                // We're done
                 this.progress.delete(message.id);
-                this.chunks.delete(body.id);
-                this.chunkAcks.delete(body.id);
+                this.chunks.delete(message.id);
+                this.chunkAcks.delete(message.id);
                 const newBuffer = bufferConcat(chunks.buffers, body.total);
                 const packedMessage = readBinaryRpcMessage(newBuffer);
                 this.onMessage(packedMessage);
@@ -605,7 +643,12 @@ export class RpcBinaryMessageReader {
             if (progress) {
                 progress.set(buffer.byteLength, buffer.byteLength);
                 this.progress.delete(message.id);
+                this.chunks.delete(message.id);
+                this.chunkAcks.delete(message.id);
             }
+            const ack = this.chunkAcks.get(message.id);
+            ack?.(false);
+
             this.onMessage(message);
         }
     }

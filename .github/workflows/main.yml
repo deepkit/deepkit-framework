@@ -22,6 +22,11 @@ jobs:
           SFTP_USERS: user:123:::upload
         ports:
           - '2222:22'
+      redis:
+        image: redis:7.0.11
+        ports:
+          - '6379:6379'
+        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -35,10 +40,12 @@ jobs:
             packages/api-console-module/tsconfig.json \
             packages/angular-ssr/tsconfig.json \
             packages/broker/tsconfig.json \
+            packages/broker-redis/tsconfig.json \
             packages/bson/tsconfig.json \
             packages/core/tsconfig.json \
             packages/core-rxjs/tsconfig.json \
             packages/filesystem/tsconfig.json \
+            packages/filesystem-database/tsconfig.json \
             packages/framework/tsconfig.json \
             packages/framework-debug-api/tsconfig.json \
             packages/framework-integration/tsconfig.json \
@@ -60,10 +67,12 @@ jobs:
         run: |
           npm run test:coverage \
             packages/broker/ \
+            packages/broker-redis/ \
             packages/bson/ \
             packages/core/ \
             packages/core-rxjs/ \
             packages/filesystem/ \
+            packages/filesystem-database/ \
             packages/framework/ \
             packages/framework-debug-api/ \
             packages/framework-integration/ \

@@ -39,7 +39,7 @@ class User {
 }
 ```
 
-A Deepkit Framework application is written like that:
+A Deepkit app is written like that:
 
 ```typescript
 import { App } from '@deepkit/app';

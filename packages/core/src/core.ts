@@ -9,7 +9,8 @@
  */
 
 import dotProp from 'dot-prop';
-import { eachPair } from './iterators.js';
+import { isArray, isClass, isClassInstance, isObject, isPlainObject, isSet } from './type-guards.js';
+import { pathDirectory } from './path.js';
 
 /**
  * Makes sure the error once printed using console.log contains the actual class name.
@@ -20,8 +21,6 @@ import { eachPair } from './iterators.js';
  *
  * throw MyApiError() // prints MyApiError instead of simply "Error".
  * ```
- *
- * @public
  */
 export class CustomError extends Error {
     public name: string;
@@ -32,20 +31,17 @@ export class CustomError extends Error {
     }
 }
 
+/**
+ * @internal
+ */
 export interface CustomError {
     cause?: unknown;
 }
 
-/**
- * @public
- */
 export interface ClassType<T = any> {
     new(...args: any[]): T;
 }
 
-/**
- * @public
- */
 export type AbstractClassType<T = any> = abstract new (...args: any[]) => T;
 
 export type ExtractClassType<T> = T extends AbstractClassType<infer K> ? K : never;
@@ -63,8 +59,6 @@ export type ExtractClassType<T> = T extends AbstractClassType<infer K> ? K : nev
  * expect(getClassName(User)).toBe('User');
  * expect(getClassName(new User())).toBe('User');
  * ```
- *
- * @public
  */
 export function getClassName<T>(classTypeOrInstance: ClassType<T> | Object): string {
     if (!classTypeOrInstance) return 'undefined';
@@ -74,7 +68,6 @@ export function getClassName<T>(classTypeOrInstance: ClassType<T> | Object): str
 
 /**
  * Same as getClassName but appends the propertyName.
- * @public
  */
 export function getClassPropertyName<T>(classType: ClassType<T> | Object, propertyName: string): string {
     const name = getClassName(classType);
@@ -82,13 +75,10 @@ export function getClassPropertyName<T>(classType: ClassType<T> | Object, proper
     return `${name}.${propertyName}`;
 }
 
-/**
- * @public
- */
 export function applyDefaults<T>(classType: ClassType<T>, target: { [k: string]: any }): T {
     const classInstance = new classType();
 
-    for (const [i, v] of eachPair(target)) {
+    for (const [i, v] of Object.entries(target)) {
         (classInstance as any)[i] = v;
     }
 
@@ -103,18 +93,6 @@ export function identifyType(obj: any) {
 }
 
 /**
- * Returns true if the given obj is a plain object, and no class instance.
- *
- * isPlainObject(\{\}) === true
- * isPlainObject(new ClassXY) === false
- *
- * @public
- */
-export function isPlainObject(obj: any): obj is object {
-    return Boolean(obj && typeof obj === 'object' && obj.constructor instanceof obj.constructor);
-}
-
-/**
  * Returns the ClassType for a given instance.
  */
 export function getClassTypeFromInstance<T>(target: T): ClassType<T> {
@@ -123,17 +101,6 @@ export function getClassTypeFromInstance<T>(target: T): ClassType<T> {
     }
 
     return (target as any)['constructor'] as ClassType<T>;
-}
-
-/**
- * Returns true when target is a class instance.
- */
-export function isClassInstance(target: any): boolean {
-    return target !== undefined && target !== null
-        && target['constructor']
-        && Object.getPrototypeOf(target) === (target as any)['constructor'].prototype
-        && !isPlainObject(target)
-        && isObject(target);
 }
 
 /**
@@ -184,172 +151,7 @@ export function prettyPrintObject(object: object, depth: number = 0): string {
     return '{' + res.join(',') + '}';
 }
 
-/**
- * Returns true if given obj is a function.
- *
- * @public
- */
-export function isFunction(obj: any): obj is Function {
-    if ('function' === typeof obj) {
-        return !obj.toString().startsWith('class ') && !obj.toString().startsWith('class{');
-    }
 
-    return false;
-}
-
-export const AsyncFunction = (async () => {
-}).constructor as { new(...args: string[]): Function };
-
-/**
- * Returns true if given obj is a async function.
- *
- * @public
- */
-export function isAsyncFunction(obj: any): obj is (...args: any[]) => Promise<any> {
-    return obj instanceof AsyncFunction;
-}
-
-/**
- * Returns true if given obj is a promise like object.
- *
- * Note: There's not way to check if it's actually a Promise using instanceof since
- * there are a lot of different implementations around.
- *
- * @public
- */
-export function isPromise<T>(obj: any | Promise<T>): obj is Promise<T> {
-    return obj !== null && typeof obj === 'object' && typeof obj.then === 'function'
-        && typeof obj.catch === 'function' && typeof obj.finally === 'function';
-}
-
-/**
- * Returns true if given obj is a ES6 class (ES5 fake classes are not supported).
- *
- * @public
- */
-export function isClass(obj: any): obj is AbstractClassType {
-    if ('function' === typeof obj) {
-        return obj.toString().startsWith('class ') || obj.toString().startsWith('class{');
-    }
-
-    return false;
-}
-
-declare var global: any;
-declare var window: any;
-
-export function isGlobalClass(obj: any): obj is AbstractClassType {
-    if ('function' !== typeof obj) return false;
-
-    if ('undefined' !== typeof window) {
-        return (window as any)[getClassName(obj)] === obj;
-    }
-    if ('undefined' !== typeof global) {
-        return (global as any)[getClassName(obj)] === obj;
-    }
-    return false;
-}
-
-/**
- * Returns true for real objects: object literals ({}) or class instances (new MyClass).
- *
- * @public
- */
-export function isObject(obj: any): obj is { [key: string]: any } {
-    if (obj === null) {
-        return false;
-    }
-    return (typeof obj === 'object' && !isArray(obj));
-}
-
-/**
- * Returns true if given obj is a plain object, and no Date, Array, Map, Set, etc.
- *
- * This is different to isObject and used in the type system to differentiate
- * between JS objects in general and what we define as ReflectionKind.objectLiteral.
- * Since we have Date, Set, Map, etc. in the type system, we need to differentiate
- * between them and all other object literals.
- */
-export function isObjectLiteral(obj: any): obj is { [key: string]: any } {
-    return isObject(obj) && !(obj instanceof Date) && !(obj instanceof Map) && !(obj instanceof Set);
-}
-
-/**
- * @public
- */
-export const isArray: (obj: any) => obj is any[] = Array.isArray;
-
-/**
- * @public
- */
-export function isNull(obj: any): obj is null {
-    return null === obj;
-}
-
-/**
- * @public
- */
-export function isUndefined(obj: any): obj is undefined {
-    return undefined === obj;
-}
-
-/**
- * Checks if obj is not null and not undefined.
- *
- * @public
- */
-export function isSet(obj: any): boolean {
-    return !isNull(obj) && !isUndefined(obj);
-}
-
-/**
- * @public
- */
-export function isNumber(obj: any): obj is number {
-    return 'number' === identifyType(obj);
-}
-
-/**
- * Returns true if given value is strictly a numeric string value (or a number).
- *
- * ```typescript
- * isNumeric(12); //true
- * isNumeric('12'); //true
- * isNumeric('12.3'); //true
- * isNumeric('12.3 '); //false
- * isNumeric('12px'); //false
- * ```
- * @public
- */
-export function isNumeric(s: string | number): boolean {
-    if ('number' === typeof s) return true;
-    let points = 0;
-    for (let i = s.length - 1; i >= 0; i--) {
-        const d = s.charCodeAt(i);
-        if (d === 46) {
-            //46 = .
-            if (points++ > 0) return false;
-            continue;
-        }
-        if (d < 48 || d > 57) return false;
-    }
-    return true;
-}
-
-export const isInteger: (obj: any) => obj is number = Number.isInteger as any || function(obj: any) {
-    return (obj % 1) === 0;
-};
-
-/**
- * @public
- */
-export function isString(obj: any): obj is string {
-    return 'string' === identifyType(obj);
-}
-
-/**
- * @public
- */
 export function indexOf<T>(array: T[], item: T): number {
     if (!array) {
         return -1;
@@ -358,17 +160,12 @@ export function indexOf<T>(array: T[], item: T): number {
     return array.indexOf(item);
 }
 
-/**
- * @public
- */
 export async function sleep(seconds: number): Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, seconds * 1000));
 }
 
 /**
  * Creates a shallow copy of given array.
- *
- * @public
  */
 export function copy<T>(v: T[]): T[] {
     if (isArray(v)) {
@@ -380,8 +177,6 @@ export function copy<T>(v: T[]): T[] {
 
 /**
  * Checks whether given array or object is empty (no keys). If given object is falsy, returns false.
- *
- * @public
  */
 export function empty<T>(value?: T[] | object | {}): boolean {
     if (!value) return true;
@@ -396,8 +191,6 @@ export function empty<T>(value?: T[] | object | {}): boolean {
 
 /**
  * Returns the size of given array or object.
- *
- * @public
  */
 export function size<T>(array: T[] | { [key: string]: T }): number {
     if (!array) {
@@ -413,8 +206,6 @@ export function size<T>(array: T[] | { [key: string]: T }): number {
 
 /**
  * Returns the first key of a given object.
- *
- * @public
  */
 export function firstKey(v: { [key: string]: any } | object): string | undefined {
     return Object.keys(v)[0];
@@ -422,8 +213,6 @@ export function firstKey(v: { [key: string]: any } | object): string | undefined
 
 /**
  * Returns the last key of a given object.
- *
- * @public
  */
 export function lastKey(v: { [key: string]: any } | object): string | undefined {
     const keys = Object.keys(v);
@@ -435,8 +224,6 @@ export function lastKey(v: { [key: string]: any } | object): string | undefined 
 
 /**
  * Returns the first value of given array or object.
- *
- * @public
  */
 export function first<T>(v: { [key: string]: T } | T[]): T | undefined {
     if (isArray(v)) {
@@ -452,8 +239,6 @@ export function first<T>(v: { [key: string]: T } | T[]): T | undefined {
 
 /**
  * Returns the last value of given array or object.
- *
- * @public
  */
 export function last<T>(v: { [key: string]: T } | T[]): T | undefined {
     if (isArray(v)) {
@@ -472,8 +257,6 @@ export function last<T>(v: { [key: string]: T } | T[]): T | undefined {
 
 /**
  * Returns the average of a number array.
- *
- * @public
  */
 export function average(array: number[]): number {
     let sum = 0;
@@ -484,9 +267,6 @@ export function average(array: number[]): number {
     return sum / array.length;
 }
 
-/**
- * @public
- */
 export function prependObjectKeys(o: { [k: string]: any }, prependText: string): { [k: string]: any } {
     const converted: { [k: string]: any } = {};
     for (const i in o) {
@@ -496,14 +276,9 @@ export function prependObjectKeys(o: { [k: string]: any }, prependText: string):
     return converted;
 }
 
-/**
- * @public
- */
 export function appendObject(origin: { [k: string]: any }, extend: { [k: string]: any }, prependKeyName: string = '') {
     const no = prependObjectKeys(extend, prependKeyName);
-    for (const [i, v] of eachPair(no)) {
-        origin[i] = v;
-    }
+    Object.assign(origin, no);
 }
 
 /**
@@ -525,7 +300,6 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
  * });
  * ```
  *
- * @public
  * @reflection never
  */
 export async function asyncOperation<T>(executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>): Promise<T> {
@@ -557,9 +331,6 @@ export function fixAsyncOperation<T>(promise: Promise<T>): Promise<T> {
     });
 }
 
-/**
- * @public
- */
 export function mergePromiseStack<T>(promise: Promise<T>, stack?: string): Promise<T> {
     stack = stack || createStack();
     promise.then(() => {
@@ -629,18 +400,6 @@ export function collectForMicrotask<T>(callback: (args: T[]) => void): (arg: T) 
     };
 }
 
-/**
- * Returns the current time as seconds.
- *
- * @public
- */
-export function time(): number {
-    return Date.now() / 1000;
-}
-
-/**
- * @public
- */
 export function getPathValue(bag: { [field: string]: any }, parameterPath: string, defaultValue?: any): any {
     if (parameterPath === '' || parameterPath === undefined) return bag;
     if (isSet(bag[parameterPath])) {
@@ -652,24 +411,16 @@ export function getPathValue(bag: { [field: string]: any }, parameterPath: strin
     return isSet(result) ? result : defaultValue;
 }
 
-/**
- * @public
- */
 export function setPathValue(bag: object, parameterPath: string, value: any) {
     dotProp.set(bag, parameterPath, value);
 }
 
-/**
- * @public
- */
 export function deletePathValue(bag: object, parameterPath: string) {
     dotProp.delete(bag, parameterPath);
 }
 
 /**
  * Returns the human-readable byte representation.
- *
- * @public
  */
 export function humanBytes(bytes: number, si: boolean = false): string {
     const thresh = si ? 1000 : 1024;
@@ -695,26 +446,6 @@ export function getObjectKeysSize(obj: object): number {
     let size = 0;
     for (let i in obj) if (obj.hasOwnProperty(i)) size++;
     return size;
-}
-
-export function isConstructable(fn: any): boolean {
-    try {
-        new new Proxy(fn, { construct: () => ({}) });
-        return true;
-    } catch (err) {
-        return false;
-    }
-}
-
-export function isPrototypeOfBase(prototype: AbstractClassType | undefined, base: ClassType): boolean {
-    if (!prototype) return false;
-    if (prototype === base) return true;
-    let currentProto = Object.getPrototypeOf(prototype);
-    while (currentProto && currentProto !== Object.prototype) {
-        if (currentProto === base) return true;
-        currentProto = Object.getPrototypeOf(currentProto);
-    }
-    return false;
 }
 
 export function getParentClass(classType: ClassType): ClassType | undefined {
@@ -752,10 +483,6 @@ export function createDynamicClass(name: string, base?: ClassType): ClassType {
     return new Function(`return class ${name} {}`)();
 }
 
-export function isIterable(value: any): boolean {
-    return isArray(value) || value instanceof Set || value instanceof Map;
-}
-
 export function iterableSize(value: Array<unknown> | Set<unknown> | Map<unknown, unknown>): number {
     return isArray(value) ? value.length : value.size || 0;
 }
@@ -763,9 +490,9 @@ export function iterableSize(value: Array<unknown> | Set<unknown> | Map<unknown,
 /**
  * Returns __filename, works in both cjs and esm.
  */
-export function getCurrentFileName(): string {
+export function getCurrentFileName(offset: number = 0): string {
     const e = new Error;
-    const initiator = e.stack!.split('\n').slice(2, 3)[0];
+    const initiator = e.stack!.split('\n').slice(2 + offset, 3 + offset)[0];
     let path = /(?<path>[^(\s]+):[0-9]+:[0-9]+/.exec(initiator)!.groups!.path;
     if (path.indexOf('file') >= 0) {
         path = new URL(path).pathname;
@@ -774,6 +501,13 @@ export function getCurrentFileName(): string {
         path = path.slice(1);
     }
     return path;
+}
+
+/**
+ * Returns the directory name of the current file (__dirname), works in both cjs and esm.
+ */
+export function getCurrentDirName(): string {
+    return pathDirectory(getCurrentFileName(1));
 }
 
 /**

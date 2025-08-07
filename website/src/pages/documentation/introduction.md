@@ -10,7 +10,7 @@ While Deepkit is engineered to cater to high-complexity projects and enterprise-
 
 The TypeScript ecosystem is abundant with libraries and tools, offering solutions for almost every conceivable problem. While this plethora of choices is empowering, it often results in complexity due to mismatched philosophies, APIs, and code qualities between different libraries. Integrating these disparate components requires additional abstractions and often results in lots of glue code which can become a maintenance nightmare and gets out of hand fairly quickly reducing development speed drastically. Deepkit aims to alleviate these challenges by providing a unified framework, bringing together core functionalities that virtually every project needs. Its harmonized set of libraries and components are designed to work seamlessly together, thus bridging the gaps that exist in the fragmented TypeScript ecosystem.
 
-### Proven Enterprise Concepts
+### Proven Enterprise Principles
 
 Deepkit draws inspiration from well-established enterprise frameworks like Java's Spring and PHP's Laravel and Symfony. These frameworks have proven their efficiency and robustness over decades, being the backbone of countless successful projects. Deepkit brings similar enterprise design patterns and concepts to the TypeScript world in a new and unique way, allowing developers to benefit from years of collective wisdom.
 

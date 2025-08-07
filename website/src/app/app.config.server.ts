@@ -9,6 +9,10 @@ const serverConfig: ApplicationConfig = {
     providers: [
         provideServerRendering(withRoutes([
             {
+                path: 'admin/**',
+                renderMode: RenderMode.Client,
+            },
+            {
                 path: '**',
                 renderMode: RenderMode.Server,
             },

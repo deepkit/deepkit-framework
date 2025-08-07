@@ -1,14 +1,5 @@
 import { rpc } from '@deepkit/rpc';
-import {
-    CommunityMessage,
-    CommunityQuestion,
-    CommunityQuestionListItem,
-    Content,
-    DocPageContent,
-    DocPageResult,
-    Page,
-    UiCodeExample,
-} from '@app/common/models';
+import { BlogEntity, CommunityMessage, CommunityQuestion, CommunityQuestionListItem, Content, DocPageContent, DocPageResult, Page, UiCodeExample } from '@app/common/models';
 import { findParentPath } from '@deepkit/app';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
@@ -18,10 +9,9 @@ import { Questions } from '@app/server/questions';
 import { MarkdownParser } from '@app/common/markdown';
 import { PageProcessor } from '@app/server/page-processor';
 import { Database } from '@deepkit/orm';
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { UserAuthentication } from '@app/server/user-authentication';
+import { docs } from '@app/common/docs';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function different(a?: string | Content, b?: string | Content): boolean {
     if ('string' === typeof a || 'undefined' === typeof a) {
@@ -55,7 +45,7 @@ function createDocPageResult(
         path: content.path,
         tag: content.tag,
         content: markdownParser.parse(content.content).body,
-    }
+    };
 }
 
 function createUiExample(
@@ -68,13 +58,13 @@ function createUiExample(
         url: example.meta.url || '',
         slug: example.slug,
         content: markdownParser.parse(example.content).body,
-    }
+    };
 }
 
 function createCommunityQuestion(
     markdownParser: MarkdownParser,
     question: CommunityMessage,
-    messages: CommunityMessage[]
+    messages: CommunityMessage[],
 ): CommunityQuestion {
     return {
         id: question.id,
@@ -91,7 +81,7 @@ function createCommunityQuestion(
         userAvatar: question.discordUserAvatarUrl,
         content: markdownParser.parse(question.content).body,
         messages: messages.map(v => ({ id: v.id, user: v.userDisplayName, userAvatar: v.discordUserAvatarUrl, content: markdownParser.parse(v.content).body })),
-    }
+    };
 }
 
 function createCommunityQuestionListItem(
@@ -106,7 +96,7 @@ function createCommunityQuestionListItem(
         votes: question.votes,
         title: question.title,
         user: question.userDisplayName,
-    }
+    };
 }
 
 @rpc.controller('main')
@@ -117,12 +107,18 @@ export class MainController {
         private page: PageProcessor,
         private database: Database,
         private markdownParser: MarkdownParser,
+        private userAuthentication: UserAuthentication,
     ) {
     }
 
     @rpc.action()
+    async login(email: string, password: string): Promise<string> {
+        return await this.userAuthentication.login(email, password);
+    }
+
+    @rpc.action()
     async getQuestion(slug: string, authId?: string): Promise<CommunityQuestion> {
-        const message = await this.database.query(CommunityMessage).filter({ slug, type: {$ne: 'example'} }).findOne();
+        const message = await this.database.query(CommunityMessage).filter({ slug, type: { $ne: 'example' } }).findOne();
         const messages = await this.database.query(CommunityMessage).filter({ thread: message, type: { $ne: 'edit' } }).orderBy('created', 'asc').find();
         const question = createCommunityQuestion(this.markdownParser, message, messages);
         question.allowEdit = message.authId === authId;
@@ -132,13 +128,13 @@ export class MainController {
     @rpc.action()
     async getQuestions(): Promise<{ top: CommunityQuestionListItem[], newest: CommunityQuestionListItem[] }> {
         const top = await this.database.query(CommunityMessage)
-            .filter({ order: 1, type: {$ne: 'example'} })
+            .filter({ order: 1, type: { $ne: 'example' } })
             .orderBy('votes', 'desc')
             .limit(100)
             .find();
 
         const newest = await this.database.query(CommunityMessage)
-            .filter({ order: 1, type: {$ne: 'example'} })
+            .filter({ order: 1, type: { $ne: 'example' } })
             .orderBy('created', 'desc')
             .limit(15)
             .find();
@@ -146,14 +142,14 @@ export class MainController {
         return {
             top: top.map(v => createCommunityQuestionListItem(v)),
             newest: newest.map(v => createCommunityQuestionListItem(v)),
-        }
+        };
     }
 
     @rpc.action()
     async getAsset(path: string): Promise<string> {
         //remove all special characters and remove all ../...../...
         path = path.replace(/[^a-zA-Z0-9\-_.\/]/g, '').replace(/\.\.+/g, '.');
-        const dir = await findParentPath('src/assets/', __dirname);
+        const dir = await findParentPath('src/assets/');
         if (!dir) throw new Error('Assets folder not found');
         const file = join(dir, path);
         const content = await readFile(file, 'utf8');
@@ -229,7 +225,7 @@ export class MainController {
 
         return {
             pages: hits.pages.map(v => createDocPageResult(this.markdownParser, v)),
-            community: hits.community.map(v => createCommunityQuestion(this.markdownParser, v, []))
+            community: hits.community.map(v => createCommunityQuestion(this.markdownParser, v, [])),
         };
     }
 
@@ -237,6 +233,27 @@ export class MainController {
     async prompt(url: string, prompt: string): Promise<string> {
         const page = await this.getPage(url);
         return '';
+    }
+
+    protected book?: Page;
+
+    @rpc.action()
+    async getBook(): Promise<Page> {
+        if (this.book) return this.book;
+
+        const content: string[] = [];
+        for (const chapter of docs) {
+            if (chapter.book === false) continue;
+            for (const page of chapter.pages) {
+                if (page.book === false) continue;
+                if (page.path.startsWith('desktop-ui/')) continue;
+                const fileContent = await this.page.read('documentation/' + page.path);
+                // content.push(`## ${chapterTitle} - ${page.title}`);
+                content.push(fileContent);
+            }
+        }
+
+        return this.book = this.markdownParser.parse(content.join('\n'));
     }
 
     @rpc.action()
@@ -277,5 +294,20 @@ export class MainController {
     async getExample(category: string, slug: string): Promise<UiCodeExample> {
         const example = await this.database.query(CommunityMessage).filter({ type: 'example', category, slug }).findOne();
         return createUiExample(this.markdownParser, example);
+    }
+
+    @rpc.action()
+    async getBlogPosts(): Promise<BlogEntity[]> {
+        return await this.database.query(BlogEntity)
+            .filter({ published: true })
+            .orderBy('publishedAt', 'desc')
+            .find();
+    }
+
+    @rpc.action()
+    async getBlogPost(slug: string): Promise<BlogEntity | undefined> {
+        return await this.database.query(BlogEntity)
+            .filter({ published: true, slug })
+            .findOneOrUndefined();
     }
 }

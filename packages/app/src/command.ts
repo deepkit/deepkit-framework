@@ -71,11 +71,6 @@ export interface Command {
     execute(...args: any[]): Promise<number | void> | number | void;
 }
 
-export function isCommand(classType: ClassType<Command>) {
-    return !!cli._fetch(classType);
-}
-
-
 function convert(parameter: CommandParameter, value: any) {
     if (value === undefined) {
         if (parameter.optional) return undefined;
@@ -215,6 +210,9 @@ function getSpacing(names: string[]): number {
     return names.reduce((max, name) => Math.max(max, name.length), 0) + 1;
 }
 
+/**
+ * @internal
+ */
 export interface ParsedCliControllerConfig {
     controller?: ClassType,
     callback?: Function;
@@ -241,7 +239,7 @@ function commandNameFromSymbol(symbolName: string) {
         .replace(/-command$/, '').replace(/-controller/, '-');
 }
 
-export function parseControllerConfig(config: ControllerConfig): ParsedCliControllerConfig {
+function parseControllerConfig(config: ControllerConfig): ParsedCliControllerConfig {
     let name = config.name || '';
     let description = '';
     if (!name && config.controller) {
@@ -352,7 +350,7 @@ function printHelp(script: string, command: ParsedCliControllerConfig, writer: C
     }
 }
 
-export type CommandWriter = (...message: any[]) => void;
+type CommandWriter = (...message: any[]) => void;
 
 interface ParameterMeta {
     flag: boolean;
@@ -604,7 +602,7 @@ function getActualCliParameterName(parameter: { prefix: string, name: string }) 
     return parameter.prefix ? parameter.prefix + '.' + parameter.name : parameter.name;
 }
 
-export async function runCommand(
+async function runCommand(
     config: ParsedCliControllerConfig,
     argv: string[],
     injector: InjectorContext,

@@ -5,10 +5,9 @@ import { readFile, writeFile } from 'fs/promises';
 import glob from 'tiny-glob';
 import { getSystem } from '../questions';
 import { magicSeparator } from '@app/common/models';
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { getCurrentDirName } from '@deepkit/core';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const dirname = getCurrentDirName();
 
 class Context {
     messages: OpenAI.ChatCompletionMessageParam[] = [];
@@ -27,7 +26,7 @@ class Context {
 }
 
 function getPath(path: string) {
-    const baseDir = findParentPath('src/pages', __dirname);
+    const baseDir = findParentPath('src/pages', dirname);
     if (!baseDir) throw new Error('Could not find base dir');
     return join(baseDir, path);
 }
@@ -53,7 +52,7 @@ class Page {
         //loads all files, e.g. if this.path is http.md, we load http.md, then all files in http/*.md
         const dir = this.textPath.replace('.md', '');
         const content: string[] = [
-            await this.getContent()
+            await this.getContent(),
         ];
         const files = await glob('**/*.md', { cwd: dir });
         for (const file of files) {
@@ -61,7 +60,7 @@ class Page {
             const page = `
             # ${path}
             ${(await readFile(join(dir, file), 'utf8')).replace(/^#/g, '##')}
-            `
+            `;
             content.push(page);
         }
 
@@ -184,7 +183,7 @@ const model = 'gpt-3.5-turbo-16k';
 
 export async function mlGenQuestionCommand(
     file: string,
-    openai: OpenAI
+    openai: OpenAI,
 ) {
     const context = new Context();
     await context.addSystem('');
@@ -212,7 +211,7 @@ export async function mlGenQuestionCommand(
 
 export async function mlGenAnswerCommand(
     file: string,
-    openai: OpenAI
+    openai: OpenAI,
 ) {
     const context = new Context();
 
@@ -261,8 +260,8 @@ export async function fineTuneTest1(
         const messages = [
             { role: 'system', content: 'You are a documentation chat bot that helps the user to understand a TypeScript framework called Deepkit.' },
             { role: 'user', content: q.question },
-            { role: 'assistant', content: q.answer }
-        ]
+            { role: 'assistant', content: q.answer },
+        ];
         dataset.push(messages);
     }
 
@@ -282,13 +281,13 @@ export async function fineTuneTest1(
     const aiFile = await openai.files.create({
         file: await toFile(Buffer.from(jsonl), 'file-abc123'),
         purpose: 'fine-tune',
-    })
+    });
     const training = await openai.fineTuning.jobs.create({
         training_file: aiFile.id,
         model: 'gpt-3.5-turbo',
         hyperparameters: {
-            n_epochs: 25
-        }
+            n_epochs: 25,
+        },
     });
     console.log('training', training);
 }
@@ -309,7 +308,7 @@ export async function fineTuneTest1Model(
 ) {
     const messages: any = [
         { role: 'system', content: 'You are a documentation chat bot that helps the user to understand a TypeScript framework called Deepkit.' },
-        { role: 'user', content: prompt }
+        { role: 'user', content: prompt },
     ];
 
     const completion = await openai.chat.completions.create({

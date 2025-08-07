@@ -14,6 +14,7 @@ import {
     ChangeDetectionStrategy,
     Component,
     Directive,
+    effect,
     ElementRef,
     EmbeddedViewRef,
     forwardRef,
@@ -174,6 +175,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
     protected lastOverlayStackItem?: OverlayStackItem;
     protected positionStrategy?: PositionStrategy;
     protected templatePortal?: TemplatePortal;
+    protected openForElement?: Element;
 
     protected windowComponent = inject(WindowComponent, { optional: true });
 
@@ -183,6 +185,12 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         protected overlayStack: OverlayStack,
         protected viewContainerRef: ViewContainerRef,
     ) {
+        effect(() => {
+            const host = this.host();
+            if (this.overlayRef && this.openForElement && this.openForElement !== host) {
+                this.watchOpen(this.overlayRef, host instanceof ElementRef ? host.nativeElement : host);
+            }
+        });
     }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -274,81 +282,8 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
         //     document,
         //     this.injector.get(Directionality),
         // );
-        if (target instanceof MouseEvent) {
-            const mousePosition = { x: target.pageX, y: target.pageY };
-            this.positionStrategy = this.overlayService
-                .position()
-                .flexibleConnectedTo(mousePosition)
-                .withFlexibleDimensions(false)
-                .withViewportMargin(12)
-                .withPush(true)
-                .withDefaultOffsetY(this.overlay() ? 15 : 0)
-                .withPositions([
-                    ...this.connectedPositions(),
-                    {
-                        originX: 'start',
-                        originY: 'bottom',
-                        overlayX: 'start',
-                        overlayY: 'top',
-                    },
-                    {
-                        originX: 'end',
-                        originY: 'bottom',
-                        overlayX: 'end',
-                        overlayY: 'top',
-                    },
-                    {
-                        originX: 'start',
-                        originY: 'top',
-                        overlayX: 'start',
-                        overlayY: 'bottom',
-                    },
-                    {
-                        originX: 'end',
-                        originY: 'top',
-                        overlayX: 'end',
-                        overlayY: 'bottom',
-                    },
-                ]);
-        } else if (target === 'center') {
-            this.positionStrategy = this.overlayService
-                .position()
-                .global().centerHorizontally().centerVertically();
-        } else {
-            this.positionStrategy = this.overlayService
-                .position()
-                .flexibleConnectedTo(target as Element)
-                .withFlexibleDimensions(false)
-                .withViewportMargin(12)
-                .withPush(true)
-                .withDefaultOffsetY(this.overlay() ? 15 : 0)
-                .withPositions([
-                    ...this.connectedPositions(),
-                    {
-                        originX: this.center() ? 'center' : 'start',
-                        originY: 'bottom',
-                        overlayX: this.center() ? 'center' : 'start',
-                        overlayY: 'top',
-                    },
-                    {
-                        originX: 'start',
-                        originY: 'bottom',
-                        overlayX: 'start',
-                        overlayY: 'top',
-                    },
-                    {
-                        originX: 'end',
-                        originY: 'bottom',
-                        overlayX: 'end',
-                        overlayY: 'top',
-                    },
-                ]);
-        }
 
-        if (this.overlayRef) {
-            this.overlayRef.updatePositionStrategy(this.positionStrategy);
-            this.overlayRef.updatePosition();
-        } else {
+        if (!this.overlayRef) {
             this.isOpen.set(true);
             const options: OverlayConfig = {
                 minWidth: 50,
@@ -356,7 +291,6 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
                 maxHeight: '90%',
                 hasBackdrop: this.hasBackdrop(),
                 scrollStrategy: this.overlayService.scrollStrategies.reposition(),
-                positionStrategy: this.positionStrategy,
             };
 
             const width = this.width();
@@ -410,27 +344,49 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             this.lastOverlayStackItem = this.overlayStack.register(this.overlayRef.hostElement, this, () => this.close());
         }
 
+        this.watchOpen(this.overlayRef, target);
+    }
+
+    protected watchOpen(
+        overlayRef: OverlayRef,
+        target: Element | ElementRef | MouseEvent | EventTarget | 'center' | null,
+    ) {
+        if (!overlayRef) {
+            throw new Error('No overlayRef provided to watchOpen');
+        }
+
+        this.lastFocusWatcher?.();
         if (target instanceof Element) {
             if (!this.positionObserver) {
                 this.positionObserver = observePosition(target, () => {
-                    this.overlayRef?.updatePosition();
+                    overlayRef?.updatePosition();
                 });
             }
+            this.openForElement = target;
         }
 
         const allowedFocusValue = this.allowedFocus();
         const normalizedAllowedFocus = isArray(allowedFocusValue) ? allowedFocusValue : (allowedFocusValue ? [allowedFocusValue] : []);
         const allowedFocus = normalizedAllowedFocus.map(v => v instanceof ElementRef ? v.nativeElement : v) as Element[];
-        allowedFocus.push(this.overlayRef.hostElement);
+        allowedFocus.push(overlayRef.hostElement);
 
-        if (target instanceof ElementRef) allowedFocus.push(this.overlayRef.hostElement);
+        if (target instanceof ElementRef) allowedFocus.push(overlayRef.hostElement);
         if (target instanceof Element) allowedFocus.push(target);
         if (target instanceof MouseEvent && target.target instanceof Element) allowedFocus.push(target.target);
 
+        if (this.positionStrategy) this.positionStrategy.dispose();
+        this.positionStrategy = this.createPositionStrategy(target);
+        overlayRef.updatePositionStrategy(this.positionStrategy);
+
+        overlayRef.updatePosition();
+        requestAnimationFrame(() => {
+            overlayRef.updatePosition();
+        });
+
         if (this.show() === undefined) {
-            this.overlayRef.hostElement.focus();
+            overlayRef.hostElement.focus();
             this.lastFocusWatcher = focusWatcher(
-                this.overlayRef.overlayElement,
+                overlayRef.overlayElement,
                 allowedFocus,
                 (event) => {
                     if (!this.keepOpen()) {
@@ -449,6 +405,79 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
 
                     return false;
                 });
+        }
+    }
+
+    protected createPositionStrategy(target: Element | ElementRef | MouseEvent | EventTarget | 'center' | null): PositionStrategy {
+        if (target instanceof MouseEvent) {
+            const mousePosition = { x: target.pageX, y: target.pageY };
+            return this.overlayService
+                .position()
+                .flexibleConnectedTo(mousePosition)
+                .withFlexibleDimensions(false)
+                .withViewportMargin(12)
+                .withPush(true)
+                .withDefaultOffsetY(this.overlay() ? 15 : 0)
+                .withPositions([
+                    ...this.connectedPositions(),
+                    {
+                        originX: 'start',
+                        originY: 'bottom',
+                        overlayX: 'start',
+                        overlayY: 'top',
+                    },
+                    {
+                        originX: 'end',
+                        originY: 'bottom',
+                        overlayX: 'end',
+                        overlayY: 'top',
+                    },
+                    {
+                        originX: 'start',
+                        originY: 'top',
+                        overlayX: 'start',
+                        overlayY: 'bottom',
+                    },
+                    {
+                        originX: 'end',
+                        originY: 'top',
+                        overlayX: 'end',
+                        overlayY: 'bottom',
+                    },
+                ]);
+        } else if (target === 'center') {
+            return this.overlayService
+                .position()
+                .global().centerHorizontally().centerVertically();
+        } else {
+            return this.overlayService
+                .position()
+                .flexibleConnectedTo(target as Element)
+                .withFlexibleDimensions(false)
+                .withViewportMargin(12)
+                .withPush(true)
+                .withDefaultOffsetY(this.overlay() ? 15 : 0)
+                .withPositions([
+                    ...this.connectedPositions(),
+                    {
+                        originX: this.center() ? 'center' : 'start',
+                        originY: 'bottom',
+                        overlayX: this.center() ? 'center' : 'start',
+                        overlayY: 'top',
+                    },
+                    {
+                        originX: 'start',
+                        originY: 'bottom',
+                        overlayX: 'start',
+                        overlayY: 'top',
+                    },
+                    {
+                        originX: 'end',
+                        originY: 'bottom',
+                        overlayX: 'end',
+                        overlayY: 'top',
+                    },
+                ]);
         }
     }
 
@@ -496,6 +525,7 @@ export class DropdownComponent implements OnChanges, OnDestroy, AfterViewInit {
             this.positionObserver = undefined;
         }
         this.isOpen.set(false);
+        this.openForElement = undefined;
 
         if (this.relativeToInitiator && this.overlayRef) {
             const overlayElement = this.overlayRef.overlayElement;
