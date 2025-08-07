@@ -1,6 +1,0 @@
-node_modules
-dist
-.angular
-.dockerignore
-Dockerfile
-api-docs.json

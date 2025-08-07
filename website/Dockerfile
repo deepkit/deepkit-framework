@@ -25,9 +25,6 @@ RUN rm -rf /app/packages/devtool
 RUN rm -rf /app/packages/orm-browser-gui
 RUN rm -rf /app/packages/framework-debug-gui
 RUN rm -rf /app/packages/api-console-gui
-RUN rm -rf /app/packages/api-console-gui
-RUN ls -al /app/packages/desktop-ui/dist
-RUN ls -al /app/packages/type/dist/cjs
 ADD website/package.json /app/website/package.json
 
 RUN node sync-tsconfig-deps.js
@@ -35,8 +32,6 @@ RUN --mount=type=cache,target=/root/.yarn YARN_CACHE_FOLDER=/root/.yarn yarn ins
 
 ADD website /app/website
 RUN npm run build
-
-RUN cd website && npm run api-docs
 
 FROM node:24-alpine3.20
 ENV TZ="Europe/Berlin"
