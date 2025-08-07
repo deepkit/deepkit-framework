@@ -128,17 +128,17 @@ export class HeaderNavComponent {
           <app-search></app-search>
         }
 
-        <a class="burger" (click)="toggleMenu()">
-          <svg width="21px" height="16px" viewBox="0 0 21 16" version="1.1" xmlns="http://www.w3.org/2000/svg">
-            <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-              <g id="burger" [attr.fill]="'white'">
-                <rect id="Rectangle" x="0" y="0" width="21" height="2"></rect>
-                <rect id="Rectangle" x="0" y="7" width="21" height="2"></rect>
-                <rect id="Rectangle" x="0" y="14" width="21" height="2"></rect>
-              </g>
-            </g>
-          </svg>
-        </a>
+<!--        <a class="burger" (click)="toggleMenu()">-->
+<!--          <svg width="21px" height="16px" viewBox="0 0 21 16" version="1.1" xmlns="http://www.w3.org/2000/svg">-->
+<!--            <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">-->
+<!--              <g id="burger" [attr.fill]="'white'">-->
+<!--                <rect id="Rectangle" x="0" y="0" width="21" height="2"></rect>-->
+<!--                <rect id="Rectangle" x="0" y="7" width="21" height="2"></rect>-->
+<!--                <rect id="Rectangle" x="0" y="14" width="21" height="2"></rect>-->
+<!--              </g>-->
+<!--            </g>-->
+<!--          </svg>-->
+<!--        </a>-->
         <dw-header-nav />
       </div>
     `,

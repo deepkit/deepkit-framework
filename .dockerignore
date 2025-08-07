@@ -6,4 +6,4 @@ website/.angular
 .dockerignore
 Dockerfile
 website/Dockerfile
-api-docs.json
+website/api-docs.json

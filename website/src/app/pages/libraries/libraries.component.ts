@@ -104,6 +104,12 @@ export class LibraryEntryComponent {
         .twice {
           grid-column: 1 / span 2;
         }
+        
+        @media (max-width: 640px) {
+          .main, .twice {
+            grid-column: unset;
+          }
+        }
       }
 
       .banner {
