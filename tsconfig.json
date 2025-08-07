@@ -8,9 +8,6 @@
       "path": "./packages/api-console-api/tsconfig.json"
     },
     {
-      "path": "./packages/api-console-gui/tsconfig.json"
-    },
-    {
       "path": "./packages/api-console-module/tsconfig.json"
     },
     {
@@ -77,9 +74,6 @@
       "path": "./packages/framework-debug-api/tsconfig.json"
     },
     {
-      "path": "./packages/framework-debug-gui/tsconfig.json"
-    },
-    {
       "path": "./packages/framework-examples/tsconfig.json"
     },
     {
@@ -111,9 +105,6 @@
     },
     {
       "path": "./packages/orm-browser-example/tsconfig.json"
-    },
-    {
-      "path": "./packages/orm-browser-gui/tsconfig.json"
     },
     {
       "path": "./packages/orm-integration/tsconfig.json"

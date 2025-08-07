@@ -22,6 +22,12 @@ ADD .yarn /app/.yarn
 
 ADD packages /app/packages
 RUN rm -rf /app/packages/devtool
+RUN rm -rf /app/packages/orm-browser-gui
+RUN rm -rf /app/packages/framework-debug-gui
+RUN rm -rf /app/packages/api-console-gui
+RUN rm -rf /app/packages/api-console-gui
+RUN ls -al /app/packages/desktop-ui/dist
+RUN ls -al /app/packages/type/dist/cjs
 ADD website/package.json /app/website/package.json
 
 RUN node sync-tsconfig-deps.js

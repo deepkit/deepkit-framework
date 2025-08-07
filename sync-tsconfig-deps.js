@@ -44,6 +44,10 @@ for (const name of packages) {
     }
 }
 
+function filter(name) {
+    return !['api-console-gui', 'framework-debug-gui', 'orm-browser-gui'].includes(name);
+}
+
 for (const [name, config] of Object.entries(packageConfigs)) {
     const deps = Array.from(new Set([
         ...Object.keys(config.package.dependencies || {}),
@@ -51,6 +55,7 @@ for (const [name, config] of Object.entries(packageConfigs)) {
         ...Object.keys(config.package.peerDependencies || {}),
     ])).filter(v => {
         const [, depName] = v.split('/');
+        if (!filter(depName)) return false;
         return v.startsWith('@deepkit/') && !fs.existsSync(`packages/${depName}/angular.json`);
     });
 
@@ -82,8 +87,8 @@ for (const [name, config] of Object.entries(packageConfigs)) {
 
 const rootTsConfig = JSON.parse(fs.readFileSync('tsconfig.json', { encoding: 'utf8' }));
 const rootTsConfigESM = JSON.parse(fs.readFileSync('tsconfig.esm.json', { encoding: 'utf8' }));
-rootTsConfig.references = tsConfigs.map(name => ({ path: `./packages/${name}/tsconfig.json` }));
-rootTsConfigESM.references = tsConfigESMs.map(name => ({ path: `./packages/${name}/tsconfig.esm.json` }));
+rootTsConfig.references = tsConfigs.filter(filter).map(name => ({ path: `./packages/${name}/tsconfig.json` }));
+rootTsConfigESM.references = tsConfigESMs.filter(filter).map(name => ({ path: `./packages/${name}/tsconfig.esm.json` }));
 fs.writeFileSync('tsconfig.json', JSON.stringify(rootTsConfig, undefined, 2));
 fs.writeFileSync('tsconfig.esm.json', JSON.stringify(rootTsConfigESM, undefined, 2));
 
