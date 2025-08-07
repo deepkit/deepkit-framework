@@ -17,7 +17,8 @@
     "composite": true,
     "types": [
       "node"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "reflection": true,
   "include": [

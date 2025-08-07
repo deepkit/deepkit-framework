@@ -16,7 +16,8 @@
     "composite": true,
     "types": [
       "format-util"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "reflection": true,
   "include": [

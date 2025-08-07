@@ -63,6 +63,7 @@ for (const [name, config] of Object.entries(packageConfigs)) {
         const [, depName] = dep.split('/');
         config.tsConfig.references.push({ path: `../${depName}/tsconfig.json` });
     }
+    config.tsConfig.compilerOptions.skipLibCheck = true;
     fs.writeFileSync(tsConfigPath, JSON.stringify(config.tsConfig, undefined, 2));
 
     if (config.tsConfigESM) {

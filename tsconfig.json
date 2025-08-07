@@ -59,10 +59,10 @@
       "path": "./packages/filesystem-aws-s3/tsconfig.json"
     },
     {
-      "path": "./packages/filesystem-ftp/tsconfig.json"
+      "path": "./packages/filesystem-database/tsconfig.json"
     },
     {
-      "path": "./packages/filesystem-database/tsconfig.json"
+      "path": "./packages/filesystem-ftp/tsconfig.json"
     },
     {
       "path": "./packages/filesystem-google/tsconfig.json"

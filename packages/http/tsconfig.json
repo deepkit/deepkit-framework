@@ -7,6 +7,7 @@
     "sourceMap": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
     "moduleResolution": "node",
     "target": "es2020",
     "module": "CommonJS",

@@ -3087,7 +3087,10 @@ __metadata:
   resolution: "@deepkit/broker-redis@workspace:packages/broker-redis"
   dependencies:
     "@deepkit/broker": "npm:^1.0.15"
+    "@deepkit/bson": "npm:^1.0.15"
     "@deepkit/core": "npm:^1.0.15"
+    "@deepkit/logger": "npm:^1.0.15"
+    "@deepkit/type": "npm:^1.0.15"
     ioredis: "npm:^5.6.1"
   languageName: unknown
   linkType: soft

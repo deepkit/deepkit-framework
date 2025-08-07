@@ -15,8 +15,9 @@
     "declaration": true,
     "composite": true,
     "types": [
-      "@types/node"
-    ]
+      "node"
+    ],
+    "skipLibCheck": true
   },
   "include": [
     "src",

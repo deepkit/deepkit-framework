@@ -18,7 +18,8 @@
       "uuid",
       "lz-string",
       "node"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "reflection": true,
   "include": [

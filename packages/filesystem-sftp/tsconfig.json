@@ -17,7 +17,8 @@
     "types": [
       "ssh2-sftp-client",
       "node"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "include": [
     "src",

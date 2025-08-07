@@ -21,7 +21,8 @@
     "composite": true,
     "types": [
       "better-sqlite3"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "reflection": [
     "tests/**/*.ts"

@@ -18,7 +18,8 @@
     "jsxImportSource": "..",
     "types": [
       "estree"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "reflection": true,
   "include": [

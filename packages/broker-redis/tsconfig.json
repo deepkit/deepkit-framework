@@ -7,28 +7,36 @@
     "sourceMap": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "moduleResolution": "node16",
+    "useDefineForClassFields": false,
+    "moduleResolution": "node",
     "target": "es2020",
-    "module": "node16",
+    "module": "CommonJS",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
     "declaration": true,
-    "composite": true,
-    "types": []
+    "composite": true
   },
   "include": [
     "src",
-    "tests",
     "index.ts"
   ],
   "reflection": true,
   "references": [
     {
+      "path": "../broker/tsconfig.json"
+    },
+    {
+      "path": "../bson/tsconfig.json"
+    },
+    {
       "path": "../core/tsconfig.json"
     },
     {
-      "path": "../broker/tsconfig.json"
+      "path": "../logger/tsconfig.json"
+    },
+    {
+      "path": "../type/tsconfig.json"
     }
   ]
 }

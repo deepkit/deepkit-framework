@@ -14,7 +14,7 @@
     "esModuleInterop": true,
     "moduleResolution": "node",
     "importHelpers": true,
-    "target": "es2020",
+    "target": "es2022",
     "module": "CommonJS",
     "useDefineForClassFields": false,
     "types": [
@@ -22,7 +22,8 @@
       "file-saver",
       "jasmine",
       "node"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

@@ -20,7 +20,7 @@ import {
     TypeProperty,
     TypeRest,
     TypeTuple,
-    TypeTupleMember
+    TypeTupleMember,
 } from './reflection/type.js';
 import { getClassName, getParentClass } from '@deepkit/core';
 import { reflect, ReflectionClass, typeOf } from './reflection/reflection.js';
@@ -235,6 +235,7 @@ export type SerializedType =
 export type SerializedTypes = SerializedType[];
 
 declare var window: any;
+declare var global: any;
 
 const envGlobal: any = typeof globalThis !== "undefined"
     ? globalThis

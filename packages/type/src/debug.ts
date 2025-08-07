@@ -1,3 +1,5 @@
+declare var process: any;
+
 export function isDebug(level: number = 1) {
     const expected = 'deepkit' + (level > 1 ? '+'.repeat(level - 1) : '');
     return 'undefined' !== typeof process && 'string' === typeof process.env.DEBUG && process.env.DEBUG.includes(expected);

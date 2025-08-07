@@ -22,7 +22,8 @@
     "types": [
       "dot-prop",
       "node"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "reflection": true,
   "include": [

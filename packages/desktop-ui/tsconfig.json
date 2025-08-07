@@ -7,7 +7,7 @@
     "downlevelIteration": true,
     "sourceMap": true,
     "strict": true,
-    "target": "es2020",
+    "target": "es2022",
     "useDefineForClassFields": false,
     "noImplicitAny": true,
     "esModuleInterop": true,
@@ -20,7 +20,8 @@
       "angular-desktop-ui": [
         "dist/"
       ]
-    }
+    },
+    "skipLibCheck": true
   },
   "reflection": true,
   "angularCompilerOptions": {

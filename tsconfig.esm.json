@@ -47,13 +47,13 @@
       "path": "./packages/filesystem-aws-s3/tsconfig.esm.json"
     },
     {
+      "path": "./packages/filesystem-database/tsconfig.esm.json"
+    },
+    {
       "path": "./packages/filesystem-ftp/tsconfig.esm.json"
     },
     {
       "path": "./packages/filesystem-google/tsconfig.esm.json"
-    },
-    {
-      "path": "./packages/filesystem-database/tsconfig.esm.json"
     },
     {
       "path": "./packages/filesystem-sftp/tsconfig.esm.json"

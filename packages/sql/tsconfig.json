@@ -17,7 +17,8 @@
     "composite": true,
     "types": [
       "sqlstring"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "reflection": true,
   "include": [
