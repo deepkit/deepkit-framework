@@ -1,7 +1,7 @@
 import { bufferConcat } from '@deepkit/core';
 import { BSONError } from './model.js';
 
-function readUint32LE(buffer: Uint8Array | ArrayBuffer, offset: number = 0): number {
+function readUint32LE(buffer: Uint8Array, offset: number = 0): number {
     return buffer[offset] + (buffer[offset + 1] * 2 ** 8) + (buffer[offset + 2] * 2 ** 16) + (buffer[offset + 3] * 2 ** 24);
 }
 

@@ -6,6 +6,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
+    "useDefineForClassFields": false,
     "target": "es2022",
     "module": "CommonJS",
     "esModuleInterop": true,
@@ -13,7 +14,8 @@
     "outDir": "./dist",
     "jsx": "react-jsx",
     "jsxImportSource": "@deepkit/framework",
-    "types": []
+    "types": [],
+    "skipLibCheck": true
   },
   "reflection": true,
   "include": [

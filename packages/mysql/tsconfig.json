@@ -21,7 +21,8 @@
     "composite": true,
     "types": [
       "node"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "reflection": [
     "src/config.ts",

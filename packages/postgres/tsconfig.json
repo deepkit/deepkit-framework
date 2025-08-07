@@ -22,7 +22,8 @@
     "types": [
       "pg",
       "sqlstring"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "reflection": [
     "src/config.ts",

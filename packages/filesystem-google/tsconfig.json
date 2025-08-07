@@ -14,7 +14,8 @@
     "outDir": "./dist/cjs",
     "declaration": true,
     "composite": true,
-    "types": []
+    "types": [],
+    "skipLibCheck": true
   },
   "include": [
     "src",

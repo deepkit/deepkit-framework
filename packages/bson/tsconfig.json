@@ -18,7 +18,8 @@
     "types": [
       "bson",
       "node"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "reflection": true,
   "include": [

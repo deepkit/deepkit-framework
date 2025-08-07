@@ -7,8 +7,9 @@
     "sourceMap": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
     "moduleResolution": "node",
-    "target": "es2020",
+    "target": "es2022",
     "module": "CommonJS",
     "esModuleInterop": true,
     "outDir": "./dist/cjs",
@@ -19,10 +20,7 @@
       "fs-extra",
       "node"
     ],
-    "lib": [
-      "es2020",
-      "es2021.weakref"
-    ]
+    "skipLibCheck": true
   },
   "reflection": true,
   "include": [

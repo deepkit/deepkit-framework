@@ -18,7 +18,8 @@
       "lz-string",
       "micromatch",
       "node"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "include": [
     "src",

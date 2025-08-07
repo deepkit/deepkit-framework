@@ -21,7 +21,8 @@
     "types": [
       "sqlstring",
       "node"
-    ]
+    ],
+    "skipLibCheck": true
   },
   "reflection": true,
   "include": [

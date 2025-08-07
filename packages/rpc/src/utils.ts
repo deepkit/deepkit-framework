@@ -36,7 +36,7 @@ export function createSubject<T>(
     teardown?: () => void,
 ): Subject<T> {
     const subject = new Subject<T>();
-    setImmediate(async () => {
+    queueMicrotask(async () => {
         try {
             await producer(subject);
         } catch (error) {

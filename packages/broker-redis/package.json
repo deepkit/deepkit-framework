@@ -24,7 +24,10 @@
   },
   "dependencies": {
     "@deepkit/broker": "^1.0.15",
+    "@deepkit/bson": "^1.0.15",
     "@deepkit/core": "^1.0.15",
+    "@deepkit/logger": "^1.0.15",
+    "@deepkit/type": "^1.0.15",
     "ioredis": "^5.6.1"
   },
   "jest": {
