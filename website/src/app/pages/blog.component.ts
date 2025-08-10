@@ -12,6 +12,7 @@ import { ContentTextComponent } from '@app/app/components/content-text.component
 import { ContentRenderComponent } from '@app/app/components/content-render.component.js';
 import { JSONContent } from '@tiptap/core';
 import { Translation } from '@app/app/components/translation.js';
+import { mediaWatch } from '@app/app/utils.js';
 
 @Component({
     selector: '[postItem]',
@@ -219,7 +220,7 @@ export class BlogService {
 
       <div class="layout">
         <div class="header">
-          <dw-header-nav />
+          <dw-header-nav [logo]="breakpoint()" />
         </div>
 
         <router-outlet />
@@ -230,6 +231,7 @@ export class BlogService {
 export class BlogComponent {
     blog = inject(BlogService);
     translation = inject(Translation);
+    breakpoint = mediaWatch('(max-width: 1080px)');
 }
 
 function tiptapToContent(content?: JSONContent[], level: number = 1): (Content | string)[] {

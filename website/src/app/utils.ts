@@ -1,4 +1,4 @@
-import { inject, PendingTasks, PLATFORM_ID, WritableSignal } from '@angular/core';
+import { DestroyRef, inject, PendingTasks, PLATFORM_ID, signal, Signal, WritableSignal } from '@angular/core';
 import { isPlatformBrowser, isPlatformServer } from '@angular/common';
 import { injectLocalStorage, LocalStorageOptionsWithDefaultValue } from 'ngxtension/inject-local-storage';
 
@@ -69,4 +69,35 @@ export function injectLocalStorageString(key: string, options?: Partial<LocalSto
         defaultValue: '',
         ...options,
     }) as WritableSignal<string>;
+}
+
+/**
+ * A signal that tracks the media query for e.g. device size.
+ *
+ * ```typescript
+ * class Component {
+ *    breakpoint = mediaWatch('(max-width: 600px)');
+ * }
+ * ```
+ */
+export function mediaWatch(expr: string): Signal<boolean> {
+    const platform = inject(PlatformHelper);
+    if (platform.isServer()) {
+        return signal(false);
+    }
+    const destroy = inject(DestroyRef);
+
+    const mediaQuery = window.matchMedia(expr);
+    const result = signal(mediaQuery.matches);
+
+    function fn(e: MediaQueryListEventMap['change']) {
+        result.set(e.matches);
+    }
+
+    mediaQuery.addEventListener('change', fn);
+    destroy.onDestroy(() => {
+        mediaQuery.removeEventListener('change', fn);
+    });
+
+    return result;
 }

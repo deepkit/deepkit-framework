@@ -1,9 +1,10 @@
-import { Component, effect } from '@angular/core';
+import { Component } from '@angular/core';
 import { ViewportScroller } from '@angular/common';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
 import { AppTitle } from '@app/app/components/title';
 import { DuiApp, DuiStyleComponent } from '@deepkit/desktop-ui';
 import { ContentTextService } from '@app/app/components/content-text.component.js';
+import { Translation } from '@app/app/components/translation.js';
 
 @Component({
     selector: 'app-root',
@@ -12,10 +13,12 @@ import { ContentTextService } from '@app/app/components/content-text.component.j
         '[class.content-text-dark]': 'contentTextService.darkMode()'
     },
     template: `
-      <dui-style/>
+      <dui-style />
       <app-title value="Deepkit Enterprise TypeScript Framework" />
 
-      <router-outlet></router-outlet>
+      @if (translation.ready()) {
+        <router-outlet></router-outlet>
+      }
 
       <!--      @if (withHeader) {-->
       <!--        <dw-header-->
@@ -37,6 +40,7 @@ export class AppComponent {
         public activeRoute: ActivatedRoute,
         private viewportScroller: ViewportScroller,
         public contentTextService: ContentTextService,
+        public translation: Translation,
         private duiApp: DuiApp,
     ) {
         // viewportScroller.setOffset([0, 84]);

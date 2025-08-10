@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, effect, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
-import { bodyToString, Content, Page, parseBody, projectMap } from '@app/common/models';
+import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, OnDestroy, viewChild } from '@angular/core';
+import { bodyToString, Page, parseBody, projectMap } from '@app/common/models';
 import { AppDescription, AppTitle } from '@app/app/components/title';
 import { ContentRenderComponent } from '@app/app/components/content-render.component';
 import { LoadingComponent } from '@app/app/components/loading';
@@ -7,11 +7,13 @@ import { ViewportScroller } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ControllerClient } from '@app/app/client';
 import { PageResponse } from '@app/app/page-response';
-import { waitForInit } from '@app/app/utils';
 import { ContentTextComponent } from '@app/app/components/content-text.component.js';
 import { TableOfContentService } from '@app/app/components/table-of-content.component.js';
 import { MoreLanguagesComponent } from '@app/app/components/more-languages.component.js';
 import { Translation } from '@app/app/components/translation.js';
+import { derivedAsync } from 'ngxtension/derived-async';
+import { pendingTask } from '@deepkit/desktop-ui';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
     imports: [
@@ -21,17 +23,11 @@ import { Translation } from '@app/app/components/translation.js';
         LoadingComponent,
         ContentTextComponent,
         MoreLanguagesComponent,
+
     ],
     styleUrls: ['./page.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
-      <!--        <nav class="table-of-content">-->
-      <!--          @for (h of headers(); track h) {-->
-      <!--            <a [href]="router.url.split('#')[0] + '#' + h.link" class="intend-{{h.indent}}">-->
-      <!--              {{ h.label }}-->
-      <!--            </a>-->
-      <!--          }-->
-      <!--        </nav>-->
       <div class="app-content">
         <dui-content-text>
           @if (loading()) {
@@ -39,46 +35,86 @@ import { Translation } from '@app/app/components/translation.js';
           }
 
           @if (project(); as project) {
-            <app-title value="{{project}}"></app-title>
+            <app-title value="{{project}}" />
           }
           @if (error(); as error) {
             <div class="error">
               {{ error }}
             </div>
           }
-          @if (page(); as page) {
+          @if (page()?.page; as page) {
             <div #content>
-              <app-title value="{{page.title}} Documentation"></app-title>
+              <app-title value="{{page.title}}" />
 
-              <app-description
-                [value]="page.title + ' Documentation - ' + bodyToString(subline())"></app-description>
+              <app-description [value]="bodyToString(subline())" />
 
               @if (project(); as project) {
                 <div class="app-pre-headline">{{ project }}</div>
               }
-              <app-render-content [content]="page.body" (onRender)="loadTableOfContent()"></app-render-content>
+              <app-render-content [content]="page.body" (onRender)="onRender()"></app-render-content>
             </div>
           }
-          <!--            <app-ask [fixed]="true"></app-ask>-->
         </dui-content-text>
-        <app-more-languages/>
+        <app-more-languages />
       </div>
     `,
 })
-export class DocumentationPageComponent implements OnInit, OnDestroy {
+export class DocumentationPageComponent implements OnDestroy {
     protected readonly bodyToString = bodyToString;
-    loading = signal(false);
-    error = signal('');
-    page = signal<Page | undefined>(undefined);
-    project = signal('');
-    subline = signal<Content | undefined>(undefined);
-    currentPath = signal('');
-    currentLang = signal('');
-
     content = viewChild('content', { read: ElementRef<HTMLElement> });
 
     toc = inject(TableOfContentService);
     translation = inject(Translation);
+
+    page = derivedAsync<{ page: Page | undefined, error: string } | undefined>(pendingTask(async () => {
+        const path = this.currentPath();
+        const lang = this.translation.lang();
+        try {
+            return {
+                error: '',
+                page: await this.client.main.getPage('documentation/' + path, lang),
+            }
+        } catch (e) {
+            this.pageResponse.notFound();
+            return {
+                error: String(e),
+                page: undefined,
+            };
+        }
+    }), {
+        initialValue: { page: undefined, error: '' },
+    });
+
+    loading = computed(() => this.page() === undefined);
+    error = computed(() => this.page()?.error || '');
+
+    url = toSignal(this.activatedRoute.url);
+
+    currentPath = computed(() => {
+        const url = this.url();
+        if (!url) return 'index';
+        if (url.length > 1) {
+            return url[0].path + '/' + url[1].path;
+        } else if (url.length === 1) {
+            return url[0].path || 'index';
+        }
+        return 'index';
+    });
+
+    project = computed(() => {
+        const url = this.url();
+        if (!url) return '';
+        if (url.length > 1) {
+            return projectMap[url[0].path] || url[0].path;
+        }
+        return '';
+    });
+
+    subline = computed(() => {
+        const page = this.page();
+        if (!page || !page.page) return undefined;
+        return parseBody(page.page.body).subline;
+    });
 
     constructor(
         private pageResponse: PageResponse,
@@ -87,66 +123,13 @@ export class DocumentationPageComponent implements OnInit, OnDestroy {
         private viewportScroller: ViewportScroller,
         public router: Router,
     ) {
-        waitForInit(this, 'load');
         effect(() => {
             this.toc.render(this.content()?.nativeElement);
-        });
-        effect(() => {
-            this.translation.lang();
-            void this.load(this.currentPath());
-        });
-    }
-
-    ngOnInit() {
-        this.activatedRoute.url.subscribe(async (url) => {
-            if (url.length > 1) {
-                await this.load(url[1].path, url[0].path);
-            } else if (url.length === 1) {
-                await this.load(url[0].path);
-            } else {
-                await this.load('');
-            }
         });
     }
 
     ngAfterViewInit() {
-        this.loadTableOfContent();
-    }
-
-    onOutlet(event: any) {
-        this.loadTableOfContent();
-    }
-
-    async load(path: string, project: string = '') {
-        this.project.set(projectMap[project] || project);
-        path = path || 'index';
-        if (project) path = project + '/' + path;
-
-        const lang = this.translation.lang();
-        if (this.currentPath() === path && this.currentLang() === lang) return;
-
-        this.error.set('');
-        this.loading.set(true);
-        this.currentPath.set(path);
-        this.currentLang.set(lang);
-
-        try {
-            const page = await this.client.main.getPage('documentation/' + path, lang);
-            if (!page) return;
-            this.page.set(page);
-            this.subline.set(parseBody(page.body).subline);
-        } catch (error) {
-            this.pageResponse.notFound();
-            this.page.set(undefined);
-            this.error.set(String(error));
-        } finally {
-            this.loading.set(false);
-        }
-
-        const fragment = this.activatedRoute.snapshot.fragment;
-        if (fragment) {
-            this.viewportScroller.scrollToAnchor(fragment);
-        }
+        this.onRender();
     }
 
     ngOnDestroy() {
@@ -155,7 +138,11 @@ export class DocumentationPageComponent implements OnInit, OnDestroy {
         this.toc.unregister(content.nativeElement);
     }
 
-    loadTableOfContent() {
+    onRender() {
         this.toc.triggerUpdate();
+        const fragment = this.activatedRoute.snapshot.fragment;
+        if (fragment) {
+            this.viewportScroller.scrollToAnchor(fragment);
+        }
     }
 }

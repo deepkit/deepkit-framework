@@ -33,6 +33,12 @@ export class HeaderLogoComponent {
 @Component({
     selector: 'dw-header-nav',
     template: `
+      @if (logo()) {
+        <dw-header-logo />
+      }
+
+      <ng-content />
+
       <div class="language">
         @let translationRoutes = translation.routes();
         @let currentLanguage = translation.lang();
@@ -68,9 +74,10 @@ export class HeaderLogoComponent {
           </svg>
         </a>
       </div>
-      <!--      <a routerLinkActive="active" routerLink="/library">Libs</a>-->
-      <a routerLinkActive="active" routerLink="/{{translation.lang()}}/documentation">{{ texts.docs|translate }}</a>
-      <a routerLinkActive="active" routerLink="/{{translation.lang()}}/blog">{{ texts.blog|translate }}</a>
+      <div class="tail">
+        <a routerLinkActive="active" routerLink="/{{translation.lang()}}/documentation">{{ texts.docs|translate }}</a>
+        <a routerLinkActive="active" routerLink="/{{translation.lang()}}/blog">{{ texts.blog|translate }}</a>
+      </div>
     `,
     imports: [
         RouterLinkActive,
@@ -78,6 +85,7 @@ export class HeaderLogoComponent {
         DropdownComponent,
         OpenDropdownDirective,
         TranslatePipe,
+        HeaderLogoComponent,
     ],
     styles: `
       :host {
@@ -87,8 +95,20 @@ export class HeaderLogoComponent {
         justify-content: flex-end;
         flex-wrap: wrap;
         flex: 1;
-        gap: 1px 30px;
+        gap: 10px 30px;
         text-align: left;
+      }
+
+      @media (max-width: 860px) {
+        :host {
+          justify-content: center;
+          padding-bottom: 15px;
+        }
+
+        dw-header-logo {
+          flex-basis: 100%;
+          justify-content: center;
+        }
       }
 
       .socials {
@@ -102,6 +122,23 @@ export class HeaderLogoComponent {
           &:hover {
             opacity: 1;
           }
+        }
+      }
+
+      .tail {
+        display: flex;
+        gap: 30px;
+      }
+
+      @media (max-width: 540px) {
+        :host {
+          justify-content: center;
+        }
+
+        .tail {
+          flex-basis: 100%;
+          justify-content: center;
+          gap: 16px;
         }
       }
 
@@ -159,6 +196,8 @@ export class HeaderLogoComponent {
     `,
 })
 export class HeaderNavComponent {
+    logo = input(false);
+
     translation = inject(Translation);
     protected readonly texts = texts;
 }

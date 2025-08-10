@@ -60,7 +60,7 @@ export function parseBody(body: Content | Content['children']): { title: string,
     let subline: Content | undefined = undefined;
     const intro: Content[] = [];
     const rest: Content[] = [];
-    const children = Array.isArray(body) ? body : [body];
+    const children = Array.isArray(body) ? body : body?.children ?? [];
 
     for (const child of children) {
         if (!child || 'string' === typeof child) continue;

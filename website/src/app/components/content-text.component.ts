@@ -51,11 +51,7 @@ export class ContentTextService {
           <dui-dropdown-separator />
           <dui-dropdown-item checkbox (click)="toggleToc()" [selected]="contentTextService.tocVisible()">Table Of Contents</dui-dropdown-item>
         </dui-dropdown>
-        <dui-icon clickable name="color_theme" [openDropdown]="darkModeDropdown"></dui-icon>
-        <dui-dropdown #darkModeDropdown>
-          <dui-dropdown-item checkbox (click)="contentTextService.theme.set('')" [selected]="contentTextService.theme() === ''">Light</dui-dropdown-item>
-          <dui-dropdown-item checkbox (click)="contentTextService.theme.set('dark')" [selected]="contentTextService.theme() === 'dark'">Dark</dui-dropdown-item>
-        </dui-dropdown>
+        <dui-icon clickable name="color_theme" (click)="toggleDark()"></dui-icon>
       </div>
       <ng-content />
     `,
@@ -102,6 +98,14 @@ export class ContentTextService {
 })
 export class ContentTextComponent {
     contentTextService = inject(ContentTextService);
+
+    toggleDark() {
+        if (this.contentTextService.theme() === 'dark') {
+            this.contentTextService.theme.set('');
+        } else {
+            this.contentTextService.theme.set('dark');
+        }
+    }
 
     toggleToc() {
         if (this.contentTextService.toc() === 'hidden') {

@@ -1,8 +1,8 @@
 :host {
   display: block;
   user-select: none;
-  background-color: var(--color-dark2);
   flex: 1;
+  margin: 0 20px;
   margin-top: 150px;
 }
 

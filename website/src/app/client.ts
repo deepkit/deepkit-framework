@@ -21,15 +21,25 @@ export class APIInterceptor implements HttpInterceptor {
         // In client build, `baseUrl` is empty and should be inferred from the current location.
         // If this is not correct, you can simply define the `baseUrl` in the `providers` array of the `appConfig` object.
         this.baseUrl = baseUrl || (typeof location !== 'undefined' ? location.origin : '');
+        if (this.baseUrl && !this.baseUrl.endsWith('/')) {
+            this.baseUrl += '/';
+        }
     }
 
     intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
         if (req.url.startsWith('http://') || req.url.startsWith('https://')) {
             return next.handle(req);
         }
-        const url = `${this.baseUrl}/${req.url}`;
+        const url = `${this.baseUrl}${req.url}`;
         const apiReq = req.clone({ url });
         return next.handle(apiReq);
+    }
+
+    rewrite(url: string): string {
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+            return url;
+        }
+        return `${this.baseUrl}${url.startsWith('/') ? url.slice(1) : url}`;
     }
 }
 
@@ -47,6 +57,9 @@ export class RpcAngularHttpAdapter implements RpcHttpInterface {
         body: any
     }): Promise<RpcHttpResponseInterface> {
         try {
+            // Note: if this throws a weird error, it very likely means the
+            // Angular DI was already destroyed (Zone stabilized)
+            // and this requests was sent after that. It indicates we do not want for async signals to resolve correctly.
             const res = await firstValueFrom(this.httpClient.request(options.method, url, {
                 body: options.body,
                 headers: options.headers,

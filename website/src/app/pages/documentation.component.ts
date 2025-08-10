@@ -2,7 +2,7 @@ import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, inject, 
 import { IsActiveMatchOptions, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
-import { PlatformHelper } from '@app/app/utils';
+import { mediaWatch, PlatformHelper } from '@app/app/utils';
 import { HeaderLogoComponent, HeaderNavComponent } from '@app/app/components/header.component.js';
 import { TableOfContentComponent } from '@app/app/components/table-of-content.component.js';
 import { ContentTextService } from '@app/app/components/content-text.component.js';
@@ -45,8 +45,9 @@ import { TranslatePipe, Translation } from '@app/app/components/translation.js';
         </nav>
         <div class="page">
           <div class="page-header">
-            <div class="menu-trigger" [class.open]="showMenu"><a (click)="showMenu=!showMenu" class="button">{{ texts.chapters|translate }}</a></div>
-            <dw-header-nav />
+            <dw-header-nav [logo]="breakpoint()">
+              <div class="menu-trigger" [class.open]="showMenu"><a (click)="showMenu=!showMenu" class="button">{{ texts.chapters|translate }}</a></div>
+            </dw-header-nav>
           </div>
           <div class="content-wrapper">
             <div (click)="showMenu=false; true">
@@ -59,6 +60,8 @@ import { TranslatePipe, Translation } from '@app/app/components/translation.js';
     `,
 })
 export class DocumentationComponent implements AfterViewInit, OnDestroy {
+    breakpoint = mediaWatch('(max-width: 860px)');
+
     docs = docs;
     pathMatchOnly: IsActiveMatchOptions = {
         fragment: 'ignored',

@@ -33,6 +33,10 @@ app-search {
 
 }
 
+dw-header-logo {
+  flex: 0;
+}
+
 .burger {
   margin-left: auto;
   display: none;
@@ -54,6 +58,14 @@ app-search {
     img {
       margin-right: 0 !important;
     }
+  }
+
+  .wrapper {
+    flex-direction: column;
+    align-items: center;
+    row-gap: 20px;
+    padding-top: 20px;
+    height: auto;
   }
 
   .burger {

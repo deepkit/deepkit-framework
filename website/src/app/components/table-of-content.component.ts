@@ -84,7 +84,7 @@ export class TableOfContentService {
 @Component({
     selector: 'app-table-of-content',
     template: `
-      <div class="wrapper" #wrapper>
+      <div class="wrapper" tabindex="0" #wrapper>
         @for (line of lines(); track $index) {
           <div class="line" [style.top.px]="line[2]"
                [class.active]="isActiveLine(line[2])"></div>
@@ -167,6 +167,7 @@ export class TableOfContentService {
           opacity: 1;
         }
 
+        &.enabled:active,
         &.enabled:hover {
           min-width: 230px;
         }
@@ -179,6 +180,12 @@ export class TableOfContentService {
             color: white;
             text-decoration: none;
           }
+        }
+      }
+
+      @media (max-width: 1024px) {
+        :host {
+          right: 6px;
         }
       }
     `,

@@ -355,7 +355,6 @@ export class ContentRenderComponent implements OnInit, OnChanges {
                 component.setInput('title', meta.title || '');
 
                 component.instance.onRender.subscribe(() => {
-                    console.log('coder rendered');
                     this.onRender.emit();
                 });
                 this.app.attachView(component.hostView);

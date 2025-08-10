@@ -7,7 +7,6 @@ import { pendingTask } from '@deepkit/desktop-ui';
 
 @Injectable({ providedIn: 'root' })
 export class Translation {
-
     languages = [
         { code: 'en', label: 'English' },
         { code: 'zh', label: '中文 (Chinese)' },
@@ -48,7 +47,7 @@ export class Translation {
 
     router = inject(Router);
 
-    url = signal(this.router.url);
+    url = signal(typeof window !== 'undefined' ? window.location.pathname : '/');
 
     lang = computed(() => {
         const lang = this.url().replace(/^\//, '').split('/')[0] || 'en';
@@ -58,6 +57,7 @@ export class Translation {
     client = inject(ControllerClient);
 
     basics = this.translations('basics');
+    ready = computed(() => this.basics() !== undefined);
 
     constructor() {
         this.router.events.subscribe(() => {
@@ -69,18 +69,14 @@ export class Translation {
         return await this.client.main.getTranslation(this.lang(), name);
     }
 
-    translations(name: string): Signal<Record<string, string>> {
+    translations(name: string): Signal<Record<string, string> | undefined> {
         return derivedAsync(pendingTask(async () => {
-            const t = await this.getTranslation(name);
-            return t;
-        }), {
-            initialValue: {},
-        });
+            return await this.getTranslation(name);
+        }));
     }
 
     translate(key: string): string {
-        const translations = this.basics();
-        // console.log(key, translations);
+        const translations = this.basics() || {};
         return translations[key] || key;
     }
 }
@@ -102,9 +98,8 @@ export class i18nRoutePipe implements PipeTransform {
     transform(route: string[] | string): string[] {
         const lang = this.translation.lang();
         if (typeof route === 'string') {
-            route = [route];
+            route = route.split('/').filter((v) => v.length > 0);
         }
-        if (lang === 'en') return route;
-        return [lang, ...route];
+        return ['/' + lang, ...route];
     }
 }
