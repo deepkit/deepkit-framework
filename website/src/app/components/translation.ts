@@ -30,6 +30,12 @@ export class Translation {
             path = '';
         }
 
+        // remove query string
+        const queryIndex = path.indexOf('?');
+        if (queryIndex !== -1) {
+            path = path.substring(0, queryIndex);
+        }
+
         for (const lang of this.languages) {
             routes[lang.code] = `/${lang.code}${path}`;
         }
