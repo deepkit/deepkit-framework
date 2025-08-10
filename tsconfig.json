@@ -38,9 +38,6 @@
       "path": "./packages/create-app/tsconfig.json"
     },
     {
-      "path": "./packages/desktop-ui/tsconfig.json"
-    },
-    {
       "path": "./packages/devtool/tsconfig.json"
     },
     {

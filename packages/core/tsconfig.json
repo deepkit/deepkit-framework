@@ -19,10 +19,6 @@
       "es2020",
       "es2022.error"
     ],
-    "types": [
-      "dot-prop",
-      "node"
-    ],
     "skipLibCheck": true
   },
   "reflection": true,

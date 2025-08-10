@@ -125,7 +125,7 @@ export class LibraryComponent implements OnInit {
 
     async load(slug: string) {
         try {
-            const page = await this.client.main.getPage('library/' + slug);
+            const page = await this.client.main.getPage('library/' + slug, 'en');
             this.page.set(page);
             this.subline.set(parseBody(page.body).subline);
 

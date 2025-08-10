@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, computed, ContentChildren, inject, Injectable, input, Input, QueryList, signal } from '@angular/core';
+import { AfterViewInit, Component, computed, ContentChildren, forwardRef, inject, Injectable, input, Input, QueryList, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CodeHighlightComponent } from '@deepkit/ui-library';
 import { ButtonGroupComponent, InputComponent, pendingTask, TabButtonComponent, TableCellDirective, TableColumnDirective, TableComponent } from '@deepkit/desktop-ui';
@@ -471,7 +471,7 @@ interface TableRow {
         InputComponent,
         FormsModule,
         TableCellDirective,
-        ContentRenderComponent,
+        forwardRef(() => ContentRenderComponent),
         CodeHighlightComponent,
     ],
 })

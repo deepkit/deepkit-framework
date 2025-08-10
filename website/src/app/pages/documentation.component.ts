@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, effect, ElementRef, OnDestroy, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, inject, OnDestroy, ViewChild } from '@angular/core';
 import { IsActiveMatchOptions, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -7,7 +7,8 @@ import { HeaderLogoComponent, HeaderNavComponent } from '@app/app/components/hea
 import { TableOfContentComponent } from '@app/app/components/table-of-content.component.js';
 import { ContentTextService } from '@app/app/components/content-text.component.js';
 import { DuiApp } from '@deepkit/desktop-ui';
-import { docs } from '@app/common/docs';
+import { docs, texts } from '@app/common/docs';
+import { TranslatePipe, Translation } from '@app/app/components/translation.js';
 
 @Component({
     imports: [
@@ -18,6 +19,7 @@ import { docs } from '@app/common/docs';
         HeaderNavComponent,
         HeaderLogoComponent,
         TableOfContentComponent,
+        TranslatePipe,
     ],
     standalone: true,
     styleUrls: ['./documentation.component.css'],
@@ -30,19 +32,23 @@ import { docs } from '@app/common/docs';
           <div class="container">
             @for (doc of docs; track $index) {
               <div class="category">
-                <div class="category-title">{{ doc.category }}</div>
+                @if (doc.category) {
+                  <div class="category-title">{{ doc.category|translate }}</div>
+                }
                 @for (page of doc.pages; track $index) {
                   <a routerLinkActive="active" [routerLinkActiveOptions]="pathMatchOnly"
-                     routerLink="/documentation/{{ page.path }}">{{ page.title }}</a>
+                     routerLink="/{{translation.lang()}}/documentation/{{ page.path }}">{{ page.title|translate }}</a>
                 }
               </div>
             }
           </div>
         </nav>
         <div class="page">
-          <dw-header-nav />
+          <div class="page-header">
+            <div class="menu-trigger" [class.open]="showMenu"><a (click)="showMenu=!showMenu" class="button">{{ texts.chapters|translate }}</a></div>
+            <dw-header-nav />
+          </div>
           <div class="content-wrapper">
-            <div class="menu-trigger" [class.open]="showMenu"><a (click)="showMenu=!showMenu" class="button">Chapters</a></div>
             <div (click)="showMenu=false; true">
               <router-outlet></router-outlet>
             </div>
@@ -67,6 +73,7 @@ export class DocumentationComponent implements AfterViewInit, OnDestroy {
     @ViewChild('nav') nav?: ElementRef;
 
     sub: Subscription;
+    translation = inject(Translation);
 
     constructor(
         public platform: PlatformHelper,
@@ -105,4 +112,6 @@ export class DocumentationComponent implements AfterViewInit, OnDestroy {
     ngAfterViewInit() {
         setTimeout(() => this.scrollToActiveLink(), 100);
     }
+
+    protected readonly texts = texts;
 }

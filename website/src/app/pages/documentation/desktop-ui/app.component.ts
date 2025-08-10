@@ -1,13 +1,12 @@
 import { Component } from '@angular/core';
-import { ApiDocComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component.js';
-import { AppTitle } from '@app/app/components/title.js';
+import { ApiDocComponent } from '@app/app/pages/documentation/desktop-ui/api-doc.component';
+import { AppTitle } from '@app/app/components/title';
 
 @Component({
     host: { ngSkipHydration: 'true' },
     imports: [
         ApiDocComponent,
         AppTitle,
-
     ],
     template: `
       <div class="app-content normalize-text">

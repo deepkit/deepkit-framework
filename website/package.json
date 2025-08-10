@@ -10,6 +10,7 @@
     "build": "npm run api-docs && BUILD=angular NODE_OPTIONS=--preserve-symlinks ng build --configuration production",
     "test": "jest"
   },
+  "type": "commonjs",
   "private": true,
   "devDependencies": {
     "@angular-devkit/build-angular": "^20.0.3",

@@ -45,7 +45,7 @@ for (const name of packages) {
 }
 
 function filter(name) {
-    return !['api-console-gui', 'framework-debug-gui', 'orm-browser-gui'].includes(name);
+    return !['api-console-gui', 'framework-debug-gui', 'orm-browser-gui', 'desktop-ui'].includes(name);
 }
 
 for (const [name, config] of Object.entries(packageConfigs)) {

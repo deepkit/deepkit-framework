@@ -152,18 +152,3 @@ const result = deserialize(data, {loosely: false});
 ```
 
 In the case of invalid data, no attempt is made to convert it and instead an error message is thrown.
-
-## Type Annotations
-
-### Integer
-
-### Group
-
-### Excluded
-
-### Mapped
-
-### Embedded
-
-## Naming Strategy
-

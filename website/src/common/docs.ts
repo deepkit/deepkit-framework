@@ -4,6 +4,16 @@ export type DocCategory = {
     pages: { path: string; title: string, book?: boolean }[];
 }
 
+export const texts = {
+    banner1: 'Deepkit is a modular framework for TypeScript backend web applications.',
+    banner2: 'Structured, scalable, and built for enterprise-grade architecture.',
+    gettingStarted: 'Getting Started',
+    viewOnGitHub: 'View on GitHub',
+    docs: 'Docs',
+    blog: 'Blog',
+    chapters: 'Chapters',
+} as const;
+
 export const docs: DocCategory[] = [
     {
         category: null,

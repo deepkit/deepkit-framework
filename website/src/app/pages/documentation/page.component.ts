@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { bodyToString, Content, Page, parseBody, projectMap } from '@app/common/models';
 import { AppDescription, AppTitle } from '@app/app/components/title';
 import { ContentRenderComponent } from '@app/app/components/content-render.component';
@@ -10,6 +10,8 @@ import { PageResponse } from '@app/app/page-response';
 import { waitForInit } from '@app/app/utils';
 import { ContentTextComponent } from '@app/app/components/content-text.component.js';
 import { TableOfContentService } from '@app/app/components/table-of-content.component.js';
+import { MoreLanguagesComponent } from '@app/app/components/more-languages.component.js';
+import { Translation } from '@app/app/components/translation.js';
 
 @Component({
     imports: [
@@ -18,6 +20,7 @@ import { TableOfContentService } from '@app/app/components/table-of-content.comp
         ContentRenderComponent,
         LoadingComponent,
         ContentTextComponent,
+        MoreLanguagesComponent,
     ],
     styleUrls: ['./page.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -58,6 +61,7 @@ import { TableOfContentService } from '@app/app/components/table-of-content.comp
           }
           <!--            <app-ask [fixed]="true"></app-ask>-->
         </dui-content-text>
+        <app-more-languages/>
       </div>
     `,
 })
@@ -69,10 +73,12 @@ export class DocumentationPageComponent implements OnInit, OnDestroy {
     project = signal('');
     subline = signal<Content | undefined>(undefined);
     currentPath = signal('');
+    currentLang = signal('');
 
     content = viewChild('content', { read: ElementRef<HTMLElement> });
 
     toc = inject(TableOfContentService);
+    translation = inject(Translation);
 
     constructor(
         private pageResponse: PageResponse,
@@ -82,6 +88,13 @@ export class DocumentationPageComponent implements OnInit, OnDestroy {
         public router: Router,
     ) {
         waitForInit(this, 'load');
+        effect(() => {
+            this.toc.render(this.content()?.nativeElement);
+        });
+        effect(() => {
+            this.translation.lang();
+            void this.load(this.currentPath());
+        });
     }
 
     ngOnInit() {
@@ -109,14 +122,16 @@ export class DocumentationPageComponent implements OnInit, OnDestroy {
         path = path || 'index';
         if (project) path = project + '/' + path;
 
-        if (this.currentPath() === path) return;
+        const lang = this.translation.lang();
+        if (this.currentPath() === path && this.currentLang() === lang) return;
 
         this.error.set('');
         this.loading.set(true);
         this.currentPath.set(path);
+        this.currentLang.set(lang);
 
         try {
-            const page = await this.client.main.getPage('documentation/' + path);
+            const page = await this.client.main.getPage('documentation/' + path, lang);
             if (!page) return;
             this.page.set(page);
             this.subline.set(parseBody(page.body).subline);
@@ -141,10 +156,6 @@ export class DocumentationPageComponent implements OnInit, OnDestroy {
     }
 
     loadTableOfContent() {
-        const content = this.content();
-        if (!content || !content.nativeElement) return;
-        setTimeout(() => {
-            this.toc.render(content.nativeElement);
-        }, 100);
+        this.toc.triggerUpdate();
     }
 }

@@ -11,6 +11,7 @@ import { PageProcessor } from '@app/server/page-processor';
 import { Database } from '@deepkit/orm';
 import { UserAuthentication } from '@app/server/user-authentication';
 import { docs } from '@app/common/docs';
+import { readTranslationsFile } from '@app/server/commands/translate';
 
 
 function different(a?: string | Content, b?: string | Content): boolean {
@@ -231,7 +232,6 @@ export class MainController {
 
     @rpc.action()
     async prompt(url: string, prompt: string): Promise<string> {
-        const page = await this.getPage(url);
         return '';
     }
 
@@ -257,8 +257,8 @@ export class MainController {
     }
 
     @rpc.action()
-    async getPage(url: string): Promise<Page> {
-        return await this.page.parse(url);
+    async getPage(url: string, lang: string): Promise<Page> {
+        return await this.page.parse(url, lang);
     }
 
     @rpc.action()
@@ -309,5 +309,13 @@ export class MainController {
         return await this.database.query(BlogEntity)
             .filter({ published: true, slug })
             .findOneOrUndefined();
+    }
+
+    @rpc.action()
+    async getTranslation(lang: string, name: string): Promise<Record<string, string>> {
+        // make sure its ascii only, no special characters, a-Z
+        lang = lang.replace(/[^a-zA-Z0-9\-]/g, '').toLowerCase();
+        name = name.replace(/[^a-zA-Z0-9\-]/g, '').toLowerCase();
+        return readTranslationsFile(lang, name);
     }
 }

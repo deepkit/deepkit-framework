@@ -165,11 +165,15 @@ nav {
   }
 }
 
+.page-header {
+  min-height: 80px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .menu-trigger {
-  position: fixed;
-  z-index: 100;
-  top: 25px;
-  left: 24px;
   display: none;
 
   @media (max-width: 860px) {
@@ -194,7 +198,6 @@ nav {
   border-radius: 15px;
   background: var(--color-content-text-bg);
   padding-top: 30px;
-  padding-bottom: 50vh;
   /*background: linear-gradient(90deg, #13161C 0%, #0F1217 10.59%);*/
 }
 

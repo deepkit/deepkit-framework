@@ -506,7 +506,6 @@ pre.console {
 .app-content,
 .app-content-full {
   position: relative;
-  min-height: calc(100vh - 35px);
   text-align: left;
   font-size: 16px;
   line-height: 160%;
@@ -560,7 +559,8 @@ html body .normalize-text {
 
   ol, ul {
     text-align: left;
-    padding-left: 14px;
+    padding-left: 18px;
+    margin-left: 0;
   }
 
   li, li p.text {

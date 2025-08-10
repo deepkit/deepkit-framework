@@ -1,26 +1,32 @@
-import { findParentPath } from '@deepkit/app';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { magicSeparator, Page } from '@app/common/models';
 import { MarkdownParser } from '@app/common/markdown';
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { getCurrentDirName } from '@deepkit/core';
+
+const currentDir = getCurrentDirName();
 
 export class PageProcessor {
     constructor(protected parser: MarkdownParser) {
     }
 
-    async read(url: string): Promise<string> {
-        const dir = findParentPath('src/pages');
-        if (!dir) throw new Error('Pages folder not found');
+    async read(url: string, lang: string = 'en'): Promise<string> {
         url = url.replace(/[^a-zA-Z0-9\-_\/]/g, '');
         const file = url + '.md';
-        return await readFile(join(dir, file), 'utf8');
+        const originalPath = join(currentDir, '../pages', file);
+        const translated = join(currentDir, '../translations', lang, file);
+        console.log(`Reading page from ${originalPath} or ${translated} for language ${lang}`);
+        if (lang === 'en') return await readFile(originalPath, 'utf8');
+        try {
+            return await readFile(translated, 'utf8');
+        } catch {
+            return await readFile(originalPath, 'utf8');
+        }
     }
 
-    async parse(url: string): Promise<Page> {
+    async parse(url: string, lang: string): Promise<Page> {
         await this.parser.load();
-        const content = await this.read(url);
+        const content = await this.read(url, lang);
         const page = this.parser.parse(content);
         page.url = url;
         return page;
@@ -37,7 +43,7 @@ export class PageProcessor {
             const question = text.substr(userStart, assistantStart - userStart).trim();
             if (!question) continue;
             const answer = text.substr(assistantStart + '\nassistant:'.length).trim();
-            questions.push({title: question, content: answer});
+            questions.push({ title: question, content: answer });
             if (questions.length >= top) break;
         }
         return questions;
@@ -52,7 +58,7 @@ export class PageProcessor {
         const texts = content.split(magicSeparator);
         let i = 0;
         for (const text of texts) {
-            i++
+            i++;
             if (text.trim() === '') continue;
             const props: { [name: string]: string } = {};
             let lastPropIndex = 0;
@@ -75,7 +81,7 @@ export class PageProcessor {
                 props[name] = value;
             }
             const content = text.slice(lastPropIndex);
-            result.push({props, content});
+            result.push({ props, content });
             if (result.length >= top) break;
         }
 
@@ -93,7 +99,7 @@ export class PageProcessor {
                 return {
                     title: v.props.title,
                     url: v.props.url,
-                    content: withContent ? v.content : ''
+                    content: withContent ? v.content : '',
                 };
             });
         } catch (error: any) {

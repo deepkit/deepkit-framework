@@ -16,7 +16,7 @@
 .wrapper.made-in {
   margin-top: 0;
   font-size: 13px;
-  color: var(--color-grey2);
+  color: var(--color-grey);
   padding-top: 0px;
   padding-bottom: 43px;
   justify-content: center;
@@ -40,7 +40,7 @@
   }
 
   .text {
-    color: var(--color-grey2);
+    color: var(--color-grey);
     margin-top: 20px;
   }
 }
@@ -51,12 +51,16 @@ nav {
   flex-direction: column;
 
   a, a:link {
-    color: var(--color-grey2);
+    color: var(--color-grey);
     font-size: 12px;
     letter-spacing: 1px;
     line-height: 16px;
     text-align: right;
     text-decoration: none;
+  }
+
+  a.active {
+    color: var(--color-link);
   }
 }
 

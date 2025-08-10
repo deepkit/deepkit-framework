@@ -1,7 +1,6 @@
 :host {
   display: flex;
   flex-direction: row;
-  min-height: calc(100vh - 35px);
 }
 
 .logo-container {
@@ -13,10 +12,6 @@
   dw-header-logo {
     flex: 0 1 270px;
   }
-}
-
-.header {
-  /*background: #090A0B;*/
 }
 
 .sidebar {
@@ -77,7 +72,9 @@
   }
 
   .header {
-    flex: 0;
+    flex: 0 0 80px;
+    display: flex;
+    align-items: center;
   }
 }
 

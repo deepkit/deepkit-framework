@@ -52,4 +52,4 @@ const kernel = new RpcKernel(injector);
 kernel.registerController(Controller);
 ```
 
-See [Dependency Injection](xref:dependency-injection.adoc) to learn more.
+See [Dependency Injection](../dependency-injection.md) to learn more.

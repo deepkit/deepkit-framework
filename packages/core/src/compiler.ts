@@ -12,7 +12,9 @@
 import { indent } from './indent.js';
 import { hasProperty } from './core.js';
 
-declare var process: any;
+declare var process: {
+    env: Record<string, string>;
+} | undefined;
 
 const indentCode = ('undefined' !== typeof process && process.env?.DEBUG || '').includes('deepkit');
 

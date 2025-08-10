@@ -464,6 +464,10 @@ export function getInheritanceChain(classType: ClassType): ClassType[] {
 }
 
 declare var v8debug: any;
+declare var process: {
+    execArgv: string[];
+    platform: string;
+} | undefined;
 
 export function inDebugMode() {
     return typeof v8debug === 'object' ||
@@ -497,7 +501,7 @@ export function getCurrentFileName(offset: number = 0): string {
     if (path.indexOf('file') >= 0) {
         path = new URL(path).pathname;
     }
-    if (path[0] === '/' && process.platform === 'win32') {
+    if (path[0] === '/' && 'undefined' !== typeof process && process.platform === 'win32') {
         path = path.slice(1);
     }
     return path;

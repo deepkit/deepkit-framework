@@ -1,9 +1,10 @@
-import { Component, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AppTitle } from '@app/app/components/title';
 import { HeaderComponent } from '@app/app/components/header.component.js';
 import { FooterComponent } from '@app/app/components/footer.component.js';
-import { libraries } from '@app/common/docs.js';
+import { libraries, texts } from '@app/common/docs.js';
+import { i18nRoutePipe, TranslatePipe, Translation } from '@app/app/components/translation.js';
 
 @Component({
     selector: 'a[package]',
@@ -55,7 +56,7 @@ import { libraries } from '@app/common/docs.js';
         font-size: 12px;
         white-space: nowrap;
       }
-    `
+    `,
 })
 export class LibraryEntryComponent {
     title = input.required<string>();
@@ -104,7 +105,7 @@ export class LibraryEntryComponent {
         .twice {
           grid-column: 1 / span 2;
         }
-        
+
         @media (max-width: 640px) {
           .main, .twice {
             grid-column: unset;
@@ -154,22 +155,24 @@ export class LibraryEntryComponent {
         LibraryEntryComponent,
         RouterLink,
         FooterComponent,
+        TranslatePipe,
+        i18nRoutePipe,
     ],
     template: `
       <app-title value="Libraries"></app-title>
       <dw-header />
       <div class="app-content-full">
         <div class="wrapper banner">
-          <h2>Deepkit is a modular framework for TypeScript backend web applications.</h2>
-          <div>Structured, scalable, and built for enterprise-grade architecture.</div>
+          <h2>{{ texts.banner1|translate }}</h2>
+          <div>{{ texts.banner2|translate }}</div>
 
           <div class="cta" style="padding-top: 10px;">
             <a href="https://discord.gg/U24mryk7Wq"><img alt="Discord" src="https://img.shields.io/discord/759513055117180999?style=square&label=Discord" /></a>
             <a href="https://www.npmjs.com/package/@deepkit/type"><img alt="npm" src="https://img.shields.io/npm/v/@deepkit/type.svg?style=square" /></a>
           </div>
           <div class="cta">
-            <a class="button" routerLink="/documentation/app">Getting Started</a>
-            <a class="button" href="https://github.com/deepkit/deepkit-framework">View on GitHub</a>
+            <a class="button" routerLink="/{{translation.lang()}}/documentation/app">{{ texts.gettingStarted|translate }}</a>
+            <a class="button" href="https://github.com/deepkit/deepkit-framework">{{ texts.viewOnGitHub|translate }}</a>
           </div>
         </div>
         <div class="wrapper libraries">
@@ -177,15 +180,19 @@ export class LibraryEntryComponent {
             <div class="category">{{ category.category }}</div>
             <div class="grid">
               @for (library of category.items; track $index) {
-                <a [title]="library.title" class="{{library.class || ''}}" [routerLink]="library.path" [package]="library.package" [description]="library.description"></a>
+                <a [title]="library.title|translate" class="{{library.class || ''}}" [routerLink]="library.path|i18nRoute" [package]="library.package|translate" [description]="library.description|translate"></a>
               }
             </div>
           }
         </div>
+      </div>
 
-        <dw-footer />
-    `
+      <dw-footer />
+    `,
 })
 export class LibrariesComponent {
     protected readonly libraries = libraries;
+    protected readonly texts = texts;
+
+    translation = inject(Translation);
 }

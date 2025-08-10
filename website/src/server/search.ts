@@ -115,7 +115,7 @@ ORDER BY rank DESC;
 
         for (const file of files) {
             if (!file.startsWith('documentation/')) continue;
-            const page = await this.page.parse(file.replace('.md', ''));
+            const page = await this.page.parse(file.replace('.md', ''), 'en');
             // console.log(json);
             page.url = file.replace('.md', '');
             // const body = bodyToString(page.body);

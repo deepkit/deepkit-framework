@@ -688,7 +688,7 @@ export class Processor {
                         case ReflectionOp.parameter: {
                             const ref = this.eatParameter() as number;
                             const t: Type = { kind: ReflectionKind.parameter, parent: undefined as any, name: program.stack[ref] as string, type: this.pop() as Type };
-                            t.type.parent = t;
+                            if (t.type) t.type.parent = t;
                             this.pushType(t);
                             break;
                         }
