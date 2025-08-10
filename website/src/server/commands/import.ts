@@ -5,13 +5,13 @@ import { PageProcessor } from '@app/server/page-processor';
 import { CommunityMessage } from '@app/common/models';
 import { getCurrentDirName } from '@deepkit/core';
 
-const dirname = getCurrentDirName();
+const currentDir = getCurrentDirName();
 
 export async function importExamples(
     database: Database,
     page: PageProcessor,
 ) {
-    const dir = findParentPath('src/pages/examples', dirname);
+    const dir = findParentPath('src/pages/examples', currentDir);
     if (!dir) throw new Error('Examples folder not found');
     const files = await readdir(dir);
 
@@ -41,7 +41,7 @@ export async function importQuestions(
     database: Database,
     page: PageProcessor,
 ) {
-    const dir = findParentPath('src/pages/questions', dirname);
+    const dir = findParentPath('src/pages/questions', currentDir);
     if (!dir) throw new Error('Examples folder not found');
     const files = await readdir(dir);
 

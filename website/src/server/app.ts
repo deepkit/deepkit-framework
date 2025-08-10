@@ -25,6 +25,7 @@ import { AdminFilesController } from '@app/server/controller/admin-files.control
 import { Filesystem } from '@deepkit/filesystem';
 import { FilesystemDatabaseAdapter } from '@deepkit/filesystem-database';
 import { translateCommand } from '@app/server/commands/translate';
+import { httpWorkflow } from '@deepkit/http';
 
 (global as any).window = undefined;
 (global as any).document = undefined;
@@ -92,6 +93,18 @@ export const app = new App({
 
 app.setup((module, config) => {
     serveFilesystem<Filesystem>(module, { baseUrl: 'media/' });
+});
+
+app.listen(httpWorkflow.onRequest, (event) => {
+    const url = event.request.url || '';
+    if (url.startsWith('/documentation') || url.startsWith('/blog')) {
+        // move all /documentation/* to /en/documentation/*
+        const to = `/en${url}`;
+        event.response.setHeader('Location', to);
+        event.response.status(302);
+        event.response.end(`Redirecting to ${to}`);
+        event.send(event.response);
+    }
 });
 
 app.command('search:index', async (search: Search) => await search.index());

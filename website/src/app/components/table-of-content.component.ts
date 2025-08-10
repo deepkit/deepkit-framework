@@ -9,6 +9,25 @@ type HeaderInfo = { label: string, indent: number, top: number, height: number, 
 export class TableOfContentService {
     headers = signal<HeaderInfo[]>([]);
     content = signal<HTMLElement | undefined>(undefined);
+    contentUpdated = createNotifier();
+
+    constructor() {
+        effect(() => {
+            this.content();
+            this.contentUpdated.listen();
+            this.updateHeaders();
+        });
+    }
+
+    protected lastFrame: ReturnType<typeof setTimeout> | undefined;
+
+    triggerUpdate() {
+        if (this.lastFrame) return;
+        this.lastFrame = setTimeout(() => {
+            this.lastFrame = undefined;
+            this.contentUpdated.notify();
+        }, 10);
+    }
 
     unregister(content: HTMLElement) {
         if (this.content() !== content) return;
@@ -16,12 +35,19 @@ export class TableOfContentService {
         this.headers.set([]);
     }
 
-    render(content: HTMLElement) {
+    render(content?: HTMLElement) {
         if ('undefined' === typeof window) return;
-
         this.content.set(content);
+    }
+
+    protected updateHeaders() {
+        const content = this.content();
+        if (!content || !content.getBoundingClientRect) {
+            this.headers.set([]);
+            return;
+        }
+
         const headers: HeaderInfo[] = [];
-        const viewportHeight = window.innerHeight;
         const rect = content.getBoundingClientRect();
         const headerElements = content.querySelectorAll('h1, h2, h3, h4');
 
@@ -33,12 +59,12 @@ export class TableOfContentService {
             headers.push({ label, indent, top, link, height: 0 });
         }
 
-        // if nothing overflows, we don't need a table of content
-        const lastHeader = headers[headers.length - 1];
-        if (headers.length === 0 || lastHeader.top < viewportHeight) {
-            this.headers.set([]);
-            return;
-        }
+        // // if nothing overflows, we don't need a table of content
+        // const lastHeader = headers[headers.length - 1];
+        // if (headers.length === 0 || lastHeader.top < viewportHeight) {
+        //     this.headers.set([]);
+        //     return;
+        // }
 
         for (let i = 0; i < headers.length; i++) {
             const header = headers[i];
@@ -59,20 +85,18 @@ export class TableOfContentService {
     selector: 'app-table-of-content',
     template: `
       <div class="wrapper" #wrapper>
-        @if (enabled()) {
-          @for (line of lines(); track $index) {
-            <div class="line" [style.top.px]="line[2]"
-                 [class.active]="$index === activeLine()"></div>
-          }
+        @for (line of lines(); track $index) {
+          <div class="line" [style.top.px]="line[2]"
+               [class.active]="isActiveLine(line[2])"></div>
+        }
 
-          @let tops = this.headersTop();
-          @for (header of toc.headers(); track $index) {
-            @let top = tops[$index];
-            @if (top >= 0) {
-              <a [routerLink]="[]" [fragment]="header.link" class="header"
-                 [class.active]="activeHeader() === header.link"
-                 [style.top.%]="top * 100">{{ header.label }}</a>
-            }
+        @let tops = this.headersTop();
+        @for (header of toc.headers(); track $index) {
+          @let top = tops[$index];
+          @if (top >= 0) {
+            <a [routerLink]="[]" [fragment]="header.link" class="header"
+               [class.active]="isActiveLine(top)"
+               [style.top.px]="top">{{ header.label }}</a>
           }
         }
       </div>
@@ -90,8 +114,8 @@ export class TableOfContentService {
         transition: 0.1s ease-out;
 
         &.active {
-          background-color: #fff;
-          height: 2px;
+          background-color: rgba(255, 255, 255, 0.8);
+          /*height: 2px;*/
         }
       }
 
@@ -137,6 +161,11 @@ export class TableOfContentService {
         backdrop-filter: blur(7px);
         border-radius: 12px;
         transition: 0.1s ease-out;
+        opacity: 0;
+
+        &.enabled {
+          opacity: 1;
+        }
 
         &.enabled:hover {
           min-width: 230px;
@@ -165,8 +194,7 @@ export class TableOfContentComponent {
     elementRef = viewChild.required('wrapper', { read: ElementRef<HTMLElement> });
 
     resize = createNotifier();
-    activeHeader = signal<string | undefined>(undefined);
-    activeLine = signal<number | undefined>(undefined);
+    viewport = signal({ top: 0, bottom: 0 });
 
     enabled = computed(() => this.contentTextService.tocVisible() && this.toc.headers().length > 0);
 
@@ -192,32 +220,23 @@ export class TableOfContentComponent {
         this.updateActiveHeader();
     }
 
+    isActiveLine(y: number) {
+        const section = this.viewport();
+        const containerHeight = this.containerHeight();
+        y /= containerHeight; // Normalize to 0-1 range
+        return y >= section.top && y <= section.bottom;
+    }
+
     private updateActiveHeader() {
+        this.toc.contentUpdated.listen();
         const content = this.toc.content();
         if (!content || !content.getBoundingClientRect) return;
-        const scrollTop = window.scrollY;
-        const rect = content.getBoundingClientRect();
-        const contentHeight = rect.height;
-        const offsetTop = rect.top + scrollTop;
-
-        const containerHeight = this.containerHeight();
-        const scrollPercentage = (scrollTop - offsetTop) / contentHeight;
-        const y = scrollPercentage * containerHeight;
-
-        const index = Math.round(y / this.interval);
-        this.activeLine.set(index >= 0 ? index : undefined);
-        const headers = this.toc.headers();
-
-        for (let i = headers.length - 1; i >= 0; i--) {
-            const header = headers[i];
-            const absTop = offsetTop + header.top * contentHeight;
-            if (scrollTop + this.interval >= absTop) {
-                this.activeHeader.set(header.link);
-                return;
-            }
-        }
-
-        this.activeHeader.set(undefined);
+        const contentRect = content.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        this.viewport.set({
+            top: -contentRect.top / contentRect.height,
+            bottom: (-contentRect.top + viewportHeight) / contentRect.height,
+        });
     }
 
     lines = computed(() => {
@@ -239,7 +258,7 @@ export class TableOfContentComponent {
         let previousTop = -1;
         for (let i = 0; i < headers.length; i++) {
             const header = headers[i];
-            const stickyTop = this.protected(header.top);
+            const stickyTop = this.headerTop(header.top);
             if (stickyTop === previousTop) continue; // Skip if the top is the same as the previous one
             headersTop[i] = stickyTop;
             previousTop = stickyTop;
@@ -251,11 +270,10 @@ export class TableOfContentComponent {
     /**
      * We get a number like 0.945 and want to make it sticky to the interval of 20px.
      */
-    protected (percentage: number): number {
+    protected headerTop(percentage: number): number {
         const containerHeight = this.containerHeight();
         const top = percentage * containerHeight;
-        const stickyTop = Math.round(top / this.interval) * this.interval;
-        return stickyTop / containerHeight; // Return as percentage
+        return Math.round(top / this.interval) * this.interval;
     }
 
 }

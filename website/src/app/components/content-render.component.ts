@@ -6,7 +6,8 @@ import { Router } from '@angular/router';
 import { AppImagesComponent } from '@app/app/components/images.component';
 import { ImageComponent } from '@app/app/components/image.component';
 import { DomSanitizer } from '@angular/platform-browser';
-import { ContentApiDocsComponent } from '@app/app/components/content-api-docs.component.js';
+import { ContentApiDocsComponent } from '@app/app/components/content-api-docs.component';
+import { Translation } from '@app/app/components/translation';
 
 const whitelist = ['div', 'p', 'a', 'button', 'iframe', 'pre', 'span', 'code', 'strong', 'hr', 'ul', 'li', 'ol', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'table', 'tbody', 'tr', 'td', 'th', 'boxes', 'box'];
 
@@ -164,6 +165,7 @@ export class ContentRenderComponent implements OnInit, OnChanges {
         private renderer: Renderer2,
         private router: Router,
         private injector: EnvironmentInjector,
+        private translation: Translation,
         private app: ApplicationRef,
     ) {
     }
@@ -353,7 +355,8 @@ export class ContentRenderComponent implements OnInit, OnChanges {
                 component.setInput('title', meta.title || '');
 
                 component.instance.onRender.subscribe(() => {
-                    this.onRender.emit()
+                    console.log('coder rendered');
+                    this.onRender.emit();
                 });
                 this.app.attachView(component.hostView);
                 return [{ node: component.location.nativeElement }];
@@ -393,6 +396,9 @@ export class ContentRenderComponent implements OnInit, OnChanges {
                         const url = new URL(content.props.href, new URL(this.linkRelativeTo || this.router.url, base));
                         let href = url.pathname.replace('.md', '');
                         if (url.hash) href += url.hash;
+                        if (href.startsWith('/documentation')) {
+                            href = this.translation.lang() + href;
+                        }
                         this.renderer.setAttribute(element, 'href', href);
                     }
                     this.hookRouter(element);

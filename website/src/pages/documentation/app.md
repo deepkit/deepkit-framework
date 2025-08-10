@@ -168,7 +168,7 @@ As soon as you import Deepkit Framework you get additional providers. See [Deepk
 
 ## Exit code
 
-The exit code is 0 by default, which means that the command was executed successfully. To change the exit code, a number other than 0 should be returned in the exucute method.
+The exit code is 0 by default, which means that the command was executed successfully. To change the exit code, a number other than 0 should be returned in the execute method or command callback.
 
 ```typescript
 

@@ -8,18 +8,7 @@
  * You should have received a copy of the MIT License along with this program.
  */
 import { ClassType, CompilerContext, getClassName, isArray, isClass, urlJoin } from '@deepkit/core';
-import {
-    entity,
-    ReflectionClass,
-    ReflectionFunction,
-    ReflectionKind,
-    ReflectionParameter,
-    SerializationOptions,
-    serializer,
-    Serializer,
-    Type,
-    ValidationError,
-} from '@deepkit/type';
+import { entity, ReflectionClass, ReflectionFunction, ReflectionKind, ReflectionParameter, SerializationOptions, serializer, Serializer, Type, ValidationError } from '@deepkit/type';
 import { getActions, HttpAction, httpClass, HttpController, HttpDecorator } from './decorator.js';
 import { HttpRequest, HttpRequestPositionedParameters, HttpRequestQuery, HttpRequestResolvedParameters } from './model.js';
 import { InjectorContext, InjectorModule } from '@deepkit/injector';
@@ -30,7 +19,7 @@ import { HttpMiddlewareConfig, HttpMiddlewareFn } from './middleware.js';
 
 //@ts-ignore
 import qs from 'qs';
-import { HtmlResponse, JSONResponse, Response } from './http.js';
+import { HtmlResponse, JSONResponse, Redirect, Response } from './http.js';
 import { getRequestParserCodeForParameters, ParameterForRequestParser, parseRoutePathToRegex } from './request-parser.js';
 import { HttpConfig } from './module.config.js';
 
@@ -352,7 +341,7 @@ export interface HttpRouterFunctionOptions {
 function convertOptions(methods: string[], pathOrOptions: string | HttpRouterFunctionOptions, defaultOptions: Partial<HttpRouterFunctionOptions>): HttpRouterFunctionOptions {
     const options = 'string' === typeof pathOrOptions ? { path: pathOrOptions } : pathOrOptions;
     if (options.methods) return options;
-    return { ...options, methods };
+    return { ...defaultOptions, ...options, methods };
 }
 
 /**
@@ -442,6 +431,13 @@ export abstract class HttpRouterRegistryFunctionRegistrar {
 
     public head(pathOrOptions: string | HttpRouterFunctionOptions, callback: (...args: any[]) => any) {
         this.register(convertOptions(['HEAD'], pathOrOptions, this.defaultOptions), callback);
+    }
+
+    public redirectCallback(pathOrOptions: string | HttpRouterFunctionOptions, callback: (request: HttpRequest) => string, redirectCode: number = 302) {
+        const options = convertOptions(['GET'], pathOrOptions, this.defaultOptions);
+        this.register(options, (request: HttpRequest) => {
+            return Redirect.toUrl(callback(request), redirectCode);
+        });
     }
 
     private register(options: HttpRouterFunctionOptions, callback: (...args: any[]) => any, module?: InjectorModule<any>) {
@@ -536,7 +532,7 @@ export class HttpRouterRegistry extends HttpRouterRegistryFunctionRegistrar {
                 type: 'controller',
                 controller,
                 module,
-                methodName: action.methodName
+                methodName: action.methodName,
             };
             const routeConfig = createRouteConfigFromHttpAction(routeAction, action, module, controllerData);
 
@@ -578,7 +574,7 @@ export class HttpRouter {
         controllers: (ClassType | { module: InjectorModule<any>, controller: ClassType })[],
         middlewareRegistry: MiddlewareRegistry = new MiddlewareRegistry(),
         module: InjectorModule<any> = new InjectorModule(),
-        config: HttpConfig = new HttpConfig()
+        config: HttpConfig = new HttpConfig(),
     ): HttpRouter {
         return new this(new HttpControllers(controllers.map(v => {
             return isClass(v) ? { controller: v, module } : v;
@@ -636,7 +632,7 @@ export class HttpRouter {
             resolverForToken: routeConfig.resolverForToken,
             resolverForParameterName: routeConfig.resolverForParameterName,
             pathParameterNames: parsedRoute.pathParameterNames,
-            routeConfig
+            routeConfig,
         });
 
         let methodCheck = '';

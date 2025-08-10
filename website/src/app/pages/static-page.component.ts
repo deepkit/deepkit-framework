@@ -54,7 +54,7 @@ export class StaticPageComponent {
     page = derivedAsync(pendingTask(async () => {
         const slug = this.routeData().page;
         if (!slug) return undefined;
-        return this.client.main.getPage('static/' + slug);
+        return this.client.main.getPage('static/' + slug, 'en');
     }));
 
     subline = computed(() => {

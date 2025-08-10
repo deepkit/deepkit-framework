@@ -1,0 +1,9 @@
+# Laufzeit-Typen
+
+Laufzeit-Typinformationen in TypeScript erschließen neue Workflows und Features, die zuvor nicht verfügbar waren oder Workarounds erforderten. Moderne Entwicklungsprozesse stützen sich stark auf die Deklaration von Types und Schemas für Tools wie GraphQL, Validatoren, ORMs und Encoder wie ProtoBuf. Diese Tools können Entwickler dazu zwingen, neue, einsatzspezifische Sprachen zu lernen, etwa da ProtoBuf und GraphQL ihre eigene Deklarationssprache haben oder Validatoren ihre eigenen Schema-APIs oder JSON-Schema verwenden.
+
+TypeScript ist inzwischen leistungsfähig genug, um komplexe Strukturen zu beschreiben und sogar Deklarationsformate wie GraphQL, ProtoBuf und JSON-Schema vollständig zu ersetzen. Mit einem Laufzeit-Typsystem ist es möglich, die Anwendungsfälle dieser Tools ohne Code-Generatoren oder JavaScript-Laufzeitbibliotheken für Typdeklarationen wie "Zod" abzudecken. Die Deepkit-Bibliothek hat zum Ziel, Laufzeit-Typinformationen bereitzustellen und die Entwicklung effizienter und kompatibler Lösungen zu erleichtern.
+
+Deepkit basiert auf der Fähigkeit, Typinformationen zur Laufzeit auszulesen und nutzt der Effizienz wegen so viel TypeScript-Typinformationen wie möglich. Das Laufzeit-Typsystem ermöglicht das Auslesen und Berechnen dynamischer Types, etwa von Class Properties, Function Parameters und Return Types. Deepkit klinkt sich in den Kompilierungsprozess von TypeScript ein, um sicherzustellen, dass alle Typinformationen mithilfe eines [benutzerdefinierten Bytecodes und einer virtuellen Maschine](https://github.com/microsoft/TypeScript/issues/47658) in das generierte JavaScript eingebettet werden, sodass Entwickler programmgesteuert auf Typinformationen zugreifen können.
+
+Mit Deepkit können Entwickler ihre bestehenden TypeScript Types zur Validierung, Serialisierung und mehr zur Laufzeit verwenden, was den Entwicklungsprozess vereinfacht und ihre Arbeit effizienter macht.

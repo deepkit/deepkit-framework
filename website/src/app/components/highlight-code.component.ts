@@ -83,13 +83,13 @@ export class HighlightCodeComponent {
         if (!code) return '';
 
         try {
-            const html = this.prism.highlight(code, this.lang());
-            setTimeout(() => this.onRender.emit());
-            return html;
+            return this.prism.highlight(code, this.lang());
         } catch (error) {
             console.error('Error highlighting code:', error);
             // Fallback to plain text if highlighting fails
             return `<code>${code}</code>`;
+        } finally {
+            this.onRender.emit();
         }
     }));
 }

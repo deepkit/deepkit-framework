@@ -18,7 +18,7 @@ on [GitHub](https://github.com/deepkit/deepkit-framework).
 - [Broker](/documentation/broker.md) - Message broker abstraction to work with distributed L2 cache, pub/sub, queues, central atomic locks, or key-value store.
 - [HTTP](/documentation/http.md) - HTTP server abstraction to build type-safe endpoints.
 - [RPC](/documentation/rpc.md) - Remote procedure call abstraction to connect frontend with backend, or to connect multiple backend services.
-- [ORM](/documentation/orm.md) - Use Deepkit's database abstraction to store and query data in a type-safe way.
+- [ORM](/documentation/orm.md) - ORM and DBAL to store and query data in a type-safe way.
 - [Desktop-UI](/documentation/desktop-ui/getting-started) - Build GUI applications with Deepkit's Angular-based UI framework.
 
 ## API Reference
