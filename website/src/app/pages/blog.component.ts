@@ -11,6 +11,7 @@ import { injectParams } from 'ngxtension/inject-params';
 import { ContentTextComponent } from '@app/app/components/content-text.component.js';
 import { ContentRenderComponent } from '@app/app/components/content-render.component.js';
 import { JSONContent } from '@tiptap/core';
+import { Translation } from '@app/app/components/translation.js';
 
 @Component({
     selector: '[postItem]',
@@ -149,7 +150,7 @@ export class BlogPostDetailComponent {
       <div class="articles-line"></div>
       <div class="articles">
         @for (post of blog.posts(); track $index) {
-          <a routerLink="/blog/{{post.slug}}" [postItem]="post"></a>
+          <a routerLink="/{{translation.lang()}}/blog/{{post.slug}}" [postItem]="post"></a>
         }
       </div>
     `,
@@ -175,6 +176,7 @@ export class BlogPostDetailComponent {
 })
 export class BlogListComponent {
     blog = inject(BlogService);
+    translation = inject(Translation);
 }
 
 @Injectable({ providedIn: 'root' })
@@ -205,7 +207,7 @@ export class BlogService {
           <nav>
             @for (post of blog.posts(); track $index) {
               @if (!post.image) {
-                <a routerLink="/blog/{{ post.slug }}">
+                <a routerLink="/{{translation.lang()}}/blog/{{ post.slug }}">
                   <span>{{ post.publishedAt | date: 'dd MMM yy' }}</span>
                   <span>{{ post.title }}</span>
                 </a>
@@ -227,6 +229,7 @@ export class BlogService {
 })
 export class BlogComponent {
     blog = inject(BlogService);
+    translation = inject(Translation);
 }
 
 function tiptapToContent(content?: JSONContent[], level: number = 1): (Content | string)[] {
