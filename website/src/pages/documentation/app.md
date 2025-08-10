@@ -23,6 +23,34 @@ by parameters declaration via TypeScript types and are automatically serialized 
 
 [Deepkit Framework](./framework.md) with `@deepkit/framework` extends this further with an application server for HTTP/RPC, a debugger/profiler, and much more.
 
+Example:
+
+```typescript
+import { App, Flag } from '@deepkit/app';
+import { Database } from './database';
+
+const app = new App({
+    providers: [Database]
+});
+
+async function testCommand(
+    name: string, // CLI argument
+    age: number & Flag, // CLI flag
+    database: Database, // Dependency Injection
+) {
+    console.log(`Hello ${name}!`);
+    const users = await database.query<User>().find();
+}
+
+app.command('test', testCommand);
+
+void app.run();
+```
+
+```sh
+ts-node app.ts test John --age 42
+```
+
 ## Installation Easy
 
 The easiest way to get started is to use NPM init to create a new Deepkit project.
@@ -125,11 +153,6 @@ VERSION
 
 USAGE
   $ ts-node app.ts [COMMAND]
-
-TOPICS
-  debug
-  migration  Executes pending migration files. Use migration:pending to see which are pending.
-  server     Starts the HTTP server
 
 COMMANDS
   test
