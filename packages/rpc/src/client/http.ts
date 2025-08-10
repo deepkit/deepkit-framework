@@ -17,22 +17,38 @@ export interface RpcHttpInterface {
     fetch(url: string, options: {
         headers: { [name: string]: string },
         method: string,
-        body: any
+        body?: string
     }): Promise<RpcHttpResponseInterface>;
 }
 
 export class RpcHttpFetch implements RpcHttpInterface {
+    constructor(
+        private baseUrl: string | ((url: string) => string) = '',
+    ) {
+    }
+
     async fetch(url: string, options: {
         headers: { [name: string]: string },
         method: string,
         body: any
     }): Promise<RpcHttpResponseInterface> {
+        if ('function' === typeof this.baseUrl) {
+            url = this.baseUrl(url);
+        } else if (this.baseUrl) {
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+                // already absolute URL
+            } else {
+                url = this.baseUrl + (url.startsWith('/') ? url : '/' + url);
+            }
+        }
+
         const res = await fetch(url, options);
+        const body = await res.json();
 
         return {
             status: res.status,
             headers: Object.fromEntries(res.headers.entries()),
-            body: await res.json(),
+            body,
         };
     }
 }
@@ -73,7 +89,7 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
                 const qs: string[] = [];
                 let path = '';
                 let method = 'GET';
-                let body: any = undefined;
+                let body: string | undefined = undefined;
 
                 if (message.type === RpcTypes.ActionType) {
                     if (!message.body) throw new RpcError('No body given');
