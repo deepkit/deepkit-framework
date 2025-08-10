@@ -3,8 +3,9 @@ import { join } from 'path';
 import { magicSeparator, Page } from '@app/common/models';
 import { MarkdownParser } from '@app/common/markdown';
 import { getCurrentDirName } from '@deepkit/core';
+import { findParentPath } from '@deepkit/app';
 
-const currentDir = getCurrentDirName();
+const pagesDir = findParentPath('src/pages', getCurrentDirName()) || '';
 
 export class PageProcessor {
     constructor(protected parser: MarkdownParser) {
@@ -13,9 +14,8 @@ export class PageProcessor {
     async read(url: string, lang: string = 'en'): Promise<string> {
         url = url.replace(/[^a-zA-Z0-9\-_\/]/g, '');
         const file = url + '.md';
-        const originalPath = join(currentDir, '../pages', file);
-        const translated = join(currentDir, '../translations', lang, file);
-        console.log(`Reading page from ${originalPath} or ${translated} for language ${lang}`);
+        const originalPath = join(pagesDir, file);
+        const translated = join(pagesDir, '../translations', lang, file);
         if (lang === 'en') return await readFile(originalPath, 'utf8');
         try {
             return await readFile(translated, 'utf8');

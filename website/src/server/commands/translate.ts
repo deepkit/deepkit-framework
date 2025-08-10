@@ -4,8 +4,9 @@ import path from 'path';
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { getCurrentDirName } from '@deepkit/core';
 import { docs, libraries, texts } from '@app/common/docs';
+import { findParentPath } from '@deepkit/app';
 
-const currentDir = getCurrentDirName();
+const translationsDir = findParentPath('src/translations', getCurrentDirName()) || '';
 
 const languages: Record<string, string> = {
     zh: '中文 (Chinese)',
@@ -100,7 +101,7 @@ Make sure to also translate link titles, headings, and any other text that is no
 }
 
 export function readTranslationsFile(lang: string, name: string): Record<string, string> {
-    const filePath = path.join(currentDir, '../../translations', lang, `${name}.json`);
+    const filePath = path.join(translationsDir, lang, `${name}.json`);
     try {
         const content = readFileSync(filePath, 'utf8');
         return JSON.parse(content);
@@ -110,7 +111,7 @@ export function readTranslationsFile(lang: string, name: string): Record<string,
 }
 
 export function readTranslationDocumentationPage(lang: string, page: string): string {
-    const filePath = path.join(currentDir, '../../translations/documentation', lang, page);
+    const filePath = path.join(translationsDir, 'documentation', lang, page);
     try {
         return readFileSync(filePath, 'utf8');
     } catch (error) {
@@ -119,7 +120,7 @@ export function readTranslationDocumentationPage(lang: string, page: string): st
 }
 
 function writeTranslationsFile(lang: string, name: string, translations: Record<string, string>) {
-    const filePath = path.join(currentDir, '../../translations', lang, `${name}.json`);
+    const filePath = path.join(translationsDir, lang, `${name}.json`);
     writeFileSync(filePath, JSON.stringify(translations, null, 2), 'utf8'); // Ensure the file exists
 }
 
@@ -163,7 +164,7 @@ type Path = string;
 type TranslationState = Record<Path, Hash>;
 
 function readState(lang: string): TranslationState {
-    const dir = path.join(currentDir, '../../translations', lang);
+    const dir = path.join(translationsDir, lang);
     const filePath = path.join(dir, 'state.json');
     console.log('readState', filePath);
     mkdirSync(dir, { recursive: true });
@@ -176,13 +177,13 @@ function readState(lang: string): TranslationState {
 }
 
 function writeState(lang: string, state: TranslationState) {
-    const filePath = path.join(currentDir, '../../translations', lang, 'state.json');
+    const filePath = path.join(translationsDir, lang, 'state.json');
     writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf8');
 }
 
 async function translateDocumentationPage(openAi: OpenAI, state: TranslationState, lang: string, page: string) {
     console.log(`Translating ${page} to ${lang}...`);
-    const filePath = path.join(currentDir, '../../pages/documentation', page);
+    const filePath = path.join(translationsDir, '../pages/documentation', page);
     const binary = readFileSync(filePath);
     const hash = Buffer.from(await crypto.subtle.digest('SHA-256', binary)).toString('hex');
     if (state[page] === hash) {
@@ -192,7 +193,7 @@ async function translateDocumentationPage(openAi: OpenAI, state: TranslationStat
 
     const content = binary.toString('utf8');
     const translatedContent = await translateMarkdown(openAi, lang, content);
-    const outputPath = path.join(currentDir, '../../translations', lang, 'documentation', page);
+    const outputPath = path.join(translationsDir, lang, 'documentation', page);
     mkdirSync(path.dirname(outputPath), { recursive: true });
     writeFileSync(outputPath, translatedContent, 'utf8');
     state[page] = hash;
@@ -211,7 +212,7 @@ export async function translateCommand(
     }
 
     logger.info(`Starting translation to ${lang}...`);
-    const dir = path.join(currentDir, '../../translations', lang);
+    const dir = path.join(translationsDir, lang);
     mkdirSync(dir, { recursive: true });
 
     await translateBasics(openAi, lang);

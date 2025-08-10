@@ -341,7 +341,7 @@ export interface HttpRouterFunctionOptions {
 function convertOptions(methods: string[], pathOrOptions: string | HttpRouterFunctionOptions, defaultOptions: Partial<HttpRouterFunctionOptions>): HttpRouterFunctionOptions {
     const options = 'string' === typeof pathOrOptions ? { path: pathOrOptions } : pathOrOptions;
     if (options.methods) return options;
-    return { ...defaultOptions, ...options, methods };
+    return { ...options, methods };
 }
 
 /**
