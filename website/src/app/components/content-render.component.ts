@@ -9,7 +9,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { ContentApiDocsComponent } from '@app/app/components/content-api-docs.component';
 import { Translation } from '@app/app/components/translation';
 
-const whitelist = ['div', 'p', 'a', 'button', 'iframe', 'pre', 'span', 'code', 'strong', 'hr', 'ul', 'li', 'ol', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'table', 'tbody', 'tr', 'td', 'th', 'boxes', 'box'];
+const whitelist = ['div', 'p', 'a', 'i', 'u', 's', 'button', 'iframe', 'pre', 'span', 'code', 'strong', 'hr', 'ul', 'li', 'ol', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'table', 'tbody', 'tr', 'td', 'th', 'boxes', 'box'];
 
 
 @Component({

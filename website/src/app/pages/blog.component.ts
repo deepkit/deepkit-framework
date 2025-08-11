@@ -263,8 +263,6 @@ function tiptapToContent(content?: JSONContent[], level: number = 1): (Content |
     for (const item of content) {
         if (item.type === 'paragraph') {
             result.push({ tag: 'p', children: tiptapToContent(item.content, level + 1) });
-        } else if (item.type === 'text' && item.text) {
-            result.push(item.text);
         } else if (item.type === 'heading') {
             const h = item.attrs?.level || 1;
             if (h === 1 && level === 1) continue;
@@ -287,6 +285,53 @@ function tiptapToContent(content?: JSONContent[], level: number = 1): (Content |
                 props: { class: 'language-' + item.attrs?.language || '' },
                 children: [item.content?.map((c) => c.text || '').join('') || ''],
             });
+        } else if (item.type === 'text' && item.text) {
+            let content: Content | string = item.text;
+
+            const link = item.marks?.find(m => m.type === 'link')
+            if (link) {
+                content = {
+                    tag: 'a',
+                    props: link.attrs,
+                    children: [content],
+                };
+            }
+            if (item.marks?.find(v => v.type === 'code')) {
+                content = {
+                    tag: 'code',
+                    children: [content],
+                }
+            }
+
+            if (item.marks?.find(v => v.type === 'bold')) {
+                content = {
+                    tag: 'strong',
+                    children: [content],
+                }
+            }
+
+            if (item.marks?.find(v => v.type === 'italic')) {
+                content = {
+                    tag: 'i',
+                    children: [content],
+                }
+            }
+
+            if (item.marks?.find(v => v.type === 'underline')) {
+                content = {
+                    tag: 'u',
+                    children: [content],
+                }
+            }
+
+            if (item.marks?.find(v => v.type === 'strike')) {
+                content = {
+                    tag: 's',
+                    children: [content],
+                }
+            }
+
+            result.push(content);
         }
     }
     return result;

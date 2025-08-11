@@ -1,5 +1,18 @@
 import { Component, computed, effect, ElementRef, inject, input, signal, viewChild } from '@angular/core';
-import { ButtonComponent, ButtonGroupComponent, ButtonGroupsComponent, DropdownComponent, DuiDialog, FilesystemApi, FilesystemFileDialog, InputComponent, ngValueAccessor, ValueAccessorBase } from '@deepkit/desktop-ui';
+import {
+    ButtonComponent,
+    ButtonGroupComponent,
+    ButtonGroupsComponent,
+    ButtonHotkeyComponent,
+    DropdownComponent,
+    DuiDialog,
+    FilesystemApi,
+    FilesystemFileDialog,
+    InputComponent,
+    ngValueAccessor,
+    OpenDropdownHoverDirective,
+    ValueAccessorBase,
+} from '@deepkit/desktop-ui';
 import { DocumentType, Editor, NodeType } from '@tiptap/core';
 import Document from '@tiptap/extension-document';
 import Paragraph from '@tiptap/extension-paragraph';
@@ -29,8 +42,31 @@ import { FormsModule } from '@angular/forms';
         DropdownComponent,
         FormsModule,
         InputComponent,
+        OpenDropdownHoverDirective,
+        ButtonHotkeyComponent,
     ],
     template: `
+      <dui-dropdown #helpDropdown [minWidth]="500">
+        <div class="hotkeys">
+          <div><dui-button-hotkey hotkey="meta+alt+0" /> Body</div>
+          <div><dui-button-hotkey hotkey="meta+alt+1" /> H1</div>
+          <div><dui-button-hotkey hotkey="meta+alt+2" /> H2</div>
+          <div><dui-button-hotkey hotkey="meta+alt+3" /> H3</div>
+          <div><dui-button-hotkey hotkey="meta+E" /> Code</div>
+          <div><dui-button-hotkey hotkey="meta+B" /> Bold</div>
+          <div><dui-button-hotkey hotkey="meta+I" /> Italic</div>
+          <div><dui-button-hotkey hotkey="meta+U" /> Underline</div>
+          <div><dui-button-hotkey hotkey="meta+shift+S" /> Strike</div>
+          <div><dui-button-hotkey hotkey="meta+shift+8" /> Bullet List</div>
+          <div><dui-button-hotkey hotkey="meta+alt+c" /> Code Block</div>
+          <div><dui-button-hotkey hotkey="meta+alt+c" /> Code</div>
+          <div><dui-button-hotkey hotkey="meta+shift+L" /> Align Left</div>
+          <div><dui-button-hotkey hotkey="meta+shift+E" /> Align Center</div>
+          <div><dui-button-hotkey hotkey="meta+shift+R" /> Align Right</div>
+          <div><dui-button-hotkey hotkey="meta+shift+J" /> Align Justify</div>
+        </div>
+      </dui-dropdown>
+      
       <dui-button-groups>
         <dui-button-group padding="none">
           <dui-button small (click)="setHeader(0)" [active]="header() === 0">Body</dui-button>
@@ -67,6 +103,7 @@ import { FormsModule } from '@angular/forms';
         </dui-button-group>
 
         <dui-button-group padding="none">
+          <dui-button textured small [openDropdownHover]="helpDropdown" icon="help"></dui-button>
           <dui-button textured small (click)="undo()" icon="arrow_left"></dui-button>
           <dui-button textured small (click)="redo()" icon="arrow_right"></dui-button>
         </dui-button-group>

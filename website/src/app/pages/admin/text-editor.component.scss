@@ -22,6 +22,25 @@ dui-button-groups {
   }
 }
 
+.hotkeys {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 130px));
+  padding: 15px;
+  gap: 15px;
+
+  > div {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    > *:first-child {
+      flex: 0 0 40px;
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+    }
+  }
+}
+
 .content-text {
   flex: 1;
   --color-header: var(--context-text-color);
