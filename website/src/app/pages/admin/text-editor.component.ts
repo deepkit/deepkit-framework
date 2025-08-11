@@ -10,8 +10,11 @@ import Underline from '@tiptap/extension-underline';
 import Strike from '@tiptap/extension-strike';
 import Heading from '@tiptap/extension-heading';
 import Link from '@tiptap/extension-link';
+import Code from '@tiptap/extension-code';
 import TextAlign from '@tiptap/extension-text-align';
 import { Image } from './text-editor-image';
+import { BulletList, ListItem } from '@tiptap/extension-list';
+import Blockquote from '@tiptap/extension-blockquote';
 import { Dropcursor, Gapcursor, UndoRedo } from '@tiptap/extensions';
 import CodeBlock from '@tiptap/extension-code-block';
 import { Node as ProseNode } from 'prosemirror-model';
@@ -102,6 +105,7 @@ export class TextEditorComponent extends ValueAccessorBase<NodeType[]> {
             element: this.editorContainer().nativeElement,
             extensions: [
                 UndoRedo, Gapcursor, Document, Paragraph, Text, Dropcursor,
+                BulletList, ListItem, Blockquote, Code,
                 Link.configure({
                     openOnClick: false,
                     enableClickSelection: true,
@@ -157,6 +161,8 @@ export class TextEditorComponent extends ValueAccessorBase<NodeType[]> {
     });
 
     codeBlock = this.trackChange((editor) => editor.isActive('codeBlock'));
+    code = this.trackChange((editor) => editor.isActive('code'));
+
     link = this.trackChange((editor) => editor.isActive('link'));
 
     dialog = inject(DuiDialog);
@@ -210,6 +216,10 @@ export class TextEditorComponent extends ValueAccessorBase<NodeType[]> {
 
     toggleCodeBlock() {
         this.editor().chain().focus().toggleCodeBlock().run();
+    }
+
+    toggleCode() {
+        this.editor().chain().focus().toggleCode().run();
     }
 
     toggleLink() {

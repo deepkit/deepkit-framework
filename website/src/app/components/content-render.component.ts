@@ -147,7 +147,7 @@ type ContentCreated = { hostView?: any, type?: any, node: Node };
     selector: 'app-render-content',
     styles: [`
       :host {
-        display: inline;
+        display: block;
       }
     `],
     template: ` `,

@@ -147,14 +147,15 @@ export class TableOfContentService {
       }
 
       :host {
+        --max-size: 1000px;
         font-size: 12px;
         position: fixed;
         z-index: 500;
         top: 60px;
         right: 0;
         bottom: 30px;
-        width: calc((100% - 1000px) / 2);
-        min-width: calc((100% - 1000px) / 2);
+        width: calc((100% - var(--max-size)) / 2);
+        min-width: calc((100% - var(--max-size)) / 2);
         text-align: right;
         background: rgba(9, 10, 11, 0.93);
         -webkit-backdrop-filter: blur(7px);

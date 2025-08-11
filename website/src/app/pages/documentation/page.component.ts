@@ -64,6 +64,8 @@ export class DocumentationPageComponent implements OnDestroy {
     content = viewChild('content', { read: ElementRef<HTMLElement> });
 
     toc = inject(TableOfContentService);
+    activatedRoute = inject(ActivatedRoute);
+    viewportScroller = inject(ViewportScroller);
     translation = inject(Translation);
 
     page = derivedAsync<{ page: Page | undefined, error: string } | undefined>(pendingTask(async () => {
@@ -73,7 +75,7 @@ export class DocumentationPageComponent implements OnDestroy {
             return {
                 error: '',
                 page: await this.client.main.getPage('documentation/' + path, lang),
-            }
+            };
         } catch (e) {
             this.pageResponse.notFound();
             return {
@@ -118,9 +120,7 @@ export class DocumentationPageComponent implements OnDestroy {
 
     constructor(
         private pageResponse: PageResponse,
-        private activatedRoute: ActivatedRoute,
         private client: ControllerClient,
-        private viewportScroller: ViewportScroller,
         public router: Router,
     ) {
         effect(() => {

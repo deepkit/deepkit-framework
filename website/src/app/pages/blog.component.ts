@@ -1,11 +1,11 @@
-import { Component, computed, inject, Injectable, input } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, Injectable, input, viewChild } from '@angular/core';
 import { AppDescription, AppTitle } from '@app/app/components/title.js';
 import { HeaderLogoComponent, HeaderNavComponent } from '@app/app/components/header.component.js';
 import { ControllerClient } from '@app/app/client.js';
 import { derivedAsync } from 'ngxtension/derived-async';
 import { pendingTask } from '@deepkit/desktop-ui';
-import { RouterLink, RouterOutlet } from '@angular/router';
-import { DatePipe } from '@angular/common';
+import { ActivatedRoute, RouterLink, RouterOutlet } from '@angular/router';
+import { DatePipe, ViewportScroller } from '@angular/common';
 import { blogDateFormat, type BlogEntity, bodyToString, Content, parseBody } from '@app/common/models.js';
 import { injectParams } from 'ngxtension/inject-params';
 import { ContentTextComponent } from '@app/app/components/content-text.component.js';
@@ -13,6 +13,7 @@ import { ContentRenderComponent } from '@app/app/components/content-render.compo
 import { JSONContent } from '@tiptap/core';
 import { Translation } from '@app/app/components/translation.js';
 import { mediaWatch } from '@app/app/utils.js';
+import { TableOfContentComponent, TableOfContentService } from '@app/app/components/table-of-content.component.js';
 
 @Component({
     selector: '[postItem]',
@@ -80,9 +81,10 @@ export class BlogPostItemComponent {
         DatePipe,
         AppDescription,
         AppTitle,
+        TableOfContentComponent,
     ],
     template: `
-      <div class="content app-content">
+      <div class="content app-content" tabindex="0" #content>
         <dui-content-text>
           @if (post(); as post) {
             <app-title value="{{post.title}}" />
@@ -90,10 +92,11 @@ export class BlogPostItemComponent {
 
             <h1>{{ post.title }}</h1>
             <div class="date">{{ post.publishedAt | date: blogDateFormat }}, Marc</div>
-            <app-render-content [content]="postContent()" />
+            <app-render-content [content]="postContent()" (onRender)="onRender()" />
           }
         </dui-content-text>
       </div>
+      <app-table-of-content style="--max-size: 1120px" />
     `,
     styles: `
       h1 {
@@ -139,6 +142,26 @@ export class BlogPostDetailComponent {
     });
     protected readonly blogDateFormat = blogDateFormat;
     protected readonly bodyToString = bodyToString;
+
+    toc = inject(TableOfContentService);
+    activatedRoute = inject(ActivatedRoute);
+    viewportScroller = inject(ViewportScroller);
+    content = viewChild('content', { read: ElementRef<HTMLElement> });
+
+    constructor(
+    ) {
+        effect(() => {
+            this.toc.render(this.content()?.nativeElement);
+        });
+    }
+
+    onRender() {
+        this.toc.triggerUpdate();
+        const fragment = this.activatedRoute.snapshot.fragment;
+        if (fragment) {
+            this.viewportScroller.scrollToAnchor(fragment);
+        }
+    }
 }
 
 @Component({
@@ -250,6 +273,20 @@ function tiptapToContent(content?: JSONContent[], level: number = 1): (Content |
             const src = 'media' + item.attrs?.path;
             const alt = item.attrs?.alt || '';
             result.push({ tag: 'img', props: { src, alt } });
+        } else if (item.type === 'bulletList') {
+            result.push({
+                tag: 'ul',
+                children: item.content?.map((li) => ({
+                    tag: 'li',
+                    children: tiptapToContent(li.content, level + 1),
+                })) || [],
+            });
+        } else if (item.type === 'codeBlock') {
+            result.push({
+                tag: 'pre',
+                props: { class: 'language-' + item.attrs?.language || '' },
+                children: [item.content?.map((c) => c.text || '').join('') || ''],
+            });
         }
     }
     return result;
