@@ -313,12 +313,14 @@ export class RequestBuilder {
     }
 
     headers(headers: { [name: string]: string }): this {
-        this._headers = headers;
+        this._headers = Object.fromEntries(
+            Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value])
+        );
         return this;
     }
 
     header(name: string, value: string | number): this {
-        this._headers[name] = String(value);
+        this._headers[name.toLowerCase()] = String(value);
         return this;
     }
 
