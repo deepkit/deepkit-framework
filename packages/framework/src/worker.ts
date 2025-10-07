@@ -17,7 +17,7 @@ import selfsigned from 'selfsigned';
 
 import { HttpConfig, HttpKernel, HttpRequest, HttpResponse } from '@deepkit/http';
 import { InjectorContext } from '@deepkit/injector';
-import { RpcControllers, RpcInjectorContext } from './rpc.js';
+import { RpcControllers } from './rpc.js';
 import { SecureContextOptions, TlsOptions } from 'tls';
 
 // @ts-ignore
@@ -174,8 +174,7 @@ export class WebMemoryWorkerFactory extends WebWorkerFactory {
 export function createRpcConnection(rootScopedContext: InjectorContext, rpcKernel: RpcKernel, transport: TransportConnection, request?: HttpRequest) {
     const injector = rootScopedContext.createChildScope('rpc');
     injector.set(HttpRequest, request);
-    injector.set(RpcInjectorContext, injector);
-
+    injector.set(InjectorContext, injector);
     const connection = rpcKernel.createConnection(transport, injector);
     injector.set(SessionState, connection.sessionState);
     injector.set(RpcKernelConnection, connection);

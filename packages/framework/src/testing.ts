@@ -43,6 +43,11 @@ export class TestingFacade<A extends App<any>> {
         await this.app.get(ApplicationServer).close(graceful);
     }
 
+    /**
+     * ```typescript
+     * const response = await testing.request(HttpRequest.GET('/test').header('x-test', '123'));
+     * ```
+     */
     public async request(requestBuilder: RequestBuilder): Promise<MemoryHttpResponse> {
         const request = requestBuilder.build();
         const response = new MemoryHttpResponse(request);

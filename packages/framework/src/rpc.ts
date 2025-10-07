@@ -18,9 +18,6 @@ export class RpcControllers {
     public readonly controllers = new Map<string, { controller: ClassType, module: AppModule<any> }>();
 }
 
-export class RpcInjectorContext extends InjectorContext {
-}
-
 export class RpcServerActionWithStopwatch extends RpcServerAction {
     stopwatch?: Stopwatch;
 

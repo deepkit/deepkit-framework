@@ -1,42 +1,7 @@
-import {
-    isClassProvider,
-    isExistingProvider,
-    isFactoryProvider,
-    isValueProvider,
-    NormalizedProvider,
-    ProviderWithScope,
-    Tag,
-    TagProvider,
-    TagRegistry,
-    Token,
-} from './provider.js';
-import {
-    AbstractClassType,
-    ClassType,
-    CompilerContext,
-    CustomError,
-    getClassName,
-    getPathValue,
-    isArray,
-    isClass,
-    isFunction,
-    isPrototypeOfBase,
-} from '@deepkit/core';
+import { isClassProvider, isExistingProvider, isFactoryProvider, isValueProvider, NormalizedProvider, ProviderWithScope, Tag, TagProvider, TagRegistry, Token } from './provider.js';
+import { AbstractClassType, ClassType, CompilerContext, CustomError, getClassName, getPathValue, isArray, isClass, isFunction, isPrototypeOfBase } from '@deepkit/core';
 import { ConfigurationProviderRegistry, ConfigureProviderEntry, findModuleForConfig, getScope, InjectorModule, PreparedProvider } from './module.js';
-import {
-    isOptional,
-    isWithAnnotations,
-    Packed,
-    ReceiveType,
-    reflect,
-    ReflectionClass,
-    ReflectionFunction,
-    ReflectionKind,
-    resolveReceiveType,
-    stringifyType,
-    Type,
-    typeAnnotation,
-} from '@deepkit/type';
+import { isOptional, isWithAnnotations, Packed, ReceiveType, reflect, ReflectionClass, ReflectionFunction, ReflectionKind, resolveReceiveType, stringifyType, Type, typeAnnotation } from '@deepkit/type';
 
 export class InjectorError extends CustomError {
 
@@ -316,7 +281,7 @@ interface BuiltInjector {
 
     resolver(token: Token, scope?: Scope, optional?: boolean): Resolver<unknown>;
 
-    setter(token: Token, scope?: Scope): Setter<unknown>;
+    setter(token: Token, scopeName?: string): Setter<unknown>;
 
     collectStack(stack: StackEntry[]): void;
 }
@@ -368,11 +333,11 @@ export class Injector {
         return this.built.instantiationCount(token, scope);
     }
 
-    getSetter<T>(token: ReceiveType<T> | Token<T>): Setter<T> {
+    getSetter<T>(token: ReceiveType<T> | Token<T>, scopeName?: string): Setter<T> {
         let setter = this.setterMap.get(token);
         if (!setter) {
-            setter = this.createSetter(token as ReceiveType<T> | Token);
-            this.setterMap.set(token, setter);
+            setter = this.createSetter(token as ReceiveType<T> | Token, scopeName);
+            if (!scopeName) this.setterMap.set(token, setter);
         }
         return setter;
     }
@@ -645,9 +610,8 @@ export class Injector {
                     }
                 }
                 
-                function setter_${routerName}(scope) {
-                    const name = scope?.name || '';
-                    switch (name) {
+                function setter_${routerName}(scopeName) {
+                    switch (scopeName) {
                         ${setterNames.map(v => `case ${JSON.stringify(v.scope)}: return ${v.function};`).join('\n')}
                         default: return ${routerName}_setter; // no scope given, so return route for value itself
                     }
@@ -773,17 +737,17 @@ export class Injector {
         throw serviceNotFoundError(tokenLabel(token));
     }
     
-    // setter(token: Token, scope?: Scope): Setter<unknown>;
-    function setter(token, scope) {
+    // setter(token: Token, scopeName?: string): Setter<unknown>;
+    function setter(token, scopeName) {
         const containerToken = getContainerToken(token);
         const fn = containerToken[symbolSetter] || lookupSetter[containerToken];
-        if (fn) return fn(scope);
+        if (fn) return fn(scopeName);
         throw serviceNotFoundError(tokenLabel(token));
     }
     
     // set(token: Token, value: any, scope?: Scope): void;
     function set(token, value, scope) {
-        setter(token)(value, scope);
+        setter(token, scope?.name)(value, scope);
     }
 
     // get(token: Token, scope?: Scope, optional?: boolean): unknown;
@@ -1194,7 +1158,7 @@ export class Injector {
         return foundPreparedProvider;
     }
 
-    createSetter<T>(token: ReceiveType<T> | Token<T>, scope?: Scope, label?: string): Setter<T> {
+    createSetter<T>(token: ReceiveType<T> | Token<T>, scopeName?: string, label?: string): Setter<T> {
         if (token instanceof TagProvider) token = token.provider.provide;
 
         // todo remove isClass since it's slow
@@ -1215,7 +1179,7 @@ export class Injector {
 
         const containerToken = getContainerToken(foundPreparedProvider.token);
         const resolveFromModule = foundPreparedProvider.resolveFrom || foundPreparedProvider.modules[0];
-        return resolveFromModule.injector!.built!.setter(containerToken, scope);
+        return resolveFromModule.injector!.built!.setter(containerToken, scopeName);
     }
 
     createResolver<T>(token: ReceiveType<T> | Token<T>, scope?: Scope, label?: string): Resolver<T> {
@@ -1391,11 +1355,13 @@ export class InjectorContext {
      * be executed to resolve the token. This increases performance in hot paths.
      */
     resolve<T>(module?: InjectorModule, type?: ReceiveType<T> | Token<T>): Resolver<T> {
-        return this.getInjector(module || this.rootModule).getResolver(type) as Resolver<T>;
+        const injector = this.getInjector(module || this.rootModule);
+        return injector.getResolver(type) as Resolver<T>;
     }
 
-    setter<T>(module?: InjectorModule, type?: ReceiveType<T> | Token<T>): Setter<T> {
-        return this.getInjector(module || this.rootModule).getSetter(type) as Setter<T>;
+    setter<T>(module?: InjectorModule, type?: ReceiveType<T> | Token<T>, scopeName?: string): Setter<T> {
+        const injector = this.getInjector(module || this.rootModule);
+        return injector.getSetter(type, scopeName || this.scope?.name) as Setter<T>;
     }
 
     /**

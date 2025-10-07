@@ -275,9 +275,6 @@ test('exported module', () => {
 });
 
 test('scoped InjectorContext access', () => {
-    class RpcInjectorContext extends InjectorContext {
-    }
-
     class MyService {
         constructor(public injectorContext: InjectorContext) {
         }
@@ -286,7 +283,7 @@ test('scoped InjectorContext access', () => {
     const myModule = new AppModule({}, {
         providers: [
             { provide: MyService },
-            { provide: RpcInjectorContext, scope: 'rpc', useValue: undefined },
+            { provide: InjectorContext, scope: 'rpc', useValue: undefined },
         ]
     });
 
@@ -299,7 +296,7 @@ test('scoped InjectorContext access', () => {
 
     {
         const injector = serviceContainer.getInjectorContext().createChildScope('rpc');
-        injector.set(RpcInjectorContext, injector);
+        injector.set(InjectorContext, injector);
 
         const myService = injector.get(MyService);
         expect(myService.injectorContext).toBeInstanceOf(InjectorContext);

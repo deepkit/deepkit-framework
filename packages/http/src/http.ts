@@ -543,7 +543,7 @@ export class HttpListener {
         protected injector: Injector,
         protected stopwatch: Stopwatch,
     ) {
-        this.setRouteConfig = injector.createSetter(RouteConfig, {name: 'http'});
+        this.setRouteConfig = injector.createSetter(RouteConfig, 'http');
     }
 
     @eventDispatcher.listen(httpWorkflow.onRequest, 100)

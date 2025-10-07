@@ -100,15 +100,12 @@ test('child implementation from imported module encapsulated', () => {
         }
     }
 
-    class RpcInjectorContext extends InjectorContext {
-    }
-
     let injectorContext: InjectorContext | undefined;
 
     const module = new InjectorModule([
         User,
-        // => since User is not exported, it should not access overrides from outside, thus it should be RpcInjectorContext
-        { provide: RpcInjectorContext },
+        // => since User is not exported, it should not access overrides from outside, thus it should be InjectorContext
+        { provide: InjectorContext },
     ]);
 
     const rootModule = new InjectorModule([
@@ -117,7 +114,7 @@ test('child implementation from imported module encapsulated', () => {
     injectorContext = new InjectorContext(rootModule);
 
     const user = injectorContext.get(User, module);
-    expect(user.context.constructor).toBe(RpcInjectorContext);
+    expect(user.context.constructor).toBe(InjectorContext);
 });
 
 test('child implementation from imported module partly exported', () => {
@@ -126,15 +123,12 @@ test('child implementation from imported module partly exported', () => {
         }
     }
 
-    class RpcInjectorContext extends InjectorContext {
-    }
-
     let injectorContext: InjectorContext | undefined;
 
     const module = new InjectorModule([
         User,
         // => since User is exported, it should access overrides from outside, thus it should be InjectorContext
-        { provide: RpcInjectorContext },
+        { provide: InjectorContext },
     ]).addExport(User);
 
     const rootModule = new InjectorModule([
@@ -152,16 +146,13 @@ test('child implementation from imported module exported', () => {
         }
     }
 
-    class RpcInjectorContext extends InjectorContext {
-    }
-
     let injectorContext: InjectorContext | undefined;
 
     const module = new InjectorModule([
         User,
         // => since User is exported, it should access overrides from outside, thus it should be InjectorContext
-        { provide: RpcInjectorContext },
-    ]).addExport(User, RpcInjectorContext);
+        { provide: InjectorContext },
+    ]).addExport(User, InjectorContext);
 
     const rootModule = new InjectorModule([
         { provide: InjectorContext, useFactory: () => injectorContext! },

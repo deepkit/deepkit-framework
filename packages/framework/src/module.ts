@@ -35,7 +35,7 @@ import { Zone } from './zone.js';
 import { DebugBrokerBus } from './debug/broker.js';
 import { ApiConsoleModule } from '@deepkit/api-console-module';
 import { AppModule, ControllerConfig, createModuleClass, DeepPartial, onAppShutdown } from '@deepkit/app';
-import { RpcControllers, RpcInjectorContext, RpcKernelWithStopwatch } from './rpc.js';
+import { RpcControllers, RpcKernelWithStopwatch } from './rpc.js';
 import { normalizeDirectory } from './utils.js';
 import { FilesystemRegistry, PublicFilesystem } from './filesystem.js';
 import { Filesystem } from '@deepkit/filesystem';
@@ -92,7 +92,7 @@ export class FrameworkModule extends createModuleClass({
 
         //all of these will be set on scope creation
         { provide: HttpRequest, scope: 'rpc', useValue: undefined },
-        { provide: RpcInjectorContext, scope: 'rpc', useValue: undefined },
+        { provide: InjectorContext, scope: 'rpc', useValue: undefined },
         { provide: SessionState, scope: 'rpc', useValue: undefined },
         { provide: RpcKernelBaseConnection, scope: 'rpc', useValue: undefined },
         { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
@@ -125,7 +125,7 @@ export class FrameworkModule extends createModuleClass({
         DatabaseRegistry,
 
         HttpRequest,
-        RpcInjectorContext,
+        InjectorContext,
         SessionState,
         RpcKernelConnection,
         RpcKernelBaseConnection,

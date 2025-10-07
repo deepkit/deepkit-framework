@@ -667,6 +667,7 @@ export class RpcKernel {
                 EventDispatcher,
                 { provide: SessionState, scope: 'rpc' },
                 { provide: RpcKernelSecurity, scope: 'rpc' },
+                { provide: InjectorContext, scope: 'rpc' },
 
                 //will be provided when scope is created
                 { provide: RpcKernelConnection, scope: 'rpc', useValue: undefined },
@@ -739,6 +740,7 @@ export class RpcKernel {
             injector.get(RpcKernelSecurity),
             this.peerExchange,
         );
+        injector.set(InjectorContext, injector);
         injector.set(RpcKernelConnection, connection);
         injector.set(RpcKernelBaseConnection, connection);
         for (const on of this.onConnectionListeners) on(connection, injector, this.logger);

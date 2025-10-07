@@ -993,4 +993,3 @@ test('connection disconnect back-controller', async () => {
     await expect(promise).rejects.toThrow('Connection closed');
 });
 
-

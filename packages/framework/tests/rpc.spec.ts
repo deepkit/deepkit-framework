@@ -2,6 +2,8 @@ import { expect, test } from '@jest/globals';
 import { ControllerSymbol, rpc, RpcKernelConnection, RpcKernelSecurity, Session, SessionState } from '@deepkit/rpc';
 import { createTestingApp } from '../src/testing.js';
 import { AppModule } from '@deepkit/app';
+import { InjectorContext } from '@deepkit/injector';
+import { http, HttpQuery, HttpRequest } from '@deepkit/http';
 
 test('di', async () => {
     class MyService {
@@ -100,8 +102,8 @@ test('module provides RpcKernelSecurity', async () => {
         name: 'module',
         controllers: [Controller],
         providers: [{
-            provide: RpcKernelSecurity, useClass: MyRpcKernelSecurity, scope: 'rpc'
-        }]
+            provide: RpcKernelSecurity, useClass: MyRpcKernelSecurity, scope: 'rpc',
+        }],
     }).forRoot();
     const testing = createTestingApp({ imports: [module] });
     await testing.startServer();
@@ -143,7 +145,7 @@ test('rpc controller access unscoped provider', async () => {
 
     const testing = createTestingApp({
         controllers: [Controller],
-        providers: [ModelRegistryService]
+        providers: [ModelRegistryService],
     });
 
     const client = testing.createRpcClient();
@@ -152,4 +154,49 @@ test('rpc controller access unscoped provider', async () => {
 
     const registry = testing.app.get(ModelRegistryService);
     expect(registry.models).toEqual(['a']);
+});
+
+test('InjectorContext', async () => {
+    @rpc.controller('main')
+    class RpcController {
+        constructor(private injectorContext: InjectorContext) {
+        }
+
+        @rpc.action()
+        test() {
+            expect(this.injectorContext.scope?.name).toBe('rpc');
+            expect(this.injectorContext.getOrUndefined(HttpRequest)?.url).toBe(undefined);
+        }
+    }
+
+    class HttpController {
+        constructor(private injectorContext: InjectorContext) {
+        }
+
+        @http.GET('/test')
+        test(q: HttpQuery<string>) {
+            expect(this.injectorContext.scope?.name).toBe('http');
+            expect(this.injectorContext.get(HttpRequest)?.url).toBe('/test?q=' + q);
+        }
+    }
+
+    const testing = createTestingApp({
+        controllers: [RpcController, HttpController],
+    });
+
+    await testing.startServer();
+
+    const request1 = await testing.request(HttpRequest.GET('/test?q=1'));
+    expect(request1.statusCode).toBe(200);
+    const request2 = await testing.request(HttpRequest.GET('/test?q=2'));
+    expect(request2.statusCode).toBe(200);
+
+    const client = testing.createRpcClient();
+    const controller = client.controller<RpcController>('main');
+    await controller.test();
+
+    const request3 = await testing.request(HttpRequest.GET('/test?q=3'));
+    expect(request3.statusCode).toBe(200);
+
+    await testing.stopServer();
 });

@@ -156,9 +156,6 @@ test('optional forwarded to external module', () => {
 });
 
 test('scoped InjectorContext', () => {
-    class RpcInjectorContext extends InjectorContext {
-    }
-
     class HttpListener {
         constructor(public injector: InjectorContext) {
         }
@@ -169,10 +166,10 @@ test('scoped InjectorContext', () => {
     ]);
 
     const frameworkModule = new InjectorModule([
-        { provide: RpcInjectorContext, scope: 'rpc', useValue: undefined },
+        { provide: InjectorContext, scope: 'rpc', useValue: undefined },
     ])
         .addImport(httpModule)
-        .addExport(RpcInjectorContext, httpModule);
+        .addExport(InjectorContext, httpModule);
 
     const rootModule = new InjectorModule([
         { provide: InjectorContext, useFactory: () => injector },
@@ -276,4 +273,36 @@ test('constructor properties only handled once', () => {
     const injector = new InjectorContext(module);
     const a1 = injector.get(ServiceA);
     expect(created).toBe(1);
+});
+
+test('define a second provider in different scope in child module', () => {
+    class ServiceA {
+        constructor(public injector: InjectorContext) {
+        }
+    }
+
+    const childModule = new InjectorModule([
+        { provide: ServiceA, scope: 'rpc' },
+        { provide: InjectorContext, scope: 'rpc' },
+    ]).addExport(ServiceA, InjectorContext);
+
+    const root = new InjectorModule([
+        { provide: InjectorContext, useFactory: () => injectorContext },
+    ]).addImport(childModule);
+
+    const injectorContext = new InjectorContext(root);
+
+    {
+        const injector = injectorContext.createChildScope('rpc');
+        injector.set(InjectorContext, injector);
+        const a = injector.get(ServiceA);
+        expect(a.injector).toBe(injector);
+    }
+    {
+        const setter = injectorContext.setter(undefined, InjectorContext);
+        const injector = injectorContext.createChildScope('rpc');
+        setter(injector, injector.scope);
+        const a = injector.get(ServiceA);
+        expect(a.injector).toBe(injector);
+    }
 });
