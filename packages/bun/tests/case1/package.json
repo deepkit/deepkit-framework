@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "NODE_OPTIONS=--preserve-symlinks vite build"
+    "test": "bun run build.ts"
   },
   "author": "",
   "license": "ISC"
